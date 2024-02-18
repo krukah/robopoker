@@ -8,6 +8,12 @@ pub struct Range<T> {
     range: [T; 52 * 51 / 2],
 }
 
+struct Node {
+    value: i32,
+    parent: RefCell<Weak<Node>>,
+    children: RefCell<Vec<Rc<Node>>>,
+}
+
 pub struct Tree {
     root: Box<Mutex<TreeNode>>,
     history: History,

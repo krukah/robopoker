@@ -55,6 +55,13 @@ impl From<u8> for Rank {
     }
 }
 
+pub enum Street {
+    Pre,
+    Flop,
+    Turn,
+    River,
+}
+
 pub struct Card {
     rank: Rank,
     suit: Suit,
@@ -73,20 +80,23 @@ impl From<u8> for Card {
     }
 }
 
-pub struct Board {
+pub struct Hole {
     cards: Vec<Card>, // presize
 }
 
-pub struct Hole {
-    cards: Vec<Card>, // presize
+pub struct Board {
+    pub cards: Vec<Card>, // presize
+    pub street: Street,
+}
+impl Board {
+    pub fn accept(&mut self, card: Card) {
+        self.cards.push(card);
+    }
 }
 
 pub struct Deck {
     cards: Vec<Card>, // presize
 }
-
-// algos
-
 impl Deck {
     pub fn new() -> Deck {
         let mut cards = Vec::new();
@@ -101,10 +111,4 @@ impl Deck {
     }
 
     pub fn shuffle(&mut self) {}
-}
-
-impl Board {
-    pub fn deal(&mut self, card: Card) {
-        self.cards.push(card);
-    }
 }
