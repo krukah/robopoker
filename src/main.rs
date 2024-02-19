@@ -1,5 +1,5 @@
 pub mod cards;
-pub mod game;
+pub mod engine;
 
 fn main() {
     println!("Hello, world!");
