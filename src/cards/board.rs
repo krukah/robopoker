@@ -1,5 +1,6 @@
 use super::card::Card;
 
+#[derive(Debug, Clone, Copy)]
 pub enum Street {
     Pre,
     Flop,
@@ -8,6 +9,7 @@ pub enum Street {
     Showdown,
 }
 
+#[derive(Debug, Clone)]
 pub struct Board {
     pub cards: Vec<Card>, // presize
     pub street: Street,

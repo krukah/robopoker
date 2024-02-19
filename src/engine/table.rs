@@ -1,5 +1,6 @@
 use super::seat::Seat;
 
+#[derive(Debug, Clone)]
 pub struct Table {
     pub seats: Vec<Seat>,
     pub dealer: usize,
