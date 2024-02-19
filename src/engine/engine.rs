@@ -14,19 +14,16 @@ impl Engine {
     fn start(&self) {
         loop {
             match self.hand.node.board.street {
-                Street::Pre => self.preflop(),
+                Street::Pre => self.pre(),
                 Street::Flop => self.flop(),
                 Street::Turn => self.turn(),
                 Street::River => self.river(),
-                Street::Showdown => {
-                    self.showdown();
-                    break;
-                }
+                Street::Showdown => break self.showdown(),
             }
         }
     }
 
-    fn preflop(&self) {
+    fn pre(&self) {
         // deal hole cards
         // collect blinds
         // first betting round

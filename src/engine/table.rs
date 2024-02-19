@@ -4,14 +4,47 @@ pub struct Table {
     pub seats: Vec<Seat>,
     pub dealer: usize,
     pub index: usize,
+    has_completed_rotation: bool,
 }
 
 impl Table {
-    fn is_street_complete(&self) -> bool {
+    pub fn new() -> Table {
         todo!()
     }
 
-    fn is_last_standing(&self) -> bool {
+    pub fn next_hand(&mut self) {
+        todo!()
+    }
+
+    pub fn next_street(&mut self) {
+        todo!()
+    }
+
+    pub fn next_player(&mut self) {
+        todo!()
+    }
+
+    pub fn is_street_complete(&self) -> bool {
+        todo!()
+    }
+
+    fn has_all_acted(&self) -> bool {
+        todo!()
+    }
+
+    fn has_all_folded(&self) -> bool {
+        todo!()
+    }
+
+    fn has_all_bet(&self) -> bool {
+        todo!()
+    }
+}
+
+impl Iterator for Table {
+    type Item = Seat;
+
+    fn next(&mut self) -> Option<Self::Item> {
         todo!()
     }
 }

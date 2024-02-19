@@ -5,6 +5,7 @@ pub enum Suit {
     Heart = 2,
     Spade = 3,
 }
+
 impl From<u8> for Suit {
     fn from(n: u8) -> Suit {
         match n {
