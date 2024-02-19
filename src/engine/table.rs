@@ -3,9 +3,9 @@ use super::seat::Seat;
 #[derive(Debug, Clone)]
 pub struct Table {
     pub seats: Vec<Seat>,
+    pub position: usize,
     pub dealer: usize,
-    pub index: usize,
-    has_completed_rotation: bool,
+    counter: usize,
 }
 
 impl Table {
@@ -25,7 +25,7 @@ impl Table {
         todo!()
     }
 
-    pub fn is_street_complete(&self) -> bool {
+    fn is_street_complete(&self) -> bool {
         todo!()
     }
 

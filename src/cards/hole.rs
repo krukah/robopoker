@@ -1,5 +1,6 @@
 use super::card::Card;
 
+#[derive(Debug, Clone)]
 pub struct Hole {
     cards: Vec<Card>, // presize
 }
@@ -9,13 +10,5 @@ impl Hole {
         Hole {
             cards: Vec::with_capacity(2),
         }
-    }
-
-    pub fn accept(&mut self, card: Card) {
-        self.cards.push(card);
-    }
-
-    pub fn equity(holes: Vec<Hole>) -> f32 {
-        todo!()
     }
 }

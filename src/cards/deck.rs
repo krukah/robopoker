@@ -1,5 +1,6 @@
 use super::card::Card;
 
+#[derive(Debug, Clone)]
 pub struct Deck {
     cards: Vec<Card>, // presize
 }

@@ -16,7 +16,10 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn accept(&mut self, card: Card) {
-        self.cards.push(card);
+    pub fn new() -> Board {
+        Board {
+            cards: Vec::with_capacity(5),
+            street: Street::Pre,
+        }
     }
 }
