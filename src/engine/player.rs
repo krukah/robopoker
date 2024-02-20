@@ -2,9 +2,11 @@ use super::{
     action::{Action, Actor},
     seat::Seat,
 };
+use std::rc::Rc;
 
 pub struct Player {
-    pub seat: Seat,
+    pub index: usize,
+    pub seat: Rc<Seat>,
 }
 
 impl Player {
