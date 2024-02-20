@@ -44,7 +44,6 @@ impl Table {
 
 impl Iterator for Table {
     type Item = Seat;
-
     fn next(&mut self) -> Option<Self::Item> {
         todo!()
     }
