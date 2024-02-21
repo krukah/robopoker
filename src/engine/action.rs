@@ -1,5 +1,5 @@
-use super::player::Player;
-use crate::cards::board::Street;
+use super::seat::Seat;
+use crate::cards::card::Card;
 use std::cell::RefCell;
 
 pub trait Actor {
@@ -7,11 +7,11 @@ pub trait Actor {
 }
 
 pub enum Action {
-    Draw(Street),
-    Fold(RefCell<Player>),
-    Check(RefCell<Player>),
-    Call(RefCell<Player>, u32),
-    Open(RefCell<Player>, u32),
-    Raise(RefCell<Player>, u32),
-    Shove(RefCell<Player>, u32),
+    Draw(Card),
+    Fold(RefCell<Seat>),
+    Check(RefCell<Seat>),
+    Call(RefCell<Seat>, u32),
+    Open(RefCell<Seat>, u32),
+    Raise(RefCell<Seat>, u32),
+    Shove(RefCell<Seat>, u32),
 }

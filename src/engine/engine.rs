@@ -1,9 +1,3 @@
-use super::{hand::Hand, player::Player};
-use crate::{
-    cards::{board::Street, deck::Deck},
-    evaluation::evaluation::Evaluator,
-};
-
 pub struct Engine {
     hand: Hand,
     eval: Evaluator,
@@ -12,7 +6,12 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Engine {
-        todo!()
+        let players = Vec::with_capacity(10);
+        Engine {
+            hand: Hand::new(players),
+            eval: Evaluator {},
+            players,
+        }
     }
 
     pub fn add(&mut self, player: Player) {
@@ -25,15 +24,18 @@ impl Engine {
 
     pub fn run(&mut self) {
         loop {
-            match self.hand.node.board.street {
-                Street::Pre => self.pre(),
-                Street::Flop => self.flop(),
-                Street::Turn => self.turn(),
-                Street::River => self.river(),
+            let mut node = self.hand.head;
+            if let Some(seat) = node.next_seat() {
+                self.payout(&node);
+                continue;
             }
-            if self.hand.node.is_terminal() {
-                self.payout();
-                self.hand.reset();
+            if node.is_end_of_street() {
+                node.next_street();
+                continue;
+            }
+            if node.is_end_of_hand() {
+                node.next_hand();
+                continue;
             }
         }
     }
@@ -42,19 +44,16 @@ impl Engine {
         // deal hole cards
         // collect blinds
         // first betting round
-        self.hand.node.board.street = Street::Flop;
     }
 
     fn flop(&mut self) {
         // deal flop
         // second betting round
-        self.hand.node.board.street = Street::Turn;
     }
 
     fn turn(&mut self) {
         // deal turn
         // third betting round
-        self.hand.node.board.street = Street::River;
     }
 
     fn river(&mut self) {
@@ -66,16 +65,22 @@ impl Engine {
         todo!()
     }
 
-    fn payout(&mut self) {
+    fn payout(&mut self, node: &Node) {
         let scores: Vec<u32> = self
             .players
             .iter()
-            .map(|p| &p.hand)
-            .map(|h| Evaluator::evaluate(&self.hand.node.board, &h))
+            .map(|p| Evaluator::evaluate(&node.board, &p.hand))
             .collect();
     }
-
-    fn reset(&mut self) {
-        self.hand = Hand::new();
-    }
 }
+
+use super::{
+    hand::Hand,
+    node::{self, Node},
+    player::{self, Player},
+    seat::{BetStatus, Seat},
+};
+use crate::{
+    cards::{board::Street, deck::Deck},
+    evaluation::evaluation::Evaluator,
+};

@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SeatStatus {
-    Alive,
+pub enum BetStatus {
+    Betting,
     Shoved,
     Folded,
 }
@@ -9,7 +9,7 @@ pub enum SeatStatus {
 pub struct Seat {
     pub sunk: u32,
     pub stack: u32,
-    pub status: SeatStatus,
+    pub status: BetStatus,
 }
 
 impl Seat {

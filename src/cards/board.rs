@@ -1,6 +1,4 @@
-use super::card::Card;
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Street {
     Pre,
     Flop,
@@ -21,4 +19,9 @@ impl Board {
             street: Street::Pre,
         }
     }
+
+    pub fn push(&self, card: Card) {
+        self.cards.push(card);
+    }
 }
+use super::card::Card;
