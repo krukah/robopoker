@@ -1,6 +1,3 @@
-use crate::cards::board::Board;
-use crate::cards::hole::Hole;
-
 pub struct Evaluator {}
 
 impl Evaluator {
@@ -8,3 +5,5 @@ impl Evaluator {
         todo!()
     }
 }
+use crate::cards::board::Board;
+use crate::cards::hole::Hole;
