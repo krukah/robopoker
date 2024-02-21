@@ -6,7 +6,6 @@ pub enum Street {
     Flop,
     Turn,
     River,
-    Showdown,
 }
 
 #[derive(Debug, Clone)]

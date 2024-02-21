@@ -7,4 +7,18 @@ pub struct Hand {
     pub sblind: u32,
 }
 
-impl Hand {}
+impl Hand {
+    pub fn new() -> Hand {
+        Hand {
+            node: Node::new(),
+            history: Vec::new(),
+            bblind: 2,
+            sblind: 1,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.node = Node::new(self.node.table.seats.clone());
+        self.history.clear();
+    }
+}

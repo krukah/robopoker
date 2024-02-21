@@ -1,8 +1,13 @@
-use super::hand::Hand;
-use crate::cards::board::Street;
+use super::{hand::Hand, player::Player};
+use crate::{
+    cards::{board::Street, deck::Deck},
+    evaluation::evaluation::Evaluator,
+};
 
 pub struct Engine {
     hand: Hand,
+    eval: Evaluator,
+    players: Vec<Player>,
 }
 
 impl Engine {
@@ -10,17 +15,25 @@ impl Engine {
         todo!()
     }
 
-    fn start(&mut self) {
+    pub fn add(&mut self, player: Player) {
+        self.players.push(player);
+    }
+
+    pub fn remove(&mut self, player: Player) {
+        self.players.retain(|p| p.index != player.index);
+    }
+
+    pub fn run(&mut self) {
         loop {
             match self.hand.node.board.street {
                 Street::Pre => self.pre(),
                 Street::Flop => self.flop(),
                 Street::Turn => self.turn(),
                 Street::River => self.river(),
-                Street::Showdown => self.showdown(),
             }
-            if self.is_hand_complete() {
-                break;
+            if self.hand.node.is_terminal() {
+                self.payout();
+                self.hand.reset();
             }
         }
     }
@@ -47,19 +60,22 @@ impl Engine {
     fn river(&mut self) {
         // deal river
         // fourth betting round
-        self.hand.node.board.street = Street::Showdown;
-    }
-
-    fn showdown(&mut self) {
-        // compare hands
-        // award pot
     }
 
     fn post_blinds(&mut self) {
         todo!()
     }
 
-    fn is_hand_complete(&self) -> bool {
-        todo!()
+    fn payout(&mut self) {
+        let scores: Vec<u32> = self
+            .players
+            .iter()
+            .map(|p| &p.hand)
+            .map(|h| Evaluator::evaluate(&self.hand.node.board, &h))
+            .collect();
+    }
+
+    fn reset(&mut self) {
+        self.hand = Hand::new();
     }
 }
