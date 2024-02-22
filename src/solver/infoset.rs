@@ -1,7 +1,6 @@
-use crate::cards::hand::Hand;
-use crate::cards::hole::Hole;
-
-pub struct InfoSet {
-    pub hand: Hand,
-    pub hole: Hole,
+pub struct InfoSet<'a> {
+    pub game: &'a Game,
+    pub hole: &'a Hole,
 }
+
+use crate::{cards::hole::Hole, engine::game::Game};

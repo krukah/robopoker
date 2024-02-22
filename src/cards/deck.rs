@@ -12,7 +12,7 @@ impl Deck {
         }
     }
 
-    pub fn deal(&mut self) -> Option<Card> {
+    pub fn draw(&mut self) -> Option<Card> {
         self.cards.pop()
     }
 

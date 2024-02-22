@@ -1,10 +1,3 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BetStatus {
-    Betting,
-    Shoved,
-    Folded,
-}
-
 #[derive(Debug, Clone)]
 pub struct Seat {
     pub sunk: u32,
@@ -12,13 +5,19 @@ pub struct Seat {
     pub status: BetStatus,
 }
 
-impl Seat {
-    pub fn new() -> Seat {
-        todo!()
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BetStatus {
+    Playing,
+    Shoved,
+    Folded,
+}
 
-    pub fn bet(&mut self, amount: u32) {
-        self.sunk += amount;
-        self.stack -= amount;
+impl Seat {
+    pub fn new(stack: u32) -> Seat {
+        Seat {
+            stack,
+            sunk: 0,
+            status: BetStatus::Playing,
+        }
     }
 }

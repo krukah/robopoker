@@ -1,16 +1,16 @@
-use super::seat::Seat;
 use crate::cards::card::Card;
 
 pub trait Actor {
     fn act(&self) -> Action;
 }
 
-pub enum Action<'a> {
+#[derive(Debug, Clone)]
+pub enum Action {
     Draw(Card),
-    Check(&'a mut Seat),
-    Raise(&'a mut Seat, u32),
-    Shove(&'a mut Seat, u32),
-    Open(&'a mut Seat, u32),
-    Call(&'a mut Seat, u32),
-    Fold(&'a mut Seat),
+    Check,
+    Fold,
+    Call(u32),
+    Open(u32),
+    Raise(u32),
+    Shove(u32),
 }

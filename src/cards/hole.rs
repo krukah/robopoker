@@ -2,7 +2,7 @@ use super::card::Card;
 
 #[derive(Debug, Clone)]
 pub struct Hole {
-    cards: Vec<Card>, // presize
+    pub cards: Vec<Card>, // presize
 }
 
 impl Hole {

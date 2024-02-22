@@ -2,14 +2,14 @@ use crate::cards::hole::Hole;
 
 use super::{
     action::{Action, Actor},
+    game::Game,
     seat::Seat,
 };
-use std::rc::Rc;
 
 pub struct Player {
-    pub index: usize,
     pub hand: Hole,
-    pub seat: Rc<Seat>,
+    pub game: &'static Game,
+    pub seat: &'static Seat,
 }
 
 impl Player {
