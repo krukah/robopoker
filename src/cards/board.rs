@@ -20,7 +20,7 @@ impl Board {
         }
     }
 
-    pub fn push(&self, card: Card) {
+    pub fn push(&mut self, card: Card) {
         self.cards.push(card);
     }
 }

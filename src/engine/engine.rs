@@ -1,17 +1,13 @@
-pub struct Engine {
-    hand: Hand,
-    eval: Evaluator,
+pub struct Engine<'a> {
+    hand: &'a mut GameHand<'a>,
     players: Vec<Player>,
 }
 
-impl Engine {
-    pub fn new() -> Engine {
-        let players = Vec::with_capacity(10);
-        Engine {
-            hand: Hand::new(players),
-            eval: Evaluator {},
-            players,
-        }
+impl<'a> Engine<'a> {
+    pub fn new() -> Engine<'static> {
+        // build hand from players
+        // build hand from deck
+        todo!()
     }
 
     pub fn add(&mut self, player: Player) {
@@ -24,63 +20,24 @@ impl Engine {
 
     pub fn run(&mut self) {
         loop {
-            let mut node = self.hand.head;
-            if let Some(seat) = node.next_seat() {
-                self.payout(&node);
-                continue;
+            // take action given the seat
+            while let Some(seat) = self.hand.head.next_seat() {
+                todo!();
             }
-            if node.is_end_of_street() {
-                node.next_street();
-                continue;
+            // advance to next street
+            if self.hand.head.is_end_of_street() {
+                todo!();
             }
-            if node.is_end_of_hand() {
-                node.next_hand();
-                continue;
+            // advance to next hand
+            if self.hand.head.is_end_of_hand() {
+                todo!();
             }
         }
     }
 
-    fn pre(&mut self) {
-        // deal hole cards
-        // collect blinds
-        // first betting round
-    }
-
-    fn flop(&mut self) {
-        // deal flop
-        // second betting round
-    }
-
-    fn turn(&mut self) {
-        // deal turn
-        // third betting round
-    }
-
-    fn river(&mut self) {
-        // deal river
-        // fourth betting round
-    }
-
-    fn post_blinds(&mut self) {
+    fn payout(&mut self, _: &Node) {
         todo!()
-    }
-
-    fn payout(&mut self, node: &Node) {
-        let scores: Vec<u32> = self
-            .players
-            .iter()
-            .map(|p| Evaluator::evaluate(&node.board, &p.hand))
-            .collect();
     }
 }
 
-use super::{
-    hand::Hand,
-    node::{self, Node},
-    player::{self, Player},
-    seat::{BetStatus, Seat},
-};
-use crate::{
-    cards::{board::Street, deck::Deck},
-    evaluation::evaluation::Evaluator,
-};
+use super::{game_hand::GameHand, node::Node, player::Player};
