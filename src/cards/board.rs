@@ -6,6 +6,17 @@ pub enum Street {
     River,
 }
 
+impl Display for Street {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            Street::Pre => write!(f, "Pre Flop"),
+            Street::Flop => write!(f, "Flop"),
+            Street::Turn => write!(f, "Turn"),
+            Street::River => write!(f, "River"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Board {
     pub cards: Vec<Card>, // presize
@@ -25,3 +36,4 @@ impl Board {
     }
 }
 use super::card::Card;
+use std::fmt::{Display, Formatter, Result};

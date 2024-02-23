@@ -1,8 +1,6 @@
-use std::cell::RefCell;
-
 use super::player::Player;
 
 pub struct Payoff {
-    pub winner: RefCell<Player>,
+    pub winner: &'static Player,
     pub winnings: u32,
 }

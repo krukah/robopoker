@@ -8,14 +8,14 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(seats: Vec<Seat>) -> Game {
+    pub fn new() -> Self {
         Game {
             sblind: 1,
             bblind: 2,
-            tail: Node::new(seats.clone()),
-            head: Node::new(seats),
+            tail: Node::new(),
+            head: Node::new(),
             actions: Vec::new(),
         }
     }
 }
-use super::{action::Action, node::Node, seat::Seat};
+use super::{action::Action, node::Node};

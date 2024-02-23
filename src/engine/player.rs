@@ -1,25 +1,25 @@
-use crate::cards::hole::Hole;
+pub struct Player {
+    pub position: usize,
+    pub hole: Hole,
+}
 
+impl Player {
+    pub fn new(seat: &Seat) -> Player {
+        Player {
+            hole: Hole::new(),
+            position: seat.position,
+        }
+    }
+}
+
+impl Actor for Player {
+    fn act(&self, _game: &Game) -> Action {
+        Action::Fold
+    }
+}
 use super::{
     action::{Action, Actor},
     game::Game,
     seat::Seat,
 };
-
-pub struct Player {
-    pub hole: Hole,
-    pub game: &'static Game,
-    pub seat: &'static Seat,
-}
-
-impl Player {
-    pub fn new() -> Player {
-        todo!()
-    }
-}
-
-impl Actor for Player {
-    fn act(&self) -> Action {
-        todo!()
-    }
-}
+use crate::cards::hole::Hole;

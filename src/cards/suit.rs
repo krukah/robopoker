@@ -17,3 +17,18 @@ impl From<u8> for Suit {
         }
     }
 }
+impl Display for Suit {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Suit::Club => "c",
+                Suit::Diamond => "d",
+                Suit::Heart => "h",
+                Suit::Spade => "s",
+            }
+        )
+    }
+}
+use std::fmt::{Display, Formatter, Result};

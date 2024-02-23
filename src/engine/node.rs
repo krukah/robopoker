@@ -4,19 +4,19 @@ pub struct Node {
     pub seats: Vec<Seat>,
     pub pot: u32,
     pub dealer: usize,
-    pub pointer: usize,
     pub counter: usize,
+    pub pointer: usize,
 } // this data struct reads like a poem
 
 impl Node {
-    pub fn new(seats: Vec<Seat>) -> Self {
+    pub fn new() -> Self {
         Node {
             board: Board::new(),
-            seats,
+            seats: Vec::with_capacity(10),
             pot: 0,
             dealer: 0,
-            pointer: 1,
             counter: 0,
+            pointer: 1,
         }
     }
 

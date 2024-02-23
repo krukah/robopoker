@@ -5,11 +5,9 @@ pub struct Deck {
 
 impl Deck {
     pub fn new() -> Deck {
-        let mut deck = Deck {
+        Deck {
             cards: (0..52).map(Card::from).collect(),
-        };
-        deck.shuffle();
-        deck
+        }
     }
 
     pub fn draw(&mut self) -> Option<Card> {

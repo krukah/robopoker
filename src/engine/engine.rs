@@ -5,16 +5,18 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(players: Vec<Player>) -> Engine {
-        // generate a default seat for each player
-        let seats = players.iter().map(|p| Seat::new(100)).collect();
-        let game = Game::new(seats);
-        let deck = Deck::new();
+    pub fn new() -> Self {
         Engine {
-            deck,
-            game,
-            players,
+            deck: Deck::new(),
+            game: Game::new(),
+            players: Vec::with_capacity(10),
         }
+    }
+
+    pub fn add(&mut self, seat: Seat) {
+        println!("ADD  {:?}", seat);
+        self.players.push(Player::new(&seat));
+        self.game.head.seats.push(seat);
     }
 
     pub fn play(&mut self) {
@@ -42,6 +44,7 @@ impl Engine {
     }
 
     fn post_blinds(&mut self) {
+        println!("POST BLINDS");
         self.apply(Action::Call(self.game.bblind));
         self.next_seat();
         self.apply(Action::Call(self.game.sblind));
@@ -61,8 +64,12 @@ impl Engine {
 
     fn take_action(&mut self) {
         let seat = self.game.head.get_seat();
-        let player = self.players.iter().find(|p| eq(p.seat, seat)).unwrap();
-        let action = player.act();
+        let action = self
+            .players
+            .iter()
+            .find(|p| p.position == seat.position)
+            .unwrap()
+            .act(&self.game);
         self.apply(action);
     }
 
@@ -75,17 +82,20 @@ impl Engine {
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
+                println!("DEAL  {:?} {:?} {:?}", card1, card2, card3);
             }
             Street::Flop | Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
+                println!("DEAL  {}", card)
             }
             Street::River => (),
         }
     }
 
     fn end_hand(&mut self) {
-        todo!()
+        println!("END HAND  {:?}", &self.game.head);
+        self.deck = Deck::new();
     }
 
     fn next_seat(&mut self) {
@@ -96,13 +106,14 @@ impl Engine {
             let seat = node.get_seat();
             match seat.status {
                 BetStatus::Folded | BetStatus::Shoved => continue,
-                BetStatus::Playing => return,
+                BetStatus::Playing => return println!("NEXT SEAT {}", seat.position),
             }
         }
     }
 
     fn next_street(&mut self) {
         let node = &mut self.game.head;
+        println!("NEXT STREET  {:?}", node.board.street);
         node.counter = 0;
         node.pointer = node.after(node.dealer);
         node.board.street = match node.board.street {
@@ -118,6 +129,7 @@ impl Engine {
     }
 
     fn next_hand(&mut self) {
+        println!("NEXT HAND");
         let node = &mut self.game.head;
         node.pot = 0;
         node.counter = 0;
@@ -131,6 +143,7 @@ impl Engine {
     }
 
     fn apply(&mut self, action: Action) {
+        println!("APPLY  {:?}", action);
         let node = &mut self.game.head;
         let seat = node.seats.get_mut(node.pointer).unwrap();
         match action {
@@ -157,4 +170,3 @@ use super::{
     seat::{BetStatus, Seat},
 };
 use crate::cards::{board::Street, deck::Deck};
-use std::ptr::eq;

@@ -1,7 +1,5 @@
-use crate::cards::card::Card;
-
 pub trait Actor {
-    fn act(&self) -> Action;
+    fn act(&self, game: &Game) -> Action;
 }
 
 #[derive(Debug, Clone)]
@@ -14,3 +12,20 @@ pub enum Action {
     Raise(u32),
     Shove(u32),
 }
+impl Display for Action {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            Action::Draw(card) => write!(f, "DRAW {}", card),
+            Action::Check => write!(f, "CHECK"),
+            Action::Fold => write!(f, "FOLD"),
+            Action::Call(amount) => write!(f, "CALL {}", amount),
+            Action::Open(amount) => write!(f, "OPEN {}", amount),
+            Action::Raise(amount) => write!(f, "RAISE {}", amount),
+            Action::Shove(amount) => write!(f, "SHOVE {}", amount),
+        }
+    }
+}
+
+use super::game::Game;
+use crate::cards::card::Card;
+use std::fmt::{Display, Formatter, Result};

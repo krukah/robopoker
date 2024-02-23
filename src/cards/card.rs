@@ -1,5 +1,3 @@
-use super::{rank::Rank, suit::Suit};
-
 #[derive(Debug, Clone, Copy)]
 pub struct Card {
     rank: Rank,
@@ -20,3 +18,11 @@ impl From<u8> for Card {
         }
     }
 }
+
+impl Display for Card {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{}{}", self.rank, self.suit)
+    }
+}
+use super::{rank::Rank, suit::Suit};
+use std::fmt::{Display, Formatter, Result};
