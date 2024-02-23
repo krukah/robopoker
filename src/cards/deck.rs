@@ -1,5 +1,3 @@
-use super::card::Card;
-
 #[derive(Debug, Clone)]
 pub struct Deck {
     cards: Vec<Card>, // presize
@@ -7,16 +5,22 @@ pub struct Deck {
 
 impl Deck {
     pub fn new() -> Deck {
-        Deck {
+        let mut deck = Deck {
             cards: (0..52).map(Card::from).collect(),
-        }
+        };
+        deck.shuffle();
+        deck
     }
 
     pub fn draw(&mut self) -> Option<Card> {
         self.cards.pop()
     }
 
-    pub fn shuffle(&mut self) {
-        todo!()
+    fn shuffle(&mut self) {
+        let mut rng = thread_rng();
+        self.cards.shuffle(&mut rng);
     }
 }
+use super::card::Card;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
