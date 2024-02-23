@@ -21,3 +21,11 @@ impl Seat {
         }
     }
 }
+
+impl Actor for Seat {
+    fn act(&self) -> Action {
+        todo!()
+    }
+}
+
+use super::action::{Action, Actor};

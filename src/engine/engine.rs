@@ -1,19 +1,15 @@
-pub struct Engine<'a> {
-    deck: &'a mut Deck,
-    game: &'a mut Game,
+pub struct Engine {
+    deck: Deck,
+    game: Game,
     players: Vec<Player>,
 }
 
-impl Actor for Seat {
-    fn act(&self) -> Action {
-        todo!()
-    }
-}
-
-impl<'a> Engine<'a> {
-    pub fn new(players: Vec<Player>) -> Engine<'static> {
-        let deck = &mut Deck::new();
-        let game = &mut Game::new(todo!());
+impl Engine {
+    pub fn new(players: Vec<Player>) -> Engine {
+        // generate a default seat for each player
+        let seats = players.iter().map(|p| Seat::new(100)).collect();
+        let game = Game::new(seats);
+        let deck = Deck::new();
         Engine {
             deck,
             game,
@@ -21,37 +17,23 @@ impl<'a> Engine<'a> {
         }
     }
 
-    pub fn run(&mut self) {
-        self.init();
-        self.play();
-    }
-
-    pub fn add(&mut self, player: Player) {
-        self.players.push(player);
-    }
-
-    pub fn remove(&mut self, player: Player) {
-        self.players.retain(|p| !eq(p, &player));
-    }
-
-    fn init(&mut self) {}
-
-    fn play(&mut self) {
+    pub fn play(&mut self) {
         'hand: loop {
+            self.deal_players();
             self.post_blinds();
             'street: loop {
-                'player: while !self.game.head.is_end_of_street() {
-                    let action = self.next_seat().act();
-                    self.apply(action);
-                    continue 'player;
+                'seat: while !self.game.head.is_end_of_street() {
+                    self.take_action();
+                    self.next_seat();
+                    continue 'seat;
                 }
                 if self.game.head.is_end_of_hand() {
-                    self.stop_hand();
+                    self.end_hand();
                     self.next_hand();
                     continue 'hand;
                 }
                 if self.game.head.is_end_of_street() {
-                    self.deal_street();
+                    self.deal_board();
                     self.next_street();
                     continue 'street;
                 }
@@ -59,16 +41,32 @@ impl<'a> Engine<'a> {
         }
     }
 
-    // dealer behavior
     fn post_blinds(&mut self) {
-        self.next_seat();
         self.apply(Action::Call(self.game.bblind));
         self.next_seat();
         self.apply(Action::Call(self.game.sblind));
+        self.next_seat();
         self.game.head.counter = 0;
     }
 
-    fn deal_street(&mut self) {
+    fn deal_players(&mut self) {
+        for player in self.players.iter_mut() {
+            let card1 = self.deck.draw().unwrap();
+            let card2 = self.deck.draw().unwrap();
+            player.hole.cards.clear();
+            player.hole.cards.push(card1);
+            player.hole.cards.push(card2);
+        }
+    }
+
+    fn take_action(&mut self) {
+        let seat = self.game.head.get_seat();
+        let player = self.players.iter().find(|p| eq(p.seat, seat)).unwrap();
+        let action = player.act();
+        self.apply(action);
+    }
+
+    fn deal_board(&mut self) {
         match self.game.head.board.street {
             Street::Pre => {
                 let card1 = self.deck.draw().unwrap();
@@ -86,28 +84,27 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn stop_hand(&mut self) {
+    fn end_hand(&mut self) {
         todo!()
     }
 
-    // node mutations
-    fn next_seat(&mut self) -> &Seat {
-        let node = &mut self.game.head;
+    fn next_seat(&mut self) {
         loop {
+            let node = &mut self.game.head;
             node.counter += 1;
             node.pointer = node.after(node.pointer);
-            let seat = node.seats.get(node.pointer).unwrap();
+            let seat = node.get_seat();
             match seat.status {
                 BetStatus::Folded | BetStatus::Shoved => continue,
-                BetStatus::Playing => return seat,
+                BetStatus::Playing => return,
             }
         }
     }
 
     fn next_street(&mut self) {
         let node = &mut self.game.head;
-        node.pointer = node.dealer;
         node.counter = 0;
+        node.pointer = node.after(node.dealer);
         node.board.street = match node.board.street {
             Street::Pre => Street::Flop,
             Street::Flop => Street::Turn,
@@ -123,10 +120,11 @@ impl<'a> Engine<'a> {
     fn next_hand(&mut self) {
         let node = &mut self.game.head;
         node.pot = 0;
-        node.dealer = node.after(node.dealer);
-        node.pointer = node.dealer;
         node.counter = 0;
+        node.dealer = node.after(node.dealer);
+        node.pointer = node.after(node.dealer);
         node.board.cards.clear();
+        node.board.street = Street::Pre;
         node.seats
             .iter_mut()
             .for_each(|s| s.status = BetStatus::Playing);
@@ -138,24 +136,18 @@ impl<'a> Engine<'a> {
         match action {
             Action::Fold => seat.status = BetStatus::Folded,
             Action::Shove(_) => seat.status = BetStatus::Shoved,
+            Action::Draw(card) => node.board.push(card.clone()),
             _ => (),
         }
         match action {
-            Action::Draw(card) => node.board.push(card.clone()),
             Action::Call(bet) | Action::Open(bet) | Action::Raise(bet) | Action::Shove(bet) => {
-                self.bet(bet)
+                node.pot += bet;
+                seat.sunk += bet;
+                seat.stack -= bet;
             }
             _ => (),
         }
         self.game.actions.push(action);
-    }
-
-    fn bet(&mut self, bet: u32) {
-        let node = &mut self.game.head;
-        let seat = node.seats.get_mut(node.pointer).unwrap();
-        node.pot += bet;
-        seat.sunk += bet;
-        seat.stack -= bet;
     }
 }
 use super::{

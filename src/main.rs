@@ -8,5 +8,5 @@ pub mod solver;
 fn main() {
     let players = todo!();
     let engine = Engine::new(players);
-    engine.run();
+    engine.play();
 }

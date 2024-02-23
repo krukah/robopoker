@@ -15,7 +15,7 @@ impl Node {
             seats,
             pot: 0,
             dealer: 0,
-            pointer: 0,
+            pointer: 1,
             counter: 0,
         }
     }
@@ -26,6 +26,14 @@ impl Node {
 
     pub fn is_end_of_street(&self) -> bool {
         self.has_all_folded() || (self.has_all_acted() && self.has_all_matched())
+    }
+
+    pub fn get_seat(&self) -> &Seat {
+        self.seats.get(self.pointer).unwrap()
+    }
+
+    pub fn after(&self, i: usize) -> usize {
+        (i + 1) % self.seats.len()
     }
 
     fn has_all_acted(&self) -> bool {
@@ -46,10 +54,6 @@ impl Node {
             .iter()
             .filter(|s| s.status != BetStatus::Folded)
             .count()
-    }
-
-    pub fn after(&self, i: usize) -> usize {
-        (i + 1) % self.seats.len()
     }
 }
 

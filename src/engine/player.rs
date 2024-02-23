@@ -7,7 +7,7 @@ use super::{
 };
 
 pub struct Player {
-    pub hand: Hole,
+    pub hole: Hole,
     pub game: &'static Game,
     pub seat: &'static Seat,
 }
