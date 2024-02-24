@@ -23,13 +23,20 @@ impl Node {
     pub fn is_end_of_hand(&self) -> bool {
         self.has_all_folded() || (self.is_end_of_street() && self.board.street == Street::River)
     }
-
     pub fn is_end_of_street(&self) -> bool {
         self.has_all_folded() || (self.has_all_acted() && self.has_all_matched())
     }
-
     pub fn get_seat(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
+    }
+    pub fn get_table_stack(&self) -> u32 {
+        let mut stacks: Vec<u32> = self.seats.iter().map(|s| s.stack).collect();
+        stacks.sort();
+        stacks.pop().unwrap_or(0);
+        stacks.pop().unwrap_or(0)
+    }
+    pub fn get_table_sunk(&self) -> u32 {
+        self.seats.iter().map(|s| s.sunk).max().unwrap()
     }
 
     pub fn after(&self, i: usize) -> usize {
@@ -41,7 +48,7 @@ impl Node {
     }
 
     fn has_all_matched(&self) -> bool {
-        let bet = self.seats.iter().map(|s| s.sunk).max().unwrap_or(0);
+        let bet = self.get_table_sunk();
         self.seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)

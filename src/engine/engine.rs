@@ -1,7 +1,7 @@
 pub struct Engine {
     deck: Deck,
     game: Game,
-    players: Vec<Player>,
+    players: Vec<RoboPlayer>,
 }
 
 impl Engine {
@@ -14,15 +14,15 @@ impl Engine {
     }
 
     pub fn add(&mut self, seat: Seat) {
-        println!("ADD  {:?}", seat);
-        self.players.push(Player::new(&seat));
+        println!("ADD  {:?}", seat.id);
+        self.players.push(RoboPlayer::new(&seat));
         self.game.head.seats.push(seat);
     }
 
-    pub fn remove(&mut self, position: usize) {
-        println!("REMOVE  {:?}", position);
-        self.players.retain(|p| p.position != position);
-        self.game.head.seats.retain(|s| s.position != position);
+    pub fn remove(&mut self, id: usize) {
+        println!("REMOVE  {:?}", id);
+        self.players.retain(|p| p.id != id);
+        self.game.head.seats.retain(|s| s.id != id);
     }
 
     pub fn play(&mut self) {
@@ -50,10 +50,9 @@ impl Engine {
     }
 
     fn post_blinds(&mut self) {
-        println!("POST BLINDS");
-        self.apply(Action::Call(self.game.bblind));
+        self.apply(Action::Post(self.game.sblind));
         self.next_seat();
-        self.apply(Action::Call(self.game.sblind));
+        self.apply(Action::Post(self.game.bblind));
         self.next_seat();
         self.game.head.counter = 0;
     }
@@ -73,7 +72,7 @@ impl Engine {
         let action = self
             .players
             .iter()
-            .find(|p| p.position == seat.position)
+            .find(|p| p.id == seat.id)
             .unwrap()
             .act(&self.game);
         self.apply(action);
@@ -88,26 +87,26 @@ impl Engine {
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
-                println!("DEAL  {:?} {:?} {:?}", card1, card2, card3);
+                println!(" DEAL  {} {} {}", card1, card2, card3);
             }
             Street::Flop | Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
-                println!("DEAL  {}", card)
+                println!(" DEAL  {}", card)
             }
             Street::River => (),
         }
     }
 
     fn end_hand(&mut self) {
-        println!("END HAND  {:?}", &self.game.head);
+        println!("END HAND  {:#?}", &self.game.head);
         let positions: Vec<usize> = self
             .game
             .head
             .seats
             .iter()
             .filter(|s| s.stack == 0)
-            .map(|s| s.position)
+            .map(|s| s.id)
             .collect();
         positions.iter().for_each(|p| self.remove(*p));
         self.deck = Deck::new();
@@ -121,14 +120,13 @@ impl Engine {
             let seat = node.get_seat();
             match seat.status {
                 BetStatus::Folded | BetStatus::Shoved => continue,
-                BetStatus::Playing => return println!("NEXT SEAT {}", seat.position),
+                BetStatus::Playing => return print!("  {}  ", seat.id),
             }
         }
     }
 
     fn next_street(&mut self) {
         let node = &mut self.game.head;
-        println!("NEXT STREET  {:?}", node.board.street);
         node.counter = 0;
         node.pointer = node.after(node.dealer);
         node.board.street = match node.board.street {
@@ -141,10 +139,12 @@ impl Engine {
             .iter_mut()
             .filter(|s| s.status != BetStatus::Shoved)
             .for_each(|s| s.sunk = 0);
+        println!("  {:?}", node.board.street);
     }
 
     fn next_hand(&mut self) {
         println!("NEXT HAND");
+        println!("");
         let node = &mut self.game.head;
         node.pot = 0;
         node.counter = 0;
@@ -156,10 +156,10 @@ impl Engine {
             s.status = BetStatus::Playing;
             s.sunk = 0;
         });
+        sleep(Duration::from_secs(2));
     }
 
     fn apply(&mut self, action: Action) {
-        println!("APPLY  {:?}", action);
         let node = &mut self.game.head;
         let seat = node.seats.get_mut(node.pointer).unwrap();
         match action {
@@ -169,20 +169,26 @@ impl Engine {
             _ => (),
         }
         match action {
-            Action::Call(bet) | Action::Open(bet) | Action::Raise(bet) | Action::Shove(bet) => {
+            Action::Post(bet) | Action::Call(bet) | Action::Raise(bet) | Action::Shove(bet) => {
                 node.pot += bet;
                 seat.sunk += bet;
                 seat.stack -= bet;
             }
             _ => (),
         }
+        match action {
+            Action::Draw(_) => (),
+            _ => println!("APPLY  {:?}", action),
+        }
         self.game.actions.push(action);
     }
 }
+use std::{thread::sleep, time::Duration};
+
 use super::{
     action::{Action, Actor},
     game::Game,
-    player::Player,
+    player::RoboPlayer,
     seat::{BetStatus, Seat},
 };
 use crate::cards::{board::Street, deck::Deck};

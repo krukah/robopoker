@@ -8,7 +8,7 @@ pub enum Action {
     Check,
     Fold,
     Call(u32),
-    Open(u32),
+    Post(u32),
     Raise(u32),
     Shove(u32),
 }
@@ -18,8 +18,8 @@ impl Display for Action {
             Action::Draw(card) => write!(f, "DRAW {}", card),
             Action::Check => write!(f, "CHECK"),
             Action::Fold => write!(f, "FOLD"),
+            Action::Post(amount) => write!(f, "POST {}", amount),
             Action::Call(amount) => write!(f, "CALL {}", amount),
-            Action::Open(amount) => write!(f, "OPEN {}", amount),
             Action::Raise(amount) => write!(f, "RAISE {}", amount),
             Action::Shove(amount) => write!(f, "SHOVE {}", amount),
         }

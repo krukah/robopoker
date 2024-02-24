@@ -6,13 +6,13 @@ impl Hand {
     pub fn new(board: &Board, hole: &Hole) -> Hand {
         Hand {
             cards: [
-                hole.cards[0].clone(),
-                hole.cards[1].clone(),
                 board.cards[0].clone(),
                 board.cards[1].clone(),
                 board.cards[2].clone(),
                 board.cards[3].clone(),
                 board.cards[4].clone(),
+                hole.cards[0].clone(),
+                hole.cards[1].clone(),
             ],
         }
     }
