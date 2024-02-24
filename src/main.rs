@@ -7,8 +7,8 @@ pub mod solver;
 
 fn main() {
     let mut engine = Engine::new();
-    for i in 0..10 {
-        engine.add(Seat::new(100, i));
+    for i in 0..3 {
+        engine.add(Seat::new(9, i));
     }
     engine.play();
 }

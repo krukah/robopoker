@@ -19,6 +19,12 @@ impl Engine {
         self.game.head.seats.push(seat);
     }
 
+    pub fn remove(&mut self, position: usize) {
+        println!("REMOVE  {:?}", position);
+        self.players.retain(|p| p.position != position);
+        self.game.head.seats.retain(|s| s.position != position);
+    }
+
     pub fn play(&mut self) {
         'hand: loop {
             self.deal_players();
@@ -95,6 +101,15 @@ impl Engine {
 
     fn end_hand(&mut self) {
         println!("END HAND  {:?}", &self.game.head);
+        let positions: Vec<usize> = self
+            .game
+            .head
+            .seats
+            .iter()
+            .filter(|s| s.stack == 0)
+            .map(|s| s.position)
+            .collect();
+        positions.iter().for_each(|p| self.remove(*p));
         self.deck = Deck::new();
     }
 
@@ -137,9 +152,10 @@ impl Engine {
         node.pointer = node.after(node.dealer);
         node.board.cards.clear();
         node.board.street = Street::Pre;
-        node.seats
-            .iter_mut()
-            .for_each(|s| s.status = BetStatus::Playing);
+        node.seats.iter_mut().for_each(|s| {
+            s.status = BetStatus::Playing;
+            s.sunk = 0;
+        });
     }
 
     fn apply(&mut self, action: Action) {
