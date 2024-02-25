@@ -87,19 +87,19 @@ impl Engine {
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
-                println!(" DEAL  {} {} {}", card1, card2, card3);
+                println!("DEAL  {} {} {}", card1, card2, card3);
             }
             Street::Flop | Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
-                println!(" DEAL  {}", card)
+                println!("DEAL  {}", card)
             }
             Street::River => (),
         }
     }
 
     fn end_hand(&mut self) {
-        println!("END HAND  {:#?}", &self.game.head);
+        println!("END HAND  {}", &self.game.head);
         let positions: Vec<usize> = self
             .game
             .head
@@ -114,13 +114,12 @@ impl Engine {
 
     fn next_seat(&mut self) {
         loop {
-            let node = &mut self.game.head;
-            node.counter += 1;
-            node.pointer = node.after(node.pointer);
-            let seat = node.get_seat();
-            match seat.status {
+            let seat = &self.game.head.get_seat();
+            let status = seat.status;
+            self.increment();
+            match status {
                 BetStatus::Folded | BetStatus::Shoved => continue,
-                BetStatus::Playing => return print!("  {}  ", seat.id),
+                BetStatus::Playing => return,
             }
         }
     }
@@ -138,7 +137,7 @@ impl Engine {
         node.seats
             .iter_mut()
             .filter(|s| s.status != BetStatus::Shoved)
-            .for_each(|s| s.sunk = 0);
+            .for_each(|s| s.stuck = 0);
         println!("  {:?}", node.board.street);
     }
 
@@ -154,9 +153,9 @@ impl Engine {
         node.board.street = Street::Pre;
         node.seats.iter_mut().for_each(|s| {
             s.status = BetStatus::Playing;
-            s.sunk = 0;
+            s.stuck = 0;
         });
-        sleep(Duration::from_secs(2));
+        // sleep(Duration::from_secs(2));
     }
 
     fn apply(&mut self, action: Action) {
@@ -171,16 +170,22 @@ impl Engine {
         match action {
             Action::Post(bet) | Action::Call(bet) | Action::Raise(bet) | Action::Shove(bet) => {
                 node.pot += bet;
-                seat.sunk += bet;
+                seat.stuck += bet;
                 seat.stack -= bet;
             }
             _ => (),
         }
         match action {
             Action::Draw(_) => (),
-            _ => println!("APPLY  {:?}", action),
+            _ => println!("  {} APPLY  {:?}", seat.id, action),
         }
         self.game.actions.push(action);
+    }
+
+    fn increment(&mut self) {
+        let node = &mut self.game.head;
+        node.counter += 1;
+        node.pointer = node.after(node.pointer);
     }
 }
 use std::{thread::sleep, time::Duration};

@@ -15,8 +15,8 @@ impl Node {
             seats: Vec::with_capacity(10),
             pot: 0,
             dealer: 0,
+            pointer: 0,
             counter: 0,
-            pointer: 1,
         }
     }
 
@@ -35,8 +35,8 @@ impl Node {
         stacks.pop().unwrap_or(0);
         stacks.pop().unwrap_or(0)
     }
-    pub fn get_table_sunk(&self) -> u32 {
-        self.seats.iter().map(|s| s.sunk).max().unwrap()
+    pub fn get_table_stuck(&self) -> u32 {
+        self.seats.iter().map(|s| s.stuck).max().unwrap()
     }
 
     pub fn after(&self, i: usize) -> usize {
@@ -44,15 +44,15 @@ impl Node {
     }
 
     fn has_all_acted(&self) -> bool {
-        self.counter > self.seats.len()
+        self.counter >= self.seats.len()
     }
 
     fn has_all_matched(&self) -> bool {
-        let bet = self.get_table_sunk();
+        let bet = self.get_table_stuck();
         self.seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)
-            .all(|s| s.sunk == bet)
+            .all(|s| s.stuck == bet)
     }
 
     fn has_all_folded(&self) -> bool {
@@ -63,6 +63,21 @@ impl Node {
             .count()
     }
 }
+impl Display for Node {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "\nPot:   {}", self.pot)?;
+        write!(f, "\nBoard: ")?;
+        for card in &self.board.cards {
+            write!(f, "{}  ", card)?;
+        }
+        write!(f, "\n")?;
+        for seat in &self.seats {
+            write!(f, "{}  ", seat)?;
+        }
+        write!(f, "\n")
+    }
+}
+use std::fmt::{Display, Formatter, Result};
 
 use super::seat::{BetStatus, Seat};
 use crate::cards::board::{Board, Street};

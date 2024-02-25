@@ -14,9 +14,9 @@ impl RoboPlayer {
     fn get_seat<'a>(&self, game: &'a Game) -> &'a Seat {
         game.head.seats.iter().find(|s| s.id == self.id).unwrap()
     }
-    fn get_sunk(&self, game: &Game) -> u32 {
+    fn get_stuck(&self, game: &Game) -> u32 {
         let seat = self.get_seat(game);
-        seat.sunk
+        seat.stuck
     }
     fn get_stack(&self, game: &Game) -> u32 {
         let seat = self.get_seat(game);
@@ -24,21 +24,29 @@ impl RoboPlayer {
     }
 
     fn to_call(&self, game: &Game) -> u32 {
-        game.head.get_table_sunk() - self.get_sunk(game)
+        game.head.get_table_stuck() - self.get_stuck(game)
     }
     fn to_shove(&self, game: &Game) -> u32 {
-        min(game.head.get_table_stack(), self.get_stack(game)) - self.get_sunk(game)
+        let max = min(game.head.get_table_stack(), self.get_stack(game));
+        max - self.get_stuck(game)
     }
     fn to_raise(&self, game: &Game) -> u32 {
         let mut rng = thread_rng();
         let min = self.to_call(game) + 1;
-        let max = self.to_shove(game);
-        let max = min + (max - min) / 4;
+        let max = self.to_shove(game) + 1;
+        let max = std::cmp::min(max, 50);
         rng.gen_range(min..max)
     }
 
     fn can_check(&self, game: &Game) -> bool {
-        self.get_sunk(game) >= game.head.get_table_sunk()
+        self.get_stuck(game) >= game.head.get_table_stuck()
+    }
+    fn can_call(&self, game: &Game) -> bool {
+        self.get_stuck(game) < game.head.get_table_stuck()
+            && self.get_stack(game) >= self.to_call(game)
+    }
+    fn can_raise(&self, game: &Game) -> bool {
+        self.get_stack(game) > self.to_call(game)
     }
     // min bet is min(stack, big blind)
     // max bet is min(stack, effective stack)
@@ -46,18 +54,17 @@ impl RoboPlayer {
 
 impl Actor for RoboPlayer {
     fn act(&self, game: &Game) -> Action {
-        sleep(Duration::from_secs(1));
+        // sleep(Duration::from_millis(400));
         let rand = thread_rng().gen_range(0..=99);
-        if rand < 20 && self.can_check(game) {
+
+        if self.can_check(game) && rand < 60 {
             Action::Check
-        } else if rand < 25 && !self.can_check(game) {
-            Action::Fold
-        } else if rand < 80 {
+        } else if self.can_call(game) && rand < 90 {
             Action::Call(self.to_call(game))
-        } else if rand < 95 {
+        } else if self.can_raise(game) && rand < 10 {
             Action::Raise(self.to_raise(game))
         } else {
-            Action::Shove(self.to_shove(game))
+            Action::Fold
         }
     }
 }

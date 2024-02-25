@@ -35,5 +35,6 @@ impl Board {
         self.cards.push(card);
     }
 }
+
 use super::card::Card;
 use std::fmt::{Display, Formatter, Result};
