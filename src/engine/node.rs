@@ -29,13 +29,13 @@ impl Node {
     pub fn get_seat(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
     }
-    pub fn get_table_stack(&self) -> u32 {
+    pub fn table_stack(&self) -> u32 {
         let mut stacks: Vec<u32> = self.seats.iter().map(|s| s.stack).collect();
         stacks.sort();
         stacks.pop().unwrap_or(0);
         stacks.pop().unwrap_or(0)
     }
-    pub fn get_table_stuck(&self) -> u32 {
+    pub fn table_stuck(&self) -> u32 {
         self.seats.iter().map(|s| s.stuck).max().unwrap()
     }
 
@@ -48,7 +48,7 @@ impl Node {
     }
 
     fn has_all_matched(&self) -> bool {
-        let bet = self.get_table_stuck();
+        let bet = self.table_stuck();
         self.seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)

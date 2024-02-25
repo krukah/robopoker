@@ -11,68 +11,42 @@ impl RoboPlayer {
         }
     }
 
-    fn get_seat<'a>(&self, game: &'a Game) -> &'a Seat {
+    fn seat<'a>(&self, game: &'a Game) -> &'a Seat {
         game.head.seats.iter().find(|s| s.id == self.id).unwrap()
     }
-    fn get_stuck(&self, game: &Game) -> u32 {
-        let seat = self.get_seat(game);
-        seat.stuck
+    fn stuck(&self, game: &Game) -> u32 {
+        self.seat(game).stuck
     }
-    fn get_stack(&self, game: &Game) -> u32 {
-        let seat = self.get_seat(game);
-        seat.stack
+    fn stack(&self, game: &Game) -> u32 {
+        self.seat(game).stack
     }
 
-    fn to_call(&self, game: &Game) -> u32 {
-        game.head.get_table_stuck() - self.get_stuck(game)
+    pub fn to_call(&self, game: &Game) -> u32 {
+        game.head.table_stuck() - self.stuck(game)
     }
-    fn to_shove(&self, game: &Game) -> u32 {
-        let max = min(game.head.get_table_stack(), self.get_stack(game));
-        max - self.get_stuck(game)
-    }
-    fn to_raise(&self, game: &Game) -> u32 {
-        let mut rng = thread_rng();
-        let min = self.to_call(game) + 1;
-        let max = self.to_shove(game) + 1;
-        let max = std::cmp::min(max, 50);
-        rng.gen_range(min..max)
+    pub fn to_shove(&self, game: &Game) -> u32 {
+        min(self.stack(game), game.head.table_stack())
     }
 
-    fn can_check(&self, game: &Game) -> bool {
-        self.get_stuck(game) >= game.head.get_table_stuck()
-    }
     fn can_call(&self, game: &Game) -> bool {
-        self.get_stuck(game) < game.head.get_table_stuck()
-            && self.get_stack(game) >= self.to_call(game)
+        self.stuck(game) < game.head.table_stuck() && self.stack(game) >= self.to_call(game)
     }
-    fn can_raise(&self, game: &Game) -> bool {
-        self.get_stack(game) > self.to_call(game)
+
+    fn get_random(&self) -> u32 {
+        thread_rng().gen_range(0..100)
     }
-    // min bet is min(stack, big blind)
-    // max bet is min(stack, effective stack)
 }
 
-impl Actor for RoboPlayer {
+impl Player for RoboPlayer {
     fn act(&self, game: &Game) -> Action {
-        // sleep(Duration::from_millis(400));
-        let rand = thread_rng().gen_range(0..=99);
-
-        if self.can_check(game) && rand < 60 {
-            Action::Check
-        } else if self.can_call(game) && rand < 90 {
-            Action::Call(self.to_call(game))
-        } else if self.can_raise(game) && rand < 10 {
-            Action::Raise(self.to_raise(game))
-        } else {
-            Action::Fold
-        }
+        todo!()
     }
 }
 use super::{
-    action::{Action, Actor},
+    action::{Action, Player},
     game::Game,
     seat::Seat,
 };
 use crate::cards::hole::Hole;
 use rand::{thread_rng, Rng};
-use std::{cmp::min, thread::sleep, time::Duration};
+use std::cmp::min;

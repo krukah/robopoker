@@ -190,7 +190,7 @@ impl Engine {
 use std::{thread::sleep, time::Duration};
 
 use super::{
-    action::{Action, Actor},
+    action::{Action, Player},
     game::Game,
     player::RoboPlayer,
     seat::{BetStatus, Seat},

@@ -1,4 +1,4 @@
-pub trait Actor {
+pub trait Player {
     fn act(&self, game: &Game) -> Action;
 }
 
