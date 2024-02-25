@@ -14,20 +14,21 @@ impl Engine {
     }
 
     pub fn add(&mut self, seat: Seat) {
-        println!("ADD  {:?}", seat.id);
+        println!("ADD  {}", seat);
         self.players.push(RoboPlayer::new(&seat));
         self.game.head.seats.push(seat);
     }
 
     pub fn remove(&mut self, id: usize) {
-        println!("REMOVE  {:?}", id);
+        let seat = self.game.head.seats.iter().find(|s| s.id == id).unwrap();
+        println!("REMOVE  {}", seat);
         self.players.retain(|p| p.id != id);
         self.game.head.seats.retain(|s| s.id != id);
     }
 
     pub fn play(&mut self) {
         'hand: loop {
-            self.deal_players();
+            self.deal_hole_cards();
             self.post_blinds();
             'street: loop {
                 'seat: while !self.game.head.is_end_of_street() {
@@ -36,12 +37,12 @@ impl Engine {
                     continue 'seat;
                 }
                 if self.game.head.is_end_of_hand() {
-                    self.end_hand();
+                    self.show_down();
                     self.next_hand();
                     continue 'hand;
                 }
                 if self.game.head.is_end_of_street() {
-                    self.deal_board();
+                    self.deal_board_cards();
                     self.next_street();
                     continue 'street;
                 }
@@ -57,7 +58,7 @@ impl Engine {
         self.game.head.counter = 0;
     }
 
-    fn deal_players(&mut self) {
+    fn deal_hole_cards(&mut self) {
         for player in self.players.iter_mut() {
             let card1 = self.deck.draw().unwrap();
             let card2 = self.deck.draw().unwrap();
@@ -78,7 +79,7 @@ impl Engine {
         self.apply(action);
     }
 
-    fn deal_board(&mut self) {
+    fn deal_board_cards(&mut self) {
         match self.game.head.board.street {
             Street::Pre => {
                 let card1 = self.deck.draw().unwrap();
@@ -98,7 +99,7 @@ impl Engine {
         }
     }
 
-    fn end_hand(&mut self) {
+    fn show_down(&mut self) {
         println!("SHOWDOWN {}", &self.game.head);
         let positions: Vec<usize> = self
             .game
