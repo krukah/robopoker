@@ -99,7 +99,7 @@ impl Engine {
     }
 
     fn end_hand(&mut self) {
-        println!("END HAND  {}", &self.game.head);
+        println!("SHOWDOWN {}", &self.game.head);
         let positions: Vec<usize> = self
             .game
             .head
@@ -114,9 +114,9 @@ impl Engine {
 
     fn next_seat(&mut self) {
         loop {
+            self.increment();
             let seat = &self.game.head.get_seat();
             let status = seat.status;
-            self.increment();
             match status {
                 BetStatus::Folded | BetStatus::Shoved => continue,
                 BetStatus::Playing => return,
@@ -142,8 +142,7 @@ impl Engine {
     }
 
     fn next_hand(&mut self) {
-        println!("NEXT HAND");
-        println!("");
+        println!("NEXT HAND\n");
         let node = &mut self.game.head;
         node.pot = 0;
         node.counter = 0;
@@ -177,7 +176,7 @@ impl Engine {
         }
         match action {
             Action::Draw(_) => (),
-            _ => println!("  {} APPLY  {:?}", seat.id, action),
+            _ => println!("  {}  {:?}", seat.id, action),
         }
         self.game.actions.push(action);
     }

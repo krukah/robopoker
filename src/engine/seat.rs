@@ -27,6 +27,10 @@ impl Seat {
 }
 impl Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Seat {}: {} {:?}\n", self.id, self.stack, self.status)
+        write!(
+            f,
+            "\nSeat {}   Stack {}   {:?}",
+            self.id, self.stack, self.status
+        )
     }
 }

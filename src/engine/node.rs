@@ -15,8 +15,8 @@ impl Node {
             seats: Vec::with_capacity(10),
             pot: 0,
             dealer: 0,
-            pointer: 0,
             counter: 0,
+            pointer: 1,
         }
     }
 
@@ -24,7 +24,7 @@ impl Node {
         self.has_all_folded() || (self.is_end_of_street() && self.board.street == Street::River)
     }
     pub fn is_end_of_street(&self) -> bool {
-        self.has_all_folded() || (self.has_all_acted() && self.has_all_matched())
+        self.has_all_folded() || (self.has_all_decided() && self.has_all_matched())
     }
     pub fn get_seat(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
@@ -43,7 +43,7 @@ impl Node {
         (i + 1) % self.seats.len()
     }
 
-    fn has_all_acted(&self) -> bool {
+    fn has_all_decided(&self) -> bool {
         self.counter >= self.seats.len()
     }
 
@@ -70,14 +70,13 @@ impl Display for Node {
         for card in &self.board.cards {
             write!(f, "{}  ", card)?;
         }
-        write!(f, "\n")?;
         for seat in &self.seats {
             write!(f, "{}  ", seat)?;
         }
         write!(f, "\n")
     }
 }
-use std::fmt::{Display, Formatter, Result};
 
 use super::seat::{BetStatus, Seat};
 use crate::cards::board::{Board, Street};
+use std::fmt::{Display, Formatter, Result};
