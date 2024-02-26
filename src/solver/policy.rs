@@ -1,10 +1,6 @@
-pub struct PolicyAction {
+pub struct Policy {
     pub action: Action,
-    pub weight: f32,
-}
-
-pub struct PolicyVector {
-    pub actions: Vec<PolicyAction>,
+    pub weight: u32,
 }
 
 use crate::engine::action::Action;

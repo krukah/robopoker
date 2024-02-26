@@ -21,19 +21,20 @@ impl Node {
     }
 
     pub fn is_end_of_hand(&self) -> bool {
-        self.has_all_folded() || (self.is_end_of_street() && self.board.street == Street::River)
+        self.are_all_folded() || (self.is_end_of_street() && self.board.street == Street::River)
     }
     pub fn is_end_of_street(&self) -> bool {
-        self.has_all_folded() || (self.has_all_decided() && self.has_all_matched())
+        self.are_all_folded()
+            || (self.are_all_decided() && (self.are_all_matched() || self.are_all_shoved()))
     }
     pub fn get_seat(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
     }
     pub fn table_stack(&self) -> u32 {
-        let mut stacks: Vec<u32> = self.seats.iter().map(|s| s.stack).collect();
-        stacks.sort();
-        stacks.pop().unwrap_or(0);
-        stacks.pop().unwrap_or(0)
+        let mut totals: Vec<u32> = self.seats.iter().map(|s| s.stack + s.stuck).collect();
+        totals.sort();
+        totals.pop().unwrap_or(0);
+        totals.pop().unwrap_or(0)
     }
     pub fn table_stuck(&self) -> u32 {
         self.seats.iter().map(|s| s.stuck).max().unwrap()
@@ -43,24 +44,28 @@ impl Node {
         (i + 1) % self.seats.len()
     }
 
-    fn has_all_decided(&self) -> bool {
+    fn are_all_folded(&self) -> bool {
+        1 == self
+            .seats
+            .iter()
+            .filter(|s| s.status != BetStatus::Folded)
+            .count()
+    }
+    fn are_all_decided(&self) -> bool {
         self.counter >= self.seats.len()
     }
-
-    fn has_all_matched(&self) -> bool {
+    fn are_all_matched(&self) -> bool {
         let bet = self.table_stuck();
         self.seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)
             .all(|s| s.stuck == bet)
     }
-
-    fn has_all_folded(&self) -> bool {
-        1 == self
-            .seats
+    fn are_all_shoved(&self) -> bool {
+        self.seats
             .iter()
             .filter(|s| s.status != BetStatus::Folded)
-            .count()
+            .all(|s| s.status == BetStatus::Shoved)
     }
 }
 impl Display for Node {

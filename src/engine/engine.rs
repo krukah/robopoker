@@ -14,14 +14,14 @@ impl Engine {
     }
 
     pub fn add(&mut self, seat: Seat) {
-        println!("ADD  {}", seat);
+        println!("ADD  {}\n", seat);
         self.players.push(RoboPlayer::new(&seat));
         self.game.head.seats.push(seat);
     }
 
     pub fn remove(&mut self, id: usize) {
         let seat = self.game.head.seats.iter().find(|s| s.id == id).unwrap();
-        println!("REMOVE  {}", seat);
+        println!("REMOVE  {}\n", seat);
         self.players.retain(|p| p.id != id);
         self.game.head.seats.retain(|s| s.id != id);
     }
