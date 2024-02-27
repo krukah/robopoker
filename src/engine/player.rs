@@ -73,9 +73,9 @@ impl RoboPlayer {
         match action {
             Action::Fold => 15,
             Action::Check => 10,
-            Action::Call(_) => 30,
+            Action::Call(_) => 40,
             Action::Raise(_) => 5,
-            Action::Shove(_) => 10,
+            Action::Shove(_) => 12,
             _ => 0,
         }
     }

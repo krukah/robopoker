@@ -8,24 +8,26 @@ pub enum Action {
     Check,
     Fold,
     Call(u32),
-    Post(u32),
+    Blind(u32),
     Raise(u32),
     Shove(u32),
 }
+
 impl Display for Action {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
-            Action::Draw(card) => write!(f, "DRAW {}", card),
-            Action::Check => write!(f, "CHECK"),
-            Action::Fold => write!(f, "FOLD"),
-            Action::Post(amount) => write!(f, "POST {}", amount),
-            Action::Call(amount) => write!(f, "CALL {}", amount),
-            Action::Raise(amount) => write!(f, "RAISE {}", amount),
-            Action::Shove(amount) => write!(f, "SHOVE {}", amount),
+            Action::Draw(card) => write!(f, "{}", format!("DEAL  {}", card).white()),
+            Action::Check => write!(f, "{}", "CHECK".cyan()),
+            Action::Fold => write!(f, "{}", "FOLD".red()),
+            Action::Blind(amount) => write!(f, "{}", format!("BLIND {}", amount).white()),
+            Action::Call(amount) => write!(f, "{}", format!("CALL  {}", amount).cyan()),
+            Action::Raise(amount) => write!(f, "{}", format!("RAISE {}", amount).green()),
+            Action::Shove(amount) => write!(f, "{}", format!("SHOVE {}", amount).red()),
         }
     }
 }
 
 use super::game::Game;
 use crate::cards::card::Card;
+use colored::*;
 use std::fmt::{Display, Formatter, Result};

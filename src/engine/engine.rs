@@ -31,19 +31,20 @@ impl Engine {
             self.deal_hole_cards();
             self.post_blinds();
             'street: loop {
-                'seat: while !self.game.head.is_end_of_street() {
-                    self.take_action();
-                    self.next_seat();
-                    continue 'seat;
+                'seat: loop {
+                    match self.game.head.next() {
+                        Some(_) => self.take_action(),
+                        None => break 'seat,
+                    }
                 }
-                if self.game.head.is_end_of_hand() {
+                if self.game.head.does_end_hand() {
                     self.show_down();
-                    self.next_hand();
+                    self.game.head.next_hand();
                     continue 'hand;
                 }
-                if self.game.head.is_end_of_street() {
+                if self.game.head.does_end_street() {
                     self.deal_board_cards();
-                    self.next_street();
+                    self.game.head.next_street();
                     continue 'street;
                 }
             }
@@ -51,10 +52,11 @@ impl Engine {
     }
 
     fn post_blinds(&mut self) {
-        self.apply(Action::Post(self.game.sblind));
-        self.next_seat();
-        self.apply(Action::Post(self.game.bblind));
-        self.next_seat();
+        // todo!() handle all in case. check if stack > blind ? Post : Shove
+        self.game.head.next();
+        self.apply(Action::Blind(self.game.sblind));
+        self.game.head.next();
+        self.apply(Action::Blind(self.game.bblind));
         self.game.head.counter = 0;
     }
 
@@ -69,14 +71,15 @@ impl Engine {
     }
 
     fn take_action(&mut self) {
-        let seat = self.game.head.get_seat();
+        let seat = self.game.head.seat();
         let action = self
             .players
             .iter()
             .find(|p| p.id == seat.id)
             .unwrap()
             .act(&self.game);
-        self.apply(action);
+        self.game.head.apply(action.clone());
+        self.game.actions.push(action.clone());
     }
 
     fn deal_board_cards(&mut self) {
@@ -113,87 +116,16 @@ impl Engine {
         self.deck = Deck::new();
     }
 
-    fn next_seat(&mut self) {
-        loop {
-            self.increment();
-            let seat = &self.game.head.get_seat();
-            let status = seat.status;
-            match status {
-                BetStatus::Folded | BetStatus::Shoved => continue,
-                BetStatus::Playing => return,
-            }
-        }
-    }
-
-    fn next_street(&mut self) {
-        let node = &mut self.game.head;
-        node.counter = 0;
-        node.pointer = node.after(node.dealer);
-        node.board.street = match node.board.street {
-            Street::Pre => Street::Flop,
-            Street::Flop => Street::Turn,
-            Street::Turn => Street::River,
-            Street::River => Street::Pre,
-        };
-        node.seats
-            .iter_mut()
-            .filter(|s| s.status != BetStatus::Shoved)
-            .for_each(|s| s.stuck = 0);
-        println!("  {:?}", node.board.street);
-    }
-
-    fn next_hand(&mut self) {
-        println!("NEXT HAND\n");
-        let node = &mut self.game.head;
-        node.pot = 0;
-        node.counter = 0;
-        node.dealer = node.after(node.dealer);
-        node.pointer = node.after(node.dealer);
-        node.board.cards.clear();
-        node.board.street = Street::Pre;
-        node.seats.iter_mut().for_each(|s| {
-            s.status = BetStatus::Playing;
-            s.stuck = 0;
-        });
-        // sleep(Duration::from_secs(2));
-    }
-
     fn apply(&mut self, action: Action) {
-        let node = &mut self.game.head;
-        let seat = node.seats.get_mut(node.pointer).unwrap();
-        match action {
-            Action::Fold => seat.status = BetStatus::Folded,
-            Action::Shove(_) => seat.status = BetStatus::Shoved,
-            Action::Draw(card) => node.board.push(card.clone()),
-            _ => (),
-        }
-        match action {
-            Action::Post(bet) | Action::Call(bet) | Action::Raise(bet) | Action::Shove(bet) => {
-                node.pot += bet;
-                seat.stuck += bet;
-                seat.stack -= bet;
-            }
-            _ => (),
-        }
-        match action {
-            Action::Draw(_) => (),
-            _ => println!("  {}  {:?}", seat.id, action),
-        }
-        self.game.actions.push(action);
-    }
-
-    fn increment(&mut self) {
-        let node = &mut self.game.head;
-        node.counter += 1;
-        node.pointer = node.after(node.pointer);
+        self.game.head.apply(action.clone());
+        self.game.actions.push(action.clone());
     }
 }
-use std::{thread::sleep, time::Duration};
 
 use super::{
     action::{Action, Player},
     game::Game,
     player::RoboPlayer,
-    seat::{BetStatus, Seat},
+    seat::Seat,
 };
 use crate::cards::{board::Street, deck::Deck};

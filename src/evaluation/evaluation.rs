@@ -28,7 +28,7 @@ impl Hand {
 pub fn evaluate(board: &Board, hole: &Hole) -> u32 {
     let hand = Hand::new(board, hole);
     let bits = hand.to_bits();
-    todo!()
+    bits as u32
 }
 
 use crate::cards::board::Board;
