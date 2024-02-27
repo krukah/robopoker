@@ -75,7 +75,7 @@ impl RoboPlayer {
             Action::Check => 10,
             Action::Call(_) => 40,
             Action::Raise(_) => 5,
-            Action::Shove(_) => 12,
+            Action::Shove(_) => 2,
             _ => 0,
         }
     }

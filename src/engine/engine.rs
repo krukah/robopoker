@@ -4,6 +4,12 @@ pub struct Engine {
     players: Vec<RoboPlayer>,
 }
 
+struct Payoff {
+    position: usize,
+    reward: u32,
+    risked: u32,
+}
+
 impl Engine {
     pub fn new() -> Self {
         Engine {
@@ -71,13 +77,8 @@ impl Engine {
     }
 
     fn take_action(&mut self) {
-        let seat = self.game.head.seat();
-        let action = self
-            .players
-            .iter()
-            .find(|p| p.id == seat.id)
-            .unwrap()
-            .act(&self.game);
+        let actor = self.actor();
+        let action = actor.act(&self.game);
         self.game.head.apply(action.clone());
         self.game.actions.push(action.clone());
     }
@@ -101,10 +102,41 @@ impl Engine {
             Street::River => (),
         }
     }
-
+    fn payoff<'seat>(&self, node: &'seat Node) -> Vec<Payoff> {
+        let mut payoffs: Vec<Payoff> = Vec::new();
+        let mut winners: Vec<&Seat> = Vec::new();
+        for seat in &node.seats {
+            if seat.status == BetStatus::Playing || seat.status == BetStatus::Shoved {
+                winners.clear();
+                winners.push(seat);
+            }
+        }
+        let share = node.pot / winners.len() as u32;
+        for winner in winners {
+            payoffs.push(Payoff {
+                position: winner.id,
+                reward: share,
+                risked: winner.stuck,
+            });
+        }
+        payoffs
+    }
     fn show_down(&mut self) {
         println!("SHOWDOWN {}", &self.game.head);
-        let positions: Vec<usize> = self
+        // select a random seat to give the pot to
+        let payoffs = self.payoff(&self.game.head);
+        for payoff in payoffs {
+            println!("  PAYOFF  {}  {}", payoff.position, payoff.risked);
+            let seat = self
+                .game
+                .head
+                .seats
+                .iter_mut()
+                .find(|po| po.id == payoff.position)
+                .unwrap();
+            seat.stack += payoff.reward;
+        }
+        let removing: Vec<usize> = self
             .game
             .head
             .seats
@@ -112,7 +144,7 @@ impl Engine {
             .filter(|s| s.stack == 0)
             .map(|s| s.id)
             .collect();
-        positions.iter().for_each(|p| self.remove(*p));
+        removing.iter().for_each(|p| self.remove(*p));
         self.deck = Deck::new();
     }
 
@@ -120,12 +152,18 @@ impl Engine {
         self.game.head.apply(action.clone());
         self.game.actions.push(action.clone());
     }
+
+    fn actor(&self) -> &RoboPlayer {
+        let seat = self.game.head.seat();
+        self.players.iter().find(|p| p.id == seat.id).unwrap()
+    }
 }
 
 use super::{
     action::{Action, Player},
     game::Game,
+    node::Node,
     player::RoboPlayer,
-    seat::Seat,
+    seat::{BetStatus, Seat},
 };
 use crate::cards::{board::Street, deck::Deck};

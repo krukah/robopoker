@@ -79,13 +79,20 @@ impl Node {
     }
     fn are_all_called(&self) -> bool {
         let bet = self.table_stuck();
+        let has_no_decision = self
+            .seats
+            .iter()
+            .filter(|s| s.status == BetStatus::Playing)
+            .count()
+            == 1
+            && self.counter == 0;
         let has_all_decided = self.counter >= self.seats.len();
         let has_all_matched = self
             .seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)
             .all(|s| s.stuck == bet);
-        has_all_decided && has_all_matched
+        (has_all_decided || has_no_decision) && has_all_matched
     }
 
     pub fn next_street(&mut self) {
