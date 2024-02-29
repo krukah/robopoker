@@ -38,10 +38,14 @@ impl Engine {
             self.post_blinds();
             'street: loop {
                 'seat: loop {
-                    match self.game.head.next() {
-                        Some(_) => self.take_action(),
-                        None => break 'seat,
+                    if self.game.head.does_end_street() {
+                        break 'seat;
                     }
+                    self.game.head.advance();
+                    if self.game.head.does_end_street() {
+                        break 'seat;
+                    }
+                    self.take_action();
                 }
                 if self.game.head.does_end_hand() {
                     self.show_down();
@@ -59,9 +63,9 @@ impl Engine {
 
     fn post_blinds(&mut self) {
         // todo!() handle all in case. check if stack > blind ? Post : Shove
-        self.game.head.next();
+        self.game.head.advance();
         self.apply(Action::Blind(self.game.sblind));
-        self.game.head.next();
+        self.game.head.advance();
         self.apply(Action::Blind(self.game.bblind));
         self.game.head.counter = 0;
     }

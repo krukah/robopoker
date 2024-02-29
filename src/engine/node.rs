@@ -5,7 +5,7 @@ pub struct Node {
     pub pot: u32,         // table
     pub dealer: usize,    // rotation
     pub counter: usize,   // rotation
-    pub pointer: usize,   // rotation
+    pub pointer: usize,   // rotation.has_next == node.does_end_street
 } // this data struct reads like a poem
 
 impl Node {
@@ -27,74 +27,6 @@ impl Node {
         self.are_all_folded() || self.are_all_called() || self.are_all_shoved()
     }
 
-    pub fn next(&mut self) -> Option<&Seat> {
-        'left: loop {
-            if self.does_end_street() {
-                return None;
-            }
-            match self.left().status {
-                BetStatus::Playing => {
-                    self.increment();
-                    return Some(self.seat());
-                }
-                BetStatus::Folded | BetStatus::Shoved => {
-                    self.increment();
-                    continue 'left;
-                }
-            }
-        }
-    }
-    pub fn seat(&self) -> &Seat {
-        self.seats.get(self.pointer).unwrap()
-    }
-    pub fn left(&self) -> &Seat {
-        self.seats.get(self.after(self.pointer)).unwrap()
-    }
-    pub fn after(&self, i: usize) -> usize {
-        (i + 1) % self.seats.len()
-    }
-
-    pub fn table_stack(&self) -> u32 {
-        let mut totals: Vec<u32> = self.seats.iter().map(|s| s.stack + s.stuck).collect();
-        totals.sort();
-        totals.pop().unwrap_or(0);
-        totals.pop().unwrap_or(0)
-    }
-    pub fn table_stuck(&self) -> u32 {
-        self.seats.iter().map(|s| s.stuck).max().unwrap()
-    }
-
-    fn are_all_folded(&self) -> bool {
-        self.seats
-            .iter()
-            .filter(|s| s.status != BetStatus::Folded)
-            .count()
-            == 1
-    }
-    fn are_all_shoved(&self) -> bool {
-        self.seats
-            .iter()
-            .filter(|s| s.status != BetStatus::Folded)
-            .all(|s| s.status == BetStatus::Shoved)
-    }
-    fn are_all_called(&self) -> bool {
-        let bet = self.table_stuck();
-        let has_no_decision = self
-            .seats
-            .iter()
-            .filter(|s| s.status == BetStatus::Playing)
-            .count()
-            == 1
-            && self.counter == 0;
-        let has_all_decided = self.counter >= self.seats.len();
-        let has_all_matched = self
-            .seats
-            .iter()
-            .filter(|s| s.status == BetStatus::Playing)
-            .all(|s| s.stuck == bet);
-        (has_all_decided || has_no_decision) && has_all_matched
-    }
-
     pub fn next_street(&mut self) {
         self.counter = 0;
         self.pointer = self.dealer;
@@ -107,7 +39,6 @@ impl Node {
         for seat in &mut self.seats {
             seat.stuck = 0;
         }
-        println!("  {:?}", self.board.street);
     }
     pub fn next_hand(&mut self) {
         self.pot = 0;
@@ -122,7 +53,6 @@ impl Node {
         }
         println!("NEXT HAND\n");
     }
-
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.pointer).unwrap();
         match action {
@@ -147,9 +77,78 @@ impl Node {
             _ => println!("  {} {}", seat.id, action),
         }
     }
+
+    pub fn advance(&mut self) {
+        'left: loop {
+            if self.does_end_street() {
+                return;
+            }
+            self.increment();
+            match self.seat().status {
+                BetStatus::Playing => return,
+                BetStatus::Folded | BetStatus::Shoved => continue 'left,
+            }
+        }
+    }
     fn increment(&mut self) {
         self.counter += 1;
         self.pointer = self.after(self.pointer);
+    }
+
+    pub fn seat(&self) -> &Seat {
+        self.seats.get(self.pointer).unwrap()
+    }
+    pub fn left(&self) -> &Seat {
+        self.seats.get(self.after(self.pointer)).unwrap()
+    }
+    pub fn after(&self, i: usize) -> usize {
+        (i + 1) % self.seats.len()
+    }
+
+    pub fn table_stack(&self) -> u32 {
+        let mut totals: Vec<u32> = self.seats.iter().map(|s| s.stack + s.stuck).collect();
+        totals.sort();
+        totals.pop().unwrap_or(0);
+        totals.pop().unwrap_or(0)
+    }
+    pub fn table_stuck(&self) -> u32 {
+        self.seats.iter().map(|s| s.stuck).max().unwrap()
+    }
+
+    fn are_all_folded(&self) -> bool {
+        // exactly one player has not folded
+        self.seats
+            .iter()
+            .filter(|s| s.status != BetStatus::Folded)
+            .count()
+            == 1
+    }
+    fn are_all_shoved(&self) -> bool {
+        // everyone who isn't folded is all in
+        self.seats
+            .iter()
+            .filter(|s| s.status != BetStatus::Folded)
+            .all(|s| s.status == BetStatus::Shoved)
+    }
+    fn are_all_called(&self) -> bool {
+        // everyone who isn't folded has matched the bet
+        // or all but one player is all in
+        let bet = self.table_stuck();
+        let is_one_playing = self
+            .seats
+            .iter()
+            .filter(|s| s.status == BetStatus::Playing)
+            .count()
+            == 1;
+        let is_first_decision = self.counter == 0;
+        let has_no_decision = is_first_decision && is_one_playing;
+        let has_all_decided = self.counter > self.seats.len();
+        let has_all_matched = self
+            .seats
+            .iter()
+            .filter(|s| s.status == BetStatus::Playing)
+            .all(|s| s.stuck == bet);
+        (has_all_decided || has_no_decision) && has_all_matched
     }
 }
 
