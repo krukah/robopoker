@@ -5,24 +5,24 @@ pub trait Player {
 #[derive(Debug, Clone)]
 pub enum Action {
     Draw(Card),
-    Check,
-    Fold,
-    Call(u32),
-    Blind(u32),
-    Raise(u32),
-    Shove(u32),
+    Check(usize),
+    Fold(usize),
+    Call(usize, u32),
+    Blind(usize, u32),
+    Raise(usize, u32),
+    Shove(usize, u32),
 }
 
 impl Display for Action {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
             Action::Draw(card) => write!(f, "{}", format!("DEAL  {}", card).white()),
-            Action::Check => write!(f, "{}", "CHECK".cyan()),
-            Action::Fold => write!(f, "{}", "FOLD".red()),
-            Action::Blind(amount) => write!(f, "{}", format!("BLIND {}", amount).white()),
-            Action::Call(amount) => write!(f, "{}", format!("CALL  {}", amount).cyan()),
-            Action::Raise(amount) => write!(f, "{}", format!("RAISE {}", amount).green()),
-            Action::Shove(amount) => write!(f, "{}", format!("SHOVE {}", amount).red()),
+            Action::Check(id) => write!(f, "{id} {}", "CHECK".cyan()),
+            Action::Fold(id) => write!(f, "{id} {}", "FOLD".red()),
+            Action::Blind(id, amount) => write!(f, "{id} {}", format!("BLIND {}", amount).white()),
+            Action::Call(id, amount) => write!(f, "{id} {}", format!("CALL  {}", amount).cyan()),
+            Action::Raise(id, amount) => write!(f, "{id} {}", format!("RAISE {}", amount).green()),
+            Action::Shove(id, amount) => write!(f, "{id} {}", format!("SHOVE {}", amount).red()),
         }
     }
 }

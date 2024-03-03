@@ -9,10 +9,10 @@ pub struct Node {
 } // this data struct reads like a poem
 
 impl Node {
-    pub fn new() -> Self {
+    pub fn new(seats: Vec<Seat>) -> Self {
         Node {
+            seats,
             board: Board::new(),
-            seats: Vec::with_capacity(10),
             pot: 0,
             dealer: 0,
             counter: 0,
@@ -20,51 +20,44 @@ impl Node {
         }
     }
 
-    pub fn does_end_hand(&self) -> bool {
-        self.are_all_folded() || (self.does_end_street() && self.board.street == Street::River)
+    pub fn has_more_hands(&self) -> bool {
+        self.seats.iter().filter(|s| s.stack > 0).count() > 1
     }
-    pub fn does_end_street(&self) -> bool {
-        self.are_all_folded() || self.are_all_called() || self.are_all_shoved()
+    pub fn has_more_streets(&self) -> bool {
+        !(self.are_all_folded() || (!self.has_more_players() && self.board.street == Street::River))
+    }
+    pub fn has_more_players(&self) -> bool {
+        !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
     }
 
-    pub fn next_street(&mut self) {
-        self.counter = 0;
-        self.pointer = self.dealer;
-        self.board.street = match self.board.street {
-            Street::Pre => Street::Flop,
-            Street::Flop => Street::Turn,
-            Street::Turn => Street::River,
-            Street::River => Street::Pre,
-        };
-        for seat in &mut self.seats {
-            seat.stuck = 0;
-        }
-    }
-    pub fn next_hand(&mut self) {
+    pub fn begin_hand(&mut self) {
         self.pot = 0;
-        self.dealer = self.after(self.dealer);
-        self.counter = 0;
-        self.pointer = self.dealer;
-        self.board.street = Street::Pre;
         self.board.cards.clear();
-        for seat in &mut self.seats {
-            seat.status = BetStatus::Playing;
-            seat.stuck = 0;
-        }
-        println!("NEXT HAND\n");
+        self.board.street = Street::Pre;
+        self.counter = 0;
+        self.dealer = self.after(self.dealer);
+        self.pointer = self.dealer;
+        self.advance();
+    }
+    pub fn begin_street(&mut self) {
+        self.counter = 0;
+        self.pointer = match self.board.street {
+            Street::Pre => self.after(self.after(self.dealer)),
+            _ => self.dealer,
+        };
+        self.advance();
     }
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.pointer).unwrap();
         match action {
-            // modify board or player status
-            Action::Fold => seat.status = BetStatus::Folded,
-            Action::Shove(_) => seat.status = BetStatus::Shoved,
-            Action::Draw(card) => self.board.push(card.clone()),
-            _ => (),
+            Action::Draw(_) => (),
+            _ => println!("{action}"),
         }
         match action {
-            // modify seat and pot balances
-            Action::Blind(bet) | Action::Call(bet) | Action::Raise(bet) | Action::Shove(bet) => {
+            Action::Call(_, bet)
+            | Action::Blind(_, bet)
+            | Action::Raise(_, bet)
+            | Action::Shove(_, bet) => {
                 self.pot += bet;
                 seat.stuck += bet;
                 seat.stack -= bet;
@@ -72,37 +65,24 @@ impl Node {
             _ => (),
         }
         match action {
-            // log
-            Action::Draw(_) => (),
-            _ => println!("  {} {}", seat.id, action),
+            Action::Fold(..) => seat.status = BetStatus::Folded,
+            Action::Shove(..) => seat.status = BetStatus::Shoved,
+            _ => (),
+        }
+        match action {
+            Action::Draw(card) => self.board.push(card.clone()),
+            _ => self.advance(),
         }
     }
 
-    pub fn advance(&mut self) {
-        'left: loop {
-            if self.does_end_street() {
-                return;
-            }
-            self.increment();
-            match self.seat().status {
-                BetStatus::Playing => return,
-                BetStatus::Folded | BetStatus::Shoved => continue 'left,
-            }
-        }
-    }
-    fn increment(&mut self) {
-        self.counter += 1;
-        self.pointer = self.after(self.pointer);
-    }
-
-    pub fn seat(&self) -> &Seat {
+    pub fn next(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
     }
-    pub fn left(&self) -> &Seat {
-        self.seats.get(self.after(self.pointer)).unwrap()
+    pub fn seat(&self, id: usize) -> &Seat {
+        self.seats.iter().find(|s| s.id == id).unwrap()
     }
-    pub fn after(&self, i: usize) -> usize {
-        (i + 1) % self.seats.len()
+    pub fn after(&self, index: usize) -> usize {
+        (index + 1) % self.seats.len()
     }
 
     pub fn table_stack(&self) -> u32 {
@@ -115,7 +95,21 @@ impl Node {
         self.seats.iter().map(|s| s.stuck).max().unwrap()
     }
 
-    fn are_all_folded(&self) -> bool {
+    fn advance(&mut self) {
+        'left: loop {
+            if self.has_more_players() {
+                self.counter += 1;
+                self.pointer = self.after(self.pointer);
+                match self.next().status {
+                    BetStatus::Playing => return,
+                    BetStatus::Folded | BetStatus::Shoved => continue 'left,
+                }
+            }
+            return;
+        }
+    }
+
+    pub fn are_all_folded(&self) -> bool {
         // exactly one player has not folded
         self.seats
             .iter()
@@ -123,14 +117,14 @@ impl Node {
             .count()
             == 1
     }
-    fn are_all_shoved(&self) -> bool {
+    pub fn are_all_shoved(&self) -> bool {
         // everyone who isn't folded is all in
         self.seats
             .iter()
             .filter(|s| s.status != BetStatus::Folded)
             .all(|s| s.status == BetStatus::Shoved)
     }
-    fn are_all_called(&self) -> bool {
+    pub fn are_all_called(&self) -> bool {
         // everyone who isn't folded has matched the bet
         // or all but one player is all in
         let bet = self.table_stuck();

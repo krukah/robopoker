@@ -1,6 +1,6 @@
-use super::player::RoboPlayer;
-
+#[derive(Debug, Clone)]
 pub struct Payoff {
-    pub winner: &'static RoboPlayer,
-    pub winnings: u32,
+    pub id: usize,
+    pub risked: u32,
+    pub reward: u32,
 }

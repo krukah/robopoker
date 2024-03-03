@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct RoboPlayer {
     pub id: usize,
     pub hole: Hole,
@@ -6,27 +7,27 @@ pub struct RoboPlayer {
 impl RoboPlayer {
     pub fn new(seat: &Seat) -> RoboPlayer {
         RoboPlayer {
-            hole: Hole::new(),
             id: seat.id,
+            hole: Hole::new(),
         }
     }
 
     pub fn valid_actions(&self, game: &Game) -> Vec<Action> {
         let mut actions = vec![];
         if self.can_check(game) {
-            actions.push(Action::Check);
+            actions.push(Action::Check(self.id));
         }
         if self.can_fold(game) {
-            actions.push(Action::Fold);
+            actions.push(Action::Fold(self.id));
         }
         if self.can_call(game) {
-            actions.push(Action::Call(self.to_call(game)));
+            actions.push(Action::Call(self.id, self.to_call(game)));
         }
         if self.can_shove(game) {
-            actions.push(Action::Shove(self.to_shove(game)));
+            actions.push(Action::Shove(self.id, self.to_shove(game)));
         }
         if self.can_raise(game) {
-            actions.push(Action::Raise(self.to_raise(game)));
+            actions.push(Action::Raise(self.id, self.to_raise(game)));
         }
         actions
     }
@@ -71,11 +72,11 @@ impl RoboPlayer {
 
     fn weight(&self, action: Action) -> u32 {
         match action {
-            Action::Fold => 15,
-            Action::Check => 10,
-            Action::Call(_) => 40,
-            Action::Raise(_) => 5,
-            Action::Shove(_) => 2,
+            Action::Fold(_) => 15,
+            Action::Check(_) => 10,
+            Action::Call(..) => 40,
+            Action::Raise(..) => 5,
+            Action::Shove(..) => 2,
             _ => 0,
         }
     }
@@ -100,7 +101,7 @@ impl RoboPlayer {
                 return policy.action.clone();
             }
         }
-        Action::Fold
+        Action::Fold(self.id)
     }
 }
 
