@@ -157,7 +157,7 @@ impl Game {
         // O(n) in actions
     }
     fn evaluate(&self, id: usize) -> u32 {
-        ((id - self.head.dealer - 1) % self.head.seats.len()) as u32
+        ((id as i8 - self.head.dealer as i8 - 1) % self.head.seats.len() as i8) as u32
     }
 }
 impl Game {
@@ -226,8 +226,8 @@ impl Game {
     }
 
     fn prioritize(&self, a: &HandResult, b: &HandResult) -> Ordering {
-        let x = (a.id - self.head.dealer - 1) % self.head.seats.len();
-        let y = (b.id - self.head.dealer - 1) % self.head.seats.len();
+        let x = (a.id as i8 - self.head.dealer as i8 - 1) % self.head.seats.len() as i8;
+        let y = (b.id as i8 - self.head.dealer as i8 - 1) % self.head.seats.len() as i8;
         x.cmp(&y)
     }
 }
