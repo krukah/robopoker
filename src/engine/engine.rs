@@ -1,5 +1,4 @@
 pub struct Engine {
-    deck: Deck,
     game: Game,
     players: Vec<RoboPlayer>,
 }
@@ -7,7 +6,6 @@ pub struct Engine {
 impl Engine {
     pub fn new() -> Self {
         Engine {
-            deck: Deck::new(),
             game: Game::new(vec![
                 Seat::new(1000, 0),
                 Seat::new(1000, 1),
@@ -56,4 +54,3 @@ impl Engine {
 }
 
 use super::{game::Game, player::RoboPlayer, seat::Seat};
-use crate::cards::deck::Deck;

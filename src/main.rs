@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use engine::engine::Engine;
 
 pub mod cards;

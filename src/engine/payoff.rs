@@ -1,6 +1,10 @@
+use super::seat::BetStatus;
+
 #[derive(Debug, Clone)]
-pub struct Payoff {
+pub struct HandResult {
     pub id: usize,
-    pub risked: u32,
+    pub status: BetStatus,
+    pub staked: u32,
     pub reward: u32,
+    pub score: u32,
 }

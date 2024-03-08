@@ -50,10 +50,6 @@ impl Node {
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.pointer).unwrap();
         match action {
-            Action::Draw(_) => (),
-            _ => println!("{action}"),
-        }
-        match action {
             Action::Call(_, bet)
             | Action::Blind(_, bet)
             | Action::Raise(_, bet)

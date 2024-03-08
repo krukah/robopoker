@@ -5,11 +5,10 @@ pub struct Game {
     pub deck: Deck,
     pub tail: Node, // is this useful?
     pub head: Node,
-    pub payoffs: Vec<Payoff>,
+    pub outcomes: Vec<HandResult>,
     pub players: Vec<RoboPlayer>,
     pub actions: Vec<Action>,
 }
-
 impl Game {
     pub fn new(seats: Vec<Seat>) -> Self {
         let players: Vec<RoboPlayer> = seats.iter().map(|s| RoboPlayer::new(s)).collect();
@@ -18,7 +17,7 @@ impl Game {
             sblind: 1,
             bblind: 2,
             actions: Vec::new(),
-            payoffs: Vec::new(),
+            outcomes: Vec::new(),
             deck: Deck::new(),
             tail: node.clone(),
             head: node,
@@ -37,13 +36,16 @@ impl Game {
     pub fn apply(&mut self, action: Action) {
         self.head.apply(action.clone());
         self.actions.push(action.clone());
+        match action {
+            Action::Draw(_) => (),
+            _ => println!("{action}"),
+        }
     }
 
     pub fn to_next_hand(&mut self) {
         self.settle();
         self.prune();
         self.reset_hand();
-        println!("{}\n---\n", self.head);
     }
     pub fn to_next_street(&mut self) {
         self.deal_board();
@@ -57,12 +59,15 @@ impl Game {
     }
 
     fn reset_hand(&mut self) {
+        println!("{}\n---\n", self.head);
         for seat in &mut self.head.seats {
             seat.status = BetStatus::Playing;
             seat.stuck = 0;
         }
-        self.actions.clear();
+        self.tail = self.head.clone();
         self.deck = Deck::new();
+        self.actions.clear();
+        self.outcomes.clear();
     }
     fn reset_street(&mut self) {
         for seat in &mut self.head.seats {
@@ -115,29 +120,30 @@ impl Game {
     }
 
     fn settle(&mut self) {
-        for player in self.players.iter() {
-            let risked = self.risked(player);
-            let seat = self
-                .head
-                .seats
-                .iter_mut()
-                .find(|s| s.id == player.id)
-                .unwrap();
-            seat.stack += risked;
+        let outcomes = self.payoffs();
+        for payoff in outcomes {
+            let seat = self.seat_mut(payoff.id);
+            seat.stack += payoff.reward;
         }
     }
-    fn prune(&mut self) {
-        self.head.seats.retain(|s| s.stack > 0);
-    }
 
-    fn risked(&self, player: &RoboPlayer) -> u32 {
+    fn status(&self, id: usize) -> BetStatus {
+        self.head.seats.iter().find(|s| s.id == id).unwrap().status
+    }
+    fn seat_mut(&mut self, id: usize) -> &mut Seat {
+        self.head.seats.iter_mut().find(|s| s.id == id).unwrap()
+    }
+    fn prune(&mut self) {
+        // self.head.seats.retain(|s| s.stack > 0);
+    }
+    fn risked(&self, id: usize) -> u32 {
         self.actions
             .iter()
             .filter(|a| match a {
-                Action::Call(id, _)
-                | Action::Blind(id, _)
-                | Action::Raise(id, _)
-                | Action::Shove(id, _) => *id == player.id,
+                Action::Call(x, _)
+                | Action::Blind(x, _)
+                | Action::Raise(x, _)
+                | Action::Shove(x, _) => *x == id,
                 _ => false,
             })
             .map(|a| match a {
@@ -148,35 +154,95 @@ impl Game {
                 _ => 0,
             })
             .sum()
+        // O(n) in actions
     }
-    fn reward(&self, player: &RoboPlayer) -> u32 {
-        let max = self.risked(player);
-        self.players
+    fn evaluate(&self, id: usize) -> u32 {
+        ((id - self.head.dealer - 1) % self.head.seats.len()) as u32
+    }
+}
+impl Game {
+    fn payoffs(&self) -> Vec<HandResult> {
+        let payoffs = self
+            .players
             .iter()
-            .map(|p| self.risked(p))
-            .map(|r| std::cmp::min(r, max))
-            .sum()
+            .map(|p| HandResult {
+                id: p.id,
+                reward: 0,
+                staked: self.risked(p.id),
+                status: self.status(p.id),
+                score: self.evaluate(p.id),
+            })
+            .collect::<Vec<HandResult>>();
+        self.distribute(payoffs)
     }
 
-    fn evaluate(&self, hole: &Hole) -> u32 {
-        0
+    fn distribute(&self, mut payoffs: Vec<HandResult>) -> Vec<HandResult> {
+        payoffs.sort_by(|a, b| self.prioritize(a, b));
+        let cloned = payoffs.clone();
+        let mut stake_watermark = u32::MIN;
+        let mut score_watermark = u32::MAX;
+        'scores: while payoffs.iter().map(|p| p.reward).sum::<u32>() < self.head.pot {
+            score_watermark = payoffs
+                .iter()
+                .filter(|p| p.status != BetStatus::Folded)
+                .filter(|p| p.score < score_watermark)
+                .map(|p| p.score)
+                .max()
+                .unwrap();
+            let mut winners = payoffs
+                .iter_mut()
+                .filter(|r| r.status != BetStatus::Folded)
+                .filter(|r| r.score == score_watermark)
+                .collect::<Vec<&mut HandResult>>();
+            'stakes: while winners.len() > 0 {
+                // split side pot
+                let stakes = winners
+                    .iter()
+                    .map(|p| p.staked.saturating_sub(stake_watermark))
+                    .min()
+                    .unwrap();
+                let pot = cloned.iter().map(|p| min(p.staked, stakes)).sum::<u32>();
+                let share = pot / winners.len() as u32;
+                let mut leftover = pot % winners.len() as u32;
+                for winner in &mut winners {
+                    winner.reward += share;
+                    if leftover > 0 {
+                        winner.reward += 1;
+                        leftover -= 1;
+                    }
+                }
+                // remove winners who have been paid their full share
+                stake_watermark += winners
+                    .iter()
+                    .map(|p| p.staked.saturating_sub(stake_watermark))
+                    .min()
+                    .unwrap();
+                winners.retain(|p| p.staked > stake_watermark);
+                continue 'stakes;
+            }
+            continue 'scores;
+        }
+        payoffs
+    }
+
+    fn prioritize(&self, a: &HandResult, b: &HandResult) -> Ordering {
+        let x = (a.id - self.head.dealer - 1) % self.head.seats.len();
+        let y = (b.id - self.head.dealer - 1) % self.head.seats.len();
+        x.cmp(&y)
     }
 }
 
 use super::{
     action::{Action, Player},
     node::Node,
-    payoff::Payoff,
+    payoff::HandResult,
     player::RoboPlayer,
     seat::{BetStatus, Seat},
 };
-use crate::cards::{board::Street, deck::Deck, hole::Hole};
+use crate::cards::{board::Street, deck::Deck};
+use std::cmp::{min, Ordering};
 
-pub struct ShowdownHand<'a> {
+pub struct Showdown<'a> {
     pub seat: &'a mut Seat,
-    pub hole: &'a mut Hole,
-}
-pub struct ShowdownResult<'a> {
-    pub seat: &'a mut Seat,
-    pub eval: u32,
+    pub player: &'a mut RoboPlayer,
 }
