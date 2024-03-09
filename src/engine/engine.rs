@@ -1,6 +1,7 @@
 pub struct Engine {
     game: Game,
     players: Vec<RoboPlayer>,
+    n_hands: u32,
 }
 
 impl Engine {
@@ -13,6 +14,7 @@ impl Engine {
                 Seat::new(1_000, 3),
             ]),
             players: Vec::with_capacity(10),
+            n_hands: 0,
         }
     }
 
@@ -30,25 +32,29 @@ impl Engine {
     }
 
     pub fn play(&mut self) {
-        'hand: loop {
-            self.game.begin_hand();
-            'street: loop {
-                self.game.begin_street();
-                'player: loop {
-                    if self.game.head.has_more_players() {
-                        self.game.to_next_player();
-                        continue 'player;
+        let game = &mut self.game;
+        'hands: loop {
+            game.begin_hand();
+            'streets: loop {
+                game.begin_street();
+                'players: loop {
+                    if !game.head.has_more_players() {
+                        break 'players;
                     }
-                    break 'player;
+                    game.to_next_player();
+                    continue 'players;
                 }
-                if self.game.head.has_more_streets() {
-                    self.game.to_next_street();
-                    continue 'street;
+                if !game.head.has_more_streets() {
+                    break 'streets;
                 }
-                break 'street;
+                game.to_next_street();
+                continue 'streets;
             }
-            self.game.to_next_hand();
-            continue 'hand;
+            if !game.head.has_more_hands() {
+                break 'hands;
+            }
+            game.to_next_hand();
+            continue 'hands;
         }
     }
 }

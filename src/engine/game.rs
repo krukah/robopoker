@@ -45,6 +45,7 @@ impl Game {
     pub fn to_next_hand(&mut self) {
         self.allocate();
         self.prune();
+        println!("{}\n---\n", self.head);
         self.reset_hand();
     }
     pub fn to_next_street(&mut self) {
@@ -119,7 +120,7 @@ impl Game {
     }
 
     fn allocate(&mut self) {
-        let results = self.settle();
+        let results = self.showdown();
         for result in results {
             let seat = self
                 .head
@@ -129,18 +130,13 @@ impl Game {
                 .unwrap();
             seat.stack += result.reward;
         }
-        println!("{}\n---\n", self.head);
     }
 
     fn prune(&mut self) {
-        // should do some shifting for positions
+        // TODO: do some shifting for rotating positions as players come in and out?
         self.head.seats.retain(|s| s.stack >= self.bblind);
         self.players
             .retain(|p| self.head.seats.iter().any(|s| s.id == p.id));
-        match self.head.seats.len() {
-            1 => panic!("Game over"),
-            _ => (),
-        }
     }
 
     fn status(&self, id: usize) -> BetStatus {
@@ -166,121 +162,52 @@ impl Game {
             .sum()
         // O(n) in actions
     }
-    fn rank(&self, id: usize) -> u32 {
+    fn rank(&self, _id: usize) -> u32 {
         rand::thread_rng().gen::<u32>() % 32
     }
     fn priority(&self, id: usize) -> u32 {
         (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
     }
 
-    fn settle(&self) -> Vec<HandResult> {
-        let mut results = self.results();
-        let mut curr_rank = u32::MAX;
-        'winner: while let Some(next_rank) = self.next_rank(&results, curr_rank) {
-            let mut curr_stake = u32::MIN;
-            'pot: while let Some(next_stake) = self.next_stake(&results, curr_stake, next_rank) {
-                self.distribute(&mut results, curr_stake, next_stake, next_rank);
-                if self.is_complete(&results) {
-                    return results;
+    fn showdown(&self) -> Vec<HandResult> {
+        let mut showdown = Showdown {
+            next_stake: u32::MIN,
+            prev_stake: u32::MIN,
+            next_score: u32::MAX,
+            results: self.results(),
+        };
+        loop {
+            showdown.next_score();
+            loop {
+                showdown.next_stake();
+                showdown.distribute();
+                if showdown.is_complete() {
+                    return showdown.results;
                 }
-                curr_stake = next_stake;
-                continue 'pot;
             }
-            curr_rank = next_rank;
-            continue 'winner;
         }
-        unreachable!()
-    }
-
-    fn compare(&self, a: &HandResult, b: &HandResult) -> Ordering {
-        let x = self.priority(a.id);
-        let y = self.priority(b.id);
-        x.cmp(&y)
-    }
-
-    fn is_complete(&self, results: &Vec<HandResult>) -> bool {
-        // strict equality bc our logic is tiiiight
-        let rewarded = results.iter().map(|p| p.reward).sum::<u32>();
-        rewarded == self.head.pot
-    }
-    fn next_stake(
-        &self,
-        results: &Vec<HandResult>,
-        curr_stake: u32,
-        curr_rank: u32,
-    ) -> Option<u32> {
-        results
-            .iter()
-            .filter(|p| p.status != BetStatus::Folded)
-            .filter(|p| p.staked > curr_stake)
-            .filter(|p| p.rank == curr_rank)
-            .map(|p| p.staked)
-            .min()
-    }
-    fn next_rank(&self, results: &Vec<HandResult>, curr_rank: u32) -> Option<u32> {
-        results
-            .iter()
-            .filter(|p| p.status != BetStatus::Folded)
-            .filter(|p| p.rank < curr_rank)
-            .map(|p| p.rank)
-            .max()
     }
 
     fn results(&self) -> Vec<HandResult> {
-        self.players
+        let mut results = self
+            .players
             .iter()
             .map(|p| HandResult {
                 id: p.id,
-                rank: self.rank(p.id),
+                score: self.rank(p.id),
                 status: self.status(p.id),
                 staked: self.staked(p.id),
                 reward: 0,
             })
-            .collect::<Vec<HandResult>>()
-    }
-
-    fn distribute(
-        &self,
-        results: &mut Vec<HandResult>,
-        curr_stake: u32,
-        next_stake: u32,
-        next_rank: u32,
-    ) {
-        // get side pot
-        // distribute to the winning HandResult(s) with the highest rank.
-        // drop immut borrows. mutate bc end of the loop
-        // single- and multi-way pots with division leftovers are handled generally at zero cost
-        let winnable = results
-            .iter()
-            .map(|p| p.staked)
-            .map(|s| std::cmp::min(s, next_stake))
-            .map(|s| s.saturating_sub(curr_stake))
-            .sum::<u32>();
-        let mut winners = results
-            .iter_mut()
-            .filter(|p| p.status != BetStatus::Folded)
-            .filter(|p| p.rank == next_rank)
-            .filter(|p| p.staked > curr_stake)
-            .collect::<Vec<&mut HandResult>>();
-        let n = winners.len() as u32;
-        let share = winnable / n;
-        let leftover = winnable % n;
-        for winner in winners.iter_mut() {
-            winner.reward += share;
-        }
-        if leftover > 0 {
-            winners.sort_by(|a, b| self.compare(a, b));
-            for winner in winners.iter_mut().take(leftover as usize) {
-                winner.reward += 1;
-            }
-        }
+            .collect::<Vec<HandResult>>();
+        results.sort_by(|a, b| {
+            let x = self.priority(a.id);
+            let y = self.priority(b.id);
+            x.cmp(&y)
+        });
+        results
     }
 }
-
-use core::panic;
-use std::cmp::Ordering;
-
-use rand::Rng;
 
 use super::{
     action::{Action, Player},
@@ -288,23 +215,7 @@ use super::{
     payoff::HandResult,
     player::RoboPlayer,
     seat::{BetStatus, Seat},
+    showdown::Showdown,
 };
 use crate::cards::{board::Street, deck::Deck};
-
-pub struct Showdown<'a> {
-    pub payoffs: &'a mut Vec<HandResult>,
-    pub curr_score: u32,
-    pub curr_stake: u32,
-    pub prev_stake: u32,
-}
-
-impl<'a> Showdown<'a> {
-    pub fn new<'b>(payoffs: &'b mut Vec<HandResult>) -> Showdown<'b> {
-        Showdown {
-            payoffs,
-            curr_score: u32::MAX,
-            curr_stake: u32::MIN,
-            prev_stake: u32::MIN,
-        }
-    }
-}
+use rand::Rng;

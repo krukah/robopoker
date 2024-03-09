@@ -21,7 +21,7 @@ impl Node {
     }
 
     pub fn has_more_hands(&self) -> bool {
-        self.seats.iter().filter(|s| s.stack > 0).count() > 1
+        self.seats.iter().filter(|s| s.stack > 2).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
         !(self.are_all_folded() || (!self.has_more_players() && self.board.street == Street::River))
