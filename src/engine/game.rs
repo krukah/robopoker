@@ -146,7 +146,7 @@ impl Game {
     fn status(&self, id: usize) -> BetStatus {
         self.head.seats.iter().find(|s| s.id == id).unwrap().status
     }
-    fn risked(&self, id: usize) -> u32 {
+    fn staked(&self, id: usize) -> u32 {
         self.actions
             .iter()
             .filter(|a| match a {
@@ -174,80 +174,19 @@ impl Game {
     }
 
     fn settle(&self) -> Vec<HandResult> {
-        // to keep track of the winner of the hand result vector
-        // to keep track of the most immediate side pot of the hand result vector
-        // the actual hand result vector
-        let mut curr_winning_rank: u32 = u32::MAX;
-        let mut curr_highest_stake: u32 = u32::MIN;
-        let mut results = self
-            .players
-            .iter()
-            .map(|p| HandResult {
-                id: p.id,
-                reward: 0,
-                staked: self.risked(p.id),
-                status: self.status(p.id),
-                rank: self.rank(p.id),
-            })
-            .collect::<Vec<HandResult>>();
-        // select the winner(s) of the hand
-        'winner: while let Some(next_winning_rank) = results
-            .iter()
-            .filter(|p| p.status != BetStatus::Folded)
-            .filter(|p| p.rank < curr_winning_rank)
-            .map(|p| p.rank)
-            .max()
-        {
-            // select the smallest winnable amount to distribute to winner(s), given side pot constraints
-            'pot: while let Some(next_highest_stake) = results
-                .iter()
-                .filter(|p| p.status != BetStatus::Folded)
-                .filter(|p| p.rank == next_winning_rank)
-                .filter(|p| p.staked > curr_highest_stake)
-                .map(|p| p.staked)
-                .min()
-            {
-                // get side pot
-                // distribute to the winning HandResult(s) with the highest rank.
-                // drop immut borrows. mutate bc end of the loop
-                // single- and multi-way pots with division leftovers are handled generally at zero cost
-                let winnable = results
-                    .iter()
-                    .map(|p| p.staked)
-                    .map(|s| std::cmp::min(s, next_highest_stake))
-                    .map(|s| s.saturating_sub(curr_highest_stake))
-                    .sum::<u32>();
-                let mut winners = results
-                    .iter_mut()
-                    .filter(|p| p.status != BetStatus::Folded)
-                    .filter(|p| p.rank == next_winning_rank)
-                    .filter(|p| p.staked > curr_highest_stake)
-                    .collect::<Vec<&mut HandResult>>();
-                let n = winners.len() as u32;
-                let share = winnable / n;
-                let leftover = winnable % n;
-                for winner in winners.iter_mut() {
-                    winner.reward += share;
+        let mut results = self.results();
+        let mut curr_rank = u32::MAX;
+        'winner: while let Some(next_rank) = self.next_rank(&results, curr_rank) {
+            let mut curr_stake = u32::MIN;
+            'pot: while let Some(next_stake) = self.next_stake(&results, curr_stake, next_rank) {
+                self.distribute(&mut results, curr_stake, next_stake, next_rank);
+                if self.is_complete(&results) {
+                    return results;
                 }
-                if leftover > 0 {
-                    winners.sort_by(|a, b| self.compare(a, b));
-                    for winner in winners.iter_mut().take(leftover as usize) {
-                        winner.reward += 1;
-                    }
-                }
-                // lower the bar for score of the next winner
-                // raise the bar for the stakes of the next side pot
-                // in 99% of cases, these loops will exit after 1 iteration, with 1 winner and 1 main pot
-                // but the  abstraction generalizes with zero cost to handle multi-way all-in tie-breaking pots!
-                // i spent so fucking long trying to achieve this
-                curr_highest_stake = next_highest_stake;
-                let rewarded = results.iter().map(|p| p.reward).sum::<u32>();
-                match rewarded < self.head.pot {
-                    true => continue 'pot,
-                    false => return results,
-                }
+                curr_stake = next_stake;
+                continue 'pot;
             }
-            curr_winning_rank = next_winning_rank;
+            curr_rank = next_rank;
             continue 'winner;
         }
         unreachable!()
@@ -257,6 +196,84 @@ impl Game {
         let x = self.priority(a.id);
         let y = self.priority(b.id);
         x.cmp(&y)
+    }
+
+    fn is_complete(&self, results: &Vec<HandResult>) -> bool {
+        // strict equality bc our logic is tiiiight
+        let rewarded = results.iter().map(|p| p.reward).sum::<u32>();
+        rewarded == self.head.pot
+    }
+    fn next_stake(
+        &self,
+        results: &Vec<HandResult>,
+        curr_stake: u32,
+        curr_rank: u32,
+    ) -> Option<u32> {
+        results
+            .iter()
+            .filter(|p| p.status != BetStatus::Folded)
+            .filter(|p| p.staked > curr_stake)
+            .filter(|p| p.rank == curr_rank)
+            .map(|p| p.staked)
+            .min()
+    }
+    fn next_rank(&self, results: &Vec<HandResult>, curr_rank: u32) -> Option<u32> {
+        results
+            .iter()
+            .filter(|p| p.status != BetStatus::Folded)
+            .filter(|p| p.rank < curr_rank)
+            .map(|p| p.rank)
+            .max()
+    }
+
+    fn results(&self) -> Vec<HandResult> {
+        self.players
+            .iter()
+            .map(|p| HandResult {
+                id: p.id,
+                rank: self.rank(p.id),
+                status: self.status(p.id),
+                staked: self.staked(p.id),
+                reward: 0,
+            })
+            .collect::<Vec<HandResult>>()
+    }
+
+    fn distribute(
+        &self,
+        results: &mut Vec<HandResult>,
+        curr_stake: u32,
+        next_stake: u32,
+        next_rank: u32,
+    ) {
+        // get side pot
+        // distribute to the winning HandResult(s) with the highest rank.
+        // drop immut borrows. mutate bc end of the loop
+        // single- and multi-way pots with division leftovers are handled generally at zero cost
+        let winnable = results
+            .iter()
+            .map(|p| p.staked)
+            .map(|s| std::cmp::min(s, next_stake))
+            .map(|s| s.saturating_sub(curr_stake))
+            .sum::<u32>();
+        let mut winners = results
+            .iter_mut()
+            .filter(|p| p.status != BetStatus::Folded)
+            .filter(|p| p.rank == next_rank)
+            .filter(|p| p.staked > curr_stake)
+            .collect::<Vec<&mut HandResult>>();
+        let n = winners.len() as u32;
+        let share = winnable / n;
+        let leftover = winnable % n;
+        for winner in winners.iter_mut() {
+            winner.reward += share;
+        }
+        if leftover > 0 {
+            winners.sort_by(|a, b| self.compare(a, b));
+            for winner in winners.iter_mut().take(leftover as usize) {
+                winner.reward += 1;
+            }
+        }
     }
 }
 
