@@ -6,5 +6,5 @@ pub struct HandResult {
     pub status: BetStatus,
     pub staked: u32,
     pub reward: u32,
-    pub score: u32,
+    pub rank: u32,
 }

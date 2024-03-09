@@ -39,9 +39,9 @@ impl RoboPlayer {
         std::cmp::min(self.stack(game), game.head.table_stack())
     }
     pub fn to_raise(&self, game: &Game) -> u32 {
-        let min = self.to_call(game);
-        let max = self.to_shove(game);
-        min + (max - min) / 2
+        // let min = self.to_call(game);
+        // let max = self.to_shove(game);
+        5
     }
 
     fn seat<'a>(&self, game: &'a Game) -> &'a Seat {
@@ -76,7 +76,7 @@ impl RoboPlayer {
             Action::Check(_) => 10,
             Action::Call(..) => 40,
             Action::Raise(..) => 5,
-            Action::Shove(..) => 2,
+            Action::Shove(..) => 0,
             _ => 0,
         }
     }
