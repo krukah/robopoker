@@ -59,7 +59,6 @@ impl Game {
     }
 
     fn reset_hand(&mut self) {
-        println!("{}\n---\n", self.head);
         for seat in &mut self.head.seats {
             seat.status = BetStatus::Playing;
             seat.stuck = 0;
@@ -120,21 +119,32 @@ impl Game {
     }
 
     fn allocate(&mut self) {
-        let outcomes = self.settle();
-        for payoff in outcomes {
-            let seat = self.seat_mut(payoff.id);
-            seat.stack += payoff.reward;
+        let results = self.settle();
+        for result in results {
+            let seat = self
+                .head
+                .seats
+                .iter_mut()
+                .find(|s| s.id == result.id)
+                .unwrap();
+            seat.stack += result.reward;
+        }
+        println!("{}\n---\n", self.head);
+    }
+
+    fn prune(&mut self) {
+        // should do some shifting for positions
+        self.head.seats.retain(|s| s.stack >= self.bblind);
+        self.players
+            .retain(|p| self.head.seats.iter().any(|s| s.id == p.id));
+        match self.head.seats.len() {
+            1 => panic!("Game over"),
+            _ => (),
         }
     }
 
     fn status(&self, id: usize) -> BetStatus {
         self.head.seats.iter().find(|s| s.id == id).unwrap().status
-    }
-    fn seat_mut(&mut self, id: usize) -> &mut Seat {
-        self.head.seats.iter_mut().find(|s| s.id == id).unwrap()
-    }
-    fn prune(&mut self) {
-        // self.head.seats.retain(|s| s.stack > 0);
     }
     fn risked(&self, id: usize) -> u32 {
         self.actions
@@ -156,12 +166,13 @@ impl Game {
             .sum()
         // O(n) in actions
     }
-
-    fn priority(&self, i: usize) -> u32 {
-        (i.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
+    fn rank(&self, id: usize) -> u32 {
+        rand::thread_rng().gen::<u32>() % 32
     }
-}
-impl Game {
+    fn priority(&self, id: usize) -> u32 {
+        (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
+    }
+
     fn settle(&self) -> Vec<HandResult> {
         // to keep track of the winner of the hand result vector
         // to keep track of the most immediate side pot of the hand result vector
@@ -176,7 +187,7 @@ impl Game {
                 reward: 0,
                 staked: self.risked(p.id),
                 status: self.status(p.id),
-                rank: self.priority(p.id),
+                rank: self.rank(p.id),
             })
             .collect::<Vec<HandResult>>();
         // select the winner(s) of the hand
@@ -203,20 +214,24 @@ impl Game {
                 let winnable = results
                     .iter()
                     .map(|p| p.staked)
-                    .map(|s| min(s, next_highest_stake))
+                    .map(|s| std::cmp::min(s, next_highest_stake))
                     .map(|s| s.saturating_sub(curr_highest_stake))
                     .sum::<u32>();
-                let winners = results
+                let mut winners = results
                     .iter_mut()
                     .filter(|p| p.status != BetStatus::Folded)
                     .filter(|p| p.rank == next_winning_rank)
                     .filter(|p| p.staked > curr_highest_stake)
                     .collect::<Vec<&mut HandResult>>();
-                let share = winnable / winners.len() as u32;
-                let leftover = winnable % winners.len() as u32;
-                for winner in winners {
+                let n = winners.len() as u32;
+                let share = winnable / n;
+                let leftover = winnable % n;
+                for winner in winners.iter_mut() {
                     winner.reward += share;
-                    if leftover > 0 && leftover > self.priority(winner.id) {
+                }
+                if leftover > 0 {
+                    winners.sort_by(|a, b| self.compare(a, b));
+                    for winner in winners.iter_mut().take(leftover as usize) {
                         winner.reward += 1;
                     }
                 }
@@ -225,27 +240,39 @@ impl Game {
                 // in 99% of cases, these loops will exit after 1 iteration, with 1 winner and 1 main pot
                 // but the  abstraction generalizes with zero cost to handle multi-way all-in tie-breaking pots!
                 // i spent so fucking long trying to achieve this
-                curr_winning_rank = next_winning_rank;
                 curr_highest_stake = next_highest_stake;
-                match results.iter().map(|p| p.reward).sum::<u32>() < self.head.pot {
+                let rewarded = results.iter().map(|p| p.reward).sum::<u32>();
+                match rewarded < self.head.pot {
                     true => continue 'pot,
                     false => return results,
                 }
             }
+            curr_winning_rank = next_winning_rank;
+            continue 'winner;
         }
-        panic!()
+        unreachable!()
+    }
+
+    fn compare(&self, a: &HandResult, b: &HandResult) -> Ordering {
+        let x = self.priority(a.id);
+        let y = self.priority(b.id);
+        x.cmp(&y)
     }
 }
+
+use core::panic;
+use std::cmp::Ordering;
+
+use rand::Rng;
 
 use super::{
     action::{Action, Player},
     node::Node,
-    payoff::{self, HandResult},
+    payoff::HandResult,
     player::RoboPlayer,
     seat::{BetStatus, Seat},
 };
 use crate::cards::{board::Street, deck::Deck};
-use std::cmp::{min, Ordering};
 
 pub struct Showdown<'a> {
     pub payoffs: &'a mut Vec<HandResult>,

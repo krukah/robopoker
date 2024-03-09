@@ -7,10 +7,10 @@ impl Engine {
     pub fn new() -> Self {
         Engine {
             game: Game::new(vec![
-                Seat::new(1000, 0),
-                Seat::new(1000, 1),
-                Seat::new(1000, 2),
-                Seat::new(1000, 3),
+                Seat::new(1_000, 0),
+                Seat::new(1_000, 1),
+                Seat::new(1_000, 2),
+                Seat::new(1_000, 3),
             ]),
             players: Vec::with_capacity(10),
         }

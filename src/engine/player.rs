@@ -41,7 +41,7 @@ impl RoboPlayer {
     pub fn to_raise(&self, game: &Game) -> u32 {
         // let min = self.to_call(game);
         // let max = self.to_shove(game);
-        5
+        1
     }
 
     fn seat<'a>(&self, game: &'a Game) -> &'a Seat {
