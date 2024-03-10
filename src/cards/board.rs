@@ -4,7 +4,7 @@ pub enum Street {
     Flop,
     Turn,
     River,
-    Showdown,
+    // Showdown,
 }
 
 impl Display for Street {
@@ -14,7 +14,7 @@ impl Display for Street {
             Street::Flop => write!(f, "Flop"),
             Street::Turn => write!(f, "Turn"),
             Street::River => write!(f, "River"),
-            Street::Showdown => write!(f, "Showdown"),
+            // Street::Showdown => write!(f, "Showdown"),
         }
     }
 }

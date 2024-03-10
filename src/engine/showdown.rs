@@ -49,7 +49,7 @@ impl Showdown {
         self.results
             .iter()
             .map(|p| p.staked)
-            .map(|s| std::cmp::min(s, self.next_stake)) // move prev_* updates to beginning of while loops
+            .map(|s| std::cmp::min(s, self.next_stake))
             .map(|s| s.saturating_sub(self.prev_stake))
             .sum()
     }

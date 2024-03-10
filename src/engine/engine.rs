@@ -1,5 +1,5 @@
 pub struct Engine {
-    hand: Game,
+    hand: Hand,
     players: Vec<Box<dyn Player>>,
     n_hands: u32,
 }
@@ -7,7 +7,7 @@ pub struct Engine {
 impl Engine {
     pub fn new() -> Self {
         Engine {
-            hand: Game::new(vec![
+            hand: Hand::new(vec![
                 Seat::new(1_000, 0),
                 Seat::new(1_000, 1),
                 Seat::new(1_000, 2),
@@ -34,7 +34,7 @@ impl Engine {
     pub fn play(&mut self) {
         let game = &mut self.hand;
         'hands: loop {
-            game.begin_hand();
+            game.start_hand();
             'streets: loop {
                 game.begin_street();
                 'players: loop {
@@ -59,4 +59,4 @@ impl Engine {
     }
 }
 
-use super::{action::Player, game::Game, player::RoboPlayer, seat::Seat};
+use super::{game::Hand, player::Player, robo::RoboPlayer, seat::Seat};

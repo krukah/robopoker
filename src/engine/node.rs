@@ -30,7 +30,7 @@ impl Node {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
     }
 
-    pub fn begin_hand(&mut self) {
+    pub fn start_hand(&mut self) {
         self.pot = 0;
         self.board.cards.clear();
         self.board.street = Street::Pre;
@@ -39,7 +39,7 @@ impl Node {
         self.pointer = self.dealer;
         self.advance();
     }
-    pub fn begin_street(&mut self) {
+    pub fn start_street(&mut self) {
         self.counter = 0;
         self.pointer = match self.board.street {
             Street::Pre => self.after(self.after(self.dealer)),

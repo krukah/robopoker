@@ -1,8 +1,3 @@
-pub trait Player {
-    fn id(&self) -> usize;
-    fn act(&self, game: &Game) -> Action;
-}
-
 #[derive(Debug, Clone)]
 pub enum Action {
     Draw(Card),
@@ -28,7 +23,6 @@ impl Display for Action {
     }
 }
 
-use super::game::Game;
 use crate::cards::card::Card;
 use colored::*;
 use std::fmt::{Display, Formatter, Result};

@@ -1,8 +1,10 @@
 pub mod action;
 pub mod engine;
 pub mod game;
+pub mod human;
 pub mod node;
 pub mod payoff;
 pub mod player;
+pub mod robo;
 pub mod seat;
 pub mod showdown;

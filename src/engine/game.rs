@@ -1,19 +1,17 @@
 #[derive(Debug, Clone)]
-pub struct Game {
+pub struct Hand {
     pub bblind: u32,
     pub sblind: u32,
     pub deck: Deck,
     pub tail: Node, // is this useful?
     pub head: Node,
     pub outcomes: Vec<HandResult>,
-    pub players: Vec<RoboPlayer>,
     pub actions: Vec<Action>,
 }
-impl Game {
+impl Hand {
     pub fn new(seats: Vec<Seat>) -> Self {
-        let players: Vec<RoboPlayer> = seats.iter().map(|s| RoboPlayer::new(s)).collect();
         let node = Node::new(seats);
-        Game {
+        Hand {
             sblind: 1,
             bblind: 2,
             actions: Vec::new(),
@@ -21,17 +19,23 @@ impl Game {
             deck: Deck::new(),
             tail: node.clone(),
             head: node,
-            players,
         }
     }
 
-    pub fn begin_hand(&mut self) {
-        self.head.begin_hand();
-        self.deal_players();
+    pub fn start_hand(&mut self) {
+        self.head.start_hand();
+        // deal players
+        for seat in self.head.seats.iter_mut() {
+            let card1 = self.deck.draw().unwrap();
+            let card2 = self.deck.draw().unwrap();
+            seat.hole.cards.clear();
+            seat.hole.cards.push(card1);
+            seat.hole.cards.push(card2);
+        }
         self.post_blinds();
     }
     pub fn begin_street(&mut self) {
-        self.head.begin_street();
+        self.head.start_street();
     }
     pub fn apply(&mut self, action: Action) {
         self.head.apply(action.clone());
@@ -44,22 +48,6 @@ impl Game {
 
     pub fn to_next_hand(&mut self) {
         self.allocate();
-        println!("{}\n---\n", self.head);
-        self.prune();
-        self.reset_hand();
-    }
-    pub fn to_next_street(&mut self) {
-        self.deal_board();
-        self.reset_street();
-    }
-    pub fn to_next_player(&mut self) {
-        let seat = self.head.next();
-        let player = self.players.iter().find(|p| p.id() == seat.id).unwrap();
-        let action = player.act(&self);
-        self.apply(action);
-    }
-
-    fn reset_hand(&mut self) {
         for seat in &mut self.head.seats {
             seat.status = BetStatus::Playing;
             seat.stuck = 0;
@@ -69,29 +57,10 @@ impl Game {
         self.actions.clear();
         self.outcomes.clear();
     }
-    fn reset_street(&mut self) {
-        for seat in &mut self.head.seats {
+    pub fn to_next_street(&mut self) {
+        for seat in self.head.seats.iter_mut() {
             seat.stuck = 0;
         }
-    }
-
-    fn post_blinds(&mut self) {
-        // todo!() handle all in case. check if stack > blind ? Post : Shove
-        self.apply(Action::Blind(self.head.next().id, self.sblind));
-        self.apply(Action::Blind(self.head.next().id, self.bblind));
-        self.head.counter = 0;
-    }
-    fn deal_players(&mut self) {
-        // engine
-        for player in self.players.iter_mut() {
-            let card1 = self.deck.draw().unwrap();
-            let card2 = self.deck.draw().unwrap();
-            player.hole.cards.clear();
-            player.hole.cards.push(card1);
-            player.hole.cards.push(card2);
-        }
-    }
-    fn deal_board(&mut self) {
         match self.head.board.street {
             Street::Pre => {
                 let card1 = self.deck.draw().unwrap();
@@ -115,8 +84,23 @@ impl Game {
                 self.apply(Action::Draw(card));
                 println!("RIVER  {}", card)
             }
-            _ => (),
+            Street::River => {
+                println!("SHOWDOWN")
+            }
         }
+    }
+    pub fn to_next_player(&mut self) {
+        let seat = self.head.next();
+        let player = self.players.iter().find(|p| p.id() == seat.id).unwrap();
+        let action = player.act(&self);
+        self.apply(action);
+    }
+
+    fn post_blinds(&mut self) {
+        // todo!() handle all in case. check if stack > blind ? Post : Shove
+        self.apply(Action::Blind(self.head.next().id, self.sblind));
+        self.apply(Action::Blind(self.head.next().id, self.bblind));
+        self.head.counter = 0;
     }
 
     fn allocate(&mut self) {
@@ -130,12 +114,7 @@ impl Game {
                 .unwrap();
             seat.stack += result.reward;
         }
-    }
-    fn prune(&mut self) {
-        // TODO: do some shifting for rotating positions as players come in and out?
-        self.head.seats.retain(|s| s.stack >= self.bblind);
-        self.players
-            .retain(|p| self.head.seats.iter().any(|s| s.id == p.id));
+        println!("{}\n---\n", self.head);
     }
 
     fn showdown(&self) -> Vec<HandResult> {
@@ -159,7 +138,8 @@ impl Game {
 
     fn results(&self) -> Vec<HandResult> {
         let mut results = self
-            .players
+            .head
+            .seats
             .iter()
             .map(|p| HandResult {
                 id: p.id,
@@ -208,10 +188,9 @@ impl Game {
 }
 
 use super::{
-    action::{Action, Player},
+    action::Action,
     node::Node,
     payoff::HandResult,
-    player::RoboPlayer,
     seat::{BetStatus, Seat},
     showdown::Showdown,
 };
