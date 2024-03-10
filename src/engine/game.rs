@@ -44,8 +44,8 @@ impl Game {
 
     pub fn to_next_hand(&mut self) {
         self.allocate();
-        self.prune();
         println!("{}\n---\n", self.head);
+        self.prune();
         self.reset_hand();
     }
     pub fn to_next_street(&mut self) {
@@ -131,42 +131,11 @@ impl Game {
             seat.stack += result.reward;
         }
     }
-
     fn prune(&mut self) {
         // TODO: do some shifting for rotating positions as players come in and out?
         self.head.seats.retain(|s| s.stack >= self.bblind);
         self.players
             .retain(|p| self.head.seats.iter().any(|s| s.id == p.id));
-    }
-
-    fn status(&self, id: usize) -> BetStatus {
-        self.head.seats.iter().find(|s| s.id == id).unwrap().status
-    }
-    fn staked(&self, id: usize) -> u32 {
-        self.actions
-            .iter()
-            .filter(|a| match a {
-                Action::Call(id_, _)
-                | Action::Blind(id_, _)
-                | Action::Raise(id_, _)
-                | Action::Shove(id_, _) => *id_ == id,
-                _ => false,
-            })
-            .map(|a| match a {
-                Action::Call(_, bet)
-                | Action::Blind(_, bet)
-                | Action::Raise(_, bet)
-                | Action::Shove(_, bet) => *bet,
-                _ => 0,
-            })
-            .sum()
-        // O(n) in actions
-    }
-    fn rank(&self, _id: usize) -> u32 {
-        rand::thread_rng().gen::<u32>() % 32
-    }
-    fn priority(&self, id: usize) -> u32 {
-        (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
     }
 
     fn showdown(&self) -> Vec<HandResult> {
@@ -194,7 +163,7 @@ impl Game {
             .iter()
             .map(|p| HandResult {
                 id: p.id,
-                score: self.rank(p.id),
+                score: self.score(p.id),
                 status: self.status(p.id),
                 staked: self.staked(p.id),
                 reward: 0,
@@ -206,6 +175,35 @@ impl Game {
             x.cmp(&y)
         });
         results
+    }
+    fn status(&self, id: usize) -> BetStatus {
+        self.head.seats.iter().find(|s| s.id == id).unwrap().status
+    }
+    fn staked(&self, id: usize) -> u32 {
+        self.actions
+            .iter()
+            .filter(|a| match a {
+                Action::Call(id_, _)
+                | Action::Blind(id_, _)
+                | Action::Raise(id_, _)
+                | Action::Shove(id_, _) => *id_ == id,
+                _ => false,
+            })
+            .map(|a| match a {
+                Action::Call(_, bet)
+                | Action::Blind(_, bet)
+                | Action::Raise(_, bet)
+                | Action::Shove(_, bet) => *bet,
+                _ => 0,
+            })
+            .sum()
+        // O(n) in actions
+    }
+    fn score(&self, _id: usize) -> u32 {
+        rand::thread_rng().gen::<u32>() % 32
+    }
+    fn priority(&self, id: usize) -> u32 {
+        (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
     }
 }
 

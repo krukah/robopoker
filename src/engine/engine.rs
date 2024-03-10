@@ -1,13 +1,13 @@
 pub struct Engine {
-    game: Game,
-    players: Vec<RoboPlayer>,
+    hand: Game,
+    players: Vec<Box<dyn Player>>,
     n_hands: u32,
 }
 
 impl Engine {
     pub fn new() -> Self {
         Engine {
-            game: Game::new(vec![
+            hand: Game::new(vec![
                 Seat::new(1_000, 0),
                 Seat::new(1_000, 1),
                 Seat::new(1_000, 2),
@@ -20,19 +20,19 @@ impl Engine {
 
     pub fn add(&mut self, seat: Seat) {
         println!("ADD  {}\n", seat);
-        self.players.push(RoboPlayer::new(&seat));
-        self.game.head.seats.push(seat);
+        self.players.push(Box::new(RoboPlayer::new(&seat)));
+        self.hand.head.seats.push(seat);
     }
 
     pub fn remove(&mut self, id: usize) {
-        let seat = self.game.head.seats.iter().find(|s| s.id == id).unwrap();
+        let seat = self.hand.head.seats.iter().find(|s| s.id == id).unwrap();
         println!("REMOVE  {}\n", seat);
-        self.players.retain(|p| p.id != id);
-        self.game.head.seats.retain(|s| s.id != id);
+        // self.players.retain(|p| p.id != id);
+        self.hand.head.seats.retain(|s| s.id != id);
     }
 
     pub fn play(&mut self) {
-        let game = &mut self.game;
+        let game = &mut self.hand;
         'hands: loop {
             game.begin_hand();
             'streets: loop {
@@ -59,4 +59,4 @@ impl Engine {
     }
 }
 
-use super::{game::Game, player::RoboPlayer, seat::Seat};
+use super::{action::Player, game::Game, player::RoboPlayer, seat::Seat};

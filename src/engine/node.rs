@@ -124,13 +124,13 @@ impl Node {
         // everyone who isn't folded has matched the bet
         // or all but one player is all in
         let bet = self.table_stuck();
+        let is_first_decision = self.counter == 0;
         let is_one_playing = self
             .seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)
             .count()
             == 1;
-        let is_first_decision = self.counter == 0;
         let has_no_decision = is_first_decision && is_one_playing;
         let has_all_decided = self.counter > self.seats.len();
         let has_all_matched = self
