@@ -1,4 +1,5 @@
 pub trait Player {
+    fn id(&self) -> usize;
     fn act(&self, game: &Game) -> Action;
 }
 

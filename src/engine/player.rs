@@ -106,6 +106,9 @@ impl RoboPlayer {
 }
 
 impl Player for RoboPlayer {
+    fn id(&self) -> usize {
+        self.id
+    }
     fn act(&self, game: &Game) -> Action {
         self.choose(self.policies(game))
     }

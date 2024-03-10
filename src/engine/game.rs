@@ -54,7 +54,7 @@ impl Game {
     }
     pub fn to_next_player(&mut self) {
         let seat = self.head.next();
-        let player = self.players.iter().find(|p| p.id == seat.id).unwrap();
+        let player = self.players.iter().find(|p| p.id() == seat.id).unwrap();
         let action = player.act(&self);
         self.apply(action);
     }
@@ -145,9 +145,9 @@ impl Game {
             next_score: u32::MAX,
             results: self.results(),
         };
-        loop {
+        '_winners: loop {
             showdown.next_score();
-            loop {
+            '_pots: loop {
                 showdown.next_stake();
                 showdown.distribute();
                 if showdown.is_complete() {

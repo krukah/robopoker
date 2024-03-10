@@ -27,7 +27,7 @@ impl Engine {
     pub fn remove(&mut self, id: usize) {
         let seat = self.hand.head.seats.iter().find(|s| s.id == id).unwrap();
         println!("REMOVE  {}\n", seat);
-        // self.players.retain(|p| p.id != id);
+        self.players.retain(|p| p.id() != id);
         self.hand.head.seats.retain(|s| s.id != id);
     }
 
