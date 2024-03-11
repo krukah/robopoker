@@ -1,62 +1,74 @@
 pub struct Engine {
-    hand: Hand,
-    players: Vec<Box<dyn Player>>,
+    players: Vec<Player>,
     n_hands: u32,
 }
 
 impl Engine {
     pub fn new() -> Self {
         Engine {
-            hand: Hand::new(vec![
-                Seat::new(1_000, 0),
-                Seat::new(1_000, 1),
-                Seat::new(1_000, 2),
-                Seat::new(1_000, 3),
-            ]),
             players: Vec::with_capacity(10),
             n_hands: 0,
         }
     }
 
-    pub fn add(&mut self, seat: Seat) {
-        println!("ADD  {}\n", seat);
-        self.players.push(Box::new(RoboPlayer::new(&seat)));
-        self.hand.head.seats.push(seat);
-    }
-
-    pub fn remove(&mut self, id: usize) {
-        let seat = self.hand.head.seats.iter().find(|s| s.id == id).unwrap();
-        println!("REMOVE  {}\n", seat);
-        self.players.retain(|p| p.id() != id);
-        self.hand.head.seats.retain(|s| s.id != id);
-    }
-
-    pub fn play(&mut self) {
-        let game = &mut self.hand;
+    pub fn play(&mut self, hand: &mut Hand) {
         'hands: loop {
-            game.start_hand();
-            'streets: loop {
-                game.begin_street();
-                'players: loop {
-                    if !game.head.has_more_players() {
-                        break 'players;
-                    }
-                    game.to_next_player();
-                    continue 'players;
-                }
-                if !game.head.has_more_streets() {
-                    break 'streets;
-                }
-                game.to_next_street();
-                continue 'streets;
-            }
-            if !game.head.has_more_hands() {
+            if self.has_exhausted_hands(hand) {
                 break 'hands;
             }
-            game.to_next_hand();
-            continue 'hands;
+            self.start_hand(hand);
+            'streets: loop {
+                if self.has_exhausted_streets(hand) {
+                    break 'streets;
+                }
+                self.start_street(hand);
+                'turns: loop {
+                    if self.has_exhausted_turns(hand) {
+                        break 'turns;
+                    }
+                    self.end_turn(hand);
+                }
+                self.end_street(hand);
+            }
+            self.end_hand(hand);
         }
+    }
+
+    fn start_street(&self, hand: &mut Hand) {
+        hand.head.beg_street();
+    }
+    fn start_hand(&self, hand: &mut Hand) {
+        println!("HAND  {}\n", self.n_hands);
+        hand.beg_hand();
+        hand.head.beg_hand();
+        hand.post_blinds();
+        hand.deal_holes();
+    }
+
+    fn end_turn(&self, hand: &mut Hand) {
+        let seat = hand.head.next();
+        let action = seat.player.act(seat, hand);
+        hand.apply(action);
+    }
+    fn end_street(&self, hand: &mut Hand) {
+        hand.head.end_street();
+        hand.deal_board();
+    }
+    fn end_hand(&mut self, hand: &mut Hand) {
+        self.n_hands += 1;
+        hand.settle();
+        println!("{}", hand.head);
+    }
+
+    fn has_exhausted_turns(&self, hand: &Hand) -> bool {
+        !hand.head.has_more_players()
+    }
+    fn has_exhausted_streets(&self, hand: &Hand) -> bool {
+        !hand.head.has_more_streets()
+    }
+    fn has_exhausted_hands(&self, hand: &Hand) -> bool {
+        !hand.head.has_more_hands() || self.n_hands > 10000
     }
 }
 
-use super::{game::Hand, player::Player, robo::RoboPlayer, seat::Seat};
+use super::{game::Hand, player::Player};

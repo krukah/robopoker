@@ -21,54 +21,13 @@ impl Node {
     }
 
     pub fn has_more_hands(&self) -> bool {
-        self.seats.iter().filter(|s| s.stack > 2).count() > 1
+        self.seats.iter().filter(|s| s.stack > 2).count() == 4
     }
     pub fn has_more_streets(&self) -> bool {
         !(self.are_all_folded() || (!self.has_more_players() && self.board.street == Street::River))
     }
     pub fn has_more_players(&self) -> bool {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
-    }
-
-    pub fn start_hand(&mut self) {
-        self.pot = 0;
-        self.board.cards.clear();
-        self.board.street = Street::Pre;
-        self.counter = 0;
-        self.dealer = self.after(self.dealer);
-        self.pointer = self.dealer;
-        self.advance();
-    }
-    pub fn start_street(&mut self) {
-        self.counter = 0;
-        self.pointer = match self.board.street {
-            Street::Pre => self.after(self.after(self.dealer)),
-            _ => self.dealer,
-        };
-        self.advance();
-    }
-    pub fn apply(&mut self, action: Action) {
-        let seat = self.seats.get_mut(self.pointer).unwrap();
-        match action {
-            Action::Call(_, bet)
-            | Action::Blind(_, bet)
-            | Action::Raise(_, bet)
-            | Action::Shove(_, bet) => {
-                self.pot += bet;
-                seat.stuck += bet;
-                seat.stack -= bet;
-            }
-            _ => (),
-        }
-        match action {
-            Action::Fold(..) => seat.status = BetStatus::Folded,
-            Action::Shove(..) => seat.status = BetStatus::Shoved,
-            _ => (),
-        }
-        match action {
-            Action::Draw(card) => self.board.push(card.clone()),
-            _ => self.advance(),
-        }
     }
 
     pub fn next(&self) -> &Seat {
@@ -82,27 +41,13 @@ impl Node {
     }
 
     pub fn table_stack(&self) -> u32 {
-        let mut totals: Vec<u32> = self.seats.iter().map(|s| s.stack + s.stuck).collect();
+        let mut totals: Vec<u32> = self.seats.iter().map(|s| s.stack + s.stake).collect();
         totals.sort();
         totals.pop().unwrap_or(0);
         totals.pop().unwrap_or(0)
     }
-    pub fn table_stuck(&self) -> u32 {
-        self.seats.iter().map(|s| s.stuck).max().unwrap()
-    }
-
-    fn advance(&mut self) {
-        'left: loop {
-            if self.has_more_players() {
-                self.counter += 1;
-                self.pointer = self.after(self.pointer);
-                match self.next().status {
-                    BetStatus::Playing => return,
-                    BetStatus::Folded | BetStatus::Shoved => continue 'left,
-                }
-            }
-            return;
-        }
+    pub fn table_stake(&self) -> u32 {
+        self.seats.iter().map(|s| s.stake).max().unwrap()
     }
 
     pub fn are_all_folded(&self) -> bool {
@@ -123,7 +68,7 @@ impl Node {
     pub fn are_all_called(&self) -> bool {
         // everyone who isn't folded has matched the bet
         // or all but one player is all in
-        let bet = self.table_stuck();
+        let bet = self.table_stake();
         let is_first_decision = self.counter == 0;
         let is_one_playing = self
             .seats
@@ -137,22 +82,87 @@ impl Node {
             .seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)
-            .all(|s| s.stuck == bet);
+            .all(|s| s.stake == bet);
         (has_all_decided || has_no_decision) && has_all_matched
+    }
+}
+
+// mutables
+impl Node {
+    pub fn add(&mut self, seat: Seat) {
+        self.seats.push(seat);
+    }
+    pub fn apply(&mut self, action: Action) {
+        let seat = self.seats.get_mut(self.pointer).unwrap();
+        // bets entail pot and stack change
+        match action {
+            Action::Call(_, bet)
+            | Action::Blind(_, bet)
+            | Action::Raise(_, bet)
+            | Action::Shove(_, bet) => {
+                self.pot += bet;
+                seat.stake += bet;
+                seat.stack -= bet;
+            }
+            _ => (),
+        }
+        // folds and all-ins entail status change
+        match action {
+            Action::Fold(..) => seat.status = BetStatus::Folded,
+            Action::Shove(..) => seat.status = BetStatus::Shoved,
+            _ => (),
+        }
+        // player actions entail rotation
+        match action {
+            Action::Draw(card) => self.board.push(card.clone()),
+            _ => self.rotate(),
+        }
+    }
+    pub fn beg_hand(&mut self) {
+        self.pot = 0;
+        self.board.cards.clear();
+        self.board.street = Street::Pre;
+        self.counter = 0;
+        self.dealer = self.after(self.dealer);
+        self.pointer = self.dealer;
+        self.rotate();
+    }
+    pub fn beg_street(&mut self) {
+        self.counter = 0;
+        self.pointer = match self.board.street {
+            Street::Pre => self.after(self.after(self.dealer)),
+            _ => self.dealer,
+        };
+        self.rotate();
+    }
+    pub fn end_street(&mut self) {
+        for seat in self.seats.iter_mut() {
+            seat.stake = 0;
+        }
+    }
+    fn rotate(&mut self) {
+        'left: loop {
+            if !self.has_more_players() {
+                return;
+            }
+            self.counter += 1;
+            self.pointer = self.after(self.pointer);
+            match self.next().status {
+                BetStatus::Playing => return,
+                BetStatus::Folded | BetStatus::Shoved => continue 'left,
+            }
+        }
     }
 }
 
 impl Display for Node {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "\nPot:   {}", self.pot)?;
-        write!(f, "\nBoard: ")?;
-        for card in &self.board.cards {
-            write!(f, "{}  ", card)?;
-        }
+        write!(f, "Pot:   {}\n", self.pot)?;
+        write!(f, "Board: {}", self.board)?;
         for seat in &self.seats {
-            write!(f, "{}  ", seat)?;
+            write!(f, "{}", seat)?;
         }
-        write!(f, "\n")
+        write!(f, "")
     }
 }
 

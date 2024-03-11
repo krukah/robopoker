@@ -11,15 +11,26 @@ impl Showdown {
         let reward = self.results.iter().map(|p| p.reward).sum::<u32>();
         staked == reward
     }
+    fn winnings(&self) -> u32 {
+        self.results
+            .iter()
+            .map(|p| p.staked)
+            .map(|s| std::cmp::min(s, self.next_stake))
+            .map(|s| s.saturating_sub(self.prev_stake))
+            .sum()
+    }
+}
+// mutables
+impl Showdown {
     pub fn distribute(&mut self) {
         let winnings = self.winnings();
         let mut winners = self.winners();
         let share = winnings / winners.len() as u32;
-        let remainder = winnings as usize % winners.len();
         for winner in winners.iter_mut() {
             winner.reward += share;
         }
-        for winner in winners.iter_mut().take(remainder as usize) {
+        let remainder = winnings as usize % winners.len();
+        for winner in winners.iter_mut().take(remainder) {
             winner.reward += 1;
         }
     }
@@ -44,14 +55,6 @@ impl Showdown {
             .map(|p| p.score)
             .max()
             .unwrap();
-    }
-    fn winnings(&self) -> u32 {
-        self.results
-            .iter()
-            .map(|p| p.staked)
-            .map(|s| std::cmp::min(s, self.next_stake))
-            .map(|s| s.saturating_sub(self.prev_stake))
-            .sum()
     }
     fn winners(&mut self) -> Vec<&mut HandResult> {
         self.results

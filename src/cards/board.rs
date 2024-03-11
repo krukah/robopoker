@@ -38,5 +38,14 @@ impl Board {
     }
 }
 
+impl Display for Board {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        for card in &self.cards {
+            write!(f, "{}  ", card)?;
+        }
+        write!(f, "\n")
+    }
+}
+
 use super::card::Card;
 use std::fmt::{Display, Formatter, Result};

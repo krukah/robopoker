@@ -22,108 +22,8 @@ impl Hand {
         }
     }
 
-    pub fn start_hand(&mut self) {
-        self.head.start_hand();
-        // deal players
-        for seat in self.head.seats.iter_mut() {
-            let card1 = self.deck.draw().unwrap();
-            let card2 = self.deck.draw().unwrap();
-            seat.hole.cards.clear();
-            seat.hole.cards.push(card1);
-            seat.hole.cards.push(card2);
-        }
-        self.post_blinds();
-    }
-    pub fn begin_street(&mut self) {
-        self.head.start_street();
-    }
-    pub fn apply(&mut self, action: Action) {
-        self.head.apply(action.clone());
-        self.actions.push(action.clone());
-        match action {
-            Action::Draw(_) => (),
-            _ => println!("{action}"),
-        }
-    }
-
-    pub fn to_next_hand(&mut self) {
-        self.allocate();
-        for seat in &mut self.head.seats {
-            seat.status = BetStatus::Playing;
-            seat.stuck = 0;
-        }
-        self.tail = self.head.clone();
-        self.deck = Deck::new();
-        self.actions.clear();
-        self.outcomes.clear();
-    }
-    pub fn to_next_street(&mut self) {
-        for seat in self.head.seats.iter_mut() {
-            seat.stuck = 0;
-        }
-        match self.head.board.street {
-            Street::Pre => {
-                let card1 = self.deck.draw().unwrap();
-                let card2 = self.deck.draw().unwrap();
-                let card3 = self.deck.draw().unwrap();
-                self.head.board.street = Street::Flop;
-                self.apply(Action::Draw(card1));
-                self.apply(Action::Draw(card2));
-                self.apply(Action::Draw(card3));
-                println!("FLOP   {} {} {}", card1, card2, card3);
-            }
-            Street::Flop => {
-                let card = self.deck.draw().unwrap();
-                self.head.board.street = Street::Turn;
-                self.apply(Action::Draw(card));
-                println!("TURN   {}", card)
-            }
-            Street::Turn => {
-                let card = self.deck.draw().unwrap();
-                self.head.board.street = Street::River;
-                self.apply(Action::Draw(card));
-                println!("RIVER  {}", card)
-            }
-            Street::River => {
-                println!("SHOWDOWN")
-            }
-        }
-    }
-    pub fn to_next_player(&mut self) {
-        let seat = self.head.next();
-        let player = self.players.iter().find(|p| p.id() == seat.id).unwrap();
-        let action = player.act(&self);
-        self.apply(action);
-    }
-
-    fn post_blinds(&mut self) {
-        // todo!() handle all in case. check if stack > blind ? Post : Shove
-        self.apply(Action::Blind(self.head.next().id, self.sblind));
-        self.apply(Action::Blind(self.head.next().id, self.bblind));
-        self.head.counter = 0;
-    }
-
-    fn allocate(&mut self) {
-        let results = self.showdown();
-        for result in results {
-            let seat = self
-                .head
-                .seats
-                .iter_mut()
-                .find(|s| s.id == result.id)
-                .unwrap();
-            seat.stack += result.reward;
-        }
-        println!("{}\n---\n", self.head);
-    }
-
-    fn showdown(&self) -> Vec<HandResult> {
-        let mut showdown = Showdown {
-            next_stake: u32::MIN,
-            prev_stake: u32::MIN,
-            next_score: u32::MAX,
-            results: self.results(),
-        };
+    fn results(&self) -> Vec<HandResult> {
+        let mut showdown = self.showdown();
         '_winners: loop {
             showdown.next_score();
             '_pots: loop {
@@ -135,8 +35,7 @@ impl Hand {
             }
         }
     }
-
-    fn results(&self) -> Vec<HandResult> {
+    fn showdown(&self) -> Showdown {
         let mut results = self
             .head
             .seats
@@ -154,7 +53,12 @@ impl Hand {
             let y = self.priority(b.id);
             x.cmp(&y)
         });
-        results
+        Showdown {
+            next_stake: u32::MIN,
+            prev_stake: u32::MIN,
+            next_score: u32::MAX,
+            results,
+        }
     }
     fn status(&self, id: usize) -> BetStatus {
         self.head.seats.iter().find(|s| s.id == id).unwrap().status
@@ -177,13 +81,96 @@ impl Hand {
                 _ => 0,
             })
             .sum()
-        // O(n) in actions
     }
     fn score(&self, _id: usize) -> u32 {
         rand::thread_rng().gen::<u32>() % 32
     }
     fn priority(&self, id: usize) -> u32 {
+        // TODO: misuse of ID as position
         (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
+    }
+}
+impl Hand {
+    pub fn apply(&mut self, action: Action) {
+        self.head.apply(action.clone());
+        self.actions.push(action.clone());
+        match action {
+            Action::Draw(_) => (),
+            _ => println!("{action}"),
+        }
+    }
+
+    pub fn beg_hand(&mut self) {
+        for seat in self.head.seats.iter_mut() {
+            seat.status = BetStatus::Playing;
+            seat.stake = 0;
+        }
+        self.tail = self.head.clone();
+        self.deck = Deck::new();
+        self.outcomes.clear();
+        self.actions.clear();
+    }
+
+    pub fn settle(&mut self) {
+        for result in self.results() {
+            let seat = self
+                .head
+                .seats
+                .iter_mut()
+                .find(|s| s.id == result.id)
+                .unwrap();
+            seat.stack += result.reward;
+        }
+    }
+
+    pub fn post_blinds(&mut self) {
+        self.apply(Action::Blind(self.head.next().id, self.sblind));
+        self.apply(Action::Blind(self.head.next().id, self.bblind));
+        self.head.counter = 0;
+    }
+
+    pub fn deal_holes(&mut self) {
+        for player in self.head.seats.iter_mut().map(|s| &mut s.player) {
+            match player {
+                Player::Human(hole) | Player::Robot(hole) => {
+                    let card1 = self.deck.draw().unwrap();
+                    let card2 = self.deck.draw().unwrap();
+                    hole.cards.clear();
+                    hole.cards.push(card1);
+                    hole.cards.push(card2);
+                }
+            }
+        }
+    }
+
+    pub fn deal_board(&mut self) {
+        match self.head.board.street {
+            Street::Pre => {
+                self.head.board.street = Street::Flop;
+                let card1 = self.deck.draw().unwrap();
+                let card2 = self.deck.draw().unwrap();
+                let card3 = self.deck.draw().unwrap();
+                self.apply(Action::Draw(card1));
+                self.apply(Action::Draw(card2));
+                self.apply(Action::Draw(card3));
+                println!("FLOP   {} {} {}", card1, card2, card3);
+            }
+            Street::Flop => {
+                self.head.board.street = Street::Turn;
+                let card = self.deck.draw().unwrap();
+                self.apply(Action::Draw(card));
+                println!("TURN   {}", card)
+            }
+            Street::Turn => {
+                self.head.board.street = Street::River;
+                let card = self.deck.draw().unwrap();
+                self.apply(Action::Draw(card));
+                println!("RIVER  {}", card)
+            }
+            Street::River => {
+                println!("SHOWDOWN")
+            }
+        }
     }
 }
 
@@ -191,6 +178,7 @@ use super::{
     action::Action,
     node::Node,
     payoff::HandResult,
+    player::Player,
     seat::{BetStatus, Seat},
     showdown::Showdown,
 };
