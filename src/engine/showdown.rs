@@ -6,14 +6,14 @@ pub struct Showdown {
 }
 
 impl Showdown {
-    pub fn results(&mut self) -> Vec<HandResult> {
+    pub fn results(mut self) -> Vec<HandResult> {
         loop {
             self.next_score();
             loop {
                 self.next_stake();
                 self.distribute();
                 if self.is_complete() {
-                    return self.results.clone();
+                    return self.results;
                 }
             }
         }

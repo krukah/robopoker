@@ -1,15 +1,10 @@
-#[derive(Clone, Debug)]
-pub enum Player {
-    Human(Hole),
-    Robot(Hole),
+pub struct Robot;
+
+pub trait Actor: Debug {
+    fn act(&self, seat: &Seat, hand: &Hand) -> Action;
 }
 
-impl Player {
-    pub fn act(&self, seat: &Seat, hand: &Hand) -> Action {
-        let policies = self.policies(seat, hand);
-        self.choose(policies)
-    }
-
+impl Robot {
     fn weight(&self, action: Action) -> u32 {
         match action {
             Action::Fold(_) => 15,
@@ -45,6 +40,20 @@ impl Player {
     }
 }
 
-use super::{action::Action, game::Hand, seat::Seat};
-use crate::{cards::hole::Hole, solver::policy::Policy};
+impl Actor for Robot {
+    fn act(&self, seat: &Seat, hand: &Hand) -> Action {
+        let policies = self.policies(seat, hand);
+        self.choose(policies)
+    }
+}
+
+impl Debug for Robot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Player")
+    }
+}
+
+use super::{action::Action, hand::Hand, seat::Seat};
+use crate::solver::policy::Policy;
 use rand::{thread_rng, Rng};
+use std::fmt::Debug;

@@ -1,6 +1,6 @@
 pub mod action;
 pub mod engine;
-pub mod game;
+pub mod hand;
 pub mod node;
 pub mod payoff;
 pub mod player;

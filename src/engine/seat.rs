@@ -1,56 +1,44 @@
 #[derive(Debug, Clone)]
 pub struct Seat {
-    pub id: usize,
-    pub stake: u32,
+    pub index: usize,
     pub stack: u32,
+    pub stake: u32,
     pub status: BetStatus,
-    pub player: Player,
+    pub actor: Rc<dyn Actor>, // Weak ?
+    pub hole: Hole,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BetStatus {
-    Playing,
-    Shoved,
-    Folded,
-}
-
-impl Display for BetStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            BetStatus::Playing => write!(f, "P"),
-            BetStatus::Shoved => write!(f, "S"),
-            BetStatus::Folded => write!(f, "F"),
-        }
-    }
-}
-
 impl Seat {
-    pub fn new(stack: u32, position: usize) -> Seat {
+    pub fn new(actor: Rc<dyn Actor>, stack: u32, position: usize) -> Seat {
         Seat {
-            id: position,
-            player: Player::Robot(Hole::new()),
+            index: position,
             stack,
             stake: 0,
             status: BetStatus::Playing,
+            hole: Hole::new(),
+            actor,
         }
+    }
+
+    pub fn cards(&self) -> &Hole {
+        &self.hole
     }
 
     pub fn valid_actions(&self, hand: &Hand) -> Vec<Action> {
         let mut actions = Vec::with_capacity(5);
         if self.can_check(hand) {
-            actions.push(Action::Check(self.id));
+            actions.push(Action::Check(self.index));
         }
         if self.can_fold(hand) {
-            actions.push(Action::Fold(self.id));
+            actions.push(Action::Fold(self.index));
         }
         if self.can_call(hand) {
-            actions.push(Action::Call(self.id, self.to_call(hand)));
+            actions.push(Action::Call(self.index, self.to_call(hand)));
         }
         if self.can_shove(hand) {
-            actions.push(Action::Shove(self.id, self.to_shove(hand)));
+            actions.push(Action::Shove(self.index, self.to_shove(hand)));
         }
         if self.can_raise(hand) {
-            actions.push(Action::Raise(self.id, self.to_raise(hand)));
+            actions.push(Action::Raise(self.index, self.to_raise(hand)));
         }
         actions
     }
@@ -83,19 +71,36 @@ impl Seat {
 }
 impl Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let (card1, card2) = match &self.player {
-            Player::Human(hole) | Player::Robot(hole) => {
-                (hole.cards.get(0).unwrap(), hole.cards.get(1).unwrap())
-            }
-        };
+        let card1 = self.hole.cards.get(0).unwrap();
+        let card2 = self.hole.cards.get(1).unwrap();
         write!(
             f,
             "{:<3}{}   {}  {} {:>7}  \n",
-            self.id, self.status, card1, card2, self.stack,
+            self.index, self.status, card1, card2, self.stack,
         )
     }
 }
 
-use super::{action::Action, game::Hand, player::Player};
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BetStatus {
+    Playing,
+    Shoved,
+    Folded,
+}
+
+impl Display for BetStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            BetStatus::Playing => write!(f, "P"),
+            BetStatus::Shoved => write!(f, "S"),
+            BetStatus::Folded => write!(f, "F"),
+        }
+    }
+}
+
+use super::{action::Action, hand::Hand, player::Actor};
 use crate::cards::hole::Hole;
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    rc::Rc,
+};

@@ -22,75 +22,9 @@ impl Hand {
         }
     }
 
-    fn results(&self) -> Vec<HandResult> {
-        let mut showdown = self.showdown();
-        '_winners: loop {
-            showdown.next_score();
-            '_pots: loop {
-                showdown.next_stake();
-                showdown.distribute();
-                if showdown.is_complete() {
-                    return showdown.results;
-                }
-            }
-        }
+    pub fn add(seat: Seat) {
+        todo!()
     }
-    fn showdown(&self) -> Showdown {
-        let mut results = self
-            .head
-            .seats
-            .iter()
-            .map(|p| HandResult {
-                id: p.id,
-                score: self.score(p.id),
-                status: self.status(p.id),
-                staked: self.staked(p.id),
-                reward: 0,
-            })
-            .collect::<Vec<HandResult>>();
-        results.sort_by(|a, b| {
-            let x = self.priority(a.id);
-            let y = self.priority(b.id);
-            x.cmp(&y)
-        });
-        Showdown {
-            next_stake: u32::MIN,
-            prev_stake: u32::MIN,
-            next_score: u32::MAX,
-            results,
-        }
-    }
-    fn status(&self, id: usize) -> BetStatus {
-        self.head.seats.iter().find(|s| s.id == id).unwrap().status
-    }
-    fn staked(&self, id: usize) -> u32 {
-        self.actions
-            .iter()
-            .filter(|a| match a {
-                Action::Call(id_, _)
-                | Action::Blind(id_, _)
-                | Action::Raise(id_, _)
-                | Action::Shove(id_, _) => *id_ == id,
-                _ => false,
-            })
-            .map(|a| match a {
-                Action::Call(_, bet)
-                | Action::Blind(_, bet)
-                | Action::Raise(_, bet)
-                | Action::Shove(_, bet) => *bet,
-                _ => 0,
-            })
-            .sum()
-    }
-    fn score(&self, _id: usize) -> u32 {
-        rand::thread_rng().gen::<u32>() % 32
-    }
-    fn priority(&self, id: usize) -> u32 {
-        // TODO: misuse of ID as position
-        (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
-    }
-}
-impl Hand {
     pub fn apply(&mut self, action: Action) {
         self.head.apply(action.clone());
         self.actions.push(action.clone());
@@ -112,34 +46,28 @@ impl Hand {
     }
 
     pub fn settle(&mut self) {
-        for result in self.results() {
+        for result in self.showdown().results() {
             let seat = self
                 .head
                 .seats
                 .iter_mut()
-                .find(|s| s.id == result.id)
+                .find(|s| s.index == result.id)
                 .unwrap();
             seat.stack += result.reward;
         }
     }
 
     pub fn post_blinds(&mut self) {
-        self.apply(Action::Blind(self.head.next().id, self.sblind));
-        self.apply(Action::Blind(self.head.next().id, self.bblind));
+        self.apply(Action::Blind(self.head.next().index, self.sblind));
+        self.apply(Action::Blind(self.head.next().index, self.bblind));
         self.head.counter = 0;
     }
 
     pub fn deal_holes(&mut self) {
-        for player in self.head.seats.iter_mut().map(|s| &mut s.player) {
-            match player {
-                Player::Human(hole) | Player::Robot(hole) => {
-                    let card1 = self.deck.draw().unwrap();
-                    let card2 = self.deck.draw().unwrap();
-                    hole.cards.clear();
-                    hole.cards.push(card1);
-                    hole.cards.push(card2);
-                }
-            }
+        for hole in self.head.seats.iter_mut().map(|s| &mut s.hole) {
+            hole.cards.clear();
+            hole.cards.push(self.deck.draw().unwrap());
+            hole.cards.push(self.deck.draw().unwrap());
         }
     }
 
@@ -172,13 +100,65 @@ impl Hand {
             }
         }
     }
+
+    fn showdown(&self) -> Showdown {
+        let mut results = self
+            .head
+            .seats
+            .iter()
+            .map(|s| HandResult {
+                id: s.index,
+                score: self.score(s.index),
+                staked: self.staked(s.index),
+                status: s.status,
+                reward: 0,
+            })
+            .collect::<Vec<HandResult>>();
+        results.sort_by(|a, b| {
+            let x = self.priority(a.id);
+            let y = self.priority(b.id);
+            x.cmp(&y)
+        });
+        Showdown {
+            next_stake: u32::MIN,
+            prev_stake: u32::MIN,
+            next_score: u32::MAX,
+            results,
+        }
+    }
+
+    fn staked(&self, id: usize) -> u32 {
+        self.actions
+            .iter()
+            .filter(|a| match a {
+                Action::Call(id_, _)
+                | Action::Blind(id_, _)
+                | Action::Raise(id_, _)
+                | Action::Shove(id_, _) => *id_ == id,
+                _ => false,
+            })
+            .map(|a| match a {
+                Action::Call(_, bet)
+                | Action::Blind(_, bet)
+                | Action::Raise(_, bet)
+                | Action::Shove(_, bet) => *bet,
+                _ => 0,
+            })
+            .sum()
+    }
+    fn score(&self, _id: usize) -> u32 {
+        rand::thread_rng().gen::<u32>() % 32
+    }
+    fn priority(&self, id: usize) -> u32 {
+        // TODO: misuse of ID as position
+        (id.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
+    }
 }
 
 use super::{
     action::Action,
     node::Node,
     payoff::HandResult,
-    player::Player,
     seat::{BetStatus, Seat},
     showdown::Showdown,
 };
