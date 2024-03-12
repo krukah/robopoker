@@ -6,7 +6,20 @@ pub struct Showdown {
 }
 
 impl Showdown {
-    pub fn is_complete(&self) -> bool {
+    pub fn results(&mut self) -> Vec<HandResult> {
+        loop {
+            self.next_score();
+            loop {
+                self.next_stake();
+                self.distribute();
+                if self.is_complete() {
+                    return self.results.clone();
+                }
+            }
+        }
+    }
+
+    fn is_complete(&self) -> bool {
         let staked = self.results.iter().map(|p| p.staked).sum::<u32>();
         let reward = self.results.iter().map(|p| p.reward).sum::<u32>();
         staked == reward
@@ -19,10 +32,7 @@ impl Showdown {
             .map(|s| s.saturating_sub(self.prev_stake))
             .sum()
     }
-}
-// mutables
-impl Showdown {
-    pub fn distribute(&mut self) {
+    fn distribute(&mut self) {
         let winnings = self.winnings();
         let mut winners = self.winners();
         let share = winnings / winners.len() as u32;
@@ -34,7 +44,7 @@ impl Showdown {
             winner.reward += 1;
         }
     }
-    pub fn next_stake(&mut self) {
+    fn next_stake(&mut self) {
         self.prev_stake = self.next_stake;
         self.next_stake = self
             .results
@@ -46,7 +56,7 @@ impl Showdown {
             .min()
             .unwrap();
     }
-    pub fn next_score(&mut self) {
+    fn next_score(&mut self) {
         self.next_score = self
             .results
             .iter()

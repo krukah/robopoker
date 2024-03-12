@@ -34,14 +34,18 @@ impl Node {
         self.seats.get(self.pointer).unwrap()
     }
     pub fn seat(&self, id: usize) -> &Seat {
-        self.seats.iter().find(|s| s.id == id).unwrap()
+        self.seats.iter().find(|s| s.index == id).unwrap()
     }
     pub fn after(&self, index: usize) -> usize {
         (index + 1) % self.seats.len()
     }
 
     pub fn table_stack(&self) -> u32 {
-        let mut totals: Vec<u32> = self.seats.iter().map(|s| s.stack + s.stake).collect();
+        let mut totals = self
+            .seats
+            .iter()
+            .map(|s| s.stack + s.stake)
+            .collect::<Vec<u32>>();
         totals.sort();
         totals.pop().unwrap_or(0);
         totals.pop().unwrap_or(0)
@@ -68,7 +72,7 @@ impl Node {
     pub fn are_all_called(&self) -> bool {
         // everyone who isn't folded has matched the bet
         // or all but one player is all in
-        let bet = self.table_stake();
+        let stakes = self.table_stake();
         let is_first_decision = self.counter == 0;
         let is_one_playing = self
             .seats
@@ -82,7 +86,7 @@ impl Node {
             .seats
             .iter()
             .filter(|s| s.status == BetStatus::Playing)
-            .all(|s| s.stake == bet);
+            .all(|s| s.stake == stakes);
         (has_all_decided || has_no_decision) && has_all_matched
     }
 }
@@ -118,7 +122,7 @@ impl Node {
             _ => self.rotate(),
         }
     }
-    pub fn beg_hand(&mut self) {
+    pub fn start_hand(&mut self) {
         self.pot = 0;
         self.board.cards.clear();
         self.board.street = Street::Pre;
@@ -127,7 +131,7 @@ impl Node {
         self.pointer = self.dealer;
         self.rotate();
     }
-    pub fn beg_street(&mut self) {
+    pub fn start_street(&mut self) {
         self.counter = 0;
         self.pointer = match self.board.street {
             Street::Pre => self.after(self.after(self.dealer)),
