@@ -1,11 +1,11 @@
 #[derive(Debug, Clone)]
 pub struct Seat {
     pub seat_id: usize,
+    pub hole: Hole,
+    pub actor: Rc<dyn Player>, // Weak ?
     pub stack: u32,
     pub stake: u32,
     pub status: BetStatus,
-    pub actor: Rc<dyn Player>, // Weak ?
-    pub hole: Hole,
 }
 impl Seat {
     pub fn new(stack: u32, position: usize, actor: Rc<dyn Player>) -> Seat {
@@ -50,7 +50,10 @@ impl Seat {
         std::cmp::min(self.stack, hand.head.table_stack() - self.stake)
     }
     pub fn to_raise(&self, hand: &Hand) -> u32 {
-        std::cmp::min(self.to_shove(hand) - 1, 5)
+        std::cmp::max(
+            self.to_call(hand) + 1,
+            std::cmp::min(self.to_shove(hand) - 1, 5),
+        )
     }
 
     fn can_check(&self, hand: &Hand) -> bool {

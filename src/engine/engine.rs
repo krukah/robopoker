@@ -46,16 +46,15 @@ impl Engine {
     }
 
     fn start_street(&mut self) {
-        self.hand.head.clear_rotation();
+        self.hand.head.reset_street();
         self.hand.deal();
         // we can deal cards at the beginning of the street rather than the end
         // self.hand.deal_board();
     }
     fn start_hand(&mut self) {
         println!("HAND  {}\n", self.n_hands);
-        self.hand.reset_hand();
         self.hand.head.reset_hand();
-        self.hand.post_blinds();
+        self.hand.reset_hand();
     }
 
     fn end_turn(&mut self) {
@@ -83,6 +82,5 @@ impl Engine {
     }
 }
 
-use std::rc::Rc;
-
 use super::{hand::Hand, player::Player, seat::Seat};
+use std::rc::Rc;

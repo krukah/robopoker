@@ -118,6 +118,10 @@ impl Node {
         }
     }
     pub fn reset_hand(&mut self) {
+        for seat in self.seats.iter_mut() {
+            seat.status = BetStatus::Playing;
+            seat.stake = 0;
+        }
         self.pot = 0;
         self.board.cards.clear();
         self.board.street = Street::Pre;
@@ -126,7 +130,7 @@ impl Node {
         self.pointer = self.dealer;
         self.rotate();
     }
-    pub fn clear_rotation(&mut self) {
+    pub fn reset_street(&mut self) {
         self.counter = 0;
         self.pointer = match self.board.street {
             Street::Pre => self.after(self.after(self.dealer)),

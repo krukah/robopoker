@@ -31,41 +31,13 @@ impl Hand {
     }
 
     pub fn reset_hand(&mut self) {
-        for seat in self.head.seats.iter_mut() {
-            seat.status = BetStatus::Playing;
-            seat.stake = 0;
-        }
         self.tail = self.head.clone();
         self.deck = Deck::new();
         self.outcomes.clear();
         self.actions.clear();
-    }
-
-    pub fn settle(&mut self) {
-        for result in self.showdown().results() {
-            let seat = self
-                .head
-                .seats
-                .iter_mut()
-                .find(|s| s.seat_id == result.seat_id)
-                .unwrap();
-            seat.stack += result.reward;
-        }
-        println!("{}", self.head);
-    }
-
-    pub fn post_blinds(&mut self) {
         self.apply(Action::Blind(self.head.to_act().seat_id, self.sblind));
         self.apply(Action::Blind(self.head.to_act().seat_id, self.bblind));
         self.head.counter = 0;
-    }
-
-    pub fn deal_holes(&mut self) {
-        for hole in self.head.seats.iter_mut().map(|s| &mut s.hole) {
-            hole.cards.clear();
-            hole.cards.push(self.deck.draw().unwrap());
-            hole.cards.push(self.deck.draw().unwrap());
-        }
     }
 
     pub fn deal(&mut self) {
@@ -98,6 +70,19 @@ impl Hand {
             }
             Street::Showdown => unreachable!(),
         }
+    }
+
+    pub fn settle(&mut self) {
+        for result in self.showdown().results() {
+            let seat = self
+                .head
+                .seats
+                .iter_mut()
+                .find(|s| s.seat_id == result.seat_id)
+                .unwrap();
+            seat.stack += result.reward;
+        }
+        println!("{}", self.head);
     }
 
     pub fn advance_street(&mut self) {
@@ -164,6 +149,6 @@ impl Hand {
     }
 }
 
-use super::{action::Action, node::Node, payoff::HandResult, seat::BetStatus, showdown::Showdown};
+use super::{action::Action, node::Node, payoff::HandResult, showdown::Showdown};
 use crate::cards::{board::Street, deck::Deck};
 use rand::Rng;
