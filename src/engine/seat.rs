@@ -4,11 +4,11 @@ pub struct Seat {
     pub stack: u32,
     pub stake: u32,
     pub status: BetStatus,
-    pub actor: Rc<dyn Actor>, // Weak ?
+    pub actor: Rc<dyn Player>, // Weak ?
     pub hole: Hole,
 }
 impl Seat {
-    pub fn new(stack: u32, position: usize, actor: Rc<dyn Actor>) -> Seat {
+    pub fn new(stack: u32, position: usize, actor: Rc<dyn Player>) -> Seat {
         Seat {
             seat_id: position,
             stack,
@@ -98,7 +98,7 @@ impl Display for BetStatus {
     }
 }
 
-use super::{action::Action, hand::Hand, player::Actor};
+use super::{action::Action, hand::Hand, player::Player};
 use crate::cards::hole::Hole;
 use std::{
     fmt::{Debug, Display},

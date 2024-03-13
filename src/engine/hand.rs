@@ -152,12 +152,6 @@ impl Hand {
     }
 }
 
-use super::{
-    action::Action,
-    node::Node,
-    payoff::HandResult,
-    seat::{BetStatus, Seat},
-    showdown::Showdown,
-};
+use super::{action::Action, node::Node, payoff::HandResult, seat::BetStatus, showdown::Showdown};
 use crate::cards::{board::Street, deck::Deck};
 use rand::Rng;

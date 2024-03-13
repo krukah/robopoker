@@ -11,7 +11,7 @@ impl Engine {
         }
     }
 
-    pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Actor>) {
+    pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Player>) {
         println!("ADD  {}\n", self.hand.head.seats.len());
         let seat = Seat::new(stack, self.hand.head.seats.len(), actor);
         self.hand.head.seats.push(seat);
@@ -83,4 +83,4 @@ impl Engine {
 
 use std::rc::Rc;
 
-use super::{hand::Hand, player::Actor, seat::Seat};
+use super::{hand::Hand, player::Player, seat::Seat};

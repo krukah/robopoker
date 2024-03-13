@@ -1,4 +1,4 @@
-pub trait Actor: Debug {
+pub trait Player: Debug {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action;
 }
 pub struct Robot;
@@ -38,7 +38,7 @@ impl Robot {
     }
 }
 
-impl Actor for Robot {
+impl Player for Robot {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
         let policies = self.policies(seat, hand);
         self.choose(policies)
@@ -58,7 +58,7 @@ use std::fmt::Debug;
 
 pub struct Human;
 impl Human {}
-impl Actor for Human {
+impl Player for Human {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
         let actions = seat.valid_actions(hand);
         println!("CHOOSE VALID ACTION:");
