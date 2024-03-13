@@ -40,6 +40,7 @@ impl Robot {
 
 impl Player for Robot {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
+        std::thread::sleep(Duration::from_millis(200));
         let policies = self.policies(seat, hand);
         self.choose(policies)
     }
@@ -54,25 +55,20 @@ impl Debug for Robot {
 use super::{action::Action, hand::Hand, seat::Seat};
 use crate::solver::policy::Policy;
 use rand::{thread_rng, Rng};
-use std::fmt::Debug;
+use std::{fmt::Debug, time::Duration};
 
 pub struct Human;
 impl Human {}
 impl Player for Human {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
-        let actions = seat.valid_actions(hand);
-        println!("CHOOSE VALID ACTION:");
-        for (i, action) in actions.iter().enumerate() {
-            println!(" - {}: {}", i, action);
-        }
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-        println!("");
-        let index = input.trim().parse::<usize>().unwrap();
-        actions
-            .get(index)
-            .unwrap_or(&Action::Fold(seat.seat_id))
-            .clone()
+        let choices = &seat.valid_actions(hand);
+        let selection = Select::new()
+            // .with_prompt(seat.cards())
+            .items(&choices[..])
+            .default(0)
+            .interact()
+            .unwrap();
+        choices[selection].clone()
     }
 }
 impl Debug for Human {
@@ -80,3 +76,4 @@ impl Debug for Human {
         write!(f, "Human")
     }
 }
+use dialoguer::Select;
