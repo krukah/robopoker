@@ -1,3 +1,4 @@
+// ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
     pub results: Vec<HandResult>,
     pub next_score: u32,

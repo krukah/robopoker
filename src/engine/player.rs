@@ -1,9 +1,7 @@
-pub struct Robot;
-
 pub trait Actor: Debug {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action;
 }
-
+pub struct Robot;
 impl Robot {
     fn weight(&self, action: Action) -> u32 {
         match action {
@@ -57,3 +55,28 @@ use super::{action::Action, hand::Hand, seat::Seat};
 use crate::solver::policy::Policy;
 use rand::{thread_rng, Rng};
 use std::fmt::Debug;
+
+pub struct Human;
+impl Human {}
+impl Actor for Human {
+    fn act(&self, seat: &Seat, hand: &Hand) -> Action {
+        let actions = seat.valid_actions(hand);
+        println!("CHOOSE VALID ACTION:");
+        for (i, action) in actions.iter().enumerate() {
+            println!(" - {}: {}", i, action);
+        }
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        println!("");
+        let index = input.trim().parse::<usize>().unwrap();
+        actions
+            .get(index)
+            .unwrap_or(&Action::Fold(seat.seat_id))
+            .clone()
+    }
+}
+impl Debug for Human {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Human")
+    }
+}

@@ -9,22 +9,18 @@ pub struct Hand {
     pub actions: Vec<Action>,
 }
 impl Hand {
-    pub fn new(seats: Vec<Seat>) -> Self {
-        let node = Node::new(seats);
+    pub fn new() -> Self {
         Hand {
             sblind: 1,
             bblind: 2,
             actions: Vec::new(),
             outcomes: Vec::new(),
             deck: Deck::new(),
-            tail: node.clone(),
-            head: node,
+            tail: Node::new(),
+            head: Node::new(),
         }
     }
 
-    pub fn add(seat: Seat) {
-        todo!()
-    }
     pub fn apply(&mut self, action: Action) {
         self.head.apply(action.clone());
         self.actions.push(action.clone());
@@ -51,15 +47,16 @@ impl Hand {
                 .head
                 .seats
                 .iter_mut()
-                .find(|s| s.index == result.id)
+                .find(|s| s.seat_id == result.seat_id)
                 .unwrap();
             seat.stack += result.reward;
         }
+        println!("{}", self.head);
     }
 
     pub fn post_blinds(&mut self) {
-        self.apply(Action::Blind(self.head.next().index, self.sblind));
-        self.apply(Action::Blind(self.head.next().index, self.bblind));
+        self.apply(Action::Blind(self.head.to_act().seat_id, self.sblind));
+        self.apply(Action::Blind(self.head.to_act().seat_id, self.bblind));
         self.head.counter = 0;
     }
 
@@ -107,16 +104,16 @@ impl Hand {
             .seats
             .iter()
             .map(|s| HandResult {
-                id: s.index,
-                score: self.score(s.index),
-                staked: self.staked(s.index),
-                status: s.status,
                 reward: 0,
+                score: self.score(s.seat_id),
+                staked: self.staked(s.seat_id),
+                status: s.status,
+                seat_id: s.seat_id,
             })
             .collect::<Vec<HandResult>>();
         results.sort_by(|a, b| {
-            let x = self.priority(a.id);
-            let y = self.priority(b.id);
+            let x = self.priority(a.seat_id);
+            let y = self.priority(b.seat_id);
             x.cmp(&y)
         });
         Showdown {

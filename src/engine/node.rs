@@ -1,3 +1,4 @@
+// Node represents the memoryless state of the game in between actions. it records both public and private data structs, and is responsible for managing the rotation of players, the pot, and the board. it's immutable methods reveal pure functions representing the rules of how the game may proceed.
 #[derive(Debug, Clone)]
 pub struct Node {
     pub board: Board,     // table
@@ -5,13 +6,13 @@ pub struct Node {
     pub pot: u32,         // table
     pub dealer: usize,    // rotation
     pub counter: usize,   // rotation
-    pub pointer: usize,   // rotation.has_next == node.does_end_street
+    pub pointer: usize,   // rotation
 } // this data struct reads like a poem
 
 impl Node {
-    pub fn new(seats: Vec<Seat>) -> Self {
+    pub fn new() -> Self {
         Node {
-            seats,
+            seats: Vec::with_capacity(10),
             board: Board::new(),
             pot: 0,
             dealer: 0,
@@ -30,11 +31,8 @@ impl Node {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
     }
 
-    pub fn next(&self) -> &Seat {
+    pub fn to_act(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
-    }
-    pub fn seat(&self, id: usize) -> &Seat {
-        self.seats.iter().find(|s| s.index == id).unwrap()
     }
     pub fn after(&self, index: usize) -> usize {
         (index + 1) % self.seats.len()
@@ -93,9 +91,6 @@ impl Node {
 
 // mutables
 impl Node {
-    pub fn add(&mut self, seat: Seat) {
-        self.seats.push(seat);
-    }
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.pointer).unwrap();
         // bets entail pot and stack change
@@ -151,7 +146,7 @@ impl Node {
             }
             self.counter += 1;
             self.pointer = self.after(self.pointer);
-            match self.next().status {
+            match self.to_act().status {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'left,
             }

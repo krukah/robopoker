@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use std::rc::Rc;
 
-use engine::{engine::Engine, hand::Hand, player::Robot, seat::Seat};
+use engine::{
+    engine::Engine,
+    player::{Human, Robot},
+};
 
 pub mod cards;
 pub mod engine;
@@ -10,12 +13,13 @@ pub mod solver;
 
 fn main() {
     let mut engine = Engine::new();
-    let actor = Rc::new(Robot {});
-    let mut hand = Hand::new(vec![
-        Seat::new(actor.clone(), 1_000, 0),
-        Seat::new(actor.clone(), 1_000, 1),
-        Seat::new(actor.clone(), 1_000, 2),
-        Seat::new(actor.clone(), 1_000, 3),
-    ]);
-    engine.play(&mut hand);
+    let human = Rc::new(Human);
+    let robot = Rc::new(Robot);
+
+    engine.gain_seat(10000, robot.clone());
+    engine.gain_seat(10000, robot.clone());
+    engine.gain_seat(10000, robot.clone());
+    engine.gain_seat(10000, human.clone());
+
+    engine.start();
 }

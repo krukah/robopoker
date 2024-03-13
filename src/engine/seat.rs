@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct Seat {
-    pub index: usize,
+    pub seat_id: usize,
     pub stack: u32,
     pub stake: u32,
     pub status: BetStatus,
@@ -8,9 +8,9 @@ pub struct Seat {
     pub hole: Hole,
 }
 impl Seat {
-    pub fn new(actor: Rc<dyn Actor>, stack: u32, position: usize) -> Seat {
+    pub fn new(stack: u32, position: usize, actor: Rc<dyn Actor>) -> Seat {
         Seat {
-            index: position,
+            seat_id: position,
             stack,
             stake: 0,
             status: BetStatus::Playing,
@@ -26,19 +26,19 @@ impl Seat {
     pub fn valid_actions(&self, hand: &Hand) -> Vec<Action> {
         let mut actions = Vec::with_capacity(5);
         if self.can_check(hand) {
-            actions.push(Action::Check(self.index));
+            actions.push(Action::Check(self.seat_id));
         }
         if self.can_fold(hand) {
-            actions.push(Action::Fold(self.index));
+            actions.push(Action::Fold(self.seat_id));
         }
         if self.can_call(hand) {
-            actions.push(Action::Call(self.index, self.to_call(hand)));
+            actions.push(Action::Call(self.seat_id, self.to_call(hand)));
         }
         if self.can_shove(hand) {
-            actions.push(Action::Shove(self.index, self.to_shove(hand)));
+            actions.push(Action::Shove(self.seat_id, self.to_shove(hand)));
         }
         if self.can_raise(hand) {
-            actions.push(Action::Raise(self.index, self.to_raise(hand)));
+            actions.push(Action::Raise(self.seat_id, self.to_raise(hand)));
         }
         actions
     }
@@ -76,7 +76,7 @@ impl Display for Seat {
         write!(
             f,
             "{:<3}{}   {}  {} {:>7}  \n",
-            self.index, self.status, card1, card2, self.stack,
+            self.seat_id, self.status, card1, card2, self.stack,
         )
     }
 }
