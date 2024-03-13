@@ -22,10 +22,10 @@ impl Node {
     }
 
     pub fn has_more_hands(&self) -> bool {
-        self.seats.iter().filter(|s| s.stack > 2).count() == 4
+        self.seats.iter().filter(|s| s.stack > 2).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
-        !(self.are_all_folded() || (!self.has_more_players() && self.board.street == Street::River))
+        !(self.are_all_folded() || (self.board.street == Street::Showdown))
     }
     pub fn has_more_players(&self) -> bool {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
@@ -117,7 +117,7 @@ impl Node {
             _ => self.rotate(),
         }
     }
-    pub fn start_hand(&mut self) {
+    pub fn reset_hand(&mut self) {
         self.pot = 0;
         self.board.cards.clear();
         self.board.street = Street::Pre;
@@ -126,7 +126,7 @@ impl Node {
         self.pointer = self.dealer;
         self.rotate();
     }
-    pub fn start_street(&mut self) {
+    pub fn clear_rotation(&mut self) {
         self.counter = 0;
         self.pointer = match self.board.street {
             Street::Pre => self.after(self.after(self.dealer)),
@@ -134,7 +134,7 @@ impl Node {
         };
         self.rotate();
     }
-    pub fn end_street(&mut self) {
+    pub fn clear_stakes(&mut self) {
         for seat in self.seats.iter_mut() {
             seat.stake = 0;
         }

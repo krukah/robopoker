@@ -30,7 +30,7 @@ impl Hand {
         }
     }
 
-    pub fn beg_hand(&mut self) {
+    pub fn reset_hand(&mut self) {
         for seat in self.head.seats.iter_mut() {
             seat.status = BetStatus::Playing;
             seat.stake = 0;
@@ -68,10 +68,16 @@ impl Hand {
         }
     }
 
-    pub fn deal_board(&mut self) {
+    pub fn deal(&mut self) {
         match self.head.board.street {
             Street::Pre => {
-                self.head.board.street = Street::Flop;
+                for hole in self.head.seats.iter_mut().map(|s| &mut s.hole) {
+                    hole.cards.clear();
+                    hole.cards.push(self.deck.draw().unwrap());
+                    hole.cards.push(self.deck.draw().unwrap());
+                }
+            }
+            Street::Flop => {
                 let card1 = self.deck.draw().unwrap();
                 let card2 = self.deck.draw().unwrap();
                 let card3 = self.deck.draw().unwrap();
@@ -80,21 +86,27 @@ impl Hand {
                 self.apply(Action::Draw(card3));
                 println!("FLOP   {} {} {}", card1, card2, card3);
             }
-            Street::Flop => {
-                self.head.board.street = Street::Turn;
+            Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
                 println!("TURN   {}", card)
             }
-            Street::Turn => {
-                self.head.board.street = Street::River;
+            Street::River => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
                 println!("RIVER  {}", card)
             }
-            Street::River => {
-                println!("SHOWDOWN")
-            }
+            Street::Showdown => unreachable!(),
+        }
+    }
+
+    pub fn advance_street(&mut self) {
+        self.head.board.street = match self.head.board.street {
+            Street::Pre => Street::Flop,
+            Street::Flop => Street::Turn,
+            Street::Turn => Street::River,
+            Street::River => Street::Showdown,
+            Street::Showdown => unreachable!(),
         }
     }
 

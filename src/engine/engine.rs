@@ -46,14 +46,16 @@ impl Engine {
     }
 
     fn start_street(&mut self) {
-        self.hand.head.start_street();
+        self.hand.head.clear_rotation();
+        self.hand.deal();
+        // we can deal cards at the beginning of the street rather than the end
+        // self.hand.deal_board();
     }
     fn start_hand(&mut self) {
         println!("HAND  {}\n", self.n_hands);
-        self.hand.beg_hand();
-        self.hand.head.start_hand();
+        self.hand.reset_hand();
+        self.hand.head.reset_hand();
         self.hand.post_blinds();
-        self.hand.deal_holes();
     }
 
     fn end_turn(&mut self) {
@@ -62,8 +64,8 @@ impl Engine {
         self.hand.apply(action);
     }
     fn end_street(&mut self) {
-        self.hand.head.end_street();
-        self.hand.deal_board();
+        self.hand.head.clear_stakes();
+        self.hand.advance_street();
     }
     fn end_hand(&mut self) {
         self.n_hands += 1;
