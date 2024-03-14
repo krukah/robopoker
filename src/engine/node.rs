@@ -1,13 +1,13 @@
 // Node represents the memoryless state of the game in between actions. it records both public and private data structs, and is responsible for managing the rotation of players, the pot, and the board. it's immutable methods reveal pure functions representing the rules of how the game may proceed.
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub board: Board,     // table
-    pub seats: Vec<Seat>, // rotation
-    pub pot: u32,         // table
-    pub dealer: usize,    // rotation
-    pub counter: usize,   // rotation
-    pub pointer: usize,   // rotation
-} // this data struct reads like a poem
+    pub pot: u32,
+    pub dealer: usize,
+    pub counter: usize,
+    pub pointer: usize,
+    pub board: Board,
+    pub seats: Vec<Seat>,
+}
 
 impl Node {
     pub fn new() -> Self {
@@ -89,75 +89,6 @@ impl Node {
     }
 }
 
-// mutables
-impl Node {
-    pub fn apply(&mut self, action: Action) {
-        let seat = self.seats.get_mut(self.pointer).unwrap();
-        // bets entail pot and stack change
-        match action {
-            Action::Call(_, bet)
-            | Action::Blind(_, bet)
-            | Action::Raise(_, bet)
-            | Action::Shove(_, bet) => {
-                self.pot += bet;
-                seat.stake += bet;
-                seat.stack -= bet;
-            }
-            _ => (),
-        }
-        // folds and all-ins entail status change
-        match action {
-            Action::Fold(..) => seat.status = BetStatus::Folded,
-            Action::Shove(..) => seat.status = BetStatus::Shoved,
-            _ => (),
-        }
-        // player actions entail rotation
-        match action {
-            Action::Draw(card) => self.board.push(card.clone()),
-            _ => self.rotate(),
-        }
-    }
-    pub fn reset_hand(&mut self) {
-        for seat in self.seats.iter_mut() {
-            seat.status = BetStatus::Playing;
-            seat.stake = 0;
-        }
-        self.pot = 0;
-        self.board.cards.clear();
-        self.board.street = Street::Pre;
-        self.counter = 0;
-        self.dealer = self.after(self.dealer);
-        self.pointer = self.dealer;
-        self.rotate();
-    }
-    pub fn reset_street(&mut self) {
-        self.counter = 0;
-        self.pointer = match self.board.street {
-            Street::Pre => self.after(self.after(self.dealer)),
-            _ => self.dealer,
-        };
-        self.rotate();
-    }
-    pub fn clear_stakes(&mut self) {
-        for seat in self.seats.iter_mut() {
-            seat.stake = 0;
-        }
-    }
-    fn rotate(&mut self) {
-        'left: loop {
-            if !self.has_more_players() {
-                return;
-            }
-            self.counter += 1;
-            self.pointer = self.after(self.pointer);
-            match self.to_act().status {
-                BetStatus::Playing => return,
-                BetStatus::Folded | BetStatus::Shoved => continue 'left,
-            }
-        }
-    }
-}
-
 impl Display for Node {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "Pot:   {}\n", self.pot)?;
@@ -169,9 +100,6 @@ impl Display for Node {
     }
 }
 
-use super::{
-    action::Action,
-    seat::{BetStatus, Seat},
-};
+use super::seat::{BetStatus, Seat};
 use crate::cards::board::{Board, Street};
 use std::fmt::{Display, Formatter, Result};
