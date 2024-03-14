@@ -29,21 +29,15 @@ impl Hand {
                 score: self.score(s.seat_id),
                 staked: self.staked(s.seat_id),
                 status: s.status,
-                seat_id: s.seat_id,
+                position: s.seat_id,
             })
             .collect::<Vec<Payout>>();
         payouts.sort_by(|a, b| {
-            let x = self.priority(a.seat_id);
-            let y = self.priority(b.seat_id);
+            let x = self.priority(a.position);
+            let y = self.priority(b.position);
             x.cmp(&y)
         });
-        let showdown = Showdown {
-            next_stake: u32::MIN,
-            prev_stake: u32::MIN,
-            next_score: u32::MAX,
-            payouts,
-        };
-        showdown.payouts()
+        Showdown::new(payouts).payouts()
     }
     fn staked(&self, position: usize) -> u32 {
         self.actions

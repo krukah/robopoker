@@ -51,7 +51,7 @@ impl Seat {
     }
     pub fn to_raise(&self, hand: &Hand) -> u32 {
         std::cmp::max(
-            self.to_call(hand) + 1,
+            self.to_call(hand) * 2,
             std::cmp::min(self.to_shove(hand) - 1, 5),
         )
     }

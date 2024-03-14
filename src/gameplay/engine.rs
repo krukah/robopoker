@@ -143,7 +143,7 @@ impl Hand {
                 .head
                 .seats
                 .iter_mut()
-                .find(|s| s.seat_id == result.seat_id)
+                .find(|s| s.seat_id == result.position)
                 .unwrap();
             seat.stack += result.reward;
         }

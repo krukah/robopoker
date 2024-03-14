@@ -1,12 +1,24 @@
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
-    pub payouts: Vec<Payout>,
-    pub next_score: u32,
-    pub next_stake: u32,
-    pub prev_stake: u32,
+    payouts: Vec<Payout>,
+    next_score: u32,
+    next_stake: u32,
+    prev_stake: u32,
 }
 
 impl Showdown {
+    pub fn new(payouts: Vec<Payout>) -> Self {
+        let next_stake = u32::MIN;
+        let prev_stake = u32::MIN;
+        let next_score = u32::MAX;
+        Showdown {
+            payouts,
+            next_stake,
+            prev_stake,
+            next_score,
+        }
+    }
+
     pub fn payouts(mut self) -> Vec<Payout> {
         loop {
             self.next_score();

@@ -16,7 +16,7 @@ impl Display for Action {
             Action::Check(id) => write!(f, "{id} {}", "CHECK".cyan()),
             Action::Fold(id) => write!(f, "{id} {}", "FOLD".red()),
             Action::Blind(id, amount) => write!(f, "{id} {}", format!("BLIND {}", amount).white()),
-            Action::Call(id, amount) => write!(f, "{id} {}", format!("CALL  {}", amount).cyan()),
+            Action::Call(id, amount) => write!(f, "{id} {}", format!("CALL  {}", amount).yellow()),
             Action::Raise(id, amount) => write!(f, "{id} {}", format!("RAISE {}", amount).green()),
             Action::Shove(id, amount) => write!(f, "{id} {}", format!("SHOVE {}", amount).red()),
         }
