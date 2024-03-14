@@ -1,14 +1,11 @@
-#![allow(dead_code)]
+use gameplay::engine::Engine;
+use players::{human::Human, robot::Robot};
 use std::rc::Rc;
 
-use engine::{
-    engine::Engine,
-    player::{Human, Robot},
-};
-
 pub mod cards;
-pub mod engine;
 pub mod evaluation;
+pub mod gameplay;
+pub mod players;
 pub mod solver;
 
 fn main() {

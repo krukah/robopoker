@@ -1,32 +1,32 @@
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
-    pub results: Vec<HandResult>,
+    pub payouts: Vec<Payout>,
     pub next_score: u32,
     pub next_stake: u32,
     pub prev_stake: u32,
 }
 
 impl Showdown {
-    pub fn results(mut self) -> Vec<HandResult> {
+    pub fn payouts(mut self) -> Vec<Payout> {
         loop {
             self.next_score();
             loop {
                 self.next_stake();
                 self.distribute();
                 if self.is_complete() {
-                    return self.results;
+                    return self.payouts;
                 }
             }
         }
     }
 
     fn is_complete(&self) -> bool {
-        let staked = self.results.iter().map(|p| p.staked).sum::<u32>();
-        let reward = self.results.iter().map(|p| p.reward).sum::<u32>();
+        let staked = self.payouts.iter().map(|p| p.staked).sum::<u32>();
+        let reward = self.payouts.iter().map(|p| p.reward).sum::<u32>();
         staked == reward
     }
     fn winnings(&self) -> u32 {
-        self.results
+        self.payouts
             .iter()
             .map(|p| p.staked)
             .map(|s| std::cmp::min(s, self.next_stake))
@@ -48,7 +48,7 @@ impl Showdown {
     fn next_stake(&mut self) {
         self.prev_stake = self.next_stake;
         self.next_stake = self
-            .results
+            .payouts
             .iter()
             .filter(|p| p.score == self.next_score)
             .filter(|p| p.staked > self.prev_stake)
@@ -59,7 +59,7 @@ impl Showdown {
     }
     fn next_score(&mut self) {
         self.next_score = self
-            .results
+            .payouts
             .iter()
             .filter(|p| p.score < self.next_score)
             .filter(|p| p.status != BetStatus::Folded)
@@ -67,8 +67,8 @@ impl Showdown {
             .max()
             .unwrap();
     }
-    fn winners(&mut self) -> Vec<&mut HandResult> {
-        self.results
+    fn winners(&mut self) -> Vec<&mut Payout> {
+        self.payouts
             .iter_mut()
             .filter(|p| p.score == self.next_score)
             .filter(|p| p.staked > self.prev_stake)
@@ -77,4 +77,4 @@ impl Showdown {
     }
 }
 
-use super::{payoff::HandResult, seat::BetStatus};
+use super::{payout::Payout, seat::BetStatus};

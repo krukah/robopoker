@@ -1,6 +1,3 @@
-pub trait Player: Debug {
-    fn act(&self, seat: &Seat, hand: &Hand) -> Action;
-}
 pub struct Robot;
 impl Robot {
     fn weight(&self, action: Action) -> u32 {
@@ -51,28 +48,8 @@ impl Debug for Robot {
     }
 }
 
-use super::{action::Action, hand::Hand, seat::Seat};
+use crate::gameplay::player::Player;
+use crate::gameplay::{action::Action, hand::Hand, seat::Seat};
 use crate::solver::policy::Policy;
 use rand::{thread_rng, Rng};
 use std::fmt::Debug;
-
-pub struct Human;
-impl Human {}
-impl Player for Human {
-    fn act(&self, seat: &Seat, hand: &Hand) -> Action {
-        let choices = &seat.valid_actions(hand);
-        let selection = Select::new()
-            .with_prompt(format!("       {}", seat.cards()))
-            .items(&choices[..])
-            .default(0)
-            .interact()
-            .unwrap();
-        choices[selection].clone()
-    }
-}
-impl Debug for Human {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Human")
-    }
-}
-use dialoguer::Select;

@@ -19,43 +19,40 @@ impl Hand {
         }
     }
 
-    pub fn results(&self) -> Vec<HandResult> {
-        let showdown = self.showdown();
-        showdown.results()
-    }
-    fn showdown(&self) -> Showdown {
-        let mut results = self
+    pub fn payouts(&self) -> Vec<Payout> {
+        let mut payouts = self
             .head
             .seats
             .iter()
-            .map(|s| HandResult {
+            .map(|s| Payout {
                 reward: 0,
                 score: self.score(s.seat_id),
                 staked: self.staked(s.seat_id),
                 status: s.status,
                 seat_id: s.seat_id,
             })
-            .collect::<Vec<HandResult>>();
-        results.sort_by(|a, b| {
+            .collect::<Vec<Payout>>();
+        payouts.sort_by(|a, b| {
             let x = self.priority(a.seat_id);
             let y = self.priority(b.seat_id);
             x.cmp(&y)
         });
-        Showdown {
+        let showdown = Showdown {
             next_stake: u32::MIN,
             prev_stake: u32::MIN,
             next_score: u32::MAX,
-            results,
-        }
+            payouts,
+        };
+        showdown.payouts()
     }
-    fn staked(&self, id: usize) -> u32 {
+    fn staked(&self, position: usize) -> u32 {
         self.actions
             .iter()
             .filter(|a| match a {
                 Action::Call(id_, _)
                 | Action::Blind(id_, _)
                 | Action::Raise(id_, _)
-                | Action::Shove(id_, _) => *id_ == id,
+                | Action::Shove(id_, _) => *id_ == position,
                 _ => false,
             })
             .map(|a| match a {
@@ -77,6 +74,6 @@ impl Hand {
 }
 // mutables
 
-use super::{action::Action, node::Node, payoff::HandResult, showdown::Showdown};
+use super::{action::Action, node::Node, payout::Payout, showdown::Showdown};
 use crate::cards::deck::Deck;
 use rand::Rng;

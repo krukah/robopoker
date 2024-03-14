@@ -1,7 +1,7 @@
 use super::seat::BetStatus;
 
 #[derive(Debug, Clone)]
-pub struct HandResult {
+pub struct Payout {
     pub seat_id: usize,
     pub status: BetStatus,
     pub staked: u32,

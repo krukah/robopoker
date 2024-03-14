@@ -138,7 +138,7 @@ impl Hand {
         }
     }
     pub fn end_hand(&mut self) {
-        for result in self.results() {
+        for result in self.payouts() {
             let seat = self
                 .head
                 .seats

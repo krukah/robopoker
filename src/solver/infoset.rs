@@ -3,4 +3,4 @@ pub struct InfoSet<'a> {
     pub hole: &'a Hole,
 }
 
-use crate::{cards::hole::Hole, engine::hand::Hand};
+use crate::{cards::hole::Hole, gameplay::hand::Hand};
