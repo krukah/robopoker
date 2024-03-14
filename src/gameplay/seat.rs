@@ -56,6 +56,13 @@ impl Seat {
         )
     }
 
+    pub fn min_raise(&self, hand: &Hand) -> u32 {
+        self.to_call(hand) + hand.bblind
+    }
+    pub fn max_raise(&self, hand: &Hand) -> u32 {
+        self.to_shove(hand)
+    }
+
     fn can_check(&self, hand: &Hand) -> bool {
         self.stake == hand.head.table_stake()
     }

@@ -1,25 +1,83 @@
 pub struct Human;
 
-impl Human {}
+impl Human {
+    fn raise(&self, seat: &Seat, hand: &Hand) -> u32 {
+        Input::new()
+            .with_prompt("Amount ")
+            .report(false)
+            .validate_with(|i: &String| -> Result<(), &str> {
+                match i.parse::<u32>() {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err("Enter a NUMBER"),
+                }
+            })
+            .validate_with(|i: &String| -> Result<(), &str> {
+                match i.parse::<u32>().unwrap() >= seat.min_raise(hand) {
+                    true => Ok(()),
+                    false => Err("Raise too small"),
+                }
+            })
+            .validate_with(|i: &String| -> Result<(), &str> {
+                match i.parse::<u32>().unwrap() <= seat.max_raise(hand) {
+                    true => Ok(()),
+                    false => Err("Raise too large"),
+                }
+            })
+            .interact()
+            .unwrap()
+            .parse::<u32>()
+            .unwrap()
+    }
+}
 impl Player for Human {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
-        let choices = &seat.valid_actions(hand);
+        // get valid actions
+        let choices = seat
+            .valid_actions(hand)
+            .iter()
+            .filter(|a| match a {
+                Action::Shove(_, _) => false,
+                _ => true,
+            })
+            .map(|a| match a {
+                Action::Fold(_) => "Fold",
+                Action::Check(_) => "Check",
+                Action::Call(_, _) => "Call",
+                Action::Raise(_, _) => "Raise",
+                _ => unreachable!(),
+            })
+            .collect::<Vec<&str>>();
         let selection = Select::new()
-            .with_prompt(format!("YOUR TURN\n{}", seat))
+            .with_prompt(format!("\nYOU HOLD {}", seat.hole))
             .report(false)
-            .items(&choices[..])
+            .items(choices.as_slice())
             .default(0)
             .interact()
             .unwrap();
-        choices[selection].clone()
+        match choices[selection] {
+            "Fold" => Action::Fold(seat.seat_id),
+            "Check" => Action::Check(seat.seat_id),
+            "Call" => Action::Call(seat.seat_id, seat.to_call(hand)),
+            "Shove" => Action::Shove(seat.seat_id, seat.to_shove(hand)),
+            "Raise" => {
+                let raise = self.raise(seat, hand);
+                let shove = seat.to_shove(hand);
+                match raise == shove {
+                    true => Action::Shove(seat.seat_id, shove),
+                    false => Action::Raise(seat.seat_id, raise),
+                }
+            }
+            _ => unreachable!(),
+        }
     }
 }
 impl Debug for Human {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Human")
     }
 }
 
 use crate::gameplay::{action::Action, hand::Hand, player::Player, seat::Seat};
-use dialoguer::Select;
-use std::fmt::{Debug, Formatter, Result};
+use dialoguer::{Input, Select};
+use std::fmt::{Debug, Formatter};
+use std::result::Result;
