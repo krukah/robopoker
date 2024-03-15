@@ -12,6 +12,7 @@ impl Card {
         1 << u8::from(*self)
     }
 }
+// u8 isomorphism
 impl From<Card> for u8 {
     fn from(c: Card) -> u8 {
         (c.rank as u8) * 4 + (c.suit as u8)
@@ -25,6 +26,7 @@ impl From<u8> for Card {
         }
     }
 }
+// u64 isomorphism
 impl From<Card> for u64 {
     fn from(c: Card) -> u64 {
         1 << u8::from(c)

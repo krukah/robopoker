@@ -4,12 +4,12 @@ pub struct Deck {
 }
 
 impl Deck {
-    pub fn new() -> Deck {
-        let mut deck = Deck {
-            cards: (0..52).map(Card::from).collect(),
+    pub fn new() -> Self {
+        let mut this = Self {
+            cards: (0u8..52).map(|n| Card::from(n)).collect(),
         };
-        deck.shuffle();
-        deck
+        this.shuffle();
+        this
     }
 
     pub fn draw(&mut self) -> Option<Card> {
@@ -21,6 +21,24 @@ impl Deck {
         self.cards.shuffle(&mut rng);
     }
 }
+
+// u64 isomorphism
+impl From<u64> for Deck {
+    fn from(n: u64) -> Self {
+        Self {
+            cards: (0u8..52)
+                .filter(|i| n & (1 << i) != 0)
+                .map(|i| Card::from(i))
+                .collect(),
+        }
+    }
+}
+impl From<Deck> for u64 {
+    fn from(deck: Deck) -> u64 {
+        deck.cards.iter().map(|c| u64::from(*c)).sum()
+    }
+}
+
 use super::card::Card;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
