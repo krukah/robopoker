@@ -1,11 +1,13 @@
 pub enum HandRank {
-    HighCard,
-    OnePair,
-    TwoPair,
-    ThreeOfAKind,
-    Straight,
-    Flush,
-    FullHouse,
-    FourOfAKind,
-    StraightFlush,
+    HighCard(Rank),
+    OnePair(Rank),
+    TwoPair(Rank),
+    ThreeOfAKind(Rank),
+    Straight(Rank),
+    Flush(Rank),
+    FullHouse(Rank),
+    FourOfAKind(Rank),
+    StraightFlush(Rank),
 }
+
+use crate::cards::rank::Rank;

@@ -34,6 +34,11 @@ impl From<u8> for Rank {
         }
     }
 }
+impl From<Rank> for u8 {
+    fn from(r: Rank) -> u8 {
+        r as u8
+    }
+}
 impl Display for Rank {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(

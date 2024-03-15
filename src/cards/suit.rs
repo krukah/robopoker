@@ -17,6 +17,11 @@ impl From<u8> for Suit {
         }
     }
 }
+impl From<Suit> for u8 {
+    fn from(s: Suit) -> u8 {
+        s as u8
+    }
+}
 impl Display for Suit {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(
