@@ -10,7 +10,7 @@ impl Showdown {
     pub fn new(payouts: Vec<Payout>) -> Self {
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
-        let next_rank = Strength::MAX;
+        let next_rank = Strength::INFINITE;
         Showdown {
             payouts,
             next_stake,
@@ -89,6 +89,5 @@ impl Showdown {
     }
 }
 
-use crate::evaluation::hand_rank::Strength;
-
 use super::{payout::Payout, seat::BetStatus};
+use crate::evaluation::strength::Strength;

@@ -1,5 +1,5 @@
 use gameplay::engine::Engine;
-use players::{human::Human, robot::Robot};
+use players::robot::Robot;
 use std::rc::Rc;
 
 pub mod cards;
@@ -10,7 +10,7 @@ pub mod solver;
 
 fn main() {
     let mut engine = Engine::new();
-    // let human = Rc::new(Human);
+    // let human = Rc::new(players::human::Human);
     let robot = Rc::new(Robot);
 
     engine.gain_seat(10000, robot.clone());

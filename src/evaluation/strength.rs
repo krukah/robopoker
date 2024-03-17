@@ -9,7 +9,7 @@ pub enum Strength {
     FullHouse(Rank, Rank),
     FourOfAKind(Rank),
     StraightFlush(Rank),
-    MAX,
+    INFINITE,
 }
 
 impl Display for Strength {
@@ -24,7 +24,7 @@ impl Display for Strength {
             Strength::FullHouse(r1, r2) => write!(f, "FullHouse     {}, {}", r1, r2),
             Strength::FourOfAKind(r) => write!(f, "FourOfAKind   {}", r),
             Strength::StraightFlush(r) => write!(f, "StraightFlush {}", r),
-            Strength::MAX => unreachable!(),
+            Strength::INFINITE => unreachable!(),
         }
     }
 }
@@ -71,7 +71,7 @@ impl From<&Strength> for usize {
             Strength::FullHouse(_, _) => 6,
             Strength::FourOfAKind(_) => 7,
             Strength::StraightFlush(_) => 8,
-            Strength::MAX => 9,
+            Strength::INFINITE => 9,
         }
     }
 }

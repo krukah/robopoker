@@ -159,7 +159,7 @@ impl LazyEvaluator {
     }
 }
 
-use super::hand_rank::Strength;
+use super::strength::Strength;
 use crate::cards::card::Card;
 use crate::cards::rank::Rank;
 use crate::cards::suit::Suit;

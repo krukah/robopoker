@@ -87,4 +87,4 @@ use super::showdown::Showdown;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::LazyEvaluator;
-use crate::evaluation::hand_rank::Strength;
+use crate::evaluation::strength::Strength;

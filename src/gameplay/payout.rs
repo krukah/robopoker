@@ -23,6 +23,6 @@ impl Display for Payout {
 }
 
 use super::seat::BetStatus;
-use crate::evaluation::hand_rank::Strength;
+use crate::evaluation::strength::Strength;
 use colored::Colorize;
 use std::fmt::Display;
