@@ -5,17 +5,22 @@ pub struct Card {
 }
 
 impl Card {
-    pub fn to_int(&self) -> u8 {
-        (self.rank as u8) * 4 + (self.suit as u8)
+    pub fn rank(&self) -> Rank {
+        self.rank
     }
-    pub fn to_bits(&self) -> u64 {
-        1 << u8::from(*self)
+    pub fn suit(&self) -> Suit {
+        self.suit
     }
 }
-// u8 isomorphism
+
+/// u8 isomorphism
+/// each card is mapped to its location in a sorted deck 1-52
+/// Ts
+/// 39
+/// 0b00100111
 impl From<Card> for u8 {
     fn from(c: Card) -> u8 {
-        (c.rank as u8) * 4 + (c.suit as u8)
+        u8::from(c.suit) + u8::from(c.rank) * 4
     }
 }
 impl From<u8> for Card {
@@ -26,7 +31,30 @@ impl From<u8> for Card {
         }
     }
 }
-// u64 isomorphism
+
+/// u32 isomorphism
+/// a Card is bitwise OR. Suit and Rank are bitmasks of the 17 LSBs
+/// Ts
+/// xxxxxxxxxxxxxxx cdhs AKQJT98765432
+/// 000000000000000 0010 0000100000000
+impl From<Card> for u32 {
+    fn from(c: Card) -> u32 {
+        u32::from(c.suit) | u32::from(c.rank)
+    }
+}
+impl From<u32> for Card {
+    fn from(n: u32) -> Self {
+        Self {
+            rank: Rank::from(n),
+            suit: Suit::from(n),
+        }
+    }
+}
+
+/// u64 isomorphism
+/// each card is just one bit turned on
+/// Ts
+/// xxxxxxxxxxxx 0000000000001000000000000000000000000000000000000000
 impl From<Card> for u64 {
     fn from(c: Card) -> u64 {
         1 << u8::from(c)
@@ -40,6 +68,7 @@ impl From<u64> for Card {
         }
     }
 }
+
 impl Display for Card {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{}{}", self.rank, self.suit)

@@ -22,6 +22,19 @@ impl From<Suit> for u8 {
         s as u8
     }
 }
+
+// xxxxxxxxxxxxxxx cdhs xxxxxxxxxxxxx
+impl From<u32> for Suit {
+    fn from(n: u32) -> Suit {
+        Suit::from((n >> 13).trailing_zeros() as u8)
+    }
+}
+impl From<Suit> for u32 {
+    fn from(s: Suit) -> u32 {
+        1 << (13 + u8::from(s))
+    }
+}
+
 impl Display for Suit {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(

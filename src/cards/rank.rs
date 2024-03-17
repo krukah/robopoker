@@ -14,6 +14,16 @@ pub enum Rank {
     King = 11,
     Ace = 12,
 }
+
+// u16 bitstring one-way mapping
+type Bits = u16;
+impl From<Bits> for Rank {
+    fn from(n: u16) -> Rank {
+        Rank::from(n as u8)
+    }
+}
+
+// u8 isomorphism
 impl From<u8> for Rank {
     fn from(n: u8) -> Rank {
         match n {
@@ -39,6 +49,18 @@ impl From<Rank> for u8 {
         r as u8
     }
 }
+
+impl From<u32> for Rank {
+    fn from(n: u32) -> Rank {
+        Rank::from((n.trailing_zeros()) as u8)
+    }
+}
+impl From<Rank> for u32 {
+    fn from(r: Rank) -> u32 {
+        1 << u8::from(r)
+    }
+}
+
 impl Display for Rank {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(

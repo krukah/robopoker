@@ -1,12 +1,12 @@
 pub enum HandRank {
-    HighCard(Rank),
-    OnePair(Rank),
-    TwoPair(Rank),
-    ThreeOfAKind(Rank),
+    HighCard(Rank, Rank, Rank, Rank, Rank),
+    OnePair(Rank, Rank, Rank, Rank),
+    TwoPair(Rank, Rank, Rank),
+    ThreeOfAKind(Rank, Rank, Rank),
     Straight(Rank),
     Flush(Rank),
-    FullHouse(Rank),
-    FourOfAKind(Rank),
+    FullHouse(Rank, Rank),
+    FourOfAKind(Rank, Rank),
     StraightFlush(Rank),
 }
 
