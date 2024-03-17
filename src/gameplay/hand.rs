@@ -68,11 +68,11 @@ impl Hand {
             .unwrap();
         let slice_hole = &hole.cards[..];
         let slice_board = &self.head.board.cards[..];
-        let slice_combined = slice_hole
+        let slice_combined = &slice_hole
             .iter()
             .chain(slice_board.iter())
             .collect::<Vec<&Card>>();
-        let eval = Evaluation::new(slice_combined);
+        let eval = LazyEvaluator::new(slice_combined);
         println!("{}", id);
         eval.score()
     }
@@ -85,4 +85,4 @@ impl Hand {
 
 use super::{action::Action, node::Node, payout::Payout, showdown::Showdown};
 use crate::cards::{card::Card, deck::Deck};
-use crate::evaluation::evaluation::Evaluation;
+use crate::evaluation::evaluation::LazyEvaluator;

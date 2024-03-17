@@ -42,20 +42,27 @@ impl From<Rank> for u8 {
     }
 }
 
-/// u32 isomorphism
-/// with this we actually get the highest rank in a union of cards in u32 representation
+/// u32 isomorphism.
+/// with this we get the highest rank in a union of cards in u32 representation
 /// xxxxxxxxxxxxxxx xxxx 0000Txxxxxxxx
 impl From<u32> for Rank {
     fn from(n: u32) -> Rank {
-        // Rank::from((n.trailing_zeros()) as u8) // this wouldnt work for a union of cards. the following is more generalized, at marginal cost
-        let drop_suit = n % (1 << 13);
-        let rank_bits = 32 - drop_suit.leading_zeros() - 1;
-        Rank::from(rank_bits as u8)
+        let msb = (32 - Rank::mask(n).leading_zeros() - 1) as u8;
+        Rank::from(msb)
     }
 }
 impl From<Rank> for u32 {
     fn from(r: Rank) -> u32 {
         1 << u8::from(r)
+    }
+}
+
+impl Rank {
+    pub fn mask(n: u32) -> u32 {
+        n & 0b00000000000000000001111111111111
+    }
+    pub fn wheel() -> u32 {
+        0b00000000000000000001000000001111
     }
 }
 
