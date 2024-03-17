@@ -1,31 +1,21 @@
-#[allow(dead_code)]
-type Count = u8;
-#[allow(dead_code)]
-type RankBits = u16;
-
 struct Evaluation {
-    kind_counts: [Count; 5],  // how many i of a kinds are in the hand (redundant)
-    suit_counts: [Count; 4],  // how many i suits are in the hand
-    rank_counts: [Count; 13], // how many i ranks are in the hand
-    suit_bits: [RankBits; 4], // which ranks in which suits are in the hand
-    rank_bits: RankBits,      // which ranks are in the hand
+    hand_u32: u32,              // which ranks are in the hand
+    hand_u32_by_suit: [u32; 4], // which ranks in which suits are in the hand
+    suit_counts: [u8; 4],       // how many i suits are in the hand. neglect rank
+    rank_counts: [u8; 13],      // how many i ranks are in the hand. neglect suit
 }
 
 impl Evaluation {
     pub fn new(cards: &[Card]) -> Self {
         Evaluation {
-            kind_counts: Self::kind_counts(cards),
-            suit_counts: Self::suit_counts(cards),
+            hand_u32: Self::rank_union(cards),
+            hand_u32_by_suit: Self::rank_union_by_suit(cards),
             rank_counts: Self::rank_counts(cards),
-            suit_bits: Self::suit_bits(cards),
-            rank_bits: Self::rank_bits(cards),
+            suit_counts: Self::suit_counts(cards),
         }
     }
-    pub fn score(&self) -> u32 {
-        todo!()
-    }
     pub fn evaluate(&self) -> HandRank {
-        self.find_flush()
+        self.find_flushes()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
             .or_else(|| self.find_straight())
@@ -35,56 +25,137 @@ impl Evaluation {
             .or_else(|| self.find_1_oak())
             .unwrap()
     }
+    pub fn score(&self) -> u32 {
+        todo!()
+    }
 
     // HandRank search
-    fn find_flush(&self) -> Option<HandRank> {
-        let suit = Self::find_suit_of_flush(&self.suit_bits);
-        match suit {
+    fn find_flushes(&self) -> Option<HandRank> {
+        match self.find_flush_suit() {
             None => None,
-            Some(suit) => {
-                let rank_bits = self.suit_bits[u8::from(suit) as usize];
-                match Self::find_rank_of_straight(rank_bits) {
-                    Some(rank) => Some(HandRank::StraightFlush(Rank::from(rank))),
-                    None => {
-                        let rank = Self::keep_n_msb(rank_bits, 5);
-                        Some(HandRank::Flush(Rank::from(rank)))
-                    }
+            Some(suit) => match self.find_straight_flush_high(suit) {
+                None => {
+                    let flush_u32 = self.hand_u32_by_suit[suit as usize];
+                    let rank = CardRank::from(flush_u32);
+                    Some(HandRank::Flush(rank))
                 }
-            }
+                Some(rank) => Some(HandRank::StraightFlush(rank)),
+            },
         }
     }
     fn find_straight(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_straight_high(self.hand_u32) {
+            None => None,
+            Some(r) => Some(HandRank::Straight(r)),
+        }
     }
     fn find_4_oak(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_n_oak_high(4) {
+            None => None,
+            Some(rank) => Some(HandRank::FourOfAKind(CardRank::from(rank as u8))),
+        }
     }
     fn find_3_oak_2_oak(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_n_oak_high(3) {
+            Some(triplet) => match self
+                .rank_counts
+                .iter()
+                .take(triplet as usize - 1) // remove the triplet rank
+                .position(|&n| n >= 2) // find a pair
+            {
+                Some(pair) => Some(HandRank::FullHouse(
+                    CardRank::from(triplet as u8),
+                    CardRank::from(pair as u8),
+                )),
+                None => None,
+            },
+            None => None,
+        }
     }
     fn find_3_oak(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_n_oak_high(3) {
+            None => None,
+            Some(r) => Some(HandRank::ThreeOfAKind(CardRank::from(r as u8))),
+        }
     }
     fn find_2_oak_2_oak(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_n_oak_high(2) {
+            None => None,
+            Some(high_pair) => match self
+                .rank_counts
+                .iter()
+                .take(high_pair as usize - 1) // remove the pair rank
+                .position(|&n| n >= 2) // find a pair
+            {
+                None => Some(HandRank::OnePair(high_pair)),
+                Some(next_pair) => Some(HandRank::TwoPair(
+                    CardRank::from(high_pair as u8),
+                    CardRank::from(next_pair as u8),
+                )),
+            },
+        }
     }
     fn find_2_oak(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_n_oak_high(2) {
+            None => None,
+            Some(r) => Some(HandRank::OnePair(CardRank::from(r as u8))),
+        }
     }
     fn find_1_oak(&self) -> Option<HandRank> {
-        todo!()
+        match self.find_n_oak_high(1) {
+            None => None,
+            Some(r) => Some(HandRank::HighCard(CardRank::from(r as u8))),
+        }
     }
 
+    // sub-HandRank search
+    fn find_n_oak_high(&self, n: u8) -> Option<CardRank> {
+        match self.rank_counts.iter().rev().position(|&r| r >= n) {
+            Some(rank) => Some(CardRank::from(rank as u8)),
+            None => None,
+        }
+    }
+    fn find_straight_flush_high(&self, suit: Suit) -> Option<CardRank> {
+        let flush = self.hand_u32_by_suit[suit as usize];
+        self.find_straight_high(flush)
+    }
+    fn find_straight_high(&self, hand_u32: u32) -> Option<CardRank> {
+        let rank_u32 = (0..5).fold(hand_u32, |acc, i| acc & hand_u32 << i);
+        if rank_u32.count_ones() > 0 {
+            return Some(CardRank::from(rank_u32));
+        }
+        let five_u32 = 0b00000000000000000001000000001111;
+        if (hand_u32 & five_u32) == five_u32 {
+            return Some(CardRank::Five);
+        }
+        None
+        // xxxxxxxxxxxxxxxxxxxx11111.......
+        // xxxxxxxxxxxxxxxxxxx11111........
+        // xxxxxxxxxxxxxxxxxx11111.........
+        // xxxxxxxxxxxxxxxxx11111..........
+        // xxxxxxxxxxxxxxxx11111...........
+        // --------------------------------
+        // xxxxxxxxxxxxxxxx00001...........
+    }
+    fn find_flush_suit(&self) -> Option<Suit> {
+        match self.suit_counts.iter().position(|&n| n == 5) {
+            None => None,
+            Some(suit) => Some(Suit::from(suit as u8)),
+        }
+    }
+
+    // constructors
     // identifies unique ranks represented in the hand
-    fn rank_bits(cards: &[Card]) -> RankBits {
+    fn rank_union(cards: &[Card]) -> u32 {
+        let mut union = 0;
         cards
             .iter()
-            .map(|c| c.rank())
-            .map(|r| Count::from(r))
-            .fold(0u16, |acc, r| acc | 1 << r)
+            .map(|c| c.rank() as u32)
+            .for_each(|r| union |= 1 << r);
+        union
     }
     // identifies unique ranks represented in each suit in the hand
-    fn suit_bits(cards: &[Card]) -> [RankBits; 4] {
+    fn rank_union_by_suit(cards: &[Card]) -> [u32; 4] {
         let mut suit_bits = [0; 4];
         cards
             .iter()
@@ -93,56 +164,39 @@ impl Evaluation {
         suit_bits
     }
     // calculates the number of occurrence cards of each rank in the hand
-    fn rank_counts(cards: &[Card]) -> [Count; 13] {
+    fn rank_counts(cards: &[Card]) -> [u8; 13] {
         let mut rank_counts = [0; 13];
         cards
             .iter()
             .map(|c| c.rank())
-            .map(|r| Count::from(r) as usize)
-            .for_each(|i| rank_counts[i] += 1);
+            .map(|r| u8::from(r) as usize)
+            .for_each(|r| rank_counts[r] += 1);
         rank_counts
     }
     // calculates the number of occurences of each suit in the hand
-    fn suit_counts(cards: &[Card]) -> [Count; 4] {
+    fn suit_counts(cards: &[Card]) -> [u8; 4] {
         let mut suit_counts = [0; 4];
         cards
             .iter()
             .map(|c| c.suit())
-            .map(|s| Count::from(s) as usize)
-            .for_each(|i| suit_counts[i] += 1);
+            .map(|s| u8::from(s) as usize)
+            .for_each(|s| suit_counts[s] += 1);
         suit_counts
     }
     // calculates the number of occurrences of the number of cards of each rank (i.e. stores 1 at location N if we find N-of-a-kind)
-    fn kind_counts(cards: &[Card]) -> [Count; 5] {
+    fn kind_counts(cards: &[Card]) -> [u8; 5] {
         let mut of_a_kind = [0; 5];
         Self::rank_counts(cards)
             .iter()
-            .map(|&n| n as usize)
+            .map(|&c| c as usize)
             .for_each(|c| of_a_kind[c] += 1);
         of_a_kind
-    }
-
-    fn keep_n_msb(bits: RankBits, n: usize) -> RankBits {
-        bits & (1 << n) - 1
-    }
-    fn keep_n_lsb(bits: RankBits, n: usize) -> RankBits {
-        bits & !(!0 << n)
-    }
-    fn find_rank_of_straight(rank_bits: RankBits) -> Option<Rank> {
-        todo!()
-    }
-    fn find_suit_of_flush(suit_bits: &[RankBits; 4]) -> Option<Suit> {
-        let suit = suit_bits.iter().position(|bits| bits.count_ones() >= 5);
-        match suit {
-            None => None,
-            Some(s) => Some(Suit::from(s as u8)),
-        }
     }
 }
 
 use super::hand_rank::HandRank;
 use crate::cards::card::Card;
-use crate::cards::rank::Rank;
+use crate::cards::rank::Rank as CardRank;
 use crate::cards::suit::Suit;
 
 trait Evaluator {

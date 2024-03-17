@@ -15,14 +15,6 @@ pub enum Rank {
     Ace = 12,
 }
 
-// u16 bitstring one-way mapping
-type Bits = u16;
-impl From<Bits> for Rank {
-    fn from(n: u16) -> Rank {
-        Rank::from(n as u8)
-    }
-}
-
 // u8 isomorphism
 impl From<u8> for Rank {
     fn from(n: u8) -> Rank {
@@ -50,9 +42,15 @@ impl From<Rank> for u8 {
     }
 }
 
+/// u32 isomorphism
+/// with this we actually get the highest rank in a union of cards in u32 representation
+/// xxxxxxxxxxxxxxx xxxx 0000Txxxxxxxx
 impl From<u32> for Rank {
     fn from(n: u32) -> Rank {
-        Rank::from((n.trailing_zeros()) as u8)
+        // Rank::from((n.trailing_zeros()) as u8) // this wouldnt work for a union of cards. the following is more generalized, at marginal cost
+        let drop_suit = n % (1 << 13);
+        let rank_bits = 32 - drop_suit.leading_zeros();
+        Rank::from(rank_bits as u8)
     }
 }
 impl From<Rank> for u32 {

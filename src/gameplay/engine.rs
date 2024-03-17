@@ -138,7 +138,9 @@ impl Hand {
         }
     }
     pub fn end_hand(&mut self) {
-        for result in self.payouts() {
+        println!("SHOW DOWN");
+        println!("{}", self.head);
+        for result in self.payouts().iter().filter(|p| p.reward > 0) {
             let seat = self
                 .head
                 .seats
@@ -146,8 +148,11 @@ impl Hand {
                 .find(|s| s.seat_id == result.position)
                 .unwrap();
             seat.stack += result.reward;
+            println!(
+                "{}",
+                format!("{}  +{}", seat.seat_id, result.reward).green()
+            );
         }
-        println!("{}", self.head);
     }
 }
 
@@ -228,4 +233,5 @@ use super::{
     player::Player,
     seat::{BetStatus, Seat},
 };
+use colored::Colorize;
 use std::rc::Rc;
