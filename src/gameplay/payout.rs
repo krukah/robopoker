@@ -1,11 +1,10 @@
 #[derive(Debug, Clone)]
 pub struct Payout {
     pub position: usize,
+    pub strength: Strength,
     pub status: BetStatus,
     pub staked: u32,
     pub reward: u32,
-    pub score: u32,
-    pub rank: HandRank,
 }
 
 impl Display for Payout {
@@ -15,15 +14,15 @@ impl Display for Payout {
                 f,
                 "{:<6} {}",
                 format!("+{}", self.reward).green(),
-                self.rank
+                self.strength
             )
         } else {
-            write!(f, "       {}", self.rank)
+            write!(f, "       {}", self.strength)
         }
     }
 }
 
 use super::seat::BetStatus;
-use crate::evaluation::hand_rank::HandRank;
+use crate::evaluation::hand_rank::Strength;
 use colored::Colorize;
 use std::fmt::Display;

@@ -24,6 +24,7 @@ impl Engine {
 
     pub fn start(&mut self) {
         loop {
+            // std::thread::sleep(std::time::Duration::from_secs(1));
             if self.has_exhausted_hands() {
                 break;
             }
@@ -50,7 +51,6 @@ impl Engine {
         self.hand.start_street();
     }
     fn start_hand(&mut self) {
-        std::thread::sleep(std::time::Duration::from_secs(1));
         println!("---------------------");
         println!("HAND {}", self.n_hands);
         self.hand.head.start_hand();
@@ -79,29 +79,6 @@ impl Engine {
     }
     fn has_exhausted_hands(&self) -> bool {
         !self.hand.head.has_more_hands()
-    }
-
-    fn _payouts(&self) -> Vec<Payout> {
-        let mut payouts = self
-            .hand
-            .head
-            .seats
-            .iter()
-            .map(|s| Payout {
-                reward: 0,
-                score: self.hand.score(s.position), // hoist
-                staked: self.hand.staked(s.position),
-                rank: self.hand.evaluate(s.position),
-                status: s.status,
-                position: s.position,
-            })
-            .collect::<Vec<Payout>>();
-        payouts.sort_by(|a, b| {
-            let x = self.hand.priority(a.position);
-            let y = self.hand.priority(b.position);
-            x.cmp(&y)
-        });
-        Showdown::new(payouts).payouts()
     }
 }
 
@@ -247,15 +224,12 @@ impl Node {
     }
 }
 
-use crate::cards::{board::Street, deck::Deck};
-
 use super::{
     action::Action,
     hand::Hand,
     node::Node,
-    payout::Payout,
     player::Player,
     seat::{BetStatus, Seat},
-    showdown::Showdown,
 };
+use crate::cards::{board::Street, deck::Deck};
 use std::rc::Rc;

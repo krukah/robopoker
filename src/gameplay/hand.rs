@@ -25,9 +25,8 @@ impl Hand {
             .iter()
             .map(|s| Payout {
                 reward: 0,
-                score: self.score(s.position),
                 staked: self.staked(s.position),
-                rank: self.evaluate(s.position),
+                strength: self.evaluate(s.position),
                 status: s.status,
                 position: s.position,
             })
@@ -58,24 +57,8 @@ impl Hand {
             })
             .sum()
     }
-    pub fn score(&self, position: usize) -> u32 {
-        let hole = self
-            .head
-            .seats
-            .iter()
-            .find(|s| s.position == position)
-            .map(|s| s.cards())
-            .unwrap();
-        let slice_hole = &hole.cards[..];
-        let slice_board = &self.head.board.cards[..];
-        let slice_combined = &slice_hole
-            .iter()
-            .chain(slice_board.iter())
-            .collect::<Vec<&Card>>();
-        let eval = LazyEvaluator::new(slice_combined);
-        eval.score()
-    }
-    pub fn evaluate(&self, position: usize) -> HandRank {
+
+    pub fn evaluate(&self, position: usize) -> Strength {
         let hole = self
             .head
             .seats
@@ -104,4 +87,4 @@ use super::showdown::Showdown;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::LazyEvaluator;
-use crate::evaluation::hand_rank::HandRank;
+use crate::evaluation::hand_rank::Strength;

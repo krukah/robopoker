@@ -3,8 +3,7 @@
 /// this is a strong tradeoff between space and time complexity.
 /// i'll maybe implement LookupEvaluator later
 trait Evaluator {
-    fn evaluate(&self) -> HandRank;
-    fn score(&self) -> u32;
+    fn evaluate(&self) -> Strength;
 }
 
 pub struct LazyEvaluator {
@@ -23,7 +22,7 @@ impl LazyEvaluator {
             suit_counts: Self::suit_counts(cards),
         }
     }
-    pub fn evaluate(&self) -> HandRank {
+    pub fn evaluate(&self) -> Strength {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
@@ -34,61 +33,48 @@ impl LazyEvaluator {
             .or_else(|| self.find_1_oak())
             .unwrap()
     }
-    pub fn score(&self) -> u32 {
-        match self.evaluate() {
-            HandRank::HighCard(r) => u8::from(r) as u32,
-            HandRank::OnePair(r) => 100 + u8::from(r) as u32,
-            HandRank::TwoPair(r1, r2) => 200 + (u8::from(r1) + u8::from(r2)) as u32,
-            HandRank::ThreeOfAKind(r) => 300 + u8::from(r) as u32,
-            HandRank::Straight(r) => 400 + u8::from(r) as u32,
-            HandRank::Flush(r) => 500 + u8::from(r) as u32,
-            HandRank::FullHouse(r1, r2) => 600 + (u8::from(r1) + u8::from(r2)) as u32,
-            HandRank::FourOfAKind(r) => 700 + u8::from(r) as u32,
-            HandRank::StraightFlush(r) => 800 + u8::from(r) as u32,
-        }
-    }
 
     // searches for HandRank
-    fn find_flush(&self) -> Option<HandRank> {
+    fn find_flush(&self) -> Option<Strength> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
-                .map(HandRank::StraightFlush)
-                .or_else(|| Some(HandRank::Flush(Rank::from(self.suit_u32[suit as usize]))))
+                .map(Strength::StraightFlush)
+                .or_else(|| Some(Strength::Flush(Rank::from(self.suit_u32[suit as usize]))))
         })
     }
-    fn find_straight(&self) -> Option<HandRank> {
+    fn find_straight(&self) -> Option<Strength> {
         self.find_rank_of_straight(self.hand_u32)
-            .map(|rank| HandRank::Straight(rank))
+            .map(|rank| Strength::Straight(rank))
     }
-    fn find_3_oak_2_oak(&self) -> Option<HandRank> {
+    fn find_3_oak_2_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(3).and_then(|triple| {
             self.find_rank_of_next_pair(triple)
-                .map(|couple| HandRank::FullHouse(triple, couple))
+                .map(|couple| Strength::FullHouse(triple, couple))
         })
     }
-    fn find_2_oak_2_oak(&self) -> Option<HandRank> {
+    fn find_2_oak_2_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(2).and_then(|high| {
             self.find_rank_of_next_pair(high)
-                .map(|next| HandRank::TwoPair(high, next))
-                .or_else(|| Some(HandRank::OnePair(high)))
+                .map(|next| Strength::TwoPair(high, next))
+                .or_else(|| Some(Strength::OnePair(high)))
         })
     }
-    fn find_4_oak(&self) -> Option<HandRank> {
+    fn find_4_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(4)
-            .map(|rank| HandRank::FourOfAKind(rank))
+            .map(|rank| Strength::FourOfAKind(rank))
     }
-    fn find_3_oak(&self) -> Option<HandRank> {
+    fn find_3_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(3)
-            .map(|rank| HandRank::ThreeOfAKind(rank))
+            .map(|rank| Strength::ThreeOfAKind(rank))
     }
-    fn find_2_oak(&self) -> Option<HandRank> {
+    fn find_2_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(2)
-            .map(|rank| HandRank::OnePair(rank))
+            .map(|rank| Strength::OnePair(rank))
         // lowkey unreachable because TwoPair short circuits
     }
-    fn find_1_oak(&self) -> Option<HandRank> {
+    fn find_1_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(1)
-            .map(|rank| HandRank::HighCard(rank))
+            .map(|rank| Strength::HighCard(rank))
     }
 
     // sub-searches for Rank and Suit
@@ -173,7 +159,7 @@ impl LazyEvaluator {
     }
 }
 
-use super::hand_rank::HandRank;
+use super::hand_rank::Strength;
 use crate::cards::card::Card;
 use crate::cards::rank::Rank;
 use crate::cards::suit::Suit;

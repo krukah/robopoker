@@ -1,27 +1,27 @@
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
     payouts: Vec<Payout>,
-    next_score: u32,
     next_stake: u32,
     prev_stake: u32,
+    next_rank: Strength,
 }
 
 impl Showdown {
     pub fn new(payouts: Vec<Payout>) -> Self {
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
-        let next_score = u32::MAX;
+        let next_rank = Strength::MAX;
         Showdown {
             payouts,
             next_stake,
             prev_stake,
-            next_score,
+            next_rank,
         }
     }
 
     pub fn payouts(mut self) -> Vec<Payout> {
         loop {
-            self.next_score();
+            self.next_rank();
             loop {
                 self.next_stake();
                 self.distribute();
@@ -62,31 +62,33 @@ impl Showdown {
         self.next_stake = self
             .payouts
             .iter()
-            .filter(|p| p.score == self.next_score)
+            .filter(|p| p.strength == self.next_rank)
             .filter(|p| p.staked > self.prev_stake)
             .filter(|p| p.status != BetStatus::Folded)
             .map(|p| p.staked)
             .min()
             .unwrap();
     }
-    fn next_score(&mut self) {
-        self.next_score = self
+    fn next_rank(&mut self) {
+        self.next_rank = self
             .payouts
             .iter()
-            .filter(|p| p.score < self.next_score)
+            .filter(|p| p.strength < self.next_rank)
             .filter(|p| p.status != BetStatus::Folded)
-            .map(|p| p.score)
+            .map(|p| p.strength)
             .max()
             .unwrap();
     }
     fn winners(&mut self) -> Vec<&mut Payout> {
         self.payouts
             .iter_mut()
-            .filter(|p| p.score == self.next_score)
+            .filter(|p| p.strength == self.next_rank)
             .filter(|p| p.staked > self.prev_stake)
             .filter(|p| p.status != BetStatus::Folded)
             .collect()
     }
 }
+
+use crate::evaluation::hand_rank::Strength;
 
 use super::{payout::Payout, seat::BetStatus};
