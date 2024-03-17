@@ -49,7 +49,7 @@ impl From<u32> for Rank {
     fn from(n: u32) -> Rank {
         // Rank::from((n.trailing_zeros()) as u8) // this wouldnt work for a union of cards. the following is more generalized, at marginal cost
         let drop_suit = n % (1 << 13);
-        let rank_bits = 32 - drop_suit.leading_zeros();
+        let rank_bits = 32 - drop_suit.leading_zeros() - 1;
         Rank::from(rank_bits as u8)
     }
 }

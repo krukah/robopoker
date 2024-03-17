@@ -58,8 +58,23 @@ impl Hand {
             })
             .sum()
     }
-    fn score(&self, _id: usize) -> u32 {
-        rand::thread_rng().gen::<u32>() % 1
+    fn score(&self, id: usize) -> u32 {
+        let hole = self
+            .head
+            .seats
+            .iter()
+            .find(|s| s.seat_id == id)
+            .map(|s| s.cards())
+            .unwrap();
+        let slice_hole = &hole.cards[..];
+        let slice_board = &self.head.board.cards[..];
+        let slice_combined = slice_hole
+            .iter()
+            .chain(slice_board.iter())
+            .collect::<Vec<&Card>>();
+        let eval = Evaluation::new(slice_combined);
+        println!("{}", id);
+        eval.score()
     }
     fn priority(&self, position: usize) -> u32 {
         // TODO: misuse of ID as position
@@ -69,5 +84,5 @@ impl Hand {
 // mutables
 
 use super::{action::Action, node::Node, payout::Payout, showdown::Showdown};
-use crate::cards::deck::Deck;
-use rand::Rng;
+use crate::cards::{card::Card, deck::Deck};
+use crate::evaluation::evaluation::Evaluation;

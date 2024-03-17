@@ -1,4 +1,4 @@
-struct Evaluation {
+pub struct Evaluation {
     hand_u32: u32,              // which ranks are in the hand
     hand_u32_by_suit: [u32; 4], // which ranks in which suits are in the hand
     suit_counts: [u8; 4],       // how many i suits are in the hand. neglect rank
@@ -6,12 +6,12 @@ struct Evaluation {
 }
 
 impl Evaluation {
-    pub fn new(cards: &[Card]) -> Self {
+    pub fn new(cards: Vec<&Card>) -> Self {
         Evaluation {
-            hand_u32: Self::rank_union(cards),
-            hand_u32_by_suit: Self::rank_union_by_suit(cards),
-            rank_counts: Self::rank_counts(cards),
-            suit_counts: Self::suit_counts(cards),
+            hand_u32: Self::hand_u32(cards.clone()),
+            hand_u32_by_suit: Self::hand_u32_by_suit(cards.clone()),
+            rank_counts: Self::rank_counts(cards.clone()),
+            suit_counts: Self::suit_counts(cards.clone()),
         }
     }
     pub fn evaluate(&self) -> HandRank {
@@ -26,7 +26,19 @@ impl Evaluation {
             .unwrap()
     }
     pub fn score(&self) -> u32 {
-        todo!()
+        let eval = self.evaluate();
+        println!("{:?}", eval);
+        match eval {
+            HandRank::HighCard(r) => u8::from(r) as u32,
+            HandRank::OnePair(r) => 100 + u8::from(r) as u32,
+            HandRank::TwoPair(r1, r2) => 200 + (u8::from(r1) + u8::from(r2)) as u32,
+            HandRank::ThreeOfAKind(r) => 300 + u8::from(r) as u32,
+            HandRank::Straight(r) => 400 + u8::from(r) as u32,
+            HandRank::Flush(r) => 500 + u8::from(r) as u32,
+            HandRank::FullHouse(r1, r2) => 600 + (u8::from(r1) + u8::from(r2)) as u32,
+            HandRank::FourOfAKind(r) => 700 + u8::from(r) as u32,
+            HandRank::StraightFlush(r) => 800 + u8::from(r) as u32,
+        }
     }
 
     // HandRank search
@@ -57,11 +69,14 @@ impl Evaluation {
     }
     fn find_3_oak_2_oak(&self) -> Option<HandRank> {
         match self.find_n_oak_high(3) {
+            None => None,
             Some(triplet) => match self
                 .rank_counts
                 .iter()
-                .take(triplet as usize - 1) // remove the triplet rank
+                .take(triplet as usize) // remove the triplet rank
+                .rev()
                 .position(|&n| n >= 2) // find a pair
+                .map(|i| triplet as usize - i - 1)
             {
                 Some(pair) => Some(HandRank::FullHouse(
                     CardRank::from(triplet as u8),
@@ -69,7 +84,6 @@ impl Evaluation {
                 )),
                 None => None,
             },
-            None => None,
         }
     }
     fn find_3_oak(&self) -> Option<HandRank> {
@@ -84,8 +98,10 @@ impl Evaluation {
             Some(high_pair) => match self
                 .rank_counts
                 .iter()
-                .take(high_pair as usize - 1) // remove the pair rank
-                .position(|&n| n >= 2) // find a pair
+                .take(high_pair as usize)
+                .rev()
+                .position(|&n| n >= 2)
+                .map(|i| high_pair as usize - i - 1)
             {
                 None => Some(HandRank::OnePair(high_pair)),
                 Some(next_pair) => Some(HandRank::TwoPair(
@@ -110,7 +126,13 @@ impl Evaluation {
 
     // sub-HandRank search
     fn find_n_oak_high(&self, n: u8) -> Option<CardRank> {
-        match self.rank_counts.iter().rev().position(|&r| r >= n) {
+        match self
+            .rank_counts
+            .iter()
+            .rev()
+            .position(|&r| r >= n)
+            .map(|i| 13 - i - 1)
+        {
             Some(rank) => Some(CardRank::from(rank as u8)),
             None => None,
         }
@@ -138,7 +160,7 @@ impl Evaluation {
         // xxxxxxxxxxxxxxxx00001...........
     }
     fn find_flush_suit(&self) -> Option<Suit> {
-        match self.suit_counts.iter().position(|&n| n == 5) {
+        match self.suit_counts.iter().position(|&n| n >= 5) {
             None => None,
             Some(suit) => Some(Suit::from(suit as u8)),
         }
@@ -146,16 +168,16 @@ impl Evaluation {
 
     // constructors
     // identifies unique ranks represented in the hand
-    fn rank_union(cards: &[Card]) -> u32 {
+    fn hand_u32(cards: Vec<&Card>) -> u32 {
         let mut union = 0;
         cards
             .iter()
-            .map(|c| c.rank() as u32)
-            .for_each(|r| union |= 1 << r);
+            .map(|c| u32::from(c.rank()))
+            .for_each(|u| union |= u);
         union
     }
     // identifies unique ranks represented in each suit in the hand
-    fn rank_union_by_suit(cards: &[Card]) -> [u32; 4] {
+    fn hand_u32_by_suit(cards: Vec<&Card>) -> [u32; 4] {
         let mut suit_bits = [0; 4];
         cards
             .iter()
@@ -164,7 +186,7 @@ impl Evaluation {
         suit_bits
     }
     // calculates the number of occurrence cards of each rank in the hand
-    fn rank_counts(cards: &[Card]) -> [u8; 13] {
+    fn rank_counts(cards: Vec<&Card>) -> [u8; 13] {
         let mut rank_counts = [0; 13];
         cards
             .iter()
@@ -174,7 +196,7 @@ impl Evaluation {
         rank_counts
     }
     // calculates the number of occurences of each suit in the hand
-    fn suit_counts(cards: &[Card]) -> [u8; 4] {
+    fn suit_counts(cards: Vec<&Card>) -> [u8; 4] {
         let mut suit_counts = [0; 4];
         cards
             .iter()
@@ -182,15 +204,6 @@ impl Evaluation {
             .map(|s| u8::from(s) as usize)
             .for_each(|s| suit_counts[s] += 1);
         suit_counts
-    }
-    // calculates the number of occurrences of the number of cards of each rank (i.e. stores 1 at location N if we find N-of-a-kind)
-    fn kind_counts(cards: &[Card]) -> [u8; 5] {
-        let mut of_a_kind = [0; 5];
-        Self::rank_counts(cards)
-            .iter()
-            .map(|&c| c as usize)
-            .for_each(|c| of_a_kind[c] += 1);
-        of_a_kind
     }
 }
 
