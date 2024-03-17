@@ -105,13 +105,13 @@ impl LazyEvaluator {
         self.find_rank_of_straight(flush_u32)
     }
     fn find_rank_of_straight(&self, hand_u32: u32) -> Option<Rank> {
-        let mut straight = Rank::mask(hand_u32); // necessary if we include suits in hand_u32() representation
-        straight &= straight << 1;
-        straight &= straight << 1;
-        straight &= straight << 1;
-        straight &= straight << 1;
-        if straight.count_ones() > 0 {
-            return Some(Rank::from(straight));
+        let mut mask = hand_u32;
+        mask &= mask << 1;
+        mask &= mask << 1;
+        mask &= mask << 1;
+        mask &= mask << 1;
+        if mask.count_ones() > 0 {
+            return Some(Rank::from(mask));
         } else if Rank::wheel() == (Rank::wheel() & hand_u32) {
             return Some(Rank::Five);
         } else {
@@ -137,25 +137,6 @@ impl LazyEvaluator {
     }
 
     // sub-constructors for LazyEvaluator
-    // identifies unique ranks represented in the hand
-    fn hand_u32(cards: &Vec<&Card>) -> u32 {
-        let mut hand_u32 = 0;
-        cards
-            .iter()
-            .map(|c| c.rank())
-            .map(|r| u32::from(r))
-            .for_each(|r| hand_u32 |= r);
-        hand_u32
-    }
-    fn suit_u32(cards: &Vec<&Card>) -> [u32; 4] {
-        let mut suit_u32 = [0; 4];
-        cards
-            .iter()
-            .map(|c| (c.suit(), c.rank()))
-            .map(|(s, r)| (s as usize, u32::from(r)))
-            .for_each(|(s, r)| suit_u32[s] |= r);
-        suit_u32
-    }
     fn rank_counts(cards: &Vec<&Card>) -> [u8; 13] {
         let mut rank_counts = [0; 13];
         cards
@@ -173,6 +154,24 @@ impl LazyEvaluator {
             .map(|s| s as usize)
             .for_each(|s| suit_counts[s] += 1);
         suit_counts
+    }
+    fn hand_u32(cards: &Vec<&Card>) -> u32 {
+        let mut hand_u32 = 0;
+        cards
+            .iter()
+            .map(|c| c.rank())
+            .map(|r| u32::from(r))
+            .for_each(|r| hand_u32 |= r);
+        hand_u32
+    }
+    fn suit_u32(cards: &Vec<&Card>) -> [u32; 4] {
+        let mut suit_u32 = [0; 4];
+        cards
+            .iter()
+            .map(|c| (c.suit(), c.rank()))
+            .map(|(s, r)| (s as usize, u32::from(r)))
+            .for_each(|(s, r)| suit_u32[s] |= r);
+        suit_u32
     }
 }
 
