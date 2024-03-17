@@ -59,7 +59,7 @@ impl Hand {
             .sum()
     }
     fn score(&self, _id: usize) -> u32 {
-        rand::thread_rng().gen::<u32>() % 32
+        rand::thread_rng().gen::<u32>() % 1
     }
     fn priority(&self, position: usize) -> u32 {
         // TODO: misuse of ID as position
