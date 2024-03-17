@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub struct Seat {
-    pub seat_id: usize,
+    pub position: usize,
     pub hole: Hole,
     pub actor: Rc<dyn Player>, // Weak ?
     pub stack: u32,
@@ -10,7 +10,7 @@ pub struct Seat {
 impl Seat {
     pub fn new(stack: u32, position: usize, actor: Rc<dyn Player>) -> Seat {
         Seat {
-            seat_id: position,
+            position,
             stack,
             stake: 0,
             status: BetStatus::Playing,
@@ -26,19 +26,19 @@ impl Seat {
     pub fn valid_actions(&self, hand: &Hand) -> Vec<Action> {
         let mut actions = Vec::with_capacity(5);
         if self.can_check(hand) {
-            actions.push(Action::Check(self.seat_id));
+            actions.push(Action::Check(self.position));
         }
         if self.can_fold(hand) {
-            actions.push(Action::Fold(self.seat_id));
+            actions.push(Action::Fold(self.position));
         }
         if self.can_call(hand) {
-            actions.push(Action::Call(self.seat_id, self.to_call(hand)));
+            actions.push(Action::Call(self.position, self.to_call(hand)));
         }
         if self.can_shove(hand) {
-            actions.push(Action::Shove(self.seat_id, self.to_shove(hand)));
+            actions.push(Action::Shove(self.position, self.to_shove(hand)));
         }
         if self.can_raise(hand) {
-            actions.push(Action::Raise(self.seat_id, self.to_raise(hand)));
+            actions.push(Action::Raise(self.position, self.to_raise(hand)));
         }
         actions
     }
@@ -86,7 +86,7 @@ impl Display for Seat {
         write!(
             f,
             "{:<3}{}   {}  {} {:>7}  ",
-            self.seat_id, self.status, card1, card2, self.stack,
+            self.position, self.status, card1, card2, self.stack,
         )
     }
 }
@@ -103,13 +103,14 @@ impl Display for BetStatus {
         match self {
             BetStatus::Playing => write!(f, "P"),
             BetStatus::Shoved => write!(f, "S"),
-            BetStatus::Folded => write!(f, "F"),
+            BetStatus::Folded => write!(f, "{}", "F".red()),
         }
     }
 }
 
 use super::{action::Action, hand::Hand, player::Player};
 use crate::cards::hole::Hole;
+use colored::Colorize;
 use std::{
     fmt::{Debug, Display},
     rc::Rc,

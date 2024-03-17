@@ -55,16 +55,16 @@ impl Player for Human {
             .interact()
             .unwrap();
         match choices[selection] {
-            "Fold" => Action::Fold(seat.seat_id),
-            "Check" => Action::Check(seat.seat_id),
-            "Call" => Action::Call(seat.seat_id, seat.to_call(hand)),
-            "Shove" => Action::Shove(seat.seat_id, seat.to_shove(hand)),
+            "Fold" => Action::Fold(seat.position),
+            "Check" => Action::Check(seat.position),
+            "Call" => Action::Call(seat.position, seat.to_call(hand)),
+            "Shove" => Action::Shove(seat.position, seat.to_shove(hand)),
             "Raise" => {
                 let raise = self.raise(seat, hand);
                 let shove = seat.to_shove(hand);
                 match raise == shove {
-                    true => Action::Shove(seat.seat_id, shove),
-                    false => Action::Raise(seat.seat_id, raise),
+                    true => Action::Shove(seat.position, shove),
+                    false => Action::Raise(seat.position, raise),
                 }
             }
             _ => unreachable!(),

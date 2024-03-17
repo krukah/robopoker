@@ -5,6 +5,7 @@ pub struct Payout {
     pub staked: u32,
     pub reward: u32,
     pub score: u32,
+    pub rank: HandRank,
 }
 
 impl Display for Payout {
@@ -14,14 +15,15 @@ impl Display for Payout {
                 f,
                 "{:<6} {}",
                 format!("+{}", self.reward).green(),
-                self.score
+                self.rank
             )
         } else {
-            write!(f, "       {}", self.score)
+            write!(f, "       {}", self.rank)
         }
     }
 }
 
 use super::seat::BetStatus;
+use crate::evaluation::hand_rank::HandRank;
 use colored::Colorize;
 use std::fmt::Display;

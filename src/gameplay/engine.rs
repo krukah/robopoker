@@ -19,7 +19,7 @@ impl Engine {
 
     pub fn lose_seat(&mut self, seat_id: usize) {
         println!("DROP {}\n", seat_id);
-        self.hand.head.seats.retain(|s| s.seat_id != seat_id);
+        self.hand.head.seats.retain(|s| s.position != seat_id);
     }
 
     pub fn start(&mut self) {
@@ -50,7 +50,9 @@ impl Engine {
         self.hand.start_street();
     }
     fn start_hand(&mut self) {
-        println!("HAND  {}\n", self.n_hands);
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        println!("---------------------");
+        println!("HAND {}", self.n_hands);
         self.hand.head.start_hand();
         self.hand.start_hand();
     }
@@ -87,10 +89,11 @@ impl Engine {
             .iter()
             .map(|s| Payout {
                 reward: 0,
-                score: self.hand.score(s.seat_id), // hoist
-                staked: self.hand.staked(s.seat_id),
+                score: self.hand.score(s.position), // hoist
+                staked: self.hand.staked(s.position),
+                rank: self.hand.evaluate(s.position),
                 status: s.status,
-                position: s.seat_id,
+                position: s.position,
             })
             .collect::<Vec<Payout>>();
         payouts.sort_by(|a, b| {
@@ -115,8 +118,8 @@ impl Hand {
         self.tail = self.head.clone();
         self.deck = Deck::new();
         self.actions.clear();
-        self.apply(Action::Blind(self.head.to_act().seat_id, self.sblind));
-        self.apply(Action::Blind(self.head.to_act().seat_id, self.bblind));
+        self.apply(Action::Blind(self.head.to_act().position, self.sblind));
+        self.apply(Action::Blind(self.head.to_act().position, self.bblind));
         self.head.counter = 0;
     }
     pub fn start_street(&mut self) {
@@ -161,13 +164,13 @@ impl Hand {
     }
     pub fn end_hand(&mut self) {
         println!("SHOW DOWN");
-        print!("       {}", self.head.board);
+        print!("BOARD  {}", self.head.board);
         for result in self.payouts() {
             let seat = self
                 .head
                 .seats
                 .iter_mut()
-                .find(|s| s.seat_id == result.position)
+                .find(|s| s.position == result.position)
                 .unwrap();
             println!("{} {}", seat, result);
             seat.stack += result.reward;

@@ -25,10 +25,11 @@ impl Hand {
             .iter()
             .map(|s| Payout {
                 reward: 0,
-                score: self.score(s.seat_id),
-                staked: self.staked(s.seat_id),
+                score: self.score(s.position),
+                staked: self.staked(s.position),
+                rank: self.evaluate(s.position),
                 status: s.status,
-                position: s.seat_id,
+                position: s.position,
             })
             .collect::<Vec<Payout>>();
         payouts.sort_by(|a, b| {
@@ -62,7 +63,7 @@ impl Hand {
             .head
             .seats
             .iter()
-            .find(|s| s.seat_id == position)
+            .find(|s| s.position == position)
             .map(|s| s.cards())
             .unwrap();
         let slice_hole = &hole.cards[..];
@@ -73,6 +74,23 @@ impl Hand {
             .collect::<Vec<&Card>>();
         let eval = LazyEvaluator::new(slice_combined);
         eval.score()
+    }
+    pub fn evaluate(&self, position: usize) -> HandRank {
+        let hole = self
+            .head
+            .seats
+            .iter()
+            .find(|s| s.position == position)
+            .map(|s| s.cards())
+            .unwrap();
+        let slice_hole = &hole.cards[..];
+        let slice_board = &self.head.board.cards[..];
+        let slice_combined = &slice_hole
+            .iter()
+            .chain(slice_board.iter())
+            .collect::<Vec<&Card>>();
+        let eval = LazyEvaluator::new(slice_combined);
+        eval.evaluate()
     }
     pub fn priority(&self, position: usize) -> u32 {
         // TODO: misuse of ID as position
@@ -86,3 +104,4 @@ use super::showdown::Showdown;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::LazyEvaluator;
+use crate::evaluation::hand_rank::HandRank;
