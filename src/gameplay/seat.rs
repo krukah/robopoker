@@ -85,7 +85,7 @@ impl Display for Seat {
         let card2 = self.hole.cards.get(1).unwrap();
         write!(
             f,
-            "{:<3}{}   {}  {} {:>7}  \n",
+            "{:<3}{}   {}  {} {:>7}  ",
             self.seat_id, self.status, card1, card2, self.stack,
         )
     }

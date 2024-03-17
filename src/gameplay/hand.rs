@@ -18,7 +18,6 @@ impl Hand {
             head: Node::new(),
         }
     }
-
     pub fn payouts(&self) -> Vec<Payout> {
         let mut payouts = self
             .head
@@ -39,7 +38,7 @@ impl Hand {
         });
         Showdown::new(payouts).payouts()
     }
-    fn staked(&self, position: usize) -> u32 {
+    pub fn staked(&self, position: usize) -> u32 {
         self.actions
             .iter()
             .filter(|a| match a {
@@ -58,12 +57,12 @@ impl Hand {
             })
             .sum()
     }
-    fn score(&self, id: usize) -> u32 {
+    pub fn score(&self, position: usize) -> u32 {
         let hole = self
             .head
             .seats
             .iter()
-            .find(|s| s.seat_id == id)
+            .find(|s| s.seat_id == position)
             .map(|s| s.cards())
             .unwrap();
         let slice_hole = &hole.cards[..];
@@ -73,16 +72,17 @@ impl Hand {
             .chain(slice_board.iter())
             .collect::<Vec<&Card>>();
         let eval = LazyEvaluator::new(slice_combined);
-        println!("{}", id);
         eval.score()
     }
-    fn priority(&self, position: usize) -> u32 {
+    pub fn priority(&self, position: usize) -> u32 {
         // TODO: misuse of ID as position
         (position.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
     }
 }
 // mutables
 
-use super::{action::Action, node::Node, payout::Payout, showdown::Showdown};
+use super::payout::Payout;
+use super::showdown::Showdown;
+use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::LazyEvaluator;

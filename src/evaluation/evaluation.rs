@@ -35,9 +35,7 @@ impl LazyEvaluator {
             .unwrap()
     }
     pub fn score(&self) -> u32 {
-        let eval = self.evaluate();
-        println!("{:?}", eval);
-        match eval {
+        match self.evaluate() {
             HandRank::HighCard(r) => u8::from(r) as u32,
             HandRank::OnePair(r) => 100 + u8::from(r) as u32,
             HandRank::TwoPair(r1, r2) => 200 + (u8::from(r1) + u8::from(r2)) as u32,

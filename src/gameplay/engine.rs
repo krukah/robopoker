@@ -78,6 +78,28 @@ impl Engine {
     fn has_exhausted_hands(&self) -> bool {
         !self.hand.head.has_more_hands()
     }
+
+    fn _payouts(&self) -> Vec<Payout> {
+        let mut payouts = self
+            .hand
+            .head
+            .seats
+            .iter()
+            .map(|s| Payout {
+                reward: 0,
+                score: self.hand.score(s.seat_id), // hoist
+                staked: self.hand.staked(s.seat_id),
+                status: s.status,
+                position: s.seat_id,
+            })
+            .collect::<Vec<Payout>>();
+        payouts.sort_by(|a, b| {
+            let x = self.hand.priority(a.position);
+            let y = self.hand.priority(b.position);
+            x.cmp(&y)
+        });
+        Showdown::new(payouts).payouts()
+    }
 }
 
 impl Hand {
@@ -139,20 +161,18 @@ impl Hand {
     }
     pub fn end_hand(&mut self) {
         println!("SHOW DOWN");
-        println!("{}", self.head);
-        for result in self.payouts().iter().filter(|p| p.reward > 0) {
+        print!("       {}", self.head.board);
+        for result in self.payouts() {
             let seat = self
                 .head
                 .seats
                 .iter_mut()
                 .find(|s| s.seat_id == result.position)
                 .unwrap();
+            println!("{} {}", seat, result);
             seat.stack += result.reward;
-            println!(
-                "{}",
-                format!("{}  +{}", seat.seat_id, result.reward).green()
-            );
         }
+        println!();
     }
 }
 
@@ -230,8 +250,9 @@ use super::{
     action::Action,
     hand::Hand,
     node::Node,
+    payout::Payout,
     player::Player,
     seat::{BetStatus, Seat},
+    showdown::Showdown,
 };
-use colored::Colorize;
 use std::rc::Rc;
