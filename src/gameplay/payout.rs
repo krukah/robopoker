@@ -3,7 +3,7 @@ pub struct Payout {
     pub position: usize,
     pub strength: Strength,
     pub status: BetStatus,
-    pub staked: u32,
+    pub risked: u32,
     pub reward: u32,
 }
 

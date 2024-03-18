@@ -19,25 +19,52 @@ impl Hand {
         }
     }
     pub fn payouts(&self) -> Vec<Payout> {
-        let mut payouts = self
-            .head
-            .seats
-            .iter()
-            .map(|s| Payout {
-                reward: 0,
-                staked: self.staked(s.position),
-                strength: self.evaluate(s.position),
-                status: s.status,
-                position: s.position,
-            })
-            .collect::<Vec<Payout>>();
+        if self.head.are_all_folded() {
+            self.concede()
+        } else {
+            self.showdown()
+        }
+    }
+
+    fn concede(&self) -> Vec<Payout> {
+        let mut payouts = self.naive_payouts();
+        let winner = payouts
+            .iter_mut()
+            .find(|p| p.status != BetStatus::Folded)
+            .unwrap();
+        winner.reward = self.head.pot;
+        payouts
+    }
+
+    fn showdown(&self) -> Vec<Payout> {
+        let mut payouts = self.naive_payouts();
         payouts.sort_by(|a, b| {
             let x = self.priority(a.position);
             let y = self.priority(b.position);
             x.cmp(&y)
         });
-        Showdown::new(payouts).payouts()
+        payouts
+            .iter_mut()
+            .filter(|p| p.status != BetStatus::Folded)
+            .for_each(|p| p.strength = self.evaluate(p.position));
+        let showdown = Showdown::new(payouts);
+        showdown.settle()
     }
+
+    pub fn naive_payouts(&self) -> Vec<Payout> {
+        self.head
+            .seats
+            .iter()
+            .map(|s| Payout {
+                reward: 0,
+                risked: self.staked(s.position),
+                strength: Strength::MUCK,
+                status: s.status,
+                position: s.position,
+            })
+            .collect::<Vec<Payout>>()
+    }
+
     pub fn staked(&self, position: usize) -> u32 {
         self.actions
             .iter()
@@ -83,6 +110,7 @@ impl Hand {
 // mutables
 
 use super::payout::Payout;
+use super::seat::BetStatus;
 use super::showdown::Showdown;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};

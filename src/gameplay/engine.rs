@@ -11,33 +11,12 @@ impl Engine {
         }
     }
 
-    pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Player>) {
-        println!("ADD  {}\n", self.hand.head.seats.len());
-        let seat = Seat::new(stack, self.hand.head.seats.len(), actor);
-        self.hand.head.seats.push(seat);
-    }
-
-    pub fn lose_seat(&mut self, seat_id: usize) {
-        println!("DROP {}\n", seat_id);
-        self.hand.head.seats.retain(|s| s.position != seat_id);
-    }
-
     pub fn start(&mut self) {
-        loop {
-            // std::thread::sleep(std::time::Duration::from_secs(1));
-            if self.has_exhausted_hands() {
-                break;
-            }
+        while self.has_hands() {
             self.start_hand();
-            loop {
-                if self.has_exhausted_streets() {
-                    break;
-                }
+            while self.has_streets() {
                 self.start_street();
-                loop {
-                    if self.has_exhausted_turns() {
-                        break;
-                    }
+                while self.has_turns() {
                     self.end_turn();
                 }
                 self.end_street();
@@ -46,12 +25,24 @@ impl Engine {
         }
     }
 
+    pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Player>) {
+        println!("ADD  {}", self.hand.head.seats.len());
+        let seat = Seat::new(stack, self.hand.head.seats.len(), actor);
+        self.hand.head.seats.push(seat);
+    }
+
+    pub fn drop_seat(&mut self, position: usize) {
+        println!("DROP {}", position);
+        self.hand.head.seats.retain(|s| s.position != position);
+    }
+
     fn start_street(&mut self) {
         self.hand.head.start_street();
         self.hand.start_street();
     }
     fn start_hand(&mut self) {
         println!("---------------------");
+        println!();
         println!("HAND {}", self.n_hands);
         self.hand.head.start_hand();
         self.hand.start_hand();
@@ -71,14 +62,14 @@ impl Engine {
         self.hand.end_hand();
     }
 
-    fn has_exhausted_turns(&self) -> bool {
-        !self.hand.head.has_more_players()
+    fn has_turns(&self) -> bool {
+        self.hand.head.has_more_players()
     }
-    fn has_exhausted_streets(&self) -> bool {
-        !self.hand.head.has_more_streets()
+    fn has_streets(&self) -> bool {
+        self.hand.head.has_more_streets()
     }
-    fn has_exhausted_hands(&self) -> bool {
-        !self.hand.head.has_more_hands()
+    fn has_hands(&self) -> bool {
+        self.n_hands < 5000
     }
 }
 
@@ -140,19 +131,18 @@ impl Hand {
         }
     }
     pub fn end_hand(&mut self) {
-        println!("SHOW DOWN");
+        println!("---------------------");
         print!("BOARD  {}", self.head.board);
-        for result in self.payouts() {
+        for payout in self.payouts() {
             let seat = self
                 .head
                 .seats
                 .iter_mut()
-                .find(|s| s.position == result.position)
+                .find(|s| s.position == payout.position)
                 .unwrap();
-            println!("{}{}", seat, result);
-            seat.stack += result.reward;
+            println!("{}{}", seat, payout);
+            seat.stack += payout.reward;
         }
-        println!();
     }
 }
 

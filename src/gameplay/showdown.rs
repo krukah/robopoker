@@ -19,7 +19,7 @@ impl Showdown {
         }
     }
 
-    pub fn payouts(mut self) -> Vec<Payout> {
+    pub fn settle(mut self) -> Vec<Payout> {
         loop {
             self.next_rank();
             loop {
@@ -33,14 +33,14 @@ impl Showdown {
     }
 
     fn is_complete(&self) -> bool {
-        let staked = self.payouts.iter().map(|p| p.staked).sum::<u32>();
+        let staked = self.payouts.iter().map(|p| p.risked).sum::<u32>();
         let reward = self.payouts.iter().map(|p| p.reward).sum::<u32>();
         staked == reward
     }
     fn winnings(&self) -> u32 {
         self.payouts
             .iter()
-            .map(|p| p.staked)
+            .map(|p| p.risked)
             .map(|s| std::cmp::min(s, self.next_stake))
             .map(|s| s.saturating_sub(self.prev_stake))
             .sum()
@@ -63,9 +63,9 @@ impl Showdown {
             .payouts
             .iter()
             .filter(|p| p.strength == self.next_rank)
-            .filter(|p| p.staked > self.prev_stake)
+            .filter(|p| p.risked > self.prev_stake)
             .filter(|p| p.status != BetStatus::Folded)
-            .map(|p| p.staked)
+            .map(|p| p.risked)
             .min()
             .unwrap();
     }
@@ -83,7 +83,7 @@ impl Showdown {
         self.payouts
             .iter_mut()
             .filter(|p| p.strength == self.next_rank)
-            .filter(|p| p.staked > self.prev_stake)
+            .filter(|p| p.risked > self.prev_stake)
             .filter(|p| p.status != BetStatus::Folded)
             .collect()
     }

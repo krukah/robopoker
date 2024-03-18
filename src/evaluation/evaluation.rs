@@ -6,9 +6,10 @@ trait Evaluator {
     fn evaluate(&self) -> Strength;
 }
 
+pub struct LookupEvaluator;
 pub struct LazyEvaluator {
-    hand_u32: u32,         // which ranks are in the hand
-    suit_u32: [u32; 4],    // which ranks in which suits are in the hand
+    hand_set: u32,         // which ranks are in the hand
+    suit_set: [u32; 4],    // which ranks are in suits are in the hand
     rank_counts: [u8; 13], // how many i ranks are in the hand. neglect suit
     suit_counts: [u8; 4],  // how many i suits are in the hand. neglect rank
 }
@@ -16,8 +17,8 @@ pub struct LazyEvaluator {
 impl LazyEvaluator {
     pub fn new(cards: &Vec<&Card>) -> Self {
         LazyEvaluator {
-            hand_u32: Self::hand_u32(cards),
-            suit_u32: Self::suit_u32(cards),
+            hand_set: Self::hand_u32(cards),
+            suit_set: Self::suit_u32(cards),
             rank_counts: Self::rank_counts(cards),
             suit_counts: Self::suit_counts(cards),
         }
@@ -39,11 +40,11 @@ impl LazyEvaluator {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
                 .map(Strength::StraightFlush)
-                .or_else(|| Some(Strength::Flush(Rank::from(self.suit_u32[suit as usize]))))
+                .or_else(|| Some(Strength::Flush(Rank::from(self.suit_set[suit as usize]))))
         })
     }
     fn find_straight(&self) -> Option<Strength> {
-        self.find_rank_of_straight(self.hand_u32)
+        self.find_rank_of_straight(self.hand_set)
             .map(|rank| Strength::Straight(rank))
     }
     fn find_3_oak_2_oak(&self) -> Option<Strength> {
@@ -85,7 +86,7 @@ impl LazyEvaluator {
             .map(|i| Suit::from(i as u8))
     }
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
-        let flush_u32 = self.suit_u32[suit as usize];
+        let flush_u32 = self.suit_set[suit as usize];
         self.find_rank_of_straight(flush_u32)
     }
     fn find_rank_of_straight(&self, hand_u32: u32) -> Option<Rank> {

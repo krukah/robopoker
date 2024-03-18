@@ -9,35 +9,40 @@ pub enum Strength {
     FullHouse(Rank, Rank), // 0 kickers
     FourOAK(Rank),         // 1 kickers
     StraightFlush(Rank),   // 0 kickers
+    MUCK,
     MAX,
 }
 
 impl Ord for Strength {
     fn cmp(&self, other: &Self) -> Ordering {
-        u8::from(self)
-            .cmp(&u8::from(other))
-            .then_with(|| match (self, other) {
+        match u8::from(self).cmp(&u8::from(other)) {
+            Ordering::Equal => match (self, other) {
+                (Strength::TwoPair(a1, a2), Strength::TwoPair(b1, b2))
+                | (Strength::FullHouse(a1, a2), Strength::FullHouse(b1, b2)) => match a1.cmp(a2) {
+                    Ordering::Equal => b1.cmp(b2),
+                    x => x,
+                },
+
                 (Strength::StraightFlush(a), Strength::StraightFlush(b))
-                | (Strength::FourOAK(a), Strength::FourOAK(b))
-                | (Strength::Flush(a), Strength::Flush(b))
                 | (Strength::Straight(a), Strength::Straight(b))
                 | (Strength::ThreeOAK(a), Strength::ThreeOAK(b))
+                | (Strength::HighCard(a), Strength::HighCard(b))
+                | (Strength::FourOAK(a), Strength::FourOAK(b))
                 | (Strength::OnePair(a), Strength::OnePair(b))
-                | (Strength::HighCard(a), Strength::HighCard(b)) => a.cmp(b),
-
-                (Strength::TwoPair(a, x), Strength::TwoPair(b, y))
-                | (Strength::FullHouse(a, x), Strength::FullHouse(b, y)) => {
-                    a.cmp(b).then_with(|| x.cmp(y))
-                }
+                | (Strength::Flush(a), Strength::Flush(b)) => a.cmp(b),
 
                 _ => unreachable!(),
-            })
+            },
+            x => return x,
+        }
     }
 }
 
 impl Display for Strength {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Strength::MUCK => write!(f, ""),
+            Strength::MAX => unreachable!(),
             Strength::HighCard(r) => write!(f, "HighCard      {}", r),
             Strength::OnePair(r) => write!(f, "OnePair       {}", r),
             Strength::TwoPair(r1, r2) => write!(f, "TwoPair       {}, {}", r1, r2),
@@ -47,7 +52,6 @@ impl Display for Strength {
             Strength::FullHouse(r1, r2) => write!(f, "FullHouse     {}, {}", r1, r2),
             Strength::FourOAK(r) => write!(f, "FourOfAKind   {}", r),
             Strength::StraightFlush(r) => write!(f, "StraightFlush {}", r),
-            Strength::MAX => unreachable!(),
         }
     }
 }
@@ -55,16 +59,17 @@ impl Display for Strength {
 impl From<&Strength> for u8 {
     fn from(strength: &Strength) -> u8 {
         match strength {
-            Strength::HighCard(_) => 0,
-            Strength::OnePair(_) => 1,
-            Strength::TwoPair(_, _) => 2,
-            Strength::ThreeOAK(_) => 3,
-            Strength::Straight(_) => 4,
-            Strength::Flush(_) => 5,
-            Strength::FullHouse(_, _) => 6,
-            Strength::FourOAK(_) => 7,
-            Strength::StraightFlush(_) => 8,
+            Strength::MUCK => u8::MIN,
             Strength::MAX => u8::MAX,
+            Strength::HighCard(_) => 1,
+            Strength::OnePair(_) => 2,
+            Strength::TwoPair(_, _) => 3,
+            Strength::ThreeOAK(_) => 4,
+            Strength::Straight(_) => 5,
+            Strength::Flush(_) => 6,
+            Strength::FullHouse(_, _) => 7,
+            Strength::FourOAK(_) => 8,
+            Strength::StraightFlush(_) => 9,
         }
     }
 }
