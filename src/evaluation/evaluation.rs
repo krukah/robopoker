@@ -61,11 +61,11 @@ impl LazyEvaluator {
     }
     fn find_4_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(4)
-            .map(|rank| Strength::FourOfAKind(rank))
+            .map(|rank| Strength::FourOAK(rank))
     }
     fn find_3_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(3)
-            .map(|rank| Strength::ThreeOfAKind(rank))
+            .map(|rank| Strength::ThreeOAK(rank))
     }
     fn find_2_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(2)

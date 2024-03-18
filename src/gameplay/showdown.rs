@@ -10,7 +10,7 @@ impl Showdown {
     pub fn new(payouts: Vec<Payout>) -> Self {
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
-        let next_rank = Strength::INFINITE;
+        let next_rank = Strength::MAX;
         Showdown {
             payouts,
             next_stake,

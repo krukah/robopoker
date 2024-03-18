@@ -149,7 +149,7 @@ impl Hand {
                 .iter_mut()
                 .find(|s| s.position == result.position)
                 .unwrap();
-            println!("{} {}", seat, result);
+            println!("{}{}", seat, result);
             seat.stack += result.reward;
         }
         println!();
