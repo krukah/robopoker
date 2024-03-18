@@ -85,7 +85,7 @@ impl Hand {
             .sum()
     }
 
-    pub fn evaluate(&self, position: usize) -> Strength {
+    fn showdown_cards(&self, position: usize) -> Vec<&Card> {
         let hole = self
             .head
             .seats
@@ -95,11 +95,15 @@ impl Hand {
             .unwrap();
         let slice_hole = &hole.cards[..];
         let slice_board = &self.head.board.cards[..];
-        let slice_combined = &slice_hole
+        let slice_combined = slice_hole
             .iter()
             .chain(slice_board.iter())
             .collect::<Vec<&Card>>();
-        let eval = LazyEvaluator::new(slice_combined);
+        slice_combined
+    }
+
+    pub fn evaluate(&self, position: usize) -> Strength {
+        let eval = LazyEvaluator::new(&self.showdown_cards(position));
         eval.evaluate()
     }
     pub fn priority(&self, position: usize) -> u32 {
