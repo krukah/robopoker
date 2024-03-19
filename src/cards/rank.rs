@@ -61,9 +61,6 @@ impl Rank {
     pub fn mask(n: u32) -> u32 {
         n & 0b00000000000000000001111111111111
     }
-    pub fn wheel() -> u32 {
-        0b00000000000000000001000000001111
-    }
 }
 
 impl Display for Rank {

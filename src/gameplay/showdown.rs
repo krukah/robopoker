@@ -3,7 +3,7 @@ pub struct ShowdownMachine {
     payouts: Vec<Payout>,
     next_stake: u32,
     prev_stake: u32,
-    next_rank: Strength,
+    next_rank: FullStrength,
 }
 
 impl ShowdownMachine {
@@ -24,7 +24,7 @@ impl ShowdownMachine {
     fn new(payouts: Vec<Payout>) -> Self {
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
-        let next_rank = Strength::MAX;
+        let next_rank = FullStrength(Strength::MAX, Kickers(Vec::new()));
         Self {
             payouts,
             next_stake,
@@ -89,11 +89,11 @@ impl ShowdownMachine {
             .iter()
             .filter(|p| p.strength < self.next_rank)
             .filter(|p| p.status != BetStatus::Folded)
-            .map(|p| p.strength)
+            .map(|p| p.strength.clone()) //? can we copy, rather than clone, the kickers
             .max()
             .unwrap();
     }
 }
 
 use super::{payout::Payout, seat::BetStatus};
-use crate::evaluation::strength::Strength;
+use crate::evaluation::strength::{FullStrength, Kickers, Strength};

@@ -39,7 +39,7 @@ impl Hand {
         let mut payouts = self.starting_payouts();
         for p in payouts.iter_mut() {
             let hand = self.cards(p.position);
-            let strength = LazyEvaluator::evaluate(hand);
+            let strength = LazyEvaluator::evaluate_with_kickers(hand);
             p.strength = strength;
         }
         ShowdownMachine::settle(payouts)
@@ -60,7 +60,7 @@ impl Hand {
             risked: self.risked(seat.position),
             status: seat.status,
             position: seat.position,
-            strength: Strength::MUCK, //? Option<Strength>
+            strength: FullStrength(Strength::MUCK, Kickers(vec![])), // Strength::MUCK, //? Option<Strength>
         }
     }
 
@@ -109,4 +109,4 @@ use super::showdown::ShowdownMachine;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::{Evaluator, LazyEvaluator};
-use crate::evaluation::strength::Strength;
+use crate::evaluation::strength::{FullStrength, Kickers, Strength};

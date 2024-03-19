@@ -75,14 +75,14 @@ impl Display for Strength {
         match self {
             Strength::MUCK => write!(f, ""),
             Strength::MAX => unreachable!(),
+            Strength::FullHouse(r1, r2) => write!(f, "FullHouse     {}, {}", r1, r2),
+            Strength::TwoPair(r1, r2) => write!(f, "TwoPair       {}, {}", r1, r2),
             Strength::HighCard(r) => write!(f, "HighCard      {}", r),
             Strength::OnePair(r) => write!(f, "OnePair       {}", r),
-            Strength::TwoPair(r1, r2) => write!(f, "TwoPair       {}, {}", r1, r2),
             Strength::ThreeOAK(r) => write!(f, "ThreeOfAKind  {}", r),
             Strength::Straight(r) => write!(f, "Straight      {}", r),
-            Strength::Flush(r) => write!(f, "Flush         {}", r),
-            Strength::FullHouse(r1, r2) => write!(f, "FullHouse     {}, {}", r1, r2),
             Strength::FourOAK(r) => write!(f, "FourOfAKind   {}", r),
+            Strength::Flush(r) => write!(f, "Flush         {}", r),
             Strength::StraightFlush(r) => write!(f, "StraightFlush {}", r),
         }
     }
@@ -99,7 +99,7 @@ impl Display for Kickers {
 
 impl Display for FullStrength {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.0, self.1)
+        write!(f, "{:<18}", self.0)
     }
 }
 
