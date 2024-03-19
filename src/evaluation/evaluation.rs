@@ -3,7 +3,7 @@
 /// this is a strong tradeoff between space and time complexity.
 /// i'll maybe implement LookupEvaluator later
 trait Evaluator {
-    fn evaluate(&self) -> Strength;
+    fn evaluate(cards: Vec<&Card>) -> Strength;
 }
 
 pub struct LookupEvaluator;
@@ -23,17 +23,16 @@ impl LazyEval {
     /// # Returns
     ///
     /// The `Strength` of the hand.
-    pub fn evaluate(cards: &Vec<&Card>) -> Strength {
-        let evaluator = Self::new(cards);
-        evaluator
-            .find_flush()
-            .or_else(|| evaluator.find_4_oak())
-            .or_else(|| evaluator.find_3_oak_2_oak())
-            .or_else(|| evaluator.find_straight())
-            .or_else(|| evaluator.find_3_oak())
-            .or_else(|| evaluator.find_2_oak_2_oak())
-            .or_else(|| evaluator.find_2_oak())
-            .or_else(|| evaluator.find_1_oak())
+    pub fn evaluate(cards: Vec<&Card>) -> Strength {
+        let this = Self::new(&cards);
+        this.find_flush()
+            .or_else(|| this.find_4_oak())
+            .or_else(|| this.find_3_oak_2_oak())
+            .or_else(|| this.find_straight())
+            .or_else(|| this.find_3_oak())
+            .or_else(|| this.find_2_oak_2_oak())
+            .or_else(|| this.find_2_oak())
+            .or_else(|| this.find_1_oak())
             .unwrap()
     }
 
@@ -47,7 +46,7 @@ impl LazyEval {
     ///
     /// A new `LazyEval` instance.
     fn new(cards: &Vec<&Card>) -> Self {
-        LazyEval {
+        Self {
             hand_set: Self::hand_u32(cards),
             suit_set: Self::suit_u32(cards),
             rank_counts: Self::rank_counts(cards),
@@ -85,7 +84,7 @@ impl LazyEval {
     /// An `Option` containing the `Strength` of the full house if found, or `None` if not found.
     fn find_3_oak_2_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(3).and_then(|triple| {
-            self.find_rank_of_next_pair(triple)
+            self.find_rank_of_n_oak_below(2, triple as usize)
                 .map(|couple| Strength::FullHouse(triple, couple))
         })
     }
@@ -97,7 +96,7 @@ impl LazyEval {
     /// An `Option` containing the `Strength` of the two pairs if found, or `None` if not found.
     fn find_2_oak_2_oak(&self) -> Option<Strength> {
         self.find_rank_of_n_oak(2).and_then(|high| {
-            self.find_rank_of_next_pair(high)
+            self.find_rank_of_n_oak_below(2, high as usize)
                 .map(|next| Strength::TwoPair(high, next))
                 .or_else(|| Some(Strength::OnePair(high)))
         })
@@ -204,12 +203,7 @@ impl LazyEval {
     ///
     /// An `Option` containing the `Rank` of the specified number of a kind if found, or `None` if not found.
     fn find_rank_of_n_oak(&self, n: u8) -> Option<Rank> {
-        self.rank_counts
-            .iter()
-            .rev()
-            .position(|&r| r >= n)
-            .map(|i| 13 - i - 1)
-            .map(|r| Rank::from(r as u8))
+        self.find_rank_of_n_oak_below(n, 13)
     }
 
     /// Searches for the rank of the next pair in the hand.
@@ -221,13 +215,13 @@ impl LazyEval {
     /// # Returns
     ///
     /// An `Option` containing the `Rank` of the next pair if found, or `None` if not found.
-    fn find_rank_of_next_pair(&self, high: Rank) -> Option<Rank> {
+    fn find_rank_of_n_oak_below(&self, n: u8, high: usize) -> Option<Rank> {
         self.rank_counts
             .iter()
-            .take(high as usize)
+            .take(high)
             .rev()
-            .position(|&r| r >= 2)
-            .map(|i| high as usize - i - 1)
+            .position(|&r| r >= n)
+            .map(|i| high - i - 1)
             .map(|r| Rank::from(r as u8))
     }
 

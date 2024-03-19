@@ -37,9 +37,9 @@ impl Hand {
     }
     fn showdown_payouts(&self) -> Vec<Payout> {
         let mut payouts = self.starting_payouts();
-        for p in payouts.iter_mut().filter(|p| p.status != BetStatus::Folded) {
+        for p in payouts.iter_mut() {
             let hand = self.showdown_hand(p.position);
-            let strength = LazyEval::evaluate(&hand);
+            let strength = LazyEval::evaluate(hand);
             p.strength = strength;
         }
         payouts.sort_by(|a, b| self.order(a, b));

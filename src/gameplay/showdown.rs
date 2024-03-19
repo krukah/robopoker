@@ -8,7 +8,7 @@ pub struct Showdown {
 
 impl Showdown {
     pub fn settle(payouts: Vec<Payout>) -> Vec<Payout> {
-        let mut this = Showdown::new(payouts);
+        let mut this = Self::new(payouts);
         loop {
             this.next_rank();
             loop {
@@ -25,7 +25,7 @@ impl Showdown {
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
         let next_rank = Strength::MAX;
-        Showdown {
+        Self {
             payouts,
             next_stake,
             prev_stake,

@@ -31,7 +31,7 @@ impl Node {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
     }
 
-    pub fn to_act(&self) -> &Seat {
+    pub fn next(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
     }
     pub fn seat(&self, index: usize) -> &Seat {
@@ -105,8 +105,6 @@ impl Display for Node {
         write!(f, "")
     }
 }
-
-use rand::seq::index;
 
 use super::seat::{BetStatus, Seat};
 use crate::cards::board::{Board, Street};

@@ -17,7 +17,7 @@ impl Engine {
             while self.has_streets() {
                 self.start_street();
                 while self.has_turns() {
-                    self.end_turn();
+                    self.take_turn();
                 }
                 self.end_street();
             }
@@ -37,29 +37,28 @@ impl Engine {
     }
 
     fn start_street(&mut self) {
-        self.hand.head.start_street();
         self.hand.start_street();
+        match self.hand.head.board.street {
+            Street::Pre => (),
+            _ => print!("   {}", self.hand.head.board),
+        }
     }
     fn start_hand(&mut self) {
-        println!("---------------------");
-        println!();
-        println!("HAND {}", self.n_hands);
-        self.hand.head.start_hand();
-        self.hand.start_hand();
+        println!("\n{}\nHAND   {}", "-".repeat(21), self.n_hands);
+        self.hand.start();
     }
-
-    fn end_turn(&mut self) {
-        let seat = self.hand.head.to_act();
+    fn take_turn(&mut self) {
+        let seat = self.hand.head.next();
         let action = seat.actor.act(seat, &self.hand);
         self.hand.apply(action);
     }
     fn end_street(&mut self) {
-        self.hand.head.end_street();
         self.hand.end_street();
     }
     fn end_hand(&mut self) {
+        print!("{}\n   {}", "-".repeat(21), self.hand.head.board);
         self.n_hands += 1;
-        self.hand.end_hand();
+        self.hand.end();
     }
 
     fn has_turns(&self) -> bool {
@@ -82,15 +81,17 @@ impl Hand {
             _ => println!("{action}"),
         }
     }
-    pub fn start_hand(&mut self) {
+    pub fn start(&mut self) {
+        self.head.start_hand();
         self.tail = self.head.clone();
         self.deck = Deck::new();
         self.actions.clear();
-        self.apply(Action::Blind(self.head.to_act().position, self.sblind));
-        self.apply(Action::Blind(self.head.to_act().position, self.bblind));
+        self.apply(Action::Blind(self.head.next().position, self.sblind));
+        self.apply(Action::Blind(self.head.next().position, self.bblind));
         self.head.counter = 0;
     }
     pub fn start_street(&mut self) {
+        self.head.start_street();
         match self.head.board.street {
             Street::Pre => {
                 for hole in self.head.seats.iter_mut().map(|s| &mut s.hole) {
@@ -106,22 +107,20 @@ impl Hand {
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
-                println!("FLOP   {} {} {}", card1, card2, card3);
             }
             Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
-                println!("TURN   {}", card)
             }
             Street::River => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
-                println!("RIVER  {}", card)
             }
             Street::Showdown => unreachable!(),
         }
     }
     pub fn end_street(&mut self) {
+        self.head.end_street();
         self.head.board.street = match self.head.board.street {
             Street::Pre => Street::Flop,
             Street::Flop => Street::Turn,
@@ -130,9 +129,7 @@ impl Hand {
             Street::Showdown => unreachable!(),
         }
     }
-    pub fn end_hand(&mut self) {
-        println!("---------------------");
-        print!("BOARD  {}", self.head.board);
+    pub fn end(&mut self) {
         for payout in self.settle() {
             let seat = self.head.seat_mut(payout.position);
             println!("{}{}", seat, payout);
@@ -201,7 +198,7 @@ impl Node {
             }
             self.counter += 1;
             self.pointer = self.after(self.pointer);
-            match self.to_act().status {
+            match self.next().status {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'left,
             }

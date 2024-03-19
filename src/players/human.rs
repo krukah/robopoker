@@ -5,6 +5,8 @@ impl Human {
         Input::new()
             .with_prompt("Amount ")
             .report(false)
+            .show_default(true)
+            .default(seat.min_raise(hand).to_string())
             .validate_with(|i: &String| -> Result<(), &str> {
                 match i.parse::<u32>() {
                     Ok(_) => Ok(()),
