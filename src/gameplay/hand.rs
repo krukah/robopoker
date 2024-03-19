@@ -103,7 +103,7 @@ impl Hand {
     }
 
     pub fn evaluate(&self, position: usize) -> Strength {
-        let eval = LazyEvaluator::new(&self.showdown_cards(position));
+        let eval = LazyEval::new(&self.showdown_cards(position));
         eval.evaluate()
     }
     pub fn priority(&self, position: usize) -> u32 {
@@ -118,5 +118,5 @@ use super::seat::BetStatus;
 use super::showdown::Showdown;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
-use crate::evaluation::evaluation::LazyEvaluator;
+use crate::evaluation::evaluation::LazyEval;
 use crate::evaluation::strength::Strength;
