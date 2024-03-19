@@ -3,7 +3,7 @@ pub struct Hand {
     pub bblind: u32,
     pub sblind: u32,
     pub deck: Deck,
-    pub tail: Node, // is this useful?
+    pub tail: Node, //? is this useful
     pub head: Node,
     pub actions: Vec<Action>,
 }
@@ -18,16 +18,16 @@ impl Hand {
             head: Node::new(),
         }
     }
-    pub fn payouts(&self) -> Vec<Payout> {
+    pub fn settle(&self) -> Vec<Payout> {
         if self.head.are_all_folded() {
-            self.concede()
+            self.conceded_payouts()
         } else {
-            self.showdown()
+            self.showdown_payouts()
         }
     }
 
-    fn concede(&self) -> Vec<Payout> {
-        let mut payouts = self.naive_payouts();
+    fn conceded_payouts(&self) -> Vec<Payout> {
+        let mut payouts = self.starting_payouts();
         let winner = payouts
             .iter_mut()
             .find(|p| p.status != BetStatus::Folded)
@@ -35,37 +35,44 @@ impl Hand {
         winner.reward = self.head.pot;
         payouts
     }
-
-    fn showdown(&self) -> Vec<Payout> {
-        let mut payouts = self.naive_payouts();
-        payouts.sort_by(|a, b| {
-            let x = self.priority(a.position);
-            let y = self.priority(b.position);
-            x.cmp(&y)
-        });
-        payouts
-            .iter_mut()
-            .filter(|p| p.status != BetStatus::Folded)
-            .for_each(|p| p.strength = self.evaluate(p.position));
-        let showdown = Showdown::new(payouts);
-        showdown.settle()
+    fn showdown_payouts(&self) -> Vec<Payout> {
+        let mut payouts = self.starting_payouts();
+        for p in payouts.iter_mut().filter(|p| p.status != BetStatus::Folded) {
+            let hand = self.showdown_hand(p.position);
+            let strength = LazyEval::evaluate(&hand);
+            p.strength = strength;
+        }
+        payouts.sort_by(|a, b| self.order(a, b));
+        Showdown::settle(payouts)
     }
-
-    pub fn naive_payouts(&self) -> Vec<Payout> {
+    fn starting_payouts(&self) -> Vec<Payout> {
         self.head
             .seats
             .iter()
-            .map(|s| Payout {
-                reward: 0,
-                risked: self.staked(s.position),
-                strength: Strength::MUCK,
-                status: s.status,
-                position: s.position,
-            })
+            .map(|s| self.payout(s))
             .collect::<Vec<Payout>>()
     }
+    fn payout(&self, seat: &Seat) -> Payout {
+        Payout {
+            reward: 0,
+            risked: self.risked(seat.position),
+            status: seat.status,
+            position: seat.position,
+            strength: Strength::MUCK, //? Option<Strength>
+        }
+    }
 
-    pub fn staked(&self, position: usize) -> u32 {
+    fn showdown_hand(&self, position: usize) -> Vec<&Card> {
+        let seat = self.head.seat(position);
+        let hole = &seat.hole;
+        let slice_hole = &hole.cards[..];
+        let slice_board = &self.head.board.cards[..];
+        slice_hole
+            .iter()
+            .chain(slice_board.iter())
+            .collect::<Vec<&Card>>()
+    }
+    fn risked(&self, position: usize) -> u32 {
         self.actions
             .iter()
             .filter(|a| match a {
@@ -84,37 +91,18 @@ impl Hand {
             })
             .sum()
     }
-
-    fn showdown_cards(&self, position: usize) -> Vec<&Card> {
-        let hole = self
-            .head
-            .seats
-            .iter()
-            .find(|s| s.position == position)
-            .map(|s| s.cards())
-            .unwrap();
-        let slice_hole = &hole.cards[..];
-        let slice_board = &self.head.board.cards[..];
-        let slice_combined = slice_hole
-            .iter()
-            .chain(slice_board.iter())
-            .collect::<Vec<&Card>>();
-        slice_combined
-    }
-
-    pub fn evaluate(&self, position: usize) -> Strength {
-        let eval = LazyEval::new(&self.showdown_cards(position));
-        eval.evaluate()
-    }
-    pub fn priority(&self, position: usize) -> u32 {
-        // TODO: misuse of ID as position
+    fn priority(&self, position: usize) -> u32 {
         (position.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
     }
+    fn order(&self, a: &Payout, b: &Payout) -> std::cmp::Ordering {
+        let x = self.priority(a.position);
+        let y = self.priority(b.position);
+        x.cmp(&y)
+    }
 }
-// mutables
 
 use super::payout::Payout;
-use super::seat::BetStatus;
+use super::seat::{BetStatus, Seat};
 use super::showdown::Showdown;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};

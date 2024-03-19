@@ -133,13 +133,8 @@ impl Hand {
     pub fn end_hand(&mut self) {
         println!("---------------------");
         print!("BOARD  {}", self.head.board);
-        for payout in self.payouts() {
-            let seat = self
-                .head
-                .seats
-                .iter_mut()
-                .find(|s| s.position == payout.position)
-                .unwrap();
+        for payout in self.settle() {
+            let seat = self.head.seat_mut(payout.position);
             println!("{}{}", seat, payout);
             seat.stack += payout.reward;
         }

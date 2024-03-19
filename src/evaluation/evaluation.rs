@@ -18,6 +18,25 @@ pub struct LazyEval {
 }
 
 impl LazyEval {
+    /// Evaluates the strength of the hand.
+    ///
+    /// # Returns
+    ///
+    /// The `Strength` of the hand.
+    pub fn evaluate(cards: &Vec<&Card>) -> Strength {
+        let evaluator = Self::new(cards);
+        evaluator
+            .find_flush()
+            .or_else(|| evaluator.find_4_oak())
+            .or_else(|| evaluator.find_3_oak_2_oak())
+            .or_else(|| evaluator.find_straight())
+            .or_else(|| evaluator.find_3_oak())
+            .or_else(|| evaluator.find_2_oak_2_oak())
+            .or_else(|| evaluator.find_2_oak())
+            .or_else(|| evaluator.find_1_oak())
+            .unwrap()
+    }
+
     /// Creates a new `LazyEval` instance based on the given cards.
     ///
     /// # Arguments
@@ -27,30 +46,13 @@ impl LazyEval {
     /// # Returns
     ///
     /// A new `LazyEval` instance.
-    pub fn new(cards: &Vec<&Card>) -> Self {
+    fn new(cards: &Vec<&Card>) -> Self {
         LazyEval {
             hand_set: Self::hand_u32(cards),
             suit_set: Self::suit_u32(cards),
             rank_counts: Self::rank_counts(cards),
             suit_counts: Self::suit_counts(cards),
         }
-    }
-
-    /// Evaluates the strength of the hand.
-    ///
-    /// # Returns
-    ///
-    /// The `Strength` of the hand.
-    pub fn evaluate(&self) -> Strength {
-        self.find_flush()
-            .or_else(|| self.find_4_oak())
-            .or_else(|| self.find_3_oak_2_oak())
-            .or_else(|| self.find_straight())
-            .or_else(|| self.find_3_oak())
-            .or_else(|| self.find_2_oak_2_oak())
-            .or_else(|| self.find_2_oak())
-            .or_else(|| self.find_1_oak())
-            .unwrap()
     }
 
     /// Searches for a (straight) flush in the hand.

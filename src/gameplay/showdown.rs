@@ -7,7 +7,21 @@ pub struct Showdown {
 }
 
 impl Showdown {
-    pub fn new(payouts: Vec<Payout>) -> Self {
+    pub fn settle(payouts: Vec<Payout>) -> Vec<Payout> {
+        let mut this = Showdown::new(payouts);
+        loop {
+            this.next_rank();
+            loop {
+                this.next_stake();
+                this.distribute();
+                if this.is_complete() {
+                    return this.payouts;
+                }
+            }
+        }
+    }
+
+    fn new(payouts: Vec<Payout>) -> Self {
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
         let next_rank = Strength::MAX;
@@ -19,24 +33,12 @@ impl Showdown {
         }
     }
 
-    pub fn settle(mut self) -> Vec<Payout> {
-        loop {
-            self.next_rank();
-            loop {
-                self.next_stake();
-                self.distribute();
-                if self.is_complete() {
-                    return self.payouts;
-                }
-            }
-        }
-    }
-
     fn is_complete(&self) -> bool {
         let staked = self.payouts.iter().map(|p| p.risked).sum::<u32>();
         let reward = self.payouts.iter().map(|p| p.reward).sum::<u32>();
         staked == reward
     }
+
     fn winnings(&self) -> u32 {
         self.payouts
             .iter()
@@ -45,6 +47,16 @@ impl Showdown {
             .map(|s| s.saturating_sub(self.prev_stake))
             .sum()
     }
+
+    fn winners(&mut self) -> Vec<&mut Payout> {
+        self.payouts
+            .iter_mut()
+            .filter(|p| p.strength == self.next_rank)
+            .filter(|p| p.risked > self.prev_stake)
+            .filter(|p| p.status != BetStatus::Folded)
+            .collect()
+    }
+
     fn distribute(&mut self) {
         let winnings = self.winnings();
         let mut winners = self.winners();
@@ -57,6 +69,7 @@ impl Showdown {
             winner.reward += 1;
         }
     }
+
     fn next_stake(&mut self) {
         self.prev_stake = self.next_stake;
         self.next_stake = self
@@ -69,6 +82,7 @@ impl Showdown {
             .min()
             .unwrap();
     }
+
     fn next_rank(&mut self) {
         self.next_rank = self
             .payouts
@@ -78,14 +92,6 @@ impl Showdown {
             .map(|p| p.strength)
             .max()
             .unwrap();
-    }
-    fn winners(&mut self) -> Vec<&mut Payout> {
-        self.payouts
-            .iter_mut()
-            .filter(|p| p.strength == self.next_rank)
-            .filter(|p| p.risked > self.prev_stake)
-            .filter(|p| p.status != BetStatus::Folded)
-            .collect()
     }
 }
 

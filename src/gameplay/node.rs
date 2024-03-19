@@ -34,6 +34,12 @@ impl Node {
     pub fn to_act(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
     }
+    pub fn seat(&self, index: usize) -> &Seat {
+        self.seats.iter().find(|s| s.position == index).unwrap()
+    }
+    pub fn seat_mut(&mut self, index: usize) -> &mut Seat {
+        self.seats.iter_mut().find(|s| s.position == index).unwrap()
+    }
     pub fn after(&self, index: usize) -> usize {
         (index + 1) % self.seats.len()
     }
@@ -99,6 +105,8 @@ impl Display for Node {
         write!(f, "")
     }
 }
+
+use rand::seq::index;
 
 use super::seat::{BetStatus, Seat};
 use crate::cards::board::{Board, Street};
