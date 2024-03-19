@@ -38,19 +38,21 @@ impl Hand {
     fn showdown_payouts(&self) -> Vec<Payout> {
         let mut payouts = self.starting_payouts();
         for p in payouts.iter_mut() {
-            let hand = self.showdown_hand(p.position);
-            let strength = LazyEval::evaluate(hand);
+            let hand = self.cards(p.position);
+            let strength = LazyEvaluator::evaluate(hand);
             p.strength = strength;
         }
-        payouts.sort_by(|a, b| self.order(a, b));
-        Showdown::settle(payouts)
+        ShowdownMachine::settle(payouts)
     }
     fn starting_payouts(&self) -> Vec<Payout> {
-        self.head
+        let mut payouts = self
+            .head
             .seats
             .iter()
             .map(|s| self.payout(s))
-            .collect::<Vec<Payout>>()
+            .collect::<Vec<Payout>>();
+        payouts.sort_by(|a, b| self.order(a, b));
+        payouts
     }
     fn payout(&self, seat: &Seat) -> Payout {
         Payout {
@@ -62,7 +64,7 @@ impl Hand {
         }
     }
 
-    fn showdown_hand(&self, position: usize) -> Vec<&Card> {
+    fn cards(&self, position: usize) -> Vec<&Card> {
         let seat = self.head.seat(position);
         let hole = &seat.hole;
         let slice_hole = &hole.cards[..];
@@ -103,8 +105,8 @@ impl Hand {
 
 use super::payout::Payout;
 use super::seat::{BetStatus, Seat};
-use super::showdown::Showdown;
+use super::showdown::ShowdownMachine;
 use super::{action::Action, node::Node};
 use crate::cards::{card::Card, deck::Deck};
-use crate::evaluation::evaluation::LazyEval;
+use crate::evaluation::evaluation::{Evaluator, LazyEvaluator};
 use crate::evaluation::strength::Strength;

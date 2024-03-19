@@ -17,8 +17,7 @@ impl Deck {
     }
 
     fn shuffle(&mut self) {
-        let mut rng = thread_rng();
-        self.cards.shuffle(&mut rng);
+        self.cards.shuffle(&mut thread_rng());
     }
 }
 
@@ -27,15 +26,19 @@ impl From<u64> for Deck {
     fn from(n: u64) -> Self {
         Self {
             cards: (0u8..52)
-                .filter(|i| n & (1 << i) != 0)
+                .filter(|i| (1 << i) & n != 0)
                 .map(|i| Card::from(i))
                 .collect(),
         }
     }
 }
 impl From<Deck> for u64 {
+    #[rustfmt::skip]
     fn from(deck: Deck) -> u64 {
-        deck.cards.iter().map(|c| u64::from(*c)).sum()
+        deck.cards
+            .into_iter()
+            .map(|c| u64::from(c))
+            .fold(0 , | a , b | a | b )
     }
 }
 

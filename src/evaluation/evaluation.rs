@@ -2,40 +2,56 @@
 /// or we can use ~500MB of memory to store a table of all uniquely evaluated hands.
 /// this is a strong tradeoff between space and time complexity.
 /// i'll maybe implement LookupEvaluator later
-trait Evaluator {
-    fn evaluate(cards: Vec<&Card>) -> Strength;
-}
+/// Represents an evaluator for evaluating the strength of a hand.
 
-pub struct LookupEvaluator;
+pub trait Evaluator {
+    /// Evaluates the strength of the hand.
+    ///
+    /// # Arguments
+    ///
+    /// * `cards` - A vector of references to `Card` objects representing the hand.
+    ///
+    /// # Returns
+    ///
+    /// The `Strength` of the hand, not including kickers.
+    fn evaluate(cards: Vec<&Card>) -> Strength;
+
+    /// Evaluates the strength of the hand along with the kickers.
+    ///
+    /// # Arguments
+    ///
+    /// * `cards` - A vector of references to `Card` objects representing the hand.
+    ///
+    /// # Returns
+    ///
+    /// The `FullStrength` of the hand, including the kickers.
+    fn evaluate_with_kickers(cards: Vec<&Card>) -> FullStrength;
+}
 
 /// Represents the lazy evaluation of a hand in poker.
 /// It stores various sets and counts related to the hand's cards.
-pub struct LazyEval {
+pub struct LazyEvaluator {
     hand_set: u32,         // which ranks are in the hand
     suit_set: [u32; 4],    // which ranks are in suits are in the hand
     rank_counts: [u8; 13], // how many i ranks are in the hand. neglect suit
     suit_counts: [u8; 4],  // how many i suits are in the hand. neglect rank
 }
 
-impl LazyEval {
-    /// Evaluates the strength of the hand.
-    ///
-    /// # Returns
-    ///
-    /// The `Strength` of the hand.
-    pub fn evaluate(cards: Vec<&Card>) -> Strength {
+impl Evaluator for LazyEvaluator {
+    fn evaluate(cards: Vec<&Card>) -> Strength {
         let this = Self::new(&cards);
-        this.find_flush()
-            .or_else(|| this.find_4_oak())
-            .or_else(|| this.find_3_oak_2_oak())
-            .or_else(|| this.find_straight())
-            .or_else(|| this.find_3_oak())
-            .or_else(|| this.find_2_oak_2_oak())
-            .or_else(|| this.find_2_oak())
-            .or_else(|| this.find_1_oak())
-            .unwrap()
+        let strength = this.find_strength();
+        strength
     }
+    fn evaluate_with_kickers(cards: Vec<&Card>) -> FullStrength {
+        let this = Self::new(&cards);
+        let strength = this.find_strength();
+        let kickers = this.find_kickers(strength);
+        FullStrength(strength, kickers)
+    }
+}
 
+impl LazyEvaluator {
     /// Creates a new `LazyEval` instance based on the given cards.
     ///
     /// # Arguments
@@ -52,6 +68,18 @@ impl LazyEval {
             rank_counts: Self::rank_counts(cards),
             suit_counts: Self::suit_counts(cards),
         }
+    }
+
+    fn find_strength(&self) -> Strength {
+        self.find_flush()
+            .or_else(|| self.find_4_oak())
+            .or_else(|| self.find_3_oak_2_oak())
+            .or_else(|| self.find_straight())
+            .or_else(|| self.find_3_oak())
+            .or_else(|| self.find_2_oak_2_oak())
+            .or_else(|| self.find_2_oak())
+            .or_else(|| self.find_1_oak())
+            .unwrap()
     }
 
     /// Searches for a (straight) flush in the hand.
@@ -186,7 +214,7 @@ impl LazyEval {
         mask &= mask << 1;
         if mask.count_ones() > 0 {
             return Some(Rank::from(mask));
-        } else if Rank::wheel() == (Rank::wheel() & hand_u32) {
+        } else if Self::wheel() == (Self::wheel() & hand_u32) {
             return Some(Rank::Five);
         } else {
             return None;
@@ -223,6 +251,28 @@ impl LazyEval {
             .position(|&r| r >= n)
             .map(|i| high - i - 1)
             .map(|r| Rank::from(r as u8))
+    }
+
+    fn find_kickers(&self, strength: Strength) -> Kickers {
+        let n = match strength {
+            Strength::HighCard(_) => 4,
+            Strength::OnePair(_) => 3,
+            Strength::ThreeOAK(_) => 2,
+            Strength::FourOAK(_) => 1,
+            Strength::TwoPair(_, _) => 1,
+            _ => return Kickers(vec![]),
+        };
+        Kickers(
+            self.rank_counts
+                .iter()
+                .enumerate()
+                .rev()
+                .filter(|(_, x)| **x > 0)
+                .filter(|(r, _)| *r != strength.rank() as usize)
+                .map(|(i, _)| Rank::from(i as u8))
+                .take(n)
+                .collect::<Vec<Rank>>(),
+        )
     }
 
     /// Counts the occurrences of each rank in the given cards.
@@ -300,9 +350,15 @@ impl LazyEval {
             .for_each(|(s, r)| suit_u32[s] |= r);
         suit_u32
     }
+
+    fn wheel() -> u32 {
+        0b00000000000000000001000000001111
+    }
 }
 
-use super::strength::Strength;
+use std::vec;
+
+use super::strength::{FullStrength, Kickers, Strength};
 use crate::cards::card::Card;
 use crate::cards::rank::Rank;
 use crate::cards::suit::Suit;

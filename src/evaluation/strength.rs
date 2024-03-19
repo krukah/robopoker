@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd)]
 pub enum Strength {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers
@@ -13,28 +13,60 @@ pub enum Strength {
     MAX,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
+pub struct Kickers(pub Vec<Rank>);
+
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
+pub struct FullStrength(pub Strength, pub Kickers);
+
+impl Strength {
+    pub fn rank(&self) -> Rank {
+        match self {
+            Strength::StraightFlush(r)
+            | Strength::FullHouse(r, _)
+            | Strength::TwoPair(r, _)
+            | Strength::Straight(r)
+            | Strength::ThreeOAK(r)
+            | Strength::HighCard(r)
+            | Strength::OnePair(r)
+            | Strength::FourOAK(r)
+            | Strength::Flush(r) => *r,
+            Strength::MUCK | Strength::MAX => unreachable!(),
+        }
+    }
+    pub fn secondary(&self) -> Rank {
+        match self {
+            Strength::TwoPair(_, r) | Strength::FullHouse(_, r) => *r,
+            x => x.rank(),
+        }
+    }
+}
+
 impl Ord for Strength {
     fn cmp(&self, other: &Self) -> Ordering {
-        match u8::from(self).cmp(&u8::from(other)) {
-            Ordering::Equal => match (self, other) {
-                (Strength::TwoPair(a1, a2), Strength::TwoPair(b1, b2))
-                | (Strength::FullHouse(a1, a2), Strength::FullHouse(b1, b2)) => match a1.cmp(a2) {
-                    Ordering::Equal => b1.cmp(b2),
-                    x => x,
-                },
+        Ordering::Equal
+            .then_with(|| u8::from(self).cmp(&u8::from(other)))
+            .then_with(|| self.rank().cmp(&other.rank()))
+            .then_with(|| self.secondary().cmp(&other.secondary()))
+            .then(Ordering::Equal)
+    }
+}
+impl Ord for Kickers {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0
+            .iter()
+            .zip(other.0.iter())
+            .map(|(a, b)| a.cmp(b))
+            .find(|&x| x != Ordering::Equal)
+            .unwrap_or(Ordering::Equal)
+    }
+}
 
-                (Strength::StraightFlush(a), Strength::StraightFlush(b))
-                | (Strength::Straight(a), Strength::Straight(b))
-                | (Strength::ThreeOAK(a), Strength::ThreeOAK(b))
-                | (Strength::HighCard(a), Strength::HighCard(b))
-                | (Strength::FourOAK(a), Strength::FourOAK(b))
-                | (Strength::OnePair(a), Strength::OnePair(b))
-                | (Strength::Flush(a), Strength::Flush(b)) => a.cmp(b),
-
-                _ => unreachable!(),
-            },
-            x => return x,
-        }
+impl Ord for FullStrength {
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ordering::Equal
+            .then_with(|| self.0.cmp(&other.0))
+            .then_with(|| self.1.cmp(&other.1))
     }
 }
 
@@ -56,6 +88,21 @@ impl Display for Strength {
     }
 }
 
+impl Display for Kickers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for rank in &self.0 {
+            write!(f, "{} ", rank)?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for FullStrength {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.0, self.1)
+    }
+}
+
 impl From<&Strength> for u8 {
     fn from(strength: &Strength) -> u8 {
         match strength {
@@ -71,12 +118,6 @@ impl From<&Strength> for u8 {
             Strength::FourOAK(_) => 8,
             Strength::StraightFlush(_) => 9,
         }
-    }
-}
-
-impl PartialOrd for Strength {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 

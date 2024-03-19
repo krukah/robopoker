@@ -1,12 +1,12 @@
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
-pub struct Showdown {
+pub struct ShowdownMachine {
     payouts: Vec<Payout>,
     next_stake: u32,
     prev_stake: u32,
     next_rank: Strength,
 }
 
-impl Showdown {
+impl ShowdownMachine {
     pub fn settle(payouts: Vec<Payout>) -> Vec<Payout> {
         let mut this = Self::new(payouts);
         loop {
