@@ -3,10 +3,8 @@ pub struct Human;
 impl Human {
     fn raise(&self, seat: &Seat, hand: &Hand) -> u32 {
         Input::new()
-            .with_prompt("Amount ")
+            .with_prompt(self.infoset(seat, hand))
             .report(false)
-            .show_default(true)
-            .default(seat.min_raise(hand).to_string())
             .validate_with(|i: &String| -> Result<(), &str> {
                 match i.parse::<u32>() {
                     Ok(_) => Ok(()),
@@ -30,7 +28,19 @@ impl Human {
             .parse::<u32>()
             .unwrap()
     }
+
+    fn infoset(&self, seat: &Seat, hand: &Hand) -> String {
+        format!(
+            "\nYOU HOLD   {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\nChoose Action",
+            seat.hole,
+            hand.head.pot,
+            seat.stack,
+            seat.to_call(hand),
+            seat.min_raise(hand),
+        )
+    }
 }
+
 impl Player for Human {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
         // get valid actions
@@ -50,7 +60,7 @@ impl Player for Human {
             })
             .collect::<Vec<&str>>();
         let selection = Select::new()
-            .with_prompt(format!("\nYOU HOLD {}", seat.hole))
+            .with_prompt(self.infoset(seat, hand))
             .report(false)
             .items(choices.as_slice())
             .default(0)
