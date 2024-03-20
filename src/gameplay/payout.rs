@@ -12,12 +12,12 @@ impl Display for Payout {
         if self.reward > 0 {
             write!(
                 f,
-                "{:<5}{}",
+                "{:<6}{}",
                 format!("+{}", self.reward).green(),
                 self.strength
             )
         } else {
-            write!(f, "     {}", self.strength)
+            write!(f, "      {}", self.strength)
         }
     }
 }

@@ -115,6 +115,8 @@ impl Node {
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.pointer).unwrap();
         // bets entail pot and stack change
+        // folds and all-ins entail status change
+        // choice actions entail rotation & logging, chance action entails board change
         match action {
             Action::Call(_, bet)
             | Action::Blind(_, bet)
@@ -126,16 +128,17 @@ impl Node {
             }
             _ => (),
         }
-        // folds and all-ins entail status change
         match action {
             Action::Fold(..) => seat.status = BetStatus::Folded,
             Action::Shove(..) => seat.status = BetStatus::Shoved,
             _ => (),
         }
-        // player actions entail rotation
         match action {
-            Action::Draw(card) => self.board.push(card.clone()),
-            _ => self.rotate(),
+            Action::Draw(card) => self.board.push(card),
+            _ => {
+                self.rotate();
+                println!("{action}");
+            }
         }
     }
     pub fn start_hand(&mut self) {
@@ -185,7 +188,8 @@ impl Node {
             }
         }
     }
-    fn _rewind(&mut self) {
+    #[allow(dead_code)]
+    fn rewind(&mut self) {
         'right: loop {
             self.counter -= 1;
             self.pointer = self.before(self.pointer);
@@ -213,8 +217,8 @@ impl Node {
         self.seats.push(seat);
     }
     pub fn drop(&mut self, position: usize) {
-        println!("DROP {}", self.seat(position));
-        self.seats.remove(position);
+        let seat = self.seats.remove(position);
+        println!("DROP {}", seat);
         for (i, seat) in self.seats.iter_mut().enumerate() {
             seat.position = i;
         }

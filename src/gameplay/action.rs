@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Action {
     Draw(Card),
     Check(usize),
@@ -18,7 +18,9 @@ impl Display for Action {
             Action::Blind(id, amount) => write!(f, "{id} {}", format!("BLIND {}", amount).white()),
             Action::Call(id, amount) => write!(f, "{id} {}", format!("CALL  {}", amount).yellow()),
             Action::Raise(id, amount) => write!(f, "{id} {}", format!("RAISE {}", amount).green()),
-            Action::Shove(id, amount) => write!(f, "{id} {}", format!("SHOVE {}", amount).red()),
+            Action::Shove(id, amount) => {
+                write!(f, "{id} {}", format!("SHOVE {}", amount).magenta())
+            }
         }
     }
 }

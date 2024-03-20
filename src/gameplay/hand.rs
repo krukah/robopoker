@@ -156,12 +156,8 @@ impl Hand {
 
 impl Hand {
     pub fn apply(&mut self, action: Action) {
-        match action {
-            Action::Draw(_) => (),
-            _ => println!("{action}"),
-        }
-        self.actions.push(action.clone());
-        self.head.apply(action.clone());
+        self.actions.push(action);
+        self.head.apply(action);
     }
     pub fn start(&mut self) {
         self.actions.clear();
@@ -219,7 +215,6 @@ impl Hand {
             println!("{}{}", seat, payout);
             seat.stack += payout.reward;
         }
-        self.head.prune();
     }
 }
 use super::payout::Payout;
