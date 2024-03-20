@@ -38,33 +38,26 @@ impl Seat {
             actions.push(Action::Shove(self.position, self.to_shove(hand)));
         }
         if self.can_raise(hand) {
-            actions.push(Action::Raise(self.position, self.to_raise(hand)));
+            actions.push(Action::Raise(self.position, self.min_raise(hand)));
         }
         actions
     }
 
-    pub fn to_call(&self, hand: &Hand) -> u32 {
-        hand.head.table_stake() - self.stake
-    }
     pub fn to_shove(&self, hand: &Hand) -> u32 {
-        std::cmp::min(self.stack, hand.head.table_stack() - self.stake)
+        std::cmp::min(self.stack, hand.head.effective_stack() - self.stake)
     }
-    pub fn to_raise(&self, hand: &Hand) -> u32 {
-        std::cmp::max(
-            self.to_call(hand) * 2,
-            std::cmp::min(self.to_shove(hand) - 1, 5),
-        )
+    pub fn to_call(&self, hand: &Hand) -> u32 {
+        hand.head.effective_stake() - self.stake
     }
-
     pub fn min_raise(&self, hand: &Hand) -> u32 {
-        self.to_call(hand) + hand.bblind
+        (hand.min_raise() - self.stake)
     }
     pub fn max_raise(&self, hand: &Hand) -> u32 {
         self.to_shove(hand)
     }
 
     fn can_check(&self, hand: &Hand) -> bool {
-        self.stake == hand.head.table_stake()
+        self.stake == hand.head.effective_stake()
     }
     fn can_shove(&self, hand: &Hand) -> bool {
         self.to_shove(hand) > 0
@@ -73,7 +66,7 @@ impl Seat {
         self.to_call(hand) > 0
     }
     fn can_raise(&self, hand: &Hand) -> bool {
-        self.to_shove(hand) > self.to_call(hand) + 1
+        self.to_shove(hand) > self.min_raise(hand)
     }
     fn can_call(&self, hand: &Hand) -> bool {
         self.can_fold(hand) && self.can_raise(hand)

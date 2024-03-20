@@ -3,7 +3,7 @@ pub struct ShowdownMachine {
     payouts: Vec<Payout>,
     next_stake: u32,
     prev_stake: u32,
-    next_rank: FullStrength,
+    next_rank: Strength,
 }
 
 impl ShowdownMachine {
@@ -22,14 +22,14 @@ impl ShowdownMachine {
     }
 
     fn new(payouts: Vec<Payout>) -> Self {
+        let next_rank = Strength::new(BestHand::MAX, Kickers(Vec::new()));
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
-        let next_rank = FullStrength(Strength::MAX, Kickers(Vec::new()));
         Self {
             payouts,
+            next_rank,
             next_stake,
             prev_stake,
-            next_rank,
         }
     }
 
@@ -96,4 +96,4 @@ impl ShowdownMachine {
 }
 
 use super::{payout::Payout, seat::BetStatus};
-use crate::evaluation::strength::{FullStrength, Kickers, Strength};
+use crate::evaluation::strength::{BestHand, Kickers, Strength};

@@ -16,7 +16,10 @@ fn main() {
     engine.gain_seat(10000, robot.clone());
     engine.gain_seat(10000, robot.clone());
     engine.gain_seat(10000, robot.clone());
-    engine.gain_seat(10000, human.clone());
+    engine.gain_seat(10000, robot.clone());
+    engine.gain_seat(10000, robot.clone());
+    engine.gain_seat(10000, robot.clone());
+    engine.gain_seat(10000, robot.clone());
 
     engine.start();
 }

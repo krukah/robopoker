@@ -14,7 +14,7 @@ pub trait Evaluator {
     /// # Returns
     ///
     /// The `Strength` of the hand, not including kickers.
-    fn evaluate(cards: Vec<&Card>) -> Strength;
+    fn evaluate(cards: Vec<&Card>) -> BestHand;
 
     /// Evaluates the strength of the hand along with the kickers.
     ///
@@ -25,7 +25,7 @@ pub trait Evaluator {
     /// # Returns
     ///
     /// The `FullStrength` of the hand, including the kickers.
-    fn evaluate_with_kickers(cards: Vec<&Card>) -> FullStrength;
+    fn evaluate_with_kickers(cards: Vec<&Card>) -> Strength;
 }
 
 /// Represents the lazy evaluation of a hand in poker.
@@ -38,16 +38,18 @@ pub struct LazyEvaluator {
 }
 
 impl Evaluator for LazyEvaluator {
-    fn evaluate(cards: Vec<&Card>) -> Strength {
+    /// Evaluates the strength of the best possible n-card hand, n <= 5.
+    fn evaluate(cards: Vec<&Card>) -> BestHand {
         let this = Self::new(&cards);
-        let strength = this.find_strength();
-        strength
+        let best_hand = this.find_best_hand();
+        best_hand
     }
-    fn evaluate_with_kickers(cards: Vec<&Card>) -> FullStrength {
+    /// Evaluates the strength of the best possible n-card hand, n <= 5, along with the kickers.
+    fn evaluate_with_kickers(cards: Vec<&Card>) -> Strength {
         let this = Self::new(&cards);
-        let strength = this.find_strength();
-        let kickers = this.find_kickers(strength);
-        FullStrength(strength, kickers)
+        let best_hand = this.find_best_hand();
+        let kickers = this.find_kickers(best_hand);
+        Strength::new(best_hand, kickers)
     }
 }
 
@@ -70,7 +72,7 @@ impl LazyEvaluator {
         }
     }
 
-    fn find_strength(&self) -> Strength {
+    fn find_best_hand(&self) -> BestHand {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
@@ -87,11 +89,11 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the flush if found, or `None` if not found.
-    fn find_flush(&self) -> Option<Strength> {
+    fn find_flush(&self) -> Option<BestHand> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
-                .map(Strength::StraightFlush)
-                .or_else(|| Some(Strength::Flush(Rank::from(self.suit_set[suit as usize]))))
+                .map(BestHand::StraightFlush)
+                .or_else(|| Some(BestHand::Flush(Rank::from(self.suit_set[suit as usize]))))
         })
     }
 
@@ -100,9 +102,9 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the straight if found, or `None` if not found.
-    fn find_straight(&self) -> Option<Strength> {
+    fn find_straight(&self) -> Option<BestHand> {
         self.find_rank_of_straight(self.hand_set)
-            .map(|rank| Strength::Straight(rank))
+            .map(|rank| BestHand::Straight(rank))
     }
 
     /// Searches for a full house (3 of a kind and a pair) in the hand.
@@ -110,10 +112,10 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the full house if found, or `None` if not found.
-    fn find_3_oak_2_oak(&self) -> Option<Strength> {
+    fn find_3_oak_2_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(3).and_then(|triple| {
             self.find_rank_of_n_oak_below(2, triple as usize)
-                .map(|couple| Strength::FullHouse(triple, couple))
+                .map(|couple| BestHand::FullHouse(triple, couple))
         })
     }
 
@@ -122,11 +124,11 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the two pairs if found, or `None` if not found.
-    fn find_2_oak_2_oak(&self) -> Option<Strength> {
+    fn find_2_oak_2_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(2).and_then(|high| {
             self.find_rank_of_n_oak_below(2, high as usize)
-                .map(|next| Strength::TwoPair(high, next))
-                .or_else(|| Some(Strength::OnePair(high)))
+                .map(|next| BestHand::TwoPair(high, next))
+                .or_else(|| Some(BestHand::OnePair(high)))
         })
     }
 
@@ -135,9 +137,9 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the four of a kind if found, or `None` if not found.
-    fn find_4_oak(&self) -> Option<Strength> {
+    fn find_4_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(4)
-            .map(|rank| Strength::FourOAK(rank))
+            .map(|rank| BestHand::FourOAK(rank))
     }
 
     /// Searches for three of a kind in the hand.
@@ -145,9 +147,9 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the three of a kind if found, or `None` if not found.
-    fn find_3_oak(&self) -> Option<Strength> {
+    fn find_3_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(3)
-            .map(|rank| Strength::ThreeOAK(rank))
+            .map(|rank| BestHand::ThreeOAK(rank))
     }
 
     /// Searches for a pair in the hand.
@@ -155,9 +157,9 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the pair if found, or `None` if not found.
-    fn find_2_oak(&self) -> Option<Strength> {
+    fn find_2_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(2)
-            .map(|rank| Strength::OnePair(rank))
+            .map(|rank| BestHand::OnePair(rank))
         // lowkey unreachable because TwoPair short circuits
     }
 
@@ -166,9 +168,9 @@ impl LazyEvaluator {
     /// # Returns
     ///
     /// An `Option` containing the `Strength` of the high card if found, or `None` if not found.
-    fn find_1_oak(&self) -> Option<Strength> {
+    fn find_1_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(1)
-            .map(|rank| Strength::HighCard(rank))
+            .map(|rank| BestHand::HighCard(rank))
     }
 
     /// Searches for the suit of a flush in the hand.
@@ -253,13 +255,13 @@ impl LazyEvaluator {
             .map(|r| Rank::from(r as u8))
     }
 
-    fn find_kickers(&self, strength: Strength) -> Kickers {
+    fn find_kickers(&self, strength: BestHand) -> Kickers {
         let n = match strength {
-            Strength::HighCard(_) => 4,
-            Strength::OnePair(_) => 3,
-            Strength::ThreeOAK(_) => 2,
-            Strength::FourOAK(_) => 1,
-            Strength::TwoPair(_, _) => 1,
+            BestHand::HighCard(_) => 4,
+            BestHand::OnePair(_) => 3,
+            BestHand::ThreeOAK(_) => 2,
+            BestHand::FourOAK(_) => 1,
+            BestHand::TwoPair(_, _) => 1,
             _ => return Kickers(vec![]),
         };
         Kickers(
@@ -268,7 +270,7 @@ impl LazyEvaluator {
                 .enumerate()
                 .rev()
                 .filter(|(_, x)| **x > 0)
-                .filter(|(r, _)| *r != strength.rank() as usize)
+                .filter(|(r, _)| *r != strength.primary() as usize)
                 .map(|(i, _)| Rank::from(i as u8))
                 .take(n)
                 .collect::<Vec<Rank>>(),
@@ -358,7 +360,7 @@ impl LazyEvaluator {
 
 use std::vec;
 
-use super::strength::{FullStrength, Kickers, Strength};
+use super::strength::{BestHand, Kickers, Strength};
 use crate::cards::card::Card;
 use crate::cards::rank::Rank;
 use crate::cards::suit::Suit;

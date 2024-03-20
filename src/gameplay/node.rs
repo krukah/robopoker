@@ -43,8 +43,11 @@ impl Node {
     pub fn after(&self, index: usize) -> usize {
         (index + 1) % self.seats.len()
     }
+    pub fn before(&self, index: usize) -> usize {
+        (index + self.seats.len() - 1) % self.seats.len()
+    }
 
-    pub fn table_stack(&self) -> u32 {
+    pub fn effective_stack(&self) -> u32 {
         let mut totals = self
             .seats
             .iter()
@@ -54,7 +57,7 @@ impl Node {
         totals.pop().unwrap_or(0);
         totals.pop().unwrap_or(0)
     }
-    pub fn table_stake(&self) -> u32 {
+    pub fn effective_stake(&self) -> u32 {
         self.seats.iter().map(|s| s.stake).max().unwrap()
     }
 
@@ -76,7 +79,7 @@ impl Node {
     pub fn are_all_called(&self) -> bool {
         // everyone who isn't folded has matched the bet
         // or all but one player is all in
-        let stakes = self.table_stake();
+        let stakes = self.effective_stake();
         let is_first_decision = self.counter == 0;
         let is_one_playing = self
             .seats
@@ -106,6 +109,97 @@ impl Display for Node {
     }
 }
 
-use super::seat::{BetStatus, Seat};
+// mutable methods are lowkey reserved for the node's owning Hand -- maybe some CFR engine
+
+impl Node {
+    pub fn apply(&mut self, action: Action) {
+        let seat = self.seats.get_mut(self.pointer).unwrap();
+        // bets entail pot and stack change
+        match action {
+            Action::Call(_, bet)
+            | Action::Blind(_, bet)
+            | Action::Raise(_, bet)
+            | Action::Shove(_, bet) => {
+                self.pot += bet;
+                seat.stake += bet;
+                seat.stack -= bet;
+            }
+            _ => (),
+        }
+        // folds and all-ins entail status change
+        match action {
+            Action::Fold(..) => seat.status = BetStatus::Folded,
+            Action::Shove(..) => seat.status = BetStatus::Shoved,
+            _ => (),
+        }
+        // player actions entail rotation
+        match action {
+            Action::Draw(card) => self.board.push(card.clone()),
+            _ => self.rotate(),
+        }
+    }
+    pub fn start_hand(&mut self) {
+        for seat in self.seats.iter_mut() {
+            seat.status = BetStatus::Playing;
+            seat.stake = 0;
+        }
+        self.pot = 0;
+        self.counter = 0;
+        self.board.cards.clear();
+        self.board.street = Street::Pre;
+        self.dealer = self.after(self.dealer);
+        self.pointer = self.dealer;
+        self.rotate();
+    }
+    pub fn start_street(&mut self) {
+        self.counter = 0;
+        self.pointer = match self.board.street {
+            Street::Pre => self.after(self.after(self.dealer)),
+            _ => self.dealer,
+        };
+        self.rotate();
+    }
+    pub fn end_street(&mut self) {
+        for seat in self.seats.iter_mut() {
+            seat.stake = 0;
+        }
+        self.board.street = match self.board.street {
+            Street::Pre => Street::Flop,
+            Street::Flop => Street::Turn,
+            Street::Turn => Street::River,
+            Street::River => Street::Showdown,
+            Street::Showdown => unreachable!(),
+        }
+    }
+    fn rotate(&mut self) {
+        'left: loop {
+            if !self.has_more_players() {
+                return;
+            }
+            self.counter += 1;
+            self.pointer = self.after(self.pointer);
+            match self.next().status {
+                BetStatus::Playing => return,
+                BetStatus::Folded | BetStatus::Shoved => continue 'left,
+            }
+        }
+    }
+    fn rewind(&mut self) {
+        todo!();
+        'right: loop {
+            self.counter -= 1;
+            self.pointer = self.before(self.pointer);
+            match self.next().status {
+                BetStatus::Playing => return,
+                BetStatus::Folded | BetStatus::Shoved => continue 'right,
+            }
+        }
+    }
+}
+
+use super::{
+    action::Action,
+    seat::{BetStatus, Seat},
+};
 use crate::cards::board::{Board, Street};
 use std::fmt::{Display, Formatter, Result};
