@@ -7,6 +7,7 @@ pub struct Hand {
     pub head: Node,
     pub actions: Vec<Action>,
 }
+#[allow(dead_code)]
 impl Hand {
     pub fn new() -> Self {
         Hand {
@@ -140,8 +141,9 @@ impl Hand {
             })
             .sum()
     }
-    fn priority(&self, position: usize) -> u32 {
-        (position.wrapping_sub(self.head.dealer).wrapping_sub(1) % self.head.seats.len()) as u32
+    fn priority(&self, position: usize) -> usize {
+        (self.head.seats.len() + position - self.head.after(self.head.dealer))
+            % self.head.seats.len()
     }
     fn order(&self, a: &Payout, b: &Payout) -> std::cmp::Ordering {
         let x = self.priority(a.position);
@@ -170,8 +172,16 @@ impl Hand {
         self.head.counter = 0;
         self.deck = Deck::new();
     }
-
-    pub fn start_street(&mut self) {
+    pub fn post_blind(&mut self, size: u32) {
+        let position = self.head.next().position;
+        let seat = self.head.seat_mut(position);
+        let bet = std::cmp::min(size, seat.stack);
+        if seat.stack <= bet {
+            seat.status = BetStatus::Shoved;
+        }
+        self.apply(Action::Blind(position, bet));
+    }
+    pub fn next_street(&mut self) {
         self.head.start_street();
         match self.head.board.street {
             Street::Pre => {
@@ -188,14 +198,17 @@ impl Hand {
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
+                print!("   {}", self.head.board)
             }
             Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
+                print!("   {}", self.head.board)
             }
             Street::River => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
+                print!("   {}", self.head.board)
             }
             Street::Showdown => unreachable!(),
         }
@@ -206,15 +219,7 @@ impl Hand {
             println!("{}{}", seat, payout);
             seat.stack += payout.reward;
         }
-    }
-    pub fn post_blind(&mut self, size: u32) {
-        let position = self.head.next().position;
-        let seat = self.head.seat_mut(position);
-        let bet = std::cmp::min(size, seat.stack);
-        if seat.stack <= bet {
-            seat.status = BetStatus::Shoved;
-        }
-        self.apply(Action::Blind(position, bet));
+        self.head.prune();
     }
 }
 use super::payout::Payout;

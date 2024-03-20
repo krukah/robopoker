@@ -2,11 +2,11 @@ pub struct Robot;
 impl Robot {
     fn weight(&self, action: Action) -> u32 {
         match action {
-            Action::Fold(_) => 15,
-            Action::Check(_) => 10,
-            Action::Call(..) => 40,
-            Action::Raise(..) => 5,
-            Action::Shove(..) => 0,
+            Action::Fold(_) => 1500,
+            Action::Check(_) => 1000,
+            Action::Call(..) => 4000,
+            Action::Raise(..) => 500,
+            Action::Shove(..) => 1,
             _ => 0,
         }
     }

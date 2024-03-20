@@ -50,7 +50,7 @@ impl Seat {
         hand.head.effective_stake() - self.stake
     }
     pub fn min_raise(&self, hand: &Hand) -> u32 {
-        (hand.min_raise() - self.stake)
+        hand.min_raise() - self.stake
     }
     pub fn max_raise(&self, hand: &Hand) -> u32 {
         self.to_shove(hand)
@@ -66,7 +66,7 @@ impl Seat {
         self.to_call(hand) > 0
     }
     fn can_raise(&self, hand: &Hand) -> bool {
-        self.to_shove(hand) > self.min_raise(hand)
+        self.to_shove(hand) >= self.min_raise(hand)
     }
     fn can_call(&self, hand: &Hand) -> bool {
         self.can_fold(hand) && self.can_raise(hand)
@@ -74,6 +74,13 @@ impl Seat {
 }
 impl Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.hole.cards.is_empty() {
+            return write!(
+                f,
+                "{:<3}{}          {:>7}  ",
+                self.position, self.status, self.stack
+            );
+        }
         let card1 = self.hole.cards.get(0).unwrap();
         let card2 = self.hole.cards.get(1).unwrap();
         write!(

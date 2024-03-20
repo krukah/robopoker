@@ -26,22 +26,14 @@ impl Engine {
     }
 
     pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Player>) {
-        println!("ADD  {}", self.hand.head.seats.len());
-        let seat = Seat::new(stack, self.hand.head.seats.len(), actor);
-        self.hand.head.seats.push(seat);
+        self.hand.head.add(stack, actor);
     }
-
     pub fn drop_seat(&mut self, position: usize) {
-        println!("DROP {}", position);
-        self.hand.head.seats.retain(|s| s.position != position);
+        self.hand.head.drop(position);
     }
 
     fn start_street(&mut self) {
-        self.hand.start_street();
-        match self.hand.head.board.street {
-            Street::Pre => (),
-            _ => print!("   {}", self.hand.head.board),
-        }
+        self.hand.next_street();
     }
     fn start_hand(&mut self) {
         println!("\n{}\nHAND   {}", "-".repeat(21), self.n_hands);
@@ -68,10 +60,9 @@ impl Engine {
         self.hand.head.has_more_streets()
     }
     fn has_hands(&self) -> bool {
-        self.n_hands < 5000
+        self.hand.head.has_more_hands() // && self.n_hands < 500000
     }
 }
 
-use super::{hand::Hand, player::Player, seat::Seat};
-use crate::cards::board::Street;
+use super::{hand::Hand, player::Player};
 use std::rc::Rc;

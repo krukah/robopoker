@@ -22,7 +22,7 @@ impl Node {
     }
 
     pub fn has_more_hands(&self) -> bool {
-        self.seats.iter().filter(|s| s.stack > 2).count() > 1
+        self.seats.iter().filter(|s| s.stack > 0).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
         !(self.are_all_folded() || (self.board.street == Street::Showdown))
@@ -139,6 +139,7 @@ impl Node {
         }
     }
     pub fn start_hand(&mut self) {
+        self.prune();
         for seat in self.seats.iter_mut() {
             seat.status = BetStatus::Playing;
             seat.stake = 0;
@@ -184,8 +185,7 @@ impl Node {
             }
         }
     }
-    fn rewind(&mut self) {
-        todo!();
+    fn _rewind(&mut self) {
         'right: loop {
             self.counter -= 1;
             self.pointer = self.before(self.pointer);
@@ -195,11 +195,39 @@ impl Node {
             }
         }
     }
+    pub fn prune(&mut self) {
+        if self.seats.iter().any(|s| s.stack == 0) {
+            for seat in self.seats.iter().filter(|s| s.stack == 0) {
+                println!("DROP {}", seat);
+            }
+            self.seats.retain(|s| s.stack > 0);
+            for (i, seat) in self.seats.iter_mut().enumerate() {
+                seat.position = i;
+            }
+        }
+    }
+    pub fn add(&mut self, stack: u32, player: Rc<dyn Player>) {
+        let position = self.seats.len();
+        let seat = Seat::new(stack, position, player);
+        println!("ADD  {}", &seat);
+        self.seats.push(seat);
+    }
+    pub fn drop(&mut self, position: usize) {
+        println!("DROP {}", self.seat(position));
+        self.seats.remove(position);
+        for (i, seat) in self.seats.iter_mut().enumerate() {
+            seat.position = i;
+        }
+    }
 }
 
 use super::{
     action::Action,
+    player::Player,
     seat::{BetStatus, Seat},
 };
 use crate::cards::board::{Board, Street};
-use std::fmt::{Display, Formatter, Result};
+use std::{
+    fmt::{Display, Formatter, Result},
+    rc::Rc,
+};

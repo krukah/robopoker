@@ -3,22 +3,23 @@ pub struct ShowdownMachine {
     payouts: Vec<Payout>,
     next_stake: u32,
     prev_stake: u32,
-    next_rank: Strength,
+    next_strength: Strength,
 }
 
 impl ShowdownMachine {
     pub fn settle(payouts: Vec<Payout>) -> Vec<Payout> {
         let mut this = Self::new(payouts);
-        loop {
-            this.next_rank();
-            loop {
-                this.next_stake();
+        'strength: while let Some(strength) = this.next_strength() {
+            this.next_strength = strength;
+            '_stake: while let Some(stake) = this.next_stake() {
+                this.next_stake = stake;
                 this.distribute();
                 if this.is_complete() {
-                    return this.payouts;
+                    break 'strength;
                 }
             }
         }
+        this.payouts
     }
 
     fn new(payouts: Vec<Payout>) -> Self {
@@ -27,7 +28,7 @@ impl ShowdownMachine {
         let prev_stake = u32::MIN;
         Self {
             payouts,
-            next_rank,
+            next_strength: next_rank,
             next_stake,
             prev_stake,
         }
@@ -37,6 +38,26 @@ impl ShowdownMachine {
         let staked = self.payouts.iter().map(|p| p.risked).sum::<u32>();
         let reward = self.payouts.iter().map(|p| p.reward).sum::<u32>();
         staked == reward
+    }
+
+    fn next_strength(&mut self) -> Option<Strength> {
+        self.payouts
+            .iter()
+            .filter(|p| p.strength < self.next_strength)
+            .filter(|p| p.status != BetStatus::Folded)
+            .map(|p| p.strength.clone()) //? can we copy, rather than clone, the kickers
+            .max()
+    }
+
+    fn next_stake(&mut self) -> Option<u32> {
+        self.prev_stake = self.next_stake;
+        self.payouts
+            .iter()
+            .filter(|p| p.strength == self.next_strength)
+            .filter(|p| p.risked > self.prev_stake)
+            .filter(|p| p.status != BetStatus::Folded)
+            .map(|p| p.risked)
+            .min()
     }
 
     fn winnings(&self) -> u32 {
@@ -51,7 +72,7 @@ impl ShowdownMachine {
     fn winners(&mut self) -> Vec<&mut Payout> {
         self.payouts
             .iter_mut()
-            .filter(|p| p.strength == self.next_rank)
+            .filter(|p| p.strength == self.next_strength)
             .filter(|p| p.risked > self.prev_stake)
             .filter(|p| p.status != BetStatus::Folded)
             .collect()
@@ -68,30 +89,6 @@ impl ShowdownMachine {
         for winner in winners.iter_mut().take(remainder) {
             winner.reward += 1;
         }
-    }
-
-    fn next_stake(&mut self) {
-        self.prev_stake = self.next_stake;
-        self.next_stake = self
-            .payouts
-            .iter()
-            .filter(|p| p.strength == self.next_rank)
-            .filter(|p| p.risked > self.prev_stake)
-            .filter(|p| p.status != BetStatus::Folded)
-            .map(|p| p.risked)
-            .min()
-            .unwrap();
-    }
-
-    fn next_rank(&mut self) {
-        self.next_rank = self
-            .payouts
-            .iter()
-            .filter(|p| p.strength < self.next_rank)
-            .filter(|p| p.status != BetStatus::Folded)
-            .map(|p| p.strength.clone()) //? can we copy, rather than clone, the kickers
-            .max()
-            .unwrap();
     }
 }
 
