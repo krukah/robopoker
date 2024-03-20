@@ -3,54 +3,57 @@ pub struct Human;
 impl Human {
     fn raise(&self, seat: &Seat, hand: &Hand) -> u32 {
         Input::new()
-            .with_prompt("Amount ")
+            .with_prompt(self.infoset(seat, hand))
+            .validate_with(|i: &String| -> Result<(), &str> {
+                let input = match i.parse::<u32>() {
+                    Ok(value) => value,
+                    Err(_) => return Err("Enter a positive integer"),
+                };
+                if input < seat.min_raise(hand) {
+                    return Err("Raise too small");
+                }
+                if input > seat.max_raise(hand) {
+                    return Err("Raise too large");
+                }
+                Ok(())
+            })
             .report(false)
-            .show_default(true)
-            .default(seat.min_raise(hand).to_string())
-            .validate_with(|i: &String| -> Result<(), &str> {
-                match i.parse::<u32>() {
-                    Ok(_) => Ok(()),
-                    Err(_) => Err("Enter a NUMBER"),
-                }
-            })
-            .validate_with(|i: &String| -> Result<(), &str> {
-                match i.parse::<u32>().unwrap() >= seat.min_raise(hand) {
-                    true => Ok(()),
-                    false => Err("Raise too small"),
-                }
-            })
-            .validate_with(|i: &String| -> Result<(), &str> {
-                match i.parse::<u32>().unwrap() <= seat.max_raise(hand) {
-                    true => Ok(()),
-                    false => Err("Raise too large"),
-                }
-            })
             .interact()
             .unwrap()
             .parse::<u32>()
             .unwrap()
     }
+
+    fn infoset(&self, seat: &Seat, hand: &Hand) -> String {
+        format!(
+            "\nBOARD      {}CARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nChoose Action",
+            hand.head.board,
+            seat.hole,
+            hand.head.pot,
+            seat.stack,
+            seat.to_call(hand),
+            seat.min_raise(hand),
+        )
+    }
 }
+
 impl Player for Human {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
         // get valid actions
         let choices = seat
             .valid_actions(hand)
             .iter()
-            .filter(|a| match a {
-                Action::Shove(_, _) => false,
-                _ => true,
-            })
             .map(|a| match a {
                 Action::Fold(_) => "Fold",
                 Action::Check(_) => "Check",
                 Action::Call(_, _) => "Call",
                 Action::Raise(_, _) => "Raise",
+                Action::Shove(_, _) => "Shove",
                 _ => unreachable!(),
             })
             .collect::<Vec<&str>>();
         let selection = Select::new()
-            .with_prompt(format!("\nYOU HOLD {}", seat.hole))
+            .with_prompt(self.infoset(seat, hand))
             .report(false)
             .items(choices.as_slice())
             .default(0)

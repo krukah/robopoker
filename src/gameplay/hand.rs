@@ -73,7 +73,7 @@ impl Hand {
         let mut payouts = self.starting_payouts();
         for p in payouts.iter_mut() {
             let hand = self.cards(p.position);
-            let strength = LazyEvaluator::evaluate_with_kickers(hand);
+            let strength = LazyEvaluator::strength(hand);
             p.strength = strength;
         }
         ShowdownMachine::settle(payouts)
@@ -163,12 +163,12 @@ impl Hand {
         self.actions.clear();
         self.head.start_hand();
         self.tail = self.head.clone();
-        self.post_blind(self.sblind);
-        self.post_blind(self.bblind);
+        self.post(self.sblind);
+        self.post(self.bblind);
         self.head.counter = 0;
         self.deck = Deck::new();
     }
-    pub fn post_blind(&mut self, size: u32) {
+    pub fn post(&mut self, size: u32) {
         let position = self.head.next().position;
         let seat = self.head.seat_mut(position);
         let bet = std::cmp::min(size, seat.stack);
@@ -215,6 +215,9 @@ impl Hand {
             println!("{}{}", seat, payout);
             seat.stack += payout.reward;
         }
+        // self.head.prune() // we handle this in the node::start_hand
+        // tradeoff between pruning at the end of the hand, but invoking from hand (weak encapsulation)
+        // vs. pruning at the start of the hand, but invoking from node (strong encapsulation)
     }
 }
 use super::payout::Payout;
