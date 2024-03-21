@@ -6,7 +6,7 @@ pub mod cards;
 pub mod evaluation;
 pub mod gameplay;
 pub mod players;
-pub mod solver;
+pub mod strategy;
 
 fn main() {
     let mut engine = Engine::new();

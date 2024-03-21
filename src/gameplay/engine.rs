@@ -13,9 +13,9 @@ impl Engine {
 
     pub fn start(&mut self) {
         while self.has_hands() {
-            self.start_hand();
+            self.begin_hand();
             while self.has_streets() {
-                self.start_street();
+                self.begin_street();
                 while self.has_turns() {
                     self.take_turn();
                 }
@@ -32,10 +32,10 @@ impl Engine {
         self.hand.head.drop(position);
     }
 
-    fn start_street(&mut self) {
+    fn begin_street(&mut self) {
         self.hand.next_street();
     }
-    fn start_hand(&mut self) {
+    fn begin_hand(&mut self) {
         println!("\n{}\nHAND   {}", "-".repeat(21), self.n_hands);
         self.hand.start();
     }

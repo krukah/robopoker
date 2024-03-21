@@ -1,4 +1,11 @@
 pub struct Robot;
+
+impl Player for Robot {
+    fn act(&self, seat: &Seat, hand: &Hand) -> Action {
+        self.policy(seat, hand).choose()
+    }
+}
+
 impl Robot {
     fn weight(&self, action: Action) -> u32 {
         match action {
@@ -11,34 +18,17 @@ impl Robot {
         }
     }
 
-    fn policies(&self, seat: &Seat, hand: &Hand) -> Vec<Policy> {
-        seat.valid_actions(hand)
-            .iter()
-            .map(|a| Policy {
-                action: a.clone(),
-                weight: self.weight(a.clone()),
-            })
-            .collect()
-    }
-
-    fn choose(&self, policies: Vec<Policy>) -> Action {
-        let total = policies.iter().map(|p| p.weight).sum();
-        let roll = thread_rng().gen_range(0..total);
-        let mut sum = 0;
-        for policy in policies.iter() {
-            sum += policy.weight;
-            if roll < sum {
-                return policy.action.clone();
-            }
+    fn policy(&self, seat: &Seat, hand: &Hand) -> Policy {
+        Policy {
+            choices: seat
+                .valid_actions(hand)
+                .iter()
+                .map(|a| Choice {
+                    action: *a,
+                    weight: self.weight(*a),
+                })
+                .collect(),
         }
-        unreachable!()
-    }
-}
-
-impl Player for Robot {
-    fn act(&self, seat: &Seat, hand: &Hand) -> Action {
-        let policies = self.policies(seat, hand);
-        self.choose(policies)
     }
 }
 
@@ -50,6 +40,5 @@ impl Debug for Robot {
 
 use crate::gameplay::player::Player;
 use crate::gameplay::{action::Action, hand::Hand, seat::Seat};
-use crate::solver::policy::Policy;
-use rand::{thread_rng, Rng};
+use crate::strategy::policy::{Choice, Policy};
 use std::fmt::Debug;

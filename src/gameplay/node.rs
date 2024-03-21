@@ -141,8 +141,7 @@ impl Node {
             }
         }
     }
-    pub fn start_hand(&mut self) {
-        self.prune();
+    pub fn begin_hand(&mut self) {
         for seat in self.seats.iter_mut() {
             seat.status = BetStatus::Playing;
             seat.stake = 0;
@@ -155,7 +154,7 @@ impl Node {
         self.pointer = self.dealer;
         self.rotate();
     }
-    pub fn start_street(&mut self) {
+    pub fn begin_street(&mut self) {
         self.counter = 0;
         self.pointer = match self.board.street {
             Street::Pre => self.after(self.after(self.dealer)),

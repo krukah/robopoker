@@ -152,8 +152,7 @@ impl Hand {
     }
 }
 
-// mutable implementation reserved for engine or solver most likeliy
-
+// mutable implementation reserved for engine or solver
 impl Hand {
     pub fn apply(&mut self, action: Action) {
         self.actions.push(action);
@@ -161,7 +160,7 @@ impl Hand {
     }
     pub fn start(&mut self) {
         self.actions.clear();
-        self.head.start_hand();
+        self.head.begin_hand();
         self.tail = self.head.clone();
         self.post(self.sblind);
         self.post(self.bblind);
@@ -178,7 +177,7 @@ impl Hand {
         self.apply(Action::Blind(position, bet));
     }
     pub fn next_street(&mut self) {
-        self.head.start_street();
+        self.head.begin_street();
         match self.head.board.street {
             Street::Pre => {
                 for hole in self.head.seats.iter_mut().map(|s| &mut s.hole) {
@@ -215,9 +214,9 @@ impl Hand {
             println!("{}{}", seat, payout);
             seat.stack += payout.reward;
         }
-        // self.head.prune() // we handle this in the node::start_hand
-        // tradeoff between pruning at the end of the hand, but invoking from hand (weak encapsulation)
-        // vs. pruning at the start of the hand, but invoking from node (strong encapsulation)
+        self.head.prune() // we handle this in the node::begin_hand
+                          // tradeoff between pruning at the end of the hand, but invoking from hand (weak encapsulation)
+                          // vs. pruning at the start of the hand, but invoking from node (strong encapsulation)
     }
 }
 use super::payout::Payout;
