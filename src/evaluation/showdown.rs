@@ -1,12 +1,21 @@
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
-pub struct ShowdownMachine {
+pub struct Showdown {
     payouts: Vec<Payout>,
     next_stake: u32,
     prev_stake: u32,
     next_strength: Strength,
 }
 
-impl ShowdownMachine {
+impl Showdown {
+    pub fn concede(mut payouts: Vec<Payout>) -> Vec<Payout> {
+        let reward = payouts.iter().map(|p| p.risked).sum::<u32>();
+        let winner = payouts
+            .iter_mut()
+            .find(|p| p.status != BetStatus::Folded)
+            .unwrap();
+        winner.reward = reward;
+        payouts
+    }
     pub fn settle(payouts: Vec<Payout>) -> Vec<Payout> {
         let mut this = Self::new(payouts);
         'strength: while let Some(strength) = this.next_strength() {
@@ -92,5 +101,5 @@ impl ShowdownMachine {
     }
 }
 
-use super::{payout::Payout, seat::BetStatus};
 use crate::evaluation::strength::{BestHand, Kickers, Strength};
+use crate::gameplay::{payout::Payout, seat::BetStatus};

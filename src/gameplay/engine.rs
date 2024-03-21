@@ -17,7 +17,7 @@ impl Engine {
             while self.has_streets() {
                 self.begin_street();
                 while self.has_turns() {
-                    self.take_turn();
+                    self.end_turn();
                 }
                 self.end_street();
             }
@@ -26,10 +26,10 @@ impl Engine {
     }
 
     pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Player>) {
-        self.hand.head.add(stack, actor);
+        self.hand.head.gain_seat(stack, actor);
     }
     pub fn drop_seat(&mut self, position: usize) {
-        self.hand.head.drop(position);
+        self.hand.head.drop_seat(position);
     }
 
     fn begin_street(&mut self) {
@@ -39,18 +39,22 @@ impl Engine {
         println!("\n{}\nHAND   {}", "-".repeat(21), self.n_hands);
         self.hand.start();
     }
-    fn take_turn(&mut self) {
-        let seat = self.hand.head.next();
+
+    fn end_turn(&mut self) {
+        let seat = self.hand.head.seat_up_next();
         let action = seat.actor.act(seat, &self.hand);
         self.hand.apply(action);
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
     fn end_street(&mut self) {
         self.hand.head.end_street();
+        std::thread::sleep(std::time::Duration::from_millis(500));
     }
     fn end_hand(&mut self) {
-        print!("{}\n   {}", "-".repeat(21), self.hand.head.board);
+        println!("   {}", self.hand.head.board);
         self.n_hands += 1;
         self.hand.end();
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 
     fn has_turns(&self) -> bool {

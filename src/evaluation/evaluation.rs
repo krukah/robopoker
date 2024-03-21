@@ -26,8 +26,8 @@ impl Evaluator for LazyEvaluator {
 impl LazyEvaluator {
     fn new(cards: &Vec<&Card>) -> Self {
         Self {
-            hand_set: Self::hand_u32(cards),
-            suit_set: Self::suit_u32(cards),
+            hand_set: Self::u32_hand(cards),
+            suit_set: Self::u32_suit(cards),
             rank_counts: Self::rank_counts(cards),
             suit_counts: Self::suit_counts(cards),
         }
@@ -43,6 +43,28 @@ impl LazyEvaluator {
             .or_else(|| self.find_2_oak())
             .or_else(|| self.find_1_oak())
             .unwrap()
+    }
+    fn find_kickers(&self, strength: BestHand) -> Kickers {
+        let n = match strength {
+            BestHand::HighCard(_) => 4,
+            BestHand::OnePair(_) => 3,
+            BestHand::ThreeOAK(_) => 2,
+            BestHand::FourOAK(_) => 1,
+            BestHand::TwoPair(_, _) => 1,
+            _ => return Kickers(Vec::new()),
+        };
+        Kickers(
+            self.rank_counts
+                .iter()
+                .enumerate()
+                .rev()
+                .filter(|(_, x)| **x > 0)
+                .filter(|(r, _)| *r != strength.primary() as usize)
+                .filter(|(r, _)| *r != strength.secondary() as usize)
+                .map(|(i, _)| Rank::from(i as u8))
+                .take(n)
+                .collect::<Vec<Rank>>(),
+        )
     }
 
     fn find_flush(&self) -> Option<BestHand> {
@@ -78,9 +100,9 @@ impl LazyEvaluator {
             .map(|rank| BestHand::ThreeOAK(rank))
     }
     fn find_2_oak(&self) -> Option<BestHand> {
+        // lowkey unreachable because TwoPair short circuits
         self.find_rank_of_n_oak(2)
             .map(|rank| BestHand::OnePair(rank))
-        // lowkey unreachable because TwoPair short circuits
     }
     fn find_1_oak(&self) -> Option<BestHand> {
         self.find_rank_of_n_oak(1)
@@ -94,18 +116,18 @@ impl LazyEvaluator {
             .map(|i| Suit::from(i as u8))
     }
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
-        let flush_u32 = self.suit_set[suit as usize];
-        self.find_rank_of_straight(flush_u32)
+        let u32_flush = self.suit_set[suit as usize];
+        self.find_rank_of_straight(u32_flush)
     }
-    fn find_rank_of_straight(&self, hand_u32: u32) -> Option<Rank> {
-        let mut mask = hand_u32;
+    fn find_rank_of_straight(&self, u32_cards: u32) -> Option<Rank> {
+        let mut mask = u32_cards;
         mask &= mask << 1;
         mask &= mask << 1;
         mask &= mask << 1;
         mask &= mask << 1;
         if mask.count_ones() > 0 {
             return Some(Rank::from(mask));
-        } else if Self::wheel() == (Self::wheel() & hand_u32) {
+        } else if Self::wheel() == (Self::wheel() & u32_cards) {
             return Some(Rank::Five);
         } else {
             return None;
@@ -122,28 +144,6 @@ impl LazyEvaluator {
             .position(|&r| r >= n)
             .map(|i| high - i - 1)
             .map(|r| Rank::from(r as u8))
-    }
-    fn find_kickers(&self, strength: BestHand) -> Kickers {
-        let n = match strength {
-            BestHand::HighCard(_) => 4,
-            BestHand::OnePair(_) => 3,
-            BestHand::ThreeOAK(_) => 2,
-            BestHand::FourOAK(_) => 1,
-            BestHand::TwoPair(_, _) => 1,
-            _ => return Kickers(Vec::new()),
-        };
-        Kickers(
-            self.rank_counts
-                .iter()
-                .enumerate()
-                .rev()
-                .filter(|(_, x)| **x > 0)
-                .filter(|(r, _)| *r != strength.primary() as usize)
-                .filter(|(r, _)| *r != strength.secondary() as usize)
-                .map(|(i, _)| Rank::from(i as u8))
-                .take(n)
-                .collect::<Vec<Rank>>(),
-        )
     }
 
     fn rank_counts(cards: &Vec<&Card>) -> [u8; 13] {
@@ -164,23 +164,23 @@ impl LazyEvaluator {
             .for_each(|s| suit_counts[s] += 1);
         suit_counts
     }
-    fn hand_u32(cards: &Vec<&Card>) -> u32 {
-        let mut hand_u32 = 0;
+    fn u32_hand(cards: &Vec<&Card>) -> u32 {
+        let mut u32_hand = 0;
         cards
             .iter()
             .map(|c| c.rank())
             .map(|r| u32::from(r))
-            .for_each(|r| hand_u32 |= r);
-        hand_u32
+            .for_each(|r| u32_hand |= r);
+        u32_hand
     }
-    fn suit_u32(cards: &Vec<&Card>) -> [u32; 4] {
-        let mut suit_u32 = [0; 4];
+    fn u32_suit(cards: &Vec<&Card>) -> [u32; 4] {
+        let mut u32_suit = [0; 4];
         cards
             .iter()
             .map(|c| (c.suit(), c.rank()))
             .map(|(s, r)| (s as usize, u32::from(r)))
-            .for_each(|(s, r)| suit_u32[s] |= r);
-        suit_u32
+            .for_each(|(s, r)| u32_suit[s] |= r);
+        u32_suit
     }
 
     fn wheel() -> u32 {

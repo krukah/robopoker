@@ -3,7 +3,7 @@ pub struct Hand {
     pub bblind: u32,
     pub sblind: u32,
     pub deck: Deck,
-    pub tail: Node, //? is this useful
+    pub tail: Node,
     pub head: Node,
     pub actions: Vec<Action>,
 }
@@ -20,10 +20,11 @@ impl Hand {
         }
     }
     pub fn settlement(&self) -> Vec<Payout> {
+        let payouts = self.starting_payouts();
         if self.head.are_all_folded() {
-            self.conceded_payouts()
+            Showdown::concede(payouts)
         } else {
-            self.showdown_payouts()
+            Showdown::settle(payouts)
         }
     }
 
@@ -60,24 +61,6 @@ impl Hand {
         }
     }
 
-    fn conceded_payouts(&self) -> Vec<Payout> {
-        let mut payouts = self.starting_payouts();
-        let winner = payouts
-            .iter_mut()
-            .find(|p| p.status != BetStatus::Folded)
-            .unwrap();
-        winner.reward = self.head.pot;
-        payouts
-    }
-    fn showdown_payouts(&self) -> Vec<Payout> {
-        let mut payouts = self.starting_payouts();
-        for p in payouts.iter_mut() {
-            let hand = self.cards(p.position);
-            let strength = LazyEvaluator::strength(hand);
-            p.strength = strength;
-        }
-        ShowdownMachine::settle(payouts)
-    }
     fn starting_payouts(&self) -> Vec<Payout> {
         let mut payouts = self
             .head
@@ -94,7 +77,7 @@ impl Hand {
             risked: self.risked(seat.position),
             status: seat.status,
             position: seat.position,
-            strength: Strength::new(BestHand::MUCK, Kickers(Vec::new())),
+            strength: LazyEvaluator::strength(self.cards(seat.position)),
         }
     }
 
@@ -113,7 +96,7 @@ impl Hand {
         std::cmp::max(last + diff, last + self.bblind)
     }
     fn cards(&self, position: usize) -> Vec<&Card> {
-        let seat = self.head.seat(position);
+        let seat = self.head.seat_at_position(position);
         let hole = &seat.hole;
         let slice_hole = &hole.cards[..];
         let slice_board = &self.head.board.cards[..];
@@ -159,22 +142,23 @@ impl Hand {
         self.head.apply(action);
     }
     pub fn start(&mut self) {
-        self.actions.clear();
         self.head.begin_hand();
         self.tail = self.head.clone();
+        self.actions.clear();
         self.post(self.sblind);
         self.post(self.bblind);
         self.head.counter = 0;
         self.deck = Deck::new();
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
     pub fn post(&mut self, size: u32) {
-        let position = self.head.next().position;
-        let seat = self.head.seat_mut(position);
+        let pointer = self.head.pointer;
+        let seat = self.head.seat_at_position_mut(pointer);
         let bet = std::cmp::min(size, seat.stack);
         if seat.stack <= bet {
             seat.status = BetStatus::Shoved;
         }
-        self.apply(Action::Blind(position, bet));
+        self.apply(Action::Blind(pointer, bet));
     }
     pub fn next_street(&mut self) {
         self.head.begin_street();
@@ -193,37 +177,36 @@ impl Hand {
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
-                print!("   {}", self.head.board)
+                println!("   {}", self.head.board)
             }
             Street::Turn => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
-                print!("   {}", self.head.board)
+                println!("   {}", self.head.board)
             }
             Street::River => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
-                print!("   {}", self.head.board)
+                println!("   {}", self.head.board)
             }
             Street::Showdown => unreachable!(),
         }
     }
     pub fn end(&mut self) {
-        for payout in self.settlement() {
-            let seat = self.head.seat_mut(payout.position);
+        let mut payouts = self.settlement();
+        payouts.sort_by(|a, b| a.position.cmp(&b.position));
+        for payout in payouts {
+            let seat = self.head.seat_at_position_mut(payout.position);
             println!("{}{}", seat, payout);
             seat.stack += payout.reward;
         }
-        self.head.prune() // we handle this in the node::begin_hand
-                          // tradeoff between pruning at the end of the hand, but invoking from hand (weak encapsulation)
-                          // vs. pruning at the start of the hand, but invoking from node (strong encapsulation)
+        self.head.prune()
     }
 }
 use super::payout::Payout;
 use super::seat::{BetStatus, Seat};
-use super::showdown::ShowdownMachine;
 use super::{action::Action, node::Node};
 use crate::cards::board::Street;
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::{Evaluator, LazyEvaluator};
-use crate::evaluation::strength::{BestHand, Kickers, Strength};
+use crate::evaluation::showdown::Showdown;

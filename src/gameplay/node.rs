@@ -31,13 +31,13 @@ impl Node {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
     }
 
-    pub fn next(&self) -> &Seat {
+    pub fn seat_up_next(&self) -> &Seat {
         self.seats.get(self.pointer).unwrap()
     }
-    pub fn seat(&self, index: usize) -> &Seat {
+    pub fn seat_at_position(&self, index: usize) -> &Seat {
         self.seats.iter().find(|s| s.position == index).unwrap()
     }
-    pub fn seat_mut(&mut self, index: usize) -> &mut Seat {
+    pub fn seat_at_position_mut(&mut self, index: usize) -> &mut Seat {
         self.seats.iter_mut().find(|s| s.position == index).unwrap()
     }
     pub fn after(&self, index: usize) -> usize {
@@ -100,12 +100,12 @@ impl Node {
 
 impl Display for Node {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "Pot:   {}\n", self.pot)?;
-        write!(f, "Board: {}", self.board)?;
+        writeln!(f, "Pot:   {}", self.pot)?;
+        writeln!(f, "Board: {}", self.board)?;
         for seat in &self.seats {
             write!(f, "{}", seat)?;
         }
-        write!(f, "")
+        Ok(())
     }
 }
 
@@ -181,7 +181,7 @@ impl Node {
             }
             self.counter += 1;
             self.pointer = self.after(self.pointer);
-            match self.next().status {
+            match self.seat_up_next().status {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'left,
             }
@@ -192,7 +192,7 @@ impl Node {
         'right: loop {
             self.counter -= 1;
             self.pointer = self.before(self.pointer);
-            match self.next().status {
+            match self.seat_up_next().status {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'right,
             }
@@ -209,13 +209,13 @@ impl Node {
             }
         }
     }
-    pub fn add(&mut self, stack: u32, player: Rc<dyn Player>) {
+    pub fn gain_seat(&mut self, stack: u32, player: Rc<dyn Player>) {
         let position = self.seats.len();
         let seat = Seat::new(stack, position, player);
         println!("ADD  {}", &seat);
         self.seats.push(seat);
     }
-    pub fn drop(&mut self, position: usize) {
+    pub fn drop_seat(&mut self, position: usize) {
         let seat = self.seats.remove(position);
         println!("DROP {}", seat);
         for (i, seat) in self.seats.iter_mut().enumerate() {

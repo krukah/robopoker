@@ -13,7 +13,7 @@ fn main() {
     let human = Rc::new(Human);
     let robot = Rc::new(Robot);
 
-    engine.gain_seat(100, human.clone());
+    // engine.gain_seat(100, human.clone());
     engine.gain_seat(100, robot.clone());
     engine.gain_seat(100, robot.clone());
     engine.gain_seat(100, robot.clone());

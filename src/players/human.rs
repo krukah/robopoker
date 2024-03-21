@@ -26,7 +26,7 @@ impl Human {
 
     fn infoset(&self, seat: &Seat, hand: &Hand) -> String {
         format!(
-            "\nBOARD      {}CARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nChoose Action",
+            "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             hand.head.board,
             seat.hole,
             hand.head.pot,

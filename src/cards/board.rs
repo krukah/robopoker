@@ -43,7 +43,7 @@ impl Display for Board {
         for card in &self.cards {
             write!(f, "{}  ", card)?;
         }
-        write!(f, "\n")
+        Ok(())
     }
 }
 
