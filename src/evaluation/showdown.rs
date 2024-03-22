@@ -20,7 +20,7 @@ impl Showdown {
         let mut this = Self::new(payouts);
         'strength: while let Some(strength) = this.next_strength() {
             this.next_strength = strength;
-            '_stake: while let Some(stake) = this.next_stake() {
+            'stake: while let Some(stake) = this.next_stake() {
                 this.next_stake = stake;
                 this.distribute();
                 if this.is_complete() {

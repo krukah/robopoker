@@ -1,4 +1,4 @@
-use gameplay::engine::Engine;
+use gameplay::engine::Table;
 use players::{human::Human, robot::Robot};
 use std::rc::Rc;
 
@@ -8,8 +8,9 @@ pub mod gameplay;
 pub mod players;
 pub mod strategy;
 
-fn main() {
-    let mut engine = Engine::new();
+#[tokio::main]
+async fn main() {
+    let mut engine = Table::new();
     let human = Rc::new(Human);
     let robot = Rc::new(Robot);
 
@@ -20,5 +21,5 @@ fn main() {
     engine.gain_seat(100, robot.clone());
     engine.gain_seat(100, robot.clone());
 
-    engine.start();
+    engine.play();
 }

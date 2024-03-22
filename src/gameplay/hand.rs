@@ -149,7 +149,6 @@ impl Hand {
         self.post(self.bblind);
         self.head.counter = 0;
         self.deck = Deck::new();
-        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
     pub fn post(&mut self, size: u32) {
         let pointer = self.head.pointer;

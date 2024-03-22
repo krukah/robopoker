@@ -1,17 +1,23 @@
-pub struct Engine {
-    hand: Hand,
+pub struct Table {
     n_hands: u32,
+    producer: mpsc::Sender<Action>,
+    consumer: mpsc::Receiver<Action>,
+    hand: Hand,
+    // history: Vec<Hand>,
 }
 
-impl Engine {
+impl Table {
     pub fn new() -> Self {
-        Engine {
+        let (producer, consumer) = mpsc::channel(64);
+        Table {
             hand: Hand::new(),
             n_hands: 0,
+            producer,
+            consumer,
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn play(&mut self) {
         while self.has_hands() {
             self.begin_hand();
             while self.has_streets() {
@@ -38,23 +44,24 @@ impl Engine {
     fn begin_hand(&mut self) {
         println!("\n{}\nHAND   {}", "-".repeat(21), self.n_hands);
         self.hand.start();
+        // std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 
     fn end_turn(&mut self) {
         let seat = self.hand.head.seat_up_next();
         let action = seat.actor.act(seat, &self.hand);
         self.hand.apply(action);
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        // std::thread::sleep(std::time::Duration::from_millis(100));
     }
     fn end_street(&mut self) {
         self.hand.head.end_street();
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        // std::thread::sleep(std::time::Duration::from_millis(500));
     }
     fn end_hand(&mut self) {
         println!("   {}", self.hand.head.board);
         self.n_hands += 1;
         self.hand.end();
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+        // std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 
     fn has_turns(&self) -> bool {
@@ -68,5 +75,6 @@ impl Engine {
     }
 }
 
-use super::{hand::Hand, player::Player};
+use super::{action::Action, hand::Hand, player::Player};
 use std::rc::Rc;
+use tokio::sync::mpsc;
