@@ -9,8 +9,7 @@ pub enum BestHand {
     FullHouse(Rank, Rank), // 0 kickers
     FourOAK(Rank),         // 1 kickers
     StraightFlush(Rank),   // 0 kickers
-    MUCK,
-    MAX,
+    MAX,                   // useful for showdown implementation
 }
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
 pub struct Strength {
@@ -35,7 +34,7 @@ impl Strength {
             | BestHand::OnePair(r, ..)
             | BestHand::FourOAK(r, ..)
             | BestHand::Flush(r, ..) => r,
-            BestHand::MUCK | BestHand::MAX => unreachable!(),
+            BestHand::MAX => unreachable!(),
         }
     }
     pub fn secondary(&self) -> Rank {
@@ -61,7 +60,7 @@ impl BestHand {
             | BestHand::OnePair(r, ..)
             | BestHand::FourOAK(r, ..)
             | BestHand::Flush(r, ..) => *r,
-            BestHand::MUCK | BestHand::MAX => unreachable!(),
+            BestHand::MAX => unreachable!(),
         }
     }
     pub fn secondary(&self) -> Rank {
@@ -102,7 +101,6 @@ impl Ord for Strength {
 impl Display for BestHand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BestHand::MUCK => write!(f, ""),
             BestHand::MAX => unreachable!(),
             BestHand::FullHouse(r1, r2) => write!(f, "FullHouse     {}, {}", r1, r2),
             BestHand::TwoPair(r1, r2) => write!(f, "TwoPair       {}, {}", r1, r2),
@@ -135,7 +133,6 @@ impl Display for Strength {
 impl From<&BestHand> for u8 {
     fn from(strength: &BestHand) -> u8 {
         match strength {
-            BestHand::MUCK => u8::MIN,
             BestHand::MAX => u8::MAX,
             BestHand::HighCard(_) => 1,
             BestHand::OnePair(_) => 2,
