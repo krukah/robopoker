@@ -1,7 +1,6 @@
 # Overview
 
-`robopoker` is a library to play, learn, analyze, track, and solve No-Limit Texas Hold'em. The guiding philosophy of this package was to use very tangible abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. We love a highly-optimized zero-cost abstraction!
-
+`robopoker` is a library to play, learn, analyze, track, and solve No-Limit Texas Hold'em. The guiding philosophy of this package was to use very tangible abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible.
 # Modules
 
 ## `cards`
@@ -24,8 +23,12 @@ This module offers an out-of-the-box way to play NLHE without crossing any netwo
 - `Hand` is a path-aware representation of the current game hand. It is the smallest solvable subset of NLHE, and a direct representation of the game tree abstraction that is used by solvers and players alike.
 - `Table` is a mechanism to advance that game state encapsulated by `Hand` and `Node` according to the rules of the game, assuming input comes from a synchronized subroutine. For games to be played across a network boundary, custom implementation of the game loop must be used to account for distributed game state and fault tolerance.
 
-## `strategy`
-Coming soon. Implementation of a counter-factual regret minimization engine, automated range generation, parametrized reinforcement learning.
+## `cfrm`
+Traits and implementation of a counter-factual regret minimization engine, automated range generation, and parametrized reinforcement learning. Currently, we implement a variation of CFR+ which uses positive regrets and updates strategies between players in distinct iteration steps. Working on a full tree builder and solver for Kuhn poker before moving on to large game abstractions that are actually useful in Limit Hold'em, and then No-Limit Hold'em.
+
+
 
 ## `api`
 Coming soon. A distributed and scalable single-binary WebSocket-based HTTP server that allows players to play, learn, analyze, and track hands remotely.
+
+[1] Regret Minimization in Games with Incomplete Information. Advances in Neural Information Processing Systems, 20. Zinkevich, M., Bowling, M., Burch, N., Cao, Y., Johanson, M., Tamblyn, I., & Rocco, M. (2007).
