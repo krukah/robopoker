@@ -3,6 +3,7 @@ use players::{human::Human, robot::Robot};
 use std::rc::Rc;
 
 pub mod cards;
+pub mod cfrm;
 pub mod evaluation;
 pub mod gameplay;
 pub mod players;
