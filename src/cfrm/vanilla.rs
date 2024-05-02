@@ -49,20 +49,20 @@ trait Info {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    fn possibles(&self) -> Vec<&Self::Node>;
+    fn possibilities(&self) -> Vec<&Self::Node>;
 
     fn endpoints(&self) -> Vec<&Self::Node> {
-        self.possibles()
+        self.possibilities()
             .iter()
             .map(|node| node.descendants())
             .flatten()
             .collect()
     }
     fn available(&self) -> Vec<&Self::Action> {
-        self.possibles().into_iter().next().unwrap().available()
+        self.possibilities().into_iter().next().unwrap().available()
     }
     fn player(&self) -> &Self::Player {
-        self.possibles().iter().next().unwrap().player()
+        self.possibilities().iter().next().unwrap().player()
     }
 }
 
@@ -103,7 +103,7 @@ trait Profile {
     /// Return a Profile where info.player's strategy is given
     fn replace(&self, strategy: &Self::Strategy) -> Self;
     /// Return the strategy for player i
-    fn strategy(&self, _: &Self::Player) -> &Self::Strategy;
+    fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
     /// Return the set of strategies for P_i
     fn strategies(&self) -> Vec<&Self::Strategy>;
 
@@ -118,7 +118,7 @@ trait Profile {
     /// i think we can interpret this as a dot product/measure of alignment between
     /// optimal P_i strategy and current P_i strategy, given a fixed info set and fixed opponent strategy
     fn cfactual_value(&self, info: &Self::Info /* player */) -> Utility {
-        info.possibles()
+        info.possibilities()
             .iter()
             .map(|root| {
                 root.descendants()
@@ -132,7 +132,7 @@ trait Profile {
             })
             .sum::<Utility>()
             / info
-                .possibles()
+                .possibilities()
                 .iter()
                 .map(|root| self.reach(root))
                 .sum::<Utility>() //? DIV BY ZERO
@@ -176,15 +176,12 @@ trait Step {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    fn new(info: &Self::Info, profile: Self::Profile) -> Self;
-    fn info(&self) -> &Self::Info;
-    fn profile(&self) -> &Self::Profile; //? owned by step or solver? mutable or immutable?
+    fn new(profile: Self::Profile) -> Self;
+    fn profile(&self) -> &Self::Profile; //? mutable or immutable?
 
     /// aka instantaneous regret.
-    fn gain(&self, strategy: &Self::Strategy) -> Utility {
-        let info = self.info();
-        let profile = self.profile();
-        profile.replace(strategy).cfactual_value(info) - profile.cfactual_value(info)
+    fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
+        self.profile().always(action).cfactual_value(info) - self.profile().cfactual_value(info)
     }
 }
 
@@ -216,20 +213,19 @@ trait Solver {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    fn info(&self) -> &Self::Info;
+    // fn info(&self) -> &Self::Info;
     fn steps(&self) -> &mut Vec<Self::Step>;
-    fn profile(&self) -> &mut Self::Profile; //? owned by step or solver? mutable or immutable?
     fn next_profile(&self) -> Self::Profile;
 
     /// aka average cumulative regret.
-    fn regret(&self, strategy: &Self::Strategy) -> Utility {
+    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         self.steps()
             .iter()
-            .map(|step| step.gain(strategy))
+            .map(|step| step.gain(info, action))
             .sum::<Utility>()
             / self.num_steps() as Utility //? DIV BY ZERO
     }
-    /// Loops over simple n_iter < max_iter convergence criteria and returns ~Nash Best Response
+    /// Loops over simple n_iter < max_iter convergence criteria and returns ~ Nash Equilibrium
     fn solve(&self) -> &Self::Profile {
         while let Some(step) = self.next() {
             self.steps().push(step);
@@ -239,7 +235,7 @@ trait Solver {
     /// Generate the next Step of the solution as a pure function of current state
     fn next(&self) -> Option<Self::Step> {
         if self.num_steps() < self.max_steps() {
-            Some(Self::Step::new(self.info(), self.next_profile()))
+            Some(Self::Step::new(self.next_profile()))
         } else {
             None
         }

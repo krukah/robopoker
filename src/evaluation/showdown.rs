@@ -25,6 +25,8 @@ impl Showdown {
                 this.distribute();
                 if this.is_complete() {
                     break 'strength;
+                } else {
+                    continue 'stake;
                 }
             }
         }
