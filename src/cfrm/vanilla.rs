@@ -26,9 +26,9 @@ trait Node {
     // fn parent(&self) -> Option<&Self>;
     fn value(&self, _: &Self::Player) -> Utility;
     fn player(&self) -> &Self::Player;
-    fn history(&self) -> &Vec<&Self::Action>;
-    fn available(&self) -> &Vec<&Self::Action>;
-    fn children(&self) -> &Vec<&Self>;
+    fn history(&self) -> Vec<&Self::Action>;
+    fn available(&self) -> Vec<&Self::Action>;
+    fn children(&self) -> Vec<&Self>;
 
     fn descendants(&self) -> Vec<&Self> {
         match self.children().len() {
@@ -49,7 +49,7 @@ trait Info {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    fn possibles(&self) -> &Vec<&Self::Node>;
+    fn possibles(&self) -> Vec<&Self::Node>;
 
     fn endpoints(&self) -> Vec<&Self::Node> {
         self.possibles()
@@ -58,11 +58,11 @@ trait Info {
             .flatten()
             .collect()
     }
+    fn available(&self) -> Vec<&Self::Action> {
+        self.possibles().into_iter().next().unwrap().available()
+    }
     fn player(&self) -> &Self::Player {
         self.possibles().iter().next().unwrap().player()
-    }
-    fn available(&self) -> &Vec<&Self::Action> {
-        self.possibles().iter().next().unwrap().available()
     }
 }
 
@@ -104,6 +104,8 @@ trait Profile {
     fn replace(&self, strategy: &Self::Strategy) -> Self;
     /// Return the strategy for player i
     fn strategy(&self, _: &Self::Player) -> &Self::Strategy;
+    /// Return the set of strategies for P_i
+    fn strategies(&self) -> Vec<&Self::Strategy>;
 
     /// EV for info.player iff players play according to &self
     fn expected_value(&self, info: &Self::Info /* player */) -> Utility {
@@ -178,10 +180,11 @@ trait Step {
     fn info(&self) -> &Self::Info;
     fn profile(&self) -> &Self::Profile; //? owned by step or solver? mutable or immutable?
 
-    /// aka instantaneous regret. we call step-regret loss and solver-regret regret, the latter is cumulative
-    fn loss(&self, strategy: &Self::Strategy) -> Utility {
-        self.profile().replace(strategy).cfactual_value(self.info())
-            - self.profile().cfactual_value(self.info())
+    /// aka instantaneous regret.
+    fn gain(&self, strategy: &Self::Strategy) -> Utility {
+        let info = self.info();
+        let profile = self.profile();
+        profile.replace(strategy).cfactual_value(info) - profile.cfactual_value(info)
     }
 }
 
@@ -216,26 +219,22 @@ trait Solver {
     fn info(&self) -> &Self::Info;
     fn steps(&self) -> &mut Vec<Self::Step>;
     fn profile(&self) -> &mut Self::Profile; //? owned by step or solver? mutable or immutable?
-    fn next_strategy(&self) -> &Self::Strategy;
+    fn next_profile(&self) -> Self::Profile;
 
-    /// aka average cumulative regret. we call step-regret loss and solver-regret regret, the latter is cumulative
+    /// aka average cumulative regret.
     fn regret(&self, strategy: &Self::Strategy) -> Utility {
         self.steps()
             .iter()
-            .map(|step| step.loss(strategy))
+            .map(|step| step.gain(strategy))
             .sum::<Utility>()
             / self.num_steps() as Utility //? DIV BY ZERO
     }
     /// Loops over simple n_iter < max_iter convergence criteria and returns ~Nash Best Response
-    fn solve(&mut self) -> &Self::Strategy {
+    fn solve(&self) -> &Self::Profile {
         while let Some(step) = self.next() {
             self.steps().push(step);
         }
-        self.steps()
-            .last()
-            .unwrap()
-            .profile()
-            .strategy(self.info().player())
+        self.steps().last().unwrap().profile()
     }
     /// Generate the next Step of the solution as a pure function of current state
     fn next(&self) -> Option<Self::Step> {
@@ -244,14 +243,6 @@ trait Solver {
         } else {
             None
         }
-    }
-    /// Apply regret minimization via regret matching
-    fn next_profile(&self) -> Self::Profile {
-        self.steps()
-            .last()
-            .unwrap()
-            .profile()
-            .replace(self.next_strategy())
     }
     /// Convergence progress
     fn num_steps(&self) -> usize {
