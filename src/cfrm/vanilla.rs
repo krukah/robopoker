@@ -15,7 +15,7 @@ trait Action {
     type Player;
 
     fn player(&self) -> &Self::Player;
-    fn belongs(&self, _: &Self::Player) -> bool;
+    fn belongs(&self, player: &Self::Player) -> bool;
 }
 
 // Omnipotent, complete state of current game
@@ -71,10 +71,10 @@ trait Policy {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    fn weight(&self, _: &Self::Action) -> Probability;
+    fn weight(&self, action: &Self::Action) -> Probability;
 }
 
-// A strategy of player i σi in an extensive game is a function that assigns a policy to each Ii ∈ Ii
+// A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
 trait Strategy {
     type Policy: Policy<Player = Self::Player, Action = Self::Action>;
     type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
@@ -82,7 +82,7 @@ trait Strategy {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    fn policy(&self, _: &Self::Node) -> &Self::Policy;
+    fn policy(&self, node: &Self::Node) -> &Self::Policy;
 }
 
 // A profile σ consists of a strategy for each player, σ1,σ2,..., equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
@@ -101,7 +101,7 @@ trait Profile {
     /// Return a Profile where info.player's strategy is to play P(action)= 100%
     fn always(&self, action: &Self::Action) -> Self;
     /// Return a Profile where info.player's strategy is given
-    fn replace(&self, strategy: Self::Strategy) -> Self;
+    fn replace(&self, strategy: &Self::Strategy) -> Self;
     /// Return the strategy for player i
     fn strategy(&self, _: &Self::Player) -> &Self::Strategy;
 
@@ -109,10 +109,12 @@ trait Profile {
     fn expected_value(&self, info: &Self::Info /* player */) -> Utility {
         info.endpoints()
             .iter()
-            .map(|end| end.value(info.player()) * self.reach(end))
+            .map(|leaf| leaf.value(info.player()) * self.reach(leaf))
             .sum()
     }
-    /// EV for info.player iff players play according to &self BUT info.player plays according to P(action)= 100%. we can interpret this as a dot product between optimal strategy and current strategy
+    /// EV for info.player iff players play according to &self BUT info.player plays according to P(action)= 100%.
+    /// i think we can interpret this as a dot product/measure of alignment between
+    /// optimal P_i strategy and current P_i strategy, given a fixed info set and fixed opponent strategy
     fn cfactual_value(&self, info: &Self::Info /* player */) -> Utility {
         info.possibles()
             .iter()
@@ -120,7 +122,7 @@ trait Profile {
                 root.descendants()
                     .iter()
                     .map(|leaf| {
-                        leaf.value(info.player()/*  */) // V ( LEAF )
+                        leaf.value(info.player())       // V ( LEAF )
                             * self.exterior_reach(root) // P ( ROOT | player tried to reach INFO )
                             * self.relative_reach(root, leaf) // P ( ROOT -> LEAF )
                     })
@@ -177,13 +179,9 @@ trait Step {
     fn profile(&self) -> &Self::Profile; //? owned by step or solver? mutable or immutable?
 
     /// aka instantaneous regret. we call step-regret loss and solver-regret regret, the latter is cumulative
-    fn loss(&self, action: &Self::Action) -> Utility {
-        // let info = self.info();
-        // let player = info.player();
-        self.profile()
-            .always(action)
-            .cfactual_value(self.info() /* , player */)
-            - self.profile().cfactual_value(self.info() /* , player */)
+    fn loss(&self, strategy: &Self::Strategy) -> Utility {
+        self.profile().replace(strategy).cfactual_value(self.info())
+            - self.profile().cfactual_value(self.info())
     }
 }
 
@@ -218,13 +216,13 @@ trait Solver {
     fn info(&self) -> &Self::Info;
     fn steps(&self) -> &mut Vec<Self::Step>;
     fn profile(&self) -> &mut Self::Profile; //? owned by step or solver? mutable or immutable?
-    fn next_strategy(&self) -> Self::Strategy;
+    fn next_strategy(&self) -> &Self::Strategy;
 
     /// aka average cumulative regret. we call step-regret loss and solver-regret regret, the latter is cumulative
-    fn regret(&self, action: &Self::Action) -> Utility {
+    fn regret(&self, strategy: &Self::Strategy) -> Utility {
         self.steps()
             .iter()
-            .map(|step| step.loss(action))
+            .map(|step| step.loss(strategy))
             .sum::<Utility>()
             / self.num_steps() as Utility //? DIV BY ZERO
     }
