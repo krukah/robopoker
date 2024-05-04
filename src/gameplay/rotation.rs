@@ -22,7 +22,7 @@ impl Rotation {
     }
 
     pub fn has_more_hands(&self) -> bool {
-        self.seats.iter().filter(|s| s.stack > 0).count() > 1
+        self.seats.iter().filter(|s| s.stack() > 0).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
         !(self.are_all_folded() || (self.board.street == Street::Showdown))
@@ -35,10 +35,13 @@ impl Rotation {
         self.seats.get(self.pointer).unwrap()
     }
     pub fn seat_at_position(&self, index: usize) -> &Seat {
-        self.seats.iter().find(|s| s.position == index).unwrap()
+        self.seats.iter().find(|s| s.position() == index).unwrap()
     }
     pub fn seat_at_position_mut(&mut self, index: usize) -> &mut Seat {
-        self.seats.iter_mut().find(|s| s.position == index).unwrap()
+        self.seats
+            .iter_mut()
+            .find(|s| s.position() == index)
+            .unwrap()
     }
     pub fn after(&self, index: usize) -> usize {
         (index + 1) % self.seats.len()
@@ -51,21 +54,21 @@ impl Rotation {
         let mut totals = self
             .seats
             .iter()
-            .map(|s| s.stack + s.stake)
+            .map(|s| s.stack() + s.stake())
             .collect::<Vec<u32>>();
         totals.sort();
         totals.pop().unwrap_or(0);
         totals.pop().unwrap_or(0)
     }
     pub fn effective_stake(&self) -> u32 {
-        self.seats.iter().map(|s| s.stake).max().unwrap()
+        self.seats.iter().map(|s| s.stake()).max().unwrap()
     }
 
     pub fn are_all_folded(&self) -> bool {
         // exactly one player has not folded
         self.seats
             .iter()
-            .filter(|s| s.status != BetStatus::Folded)
+            .filter(|s| s.status() != BetStatus::Folded)
             .count()
             == 1
     }
@@ -73,8 +76,8 @@ impl Rotation {
         // everyone who isn't folded is all in
         self.seats
             .iter()
-            .filter(|s| s.status != BetStatus::Folded)
-            .all(|s| s.status == BetStatus::Shoved)
+            .filter(|s| s.status() != BetStatus::Folded)
+            .all(|s| s.status() == BetStatus::Shoved)
     }
     pub fn are_all_called(&self) -> bool {
         // everyone who isn't folded has matched the bet
@@ -84,7 +87,7 @@ impl Rotation {
         let is_one_playing = self
             .seats
             .iter()
-            .filter(|s| s.status == BetStatus::Playing)
+            .filter(|s| s.status() == BetStatus::Playing)
             .count()
             == 1;
         let has_no_decision = is_first_decision && is_one_playing;
@@ -92,8 +95,8 @@ impl Rotation {
         let has_all_matched = self
             .seats
             .iter()
-            .filter(|s| s.status == BetStatus::Playing)
-            .all(|s| s.stake == stakes);
+            .filter(|s| s.status() == BetStatus::Playing)
+            .all(|s| s.stake() == stakes);
         (has_all_decided || has_no_decision) && has_all_matched
     }
 }
@@ -122,15 +125,14 @@ impl Rotation {
             | Action::Blind(_, bet)
             | Action::Raise(_, bet)
             | Action::Shove(_, bet) => {
+                seat.bet(bet);
                 self.pot += bet;
-                seat.stake += bet;
-                seat.stack -= bet;
             }
             _ => (),
         }
         match action {
-            Action::Fold(..) => seat.status = BetStatus::Folded,
-            Action::Shove(..) => seat.status = BetStatus::Shoved,
+            Action::Fold(..) => seat.set_status(BetStatus::Folded),
+            Action::Shove(..) => seat.set_status(BetStatus::Shoved),
             _ => (),
         }
         match action {
@@ -143,8 +145,8 @@ impl Rotation {
     }
     pub fn begin_hand(&mut self) {
         for seat in self.seats.iter_mut() {
-            seat.status = BetStatus::Playing;
-            seat.stake = 0;
+            seat.set_status(BetStatus::Playing);
+            seat.clear();
         }
         self.pot = 0;
         self.counter = 0;
@@ -164,7 +166,7 @@ impl Rotation {
     }
     pub fn end_street(&mut self) {
         for seat in self.seats.iter_mut() {
-            seat.stake = 0;
+            seat.clear();
         }
         self.board.street = match self.board.street {
             Street::Pre => Street::Flop,
@@ -181,7 +183,7 @@ impl Rotation {
             }
             self.counter += 1;
             self.pointer = self.after(self.pointer);
-            match self.seat_up_next().status {
+            match self.seat_up_next().status() {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'left,
             }
@@ -192,45 +194,39 @@ impl Rotation {
         'right: loop {
             self.counter -= 1;
             self.pointer = self.before(self.pointer);
-            match self.seat_up_next().status {
+            match self.seat_up_next().status() {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'right,
             }
         }
     }
     pub fn prune(&mut self) {
-        if self.seats.iter().any(|s| s.stack == 0) {
-            for seat in self.seats.iter().filter(|s| s.stack == 0) {
+        if self.seats.iter().any(|s| s.stack() == 0) {
+            for seat in self.seats.iter().filter(|s| s.stack() == 0) {
                 println!("DROP {}", seat);
             }
-            self.seats.retain(|s| s.stack > 0);
+            self.seats.retain(|s| s.stack() > 0);
             for (i, seat) in self.seats.iter_mut().enumerate() {
-                seat.position = i;
+                seat.assign(i);
             }
         }
     }
-    pub fn gain_seat(&mut self, stack: u32, player: Rc<dyn Player>) {
+    pub fn sit_down(&mut self, stack: u32) {
         let position = self.seats.len();
-        let seat = Seat::new(stack, position, player);
-        println!("ADD  {}", &seat);
+        let seat = Seat::new(stack, position);
         self.seats.push(seat);
     }
-    pub fn drop_seat(&mut self, position: usize) {
-        let seat = self.seats.remove(position);
-        println!("DROP {}", seat);
+    pub fn stand_up(&mut self, position: usize) {
+        self.seats.remove(position);
         for (i, seat) in self.seats.iter_mut().enumerate() {
-            seat.position = i;
+            seat.assign(i);
         }
     }
 }
 
 use super::{
     action::Action,
-    player::Player,
     seat::{BetStatus, Seat},
 };
 use crate::cards::board::{Board, Street};
-use std::{
-    fmt::{Display, Formatter, Result},
-    rc::Rc,
-};
+use std::fmt::{Display, Formatter, Result};
