@@ -99,9 +99,9 @@ trait Profile {
     type Player: Player;
 
     /// Return a Profile where info.player's strategy is to play P(action)= 100%
-    fn always(&self, action: &Self::Action) -> Self;
+    fn always(&self, action: &Self::Action) -> &Self;
     /// Return a Profile where info.player's strategy is given
-    fn replace(&self, strategy: &Self::Strategy) -> Self;
+    fn replace(&self, strategy: &Self::Strategy) -> &Self;
     /// Return the strategy for player i
     fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
     /// Return the set of strategies for P_i

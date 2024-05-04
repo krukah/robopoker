@@ -1,6 +1,6 @@
 // Node represents the memoryless state of the game in between actions. it records both public and private data structs, and is responsible for managing the rotation of players, the pot, and the board. it's immutable methods reveal pure functions representing the rules of how the game may proceed.
 #[derive(Debug, Clone)]
-pub struct Node {
+pub struct Rotation {
     pub pot: u32,
     pub dealer: usize,
     pub counter: usize,
@@ -9,9 +9,9 @@ pub struct Node {
     pub seats: Vec<Seat>,
 }
 
-impl Node {
+impl Rotation {
     pub fn new() -> Self {
-        Node {
+        Rotation {
             seats: Vec::with_capacity(10),
             board: Board::new(),
             pot: 0,
@@ -98,7 +98,7 @@ impl Node {
     }
 }
 
-impl Display for Node {
+impl Display for Rotation {
     fn fmt(&self, f: &mut Formatter) -> Result {
         writeln!(f, "Pot:   {}", self.pot)?;
         writeln!(f, "Board: {}", self.board)?;
@@ -111,7 +111,7 @@ impl Display for Node {
 
 // mutable methods are lowkey reserved for the node's owning Hand -- maybe some CFR engine
 
-impl Node {
+impl Rotation {
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.pointer).unwrap();
         // bets entail pot and stack change
