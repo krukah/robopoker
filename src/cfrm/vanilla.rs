@@ -213,10 +213,16 @@ trait Solver {
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    // fn info(&self) -> &Self::Info;
     fn steps(&self) -> &mut Vec<Self::Step>;
-    fn next_profile(&self) -> Self::Profile;
+    fn next(&self) -> Option<Self::Step>;
 
+    /// Loops over simple n_iter < max_iter convergence criteria and returns ~ Nash Equilibrium
+    fn solve(&self) -> &Self::Profile {
+        while let Some(step) = self.next() {
+            self.steps().push(step);
+        }
+        self.steps().last().unwrap().profile()
+    }
     /// aka average cumulative regret. backward pass through game tree propagates regret
     fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         self.steps()
@@ -226,21 +232,7 @@ trait Solver {
             .sum::<Utility>()
             / self.num_steps() as Utility //? DIV BY ZERO
     }
-    /// Loops over simple n_iter < max_iter convergence criteria and returns ~ Nash Equilibrium
-    fn solve(&self) -> &Self::Profile {
-        while let Some(step) = self.next() {
-            self.steps().push(step);
-        }
-        self.steps().last().unwrap().profile()
-    }
-    /// Generate the next Step of the solution as a pure function of current state
-    fn next(&self) -> Option<Self::Step> {
-        if self.num_steps() < self.max_steps() {
-            Some(Self::Step::new(self.next_profile()))
-        } else {
-            None
-        }
-    }
+
     /// Convergence progress
     fn num_steps(&self) -> usize {
         self.steps().len()
