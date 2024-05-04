@@ -3,8 +3,8 @@ pub struct Hand {
     pub bblind: u32,
     pub sblind: u32,
     pub deck: Deck,
-    pub tail: Node,
-    pub head: Node,
+    pub tail: Rotation,
+    pub head: Rotation,
     pub actions: Vec<Action>,
 }
 #[allow(dead_code)]
@@ -15,8 +15,8 @@ impl Hand {
             bblind: 2,
             actions: Vec::new(),
             deck: Deck::new(),
-            tail: Node::new(),
-            head: Node::new(),
+            tail: Rotation::new(),
+            head: Rotation::new(),
         }
     }
     pub fn settlement(&self) -> Vec<Payout> {
@@ -204,7 +204,7 @@ impl Hand {
 }
 use super::payout::Payout;
 use super::seat::{BetStatus, Seat};
-use super::{action::Action, node::Node};
+use super::{action::Action, rotation::Rotation};
 use crate::cards::board::Street;
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::{Evaluator, LazyEvaluator};
