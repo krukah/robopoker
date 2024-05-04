@@ -107,6 +107,10 @@ trait Profile {
     /// Return the set of strategies for P_i
     fn strategies(&self) -> Vec<&Self::Strategy>;
 
+    /// aka instantaneous regret.
+    fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
+        self.always(action).cfactual_value(info) - self.cfactual_value(info)
+    }
     /// EV for info.player iff players play according to &self
     fn expected_value(&self, info: &Self::Info) -> Utility {
         info.endpoints()
@@ -156,7 +160,8 @@ trait Profile {
     }
 }
 
-// Training happens over discrete time steps, so we'll index steps into it's own data structure.xz
+// this is currently just a wrapper for Profile tbh
+// Training happens over discrete time steps, so we'll index steps into it's own data structure.
 trait Step {
     type Profile: Profile<
         Player = Self::Player,
@@ -178,11 +183,6 @@ trait Step {
 
     fn new(profile: Self::Profile) -> Self;
     fn profile(&self) -> &Self::Profile; //? mutable or immutable?
-
-    /// aka instantaneous regret.
-    fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
-        self.profile().always(action).cfactual_value(info) - self.profile().cfactual_value(info)
-    }
 }
 
 // A full solver has a sequence of steps, and a final profile
@@ -221,7 +221,8 @@ trait Solver {
     fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         self.steps()
             .iter()
-            .map(|step| step.gain(info, action))
+            .map(|step| step.profile())
+            .map(|profile| profile.gain(info, action))
             .sum::<Utility>()
             / self.num_steps() as Utility //? DIV BY ZERO
     }
