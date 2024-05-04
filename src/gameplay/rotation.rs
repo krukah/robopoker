@@ -201,14 +201,9 @@ impl Rotation {
         }
     }
     pub fn prune(&mut self) {
-        if self.seats.iter().any(|s| s.stack() == 0) {
-            for seat in self.seats.iter().filter(|s| s.stack() == 0) {
-                println!("DROP {}", seat);
-            }
-            self.seats.retain(|s| s.stack() > 0);
-            for (i, seat) in self.seats.iter_mut().enumerate() {
-                seat.assign(i);
-            }
+        self.seats.retain(|s| s.stack() > 0);
+        for (i, seat) in self.seats.iter_mut().enumerate() {
+            seat.assign(i);
         }
     }
     pub fn sit_down(&mut self, stack: u32) {
