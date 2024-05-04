@@ -74,10 +74,10 @@ impl Hand {
     fn payout(&self, seat: &Seat) -> Payout {
         Payout {
             reward: 0,
-            risked: self.risked(seat.position),
-            status: seat.status,
-            position: seat.position,
-            strength: LazyEvaluator::strength(self.cards(seat.position)),
+            risked: self.risked(seat.position()),
+            status: seat.status(),
+            position: seat.position(),
+            strength: LazyEvaluator::strength(self.cards(seat.position())),
         }
     }
 
@@ -86,8 +86,8 @@ impl Hand {
             .head
             .seats
             .iter()
-            .filter(|s| s.status != BetStatus::Folded)
-            .map(|s| s.stake)
+            .filter(|s| s.status() != BetStatus::Folded)
+            .map(|s| s.stake())
             .collect::<Vec<u32>>();
         stakes.sort_unstable();
         let last = stakes.pop().unwrap_or(0);
@@ -97,7 +97,7 @@ impl Hand {
     }
     fn cards(&self, position: usize) -> Vec<&Card> {
         let seat = self.head.seat_at_position(position);
-        let hole = &seat.hole;
+        let hole = seat.peek();
         let slice_hole = &hole.cards[..];
         let slice_board = &self.head.board.cards[..];
         slice_hole
@@ -153,9 +153,9 @@ impl Hand {
     pub fn post(&mut self, size: u32) {
         let pointer = self.head.pointer;
         let seat = self.head.seat_at_position_mut(pointer);
-        let bet = std::cmp::min(size, seat.stack);
-        if seat.stack <= bet {
-            seat.status = BetStatus::Shoved;
+        let bet = std::cmp::min(size, seat.stack());
+        if seat.stack() <= bet {
+            seat.set_status(BetStatus::Shoved);
         }
         self.apply(Action::Blind(pointer, bet));
     }
@@ -163,7 +163,7 @@ impl Hand {
         self.head.begin_street();
         match self.head.board.street {
             Street::Pre => {
-                for hole in self.head.seats.iter_mut().map(|s| &mut s.hole) {
+                for hole in self.head.seats.iter_mut().map(|s| s.hole()) {
                     hole.cards.clear();
                     hole.cards.push(self.deck.draw().unwrap());
                     hole.cards.push(self.deck.draw().unwrap());
@@ -178,12 +178,7 @@ impl Hand {
                 self.apply(Action::Draw(card3));
                 println!("   {}", self.head.board)
             }
-            Street::Turn => {
-                let card = self.deck.draw().unwrap();
-                self.apply(Action::Draw(card));
-                println!("   {}", self.head.board)
-            }
-            Street::River => {
+            Street::Turn | Street::River => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
                 println!("   {}", self.head.board)
@@ -196,8 +191,7 @@ impl Hand {
         payouts.sort_by(|a, b| a.position.cmp(&b.position));
         for payout in payouts {
             let seat = self.head.seat_at_position_mut(payout.position);
-            println!("{}{}", seat, payout);
-            seat.stack += payout.reward;
+            seat.win(payout.reward);
         }
         self.head.prune()
     }

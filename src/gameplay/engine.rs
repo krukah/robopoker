@@ -1,19 +1,13 @@
 pub struct Table {
     n_hands: u32,
-    producer: mpsc::Sender<Action>,
-    consumer: mpsc::Receiver<Action>,
     hand: Hand,
-    // history: Vec<Hand>,
 }
 
 impl Table {
     pub fn new() -> Self {
-        let (producer, consumer) = mpsc::channel(64);
         Table {
             hand: Hand::new(),
             n_hands: 0,
-            producer,
-            consumer,
         }
     }
 
@@ -31,11 +25,11 @@ impl Table {
         }
     }
 
-    pub fn gain_seat(&mut self, stack: u32, actor: Rc<dyn Player>) {
-        self.hand.head.gain_seat(stack, actor);
+    pub fn gain_seat(&mut self, stack: u32) {
+        self.hand.head.sit_down(stack);
     }
     pub fn drop_seat(&mut self, position: usize) {
-        self.hand.head.drop_seat(position);
+        self.hand.head.stand_up(position);
     }
 
     fn begin_street(&mut self) {
@@ -49,7 +43,7 @@ impl Table {
 
     fn end_turn(&mut self) {
         let seat = self.hand.head.seat_up_next();
-        let action = seat.actor.act(seat, &self.hand);
+        let action = seat.act(&self.hand);
         self.hand.apply(action);
         // std::thread::sleep(std::time::Duration::from_millis(100));
     }
@@ -75,6 +69,4 @@ impl Table {
     }
 }
 
-use super::{action::Action, hand::Hand, player::Player};
-use std::rc::Rc;
-use tokio::sync::mpsc;
+use super::hand::Hand;

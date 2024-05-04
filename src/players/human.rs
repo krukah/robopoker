@@ -28,9 +28,9 @@ impl Human {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             hand.head.board,
-            seat.hole,
+            seat.peek(),
             hand.head.pot,
-            seat.stack,
+            seat.stack(),
             seat.to_call(hand),
             seat.min_raise(hand),
         )
@@ -60,16 +60,16 @@ impl Player for Human {
             .interact()
             .unwrap();
         match choices[selection] {
-            "Fold" => Action::Fold(seat.position),
-            "Check" => Action::Check(seat.position),
-            "Call" => Action::Call(seat.position, seat.to_call(hand)),
-            "Shove" => Action::Shove(seat.position, seat.to_shove(hand)),
+            "Fold" => Action::Fold(seat.position()),
+            "Check" => Action::Check(seat.position()),
+            "Call" => Action::Call(seat.position(), seat.to_call(hand)),
+            "Shove" => Action::Shove(seat.position(), seat.to_shove(hand)),
             "Raise" => {
                 let raise = self.raise(seat, hand);
                 let shove = seat.to_shove(hand);
                 match raise == shove {
-                    true => Action::Shove(seat.position, shove),
-                    false => Action::Raise(seat.position, raise),
+                    true => Action::Shove(seat.position(), shove),
+                    false => Action::Raise(seat.position(), raise),
                 }
             }
             _ => unreachable!(),

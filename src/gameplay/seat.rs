@@ -1,26 +1,60 @@
 #[derive(Debug, Clone)]
 pub struct Seat {
-    pub position: usize,
-    pub hole: Hole,
-    pub actor: Rc<dyn Player>, // Weak ?
-    pub stack: u32,
-    pub stake: u32,
-    pub status: BetStatus,
+    position: usize,
+    hole: Hole,
+    stack: u32,
+    stake: u32,
+    status: BetStatus,
 }
+
 impl Seat {
-    pub fn new(stack: u32, position: usize, actor: Rc<dyn Player>) -> Seat {
+    pub fn new(stack: u32, position: usize) -> Seat {
         Seat {
             position,
             stack,
             stake: 0,
             status: BetStatus::Playing,
             hole: Hole::new(),
-            actor,
         }
     }
-
-    pub fn cards(&self) -> &Hole {
+    pub fn position(&self) -> usize {
+        self.position
+    }
+    pub fn stack(&self) -> u32 {
+        self.stack
+    }
+    pub fn stake(&self) -> u32 {
+        self.stake
+    }
+    pub fn status(&self) -> BetStatus {
+        self.status
+    }
+    pub fn peek(&self) -> &Hole {
         &self.hole
+    }
+    pub fn hole(&mut self) -> &mut Hole {
+        &mut self.hole
+    }
+    pub fn act(&self, _hand: &Hand) -> Action {
+        todo!()
+    }
+
+    pub fn bet(&mut self, bet: u32) {
+        self.stack -= bet;
+        self.stake += bet;
+    }
+    pub fn win(&mut self, winnings: u32) {
+        println!("{}{}", self, winnings);
+        self.stack += winnings;
+    }
+    pub fn clear(&mut self) {
+        self.stake = 0;
+    }
+    pub fn set_status(&mut self, status: BetStatus) {
+        self.status = status;
+    }
+    pub fn assign(&mut self, position: usize) {
+        self.position = position;
     }
 
     pub fn valid_actions(&self, hand: &Hand) -> Vec<Action> {
@@ -108,10 +142,7 @@ impl Display for BetStatus {
     }
 }
 
-use super::{action::Action, hand::Hand, player::Player};
+use super::{action::Action, hand::Hand};
 use crate::cards::hole::Hole;
 use colored::Colorize;
-use std::{
-    fmt::{Debug, Display},
-    rc::Rc,
-};
+use std::fmt::{Debug, Display};
