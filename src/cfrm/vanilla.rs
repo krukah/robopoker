@@ -20,15 +20,17 @@ trait Action {
 
 // Omnipotent, complete state of current game
 trait Node {
+    type Info: Info<Node = Self>;
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 
-    // fn parent(&self) -> Option<&Self>;
+    fn info(&self) -> &Self::Info;
     fn value(&self, _: &Self::Player) -> Utility;
     fn player(&self) -> &Self::Player;
     fn history(&self) -> Vec<&Self::Action>;
     fn available(&self) -> Vec<&Self::Action>;
     fn children(&self) -> Vec<&Self>;
+    fn parent(&self) -> Option<&Self>;
 
     fn descendants(&self) -> Vec<&Self> {
         match self.children().len() {
@@ -160,7 +162,6 @@ trait Profile {
     }
 }
 
-// this is currently just a wrapper for Profile tbh
 // Training happens over discrete time steps, so we'll index steps into it's own data structure.
 trait Step {
     type Profile: Profile<
