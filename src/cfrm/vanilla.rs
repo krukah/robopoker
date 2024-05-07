@@ -8,14 +8,13 @@ type Utility = f32;
 type Probability = f32;
 
 // A finite set N of players, including chance
-trait Player {}
+trait Player: Eq {}
 
 // A finite set of possible actions
 trait Action {
     type Player;
 
     fn player(&self) -> &Self::Player;
-    fn belongs(&self, player: &Self::Player) -> bool;
 }
 
 // Omnipotent, complete state of current game
@@ -31,6 +30,7 @@ trait Node {
     fn available(&self) -> Vec<&Self::Action>;
     fn children(&self) -> Vec<&Self>;
     fn parent(&self) -> Option<&Self>;
+    fn birth(&self) -> Option<&Self::Action>;
 
     fn descendants(&self) -> Vec<&Self> {
         match self.children().len() {
@@ -145,17 +145,30 @@ trait Profile {
     }
     // reach probabilities. forward pass through game tree propagates reach probability
     fn reach(&self, node: &Self::Node) -> Probability {
-        node.history()
-            .iter()
-            .map(|action| self.strategy(action.player()).policy(node).weight(action))
-            .product()
+        match node.parent() {
+            None => 1.0,
+            Some(parent) => {
+                self.reach(parent)
+                    * self
+                        .strategy(parent.player())
+                        .policy(parent)
+                        .weight(node.birth().unwrap())
+            }
+        }
     }
     fn exterior_reach(&self, node: &Self::Node) -> Probability {
-        node.history()
-            .iter()
-            .filter(|action| !!!action.belongs(node.player()))
-            .map(|action| self.strategy(action.player()).policy(node).weight(action))
-            .product()
+        let mut reach = 1.0;
+        let mut cursor = node;
+        while let Some(parent) = cursor.parent() {
+            if parent.player() != node.player() {
+                reach *= self
+                    .strategy(parent.player())
+                    .policy(parent)
+                    .weight(cursor.birth().unwrap());
+                cursor = parent;
+            }
+        }
+        reach
     }
     fn relative_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
         self.reach(leaf) / self.reach(root) //? DIV BY ZERO
@@ -230,6 +243,8 @@ trait Solver {
             .iter()
             .map(|step| step.profile())
             .map(|profile| profile.gain(info, action))
+            .enumerate()
+            .map(|(i, gain)| i as Utility * gain)
             .sum::<Utility>()
             / self.num_steps() as Utility //? DIV BY ZERO
     }
