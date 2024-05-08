@@ -1,11 +1,11 @@
 use gameplay::engine::Table;
 
-pub mod cards;
-pub mod cfrm;
-pub mod evaluation;
-pub mod gameplay;
-pub mod players;
-pub mod strategy;
+mod cards;
+mod cfrm;
+mod evaluation;
+mod gameplay;
+mod players;
+mod strategy;
 
 #[tokio::main]
 async fn main() {

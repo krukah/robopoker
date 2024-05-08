@@ -43,8 +43,8 @@ impl Strength {
             _ => self.rank(),
         }
     }
-    pub fn kickers(&self) -> Kickers {
-        self.kickers.clone()
+    pub fn kickers(&self) -> &Kickers {
+        &self.kickers
     }
 }
 
@@ -94,7 +94,7 @@ impl Ord for Strength {
     fn cmp(&self, other: &Self) -> Ordering {
         Ordering::Equal
             .then_with(|| self.hand.cmp(&&other.hand))
-            .then_with(|| self.kickers.cmp(&other.kickers))
+            .then_with(|| self.kickers().cmp(&other.kickers))
     }
 }
 
