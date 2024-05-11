@@ -1,10 +1,5 @@
 #![allow(dead_code)]
 
-use std::hash::Hash;
-
-/// Regret Minimization in Games with Incomplete Information. Advances in Neural Information Processing Systems, 20.
-/// Zinkevich, M., Bowling, M., Burch, N., Cao, Y., Johanson, M., Tamblyn, I., & Rocco, M. (2007).
-
 // Marker types
 type Utility = f32;
 type Probability = f32;
@@ -25,15 +20,15 @@ trait Node: NodeBounds {
     // fn info(&self) -> &Self::Info;
     // fn history(&self) -> Vec<&Self::Action>;
 
+    // required
     fn parent(&self) -> Option<&Self>;
     fn precedent(&self) -> Option<&Self::Action>;
-
     fn children(&self) -> Vec<&Self>;
     fn available(&self) -> Vec<&Self::Action>;
-
     fn player(&self) -> &Self::Player;
-    fn value(&self, _: &Self::Player) -> Utility;
+    fn value(&self, player: &Self::Player) -> Utility;
 
+    // provided
     fn follow(&self, action: &Self::Action) -> &Self {
         self.children()
             .iter()
@@ -53,9 +48,11 @@ trait Node: NodeBounds {
     }
 }
 // All known information at a given node, up to any abstractions. Think of it as a distribution over the unknown game state.
-trait Info: InfoBounds + Hash {
+trait Info: InfoBounds {
+    // required
     fn roots(&self) -> Vec<&Self::Node>;
 
+    // provided
     fn endpoints(&self) -> Vec<&Self::Node> {
         self.roots()
             .iter()
@@ -64,7 +61,7 @@ trait Info: InfoBounds + Hash {
             .collect()
     }
     fn available(&self) -> Vec<&Self::Action> {
-        self.roots().into_iter().next().unwrap().available()
+        self.roots().iter().next().unwrap().available()
     }
     fn player(&self) -> &Self::Player {
         self.roots().iter().next().unwrap().player()
@@ -73,35 +70,37 @@ trait Info: InfoBounds + Hash {
 
 // A policy is a distribution over A(Ii)
 trait Policy: PolicyBounds {
+    // required
     fn weight(&self, action: &Self::Action) -> Probability;
 }
 
 // A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
 trait Strategy: StrategyBounds {
+    // required
     fn policy(&self, node: &Self::Node) -> &Self::Policy;
 }
 
 // A profile σ consists of a strategy for each player, σ1,σ2,..., equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
 trait Profile: ProfileBounds {
-    // fn always(&self, action: &Self::Action) -> &Self;
+    // required
     fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
 
-    /// aka instantaneous regret.
+    // provided
     /// utility flows FROM the future, we integrate over all info::(root, action, leaf) space for the infoset
     fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         info.roots()
             .iter()
-            .map(|root| self.decision_value(root, action) - self.expected_value(root))
+            .map(|root| self.decision_value(root, action) - self.maximize_value(root))
             .sum::<Utility>()
     }
-    /// utility weighted by this player's decisions over profile().strategy().policy()
-    fn expected_value(&self, root: &Self::Node) -> Utility {
+    /// downward-recursive utility weighted by this decision maker over profile().strategy().policy()
+    fn maximize_value(&self, root: &Self::Node) -> Utility {
         root.available()
             .iter()
             .map(|action| self.decision_value(root, action) * self.weight(root, action))
             .sum::<Utility>()
     }
-    /// EV condtional on choosing action at this concrete node
+    /// downward-recursive utility condtional on choosing action at this concrete node
     fn decision_value(&self, root: &Self::Node, action: &Self::Action) -> Utility {
         root.follow(action)
             .descendants()
@@ -115,11 +114,11 @@ trait Profile: ProfileBounds {
             * self.cfactual_reach(root) //         -π_i(h)
             * self.relative_reach(root, leaf) //   +π_i(h -> z)
     }
-
     /// probability flows INTO the future, we measure each node's "alignment" with the profile. reach = dot product of policy and birth
     fn weight(&self, node: &Self::Node, action: &Self::Action) -> Probability {
         self.strategy(node.player()).policy(node).weight(action)
     }
+    /// upward-recursive contribution of all players under this profile
     fn backward_reach(&self, node: &Self::Node) -> Probability {
         match node.parent() {
             None => 1.0,
@@ -128,6 +127,7 @@ trait Profile: ProfileBounds {
             }
         }
     }
+    /// upward-recursive contribution of players excluding decision maker
     fn cfactual_reach(&self, node: &Self::Node) -> Probability {
         match node.parent() {
             None => 1.0,
@@ -141,6 +141,7 @@ trait Profile: ProfileBounds {
             }
         }
     }
+    /// upward-recrusive transition probability from root to leaf
     fn relative_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
         // this could use an optimization
         self.backward_reach(leaf) / self.backward_reach(root) //? DIV BY ZERO
@@ -149,29 +150,19 @@ trait Profile: ProfileBounds {
 
 // Training happens over discrete time steps, so we'll index steps into it's own data structure.
 trait Step: StepBounds {
+    // required
     fn new(profile: Self::Profile) -> Self;
-    fn profile(&self) -> &Self::Profile; //? mutable or immutable?
+    fn profile(&self) -> &Self::Profile;
 }
 
 // A full solver has a sequence of steps, and a final profile
 trait Solver: SolverBounds {
+    // required
     fn steps(&self) -> &mut Vec<Self::Step>;
-
-    /* minimizer */
-    /* minimizer */
     fn next(&self) -> Option<Self::Step>;
-    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
-        self.steps()
-            .iter()
-            .map(|step| step.profile())
-            .map(|profile| profile.gain(info, action))
-            // .enumerate()
-            // .map(|(i, gain)| i as Utility * gain) // linear CFR
-            .sum::<Utility>()
-            / self.num_steps() as Utility //? DIV BY ZERO
-    }
+    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility;
 
-    /// Loops over simple n_iter < max_iter convergence criteria and returns ~ Nash Equilibrium
+    // provided
     fn solve(&self) -> &Self::Profile {
         while let Some(step) = self.next() {
             self.steps().push(step);
