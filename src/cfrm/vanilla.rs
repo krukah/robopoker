@@ -19,11 +19,6 @@ trait Action: Eq {
     fn player(&self) -> &Self::Player;
 }
 
-enum NodeKind {
-    Decision,
-    Terminal,
-    Chance,
-}
 // Omnipotent, complete state of current game
 trait Node: NodeBounds {
     // fn kind(&self) -> NodeKind;
@@ -96,15 +91,17 @@ trait Profile: ProfileBounds {
     fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         info.roots()
             .iter()
-            .map(|root| self.decision_value(root, action) - self.weighted_value(root))
+            .map(|root| self.decision_value(root, action) - self.expected_value(root))
             .sum::<Utility>()
     }
-    fn weighted_value(&self, root: &Self::Node) -> Utility {
+    /// utility weighted by this player's decisions over profile().strategy().policy()
+    fn expected_value(&self, root: &Self::Node) -> Utility {
         root.available()
             .iter()
-            .map(|action| self.decision_value(root, action) * self.reach(root, action))
+            .map(|action| self.decision_value(root, action) * self.weight(root, action))
             .sum::<Utility>()
     }
+    /// EV condtional on choosing action at this concrete node
     fn decision_value(&self, root: &Self::Node, action: &Self::Action) -> Utility {
         root.follow(action)
             .descendants()
@@ -112,6 +109,7 @@ trait Profile: ProfileBounds {
             .map(|leaf| self.terminal_value(root, leaf))
             .sum::<Utility>()
     }
+    /// value of leaf node, which we map unto node.descendants(), implicitly using recrusive children() calls
     fn terminal_value(&self, root: &Self::Node, leaf: &Self::Node) -> Utility {
         leaf.value(root.player()) //                U_i(h)
             * self.cfactual_reach(root) //         -π_i(h)
@@ -119,34 +117,33 @@ trait Profile: ProfileBounds {
     }
 
     /// probability flows INTO the future, we measure each node's "alignment" with the profile. reach = dot product of policy and birth
-    fn reach(&self, node: &Self::Node, action: &Self::Action) -> Probability {
+    fn weight(&self, node: &Self::Node, action: &Self::Action) -> Probability {
         self.strategy(node.player()).policy(node).weight(action)
     }
-    fn historic_reach(&self, node: &Self::Node) -> Probability {
-        // alternative implemenation: iterate over node.history().zip(node.ancestors())
-        let mut reach = 1.0;
-        let mut child = node;
-        while let Some(parent) = child.parent() {
-            reach *= self.reach(parent, child.precedent().unwrap());
-            child = parent;
+    fn backward_reach(&self, node: &Self::Node) -> Probability {
+        match node.parent() {
+            None => 1.0,
+            Some(parent) => {
+                self.backward_reach(parent) * self.weight(parent, node.precedent().unwrap())
+            }
         }
-        reach
     }
     fn cfactual_reach(&self, node: &Self::Node) -> Probability {
-        // alternative implemenation: iterate over node.history().zip(node.ancestors())
-        let mut reach = 1.0;
-        let mut child = node;
-        while let Some(parent) = child.parent() {
-            if parent.player() != node.player() {
-                reach *= self.reach(parent, child.precedent().unwrap());
+        match node.parent() {
+            None => 1.0,
+            Some(parent) => {
+                self.cfactual_reach(parent)
+                    * if node.player() == parent.player() {
+                        1.0
+                    } else {
+                        self.weight(parent, node.precedent().unwrap())
+                    }
             }
-            child = parent;
         }
-        reach
     }
     fn relative_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
         // this could use an optimization
-        self.historic_reach(leaf) / self.historic_reach(root) //? DIV BY ZERO
+        self.backward_reach(leaf) / self.backward_reach(root) //? DIV BY ZERO
     }
 }
 
@@ -159,7 +156,20 @@ trait Step: StepBounds {
 // A full solver has a sequence of steps, and a final profile
 trait Solver: SolverBounds {
     fn steps(&self) -> &mut Vec<Self::Step>;
+
+    /* minimizer */
+    /* minimizer */
     fn next(&self) -> Option<Self::Step>;
+    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
+        self.steps()
+            .iter()
+            .map(|step| step.profile())
+            .map(|profile| profile.gain(info, action))
+            // .enumerate()
+            // .map(|(i, gain)| i as Utility * gain) // linear CFR
+            .sum::<Utility>()
+            / self.num_steps() as Utility //? DIV BY ZERO
+    }
 
     /// Loops over simple n_iter < max_iter convergence criteria and returns ~ Nash Equilibrium
     fn solve(&self) -> &Self::Profile {
@@ -168,19 +178,6 @@ trait Solver: SolverBounds {
         }
         self.steps().last().unwrap().profile()
     }
-    /// aka average cumulative regret. backward pass through game tree propagates regret
-    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
-        self.steps()
-            .iter()
-            .map(|step| step.profile())
-            .map(|profile| profile.gain(info, action))
-            .enumerate()
-            .map(|(i, gain)| i as Utility * gain) // linear CFR
-            .sum::<Utility>()
-            / self.num_steps() as Utility //? DIV BY ZERO
-    }
-
-    /// Convergence progress
     fn num_steps(&self) -> usize {
         self.steps().len()
     }
