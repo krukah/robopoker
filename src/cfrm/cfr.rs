@@ -86,11 +86,11 @@ trait Profile: ProfileBounds {
     fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         info.roots()
             .iter()
-            .map(|root| self.decision_value(root, action) - self.maximize_value(root))
+            .map(|root| self.decision_value(root, action) - self.greatest_value(root))
             .sum::<Utility>()
     }
     /// downward-recursive utility weighted by this decision maker over profile().strategy().policy()
-    fn maximize_value(&self, root: &Self::Node) -> Utility {
+    fn greatest_value(&self, root: &Self::Node) -> Utility {
         root.available()
             .iter()
             .map(|action| self.decision_value(root, action) * self.weight(root, action))
@@ -173,42 +173,27 @@ trait Solver: SolverBounds {
     }
 }
 
+trait PolicyBounds: NodeBounds {}
 trait NodeBounds {
-    type Info: Info<Player = Self::Player, Action = Self::Action>;
     type Action: Action<Player = Self::Player>;
     type Player: Player;
 }
-trait InfoBounds {
+trait InfoBounds: NodeBounds {
     type Node: Node<Player = Self::Player, Action = Self::Action>;
-    type Action: Action<Player = Self::Player>;
-    type Player: Player;
 }
-
-trait PolicyBounds {
-    type Action: Action<Player = Self::Player>;
-    type Player: Player;
-}
-trait StrategyBounds {
+trait StrategyBounds: InfoBounds {
     type Policy: Policy<Player = Self::Player, Action = Self::Action>;
     type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-    type Action: Action<Player = Self::Player>;
-    type Player: Player;
 }
-trait ProfileBounds {
+trait ProfileBounds: StrategyBounds {
     type Strategy: Strategy<
         Player = Self::Player,
         Action = Self::Action,
         Node = Self::Node,
         Info = Self::Info,
     >;
-    type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-    type Action: Action<Player = Self::Player>;
-    type Player: Player;
 }
-
-trait StepBounds {
+trait StepBounds: ProfileBounds {
     type Profile: Profile<
         Player = Self::Player,
         Action = Self::Action,
@@ -216,18 +201,8 @@ trait StepBounds {
         Info = Self::Info,
         Strategy = Self::Strategy,
     >;
-    type Strategy: Strategy<
-        Player = Self::Player,
-        Action = Self::Action,
-        Node = Self::Node,
-        Info = Self::Info,
-    >;
-    type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-    type Action: Action<Player = Self::Player>;
-    type Player: Player;
 }
-trait SolverBounds {
+trait SolverBounds: StepBounds {
     type Step: Step<
         Player = Self::Player,
         Action = Self::Action,
@@ -236,23 +211,6 @@ trait SolverBounds {
         Strategy = Self::Strategy,
         Profile = Self::Profile,
     >;
-    type Profile: Profile<
-        Player = Self::Player,
-        Action = Self::Action,
-        Node = Self::Node,
-        Info = Self::Info,
-        Strategy = Self::Strategy,
-    >;
-    type Strategy: Strategy<
-        Player = Self::Player,
-        Action = Self::Action,
-        Node = Self::Node,
-        Info = Self::Info,
-    >;
-    type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-    type Action: Action<Player = Self::Player>;
-    type Player: Player;
 }
 
 /*
