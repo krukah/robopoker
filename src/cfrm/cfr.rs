@@ -16,10 +16,6 @@ trait Action: Eq {
 
 // Omnipotent, complete state of current game
 trait Node: NodeBounds {
-    // fn kind(&self) -> NodeKind;
-    // fn info(&self) -> &Self::Info;
-    // fn history(&self) -> Vec<&Self::Action>;
-
     // required
     fn parent(&self) -> Option<&Self>;
     fn precedent(&self) -> Option<&Self::Action>;

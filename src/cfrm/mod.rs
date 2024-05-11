@@ -1,2 +1,1 @@
-pub mod kuhn;
-pub mod vanilla;
+pub mod cfr;
