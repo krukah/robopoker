@@ -8,14 +8,13 @@ type Probability = f32;
 trait Player: Eq {}
 
 // A finite set of possible actions
-trait Action: Eq {
-    type Player;
-
+trait Action: Eq + NeedsPlayer {
+    // required
     fn player(&self) -> &Self::Player;
 }
 
 // Omnipotent, complete state of current game
-trait Node: NodeBounds {
+trait Node: NeedsAction {
     // required
     fn parent(&self) -> Option<&Self>;
     fn precedent(&self) -> Option<&Self::Action>;
@@ -43,8 +42,9 @@ trait Node: NodeBounds {
         }
     }
 }
+
 // All known information at a given node, up to any abstractions. Think of it as a distribution over the unknown game state.
-trait Info: InfoBounds {
+trait Info: NeedsNode {
     // required
     fn roots(&self) -> Vec<&Self::Node>;
 
@@ -65,19 +65,19 @@ trait Info: InfoBounds {
 }
 
 // A policy is a distribution over A(Ii)
-trait Policy: PolicyBounds {
+trait Policy: NeedsAction {
     // required
     fn weight(&self, action: &Self::Action) -> Probability;
 }
 
 // A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
-trait Strategy: StrategyBounds {
+trait Strategy: NeedsInfo {
     // required
     fn policy(&self, node: &Self::Node) -> &Self::Policy;
 }
 
 // A profile σ consists of a strategy for each player, σ1,σ2,..., equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
-trait Profile: ProfileBounds {
+trait Profile: NeedsStrategy {
     // required
     fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
 
@@ -145,14 +145,14 @@ trait Profile: ProfileBounds {
 }
 
 // Training happens over discrete time steps, so we'll index steps into it's own data structure.
-trait Step: StepBounds {
+trait Step: NeedsProfile {
     // required
     fn new(profile: Self::Profile) -> Self;
     fn profile(&self) -> &Self::Profile;
 }
 
-// A full solver has a sequence of steps, and a final profile
-trait Solver: SolverBounds {
+// A full solver has a sequence of steps, and can return final profile after some iterations of regret matching and strategy updating
+trait Solver: NeedsStep {
     // required
     fn steps(&self) -> &mut Vec<Self::Step>;
     fn next(&self) -> Option<Self::Step>;
@@ -173,19 +173,20 @@ trait Solver: SolverBounds {
     }
 }
 
-trait PolicyBounds: NodeBounds {}
-trait NodeBounds {
-    type Action: Action<Player = Self::Player>;
+trait NeedsPlayer {
     type Player: Player;
 }
-trait InfoBounds: NodeBounds {
+trait NeedsAction: NeedsPlayer {
+    type Action: Action<Player = Self::Player>;
+}
+trait NeedsNode: NeedsAction {
     type Node: Node<Player = Self::Player, Action = Self::Action>;
 }
-trait StrategyBounds: InfoBounds {
+trait NeedsInfo: NeedsNode {
     type Policy: Policy<Player = Self::Player, Action = Self::Action>;
     type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
 }
-trait ProfileBounds: StrategyBounds {
+trait NeedsStrategy: NeedsInfo {
     type Strategy: Strategy<
         Player = Self::Player,
         Action = Self::Action,
@@ -193,7 +194,7 @@ trait ProfileBounds: StrategyBounds {
         Info = Self::Info,
     >;
 }
-trait StepBounds: ProfileBounds {
+trait NeedsProfile: NeedsStrategy {
     type Profile: Profile<
         Player = Self::Player,
         Action = Self::Action,
@@ -202,7 +203,7 @@ trait StepBounds: ProfileBounds {
         Strategy = Self::Strategy,
     >;
 }
-trait SolverBounds: StepBounds {
+trait NeedsStep: NeedsProfile {
     type Step: Step<
         Player = Self::Player,
         Action = Self::Action,
