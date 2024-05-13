@@ -2,7 +2,7 @@ pub struct Robot;
 
 impl Player for Robot {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
-        self.policy(seat, hand).choose()
+        todo!()
     }
 }
 
@@ -17,19 +17,6 @@ impl Robot {
             _ => 0,
         }
     }
-
-    fn policy(&self, seat: &Seat, hand: &Hand) -> Policy {
-        Policy {
-            choices: seat
-                .valid_actions(hand)
-                .iter()
-                .map(|a| Choice {
-                    action: *a,
-                    weight: self.weight(*a),
-                })
-                .collect(),
-        }
-    }
 }
 
 impl Debug for Robot {
@@ -40,5 +27,4 @@ impl Debug for Robot {
 
 use crate::gameplay::player::Player;
 use crate::gameplay::{action::Action, hand::Hand, seat::Seat};
-use crate::strategy::policy::{Choice, Policy};
 use std::fmt::Debug;
