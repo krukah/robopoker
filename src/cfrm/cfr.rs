@@ -18,8 +18,8 @@ trait Node: NeedsAction {
     // required
     fn parent(&self) -> Option<&Self>;
     fn precedent(&self) -> Option<&Self::Action>;
-    fn children(&self) -> Vec<&Self>;
-    fn available(&self) -> Vec<&Self::Action>;
+    fn children(&self) -> &Vec<&Self>;
+    fn available(&self) -> &Vec<&Self::Action>;
     fn player(&self) -> &Self::Player;
     fn value(&self, player: &Self::Player) -> Utility;
 
@@ -27,7 +27,7 @@ trait Node: NeedsAction {
     fn follow(&self, action: &Self::Action) -> &Self {
         self.children()
             .iter()
-            .find(|child| child.precedent().unwrap() == action)
+            .find(|child| action == child.precedent().unwrap())
             .unwrap()
     }
     fn descendants(&self) -> Vec<&Self> {
@@ -43,10 +43,40 @@ trait Node: NeedsAction {
     }
 }
 
+/// A Tree owns all the Nodes, Actions, and Players in a game. It will build the game tree from the root node, but can also expand the tree to accomodate for MCCFR techniques.
+trait Tree: NeedsNode {
+    // required
+    fn root(&self) -> &mut Self::Node;
+    fn nodes(&self) -> &mut Vec<Self::Node>;
+    fn edges(&self) -> &mut Vec<Self::Action>;
+    // these tree-building methods may be abstracted away at this level
+    fn allowed(&self, parent: &Self::Node) -> Vec<Self::Action>;
+    fn attach(&self, parent: &mut Self::Node, child: &mut Self::Node, edge: &Self::Action);
+    fn apply(&self, parent: &Self::Node, edge: &Self::Action) -> Self::Node;
+
+    // provided
+    fn expand(&self) {
+        while let Some(parent) = self.nodes().into_iter().next() {
+            self.extend(parent);
+        }
+    }
+    fn extend(&self, parent: &mut Self::Node) {
+        self.allowed(parent)
+            .into_iter()
+            .map(|edge| {
+                let mut child = self.apply(parent, &edge);
+                self.attach(parent, &mut child, &edge);
+                self.nodes().push(child);
+                self.edges().push(edge);
+            })
+            .collect()
+    }
+}
+
 // All known information at a given node, up to any abstractions. Think of it as a distribution over the unknown game state.
 trait Info: NeedsNode {
     // required
-    fn roots(&self) -> Vec<&Self::Node>;
+    fn roots(&self) -> &Vec<&Self::Node>;
 
     // provided
     fn endpoints(&self) -> Vec<&Self::Node> {
@@ -56,7 +86,7 @@ trait Info: NeedsNode {
             .flatten()
             .collect()
     }
-    fn available(&self) -> Vec<&Self::Action> {
+    fn available(&self) -> &Vec<&Self::Action> {
         self.roots().iter().next().unwrap().available()
     }
     fn player(&self) -> &Self::Player {
@@ -67,7 +97,7 @@ trait Info: NeedsNode {
 // A policy is a distribution over A(Ii)
 trait Policy: NeedsAction {
     // required
-    fn weight(&self, action: &Self::Action) -> Probability;
+    fn weights(&self, action: &Self::Action) -> Probability;
 }
 
 // A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
@@ -112,7 +142,7 @@ trait Profile: NeedsStrategy {
     }
     /// probability flows INTO the future, we measure each node's "alignment" with the profile. reach = dot product of policy and birth
     fn weight(&self, node: &Self::Node, action: &Self::Action) -> Probability {
-        self.strategy(node.player()).policy(node).weight(action)
+        self.strategy(node.player()).policy(node).weights(action)
     }
     /// upward-recursive contribution of all players under this profile
     fn backward_reach(&self, node: &Self::Node) -> Probability {
@@ -147,7 +177,6 @@ trait Profile: NeedsStrategy {
 // Training happens over discrete time steps, so we'll index steps into it's own data structure.
 trait Step: NeedsProfile {
     // required
-    fn new(profile: Self::Profile) -> Self;
     fn profile(&self) -> &Self::Profile;
 }
 
