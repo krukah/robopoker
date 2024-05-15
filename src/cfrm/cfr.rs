@@ -1,27 +1,28 @@
 #![allow(dead_code)]
-
-// Marker types
-type Utility = f32;
-type Probability = f32;
+type Utility = f64;
+type Probability = f64;
+const MIN_REGRET: Utility = 1e-6;
 
 // A finite set N of players, including chance
 trait Player: Eq {}
 
 // A finite set of possible actions
-trait Action: Eq + NeedsPlayer {
-    // required
+trait Action: Eq {
+    type Player: Player;
     fn player(&self) -> &Self::Player;
 }
 
 // Omnipotent, complete state of current game
-trait Node: NeedsAction {
-    // required
+trait Node {
+    type Player: Player;
+    type Action: Action<Player = Self::Player>;
+
+    fn value(&self, player: &Self::Player) -> Utility;
+    fn player(&self) -> &Self::Player;
     fn parent(&self) -> Option<&Self>;
     fn precedent(&self) -> Option<&Self::Action>;
     fn children(&self) -> &Vec<&Self>;
     fn available(&self) -> &Vec<&Self::Action>;
-    fn player(&self) -> &Self::Player;
-    fn value(&self, player: &Self::Player) -> Utility;
 
     // provided
     fn follow(&self, action: &Self::Action) -> &Self {
@@ -43,39 +44,12 @@ trait Node: NeedsAction {
     }
 }
 
-/// A Tree owns all the Nodes, Actions, and Players in a game. It will build the game tree from the root node, but can also expand the tree to accomodate for MCCFR techniques.
-trait Tree: NeedsNode {
-    // required
-    fn root(&self) -> &mut Self::Node;
-    fn nodes(&self) -> &mut Vec<Self::Node>;
-    fn edges(&self) -> &mut Vec<Self::Action>;
-    // these tree-building methods may be abstracted away at this level
-    fn allowed(&self, parent: &Self::Node) -> Vec<Self::Action>;
-    fn attach(&self, parent: &mut Self::Node, child: &mut Self::Node, edge: &Self::Action);
-    fn apply(&self, parent: &Self::Node, edge: &Self::Action) -> Self::Node;
-
-    // provided
-    fn expand(&self) {
-        while let Some(parent) = self.nodes().into_iter().next() {
-            self.extend(parent);
-        }
-    }
-    fn extend(&self, parent: &mut Self::Node) {
-        self.allowed(parent)
-            .into_iter()
-            .map(|edge| {
-                let mut child = self.apply(parent, &edge);
-                self.attach(parent, &mut child, &edge);
-                self.nodes().push(child);
-                self.edges().push(edge);
-            })
-            .collect()
-    }
-}
-
 // All known information at a given node, up to any abstractions. Think of it as a distribution over the unknown game state.
-trait Info: NeedsNode {
-    // required
+trait Info {
+    type Player: Player;
+    type Action: Action<Player = Self::Player>;
+    type Node: Node<Player = Self::Player, Action = Self::Action>;
+
     fn roots(&self) -> &Vec<&Self::Node>;
 
     // provided
@@ -94,66 +68,79 @@ trait Info: NeedsNode {
     }
 }
 
+/// A Tree owns all the Nodes, Actions, and Players in a game. It will build the game tree from the root node, but can also expand the tree to accommodate for MCCFR techniques.
+trait Tree {
+    type TreeNode: Node;
+    type TreeEdge: Action<Player = <Self::TreeNode as Node>::Player>;
+    type TreeInfo: Info<Action = Self::TreeEdge>;
+
+    fn nodes(&self) -> &Vec<Self::TreeNode>;
+    fn edges(&self) -> &Vec<Self::TreeEdge>;
+    fn infos(&self) -> &Vec<Self::TreeInfo>;
+}
+
 // A policy is a distribution over A(Ii)
-trait Policy: NeedsAction {
-    // required
+trait Policy {
+    type Action: Action;
+
     fn weights(&self, action: &Self::Action) -> Probability;
 }
 
 // A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
-trait Strategy: NeedsInfo {
-    // required
+trait Strategy {
+    type Player: Player;
+    type Action: Action<Player = Self::Player>;
+    type Node: Node<Action = Self::Action>;
+    type Policy: Policy<Action = Self::Action>;
+
     fn policy(&self, node: &Self::Node) -> &Self::Policy;
 }
 
 // A profile σ consists of a strategy for each player, σ1,σ2,..., equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
-trait Profile: NeedsStrategy {
-    // required
+trait Profile {
+    type Player: Player;
+    type Action: Action<Player = Self::Player>;
+    type Node: Node<Player = Self::Player, Action = Self::Action>;
+    type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
+    type Strategy: Strategy<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
+
     fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
 
     // provided
-    /// utility flows FROM the future, we integrate over all info::(root, action, leaf) space for the infoset
-    fn gain(&self, info: &Self::Info, action: &Self::Action) -> Utility {
+    // lots of ways to do recursive calculations in this impl...loops, recursion, memoization, etc.
+    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
         info.roots()
             .iter()
-            .map(|root| self.decision_value(root, action) - self.greatest_value(root))
+            .map(|root| self.gain(root, action))
             .sum::<Utility>()
     }
-    /// downward-recursive utility weighted by this decision maker over profile().strategy().policy()
-    fn greatest_value(&self, root: &Self::Node) -> Utility {
-        root.available()
-            .iter()
-            .map(|action| self.decision_value(root, action) * self.weight(root, action))
-            .sum::<Utility>()
+    fn gain(&self, root: &Self::Node, action: &Self::Action) -> Utility {
+        self.cfactual_value(root, action) - self.expected_value(root)
     }
-    /// downward-recursive utility condtional on choosing action at this concrete node
-    fn decision_value(&self, root: &Self::Node, action: &Self::Action) -> Utility {
-        root.follow(action)
-            .descendants()
-            .iter()
-            .map(|leaf| self.terminal_value(root, leaf))
-            .sum::<Utility>()
+    fn cfactual_value(&self, root: &Self::Node, action: &Self::Action) -> Utility {
+        self.cfactual_reach(root)
+            * root //                                       suppose you're here on purpose, counterfactually
+                .follow(action) //                          suppose you're here on purpose, counterfactually
+                .descendants() //                           O(depth) recursive downtree
+                .iter() //                                  duplicated calculation
+                .map(|leaf| self.relative_value(root, leaf))
+                .sum::<Utility>()
     }
-    /// value of leaf node, which we map unto node.descendants(), implicitly using recrusive children() calls
-    fn terminal_value(&self, root: &Self::Node, leaf: &Self::Node) -> Utility {
-        leaf.value(root.player()) //                U_i(h)
-            * self.cfactual_reach(root) //         -π_i(h)
-            * self.relative_reach(root, leaf) //   +π_i(h -> z)
+    fn expected_value(&self, root: &Self::Node) -> Utility {
+        self.expected_reach(root)
+            * root
+                .descendants() //                           O(depth) recursive downtree
+                .iter() //                                  duplicated calculation
+                .map(|leaf| self.relative_value(root, leaf))
+                .sum::<Utility>()
     }
-    /// probability flows INTO the future, we measure each node's "alignment" with the profile. reach = dot product of policy and birth
+    fn relative_value(&self, root: &Self::Node, leaf: &Self::Node) -> Utility {
+        // upward recursion in reach calculation
+        leaf.value(root.player()) * self.relative_reach(root, leaf)
+    }
     fn weight(&self, node: &Self::Node, action: &Self::Action) -> Probability {
         self.strategy(node.player()).policy(node).weights(action)
     }
-    /// upward-recursive contribution of all players under this profile
-    fn backward_reach(&self, node: &Self::Node) -> Probability {
-        match node.parent() {
-            None => 1.0,
-            Some(parent) => {
-                self.backward_reach(parent) * self.weight(parent, node.precedent().unwrap())
-            }
-        }
-    }
-    /// upward-recursive contribution of players excluding decision maker
     fn cfactual_reach(&self, node: &Self::Node) -> Probability {
         match node.parent() {
             None => 1.0,
@@ -167,80 +154,66 @@ trait Profile: NeedsStrategy {
             }
         }
     }
-    /// upward-recrusive transition probability from root to leaf
+    fn expected_reach(&self, node: &Self::Node) -> Probability {
+        match node.parent() {
+            None => 1.0,
+            Some(parent) => {
+                self.expected_reach(parent) * self.weight(parent, node.precedent().unwrap())
+            }
+        }
+    }
     fn relative_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
-        // this could use an optimization
-        self.backward_reach(leaf) / self.backward_reach(root) //? DIV BY ZERO
+        //? gotta optimize out integration over shared ancestors
+        self.expected_reach(leaf) / self.expected_reach(root)
     }
 }
 
-// Training happens over discrete time steps, so we'll index steps into it's own data structure.
-trait Step: NeedsProfile {
-    // required
-    fn profile(&self) -> &Self::Profile;
-}
+// A full solver has a sequence of steps and can return final profile after some iterations of regret matching and strategy updating
+trait Solver {
+    type Action: Action;
+    type Info: Info<Action = Self::Action>;
+    type Profile: Profile<Action = Self::Action, Info = Self::Info>;
+    type Tree: Tree<
+        TreeNode = <Self::Info as Info>::Node,
+        TreeEdge = <Self::Info as Info>::Action,
+        TreeInfo = Self::Info,
+    >;
 
-// A full solver has a sequence of steps, and can return final profile after some iterations of regret matching and strategy updating
-trait Solver: NeedsStep {
-    // required
-    fn steps(&self) -> &mut Vec<Self::Step>;
-    fn next(&self) -> Option<Self::Step>;
-    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility;
+    fn num_steps(&self) -> usize;
+    fn max_steps(&self) -> usize;
+    fn tree(&self) -> &Self::Tree;
+    fn guess(&self) -> Self::Profile;
 
     // provided
-    fn solve(&self) -> &Self::Profile {
-        while let Some(step) = self.next() {
-            self.steps().push(step);
-        }
-        self.steps().last().unwrap().profile()
+    fn train(&self) -> Self::Profile {
+        (0..self.max_steps())
+            .into_iter()
+            .fold(self.guess(), |profile, _| self.adapt(self.tree(), profile))
     }
-    fn num_steps(&self) -> usize {
-        self.steps().len()
+    fn adapt(&self, tree: &Self::Tree, profile: Self::Profile) -> Self::Profile {
+        tree.infos()
+            .iter()
+            .rev() // start from leaves
+            .fold(profile, |profile, info| self.update(info, profile))
     }
-    fn max_steps(&self) -> usize {
-        10_000
+    fn update(&self, info: &Self::Info, profile: Self::Profile) -> Self::Profile {
+        /* fake self reference */
+        let regrets = self.regrets(info, profile);
+        let sum = regrets.iter().sum::<Utility>();
+        let weights = regrets
+            .iter()
+            .map(|regret| regret / sum)
+            .collect::<Vec<Probability>>();
+        let policy = info.available().iter().zip(weights).collect::<Vec<_>>();
+        todo!("impl From<HashMap<&Action, Probability>> for Profile")
     }
-}
-
-trait NeedsPlayer {
-    type Player: Player;
-}
-trait NeedsAction: NeedsPlayer {
-    type Action: Action<Player = Self::Player>;
-}
-trait NeedsNode: NeedsAction {
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-}
-trait NeedsInfo: NeedsNode {
-    type Policy: Policy<Player = Self::Player, Action = Self::Action>;
-    type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
-}
-trait NeedsStrategy: NeedsInfo {
-    type Strategy: Strategy<
-        Player = Self::Player,
-        Action = Self::Action,
-        Node = Self::Node,
-        Info = Self::Info,
-    >;
-}
-trait NeedsProfile: NeedsStrategy {
-    type Profile: Profile<
-        Player = Self::Player,
-        Action = Self::Action,
-        Node = Self::Node,
-        Info = Self::Info,
-        Strategy = Self::Strategy,
-    >;
-}
-trait NeedsStep: NeedsProfile {
-    type Step: Step<
-        Player = Self::Player,
-        Action = Self::Action,
-        Node = Self::Node,
-        Info = Self::Info,
-        Strategy = Self::Strategy,
-        Profile = Self::Profile,
-    >;
+    fn regrets(&self, info: &Self::Info, profile: Self::Profile) -> Vec<Utility> {
+        info.available()
+            .iter()
+            .map(|action| profile.regret(info, action))
+            .map(|regret| regret.max(MIN_REGRET))
+            .collect()
+    }
 }
 
 /*
