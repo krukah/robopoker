@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-type Utility = f64;
-type Probability = f64;
-const MIN_REGRET: Utility = 1e-6;
+
+type Utility = f32;
+type Probability = f32;
 
 // A finite set N of players, including chance
 trait Player: Eq {}
@@ -70,13 +70,14 @@ trait Info {
 
 /// A Tree owns all the Nodes, Actions, and Players in a game. It will build the game tree from the root node, but can also expand the tree to accommodate for MCCFR techniques.
 trait Tree {
-    type TreeNode: Node;
-    type TreeEdge: Action<Player = <Self::TreeNode as Node>::Player>;
-    type TreeInfo: Info<Action = Self::TreeEdge>;
+    // type TreeNode: Node;
+    // type TreeEdge: Action<Player = <Self::TreeNode as Node>::Player>;
+    // type TreeInfo: Info<Action = Self::TreeEdge>;
 
-    fn nodes(&self) -> &Vec<Self::TreeNode>;
-    fn edges(&self) -> &Vec<Self::TreeEdge>;
-    fn infos(&self) -> &Vec<Self::TreeInfo>;
+    type Info: Info;
+    type Profile: Profile<Info = Self::Info>;
+
+    fn infos(&self) -> &Vec<Self::Info>;
 }
 
 // A policy is a distribution over A(Ii)
@@ -84,6 +85,7 @@ trait Policy {
     type Action: Action;
 
     fn weights(&self, action: &Self::Action) -> Probability;
+    fn sample(&self) -> Self::Action;
 }
 
 // A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
@@ -106,17 +108,7 @@ trait Profile {
 
     fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
 
-    // provided
-    // lots of ways to do recursive calculations in this impl...loops, recursion, memoization, etc.
-    fn regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
-        info.roots()
-            .iter()
-            .map(|root| self.gain(root, action))
-            .sum::<Utility>()
-    }
-    fn gain(&self, root: &Self::Node, action: &Self::Action) -> Utility {
-        self.cfactual_value(root, action) - self.expected_value(root)
-    }
+    // utility calculations
     fn cfactual_value(&self, root: &Self::Node, action: &Self::Action) -> Utility {
         self.cfactual_reach(root)
             * root //                                       suppose you're here on purpose, counterfactually
@@ -135,9 +127,12 @@ trait Profile {
                 .sum::<Utility>()
     }
     fn relative_value(&self, root: &Self::Node, leaf: &Self::Node) -> Utility {
-        // upward recursion in reach calculation
-        leaf.value(root.player()) * self.relative_reach(root, leaf)
+        leaf.value(root.player())
+            * self.relative_reach(root, leaf)
+            * self.sampling_reach(root, leaf)
     }
+
+    // reach calculations
     fn weight(&self, node: &Self::Node, action: &Self::Action) -> Probability {
         self.strategy(node.player()).policy(node).weights(action)
     }
@@ -163,57 +158,68 @@ trait Profile {
         }
     }
     fn relative_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
-        //? gotta optimize out integration over shared ancestors
+        //? gotta optimize out integration over shared ancestors that cancels out in this division. Node: Eq? Hash?
         self.expected_reach(leaf) / self.expected_reach(root)
+    }
+    fn sampling_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
+        1.0
     }
 }
 
-// A full solver has a sequence of steps and can return final profile after some iterations of regret matching and strategy updating
+/// A Solver will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration.
 trait Solver {
-    type Action: Action;
-    type Info: Info<Action = Self::Action>;
-    type Profile: Profile<Action = Self::Action, Info = Self::Info>;
-    type Tree: Tree<
-        TreeNode = <Self::Info as Info>::Node,
-        TreeEdge = <Self::Info as Info>::Action,
-        TreeInfo = Self::Info,
-    >;
+    type Player: Player;
+    type Action: Action<Player = Self::Player>;
+    type Node: Node<Action = Self::Action>;
+    type Info: Info<Node = Self::Node, Action = Self::Action>;
+    type Step: Profile<Info = Self::Info, Node = Self::Node, Action = Self::Action>;
+    type Tree: Tree<Profile = Self::Step>;
 
+    fn traverser(&self) -> &Self::Player;
+    fn tree(&self) -> &Self::Tree;
+    fn step(&self) -> &Self::Step;
     fn num_steps(&self) -> usize;
     fn max_steps(&self) -> usize;
-    fn tree(&self) -> &Self::Tree;
-    fn guess(&self) -> Self::Profile;
 
-    // provided
-    fn train(&self) -> Self::Profile {
-        (0..self.max_steps())
-            .into_iter()
-            .fold(self.guess(), |profile, _| self.adapt(self.tree(), profile))
-    }
-    fn adapt(&self, tree: &Self::Tree, profile: Self::Profile) -> Self::Profile {
-        tree.infos()
-            .iter()
-            .rev() // start from leaves
-            .fold(profile, |profile, info| self.update(info, profile))
-    }
-    fn update(&self, info: &Self::Info, profile: Self::Profile) -> Self::Profile {
-        /* fake self reference */
-        let regrets = self.regrets(info, profile);
+    // strategy update calculations
+    fn update(&self, info: &Self::Info) -> Self::Step;
+    fn policy_vector(&self, info: &Self::Info) -> Vec<Probability> {
+        let regrets = self.regret_vector(info);
         let sum = regrets.iter().sum::<Utility>();
-        let weights = regrets
-            .iter()
-            .map(|regret| regret / sum)
-            .collect::<Vec<Probability>>();
-        let policy = info.available().iter().zip(weights).collect::<Vec<_>>();
-        todo!("impl From<HashMap<&Action, Probability>> for Profile")
+        regrets.iter().map(|regret| regret / sum).collect()
     }
-    fn regrets(&self, info: &Self::Info, profile: Self::Profile) -> Vec<Utility> {
+    fn regret_vector(&self, info: &Self::Info) -> Vec<Utility> {
         info.available()
             .iter()
-            .map(|action| profile.regret(info, action))
-            .map(|regret| regret.max(MIN_REGRET))
+            .map(|action| self.matched_regret(info, action))
+            .map(|regret| regret.max(Utility::MIN_POSITIVE))
             .collect()
     }
+
+    // regret calculations
+    fn running_regret(&self, info: &Self::Info, action: &Self::Action) -> Utility;
+    fn instant_regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
+        //? this should get added to previous regrets rather than replace them
+        info.roots()
+            .iter()
+            .map(|root| self.step().cfactual_value(root, action) - self.step().expected_value(root))
+            .sum::<Utility>()
+    }
+    fn matched_regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
+        // Linear CFR weighting
+        self.running_regret(info, action) + self.instant_regret(info, action)
+    }
+
+    fn solve(&self, tree: &Self::Tree, guess: Self::Step) -> Self::Step;
+    // {
+    //     (0..self.max_steps()).fold(guess, |step, _| {
+    //         tree.infos()
+    //             .iter()
+    //             .filter(|i| i.player() == self.traverser())
+    //             .rev()
+    //             .fold(step, |profile, info| profile.update(info))
+    //     })
+    // }
 }
 
 /*
