@@ -17,7 +17,7 @@ pub(crate) trait Action: Eq + Copy {
     type APlayer: Player;
 }
 
-/// A node,  history, game state, etc. Omnipotent, complete state of current game.
+/// A node, history, game state, etc. is an omniscient, complete state of current game.
 pub(crate) trait Node {
     // required
     fn parent(&self) -> Option<&Self>;
@@ -72,7 +72,7 @@ pub(crate) trait Info {
     type INode: Node<NAction = Self::IAction> + Node<NPlayer = Self::IPlayer>;
 }
 
-/// The owner all the Nodes, Actions, and Players in the context of a Solution. It also constrains the lifetime of references returned by its owned types. A vanilla implementation should build the full tree for small games. Monte Carlo implementations may sample paths conditional on given Profile, Solver, or other constraints. The only contract is that the Tree must be able to partition decision nodes into Info sets.
+/// The owner all the Nodes, Actions, and Players in the context of a Solution. It also constrains the lifetime of references returned by its owned types. A vanilla implementation should build the full tree for small games. Monte Carlo implementations may sample paths conditional on given Profile, Trainer, or other constraints. The only contract is that the Tree must be able to partition decision nodes into Info sets.
 pub(crate) trait Tree {
     // required
     fn infos(&self) -> &Vec<Self::TInfo>;
@@ -182,35 +182,35 @@ pub(crate) trait Profile {
         + Strategy<SAction = Self::PAction>;
 }
 
-/// A Solver will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration.
-pub(crate) trait Solver {
+/// A Trainer will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration. Implementations may include RegretMatching+, Linear RM, Discounted RM, Parametrized RM, etc.
+pub(crate) trait Trainer {
     // required
-    fn step(&self) -> &Self::SStep;
-    fn tree(&self) -> &Self::STree;
-    fn update_step(&mut self);
+    fn profile(&self) -> &Self::TProfile;
+    fn tree(&self) -> &Self::TTree;
+    fn update_profile(&mut self);
     fn update_tree(&mut self);
 
     // provided
     fn solve(&mut self) {
         for _ in 0..10_000 {
             self.update_tree();
-            self.update_step();
+            self.update_profile();
         }
     }
     // (info) -> profile.strategy.policy update
-    fn update_vector(&self, info: &Self::SInfo) -> Vec<(Self::SAction, Probability)> {
+    fn update_vector(&self, info: &Self::TInfo) -> Vec<(Self::TAction, Probability)> {
         info.available()
             .iter()
             .map(|action| **action)
             .zip(self.policy_vector(info).into_iter())
-            .collect::<Vec<(Self::SAction, Probability)>>()
+            .collect::<Vec<(Self::TAction, Probability)>>()
     }
-    fn policy_vector(&self, info: &Self::SInfo) -> Vec<Probability> {
+    fn policy_vector(&self, info: &Self::TInfo) -> Vec<Probability> {
         let regrets = self.regret_vector(info);
         let sum = regrets.iter().sum::<Utility>();
         regrets.iter().map(|regret| regret / sum).collect()
     }
-    fn regret_vector(&self, info: &Self::SInfo) -> Vec<Utility> {
+    fn regret_vector(&self, info: &Self::TInfo) -> Vec<Utility> {
         info.available()
             .iter()
             .map(|action| self.next_regret(info, action))
@@ -218,45 +218,45 @@ pub(crate) trait Solver {
             .collect()
     }
     // (info, action) -> regret
-    fn next_regret(&self, info: &Self::SInfo, action: &Self::SAction) -> Utility {
+    fn next_regret(&self, info: &Self::TInfo, action: &Self::TAction) -> Utility {
         self.prev_regret(info, action) + self.curr_regret(info, action)
         //? Linear CFR weighting
         //? Discounted CFR weighting
     }
-    fn curr_regret(&self, info: &Self::SInfo, action: &Self::SAction) -> Utility {
+    fn curr_regret(&self, info: &Self::TInfo, action: &Self::TAction) -> Utility {
         info.roots()
             .iter()
             .map(|root| self.gain(root, action))
             .sum::<Utility>()
     }
-    fn prev_regret(&self, info: &Self::SInfo, action: &Self::SAction) -> Utility;
-    fn gain(&self, root: &Self::SNode, action: &Self::SAction) -> Utility {
-        self.step().cfactual_value(root, action) - self.step().expected_value(root)
+    fn prev_regret(&self, info: &Self::TInfo, action: &Self::TAction) -> Utility;
+    fn gain(&self, root: &Self::TNode, action: &Self::TAction) -> Utility {
+        self.profile().cfactual_value(root, action) - self.profile().expected_value(root)
     }
 
-    type SPlayer: Player;
-    type SAction: Action<APlayer = Self::SPlayer>;
-    type SPolicy: Policy<PAction = Self::SAction>;
-    type SNode: Node<NAction = Self::SAction> + Node<NPlayer = Self::SPlayer>;
-    type SInfo: Info
-        + Info<INode = Self::SNode>
-        + Info<IAction = Self::SAction>
-        + Info<IPlayer = Self::SPlayer>;
-    type STree: Tree
-        + Tree<TInfo = Self::SInfo>
-        + Tree<TNode = Self::SNode>
-        + Tree<TEdge = Self::SAction>
-        + Tree<TPlayer = Self::SPlayer>;
-    type SStrategy: Strategy
-        + Strategy<SNode = Self::SNode>
-        + Strategy<SAction = Self::SAction>
-        + Strategy<SPlayer = Self::SPlayer>
-        + Strategy<SPolicy = Self::SPolicy>;
-    type SStep: Profile
-        + Profile<PStrategy = Self::SStrategy>
-        + Profile<PInfo = Self::SInfo>
-        + Profile<PNode = Self::SNode>
-        + Profile<PAction = Self::SAction>
-        + Profile<PPolicy = Self::SPolicy>
-        + Profile<PPlayer = Self::SPlayer>;
+    type TPlayer: Player;
+    type TAction: Action<APlayer = Self::TPlayer>;
+    type TPolicy: Policy<PAction = Self::TAction>;
+    type TNode: Node<NAction = Self::TAction> + Node<NPlayer = Self::TPlayer>;
+    type TInfo: Info
+        + Info<INode = Self::TNode>
+        + Info<IAction = Self::TAction>
+        + Info<IPlayer = Self::TPlayer>;
+    type TTree: Tree
+        + Tree<TInfo = Self::TInfo>
+        + Tree<TNode = Self::TNode>
+        + Tree<TEdge = Self::TAction>
+        + Tree<TPlayer = Self::TPlayer>;
+    type TStrategy: Strategy
+        + Strategy<SNode = Self::TNode>
+        + Strategy<SAction = Self::TAction>
+        + Strategy<SPlayer = Self::TPlayer>
+        + Strategy<SPolicy = Self::TPolicy>;
+    type TProfile: Profile
+        + Profile<PStrategy = Self::TStrategy>
+        + Profile<PInfo = Self::TInfo>
+        + Profile<PNode = Self::TNode>
+        + Profile<PAction = Self::TAction>
+        + Profile<PPolicy = Self::TPolicy>
+        + Profile<PPlayer = Self::TPlayer>;
 }
