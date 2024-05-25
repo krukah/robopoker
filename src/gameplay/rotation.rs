@@ -189,7 +189,6 @@ impl Rotation {
             }
         }
     }
-    #[allow(dead_code)]
     fn rewind(&mut self) {
         'right: loop {
             self.counter -= 1;

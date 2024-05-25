@@ -35,9 +35,7 @@ impl Human {
             seat.min_raise(hand),
         )
     }
-}
 
-impl Player for Human {
     fn act(&self, seat: &Seat, hand: &Hand) -> Action {
         // get valid actions
         let choices = seat
@@ -82,7 +80,7 @@ impl Debug for Human {
     }
 }
 
-use crate::gameplay::{action::Action, hand::Hand, player::Player, seat::Seat};
+use crate::gameplay::{action::Action, hand::Hand, seat::Seat};
 use dialoguer::{Input, Select};
 use std::fmt::{Debug, Formatter};
 use std::result::Result;
