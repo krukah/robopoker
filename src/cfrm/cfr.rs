@@ -1,37 +1,40 @@
 #![allow(dead_code)]
 
-type Utility = f32;
-type Probability = f32;
+/// Type alias encapsulates numberical precision for units of utility.
+pub(crate) type Utility = f32;
 
-// A finite set N of players, including chance
-trait Player: Eq {}
+/// Type alias encapsulates numberical precision for units of probability.
+pub(crate) type Probability = f32;
 
-// A finite set of possible actions
-trait Action: Eq {
-    type Player: Player;
-    fn player(&self) -> &Self::Player;
+/// An element of the finite set N of players, including chance.
+pub(crate) trait Player: Eq {}
+
+/// An element of the finite set of possible actions.
+pub(crate) trait Action: Eq + Copy {
+    // required
+    fn player(&self) -> &Self::APlayer;
+
+    type APlayer: Player;
 }
 
-// Omnipotent, complete state of current game
-trait Node {
-    type Player: Player;
-    type Action: Action<Player = Self::Player>;
-
-    fn value(&self, player: &Self::Player) -> Utility;
-    fn player(&self) -> &Self::Player;
-    fn parent(&self) -> Option<&Self>;
-    fn precedent(&self) -> Option<&Self::Action>;
-    fn children(&self) -> &Vec<&Self>;
-    fn available(&self) -> &Vec<&Self::Action>;
+/// A node,  history, game state, etc. Omnipotent, complete state of current game.
+pub(crate) trait Node<'t> {
+    // required
+    fn parent(&'t self) -> Option<&'t Self>;
+    fn precedent(&'t self) -> Option<&'t Self::NAction>;
+    fn children(&'t self) -> &Vec<&'t Self>;
+    fn available(&'t self) -> &Vec<&'t Self::NAction>;
+    fn chooser(&'t self) -> &'t Self::NPlayer;
+    fn utility(&'t self, player: &Self::NPlayer) -> Utility;
 
     // provided
-    fn follow(&self, action: &Self::Action) -> &Self {
+    fn follow(&'t self, action: &Self::NAction) -> &'t Self {
         self.children()
             .iter()
             .find(|child| action == child.precedent().unwrap())
             .unwrap()
     }
-    fn descendants(&self) -> Vec<&Self> {
+    fn descendants(&'t self) -> Vec<&'t Self> {
         match self.children().len() {
             0 => vec![&self],
             _ => self
@@ -42,74 +45,74 @@ trait Node {
                 .collect(),
         }
     }
+
+    type NPlayer: Player;
+    type NAction: Action<APlayer = Self::NPlayer>;
 }
 
-// All known information at a given node, up to any abstractions. Think of it as a distribution over the unknown game state.
-trait Info {
-    type Player: Player;
-    type Action: Action<Player = Self::Player>;
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-
-    fn roots(&self) -> &Vec<&Self::Node>;
+/// A set of indistinguishable nodes compatible with the player's information, up to any abstraction. Intuitively, this is the support of the distribution over information unknown to the player whose turn to act.
+pub(crate) trait Info<'t> {
+    // required
+    fn roots(&'t self) -> &Vec<&'t Self::INode>;
 
     // provided
-    fn endpoints(&self) -> Vec<&Self::Node> {
+    fn endpoints(&'t self) -> Vec<&'t Self::INode> {
         self.roots()
             .iter()
             .map(|node| node.descendants())
             .flatten()
             .collect()
     }
-    fn available(&self) -> &Vec<&Self::Action> {
+    fn available(&'t self) -> &Vec<&'t Self::IAction> {
         self.roots().iter().next().unwrap().available()
     }
-    fn player(&self) -> &Self::Player {
-        self.roots().iter().next().unwrap().player()
-    }
+
+    type IPlayer: Player;
+    type IAction: Action<APlayer = Self::IPlayer>;
+    type INode: Node<'t, NAction = Self::IAction> + Node<'t, NPlayer = Self::IPlayer>;
 }
 
-/// A Tree owns all the Nodes, Actions, and Players in a game. It will build the game tree from the root node, but can also expand the tree to accommodate for MCCFR techniques.
-trait Tree {
-    // type TreeNode: Node;
-    // type TreeEdge: Action<Player = <Self::TreeNode as Node>::Player>;
-    // type TreeInfo: Info<Action = Self::TreeEdge>;
+/// The owner all the Nodes, Actions, and Players in the context of a Solution. It also constrains the lifetime of references returned by its owned types. A vanilla implementation should build the full tree for small games. Monte Carlo implementations may sample paths conditional on given Profile, Solver, or other constraints. The only contract is that the Tree must be able to partition decision nodes into Info sets.
+pub(crate) trait Tree<'t> {
+    // required
+    fn infos(&'t self) -> &Vec<Self::TInfo>;
 
-    type Info: Info;
-    type Profile: Profile<Info = Self::Info>;
-
-    fn infos(&self) -> &Vec<Self::Info>;
+    type TPlayer: Player;
+    type TAction: Action<APlayer = Self::TPlayer>;
+    type TNode: Node<'t, NAction = Self::TAction> + Node<'t, NPlayer = Self::TPlayer>;
+    type TInfo: Info<'t>
+        + Info<'t, INode = Self::TNode>
+        + Info<'t, IAction = Self::TAction>
+        + Info<'t, IPlayer = Self::TPlayer>;
 }
 
-// A policy is a distribution over A(Ii)
-trait Policy {
-    type Action: Action;
+/// A policy (P: node -> prob) is a distribution over A(Ii). Easily implemented as a HashMap<Aaction, Probability>.
+pub(crate) trait Policy {
+    // required
+    fn weights(&self, action: &Self::PAction) -> Probability;
 
-    fn weights(&self, action: &Self::Action) -> Probability;
-    fn sample(&self) -> Self::Action;
+    type PAction: Action;
 }
 
-// A strategy of player i σi in an extensive game is a function that assigns a policy to each h ∈ H, therefore Ii ∈ Ii
-trait Strategy {
-    type Player: Player;
-    type Action: Action<Player = Self::Player>;
-    type Node: Node<Action = Self::Action>;
-    type Policy: Policy<Action = Self::Action>;
+/// A strategy (σ: player -> policy) is a function that assigns a policy to each h ∈ H, and therefore Ii ∈ Ii. Easily implemented as a HashMap<Info, Policy>.
+pub(crate) trait Strategy<'t> {
+    // required
+    fn policy(&'t self, node: &'t Self::SNode) -> &'t Self::SPolicy;
 
-    fn policy(&self, node: &Self::Node) -> &Self::Policy;
+    type SPlayer: Player;
+    type SAction: Action<APlayer = Self::SPlayer>;
+    type SPolicy: Policy<PAction = Self::SAction>;
+    type SNode: Node<'t, NAction = Self::SAction> + Node<'t, NPlayer = Self::SPlayer>;
 }
 
-// A profile σ consists of a strategy for each player, σ1,σ2,..., equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
-trait Profile {
-    type Player: Player;
-    type Action: Action<Player = Self::Player>;
-    type Node: Node<Player = Self::Player, Action = Self::Action>;
-    type Info: Info<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
-    type Strategy: Strategy<Player = Self::Player, Action = Self::Action, Node = Self::Node>;
+/// A profile σ consists of a strategy for each player, σ1,σ2,..., equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
+pub(crate) trait Profile<'t> {
+    // required
+    fn strategy(&'t self, player: &'t Self::PPlayer) -> &'t Self::PStrategy;
 
-    fn strategy(&self, player: &Self::Player) -> &Self::Strategy;
-
+    // provided
     // utility calculations
-    fn cfactual_value(&self, root: &Self::Node, action: &Self::Action) -> Utility {
+    fn cfactual_value(&'t self, root: &'t Self::PNode, action: &'t Self::PAction) -> Utility {
         self.cfactual_reach(root)
             * root //                                       suppose you're here on purpose, counterfactually
                 .follow(action) //                          suppose you're here on purpose, counterfactually
@@ -118,7 +121,7 @@ trait Profile {
                 .map(|leaf| self.relative_value(root, leaf))
                 .sum::<Utility>()
     }
-    fn expected_value(&self, root: &Self::Node) -> Utility {
+    fn expected_value(&'t self, root: &'t Self::PNode) -> Utility {
         self.expected_reach(root)
             * root
                 .descendants() //                           O(depth) recursive downtree
@@ -126,22 +129,21 @@ trait Profile {
                 .map(|leaf| self.relative_value(root, leaf))
                 .sum::<Utility>()
     }
-    fn relative_value(&self, root: &Self::Node, leaf: &Self::Node) -> Utility {
-        leaf.value(root.player())
+    fn relative_value(&'t self, root: &'t Self::PNode, leaf: &'t Self::PNode) -> Utility {
+        leaf.utility(root.chooser())
             * self.relative_reach(root, leaf)
             * self.sampling_reach(root, leaf)
     }
-
-    // reach calculations
-    fn weight(&self, node: &Self::Node, action: &Self::Action) -> Probability {
-        self.strategy(node.player()).policy(node).weights(action)
+    // probability calculations
+    fn weight(&'t self, node: &'t Self::PNode, action: &'t Self::PAction) -> Probability {
+        self.strategy(node.chooser()).policy(node).weights(action)
     }
-    fn cfactual_reach(&self, node: &Self::Node) -> Probability {
+    fn cfactual_reach(&'t self, node: &'t Self::PNode) -> Probability {
         match node.parent() {
             None => 1.0,
             Some(parent) => {
                 self.cfactual_reach(parent)
-                    * if node.player() == parent.player() {
+                    * if node.chooser() == parent.chooser() {
                         1.0
                     } else {
                         self.weight(parent, node.precedent().unwrap())
@@ -149,7 +151,7 @@ trait Profile {
             }
         }
     }
-    fn expected_reach(&self, node: &Self::Node) -> Probability {
+    fn expected_reach(&'t self, node: &'t Self::PNode) -> Probability {
         match node.parent() {
             None => 1.0,
             Some(parent) => {
@@ -157,69 +159,100 @@ trait Profile {
             }
         }
     }
-    fn relative_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
+    fn relative_reach(&'t self, root: &'t Self::PNode, leaf: &'t Self::PNode) -> Probability {
         //? gotta optimize out integration over shared ancestors that cancels out in this division. Node: Eq? Hash?
         self.expected_reach(leaf) / self.expected_reach(root)
     }
-    fn sampling_reach(&self, root: &Self::Node, leaf: &Self::Node) -> Probability {
+    fn sampling_reach(&'t self, _oot: &'t Self::PNode, _eaf: &'t Self::PNode) -> Probability {
         1.0
     }
+
+    type PPlayer: Player;
+    type PAction: Action<APlayer = Self::PPlayer>;
+    type PPolicy: Policy<PAction = Self::PAction>;
+    type PNode: Node<'t, NAction = Self::PAction> + Node<'t, NPlayer = Self::PPlayer>;
+    type PInfo: Info<'t>
+        + Info<'t, INode = Self::PNode>
+        + Info<'t, IAction = Self::PAction>
+        + Info<'t, IPlayer = Self::PPlayer>;
+    type PStrategy: Strategy<'t>
+        + Strategy<'t, SNode = Self::PNode>
+        + Strategy<'t, SPolicy = Self::PPolicy>
+        + Strategy<'t, SPlayer = Self::PPlayer>
+        + Strategy<'t, SAction = Self::PAction>;
 }
 
 /// A Solver will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration.
-trait Solver {
-    type Player: Player;
-    type Action: Action<Player = Self::Player>;
-    type Node: Node<Action = Self::Action>;
-    type Info: Info<Node = Self::Node, Action = Self::Action>;
-    type Step: Profile<Info = Self::Info, Node = Self::Node, Action = Self::Action>;
-    type Tree: Tree<Profile = Self::Step>;
+pub(crate) trait Solver<'t>: Iterator {
+    // required
+    fn traverser(&'t self) -> &'t Self::SPlayer; //? struct lookup
+    fn tree(&'t self) -> &'t Self::STree; //? struct lookup // use Cell for mutable reference in self.update
+    fn step(&'t self) -> &'t Self::SStep; //? struct lookup // use Cell for mutable reference in self.update
+    fn num_steps(&'t self) -> usize; //? struct lookup
+    fn max_steps(&'t self) -> usize; //? struct lookup
 
-    fn traverser(&self) -> &Self::Player;
-    fn tree(&self) -> &Self::Tree;
-    fn step(&self) -> &Self::Step;
-    fn num_steps(&self) -> usize;
-    fn max_steps(&self) -> usize;
-
-    // strategy update calculations
-    fn update(&self, info: &Self::Info) -> Self::Step;
-    fn policy_vector(&self, info: &Self::Info) -> Vec<Probability> {
+    // provided
+    // (info) -> profile.strategy.policy update
+    fn update_policy(&'t self, info: &'t Self::SInfo) -> Self::SPolicy;
+    fn update_vector(&'t self, info: &'t Self::SInfo) -> Vec<(Self::SAction, Probability)> {
+        info.available()
+            .iter()
+            .map(|action| **action)
+            .zip(self.policy_vector(info).into_iter())
+            .collect::<Vec<(Self::SAction, Probability)>>()
+    }
+    fn policy_vector(&'t self, info: &'t Self::SInfo) -> Vec<Probability> {
         let regrets = self.regret_vector(info);
         let sum = regrets.iter().sum::<Utility>();
         regrets.iter().map(|regret| regret / sum).collect()
     }
-    fn regret_vector(&self, info: &Self::Info) -> Vec<Utility> {
+    fn regret_vector(&'t self, info: &'t Self::SInfo) -> Vec<Utility> {
         info.available()
             .iter()
-            .map(|action| self.matched_regret(info, action))
+            .map(|action| self.next_regret(info, action))
             .map(|regret| regret.max(Utility::MIN_POSITIVE))
             .collect()
     }
-
-    // regret calculations
-    fn running_regret(&self, info: &Self::Info, action: &Self::Action) -> Utility;
-    fn instant_regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
-        //? this should get added to previous regrets rather than replace them
+    // (info, action) -> regret
+    fn gain(&'t self, root: &'t Self::SNode, action: &'t Self::SAction) -> Utility {
+        self.step().cfactual_value(root, action) - self.step().expected_value(root)
+    }
+    fn next_regret(&'t self, info: &'t Self::SInfo, action: &'t Self::SAction) -> Utility {
+        self.prev_regret(info, action) + self.curr_regret(info, action) //? Linear CFR weighting
+    }
+    fn curr_regret(&'t self, info: &'t Self::SInfo, action: &'t Self::SAction) -> Utility {
         info.roots()
             .iter()
-            .map(|root| self.step().cfactual_value(root, action) - self.step().expected_value(root))
+            .map(|root| self.gain(root, action))
             .sum::<Utility>()
     }
-    fn matched_regret(&self, info: &Self::Info, action: &Self::Action) -> Utility {
-        // Linear CFR weighting
-        self.running_regret(info, action) + self.instant_regret(info, action)
-    }
+    fn prev_regret(&'t self, info: &'t Self::SInfo, action: &'t Self::SAction) -> Utility; //? struct lookup
 
-    fn solve(&self, tree: &Self::Tree, guess: Self::Step) -> Self::Step;
-    // {
-    //     (0..self.max_steps()).fold(guess, |step, _| {
-    //         tree.infos()
-    //             .iter()
-    //             .filter(|i| i.player() == self.traverser())
-    //             .rev()
-    //             .fold(step, |profile, info| profile.update(info))
-    //     })
-    // }
+    type SPlayer: Player;
+    type SAction: Action<APlayer = Self::SPlayer>;
+    type SPolicy: Policy<PAction = Self::SAction>;
+    type SNode: Node<'t, NAction = Self::SAction> + Node<'t, NPlayer = Self::SPlayer>;
+    type SInfo: Info<'t>
+        + Info<'t, INode = Self::SNode>
+        + Info<'t, IAction = Self::SAction>
+        + Info<'t, IPlayer = Self::SPlayer>;
+    type SStrategy: Strategy<'t>
+        + Strategy<'t, SNode = Self::SNode>
+        + Strategy<'t, SAction = Self::SAction>
+        + Strategy<'t, SPlayer = Self::SPlayer>
+        + Strategy<'t, SPolicy = Self::SPolicy>;
+    type STree: Tree<'t>
+        + Tree<'t, TInfo = Self::SInfo>
+        + Tree<'t, TNode = Self::SNode>
+        + Tree<'t, TAction = Self::SAction>
+        + Tree<'t, TPlayer = Self::SPlayer>;
+    type SStep: Profile<'t>
+        + Profile<'t, PInfo = Self::SInfo>
+        + Profile<'t, PStrategy = Self::SStrategy>
+        + Profile<'t, PNode = Self::SNode>
+        + Profile<'t, PAction = Self::SAction>
+        + Profile<'t, PPolicy = Self::SPolicy>
+        + Profile<'t, PPlayer = Self::SPlayer>;
 }
 
 /*
