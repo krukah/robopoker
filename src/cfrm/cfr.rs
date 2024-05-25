@@ -218,11 +218,10 @@ pub(crate) trait Solver {
             .collect()
     }
     // (info, action) -> regret
-    fn gain(&self, root: &Self::SNode, action: &Self::SAction) -> Utility {
-        self.step().cfactual_value(root, action) - self.step().expected_value(root)
-    }
     fn next_regret(&self, info: &Self::SInfo, action: &Self::SAction) -> Utility {
-        self.prev_regret(info, action) + self.curr_regret(info, action) //? Linear CFR weighting
+        self.prev_regret(info, action) + self.curr_regret(info, action)
+        //? Linear CFR weighting
+        //? Discounted CFR weighting
     }
     fn curr_regret(&self, info: &Self::SInfo, action: &Self::SAction) -> Utility {
         info.roots()
@@ -231,6 +230,9 @@ pub(crate) trait Solver {
             .sum::<Utility>()
     }
     fn prev_regret(&self, info: &Self::SInfo, action: &Self::SAction) -> Utility;
+    fn gain(&self, root: &Self::SNode, action: &Self::SAction) -> Utility {
+        self.step().cfactual_value(root, action) - self.step().expected_value(root)
+    }
 
     type SPlayer: Player;
     type SAction: Action<APlayer = Self::SPlayer>;

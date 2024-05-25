@@ -23,26 +23,6 @@ impl Strength {
     pub fn new(hand: BestHand, kickers: Kickers) -> Self {
         Strength { hand, kickers }
     }
-    pub fn rank(&self) -> Rank {
-        match self.hand {
-            BestHand::StraightFlush(r, ..)
-            | BestHand::FullHouse(r, ..)
-            | BestHand::TwoPair(r, ..)
-            | BestHand::Straight(r, ..)
-            | BestHand::ThreeOAK(r, ..)
-            | BestHand::HighCard(r, ..)
-            | BestHand::OnePair(r, ..)
-            | BestHand::FourOAK(r, ..)
-            | BestHand::Flush(r, ..) => r,
-            BestHand::MAX => unreachable!(),
-        }
-    }
-    pub fn secondary(&self) -> Rank {
-        match self.hand {
-            BestHand::TwoPair(_, r) | BestHand::FullHouse(_, r) => r,
-            _ => self.rank(),
-        }
-    }
     pub fn kickers(&self) -> &Kickers {
         &self.kickers
     }
