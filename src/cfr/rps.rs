@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
-enum Move {
+pub(crate) enum Move {
     R,
     P,
     S,
@@ -13,21 +13,21 @@ enum Move {
 
 /// Player 1 and Player 2
 #[derive(PartialEq, Eq, Clone, Copy)]
-enum RPSPlayer {
+pub(crate) enum RPSPlayer {
     P1,
     P2,
 }
 
 /// Rock, Paper, Scissors
 #[derive(PartialEq, Eq, Clone, Copy)]
-struct RPSEdge {
+pub(crate) struct RPSEdge {
     player: RPSPlayer,
     action: Move,
 }
 
 /// Shared-lifetime game tree nodes
 #[derive(PartialEq, Eq)]
-struct RPSNode<'t> {
+pub(crate) struct RPSNode<'t> {
     chooser: &'t RPSPlayer,
     parent: Option<&'t RPSNode<'t>>,
     precedent: Option<&'t RPSEdge>,
@@ -37,34 +37,34 @@ struct RPSNode<'t> {
 
 /// Indistinguishable states belonging to same InfoSets. Effectively, distribution of possile opponent actions.
 #[derive(PartialEq, Eq)]
-struct RPSInfo<'t> {
+pub(crate) struct RPSInfo<'t> {
     roots: Vec<&'t RPSNode<'t>>,
 }
 
 /// Game tree
-struct RPSTree<'t> {
+pub(crate) struct RPSTree<'t> {
     edges: Vec<RPSEdge>,
     nodes: Vec<RPSNode<'t>>,
     infos: HashSet<RPSInfo<'t>>,
 }
 
 /// tabular Action > Probability
-struct RPSPolicy {
+pub(crate) struct RPSPolicy {
     weights: HashMap<RPSEdge, cfr::Probability>,
 }
 
 /// tabular Node > Policy
-struct RPSStrategy<'t> {
+pub(crate) struct RPSStrategy<'t> {
     policies: HashMap<RPSNode<'t>, RPSPolicy>,
 }
 
 /// constant Player > Strategy
-struct RPSProfile<'t> {
+pub(crate) struct RPSProfile<'t> {
     strategy: RPSStrategy<'t>,
 }
 
-/// training schedule
-struct RPSTrainer {
+/// self-contained training algorithm
+pub(crate) struct RPSTrainer {
     regrets: HashMap<(&'static RPSInfo<'static>, &'static RPSEdge), cfr::Utility>,
     profile: RPSProfile<'static>,
     tree: RPSTree<'static>,
@@ -193,7 +193,7 @@ impl<'t> cfr::Profile for RPSProfile<'t> {
 }
 
 impl RPSTrainer {
-    fn new() -> Self {
+    pub fn new() -> Self {
         todo!("initialize trainer")
     }
 }
@@ -217,9 +217,6 @@ impl cfr::Trainer for RPSTrainer {
         todo!()
     }
 
-    fn max_steps() -> usize {
-        10_000
-    }
     fn profile(&self) -> &Self::TProfile {
         &self.profile
     }

@@ -1,3 +1,5 @@
+use cfr::cfr::Trainer;
+use cfr::rps::RPSTrainer;
 use gameplay::engine::Table;
 
 mod cards;
@@ -8,6 +10,9 @@ mod players;
 
 #[tokio::main]
 async fn main() {
+    let mut trainer = RPSTrainer::new();
+    trainer.train(10_000);
+
     let mut engine = Table::new();
     engine.gain_seat(100);
     engine.gain_seat(100);

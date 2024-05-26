@@ -183,7 +183,6 @@ pub(crate) trait Profile {
 /// A Trainer will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration. Implementations may include RegretMatching+, Linear RM, Discounted RM, Parametrized RM, etc.
 pub(crate) trait Trainer {
     // required
-    fn max_steps() -> usize;
     fn save(&self);
     fn profile(&self) -> &Self::TProfile;
     fn tree(&self) -> &Self::TTree;
@@ -191,8 +190,8 @@ pub(crate) trait Trainer {
     fn update_profile(&mut self);
 
     // provided
-    fn train(&mut self) {
-        for _ in 0..Self::max_steps() {
+    fn train(&mut self, n: usize) {
+        for _ in 0..n {
             self.update_regrets();
             self.update_profile();
         }
