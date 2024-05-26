@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use std::hash::Hash;
 
 /// Type alias encapsulates numberical precision for units of utility.
 pub(crate) type Utility = f32;
@@ -7,10 +8,10 @@ pub(crate) type Utility = f32;
 pub(crate) type Probability = f32;
 
 /// An element of the finite set N of players, including chance.
-pub(crate) trait Player: Eq {}
+pub(crate) trait Player: Eq + Copy {}
 
 /// An element of the finite set of possible actions.
-pub(crate) trait Action: Eq + Copy {
+pub(crate) trait Action: Eq + Hash + Copy {
     // required
     fn player(&self) -> &Self::APlayer;
 
@@ -18,10 +19,10 @@ pub(crate) trait Action: Eq + Copy {
 }
 
 /// A node, history, game state, etc. is an omniscient, complete state of current game.
-pub(crate) trait Node {
+pub(crate) trait Node: Eq + Hash {
     // required
-    fn parent(&self) -> Option<&Self>;
-    fn precedent(&self) -> Option<&Self::NAction>;
+    fn parent(&self) -> &Option<&Self>;
+    fn precedent(&self) -> &Option<&Self::NAction>;
     fn children(&self) -> &Vec<&Self>;
     fn available(&self) -> &Vec<&Self::NAction>;
     fn chooser(&self) -> &Self::NPlayer;
@@ -51,7 +52,7 @@ pub(crate) trait Node {
 }
 
 /// A set of indistinguishable nodes compatible with the player's information, up to any abstraction. Intuitively, this is the support of the distribution over information unknown to the player whose turn to act.
-pub(crate) trait Info {
+pub(crate) trait Info: Eq + Hash {
     // required
     fn roots(&self) -> &Vec<&Self::INode>;
 
@@ -75,7 +76,7 @@ pub(crate) trait Info {
 /// The owner all the Nodes, Actions, and Players in the context of a Solution. It also constrains the lifetime of references returned by its owned types. A vanilla implementation should build the full tree for small games. Monte Carlo implementations may sample paths conditional on given Profile, Trainer, or other constraints. The only contract is that the Tree must be able to partition decision nodes into Info sets.
 pub(crate) trait Tree {
     // required
-    fn infos(&self) -> &Vec<Self::TInfo>;
+    fn infos(&self) -> Vec<&Self::TInfo>;
 
     type TPlayer: Player;
     type TEdge: Action<APlayer = Self::TPlayer>;
@@ -171,10 +172,7 @@ pub(crate) trait Profile {
     type PAction: Action<APlayer = Self::PPlayer>;
     type PPolicy: Policy<PAction = Self::PAction>;
     type PNode: Node<NAction = Self::PAction> + Node<NPlayer = Self::PPlayer>;
-    type PInfo: Info
-        + Info<INode = Self::PNode>
-        + Info<IAction = Self::PAction>
-        + Info<IPlayer = Self::PPlayer>;
+    type PInfo: Info<INode = Self::PNode, IAction = Self::PAction, IPlayer = Self::PPlayer>;
     type PStrategy: Strategy
         + Strategy<SNode = Self::PNode>
         + Strategy<SPolicy = Self::PPolicy>
@@ -185,17 +183,20 @@ pub(crate) trait Profile {
 /// A Trainer will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration. Implementations may include RegretMatching+, Linear RM, Discounted RM, Parametrized RM, etc.
 pub(crate) trait Trainer {
     // required
+    fn max_steps() -> usize;
+    fn save(&self);
     fn profile(&self) -> &Self::TProfile;
     fn tree(&self) -> &Self::TTree;
+    fn update_regrets(&mut self);
     fn update_profile(&mut self);
-    fn update_tree(&mut self);
 
     // provided
-    fn solve(&mut self) {
-        for _ in 0..10_000 {
-            self.update_tree();
+    fn train(&mut self) {
+        for _ in 0..Self::max_steps() {
+            self.update_regrets();
             self.update_profile();
         }
+        self.save();
     }
     // (info) -> profile.strategy.policy update
     fn update_vector(&self, info: &Self::TInfo) -> Vec<(Self::TAction, Probability)> {

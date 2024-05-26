@@ -1,5 +1,7 @@
 pub mod cfr;
-
+pub mod kuhn;
+pub mod leduc;
+pub mod rps;
 /*
 
 19. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.

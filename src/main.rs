@@ -1,7 +1,7 @@
 use gameplay::engine::Table;
 
 mod cards;
-mod cfrm;
+mod cfr;
 mod evaluation;
 mod gameplay;
 mod players;
