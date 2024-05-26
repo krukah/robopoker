@@ -91,6 +91,7 @@ pub(crate) trait Tree {
 pub(crate) trait Policy {
     // required
     fn weights(&self, action: &Self::PAction) -> Probability;
+    fn sample(&self) -> &Self::PAction;
 
     type PAction: Action;
 }
@@ -99,6 +100,7 @@ pub(crate) trait Policy {
 pub(crate) trait Strategy {
     // required
     fn policy(&self, node: &Self::SNode) -> &Self::SPolicy;
+    fn follow(&self, node: &Self::SNode) -> &Self::SNode;
 
     type SPlayer: Player;
     type SAction: Action<APlayer = Self::SPlayer>;
@@ -184,10 +186,10 @@ pub(crate) trait Profile {
 pub(crate) trait Trainer {
     // required
     fn save(&self);
-    fn profile(&self) -> &Self::TProfile;
     fn tree(&self) -> &Self::TTree;
-    fn update_regrets(&mut self);
+    fn profile(&self) -> &Self::TProfile;
     fn update_profile(&mut self);
+    fn update_regrets(&mut self);
 
     // provided
     fn train(&mut self, n: usize) {
@@ -197,6 +199,11 @@ pub(crate) trait Trainer {
         }
         self.save();
     }
+
+    //? consider moving some implementation details to implementors
+    //? consider moving some implementation details to implementors
+    //? consider moving some implementation details to implementors
+
     // (info) -> profile.strategy.policy update
     fn update_vector(&self, info: &Self::TInfo) -> Vec<(Self::TAction, Probability)> {
         info.available()
@@ -217,6 +224,7 @@ pub(crate) trait Trainer {
             .map(|regret| regret.max(Utility::MIN_POSITIVE))
             .collect()
     }
+
     // (info, action) -> regret
     fn next_regret(&self, info: &Self::TInfo, action: &Self::TAction) -> Utility {
         self.prev_regret(info, action) + self.curr_regret(info, action)
@@ -259,4 +267,12 @@ pub(crate) trait Trainer {
         + Profile<PAction = Self::TAction>
         + Profile<PPolicy = Self::TPolicy>
         + Profile<PPlayer = Self::TPlayer>;
+}
+
+pub(crate) trait Block {
+    type BPlayer: Player;
+    type BAction: Action<APlayer = Self::BPlayer>;
+    type BNode: Node<NAction = Self::BAction> + Node<NPlayer = Self::BPlayer>;
+
+    fn terminals(&self) -> Vec<&Self::BNode>;
 }

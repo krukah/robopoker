@@ -155,6 +155,13 @@ impl cfr::Policy for RPSPolicy {
             Some(utility) => *utility,
         }
     }
+    fn sample(&self) -> &Self::PAction {
+        self.weights
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .unwrap()
+            .0
+    }
 }
 
 impl RPSStrategy<'_> {

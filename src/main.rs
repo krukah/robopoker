@@ -10,8 +10,7 @@ mod players;
 
 #[tokio::main]
 async fn main() {
-    let mut trainer = RPSTrainer::new();
-    trainer.train(10_000);
+    RPSTrainer::new().train(10_000);
 
     let mut engine = Table::new();
     engine.gain_seat(100);
