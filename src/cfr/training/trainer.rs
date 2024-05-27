@@ -1,6 +1,6 @@
 use super::{
-    action::Action, info::Info, node::Node, player::Player, policy::Policy, profile::Profile,
-    strategy::Strategy, tree::Tree,
+    action::Action, info::Info, node::Node, optimizer::Optimizer, player::Player, policy::Policy,
+    profile::Profile, strategy::Strategy, tree::Tree,
 };
 
 /// A Trainer will take a Profile and a Tree and iteratively consume/replace a new Profile on each iteration. Implementations may include RegretMatching+, Linear RM, Discounted RM, Parametrized RM, etc.
@@ -8,8 +8,6 @@ pub(crate) trait Trainer {
     // required
     fn train(&mut self, n: usize);
     fn save(&self);
-    // fn tree(&self) -> Self::TTree;
-    // fn profile(&self) -> &Self::TProfile;
 
     type TPlayer: Player;
     type TAction: Action<APlayer = Self::TPlayer>;
@@ -36,4 +34,12 @@ pub(crate) trait Trainer {
         + Profile<PAction = Self::TAction>
         + Profile<PPolicy = Self::TPolicy>
         + Profile<PPlayer = Self::TPlayer>;
+    type TOptimizer: Optimizer
+        + Optimizer<OProfile = Self::TProfile>
+        + Optimizer<OStrategy = Self::TStrategy>
+        + Optimizer<OInfo = Self::TInfo>
+        + Optimizer<ONode = Self::TNode>
+        + Optimizer<OPolicy = Self::TPolicy>
+        + Optimizer<OPlayer = Self::TPlayer>
+        + Optimizer<OAction = Self::TAction>;
 }

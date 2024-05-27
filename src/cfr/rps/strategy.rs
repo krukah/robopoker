@@ -7,11 +7,6 @@ pub(crate) struct RPSStrategy<'tree> {
     pub policies: HashMap<RPSNode<'tree>, RPSPolicy>,
 }
 
-// impl<'t> RPSStrategy<'t> {
-//     pub(crate) fn new(policies: HashMap<RPSNode<'t>, RPSPolicy>) -> Self {
-//         Self { policies }
-//     }
-// }
 impl<'t> Strategy for RPSStrategy<'t> {
     type SPlayer = RPSPlayer;
     type SAction = RPSEdge;
