@@ -8,6 +8,13 @@ pub(crate) struct RPSInfo<'t> {
     roots: Vec<&'t RPSNode<'t>>,
 }
 
+type Signature = RPSNode<'static>;
+impl RPSInfo<'_> {
+    pub fn signature(&self) -> Signature {
+        todo!("owned signature returns for Info + Node")
+    }
+}
+
 impl Hash for RPSInfo<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         0.hash(state)

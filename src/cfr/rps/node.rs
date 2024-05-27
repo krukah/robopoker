@@ -15,6 +15,13 @@ pub(crate) struct RPSNode<'tree> {
     available: Vec<&'tree RPSEdge>,
 }
 
+type Signature = RPSNode<'static>;
+impl RPSNode<'_> {
+    pub fn signature(&self) -> Signature {
+        todo!("owned signature returns for Info + Node")
+    }
+}
+
 impl Hash for RPSNode<'_> {
     /// lucky for us, every single node in RPS has the same abstraction lookup hash, which is to say there is no information to inform your decision.
     fn hash<H: Hasher>(&self, state: &mut H) {
