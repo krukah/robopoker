@@ -1,6 +1,7 @@
 pub(crate) mod action;
 pub(crate) mod info;
 pub(crate) mod node;
+pub(crate) mod optimizer;
 pub(crate) mod player;
 pub(crate) mod policy;
 pub(crate) mod profile;

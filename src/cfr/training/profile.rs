@@ -6,18 +6,10 @@ use super::{
 /// A profile σ consists of a strategy for each player. Equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
 pub(crate) trait Profile {
     // required
-    fn improve(&self, info: &Self::PInfo) -> Self::PPolicy;
     fn strategy(&self, player: &Self::PPlayer) -> &Self::PStrategy;
-    fn running_regret(&self, info: &Self::PInfo, action: &Self::PAction) -> Utility;
-    fn instant_regret(&self, info: &Self::PInfo, action: &Self::PAction) -> Utility;
-    fn update_regret(&mut self, info: &Self::PInfo);
-    fn update_policy(&mut self, info: &Self::PInfo);
 
     // provided
     // utility calculations
-    fn regret(&self, info: &Self::PInfo, action: &Self::PAction) -> Utility {
-        self.running_regret(info, action) + self.instant_regret(info, action)
-    }
     fn gain(&self, root: &Self::PNode, action: &Self::PAction) -> Utility {
         self.cfactual_value(root, action) - self.expected_value(root)
     }
