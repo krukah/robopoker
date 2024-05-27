@@ -1,5 +1,5 @@
-use cfr::cfr::Trainer;
-use cfr::rps::RPSTrainer;
+use crate::cfr::rps::trainer::RPSTrainer;
+use cfr::training::trainer::Trainer;
 use gameplay::engine::Table;
 
 mod cards;
