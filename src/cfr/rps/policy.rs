@@ -1,5 +1,5 @@
 use super::action::RpsAction;
-use crate::cfr::traits::learning::policy::Policy;
+use crate::cfr::traits::training::policy::Policy;
 use crate::cfr::traits::Probability;
 use std::collections::HashMap;
 

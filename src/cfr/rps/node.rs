@@ -1,4 +1,4 @@
-use super::signal::RpsSignal;
+use super::bucket::RpsBucket;
 use crate::cfr::rps::action::{Move, RpsAction};
 use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::traits::tree::node::Node;
@@ -25,7 +25,7 @@ impl Hash for RpsNode<'_> {
 impl Node for RpsNode<'_> {
     type NPlayer = RpsPlayer;
     type NAction = RpsAction;
-    type NSignal = RpsSignal;
+    type NBucket = RpsBucket;
 
     fn utility(&self, player: &Self::NPlayer) -> Utility {
         const R_WIN: Utility = 1.0;
@@ -55,8 +55,8 @@ impl Node for RpsNode<'_> {
         };
         direction * payoff
     }
-    fn signal(&self) -> Self::NSignal {
-        RpsSignal {}
+    fn bucket(&self) -> Self::NBucket {
+        RpsBucket {}
     }
     fn player(&self) -> &Self::NPlayer {
         self.player
