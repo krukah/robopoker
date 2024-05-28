@@ -1,5 +1,6 @@
 use crate::cfr::training::marker::action::Action;
 use crate::cfr::training::marker::player::Player;
+use crate::cfr::training::marker::signature::Signature;
 use crate::cfr::training::tree::node::Node;
 use std::hash::Hash;
 
@@ -7,6 +8,7 @@ use std::hash::Hash;
 pub(crate) trait Info: Eq + Hash {
     // required
     fn roots(&self) -> &Vec<&Self::INode>;
+    fn signal(&self) -> &Self::ISignal;
 
     // provided
     fn available(&self) -> &Vec<&Self::IAction> {
@@ -15,5 +17,9 @@ pub(crate) trait Info: Eq + Hash {
 
     type IPlayer: Player;
     type IAction: Action;
-    type INode: Node<NAction = Self::IAction> + Node<NPlayer = Self::IPlayer>;
+    type ISignal: Signature;
+    type INode: Node
+        + Node<NAction = Self::IAction>
+        + Node<NPlayer = Self::IPlayer>
+        + Node<NSignal = Self::ISignal>;
 }
