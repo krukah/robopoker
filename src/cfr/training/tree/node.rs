@@ -1,5 +1,6 @@
 use crate::cfr::training::marker::action::Action;
 use crate::cfr::training::marker::player::Player;
+use crate::cfr::training::marker::signature::Signature;
 use crate::cfr::training::Utility;
 use std::hash::Hash;
 
@@ -10,6 +11,7 @@ pub(crate) trait Node: Eq + Hash {
     fn precedent(&self) -> &Option<&Self::NAction>;
     fn children(&self) -> &Vec<&Self>;
     fn available(&self) -> &Vec<&Self::NAction>;
+    fn signal(&self) -> &Self::NSignal;
     fn player(&self) -> &Self::NPlayer;
     fn utility(&self, player: &Self::NPlayer) -> Utility;
 
@@ -34,4 +36,5 @@ pub(crate) trait Node: Eq + Hash {
 
     type NPlayer: Player;
     type NAction: Action;
+    type NSignal: Signature;
 }
