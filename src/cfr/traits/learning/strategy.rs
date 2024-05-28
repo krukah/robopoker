@@ -1,7 +1,7 @@
-use crate::cfr::training::learning::policy::Policy;
-use crate::cfr::training::marker::action::Action;
-use crate::cfr::training::marker::player::Player;
-use crate::cfr::training::tree::node::Node;
+use crate::cfr::traits::learning::policy::Policy;
+use crate::cfr::traits::marker::action::Action;
+use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::tree::node::Node;
 
 /// A strategy (σ: player -> policy) is a function that assigns a policy to each h ∈ H, and therefore Ii ∈ Ii. Easily implemented as a HashMap<Info, Policy>.
 pub(crate) trait Strategy {

@@ -1,8 +1,8 @@
-use crate::cfr::rps::action::RpsEdge;
+use crate::cfr::rps::action::RpsAction;
 use crate::cfr::rps::node::RpsNode;
 use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::rps::signal::RpsSignal;
-use crate::cfr::training::tree::info::Info;
+use crate::cfr::traits::tree::info::Info;
 use std::hash::{Hash, Hasher};
 
 /// Indistinguishable states belonging to same InfoSets. Effectively, distribution of possile opponent actions.
@@ -18,7 +18,7 @@ impl Hash for RpsInfo<'_> {
 }
 impl<'t> Info for RpsInfo<'t> {
     type IPlayer = RpsPlayer;
-    type IAction = RpsEdge;
+    type IAction = RpsAction;
     type ISignal = RpsSignal;
     type INode = RpsNode<'t>;
     fn roots(&self) -> &Vec<&Self::INode> {
@@ -26,6 +26,5 @@ impl<'t> Info for RpsInfo<'t> {
     }
     fn signal(&self) -> Self::ISignal {
         RpsSignal {}
-        //rps abstraction
     }
 }

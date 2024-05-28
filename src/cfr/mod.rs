@@ -1,5 +1,5 @@
 pub mod rps;
-pub mod training;
+pub mod traits;
 
 /*
 

@@ -1,7 +1,7 @@
-use crate::cfr::training::marker::action::Action;
-use crate::cfr::training::marker::player::Player;
-use crate::cfr::training::marker::signature::Signature;
-use crate::cfr::training::Utility;
+use crate::cfr::traits::marker::action::Action;
+use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::marker::signature::Signature;
+use crate::cfr::traits::Utility;
 use std::hash::Hash;
 
 /// A node, history, game state, etc. is an omniscient, complete state of current game.
