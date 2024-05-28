@@ -21,7 +21,7 @@ pub(crate) trait Minimizer {
             .map(|root| self.profile().gain(root, action))
             .sum::<Utility>()
     }
-    fn looming_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
+    fn pending_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
         self.instant_regret(info, action) + self.running_regret(info, action)
     }
 
@@ -29,7 +29,7 @@ pub(crate) trait Minimizer {
     fn regret_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Utility)> {
         info.available()
             .iter()
-            .map(|action| (**action, self.looming_regret(info, action)))
+            .map(|action| (**action, self.pending_regret(info, action)))
             .collect()
     }
 

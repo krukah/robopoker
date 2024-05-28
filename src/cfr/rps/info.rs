@@ -26,5 +26,6 @@ impl<'t> Info for RpsInfo<'t> {
     }
     fn signal(&self) -> Self::ISignal {
         RpsSignal {}
+        //rps abstraction
     }
 }

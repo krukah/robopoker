@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Node represents the memoryless state of the game in between actions. it records both public and private data structs, and is responsible for managing the rotation of players, the pot, and the board. it's immutable methods reveal pure functions representing the rules of how the game may proceed.
 #[derive(Debug, Clone)]
 pub struct Rotation {

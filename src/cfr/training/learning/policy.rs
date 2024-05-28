@@ -5,6 +5,7 @@ use crate::cfr::training::Probability;
 pub(crate) trait Policy {
     // required
     fn weight(&self, action: &Self::PAction) -> Probability;
+    #[allow(dead_code)]
     fn sample(&self) -> &Self::PAction;
 
     type PAction: Action;

@@ -28,29 +28,11 @@ impl Node for RpsNode<'_> {
     type NAction = RpsEdge;
     type NSignal = RpsSignal;
 
-    fn signal(&self) -> Self::NSignal {
-        RpsSignal {}
-    }
-    fn player(&self) -> &Self::NPlayer {
-        self.player
-    }
-    fn available(&self) -> &Vec<&Self::NAction> {
-        &self.available
-    }
-    fn children(&self) -> &Vec<&Self> {
-        &self.children
-    }
-    fn parent(&self) -> &Option<&Self> {
-        &self.parent
-    }
-    fn precedent(&self) -> &Option<&Self::NAction> {
-        &self.precedent
-    }
     fn utility(&self, player: &Self::NPlayer) -> Utility {
         const R_WIN: Utility = 1.0;
         const P_WIN: Utility = 1.0;
         const S_WIN: Utility = 1.0; // we can modify payoffs to verify convergence
-        let a1 = self.precedent.expect("terminal node, depth = 2").turn();
+        let a1 = self.precedent.expect("terminal node, depth > 1").turn();
         let a2 = self
             .parent
             .expect("terminal node, depth = 2")
@@ -73,5 +55,23 @@ impl Node for RpsNode<'_> {
             RpsPlayer::P2 => 0.0 - 1.0,
         };
         direction * payoff
+    }
+    fn signal(&self) -> Self::NSignal {
+        RpsSignal {}
+    }
+    fn player(&self) -> &Self::NPlayer {
+        self.player
+    }
+    fn available(&self) -> &Vec<&Self::NAction> {
+        &self.available
+    }
+    fn children(&self) -> &Vec<&Self> {
+        &self.children
+    }
+    fn parent(&self) -> &Option<&Self> {
+        &self.parent
+    }
+    fn precedent(&self) -> &Option<&Self::NAction> {
+        &self.precedent
     }
 }
