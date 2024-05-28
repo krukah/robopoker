@@ -41,7 +41,7 @@ pub(crate) trait Profile {
     }
     // probability calculations
     fn weight(&self, node: &Self::PNode, action: &Self::PAction) -> Probability {
-        self.strategy(node.player()).policy(node).weights(action)
+        self.strategy(node.player()).policy(node).weight(action)
     }
     fn cfactual_reach(&self, node: &Self::PNode) -> Probability {
         match node.parent() {
