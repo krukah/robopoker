@@ -1,11 +1,10 @@
 use crate::cfr::traits::marker::action::Action;
-use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::marker::bucket::Bucket;
+use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::Utility;
-use std::hash::Hash;
 
 /// A node, history, game state, etc. is an omniscient, complete state of current game.
-pub(crate) trait Node: Eq + Hash {
+pub(crate) trait Node {
     // required
     fn parent(&self) -> &Option<&Self>;
     fn precedent(&self) -> &Option<&Self::NAction>;
