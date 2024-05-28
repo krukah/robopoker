@@ -1,4 +1,4 @@
-use crate::cfr::traits::learning::policy::Policy;
+use crate::cfr::traits::training::policy::Policy;
 use crate::cfr::traits::marker::action::Action;
 use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::tree::node::Node;
