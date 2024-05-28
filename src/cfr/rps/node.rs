@@ -1,19 +1,18 @@
-use crate::cfr::rps::action::{Move, RpsEdge};
-use crate::cfr::rps::player::RpsPlayer;
-use crate::cfr::training::tree::node::Node;
-use crate::cfr::training::Utility;
-use std::hash::{Hash, Hasher};
-
 use super::signal::RpsSignal;
+use crate::cfr::rps::action::{Move, RpsAction};
+use crate::cfr::rps::player::RpsPlayer;
+use crate::cfr::traits::tree::node::Node;
+use crate::cfr::traits::Utility;
+use std::hash::{Hash, Hasher};
 
 /// Shared-lifetime game tree nodes
 #[derive(PartialEq, Eq)]
 pub(crate) struct RpsNode<'tree> {
     player: &'tree RpsPlayer,
     parent: Option<&'tree RpsNode<'tree>>,
-    precedent: Option<&'tree RpsEdge>,
+    precedent: Option<&'tree RpsAction>,
     children: Vec<&'tree RpsNode<'tree>>,
-    available: Vec<&'tree RpsEdge>,
+    available: Vec<&'tree RpsAction>,
 }
 
 impl Hash for RpsNode<'_> {
@@ -25,7 +24,7 @@ impl Hash for RpsNode<'_> {
 
 impl Node for RpsNode<'_> {
     type NPlayer = RpsPlayer;
-    type NAction = RpsEdge;
+    type NAction = RpsAction;
     type NSignal = RpsSignal;
 
     fn utility(&self, player: &Self::NPlayer) -> Utility {

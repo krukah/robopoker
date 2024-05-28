@@ -1,7 +1,7 @@
-use crate::cfr::training::marker::action::Action;
-use crate::cfr::training::marker::player::Player;
-use crate::cfr::training::marker::signature::Signature;
-use crate::cfr::training::tree::node::Node;
+use crate::cfr::traits::marker::action::Action;
+use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::marker::signature::Signature;
+use crate::cfr::traits::tree::node::Node;
 use std::hash::Hash;
 
 /// A set of indistinguishable nodes compatible with the player's information, up to any abstraction. Intuitively, this is the support of the distribution over information unknown to the player whose turn to act.

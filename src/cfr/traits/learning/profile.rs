@@ -1,11 +1,11 @@
-use crate::cfr::training::learning::policy::Policy;
-use crate::cfr::training::learning::strategy::Strategy;
-use crate::cfr::training::marker::action::Action;
-use crate::cfr::training::marker::player::Player;
-use crate::cfr::training::tree::info::Info;
-use crate::cfr::training::tree::node::Node;
-use crate::cfr::training::Probability;
-use crate::cfr::training::Utility;
+use crate::cfr::traits::learning::policy::Policy;
+use crate::cfr::traits::learning::strategy::Strategy;
+use crate::cfr::traits::marker::action::Action;
+use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::tree::info::Info;
+use crate::cfr::traits::tree::node::Node;
+use crate::cfr::traits::Probability;
+use crate::cfr::traits::Utility;
 
 /// A profile σ consists of a strategy for each player. Equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
 pub(crate) trait Profile {

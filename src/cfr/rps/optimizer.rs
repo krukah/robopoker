@@ -1,19 +1,19 @@
-use crate::cfr::rps::action::RpsEdge;
+use crate::cfr::rps::action::RpsAction;
 use crate::cfr::rps::info::RpsInfo;
 use crate::cfr::rps::node::RpsNode;
 use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::rps::signal::RpsSignal;
 use crate::cfr::rps::tree::RpsTree;
-use crate::cfr::training::learning::minimizer::Minimizer;
-use crate::cfr::training::tree::info::Info;
-use crate::cfr::training::tree::tree::Tree;
-use crate::cfr::training::Probability;
-use crate::cfr::training::Utility;
+use crate::cfr::traits::learning::optimizer::Optimizer;
+use crate::cfr::traits::tree::info::Info;
+use crate::cfr::traits::tree::tree::Tree;
+use crate::cfr::traits::Probability;
+use crate::cfr::traits::Utility;
 use std::collections::HashMap;
 
 pub(crate) struct RpsMinimizer {
-    regrets: HashMap<RpsSignal, HashMap<RpsEdge, Utility>>,
-    profile: HashMap<RpsSignal, HashMap<RpsEdge, Probability>>,
+    regrets: HashMap<RpsSignal, HashMap<RpsAction, Utility>>,
+    profile: HashMap<RpsSignal, HashMap<RpsAction, Probability>>,
 }
 
 impl RpsMinimizer {
@@ -42,22 +42,11 @@ impl RpsMinimizer {
     }
 }
 
-impl Minimizer for RpsMinimizer {
+impl Optimizer for RpsMinimizer {
     fn profile(&self) -> &Self::OProfile {
         &self.profile
     }
-    fn policy_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Probability)> {
-        let regrets = info
-            .available()
-            .iter()
-            .map(|action| (**action, self.running_regret(info, action)))
-            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
-            .collect::<Vec<(Self::OAction, Probability)>>();
-        let sum = regrets.iter().map(|(_, r)| r).sum::<Utility>();
-        let policy = regrets.into_iter().map(|(a, r)| (a, r / sum)).collect();
-        policy
-    }
-    fn running_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
+    fn current_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
         *self
             .regrets
             .get(&info.signal())
@@ -88,11 +77,11 @@ impl Minimizer for RpsMinimizer {
     }
 
     type OPlayer = RpsPlayer;
-    type OAction = RpsEdge;
+    type OAction = RpsAction;
     type OTree = RpsTree<'static>;
     type ONode = RpsNode<'static>;
     type OInfo = RpsInfo<'static>;
-    type OPolicy = HashMap<RpsEdge, Probability>;
-    type OProfile = HashMap<RpsSignal, HashMap<RpsEdge, Probability>>;
-    type OStrategy = HashMap<RpsSignal, HashMap<RpsEdge, Probability>>;
+    type OPolicy = HashMap<RpsAction, Probability>;
+    type OProfile = HashMap<RpsSignal, HashMap<RpsAction, Probability>>;
+    type OStrategy = HashMap<RpsSignal, HashMap<RpsAction, Probability>>;
 }

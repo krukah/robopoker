@@ -1,9 +1,9 @@
-use super::action::RpsEdge;
-use crate::cfr::training::learning::policy::Policy;
-use crate::cfr::training::Probability;
+use super::action::RpsAction;
+use crate::cfr::traits::learning::policy::Policy;
+use crate::cfr::traits::Probability;
 use std::collections::HashMap;
 
-impl Policy for HashMap<RpsEdge, Probability> {
+impl Policy for HashMap<RpsAction, Probability> {
     fn weight(&self, action: &Self::PAction) -> Probability {
         *self
             .get(action)
@@ -15,5 +15,5 @@ impl Policy for HashMap<RpsEdge, Probability> {
             .unwrap()
             .0
     }
-    type PAction = RpsEdge;
+    type PAction = RpsAction;
 }

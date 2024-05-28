@@ -1,5 +1,5 @@
 // rps/player.rs
-use crate::cfr::training::marker::player::Player;
+use crate::cfr::traits::marker::player::Player;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub(crate) enum RpsPlayer {

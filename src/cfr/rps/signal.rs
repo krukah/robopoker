@@ -1,4 +1,4 @@
-use crate::cfr::training::marker::signature::Signature;
+use crate::cfr::traits::marker::signature::Signature;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
 pub(crate) struct RpsSignal {}

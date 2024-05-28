@@ -1,20 +1,20 @@
-use crate::cfr::training::learning::policy::Policy;
-use crate::cfr::training::learning::profile::Profile;
-use crate::cfr::training::learning::strategy::Strategy;
-use crate::cfr::training::marker::action::Action;
-use crate::cfr::training::marker::player::Player;
-use crate::cfr::training::tree::info::Info;
-use crate::cfr::training::tree::node::Node;
-use crate::cfr::training::tree::tree::Tree;
-use crate::cfr::training::{Probability, Utility};
+use crate::cfr::traits::learning::policy::Policy;
+use crate::cfr::traits::learning::profile::Profile;
+use crate::cfr::traits::learning::strategy::Strategy;
+use crate::cfr::traits::marker::action::Action;
+use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::tree::info::Info;
+use crate::cfr::traits::tree::node::Node;
+use crate::cfr::traits::tree::tree::Tree;
+use crate::cfr::traits::{Probability, Utility};
 
-pub(crate) trait Minimizer {
+pub(crate) trait Optimizer {
     fn profile(&self) -> &Self::OProfile;
 
     fn update_regret(&mut self, info: &Self::OInfo);
     fn update_policy(&mut self, info: &Self::OInfo);
 
-    fn running_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility;
+    fn current_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility;
     fn instant_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
         info.roots()
             .iter()
@@ -22,10 +22,21 @@ pub(crate) trait Minimizer {
             .sum::<Utility>()
     }
     fn pending_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
-        self.instant_regret(info, action) + self.running_regret(info, action)
+        self.instant_regret(info, action) + self.current_regret(info, action)
     }
 
-    fn policy_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Probability)>;
+    fn policy_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Probability)> {
+        let regrets = info
+            .available()
+            .iter()
+            .map(|action| (**action, self.current_regret(info, action)))
+            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
+            .collect::<Vec<(Self::OAction, Probability)>>();
+        let sum = regrets.iter().map(|(_, r)| r).sum::<Utility>();
+        let policy = regrets.into_iter().map(|(a, r)| (a, r / sum)).collect();
+        policy
+        // uses RegretMatching+ to compute policy from current regrets
+    }
     fn regret_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Utility)> {
         info.available()
             .iter()
