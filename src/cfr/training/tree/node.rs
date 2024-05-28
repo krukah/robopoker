@@ -11,7 +11,7 @@ pub(crate) trait Node: Eq + Hash {
     fn precedent(&self) -> &Option<&Self::NAction>;
     fn children(&self) -> &Vec<&Self>;
     fn available(&self) -> &Vec<&Self::NAction>;
-    fn signal(&self) -> &Self::NSignal;
+    fn signal(&self) -> Self::NSignal;
     fn player(&self) -> &Self::NPlayer;
     fn utility(&self, player: &Self::NPlayer) -> Utility;
 

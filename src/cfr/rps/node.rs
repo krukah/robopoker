@@ -28,8 +28,8 @@ impl Node for RpsNode<'_> {
     type NAction = RpsEdge;
     type NSignal = RpsSignal;
 
-    fn signal(&self) -> &Self::NSignal {
-        todo!("signal")
+    fn signal(&self) -> Self::NSignal {
+        RpsSignal {}
     }
     fn player(&self) -> &Self::NPlayer {
         self.player

@@ -6,18 +6,31 @@ use crate::cfr::training::marker::player::Player;
 use crate::cfr::training::tree::info::Info;
 use crate::cfr::training::tree::node::Node;
 use crate::cfr::training::tree::tree::Tree;
-use crate::cfr::training::Utility;
+use crate::cfr::training::{Probability, Utility};
 
 pub(crate) trait Minimizer {
     fn profile(&self) -> &Self::OProfile;
+
     fn update_regret(&mut self, info: &Self::OInfo);
     fn update_policy(&mut self, info: &Self::OInfo);
 
-    fn instantaneous_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
+    fn running_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility;
+    fn instant_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
         info.roots()
             .iter()
             .map(|root| self.profile().gain(root, action))
             .sum::<Utility>()
+    }
+    fn looming_regret(&self, info: &Self::OInfo, action: &Self::OAction) -> Utility {
+        self.instant_regret(info, action) + self.running_regret(info, action)
+    }
+
+    fn policy_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Probability)>;
+    fn regret_vector(&self, info: &Self::OInfo) -> Vec<(Self::OAction, Utility)> {
+        info.available()
+            .iter()
+            .map(|action| (**action, self.looming_regret(info, action)))
+            .collect()
     }
 
     type OPlayer: Player;

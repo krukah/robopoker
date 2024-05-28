@@ -24,7 +24,7 @@ impl<'t> Info for RpsInfo<'t> {
     fn roots(&self) -> &Vec<&Self::INode> {
         &self.roots
     }
-    fn signal(&self) -> &Self::ISignal {
-        todo!("signal")
+    fn signal(&self) -> Self::ISignal {
+        RpsSignal {}
     }
 }
