@@ -1,11 +1,15 @@
-use super::{action::RpsAction, info::RpsInfo, node::RpsNode, player::RpsPlayer};
+use crate::cfr::rps::action::RpsAction;
+use crate::cfr::rps::bucket::RpsBucket;
+use crate::cfr::rps::info::RpsInfo;
+use crate::cfr::rps::node::RpsNode;
+use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::traits::tree::tree::Tree;
-use std::{cell::RefCell, collections::HashSet};
+use std::{cell::RefCell, collections::HashMap};
 
 pub(crate) struct RpsTree<'tree> {
     edges: RefCell<Vec<RpsAction>>,
     nodes: RefCell<Vec<RpsNode<'tree>>>,
-    infos: HashSet<RpsInfo<'tree>>,
+    infos: HashMap<RpsBucket, RpsInfo<'tree>>,
 }
 
 impl<'t> RpsTree<'t> {
@@ -23,7 +27,7 @@ impl<'t> RpsTree<'t> {
 
 impl<'t> Tree for RpsTree<'t> {
     fn infos(&self) -> Vec<&Self::TInfo> {
-        self.infos.iter().collect()
+        self.infos.iter().map(|(_, info)| info).collect()
     }
 
     type TPlayer = RpsPlayer;
