@@ -2,9 +2,9 @@
 use crate::cfr::training::marker::player::Player;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub(crate) enum RPSPlayer {
+pub(crate) enum RpsPlayer {
     P1,
     P2,
 }
 
-impl Player for RPSPlayer {}
+impl Player for RpsPlayer {}

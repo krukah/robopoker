@@ -1,6 +1,6 @@
 use crate::cfr::training::marker::signature::Signature;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
-pub(crate) struct RPSSignal {}
+pub(crate) struct RpsSignal {}
 
-impl Signature for RPSSignal {}
+impl Signature for RpsSignal {}
