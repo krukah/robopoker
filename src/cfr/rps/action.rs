@@ -1,5 +1,5 @@
 use super::player::RPSPlayer;
-use crate::cfr::training::action::Action;
+use crate::cfr::training::marker::action::Action;
 use std::hash::{Hash, Hasher};
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
@@ -20,7 +20,7 @@ impl RPSEdge {
         Self { player, turn }
     }
 
-    pub(crate) fn action(&self) -> Move {
+    pub(crate) fn turn(&self) -> Move {
         self.turn
     }
 }
@@ -31,10 +31,4 @@ impl Hash for RPSEdge {
     }
 }
 
-impl Action for RPSEdge {
-    type APlayer = RPSPlayer;
-
-    fn player(&self) -> &Self::APlayer {
-        &self.player
-    }
-}
+impl Action for RPSEdge {}
