@@ -1,9 +1,10 @@
-use super::{
-    action::{Move, RPSEdge},
-    player::RPSPlayer,
-};
-use crate::cfr::training::{node::Node, Utility};
+use crate::cfr::rps::action::{Move, RPSEdge};
+use crate::cfr::rps::player::RPSPlayer;
+use crate::cfr::training::tree::node::Node;
+use crate::cfr::training::Utility;
 use std::hash::{Hash, Hasher};
+
+use super::signal::RPSSignal;
 
 /// Shared-lifetime game tree nodes
 #[derive(PartialEq, Eq)]
@@ -13,13 +14,6 @@ pub(crate) struct RPSNode<'tree> {
     precedent: Option<&'tree RPSEdge>,
     children: Vec<&'tree RPSNode<'tree>>,
     available: Vec<&'tree RPSEdge>,
-}
-
-type Signature = RPSNode<'static>;
-impl RPSNode<'_> {
-    pub fn signature(&self) -> Signature {
-        todo!("owned signature returns for Info + Node")
-    }
 }
 
 impl Hash for RPSNode<'_> {
@@ -32,6 +26,11 @@ impl Hash for RPSNode<'_> {
 impl Node for RPSNode<'_> {
     type NPlayer = RPSPlayer;
     type NAction = RPSEdge;
+    type NSignal = RPSSignal;
+
+    fn signal(&self) -> &Self::NSignal {
+        todo!("signal")
+    }
     fn player(&self) -> &Self::NPlayer {
         self.player
     }
@@ -51,13 +50,13 @@ impl Node for RPSNode<'_> {
         const R_WIN: Utility = 1.0;
         const P_WIN: Utility = 1.0;
         const S_WIN: Utility = 1.0; // we can modify payoffs to verify convergence
-        let a1 = self.precedent.expect("terminal node, depth = 2").action();
+        let a1 = self.precedent.expect("terminal node, depth = 2").turn();
         let a2 = self
             .parent
             .expect("terminal node, depth = 2")
             .precedent
             .expect("terminal node, depth = 2")
-            .action();
+            .turn();
         let payoff = match (a1, a2) {
             (Move::R, Move::S) => R_WIN,
             (Move::R, Move::P) => -P_WIN,
