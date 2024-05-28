@@ -1,4 +1,4 @@
-use super::player::RPSPlayer;
+use super::player::RpsPlayer;
 use crate::cfr::training::marker::action::Action;
 use std::hash::{Hash, Hasher};
 
@@ -10,13 +10,13 @@ pub(crate) enum Move {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub(crate) struct RPSEdge {
-    player: RPSPlayer,
+pub(crate) struct RpsEdge {
+    player: RpsPlayer,
     turn: Move,
 }
 
-impl RPSEdge {
-    pub(crate) fn new(player: RPSPlayer, turn: Move) -> Self {
+impl RpsEdge {
+    pub(crate) fn new(player: RpsPlayer, turn: Move) -> Self {
         Self { player, turn }
     }
 
@@ -25,10 +25,10 @@ impl RPSEdge {
     }
 }
 
-impl Hash for RPSEdge {
+impl Hash for RpsEdge {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.turn.hash(state);
     }
 }
 
-impl Action for RPSEdge {}
+impl Action for RpsEdge {}

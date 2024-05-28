@@ -1,12 +1,12 @@
-use crate::cfr::rps::action::RPSEdge;
-use crate::cfr::rps::info::RPSInfo;
-use crate::cfr::rps::node::RPSNode;
-use crate::cfr::rps::player::RPSPlayer;
-use crate::cfr::rps::policy::RPSPolicy;
-use crate::cfr::rps::profile::RPSProfile;
-use crate::cfr::rps::signal::RPSSignal;
-use crate::cfr::rps::strategy::RPSStrategy;
-use crate::cfr::rps::tree::RPSTree;
+use crate::cfr::rps::action::RpsEdge;
+use crate::cfr::rps::info::RpsInfo;
+use crate::cfr::rps::node::RpsNode;
+use crate::cfr::rps::player::RpsPlayer;
+use crate::cfr::rps::policy::RpsPolicy;
+use crate::cfr::rps::profile::RpsProfile;
+use crate::cfr::rps::signal::RpsSignal;
+use crate::cfr::rps::strategy::RpsStrategy;
+use crate::cfr::rps::tree::RpsTree;
 use crate::cfr::training::learning::minimizer::Minimizer;
 use crate::cfr::training::learning::policy::Policy;
 use crate::cfr::training::learning::profile::Profile;
@@ -17,30 +17,30 @@ use crate::cfr::training::Probability;
 use crate::cfr::training::Utility;
 use std::collections::HashMap;
 
-impl Profile for HashMap<RPSSignal, HashMap<RPSEdge, Probability>> {
+impl Profile for HashMap<RpsSignal, HashMap<RpsEdge, Probability>> {
     fn strategy(&self, _: &Self::PPlayer) -> &Self::PStrategy {
         &self
     }
-    type PAction = RPSEdge;
-    type PPlayer = RPSPlayer;
-    type PPolicy = RPSPolicy;
-    type PNode = RPSNode<'static>;
-    type PInfo = RPSInfo<'static>;
-    type PStrategy = RPSStrategy<'static>;
+    type PAction = RpsEdge;
+    type PPlayer = RpsPlayer;
+    type PPolicy = RpsPolicy;
+    type PNode = RpsNode<'static>;
+    type PInfo = RpsInfo<'static>;
+    type PStrategy = RpsStrategy<'static>;
 }
 
-impl Strategy for HashMap<RPSSignal, HashMap<RPSEdge, Probability>> {
+impl Strategy for HashMap<RpsSignal, HashMap<RpsEdge, Probability>> {
     fn policy(&self, node: &Self::SNode) -> &Self::SPolicy {
         self.get(node.sign())
             .expect("policy initialized across signature set")
     }
-    type SPlayer = RPSPlayer;
-    type SAction = RPSEdge;
-    type SPolicy = RPSPolicy;
-    type SNode = RPSNode<'static>;
+    type SPlayer = RpsPlayer;
+    type SAction = RpsEdge;
+    type SPolicy = RpsPolicy;
+    type SNode = RpsNode<'static>;
 }
 
-impl Policy for HashMap<RPSEdge, Probability> {
+impl Policy for HashMap<RpsEdge, Probability> {
     fn weight(&self, action: &Self::PAction) -> Probability {
         self.get(action)
             .expect("weight initialized across action set")
@@ -51,23 +51,23 @@ impl Policy for HashMap<RPSEdge, Probability> {
             .unwrap()
             .0
     }
-    type PAction = RPSEdge;
+    type PAction = RpsEdge;
 }
 
-pub(crate) struct RPSMinimizer {
-    regrets: HashMap<RPSSignal, HashMap<RPSEdge, Utility>>,
-    profile: HashMap<RPSSignal, HashMap<RPSEdge, Probability>>,
+pub(crate) struct RpsMinimizer {
+    regrets: HashMap<RpsSignal, HashMap<RpsEdge, Utility>>,
+    profile: HashMap<RpsSignal, HashMap<RpsEdge, Probability>>,
 }
 
-impl RPSMinimizer {
+impl RpsMinimizer {
     pub fn new() -> Self {
         let profile = HashMap::new();
         let regrets = HashMap::new();
         Self { regrets, profile }
     }
-    pub fn initialize(&mut self, tree: &RPSTree) {
-        let mut profile = RPSProfile::new();
-        let mut regrets = RPSRegrets::new();
+    pub fn initialize(&mut self, tree: &RpsTree) {
+        let mut profile = RpsProfile::new();
+        let mut regrets = RpsRegrets::new();
         for info in tree.infos() {
             let n = info.available().len();
             let weight = 1.0 / n as Probability;
@@ -79,25 +79,25 @@ impl RPSMinimizer {
         }
     }
 
-    // fn next_regret(&self, info: &RPSInfo<'t>, action: &RPSEdge) -> Utility {
+    // fn next_regret(&self, info: &RpsInfo<'t>, action: &RpsEdge) -> Utility {
     //     self.last_regret(info, action) + self.this_regret(info, action)
     // }
-    // fn last_regret(&self, info: &RPSInfo<'t>, action: &RPSEdge) -> Utility {
+    // fn last_regret(&self, info: &RpsInfo<'t>, action: &RpsEdge) -> Utility {
     //     self.regrets.get_regret(&info.sign(), action)
     // }
-    // fn this_regret(&self, info: &RPSInfo<'t>, action: &RPSEdge) -> Utility {
+    // fn this_regret(&self, info: &RpsInfo<'t>, action: &RpsEdge) -> Utility {
     //     info.roots()
     //         .iter()
     //         .map(|root| self.profile.gain(root, action))
     //         .sum::<Utility>()
     // }
 
-    // fn policy_vector(&self, info: &RPSInfo<'t>) -> Vec<Probability> {
+    // fn policy_vector(&self, info: &RpsInfo<'t>) -> Vec<Probability> {
     //     let regrets = self.regret_vector(info);
     //     let sum = regrets.iter().sum::<Utility>();
     //     regrets.iter().map(|regret| regret / sum).collect()
     // }
-    // fn regret_vector(&self, info: &RPSInfo<'t>) -> Vec<Utility> {
+    // fn regret_vector(&self, info: &RpsInfo<'t>) -> Vec<Utility> {
     //      let regrets =   info.available()
     //         .iter()
     //         .map(|action| self.last_regret(info, action))
@@ -107,7 +107,7 @@ impl RPSMinimizer {
     // }
 }
 
-impl Minimizer for RPSMinimizer {
+impl Minimizer for RpsMinimizer {
     fn profile(&self) -> &Self::OProfile {
         &self.profile
     }
@@ -117,7 +117,7 @@ impl Minimizer for RPSMinimizer {
             .iter()
             .map(|action| **action)
             .zip(self.policy_vector(info).into_iter())
-            .collect::<Vec<(RPSEdge, Probability)>>()
+            .collect::<Vec<(RpsEdge, Probability)>>()
         {
             self.profile.update_weight(info.signal(), action, weight)
         }
@@ -127,18 +127,18 @@ impl Minimizer for RPSMinimizer {
             .available()
             .iter()
             .map(|action| (**action, self.next_regret(info, action)))
-            .collect::<Vec<(RPSEdge, Utility)>>()
+            .collect::<Vec<(RpsEdge, Utility)>>()
         {
             self.regrets.update_regret(&info.signal(), &action, regret);
         }
     }
 
-    type OPlayer = RPSPlayer;
-    type OAction = RPSEdge;
-    type OPolicy = RPSPolicy;
-    type OTree = RPSTree<'static>;
-    type ONode = RPSNode<'static>;
-    type OInfo = RPSInfo<'static>;
-    type OProfile = RPSProfile<'static>;
-    type OStrategy = RPSStrategy<'static>;
+    type OPlayer = RpsPlayer;
+    type OAction = RpsEdge;
+    type OPolicy = RpsPolicy;
+    type OTree = RpsTree<'static>;
+    type ONode = RpsNode<'static>;
+    type OInfo = RpsInfo<'static>;
+    type OProfile = RpsProfile<'static>;
+    type OStrategy = RpsStrategy<'static>;
 }

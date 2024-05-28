@@ -1,13 +1,13 @@
-use super::action::RPSEdge;
+use super::action::RpsEdge;
 use crate::cfr::training::learning::policy::Policy;
 use crate::cfr::training::Probability;
 use std::collections::HashMap;
 
-pub(crate) struct RPSPolicy {
-    weights: HashMap<RPSEdge, Probability>,
+pub(crate) struct RpsPolicy {
+    weights: HashMap<RpsEdge, Probability>,
 }
 
-impl RPSPolicy {
+impl RpsPolicy {
     pub fn new() -> Self {
         Self {
             weights: HashMap::new(),
@@ -15,7 +15,7 @@ impl RPSPolicy {
     }
 }
 
-impl Policy for RPSPolicy {
+impl Policy for RpsPolicy {
     fn weight(&self, action: &Self::PAction) -> Probability {
         *self
             .weights
@@ -30,5 +30,5 @@ impl Policy for RPSPolicy {
             .0
     }
 
-    type PAction = RPSEdge;
+    type PAction = RpsEdge;
 }

@@ -1,39 +1,39 @@
 // use super::{
-//     action::RPSEdge, info::RPSInfo, node::RPSNode, player::RPSPlayer, policy::RPSPolicy,
-//     strategy::RPSStrategy,
+//     action::RpsEdge, info::RpsInfo, node::RpsNode, player::RpsPlayer, policy::RpsPolicy,
+//     strategy::RpsStrategy,
 // };
-use crate::cfr::rps::action::RPSEdge;
-use crate::cfr::rps::info::RPSInfo;
-use crate::cfr::rps::node::RPSNode;
-use crate::cfr::rps::player::RPSPlayer;
-use crate::cfr::rps::policy::RPSPolicy;
-use crate::cfr::rps::strategy::RPSStrategy;
+use crate::cfr::rps::action::RpsEdge;
+use crate::cfr::rps::info::RpsInfo;
+use crate::cfr::rps::node::RpsNode;
+use crate::cfr::rps::player::RpsPlayer;
+use crate::cfr::rps::policy::RpsPolicy;
+use crate::cfr::rps::strategy::RpsStrategy;
 use crate::cfr::training::learning::profile::Profile;
 use crate::cfr::training::Probability;
 use crate::cfr::training::Utility;
 use std::collections::HashMap;
 
-type Signature = RPSNode<'static>;
+type Signature = RpsNode<'static>;
 
-pub(crate) struct RPSRegrets(HashMap<Signature, HashMap<RPSEdge, Utility>>);
-pub(crate) struct RPSProfile<'tree> {
-    _regrets: HashMap<Signature, HashMap<&'tree RPSEdge, Utility>>,
-    _strates: HashMap<Signature, HashMap<&'tree RPSEdge, Probability>>,
-    strategy: RPSStrategy<'tree>,
+pub(crate) struct RpsRegrets(HashMap<Signature, HashMap<RpsEdge, Utility>>);
+pub(crate) struct RpsProfile<'tree> {
+    _regrets: HashMap<Signature, HashMap<&'tree RpsEdge, Utility>>,
+    _strates: HashMap<Signature, HashMap<&'tree RpsEdge, Probability>>,
+    strategy: RpsStrategy<'tree>,
 }
 
-impl<'t> RPSProfile<'t> {
+impl<'t> RpsProfile<'t> {
     pub fn new() -> Self {
         todo!()
         // Self {
-        //     strategy: RPSStrategy::new(),
+        //     strategy: RpsStrategy::new(),
         // }
     }
-    pub fn update_weight(&mut self, sign: Signature, action: &RPSEdge, weight: Probability) {
+    pub fn update_weight(&mut self, sign: Signature, action: &RpsEdge, weight: Probability) {
         todo!("replacement interface across Profile > Strategy > Policy")
     }
 
-    pub fn set_weight(&mut self, sign: Signature, action: &'t RPSEdge, weight: Probability) {
+    pub fn set_weight(&mut self, sign: Signature, action: &'t RpsEdge, weight: Probability) {
         self._strates
             .entry(sign)
             .or_insert_with(HashMap::new)
@@ -41,26 +41,26 @@ impl<'t> RPSProfile<'t> {
     }
 }
 
-impl<'t> Profile for RPSProfile<'t> {
+impl<'t> Profile for RpsProfile<'t> {
     fn strategy(&self, _: &Self::PPlayer) -> &Self::PStrategy {
         &self.strategy
     }
 
-    type PPlayer = RPSPlayer;
-    type PAction = RPSEdge;
-    type PPolicy = RPSPolicy;
-    type PNode = RPSNode<'t>;
-    type PInfo = RPSInfo<'t>;
-    type PStrategy = RPSStrategy<'t>;
+    type PPlayer = RpsPlayer;
+    type PAction = RpsEdge;
+    type PPolicy = RpsPolicy;
+    type PNode = RpsNode<'t>;
+    type PInfo = RpsInfo<'t>;
+    type PStrategy = RpsStrategy<'t>;
 }
 
 // this could move into different file
 
-impl RPSRegrets {
+impl RpsRegrets {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
-    pub fn get_regret(&self, sign: &Signature, action: &RPSEdge) -> Utility {
+    pub fn get_regret(&self, sign: &Signature, action: &RpsEdge) -> Utility {
         *self
             .0
             .get(sign)
@@ -68,7 +68,7 @@ impl RPSRegrets {
             .get(action)
             .expect("regret initialized for actions")
     }
-    pub fn update_regret(&mut self, sign: &Signature, action: &RPSEdge, regret: Utility) {
+    pub fn update_regret(&mut self, sign: &Signature, action: &RpsEdge, regret: Utility) {
         *self
             .0
             .get_mut(sign)
@@ -76,7 +76,7 @@ impl RPSRegrets {
             .get_mut(action)
             .expect("regret initialized for actions") += regret;
     }
-    pub fn set_regret(&mut self, sign: Signature, action: RPSEdge, regret: Utility) {
+    pub fn set_regret(&mut self, sign: Signature, action: RpsEdge, regret: Utility) {
         self.0
             .entry(sign)
             .or_insert_with(HashMap::new)

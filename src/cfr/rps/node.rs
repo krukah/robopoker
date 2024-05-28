@@ -1,32 +1,32 @@
-use crate::cfr::rps::action::{Move, RPSEdge};
-use crate::cfr::rps::player::RPSPlayer;
+use crate::cfr::rps::action::{Move, RpsEdge};
+use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::training::tree::node::Node;
 use crate::cfr::training::Utility;
 use std::hash::{Hash, Hasher};
 
-use super::signal::RPSSignal;
+use super::signal::RpsSignal;
 
 /// Shared-lifetime game tree nodes
 #[derive(PartialEq, Eq)]
-pub(crate) struct RPSNode<'tree> {
-    player: &'tree RPSPlayer,
-    parent: Option<&'tree RPSNode<'tree>>,
-    precedent: Option<&'tree RPSEdge>,
-    children: Vec<&'tree RPSNode<'tree>>,
-    available: Vec<&'tree RPSEdge>,
+pub(crate) struct RpsNode<'tree> {
+    player: &'tree RpsPlayer,
+    parent: Option<&'tree RpsNode<'tree>>,
+    precedent: Option<&'tree RpsEdge>,
+    children: Vec<&'tree RpsNode<'tree>>,
+    available: Vec<&'tree RpsEdge>,
 }
 
-impl Hash for RPSNode<'_> {
-    /// lucky for us, every single node in RPS has the same abstraction lookup hash, which is to say there is no information to inform your decision.
+impl Hash for RpsNode<'_> {
+    /// lucky for us, every single node in Rps has the same abstraction lookup hash, which is to say there is no information to inform your decision.
     fn hash<H: Hasher>(&self, state: &mut H) {
         0.hash(state)
     }
 }
 
-impl Node for RPSNode<'_> {
-    type NPlayer = RPSPlayer;
-    type NAction = RPSEdge;
-    type NSignal = RPSSignal;
+impl Node for RpsNode<'_> {
+    type NPlayer = RpsPlayer;
+    type NAction = RpsEdge;
+    type NSignal = RpsSignal;
 
     fn signal(&self) -> &Self::NSignal {
         todo!("signal")
@@ -69,8 +69,8 @@ impl Node for RPSNode<'_> {
             (Move::S, _) => 0.0,
         };
         let direction = match player {
-            RPSPlayer::P1 => 0.0 + 1.0,
-            RPSPlayer::P2 => 0.0 - 1.0,
+            RpsPlayer::P1 => 0.0 + 1.0,
+            RpsPlayer::P2 => 0.0 - 1.0,
         };
         direction * payoff
     }
