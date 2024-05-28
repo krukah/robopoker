@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub struct Table {
     n_hands: u32,
     hand: Hand,
