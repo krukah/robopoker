@@ -1,11 +1,10 @@
 use crate::cfr::traits::marker::action::Action;
-use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::marker::bucket::Bucket;
+use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::tree::node::Node;
-use std::hash::Hash;
 
 /// A set of indistinguishable nodes compatible with the player's information, up to any abstraction. Intuitively, this is the support of the distribution over information unknown to the player whose turn to act.
-pub(crate) trait Info: Eq + Hash {
+pub(crate) trait Info {
     // required
     fn roots(&self) -> &Vec<&Self::INode>;
     fn bucket(&self) -> Self::IBucket;

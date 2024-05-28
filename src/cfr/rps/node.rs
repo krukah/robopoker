@@ -3,7 +3,6 @@ use crate::cfr::rps::action::{Move, RpsAction};
 use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::traits::tree::node::Node;
 use crate::cfr::traits::Utility;
-use std::hash::{Hash, Hasher};
 
 /// Shared-lifetime game tree nodes
 #[derive(PartialEq, Eq)]
@@ -13,13 +12,6 @@ pub(crate) struct RpsNode<'tree> {
     precedent: Option<&'tree RpsAction>,
     children: Vec<&'tree RpsNode<'tree>>,
     available: Vec<&'tree RpsAction>,
-}
-
-impl Hash for RpsNode<'_> {
-    /// lucky for us, every single node in Rps has the same abstraction lookup hash, which is to say there is no information to inform your decision.
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        0.hash(state)
-    }
 }
 
 impl Node for RpsNode<'_> {
