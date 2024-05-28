@@ -8,7 +8,7 @@ use std::hash::Hash;
 pub(crate) trait Info: Eq + Hash {
     // required
     fn roots(&self) -> &Vec<&Self::INode>;
-    fn signal(&self) -> &Self::ISignal;
+    fn signal(&self) -> Self::ISignal;
 
     // provided
     fn available(&self) -> &Vec<&Self::IAction> {
