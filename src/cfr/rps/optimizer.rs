@@ -32,11 +32,11 @@ impl RpsOptimizer {
                 self.profile
                     .entry(bucket)
                     .or_insert_with(HashMap::new)
-                    .insert(**action, weight);
+                    .insert(*action, weight);
                 self.regrets
                     .entry(bucket)
                     .or_insert_with(HashMap::new)
-                    .insert(**action, regret);
+                    .insert(*action, regret);
             }
         }
     }
