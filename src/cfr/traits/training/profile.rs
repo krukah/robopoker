@@ -51,7 +51,7 @@ pub(crate) trait Profile {
                     * if node.player() == parent.player() {
                         1.0
                     } else {
-                        self.weight(parent, node.parent_edge().unwrap())
+                        self.weight(parent, node.incoming().unwrap())
                     }
             }
         }
@@ -60,7 +60,7 @@ pub(crate) trait Profile {
         match node.parent() {
             None => 1.0,
             Some(parent) => {
-                self.expected_reach(parent) * self.weight(parent, node.parent_edge().unwrap())
+                self.expected_reach(parent) * self.weight(parent, node.incoming().unwrap())
             }
         }
     }

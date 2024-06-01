@@ -11,7 +11,7 @@ pub(crate) trait Info {
 
     // provided
     fn available(&self) -> Vec<&Self::IAction> {
-        self.roots().iter().next().unwrap().child_edges()
+        self.roots().iter().next().unwrap().outgoing()
     }
 
     type IPlayer: Player;
