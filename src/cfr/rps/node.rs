@@ -1,3 +1,11 @@
+use petgraph::graph::DiGraph;
+use petgraph::graph::EdgeIndex;
+use petgraph::graph::Graph;
+use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
+use petgraph::Direction::Incoming;
+use petgraph::Direction::Outgoing;
+
 use super::bucket::RpsBucket;
 use super::tree::RpsTree;
 use crate::cfr::rps::action::{Move, RpsAction};
@@ -7,37 +15,12 @@ use crate::cfr::traits::Utility;
 
 /// Shared-lifetime game tree nodes
 pub(crate) struct RpsNode<'t> {
+    idx: NodeIndex,
     tree: &'t RpsTree<'t>,
-
-    index: usize,
-    player: &'t RpsPlayer,
-
-    parent: Option<usize>,
-    childs: Vec<usize>,
-    parent_edge: Option<RpsAction>,
-    child_edges: Vec<RpsAction>,
+    inner: &'t RpsPlayer,
 }
 
-impl<'t> RpsNode<'t> {
-    pub fn new(tree: &'t RpsTree<'t>, index: usize, player: &'t RpsPlayer) -> Self {
-        Self {
-            tree,
-            index,
-            player,
-            parent: None,
-            parent_edge: None,
-            childs: Vec::new(),
-            child_edges: Vec::new(),
-        }
-    }
-    pub fn bind(&'t mut self, child: &'t mut RpsNode<'t>) {
-        self.childs.push(child.index());
-        child.parent = Some(self.index());
-    }
-    pub fn index(&self) -> usize {
-        self.index
-    }
-}
+impl<'t> RpsNode<'t> {}
 
 impl Node for RpsNode<'_> {
     type NPlayer = RpsPlayer;
@@ -48,12 +31,15 @@ impl Node for RpsNode<'_> {
         const R_WIN: Utility = 1.0;
         const P_WIN: Utility = 1.0;
         const S_WIN: Utility = 1.0; // we can modify payoffs to verify convergence
-        let a1 = self.parent_edge.expect("terminal node, depth > 1").turn();
+        let a1 = self
+            .incoming()
+            .expect("eval at terminal node, depth > 1")
+            .turn();
         let a2 = self
             .parent()
-            .expect("terminal node, depth = 2")
-            .parent_edge()
-            .expect("terminal node, depth = 2")
+            .expect("eval at terminal node, depth = 2")
+            .incoming()
+            .expect("eval at terminal node, depth = 2")
             .turn();
         let payoff = match (a1, a2) {
             (Move::R, Move::S) => R_WIN,
@@ -76,21 +62,36 @@ impl Node for RpsNode<'_> {
         RpsBucket {}
     }
     fn player(&self) -> &Self::NPlayer {
-        self.player
+        self.inner
     }
     fn parent(&self) -> Option<&Self> {
-        self.parent.map(|i| self.tree.peek(i))
+        todo!() // self.parent.map(|i| self.tree.peek(i))
     }
-    fn parent_edge(&self) -> Option<&Self::NAction> {
-        self.parent_edge.as_ref()
+    fn incoming(&self) -> Option<&Self::NAction> {
+        self.tree
+            .graph()
+            .edges_directed(self.idx, Incoming)
+            .next()
+            .map(|e| e.weight())
     }
     fn children(&self) -> Vec<&Self> {
-        self.childs.iter().map(|i| self.tree.peek(*i)).collect()
+        self.tree
+            .graph()
+            .edges_directed(self.idx, Outgoing)
+            .map(|e| e.target())
+            .map(|i| {
+                self.tree
+                    .graph()
+                    .node_weight(i)
+                    .expect("follwed directed edge downward in tree to node")
+            })
+            .collect()
     }
-    fn child_edges(&self) -> Vec<&Self::NAction> {
-        self.childs
-            .iter()
-            .map(|i| self.tree.peek(*i).parent_edge().unwrap())
+    fn outgoing(&self) -> Vec<&Self::NAction> {
+        self.tree
+            .graph()
+            .edges_directed(self.idx, Outgoing)
+            .map(|e| e.weight())
             .collect()
     }
 }
