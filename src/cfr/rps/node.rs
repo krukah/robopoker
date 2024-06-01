@@ -1,17 +1,42 @@
 use super::bucket::RpsBucket;
+use super::tree::RpsTree;
 use crate::cfr::rps::action::{Move, RpsAction};
 use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::traits::tree::node::Node;
 use crate::cfr::traits::Utility;
 
 /// Shared-lifetime game tree nodes
-#[derive(PartialEq, Eq)]
-pub(crate) struct RpsNode<'tree> {
-    player: &'tree RpsPlayer,
-    parent: Option<&'tree RpsNode<'tree>>,
-    precedent: Option<&'tree RpsAction>,
-    children: Vec<&'tree RpsNode<'tree>>,
-    available: Vec<&'tree RpsAction>,
+pub(crate) struct RpsNode<'t> {
+    tree: &'t RpsTree<'t>,
+
+    index: usize,
+    player: &'t RpsPlayer,
+
+    parent: Option<usize>,
+    childs: Vec<usize>,
+    parent_edge: Option<RpsAction>,
+    child_edges: Vec<RpsAction>,
+}
+
+impl<'t> RpsNode<'t> {
+    pub fn new(tree: &'t RpsTree<'t>, index: usize, player: &'t RpsPlayer) -> Self {
+        Self {
+            tree,
+            index,
+            player,
+            parent: None,
+            parent_edge: None,
+            childs: Vec::new(),
+            child_edges: Vec::new(),
+        }
+    }
+    pub fn bind(&'t mut self, child: &'t mut RpsNode<'t>) {
+        self.childs.push(child.index());
+        child.parent = Some(self.index());
+    }
+    pub fn index(&self) -> usize {
+        self.index
+    }
 }
 
 impl Node for RpsNode<'_> {
@@ -23,11 +48,11 @@ impl Node for RpsNode<'_> {
         const R_WIN: Utility = 1.0;
         const P_WIN: Utility = 1.0;
         const S_WIN: Utility = 1.0; // we can modify payoffs to verify convergence
-        let a1 = self.precedent.expect("terminal node, depth > 1").turn();
+        let a1 = self.parent_edge.expect("terminal node, depth > 1").turn();
         let a2 = self
-            .parent
+            .parent()
             .expect("terminal node, depth = 2")
-            .precedent
+            .parent_edge()
             .expect("terminal node, depth = 2")
             .turn();
         let payoff = match (a1, a2) {
@@ -53,16 +78,19 @@ impl Node for RpsNode<'_> {
     fn player(&self) -> &Self::NPlayer {
         self.player
     }
-    fn available(&self) -> &Vec<&Self::NAction> {
-        &self.available
+    fn parent(&self) -> Option<&Self> {
+        self.parent.map(|i| self.tree.peek(i))
     }
-    fn children(&self) -> &Vec<&Self> {
-        &self.children
+    fn parent_edge(&self) -> Option<&Self::NAction> {
+        self.parent_edge.as_ref()
     }
-    fn parent(&self) -> &Option<&Self> {
-        &self.parent
+    fn children(&self) -> Vec<&Self> {
+        self.childs.iter().map(|i| self.tree.peek(*i)).collect()
     }
-    fn precedent(&self) -> &Option<&Self::NAction> {
-        &self.precedent
+    fn child_edges(&self) -> Vec<&Self::NAction> {
+        self.childs
+            .iter()
+            .map(|i| self.tree.peek(*i).parent_edge().unwrap())
+            .collect()
     }
 }

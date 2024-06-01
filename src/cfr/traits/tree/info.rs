@@ -10,8 +10,8 @@ pub(crate) trait Info {
     fn bucket(&self) -> Self::IBucket;
 
     // provided
-    fn available(&self) -> &Vec<&Self::IAction> {
-        self.roots().iter().next().unwrap().available()
+    fn available(&self) -> Vec<&Self::IAction> {
+        self.roots().iter().next().unwrap().child_edges()
     }
 
     type IPlayer: Player;

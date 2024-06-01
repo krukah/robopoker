@@ -5,7 +5,6 @@ use crate::cfr::rps::player::RpsPlayer;
 use crate::cfr::traits::tree::info::Info;
 
 /// Indistinguishable states belonging to same InfoSets. Effectively, distribution of possile opponent actions.
-#[derive(PartialEq, Eq)]
 pub(crate) struct RpsInfo<'t> {
     roots: Vec<&'t RpsNode<'t>>,
 }

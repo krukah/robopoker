@@ -1,7 +1,7 @@
-use crate::cfr::traits::training::policy::Policy;
-use crate::cfr::traits::training::strategy::Strategy;
 use crate::cfr::traits::marker::action::Action;
 use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::training::policy::Policy;
+use crate::cfr::traits::training::strategy::Strategy;
 use crate::cfr::traits::tree::info::Info;
 use crate::cfr::traits::tree::node::Node;
 use crate::cfr::traits::Probability;
@@ -51,7 +51,7 @@ pub(crate) trait Profile {
                     * if node.player() == parent.player() {
                         1.0
                     } else {
-                        self.weight(parent, node.precedent().unwrap())
+                        self.weight(parent, node.parent_edge().unwrap())
                     }
             }
         }
@@ -60,7 +60,7 @@ pub(crate) trait Profile {
         match node.parent() {
             None => 1.0,
             Some(parent) => {
-                self.expected_reach(parent) * self.weight(parent, node.precedent().unwrap())
+                self.expected_reach(parent) * self.weight(parent, node.parent_edge().unwrap())
             }
         }
     }
