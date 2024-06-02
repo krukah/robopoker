@@ -1,8 +1,8 @@
+use crate::cfr::traits::marker::action::Action;
+use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::training::policy::Policy;
 use crate::cfr::traits::training::profile::Profile;
 use crate::cfr::traits::training::strategy::Strategy;
-use crate::cfr::traits::marker::action::Action;
-use crate::cfr::traits::marker::player::Player;
 use crate::cfr::traits::tree::info::Info;
 use crate::cfr::traits::tree::node::Node;
 use crate::cfr::traits::tree::tree::Tree;

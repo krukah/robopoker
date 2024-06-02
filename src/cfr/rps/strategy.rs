@@ -12,7 +12,7 @@ impl Strategy for HashMap<RpsBucket, HashMap<RpsAction, Probability>> {
         self.get(&node.bucket())
             .expect("policy initialized across signature set")
     }
-    type SNode = RpsNode<'static>;
+    type SNode = RpsNode;
     type SPlayer = RpsPlayer;
     type SAction = RpsAction;
     type SPolicy = HashMap<RpsAction, Probability>;
