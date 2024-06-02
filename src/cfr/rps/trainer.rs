@@ -1,9 +1,9 @@
 use crate::cfr::rps::action::RpsAction;
+use crate::cfr::rps::bucket::RpsBucket;
 use crate::cfr::rps::info::RpsInfo;
 use crate::cfr::rps::node::RpsNode;
 use crate::cfr::rps::optimizer::RpsOptimizer;
 use crate::cfr::rps::player::RpsPlayer;
-use crate::cfr::rps::bucket::RpsBucket;
 use crate::cfr::rps::tree::RpsTree;
 use crate::cfr::traits::training::optimizer::Optimizer;
 use crate::cfr::traits::training::trainer::Trainer;
@@ -19,7 +19,8 @@ pub(crate) struct RpsTrainer {
 
 impl RpsTrainer {
     pub fn new() -> Self {
-        let tree = RpsTree::new();
+        let mut tree = RpsTree::new();
+        tree.expand();
         let mut optimizer = RpsOptimizer::new();
         optimizer.scan(&tree);
         Self { optimizer, tree }
@@ -31,7 +32,7 @@ impl Trainer for RpsTrainer {
     type TPolicy = HashMap<RpsAction, Probability>;
     type TProfile = HashMap<RpsBucket, HashMap<RpsAction, Probability>>;
     type TStrategy = HashMap<RpsBucket, HashMap<RpsAction, Probability>>;
-    type TNode = RpsNode<'static>;
+    type TNode = RpsNode;
     type TInfo = RpsInfo<'static>;
     type TTree = RpsTree<'static>;
     type TAction = RpsAction;

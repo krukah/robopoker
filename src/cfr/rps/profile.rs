@@ -15,6 +15,6 @@ impl Profile for HashMap<RpsBucket, HashMap<RpsAction, Probability>> {
     type PPlayer = RpsPlayer;
     type PPolicy = HashMap<RpsAction, Probability>;
     type PStrategy = HashMap<RpsBucket, HashMap<RpsAction, Probability>>;
-    type PNode = RpsNode<'static>;
+    type PNode = RpsNode;
     type PInfo = RpsInfo<'static>;
 }

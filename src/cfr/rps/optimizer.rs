@@ -79,7 +79,7 @@ impl Optimizer for RpsOptimizer {
     type OPlayer = RpsPlayer;
     type OAction = RpsAction;
     type OTree = RpsTree<'static>;
-    type ONode = RpsNode<'static>;
+    type ONode = RpsNode;
     type OInfo = RpsInfo<'static>;
     type OPolicy = HashMap<RpsAction, Probability>;
     type OProfile = HashMap<RpsBucket, HashMap<RpsAction, Probability>>;

@@ -1,6 +1,6 @@
-use crate::cfr::traits::training::policy::Policy;
 use crate::cfr::traits::marker::action::Action;
 use crate::cfr::traits::marker::player::Player;
+use crate::cfr::traits::training::policy::Policy;
 use crate::cfr::traits::tree::node::Node;
 
 /// A strategy (σ: player -> policy) is a function that assigns a policy to each h ∈ H, and therefore Ii ∈ Ii. Easily implemented as a HashMap<Info, Policy>.
