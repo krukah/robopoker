@@ -8,8 +8,8 @@ mod players;
 
 #[tokio::main]
 async fn main() {
-    let mut trainer = Trainer::new();
-    traits::Trainer::train(&mut trainer, 50);
+    let mut trainer = Trainer::new(50);
+    traits::Trainer::train(&mut trainer);
 }
 
 pub mod traits {
@@ -109,16 +109,7 @@ pub mod traits {
     {
         // required
         fn roots(&'t self) -> Vec<&'t N>;
-
-        fn player(&'t self) -> &'t C {
-            self.roots().iter().next().unwrap().player()
-        }
-        fn bucket(&'t self) -> &'t B {
-            self.roots().iter().next().unwrap().bucket()
-        }
-        fn outgoing(&'t self) -> Vec<&'t A> {
-            self.roots().iter().next().unwrap().outgoing()
-        }
+        fn sample(&self) -> &N;
     }
 
     /// a tree will own the graph and infosets
@@ -142,7 +133,6 @@ pub mod traits {
     {
         // required
         fn weight(&self, action: &A) -> Probability;
-        fn sample(&self) -> &A;
     }
 
     /// a strategy σ is a policy for each player. Equivalently a matrix indexed by (player, action) or (i,a) ∈ N × A
@@ -277,6 +267,7 @@ pub mod traits {
         // policy calculation via regret matching +
         fn policy_vector(&self, info: &'t I) -> Vec<(A, Probability)> {
             let regrets = info
+                .sample()
                 .outgoing()
                 .iter()
                 .map(|action| (**action, self.running_regret(info, action)))
@@ -287,7 +278,8 @@ pub mod traits {
             policy
         }
         fn regret_vector(&self, info: &'t I) -> Vec<(A, Utility)> {
-            info.outgoing()
+            info.sample()
+                .outgoing()
                 .iter()
                 .map(|action| (**action, self.matching_regret(info, action)))
                 .collect()
@@ -310,11 +302,12 @@ pub mod traits {
         L: Local,
     {
         // required
-        fn train(&mut self, n: usize);
+        fn train(&mut self);
     }
 }
 
 pub mod structs {
+
     use super::traits;
     use petgraph::graph::DiGraph;
     use petgraph::graph::EdgeIndex;
@@ -410,21 +403,20 @@ pub mod structs {
             }
         }
         pub fn payoff(&self, player: &Player) -> Utility {
-            const R_WIN: Utility = 1.;
-            const P_WIN: Utility = 1.;
-            const S_WIN: Utility = 5.; // we can modify payoffs to verify convergence
+            const LO_STAKES: Utility = 1.;
+            const HI_STAKES: Utility = 5.; // we can modify payoffs to verify convergence
             let direction = match player {
                 Player::P1 => 0. + 1.,
                 Player::P2 => 0. - 1.,
                 _ => unreachable!(),
             };
             let payoff = match self.0 {
-                07 => 0. + P_WIN, // P > R
-                05 => 0. - P_WIN, // R < P
-                06 => 0. + S_WIN, // R > S
-                11 => 0. + S_WIN, // S > P
-                10 => 0. - S_WIN, // S < R
-                09 => 0. - S_WIN, // P < S
+                07 => 0. + LO_STAKES, // P > R
+                05 => 0. - LO_STAKES, // R < P
+                06 => 0. + HI_STAKES, // R > S
+                11 => 0. + HI_STAKES, // S > P
+                10 => 0. - HI_STAKES, // S < R
+                09 => 0. - HI_STAKES, // P < S
                 04 | 08 | 12 => 0.0,
                 00..=03 => unreachable!("eval at terminal node, depth > 1"),
                 _ => unreachable!(),
@@ -478,8 +470,15 @@ pub mod structs {
         fn roots(&self) -> Vec<&Node> {
             self.roots
                 .iter()
-                .map(|i| self.graph().node_weight(*i).unwrap())
+                .map(|i| self.graph().node_weight(*i).expect("valid node index"))
                 .collect()
+        }
+        fn sample(&self) -> &Node {
+            self.roots
+                .iter()
+                .next()
+                .map(|i| self.graph().node_weight(*i).expect("valid node index"))
+                .expect("non-empty infoset")
         }
     }
 
@@ -492,9 +491,9 @@ pub mod structs {
     impl Tree {
         pub fn new() -> Self {
             let mut this = Self {
+                infos: HashMap::new(),
                 index: NodeIndex::new(0),
                 graph: Box::new(DiGraph::new()),
-                infos: HashMap::new(),
             };
             this.insert(Local::root());
             this.explore();
@@ -565,12 +564,6 @@ pub mod structs {
                 .get(action)
                 .expect("policy initialized across (bucket, action) set")
         }
-        fn sample(&self) -> &Action {
-            self.iter()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-                .unwrap()
-                .0
-        }
     }
 
     /// strategy
@@ -603,11 +596,11 @@ pub mod structs {
             let mut profile = HashMap::new();
             let mut regrets = HashMap::new();
             for info in traits::Tree::infosets(tree) {
-                let n = traits::Info::outgoing(info).len();
-                let weight = 1.0 / n as Probability;
+                let actions = traits::Node::outgoing(traits::Info::sample(info));
+                let bucket = traits::Node::bucket(traits::Info::sample(info));
+                let weight = 1.0 / actions.len() as Probability;
                 let regret = 0.0;
-                let bucket = traits::Info::bucket(info);
-                for action in traits::Info::outgoing(info) {
+                for action in actions {
                     average
                         .entry(*bucket)
                         .or_insert_with(HashMap::new)
@@ -651,7 +644,7 @@ pub mod structs {
             for (ref action, regret) in self.regret_vector(info) {
                 let running = self
                     .regrets
-                    .get_mut(traits::Info::bucket(info))
+                    .get_mut(traits::Node::bucket(traits::Info::sample(info)))
                     .expect("regret initialized for infoset")
                     .get_mut(action)
                     .expect("regret initialized for actions");
@@ -662,13 +655,13 @@ pub mod structs {
             for (ref action, weight) in self.policy_vector(info) {
                 let current = self
                     .profile
-                    .get_mut(traits::Info::bucket(info))
+                    .get_mut(traits::Node::bucket(traits::Info::sample(info)))
                     .expect("policy initialized for infoset")
                     .get_mut(action)
                     .expect("policy initialized for actions");
                 let average = self
                     .average
-                    .get_mut(traits::Info::bucket(info))
+                    .get_mut(traits::Node::bucket(traits::Info::sample(info)))
                     .expect("average initialized for infoset")
                     .get_mut(action)
                     .expect("average initialized for infoset");
@@ -682,7 +675,7 @@ pub mod structs {
         fn running_regret(&self, info: &Info, action: &Action) -> Utility {
             *self
                 .regrets
-                .get(traits::Info::bucket(info))
+                .get(traits::Node::bucket(traits::Info::sample(info)))
                 .expect("regret initialized for infoset")
                 .get(action)
                 .expect("regret initialized for actions")
@@ -691,14 +684,26 @@ pub mod structs {
 
     /// trainer
     pub(crate) struct Trainer {
+        t: usize,
         tree: Tree,
         optimizer: Optimizer,
     }
     impl Trainer {
-        pub fn new() -> Self {
+        pub fn new(t: usize) -> Self {
             let tree = Tree::new();
             let optimizer = Optimizer::new(&tree);
-            Self { optimizer, tree }
+            Self { optimizer, tree, t }
+        }
+        fn report(&self) {
+            if self.t % 10 == 0 {
+                println!("T{}", self.t);
+                for (bucket, distribution) in self.optimizer.average.iter() {
+                    for (action, weight) in distribution.iter() {
+                        println!("Bucket {:?}  {:?}: {:.3?}", bucket, action, weight);
+                    }
+                    break;
+                }
+            }
         }
     }
     impl
@@ -717,25 +722,13 @@ pub mod structs {
             Player,
         > for Trainer
     {
-        fn train(&mut self, n: usize) {
-            for t in 0..n {
-                for info in traits::Tree::infosets(&self.tree)
-                    .iter()
-                    .rev()
-                    .filter(|i| traits::Info::player(**i) != &Player::Chance)
-                {
+        fn train(&mut self) {
+            for _ in 0..self.t {
+                for info in traits::Tree::infosets(&self.tree) {
                     traits::Optimizer::update_regret(&mut self.optimizer, info);
                     traits::Optimizer::update_policy(&mut self.optimizer, info);
                 }
-                if t % 1 == 0 {
-                    for (bucket, distribution) in self.optimizer.average.iter() {
-                        for (action, weight) in distribution.iter() {
-                            println!("B{:?}  {:?} : {:.3?} @ t{:?}", bucket, action, weight, t);
-                        }
-                        println!();
-                        break;
-                    }
-                }
+                self.report();
             }
         }
     }
