@@ -22,7 +22,7 @@ impl L {
     /// attribution
     pub fn player(&self) -> &C {
         match self.0 {
-            00 => &C::P1,
+            00 | 00 => &C::P1,
             01..=03 => &C::P2,
             04..=12 => &C::Chance,
             _ => unreachable!(),
@@ -46,7 +46,7 @@ impl L {
     /// utility to player
     pub fn payoff(&self, player: &C) -> Utility {
         const LO_STAKES: Utility = 1.;
-        const HI_STAKES: Utility = 5.; // we can modify payoffs to verify convergence
+        const HI_STAKES: Utility = 2.; // we can modify payoffs to verify convergence
         let direction = match player {
             C::P1 => 0. + 1.,
             C::P2 => 0. - 1.,

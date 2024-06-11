@@ -5,7 +5,6 @@ use crate::cfr::tree::tree::T;
 use crate::Probability;
 use crate::Utility;
 
-/// optimizer'
 pub(crate) struct M {
     time: usize,
     regrets: P,

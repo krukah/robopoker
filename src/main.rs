@@ -9,8 +9,7 @@ mod players;
 pub type Utility = f32;
 pub type Probability = f32;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let mut trainer = X::new(50_000);
     trainer.train();
 }
