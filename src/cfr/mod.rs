@@ -1,3 +1,7 @@
+pub mod profile;
+pub mod training;
+pub mod traits;
+pub mod tree;
 /*
 
    2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
