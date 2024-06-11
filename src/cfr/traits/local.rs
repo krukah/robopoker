@@ -1,22 +1,7 @@
-use crate::Utility;
-
 use super::action::E;
 use super::bucket::B;
 use super::player::C;
-
-pub(crate) trait Local<A, B, C>
-where
-    Self: Sized,
-    A: super::action::Action,
-    B: super::bucket::Bucket,
-    C: super::player::Player,
-{
-    fn root() -> Self;
-    fn bucket(&self) -> &B;
-    fn player(&self) -> &C;
-    fn spawn(&self) -> Vec<(Self, A)>;
-    fn payoff(&self, player: &C) -> crate::Utility;
-}
+use crate::Utility;
 
 pub(crate) struct L(usize);
 
