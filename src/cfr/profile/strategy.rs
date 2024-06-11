@@ -1,10 +1,10 @@
-use crate::cfr::traits::action::E;
+use crate::cfr::traits::action::Edge;
 use crate::Probability;
 use std::collections::HashMap;
 
-pub(crate) struct S(pub HashMap<E, Probability>);
+pub(crate) struct Policy(pub HashMap<Edge, Probability>);
 
-impl S {
+impl Policy {
     pub fn new() -> Self {
         Self(HashMap::new())
     }

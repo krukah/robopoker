@@ -1,31 +1,32 @@
-use crate::cfr::traits::action::E;
-use crate::cfr::tree::node::N;
-use petgraph::graph::{DiGraph, NodeIndex};
+use crate::cfr::traits::action::Edge;
+use crate::cfr::tree::node::Node;
+use petgraph::graph::DiGraph;
+use petgraph::graph::NodeIndex;
 use std::ptr::NonNull;
 
-pub(crate) struct I {
+pub(crate) struct Info {
     pub roots: Vec<NodeIndex>,
-    pub graph: NonNull<DiGraph<N, E>>,
+    pub graph: NonNull<DiGraph<Node, Edge>>,
 }
 
-impl I {
-    pub fn add(&mut self, node: &N) {
+impl Info {
+    pub fn add(&mut self, node: &Node) {
         self.roots.push(*node.index());
     }
-    pub fn roots(&self) -> Vec<&N> {
+    pub fn roots(&self) -> Vec<&Node> {
         self.roots
             .iter()
             .map(|i| self.graph().node_weight(*i).expect("valid node index"))
             .collect()
     }
-    pub fn sample(&self) -> &N {
+    pub fn sample(&self) -> &Node {
         self.roots
             .iter()
             .next()
             .map(|i| self.graph().node_weight(*i).expect("valid node index"))
             .expect("non-empty infoset")
     }
-    fn graph(&self) -> &DiGraph<N, E> {
+    fn graph(&self) -> &DiGraph<Node, Edge> {
         unsafe { self.graph.as_ref() }
     }
 }
