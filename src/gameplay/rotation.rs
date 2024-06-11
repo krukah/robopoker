@@ -133,8 +133,8 @@ impl Rotation {
             _ => (),
         }
         match action {
-            Action::Fold(..) => seat.set_status(BetStatus::Folded),
-            Action::Shove(..) => seat.set_status(BetStatus::Shoved),
+            Action::Fold(..) => seat.set(BetStatus::Folded),
+            Action::Shove(..) => seat.set(BetStatus::Shoved),
             _ => (),
         }
         match action {
@@ -147,7 +147,7 @@ impl Rotation {
     }
     pub fn begin_hand(&mut self) {
         for seat in self.seats.iter_mut() {
-            seat.set_status(BetStatus::Playing);
+            seat.set(BetStatus::Playing);
             seat.clear();
         }
         self.pot = 0;

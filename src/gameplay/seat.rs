@@ -47,11 +47,11 @@ impl Seat {
         println!("{}{}", self, winnings);
         self.stack += winnings;
     }
+    pub fn set(&mut self, status: BetStatus) {
+        self.status = status;
+    }
     pub fn clear(&mut self) {
         self.stake = 0;
-    }
-    pub fn set_status(&mut self, status: BetStatus) {
-        self.status = status;
     }
     pub fn assign(&mut self, position: usize) {
         self.position = position;

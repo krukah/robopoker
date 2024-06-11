@@ -155,7 +155,7 @@ impl Hand {
         let seat = self.head.seat_at_position_mut(pointer);
         let bet = std::cmp::min(size, seat.stack());
         if seat.stack() <= bet {
-            seat.set_status(BetStatus::Shoved);
+            seat.set(BetStatus::Shoved);
         }
         self.apply(Action::Blind(pointer, bet));
     }
