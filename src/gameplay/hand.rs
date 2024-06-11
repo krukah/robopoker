@@ -147,11 +147,11 @@ impl Hand {
         self.actions.clear();
         self.post(self.sblind);
         self.post(self.bblind);
-        self.head.counter = 0;
+        self.head.counts = 0;
         self.deck = Deck::new();
     }
     pub fn post(&mut self, size: u32) {
-        let pointer = self.head.pointer;
+        let pointer = self.head.action;
         let seat = self.head.seat_at_position_mut(pointer);
         let bet = std::cmp::min(size, seat.stack());
         if seat.stack() <= bet {
