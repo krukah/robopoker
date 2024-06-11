@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
-pub(crate) enum E {
+pub(crate) enum Edge {
     RK,
     PA,
     SC,
