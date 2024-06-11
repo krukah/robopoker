@@ -5,8 +5,8 @@
 pub struct Rotation {
     pub pot: u32,
     pub dealer: usize,
-    pub counter: usize,
-    pub pointer: usize,
+    pub counts: usize,
+    pub action: usize,
     pub board: Board,
     pub seats: Vec<Seat>,
 }
@@ -18,8 +18,8 @@ impl Rotation {
             board: Board::new(),
             pot: 0,
             dealer: 0,
-            counter: 0,
-            pointer: 0,
+            counts: 0,
+            action: 0,
         }
     }
 
@@ -34,7 +34,7 @@ impl Rotation {
     }
 
     pub fn seat_up_next(&self) -> &Seat {
-        self.seats.get(self.pointer).unwrap()
+        self.seats.get(self.action).unwrap()
     }
     pub fn seat_at_position(&self, index: usize) -> &Seat {
         self.seats.iter().find(|s| s.position() == index).unwrap()
@@ -85,7 +85,7 @@ impl Rotation {
         // everyone who isn't folded has matched the bet
         // or all but one player is all in
         let stakes = self.effective_stake();
-        let is_first_decision = self.counter == 0;
+        let is_first_decision = self.counts == 0;
         let is_one_playing = self
             .seats
             .iter()
@@ -93,7 +93,7 @@ impl Rotation {
             .count()
             == 1;
         let has_no_decision = is_first_decision && is_one_playing;
-        let has_all_decided = self.counter > self.seats.len();
+        let has_all_decided = self.counts > self.seats.len();
         let has_all_matched = self
             .seats
             .iter()
@@ -118,7 +118,7 @@ impl Display for Rotation {
 
 impl Rotation {
     pub fn apply(&mut self, action: Action) {
-        let seat = self.seats.get_mut(self.pointer).unwrap();
+        let seat = self.seats.get_mut(self.action).unwrap();
         // bets entail pot and stack change
         // folds and all-ins entail status change
         // choice actions entail rotation & logging, chance action entails board change
@@ -151,16 +151,16 @@ impl Rotation {
             seat.clear();
         }
         self.pot = 0;
-        self.counter = 0;
+        self.counts = 0;
         self.board.cards.clear();
         self.board.street = Street::Pre;
         self.dealer = self.after(self.dealer);
-        self.pointer = self.dealer;
+        self.action = self.dealer;
         self.rotate();
     }
     pub fn begin_street(&mut self) {
-        self.counter = 0;
-        self.pointer = match self.board.street {
+        self.counts = 0;
+        self.action = match self.board.street {
             Street::Pre => self.after(self.after(self.dealer)),
             _ => self.dealer,
         };
@@ -183,8 +183,8 @@ impl Rotation {
             if !self.has_more_players() {
                 return;
             }
-            self.counter += 1;
-            self.pointer = self.after(self.pointer);
+            self.counts += 1;
+            self.action = self.after(self.action);
             match self.seat_up_next().status() {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'left,
@@ -193,8 +193,8 @@ impl Rotation {
     }
     fn rewind(&mut self) {
         'right: loop {
-            self.counter -= 1;
-            self.pointer = self.before(self.pointer);
+            self.counts -= 1;
+            self.action = self.before(self.action);
             match self.seat_up_next().status() {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'right,

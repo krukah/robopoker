@@ -1,4 +1,4 @@
-use crate::cfr::profile::strategy::Policy;
+use crate::cfr::profile::policy::Policy;
 use crate::cfr::traits::action::Edge;
 use crate::cfr::traits::bucket::Bucket;
 use crate::cfr::traits::player::Player;
@@ -13,40 +13,40 @@ impl Profile {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
-    pub fn gain(&self, root: &Node, action: &Edge) -> Utility {
-        let cfactual = self.cfactual_value(root, action);
+    pub fn gain(&self, root: &Node, edge: &Edge) -> Utility {
+        let cfactual = self.cfactual_value(root, edge);
         let expected = self.expected_value(root);
         cfactual - expected
     }
-    pub fn set(&mut self, bucket: Bucket, action: Edge, value: Utility) {
+    pub fn set(&mut self, bucket: Bucket, edge: Edge, value: Utility) {
         self.0
             .entry(bucket)
             .or_insert_with(Policy::new)
             .0
-            .insert(action, value);
+            .insert(edge, value);
     }
-    pub fn get_ref(&self, bucket: &Bucket, action: &Edge) -> &Utility {
+    pub fn get_ref(&self, bucket: &Bucket, edge: &Edge) -> &Utility {
         self.0
             .get(bucket)
             .expect("valid bucket")
             .0
-            .get(action)
+            .get(edge)
             .expect("policy initialized for actions")
     }
-    pub fn get_mut(&mut self, bucket: &Bucket, action: &Edge) -> &mut Utility {
+    pub fn get_mut(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Utility {
         self.0
             .get_mut(bucket)
             .expect("valid bucket")
             .0
-            .get_mut(action)
+            .get_mut(edge)
             .expect("policy initialized for actions")
     }
 
     // provided
-    fn cfactual_value(&self, root: &Node, action: &Edge) -> Utility {
+    fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
         1.0 * self.cfactual_reach(root)
             * root //                                       suppose you're here on purpose, counterfactually
-                .follow(action) //                          suppose you're here on purpose, counterfactually
+                .follow(edge) //                          suppose you're here on purpose, counterfactually
                 .descendants() //                           O(depth) recursive downtree
                 .iter() //                                  duplicated calculation
                 .map(|leaf| self.relative_value(root, leaf))
@@ -66,7 +66,7 @@ impl Profile {
             * leaf.payoff(root.player())
     }
     // probability calculations
-    fn weight(&self, node: &Node, action: &Edge) -> Probability {
+    fn weight(&self, node: &Node, edge: &Edge) -> Probability {
         match node.player() {
             Player::Chance => {
                 let n = node.outgoing().len();
@@ -74,7 +74,7 @@ impl Profile {
             }
             Player::P1 | Player::P2 => {
                 let bucket = node.bucket();
-                *self.get_ref(bucket, action)
+                *self.get_ref(bucket, edge)
             }
         }
     }
@@ -85,8 +85,8 @@ impl Profile {
                 if node.player() == from.player() {
                     self.cfactual_reach(from)
                 } else {
-                    self.cfactual_reach(from)
-                        * self.weight(from, node.incoming().expect("has parent"))
+                    let edge = node.incoming().expect("has parent");
+                    self.weight(from, edge) * self.cfactual_reach(from)
                 }
             }
         }
@@ -95,7 +95,8 @@ impl Profile {
         match node.parent() {
             None => 1.0,
             Some(from) => {
-                self.strategy_reach(from) * self.weight(from, node.incoming().expect("has parent"))
+                let edge = node.incoming().expect("has parent");
+                self.weight(from, edge) * self.strategy_reach(from)
             }
         }
     }
@@ -103,9 +104,9 @@ impl Profile {
         if root.bucket() == leaf.bucket() {
             1.0
         } else {
-            let node = leaf.parent().expect("if has parent, then has incoming");
+            let from = leaf.parent().expect("if has parent, then has incoming");
             let edge = leaf.incoming().expect("if has parent, then has incoming");
-            self.relative_reach(root, node) * self.weight(node, edge)
+            self.weight(from, edge) * self.relative_reach(root, from)
         }
     }
     fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {
