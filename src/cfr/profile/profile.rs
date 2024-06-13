@@ -13,11 +13,6 @@ impl Profile {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
-    pub fn gain(&self, root: &Node, edge: &Edge) -> Utility {
-        let cfactual = self.cfactual_value(root, edge);
-        let expected = self.expected_value(root);
-        cfactual - expected
-    }
     pub fn set(&mut self, bucket: Bucket, edge: Edge, value: Utility) {
         self.0
             .entry(bucket)
@@ -42,11 +37,17 @@ impl Profile {
             .expect("policy initialized for actions")
     }
 
+    pub fn gain(&self, root: &Node, edge: &Edge) -> Utility {
+        let cfactual = self.cfactual_value(root, edge);
+        let expected = self.expected_value(root);
+        cfactual - expected
+    }
+
     // provided
     fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
         1.0 * self.cfactual_reach(root)
             * root //                                       suppose you're here on purpose, counterfactually
-                .follow(edge) //                          suppose you're here on purpose, counterfactually
+                .follow(edge) //                            suppose you're here on purpose, counterfactually
                 .descendants() //                           O(depth) recursive downtree
                 .iter() //                                  duplicated calculation
                 .map(|leaf| self.relative_value(root, leaf))
@@ -72,7 +73,7 @@ impl Profile {
                 let n = node.outgoing().len();
                 1.0 / n as Probability
             }
-            Player::P1 | Player::P2 => {
+            _ => {
                 let bucket = node.bucket();
                 *self.get_ref(bucket, edge)
             }
