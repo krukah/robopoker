@@ -10,9 +10,6 @@ pub(crate) struct Info {
 }
 
 impl Info {
-    pub fn add(&mut self, node: &Node) {
-        self.roots.push(*node.index());
-    }
     pub fn roots(&self) -> Vec<&Node> {
         self.roots
             .iter()

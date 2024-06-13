@@ -7,22 +7,21 @@ pub(crate) struct Trainer {
     minimizer: Minimizer,
 }
 impl Trainer {
-    pub fn new(t: usize) -> Self {
+    pub fn train(t: usize) {
         let tree = Tree::new();
         let minimizer = Minimizer::new(&tree);
-        Self { minimizer, tree, t }
-    }
-    pub fn train(&mut self) {
+        let mut this = Self { minimizer, tree, t };
+        let infos = this.tree.infosets();
         // silly way to use training time, unclear if should be minimzer or trainer owned.
-        let t = self.t;
-        self.t = 0;
+        let t = this.t;
+        this.t = 0;
         for _ in 0..t {
-            for info in self.tree.infosets() {
-                self.minimizer.update_regret(info);
-                self.minimizer.update_policy(info);
+            for info in infos.iter() {
+                this.minimizer.update_regret(info);
+                this.minimizer.update_policy(info);
             }
-            self.report();
-            self.t += 1;
+            this.report();
+            this.t += 1;
         }
     }
     fn report(&self) {

@@ -12,7 +12,9 @@ use std::ptr::NonNull;
 
 /// trees
 pub(crate) struct Tree {
-    index: NodeIndex,
+    next: NodeIndex,
+    last: NodeIndex,
+    edge: EdgeIndex,
     graph: Box<DiGraph<Node, Edge>>,
     infos: HashMap<Bucket, Info>,
 }
@@ -21,24 +23,34 @@ impl Tree {
     pub fn infosets(&self) -> Vec<&Info> {
         self.infos.values().collect()
     }
+
+    // allocation of the tree from scratch
     pub fn new() -> Self {
-        let root = Local::root();
         let mut this = Self {
+            next: NodeIndex::new(0),
+            last: NodeIndex::new(0),
+            edge: EdgeIndex::new(0),
             infos: HashMap::new(),
-            index: NodeIndex::new(0),
             graph: Box::new(DiGraph::new()),
         };
-        this.insert(root);
-        this.explore();
+        this.seed();
+        this.grow();
         this.bucketize();
         this
     }
-    fn explore(&mut self) {
-        while self.index.index() < self.graph.node_count() {
+
+    fn seed(&mut self) -> NodeIndex {
+        let n = self.graph.add_node(self.new_node(Self::root()));
+        n
+    }
+    fn grow(&mut self) {
+        // move to next unexplored node in the BFS
+        while self.next.index() < self.graph.node_count() {
             for (child, edge) in self.spawn() {
-                self.attach(child, edge);
+                self.last = self.graph.add_node(self.new_node(child));
+                self.edge = self.graph.add_edge(self.next, self.last, edge);
             }
-            self.index = NodeIndex::new(self.index.index() + 1);
+            self.next = NodeIndex::new(self.next.index() + 1);
         }
     }
     fn bucketize(&mut self) {
@@ -47,33 +59,45 @@ impl Tree {
             .node_weights()
             .filter(|n| *n.player() != Player::Chance)
         {
-            self.infos
-                .entry(*node.bucket())
-                .or_insert_with(|| Info {
-                    roots: Vec::new(),
-                    graph: NonNull::from(&*self.graph),
-                })
-                .add(node);
+            match self.infos.get_mut(node.bucket()) {
+                Some(info) => {
+                    info.roots.push(*node.index());
+                }
+                None => {
+                    let info = self.new_info(node);
+                    let bucket = node.bucket().clone();
+                    self.infos.insert(bucket, info);
+                }
+            }
         }
     }
-    fn insert(&mut self, local: Local) -> NodeIndex {
-        let n = self.graph.add_node(Node {
-            local,
-            graph: NonNull::from(&*self.graph),
-            index: NodeIndex::new(self.graph.node_count()),
-        });
-        n
-    }
-    fn attach(&mut self, local: Local, edge: Edge) -> EdgeIndex {
-        let n = self.insert(local);
-        let e = self.graph.add_edge(self.index, n, edge);
-        e
+
+    // allocation of new inner values of nodes, either from scratch (root)   or parent (spawn)
+    // these may or may not be bound to Inner/Local rather than Tree
+    // for now we can generate them locally from Inner, but we may want tree-level context
+    fn root() -> Local {
+        Local::root()
     }
     fn spawn(&self) -> Vec<(Local, Edge)> {
         self.graph
-            .node_weight(self.index)
-            .expect("self.point will be behind self.graph.node_count")
+            .node_weight(self.next)
+            .expect("self.next (unexplored) will be behind self.graph.node_count")
             .local()
             .spawn()
+    }
+
+    // allocation of our wrapper types, Node and Info, that are helpful for implementing traversal in the CFR algorithm
+    fn new_node(&self, local: Local) -> Node {
+        Node {
+            local,
+            graph: NonNull::from(self.graph.as_ref()),
+            index: NodeIndex::new(self.graph.node_count()),
+        }
+    }
+    fn new_info(&self, node: &Node) -> Info {
+        Info {
+            roots: vec![*node.index()],
+            graph: NonNull::from(self.graph.as_ref()),
+        }
     }
 }

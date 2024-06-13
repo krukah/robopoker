@@ -10,6 +10,5 @@ pub type Utility = f32;
 pub type Probability = f32;
 
 fn main() {
-    let mut trainer = Trainer::new(50_000);
-    trainer.train();
+    Trainer::train(5_000_000);
 }

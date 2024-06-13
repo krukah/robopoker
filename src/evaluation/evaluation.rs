@@ -16,7 +16,12 @@ pub struct LazyEvaluator {
 
 impl Evaluator for LazyEvaluator {
     fn strength(cards: Vec<&Card>) -> Strength {
-        let this = Self::new(&cards);
+        let this = Self {
+            hand_set: Self::u32_hand(&cards),
+            suit_set: Self::u32_suit(&cards),
+            rank_counts: Self::rank_counts(&cards),
+            suit_counts: Self::suit_counts(&cards),
+        };
         let best_hand = this.find_best_hand();
         let kickers = this.find_kickers(best_hand);
         Strength::new(best_hand, kickers)
@@ -24,20 +29,11 @@ impl Evaluator for LazyEvaluator {
 }
 
 impl LazyEvaluator {
-    fn new(cards: &Vec<&Card>) -> Self {
-        Self {
-            hand_set: Self::u32_hand(cards),
-            suit_set: Self::u32_suit(cards),
-            rank_counts: Self::rank_counts(cards),
-            suit_counts: Self::suit_counts(cards),
-        }
-    }
-
     fn find_best_hand(&self) -> BestHand {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
-            .or_else(|| self.find_straight())
+            .or_else(|| self.find_5_iar())
             .or_else(|| self.find_3_oak())
             .or_else(|| self.find_2_oak_2_oak())
             .or_else(|| self.find_2_oak())
@@ -74,7 +70,7 @@ impl LazyEvaluator {
                 .or_else(|| Some(BestHand::Flush(Rank::from(self.suit_set[suit as usize]))))
         })
     }
-    fn find_straight(&self) -> Option<BestHand> {
+    fn find_5_iar(&self) -> Option<BestHand> {
         self.find_rank_of_straight(self.hand_set)
             .map(|rank| BestHand::Straight(rank))
     }
