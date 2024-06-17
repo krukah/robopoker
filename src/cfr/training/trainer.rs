@@ -1,5 +1,5 @@
 use super::minimizer::Minimizer;
-use crate::cfr::tree::tree::Tree;
+use crate::cfr::tree::rps::tree::Tree;
 
 pub(crate) struct Trainer {
     t: usize,
