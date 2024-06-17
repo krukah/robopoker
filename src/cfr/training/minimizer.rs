@@ -1,11 +1,11 @@
 use crate::cfr::profile::profile::Profile;
-use crate::cfr::traits::action::Edge;
-use crate::cfr::tree::info::Info;
-use crate::cfr::tree::tree::Tree;
+use crate::cfr::tree::rps::action::Edge;
+use crate::cfr::tree::rps::info::Info;
+use crate::cfr::tree::rps::tree::Tree;
 use crate::Probability;
 use crate::Utility;
 
-pub(crate) struct Minimizer {
+pub struct Minimizer {
     time: usize,
     regrets: Profile,
     current: Profile,
@@ -28,9 +28,9 @@ impl Minimizer {
             let weight = 1.0 / actions.len() as Probability;
             let regret = 0.0;
             for action in actions {
-                regrets.set(*bucket, *action, regret);
-                average.set(*bucket, *action, weight);
-                current.set(*bucket, *action, weight);
+                regrets.set_val(*bucket, *action, regret);
+                average.set_val(*bucket, *action, weight);
+                current.set_val(*bucket, *action, weight);
             }
         }
         Self {

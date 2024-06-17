@@ -1,6 +1,5 @@
 pub mod profile;
 pub mod training;
-pub mod traits;
 pub mod tree;
 /*
 

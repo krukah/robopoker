@@ -1,10 +1,10 @@
-use crate::cfr::traits::action::Edge;
-use crate::cfr::tree::node::Node;
+use crate::cfr::tree::rps::action::Edge;
+use crate::cfr::tree::rps::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::ptr::NonNull;
 
-pub(crate) struct Info {
+pub struct Info {
     pub roots: Vec<NodeIndex>,
     pub graph: NonNull<DiGraph<Node, Edge>>,
 }

@@ -1,26 +1,20 @@
 use crate::cfr::profile::policy::Policy;
-use crate::cfr::traits::action::Edge;
-use crate::cfr::traits::bucket::Bucket;
-use crate::cfr::traits::player::Player;
-use crate::cfr::tree::node::Node;
+use crate::cfr::tree::rps::action::Edge;
+use crate::cfr::tree::rps::bucket::Bucket;
+use crate::cfr::tree::rps::node::Node;
+use crate::cfr::tree::rps::player::Player;
 use crate::Probability;
 use crate::Utility;
 use std::collections::HashMap;
 
-pub(crate) struct Profile(pub HashMap<Bucket, Policy>);
+pub struct Profile(pub HashMap<Bucket, Policy>);
 
 impl Profile {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
-    pub fn set(&mut self, bucket: Bucket, edge: Edge, value: Utility) {
-        self.0
-            .entry(bucket)
-            .or_insert_with(Policy::new)
-            .0
-            .insert(edge, value);
-    }
-    pub fn get_ref(&self, bucket: &Bucket, edge: &Edge) -> &Utility {
+
+    pub fn get_ref(&self, bucket: &Bucket, edge: &Edge) -> &f32 {
         self.0
             .get(bucket)
             .expect("valid bucket")
@@ -28,13 +22,20 @@ impl Profile {
             .get(edge)
             .expect("policy initialized for actions")
     }
-    pub fn get_mut(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Utility {
+    pub fn get_mut(&mut self, bucket: &Bucket, edge: &Edge) -> &mut f32 {
         self.0
             .get_mut(bucket)
             .expect("valid bucket")
             .0
             .get_mut(edge)
             .expect("policy initialized for actions")
+    }
+    pub fn set_val(&mut self, bucket: Bucket, edge: Edge, value: f32) {
+        self.0
+            .entry(bucket)
+            .or_insert_with(Policy::new)
+            .0
+            .insert(edge, value);
     }
 
     pub fn gain(&self, root: &Node, edge: &Edge) -> Utility {

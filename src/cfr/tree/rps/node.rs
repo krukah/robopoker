@@ -1,7 +1,7 @@
-use crate::cfr::traits::action::Edge;
-use crate::cfr::traits::bucket::Bucket;
-use crate::cfr::traits::local::Local;
-use crate::cfr::traits::player::Player;
+use crate::cfr::tree::rps::action::Edge;
+use crate::cfr::tree::rps::bucket::Bucket;
+use crate::cfr::tree::rps::local::Local;
+use crate::cfr::tree::rps::player::Player;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
@@ -9,7 +9,7 @@ use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
 use std::ptr::NonNull;
 
-pub(crate) struct Node {
+pub struct Node {
     pub graph: NonNull<DiGraph<Self, Edge>>,
     pub index: NodeIndex,
     pub local: Local,
@@ -18,20 +18,17 @@ pub(crate) struct Node {
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl Node {
     // observability
-    pub fn local(&self) -> &Local {
-        &self.local
-    }
     pub fn index(&self) -> &NodeIndex {
         &self.index
     }
     pub fn bucket(&self) -> &Bucket {
-        self.local().bucket()
+        self.local.bucket()
     }
     pub fn player(&self) -> &Player {
-        self.local().player()
+        self.local.player()
     }
     pub fn payoff(&self, player: &Player) -> Utility {
-        self.local().payoff(player)
+        self.local.payoff(player)
     }
     // walkability
     pub fn incoming(&self) -> Option<&Edge> {
