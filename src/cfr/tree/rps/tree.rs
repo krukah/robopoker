@@ -26,29 +26,40 @@ impl Tree {
             graph: Box::new(DiGraph::new()),
             index: NodeIndex::new(0),
         };
-        this.explore(Self::root(), None);
+        this.dfs(Self::root(), None);
         this
     }
 
     fn root() -> Local {
-        Local(0)
+        Local::root()
     }
     fn children(&self, local: &Local) -> Vec<Child> {
         local.children()
     }
 
-    fn explore(&mut self, loca: Local, edge: Option<Edge>) {
+    fn bfs(&mut self) {
+        let mut unexplored = vec![(Self::root(), None)];
+        while let Some((next, edge)) = unexplored.pop() {
+            let mut children = self.children(&next);
+            let attached = self.attach_returnchildren(next, edge);
+            while let Some(child) = children.pop() {
+                unexplored.push((child.loca, Some(child.edge)));
+            }
+        }
+    }
+
+    fn dfs(&mut self, next: Local, edge: Option<Edge>) {
         // this method might stack overflow if tree is too deep. solution will be to use while loop since rust has no tail recursion optimization
-        let children = self.children(&loca);
-        let attached = self.attach(loca, edge);
+        let children = self.children(&next);
+        let attached = self.attach_returnchildren(next, edge);
         for child in children {
             let loca = child.loca;
             let edge = child.edge;
             self.index = attached;
-            self.explore(loca, Some(edge));
+            self.dfs(loca, Some(edge));
         }
     }
-    fn attach(&mut self, loca: Local, edge: Option<Edge>) -> NodeIndex {
+    fn attach_returnchildren(&mut self, loca: Local, edge: Option<Edge>) -> NodeIndex {
         let tail = NodeIndex::new(self.graph.node_count());
         match edge {
             Some(edge) => {
