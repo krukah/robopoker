@@ -1,6 +1,6 @@
 use crate::cfr::tree::rps::action::Edge;
 use crate::cfr::tree::rps::bucket::Bucket;
-use crate::cfr::tree::rps::local::Data;
+use crate::cfr::tree::rps::data::Data;
 use crate::cfr::tree::rps::player::Player;
 use crate::Utility;
 use petgraph::graph::DiGraph;
