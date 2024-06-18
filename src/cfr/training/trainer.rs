@@ -25,7 +25,7 @@ impl Trainer {
         }
     }
     fn report(&self) {
-        if self.t % 10_000 == 100 {
+        if self.t % 1_000 == 0 {
             println!("T{}", self.t);
             for (bucket, strategy) in self.minimizer.average().0.iter() {
                 for (action, weight) in strategy.0.iter() {
