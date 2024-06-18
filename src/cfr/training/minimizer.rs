@@ -89,7 +89,8 @@ impl Minimizer {
     }
     fn running_regret(&self, info: &Info, action: &Edge) -> Utility {
         let bucket = info.sample().bucket();
-        *self.regrets.get_ref(bucket, action)
+        let regret = self.regrets.get_ref(bucket, action);
+        *regret
     }
     fn instant_regret(&self, info: &Info, action: &Edge) -> Utility {
         info.roots()

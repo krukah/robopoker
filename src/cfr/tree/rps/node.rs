@@ -1,6 +1,6 @@
 use crate::cfr::tree::rps::action::Edge;
 use crate::cfr::tree::rps::bucket::Bucket;
-use crate::cfr::tree::rps::local::Local;
+use crate::cfr::tree::rps::local::Data;
 use crate::cfr::tree::rps::player::Player;
 use crate::Utility;
 use petgraph::graph::DiGraph;
@@ -12,7 +12,7 @@ use std::ptr::NonNull;
 pub struct Node {
     pub graph: NonNull<DiGraph<Self, Edge>>,
     pub index: NodeIndex,
-    pub local: Local,
+    pub data: Data,
 }
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
@@ -22,13 +22,13 @@ impl Node {
         &self.index
     }
     pub fn bucket(&self) -> &Bucket {
-        self.local.bucket()
+        self.data.bucket()
     }
     pub fn player(&self) -> &Player {
-        self.local.player()
+        self.data.player()
     }
     pub fn payoff(&self, player: &Player) -> Utility {
-        self.local.payoff(player)
+        self.data.payoff(player)
     }
     // walkability
     pub fn incoming(&self) -> Option<&Edge> {

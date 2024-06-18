@@ -6,11 +6,11 @@ use super::player::Player;
 use crate::Utility;
 
 pub struct Child {
-    pub loca: Local,
+    pub data: Data,
     pub edge: Edge,
 }
-pub struct Local(pub usize);
-impl Local {
+pub struct Data(pub usize);
+impl Data {
     pub fn bucket(&self) -> &Bucket {
         match self.0 {
             00 => &Bucket::P1,
@@ -52,58 +52,58 @@ impl Local {
             // P1 moves
             00 => vec![
                 Child {
-                    loca: Self(01),
+                    data: Self(01),
                     edge: Edge::RO,
                 },
                 Child {
-                    loca: Self(02),
+                    data: Self(02),
                     edge: Edge::PA,
                 },
                 Child {
-                    loca: Self(03),
+                    data: Self(03),
                     edge: Edge::SC,
                 },
             ],
             // P2 moves
             01 => vec![
                 Child {
-                    loca: Self(04),
+                    data: Self(04),
                     edge: Edge::RO,
                 },
                 Child {
-                    loca: Self(05),
+                    data: Self(05),
                     edge: Edge::PA,
                 },
                 Child {
-                    loca: Self(06),
+                    data: Self(06),
                     edge: Edge::SC,
                 },
             ],
             02 => vec![
                 Child {
-                    loca: Self(07),
+                    data: Self(07),
                     edge: Edge::RO,
                 },
                 Child {
-                    loca: Self(08),
+                    data: Self(08),
                     edge: Edge::PA,
                 },
                 Child {
-                    loca: Self(09),
+                    data: Self(09),
                     edge: Edge::SC,
                 },
             ],
             03 => vec![
                 Child {
-                    loca: Self(10),
+                    data: Self(10),
                     edge: Edge::RO,
                 },
                 Child {
-                    loca: Self(11),
+                    data: Self(11),
                     edge: Edge::PA,
                 },
                 Child {
-                    loca: Self(12),
+                    data: Self(12),
                     edge: Edge::SC,
                 },
             ],
