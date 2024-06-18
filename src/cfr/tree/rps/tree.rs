@@ -24,7 +24,7 @@ impl Tree {
             infos: HashMap::new(),
             graph: Box::new(DiGraph::new()),
         };
-        this.bfs();
+        this.dfs();
         this
     }
 
@@ -34,25 +34,40 @@ impl Tree {
     fn children(&self, data: &Data) -> Vec<Child> {
         data.children()
     }
-    fn bfs(&mut self) {
+
+    fn wrap(&self, data: Data) -> Node {
+        Node {
+            data,
+            index: self.index(),
+            graph: self.graph(),
+        }
+    }
+    fn index(&self) -> NodeIndex {
+        NodeIndex::new(self.graph.node_count())
+    }
+    fn graph(&self) -> NonNull<DiGraph<Node, Edge>> {
+        NonNull::from(self.graph.as_ref())
+    }
+
+    fn dfs(&mut self) {
         let root = (Self::root(), None, NodeIndex::from(0));
-        let mut descendants = vec![root];
-        while let Some(descendant) = descendants.pop() {
-            let data = descendant.0;
-            let from = descendant.1;
-            let head = descendant.2;
-            let mut children = self.children(&data);
+        let mut parents = vec![root];
+        while let Some(parent) = parents.pop() {
+            let mut children = self.children(&parent.0);
+            let data = parent.0;
+            let from = parent.1;
+            let head = parent.2;
             let this = self.attach(data, from, head);
             while let Some(child) = children.pop() {
                 let data = child.data;
                 let from = Some(child.edge);
-                descendants.push((data, from, this));
+                parents.push((data, from, this));
             }
         }
     }
 
     fn attach(&mut self, data: Data, from: Option<Edge>, head: NodeIndex) -> NodeIndex {
-        let next = self.next();
+        let next = self.index();
         let node = self.wrap(data);
         let bucket = node.bucket();
         // (Bucket, NodeIndex) -> ()
@@ -79,19 +94,5 @@ impl Tree {
         }
         // after all of this, increment the index
         next
-    }
-
-    fn wrap(&self, data: Data) -> Node {
-        Node {
-            data,
-            index: self.next(),
-            graph: self.graph(),
-        }
-    }
-    fn next(&self) -> NodeIndex {
-        NodeIndex::new(self.graph.node_count())
-    }
-    fn graph(&self) -> NonNull<DiGraph<Node, Edge>> {
-        NonNull::from(self.graph.as_ref())
     }
 }
