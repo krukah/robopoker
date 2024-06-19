@@ -47,6 +47,9 @@ impl Data {
         };
         direction * payoff
     }
+    pub fn root() -> Self {
+        Self(0)
+    }
     pub fn children(&self) -> Vec<Child> {
         match self.0 {
             // P1 moves
@@ -112,8 +115,5 @@ impl Data {
             //
             _ => unreachable!(),
         }
-    }
-    pub fn root() -> Self {
-        Self(0)
     }
 }

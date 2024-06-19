@@ -1,5 +1,6 @@
 use super::info::Info;
 use super::node::Node;
+use super::player::Player;
 use crate::cfr::tree::rps::action::Edge;
 use crate::cfr::tree::rps::bucket::Bucket;
 use crate::cfr::tree::rps::data::Child;
@@ -25,6 +26,7 @@ impl Tree {
             graph: Box::new(DiGraph::new()),
         };
         this.dfs();
+        this.cluster();
         this
     }
 
@@ -57,42 +59,41 @@ impl Tree {
             let data = parent.0;
             let from = parent.1;
             let head = parent.2;
-            let this = self.attach(data, from, head);
+            let node = self.wrap(data);
+            let tail = self.attach(node, from, head);
             while let Some(child) = children.pop() {
                 let data = child.data;
                 let from = Some(child.edge);
-                parents.push((data, from, this));
+                parents.push((data, from, tail));
             }
         }
     }
 
-    fn attach(&mut self, data: Data, from: Option<Edge>, head: NodeIndex) -> NodeIndex {
-        let next = self.index();
-        let node = self.wrap(data);
-        let bucket = node.bucket();
-        // (Bucket, NodeIndex) -> ()
-        // add nodeIndex to infoset before inserting ownership into graph.
-        // may want to factor this out to allow for custom infoset iteration logic, such as skipping non-traversers or chance nodes
-        if let Some(info) = self.infos.get_mut(bucket) {
-            info.roots.push(next);
-        } else {
-            let mut info = Info {
-                roots: Vec::new(),
-                graph: self.graph(),
-            };
-            info.roots.push(next);
-            self.infos.insert(*bucket, info);
+    fn cluster(&mut self) {
+        for node in self.graph.node_weights() {
+            if node.player() == &Player::Chance {
+                continue;
+            } else if let Some(info) = self.infos.get_mut(node.bucket()) {
+                info.roots.push(*node.index());
+            } else {
+                let mut info = Info {
+                    roots: Vec::new(),
+                    graph: self.graph(),
+                };
+                info.roots.push(*node.index());
+                self.infos.insert(*node.bucket(), info);
+            }
         }
-        // (Node, Option<Edge>) -> ()
-        // add node to graph, giving ownership
-        // next index is calculated before insertion to avoid off-by-one errors
-        if let Some(e) = from {
+    }
+
+    fn attach(&mut self, node: Node, from: Option<Edge>, head: NodeIndex) -> NodeIndex {
+        let tail = self.index();
+        if let Some(from) = from {
             self.graph.add_node(node);
-            self.graph.add_edge(head, next, e);
+            self.graph.add_edge(head, tail, from);
         } else {
             self.graph.add_node(node);
         }
-        // after all of this, increment the index
-        next
+        tail
     }
 }
