@@ -19,6 +19,15 @@ struct History;
 struct Potential;
 
 trait Abstraction {
+    /// top-level function that maps a perfect recall history to an abstracted bucket
     fn bucket(history: History) -> Bucket;
-    fn ehs(private: Private, public: Public) -> Equity;
+
+    /// expected hand strength of a private hand given public board cards
+    fn ehs(hand: Private, board: Public) -> Equity;
+
+    /// earth mover's distance between two potential equity distributions
+    fn emd(a: &Potential, b: &Potential) -> f32;
+
+    /// integration over the equity of children potentials
+    fn mean(potential: &Potential) -> Equity;
 }
