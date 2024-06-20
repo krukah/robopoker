@@ -24,7 +24,7 @@ impl Minimizer {
         let mut current = Profile::new();
         for info in tree.infosets() {
             let actions = info.sample().outgoing();
-            let bucket = info.sample().data.bucket();
+            let bucket = info.sample().bucket();
             let weight = 1.0 / actions.len() as Probability;
             let regret = 0.0;
             for action in actions {
@@ -43,14 +43,14 @@ impl Minimizer {
     // mutating update methods at each infoset
     pub fn update_regret(&mut self, info: &Info) {
         for (ref action, regret) in self.regret_vector(info) {
-            let bucket = info.sample().data.bucket();
+            let bucket = info.sample().bucket();
             let running = self.regrets.get_mut(bucket, action);
             *running = regret;
         }
     }
     pub fn update_policy(&mut self, info: &Info) {
         for (ref action, weight) in self.policy_vector(info) {
-            let bucket = info.sample().data.bucket();
+            let bucket = info.sample().bucket();
             let current = self.current.get_mut(bucket, action);
             let average = self.average.get_mut(bucket, action);
             *current = weight;
@@ -88,7 +88,7 @@ impl Minimizer {
         (running + instant).max(Utility::MIN_POSITIVE)
     }
     fn running_regret(&self, info: &Info, action: &Edge) -> Utility {
-        let bucket = info.sample().data.bucket();
+        let bucket = info.sample().bucket();
         let regret = self.regrets.get_ref(bucket, action);
         *regret
     }
