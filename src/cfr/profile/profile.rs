@@ -75,7 +75,7 @@ impl Profile {
                 1.0 / n as Probability
             }
             _ => {
-                let bucket = node.data.bucket();
+                let bucket = node.bucket();
                 *self.get_ref(bucket, edge)
             }
         }
@@ -106,7 +106,7 @@ impl Profile {
         }
     }
     fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
-        if root.data.bucket() == leaf.data.bucket() {
+        if root.bucket() == leaf.bucket() {
             1.0
         } else {
             let from = leaf.parent().expect("if has parent, then has incoming");

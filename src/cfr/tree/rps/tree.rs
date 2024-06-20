@@ -74,7 +74,7 @@ impl Tree {
         for node in self.graph.node_weights() {
             if node.data.player() == &Player::Chance {
                 continue;
-            } else if let Some(info) = self.infos.get_mut(node.data.bucket()) {
+            } else if let Some(info) = self.infos.get_mut(node.bucket()) {
                 info.roots.push(node.index);
             } else {
                 let mut info = Info {
@@ -82,7 +82,7 @@ impl Tree {
                     graph: self.graph(),
                 };
                 info.roots.push(node.index);
-                self.infos.insert(*node.data.bucket(), info);
+                self.infos.insert(*node.bucket(), info);
             }
         }
     }

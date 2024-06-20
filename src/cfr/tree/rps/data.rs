@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use super::action::Edge;
-use super::bucket::Bucket;
 use super::player::Player;
 use crate::Utility;
 
@@ -11,14 +10,6 @@ pub struct Child {
 }
 pub struct Data(pub usize);
 impl Data {
-    pub fn bucket(&self) -> &Bucket {
-        match self.0 {
-            00 => &Bucket::P1,
-            01..=03 => &Bucket::P2,
-            04..=12 => &Bucket::Ignore,
-            _ => unreachable!(),
-        }
-    }
     pub fn player(&self) -> &Player {
         match self.0 {
             00 => &Player::P1,
