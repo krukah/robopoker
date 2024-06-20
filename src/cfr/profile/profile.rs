@@ -65,34 +65,37 @@ impl Profile {
     fn relative_value(&self, root: &Node, leaf: &Node) -> Utility {
         1.0 * self.relative_reach(root, leaf)
             * self.sampling_reach(root, leaf)
-            * leaf.payoff(root.player())
+            * leaf.data.payoff(root.data.player())
     }
     // probability calculations
     fn weight(&self, node: &Node, edge: &Edge) -> Probability {
-        match node.player() {
+        match node.data.player() {
             Player::Chance => {
                 let n = node.outgoing().len();
                 1.0 / n as Probability
             }
             _ => {
-                let bucket = node.bucket();
+                let bucket = node.data.bucket();
                 *self.get_ref(bucket, edge)
             }
         }
     }
-    fn cfactual_reach(&self, node: &Node) -> Probability {
-        match node.parent() {
-            None => 1.0,
-            Some(from) => {
-                if node.player() == from.player() {
-                    self.cfactual_reach(from)
-                } else {
-                    let edge = node.incoming().expect("has parent");
-                    self.weight(from, edge) * self.cfactual_reach(from)
-                }
+    fn cfactual_reach(&self, root: &Node) -> Probability {
+        let mut prod = 1.0;
+        let mut next = root;
+        while let Some(from) = next.parent() {
+            let edge = next.incoming().expect("has parent");
+            if from.data.player() == root.data.player() {
+                prod *= self.cfactual_reach(from);
+                break;
+            } else {
+                prod *= self.weight(from, edge);
             }
+            next = from;
         }
+        prod
     }
+
     fn strategy_reach(&self, node: &Node) -> Probability {
         match node.parent() {
             None => 1.0,
@@ -103,7 +106,7 @@ impl Profile {
         }
     }
     fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
-        if root.bucket() == leaf.bucket() {
+        if root.data.bucket() == leaf.data.bucket() {
             1.0
         } else {
             let from = leaf.parent().expect("if has parent, then has incoming");
