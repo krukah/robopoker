@@ -26,7 +26,7 @@ impl Tree {
             graph: Box::new(DiGraph::new()),
         };
         this.dfs();
-        this.cluster();
+        this.bucketize();
         this
     }
 
@@ -37,6 +37,12 @@ impl Tree {
         data.children()
     }
 
+    fn index(&self) -> NodeIndex {
+        NodeIndex::new(self.graph.node_count())
+    }
+    fn graph(&self) -> NonNull<DiGraph<Node, Edge>> {
+        NonNull::from(self.graph.as_ref())
+    }
     fn wrap(&self, data: Data) -> Node {
         Node {
             data,
@@ -44,14 +50,9 @@ impl Tree {
             graph: self.graph(),
         }
     }
-    fn index(&self) -> NodeIndex {
-        NodeIndex::new(self.graph.node_count())
-    }
-    fn graph(&self) -> NonNull<DiGraph<Node, Edge>> {
-        NonNull::from(self.graph.as_ref())
-    }
 
     fn dfs(&mut self) {
+        // let index = 0;
         let root = (Self::root(), None, NodeIndex::from(0));
         let mut parents = vec![root];
         while let Some(parent) = parents.pop() {
@@ -59,8 +60,8 @@ impl Tree {
             let data = parent.0;
             let from = parent.1;
             let head = parent.2;
-            let node = self.wrap(data);
-            let tail = self.attach(node, from, head);
+            let node = self.wrap(data); // , index
+            let tail = self.attach(node, from, head); // , mut index
             while let Some(child) = children.pop() {
                 let data = child.data;
                 let from = Some(child.edge);
@@ -69,28 +70,28 @@ impl Tree {
         }
     }
 
-    fn cluster(&mut self) {
+    fn bucketize(&mut self) {
         for node in self.graph.node_weights() {
-            if node.player() == &Player::Chance {
+            if node.data.player() == &Player::Chance {
                 continue;
-            } else if let Some(info) = self.infos.get_mut(node.bucket()) {
-                info.roots.push(*node.index());
+            } else if let Some(info) = self.infos.get_mut(node.data.bucket()) {
+                info.roots.push(node.index);
             } else {
                 let mut info = Info {
                     roots: Vec::new(),
                     graph: self.graph(),
                 };
-                info.roots.push(*node.index());
-                self.infos.insert(*node.bucket(), info);
+                info.roots.push(node.index);
+                self.infos.insert(*node.data.bucket(), info);
             }
         }
     }
 
     fn attach(&mut self, node: Node, from: Option<Edge>, head: NodeIndex) -> NodeIndex {
         let tail = self.index();
-        if let Some(from) = from {
+        if let Some(edge) = from {
             self.graph.add_node(node);
-            self.graph.add_edge(head, tail, from);
+            self.graph.add_edge(head, tail, edge);
         } else {
             self.graph.add_node(node);
         }

@@ -17,35 +17,22 @@ pub struct Node {
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl Node {
-    // observability
-    pub fn index(&self) -> &NodeIndex {
-        &self.index
-    }
-    pub fn bucket(&self) -> &Bucket {
-        self.data.bucket()
-    }
-    pub fn player(&self) -> &Player {
-        self.data.player()
-    }
-    pub fn payoff(&self, player: &Player) -> Utility {
-        self.data.payoff(player)
-    }
     // walkability
     pub fn incoming(&self) -> Option<&Edge> {
         self.graph()
-            .edges_directed(*self.index(), Incoming)
+            .edges_directed(self.index, Incoming)
             .next()
             .map(|e| e.weight())
     }
     pub fn outgoing(&self) -> Vec<&Edge> {
         self.graph()
-            .edges_directed(*self.index(), Outgoing)
+            .edges_directed(self.index, Outgoing)
             .map(|e| e.weight())
             .collect()
     }
     pub fn parent<'tree>(&'tree self) -> Option<&'tree Self> {
         self.graph()
-            .neighbors_directed(*self.index(), Incoming)
+            .neighbors_directed(self.index, Incoming)
             .next()
             .map(|p| {
                 self.graph()
@@ -55,7 +42,7 @@ impl Node {
     }
     pub fn children<'tree>(&'tree self) -> Vec<&'tree Self> {
         self.graph()
-            .neighbors_directed(*self.index(), Outgoing)
+            .neighbors_directed(self.index, Outgoing)
             .map(|c| {
                 self.graph()
                     .node_weight(c)
