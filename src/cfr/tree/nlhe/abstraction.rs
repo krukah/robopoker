@@ -18,6 +18,9 @@ struct History;
 /// distribution of equity uniformly sampled over unknown villain and board cards. elements of the EMD metric space
 struct Potential;
 
+/// deterministic outcome of deck draw
+struct Runout;
+
 trait Abstraction {
     /// top-level function that maps a perfect recall history to an abstracted bucket
     fn bucket(history: History) -> Bucket;

@@ -49,7 +49,7 @@ impl Tree {
         let root = (Self::root(), None, NodeIndex::from(0));
         let mut parents = vec![root];
         while let Some(parent) = parents.pop() {
-            let mut children = self.children(&parent.0);
+            let mut children = self.spawn(&parent.0);
             let data = parent.0;
             let from = parent.1;
             let head = parent.2;
@@ -96,9 +96,11 @@ impl Tree {
     // full tree defined recursively by ::root() + ::children()
 
     fn root() -> Data {
+        // MARK: very different
         Data(0)
     }
-    fn children(&self, data: &Data) -> Vec<Child> {
+    fn spawn(&self, data: &Data) -> Vec<Child> {
+        // MARK: very different
         match data.0 {
             // P1 moves
             00 => vec![
