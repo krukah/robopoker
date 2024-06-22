@@ -2,6 +2,7 @@ use super::bucket::Bucket;
 use super::player::Player;
 use crate::cfr::tree::rps::action::Edge;
 use crate::cfr::tree::rps::data::Data;
+use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use petgraph::Direction::Incoming;
@@ -22,7 +23,48 @@ impl Node {
     fn graph(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
     }
-    #[allow(dead_code)]
+
+    pub fn bucket(&self) -> &Bucket {
+        // MARK: very different
+        match self.data.0 {
+            00 => &Bucket::P1,
+            01..=03 => &Bucket::P2,
+            04..=12 => &Bucket::Ignore,
+            _ => unreachable!(),
+        }
+    }
+    pub fn player(&self) -> &Player {
+        // MARK: very different
+        match self.data.0 {
+            00 => &Player::P1,
+            01..=03 => &Player::P2,
+            04..=12 => &Player::Chance,
+            _ => unreachable!(),
+        }
+    }
+    pub fn payoff(root: &Node, leaf: &Node) -> Utility {
+        // MARK: very different
+        const HI_STAKES: Utility = 2e0; // we can modify payoffs to verify convergence
+        const LO_STAKES: Utility = 1e0;
+        let direction = match root.player() {
+            Player::P1 => 0. + 1.,
+            Player::P2 => 0. - 1.,
+            _ => unreachable!("payoff should not be queried for chance"),
+        };
+        let payoff = match leaf.data.0 {
+            04 | 08 | 12 => 0.0,
+            07 => 0. + LO_STAKES, // P > R
+            05 => 0. - LO_STAKES, // R < P
+            06 => 0. + HI_STAKES, // R > S
+            11 => 0. + HI_STAKES, // S > P
+            10 => 0. - HI_STAKES, // S < R
+            09 => 0. - HI_STAKES, // P < S
+            _ => unreachable!("eval at terminal node, depth > 1"),
+        };
+        direction * payoff
+    }
+
+    #[allow(dead_code)] // use history for creating buckets
     pub fn history(&self) -> Vec<&Edge> {
         match self.incoming() {
             None => vec![],
@@ -33,22 +75,7 @@ impl Node {
             }
         }
     }
-    pub fn bucket(&self) -> &Bucket {
-        match self.data.0 {
-            00 => &Bucket::P1,
-            01..=03 => &Bucket::P2,
-            04..=12 => &Bucket::Ignore,
-            _ => unreachable!(),
-        }
-    }
-    pub fn player(&self) -> &Player {
-        match self.data.0 {
-            00 => &Player::P1,
-            01..=03 => &Player::P2,
-            04..=12 => &Player::Chance,
-            _ => unreachable!(),
-        }
-    }
+
     pub fn outgoing(&self) -> Vec<&Edge> {
         self.graph()
             .edges_directed(self.index, Outgoing)
