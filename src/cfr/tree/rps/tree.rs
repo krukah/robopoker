@@ -72,7 +72,7 @@ impl Tree {
 
     fn bucketize(&mut self) {
         for node in self.graph.node_weights() {
-            if node.data.player() == &Player::Chance {
+            if node.player() == &Player::Chance {
                 continue;
             } else if let Some(info) = self.infos.get_mut(node.bucket()) {
                 info.roots.push(node.index);
