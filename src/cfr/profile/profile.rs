@@ -38,14 +38,15 @@ impl Profile {
             .insert(edge, value);
     }
 
+    // marginal counterfactual gain over strategy EV
     pub fn gain(&self, root: &Node, edge: &Edge) -> Utility {
         let cfactual = self.cfactual_value(root, edge);
         let expected = self.expected_value(root);
         cfactual - expected
     }
 
-    // monte carlo, external sampling variant. need to add traverser, maybe Profile { traverser }
     #[allow(dead_code)]
+    // recursive sampling methods
     fn leaves<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
         match node.children().len() {
             0 => vec![&node],
@@ -92,7 +93,7 @@ impl Profile {
         self.sample(child)
     }
 
-    // provided
+    // utility calculations
     fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
         1.0 * self.cfactual_reach(root)
             * self
@@ -112,7 +113,27 @@ impl Profile {
     fn relative_value(&self, root: &Node, leaf: &Node) -> Utility {
         1.0 * self.relative_reach(root, leaf)
             * self.sampling_reach(root, leaf)
-            * leaf.data.payoff(root.player())
+            * self.terminal_value(root, leaf)
+    }
+    fn terminal_value(&self, root: &Node, leaf: &Node) -> Utility {
+        const HI_STAKES: Utility = 2e0; // we can modify payoffs to verify convergence
+        const LO_STAKES: Utility = 1e0;
+        let direction = match root.player() {
+            Player::P1 => 0. + 1.,
+            Player::P2 => 0. - 1.,
+            _ => unreachable!("payoff should not be queried for chance"),
+        };
+        let payoff = match leaf.data.0 {
+            04 | 08 | 12 => 0.0,
+            07 => 0. + LO_STAKES, // P > R
+            05 => 0. - LO_STAKES, // R < P
+            06 => 0. + HI_STAKES, // R > S
+            11 => 0. + HI_STAKES, // S > P
+            10 => 0. - HI_STAKES, // S < R
+            09 => 0. - HI_STAKES, // P < S
+            _ => unreachable!("eval at terminal node, depth > 1"),
+        };
+        direction * payoff
     }
 
     // probability calculations

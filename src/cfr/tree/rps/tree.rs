@@ -30,13 +30,6 @@ impl Tree {
         this
     }
 
-    fn root() -> Data {
-        Data::root()
-    }
-    fn children(&self, data: &Data) -> Vec<Child> {
-        data.children()
-    }
-
     fn index(&self) -> NodeIndex {
         NodeIndex::new(self.graph.node_count())
     }
@@ -96,5 +89,79 @@ impl Tree {
             self.graph.add_node(node);
         }
         tail
+    }
+
+    // tree-building methods.
+    // memory-allocating.
+    // full tree defined recursively by ::root() + ::children()
+
+    fn root() -> Data {
+        Data(0)
+    }
+    fn children(&self, data: &Data) -> Vec<Child> {
+        match data.0 {
+            // P1 moves
+            00 => vec![
+                Child {
+                    data: Data(01),
+                    edge: Edge::RO,
+                },
+                Child {
+                    data: Data(02),
+                    edge: Edge::PA,
+                },
+                Child {
+                    data: Data(03),
+                    edge: Edge::SC,
+                },
+            ],
+            // P2 moves
+            01 => vec![
+                Child {
+                    data: Data(04),
+                    edge: Edge::RO,
+                },
+                Child {
+                    data: Data(05),
+                    edge: Edge::PA,
+                },
+                Child {
+                    data: Data(06),
+                    edge: Edge::SC,
+                },
+            ],
+            02 => vec![
+                Child {
+                    data: Data(07),
+                    edge: Edge::RO,
+                },
+                Child {
+                    data: Data(08),
+                    edge: Edge::PA,
+                },
+                Child {
+                    data: Data(09),
+                    edge: Edge::SC,
+                },
+            ],
+            03 => vec![
+                Child {
+                    data: Data(10),
+                    edge: Edge::RO,
+                },
+                Child {
+                    data: Data(11),
+                    edge: Edge::PA,
+                },
+                Child {
+                    data: Data(12),
+                    edge: Edge::SC,
+                },
+            ],
+            // terminal nodes
+            04..=12 => Vec::new(),
+            //
+            _ => unreachable!(),
+        }
     }
 }
