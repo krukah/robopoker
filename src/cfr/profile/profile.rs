@@ -102,7 +102,7 @@ impl Profile {
                 .sum::<Utility>()
     }
     fn expected_value(&self, root: &Node) -> Utility {
-        1.0 * self.strategy_reach(root)
+        1.0 * self.expected_reach(root)
             * self
                 .sample(root)
                 .iter() //                                  duplicated calculation
@@ -114,6 +114,7 @@ impl Profile {
             * self.sampling_reach(root, leaf)
             * leaf.data.payoff(root.player())
     }
+
     // probability calculations
     fn weight(&self, node: &Node, edge: &Edge) -> Probability {
         match node.player() {
@@ -142,13 +143,12 @@ impl Profile {
         }
         prod
     }
-
-    fn strategy_reach(&self, node: &Node) -> Probability {
+    fn expected_reach(&self, node: &Node) -> Probability {
         match node.parent() {
             None => 1.0,
             Some(from) => {
                 let edge = node.incoming().expect("has parent");
-                self.weight(from, edge) * self.strategy_reach(from)
+                self.weight(from, edge) * self.expected_reach(from)
             }
         }
     }
@@ -156,9 +156,9 @@ impl Profile {
         if root.bucket() == leaf.bucket() {
             1.0
         } else {
-            let from = leaf.parent().expect("if has parent, then has incoming");
-            let edge = leaf.incoming().expect("if has parent, then has incoming");
-            self.weight(from, edge) * self.relative_reach(root, from)
+            let node = leaf.parent().expect("if has parent, then has incoming");
+            let from = leaf.incoming().expect("if has parent, then has incoming");
+            self.weight(node, from) * self.relative_reach(root, node)
         }
     }
     fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {

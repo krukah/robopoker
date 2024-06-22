@@ -22,15 +22,6 @@ impl Node {
     fn graph(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
     }
-    pub fn bucket(&self) -> &Bucket {
-        //? TODO hoist to Node
-        match self.data.0 {
-            00 => &Bucket::P1,
-            01..=03 => &Bucket::P2,
-            04..=12 => &Bucket::Ignore,
-            _ => unreachable!(),
-        }
-    }
     #[allow(dead_code)]
     pub fn history(&self) -> Vec<&Edge> {
         match self.incoming() {
@@ -42,6 +33,14 @@ impl Node {
             }
         }
     }
+    pub fn bucket(&self) -> &Bucket {
+        match self.data.0 {
+            00 => &Bucket::P1,
+            01..=03 => &Bucket::P2,
+            04..=12 => &Bucket::Ignore,
+            _ => unreachable!(),
+        }
+    }
     pub fn player(&self) -> &Player {
         match self.data.0 {
             00 => &Player::P1,
@@ -50,16 +49,6 @@ impl Node {
             _ => unreachable!(),
         }
     }
-    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
-    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
-    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
-    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
-    // player can probably just be stored
-    // bucket can be calculated as func of (Bucket, Data) and should be a function bound to Node
-    // payoff can be Option<Utility> defined at terminal nodes from strength map
-    // strength map:
-    //      players with concrete cards have some associated Strength value at showdown
-    //      players without
     pub fn outgoing(&self) -> Vec<&Edge> {
         self.graph()
             .edges_directed(self.index, Outgoing)
