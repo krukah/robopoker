@@ -10,5 +10,5 @@ pub type Utility = f32;
 pub type Probability = f32;
 
 fn main() {
-    Trainer::train(100_000);
+    Trainer::train(50_000);
 }
