@@ -1,4 +1,5 @@
 use super::bucket::Bucket;
+use super::player::Player;
 use crate::cfr::tree::rps::action::Edge;
 use crate::cfr::tree::rps::data::Data;
 use petgraph::graph::DiGraph;
@@ -30,6 +31,7 @@ impl Node {
             _ => unreachable!(),
         }
     }
+    #[allow(dead_code)]
     pub fn history(&self) -> Vec<&Edge> {
         match self.incoming() {
             None => vec![],
@@ -40,6 +42,24 @@ impl Node {
             }
         }
     }
+    pub fn player(&self) -> &Player {
+        match self.data.0 {
+            00 => &Player::P1,
+            01..=03 => &Player::P2,
+            04..=12 => &Player::Chance,
+            _ => unreachable!(),
+        }
+    }
+    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
+    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
+    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
+    // how should Data be represnted such that ::player(), ::bucket(), ::payoff() are easily calculatdd
+    // player can probably just be stored
+    // bucket can be calculated as func of (Bucket, Data) and should be a function bound to Node
+    // payoff can be Option<Utility> defined at terminal nodes from strength map
+    // strength map:
+    //      players with concrete cards have some associated Strength value at showdown
+    //      players without
     pub fn outgoing(&self) -> Vec<&Edge> {
         self.graph()
             .edges_directed(self.index, Outgoing)
@@ -59,7 +79,7 @@ impl Node {
             .map(|p| {
                 self.graph()
                     .node_weight(p)
-                    .expect("tree property: if incoming edge, then parent")
+                    .expect("if incoming edge, then parent")
             })
     }
     pub fn children<'tree>(&'tree self) -> Vec<&'tree Self> {
@@ -68,20 +88,9 @@ impl Node {
             .map(|c| {
                 self.graph()
                     .node_weight(c)
-                    .expect("tree property: if outgoing edge, then child")
+                    .expect("if outgoing edge, then child")
             })
             .collect()
-    }
-    pub fn descendants<'tree>(&'tree self) -> Vec<&'tree Self> {
-        match self.children().len() {
-            0 => vec![&self],
-            _ => self
-                .children()
-                .iter()
-                .map(|child| child.descendants())
-                .flatten()
-                .collect(),
-        }
     }
     pub fn follow<'tree>(&'tree self, edge: &Edge) -> &'tree Self {
         self.children()

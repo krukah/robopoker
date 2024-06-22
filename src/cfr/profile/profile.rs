@@ -44,20 +44,67 @@ impl Profile {
         cfactual - expected
     }
 
+    // monte carlo, external sampling variant. need to add traverser, maybe Profile { traverser }
+    #[allow(dead_code)]
+    fn leaves<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
+        match node.children().len() {
+            0 => vec![&node],
+            _ => node
+                .children()
+                .iter()
+                .map(|child| self.leaves(child))
+                .flatten()
+                .collect(),
+        }
+    }
+    fn sample<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
+        // external sampling explores ALL possible actions for the traverser and ONE possible action for chance & opps
+        let traverser = node.player(); //  self.traverser: &Player
+        if 0 == node.children().len() {
+            vec![&node]
+        } else if traverser == node.player() {
+            self.expand(node)
+        } else {
+            self.select(node)
+        }
+    }
+    fn expand<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
+        // implicitly we're at a node belonging to the traverser
+        node.children()
+            .iter()
+            .map(|child| self.sample(child))
+            .flatten()
+            .collect()
+    }
+    fn select<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
+        // now wer'e at an opp or chance node
+        use rand::distributions::Distribution;
+        use rand::distributions::WeightedIndex;
+        let mut rng = rand::thread_rng();
+        let ref weights = node
+            .outgoing()
+            .iter()
+            .map(|edge| self.weight(node, edge))
+            .collect::<Vec<Probability>>();
+        let distribution = WeightedIndex::new(weights).expect("same length");
+        let index = distribution.sample(&mut rng);
+        let child = *node.children().get(index).expect("valid index");
+        self.sample(child)
+    }
+
     // provided
     fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
         1.0 * self.cfactual_reach(root)
-            * root //                                       suppose you're here on purpose, counterfactually
-                .follow(edge) //                            suppose you're here on purpose, counterfactually
-                .descendants() //                           O(depth) recursive downtree
+            * self
+                .sample(root.follow(edge))
                 .iter() //                                  duplicated calculation
                 .map(|leaf| self.relative_value(root, leaf))
                 .sum::<Utility>()
     }
     fn expected_value(&self, root: &Node) -> Utility {
         1.0 * self.strategy_reach(root)
-            * root
-                .descendants() //                           O(depth) recursive downtree
+            * self
+                .sample(root)
                 .iter() //                                  duplicated calculation
                 .map(|leaf| self.relative_value(root, leaf))
                 .sum::<Utility>()
@@ -65,11 +112,11 @@ impl Profile {
     fn relative_value(&self, root: &Node, leaf: &Node) -> Utility {
         1.0 * self.relative_reach(root, leaf)
             * self.sampling_reach(root, leaf)
-            * leaf.data.payoff(root.data.player())
+            * leaf.data.payoff(root.player())
     }
     // probability calculations
     fn weight(&self, node: &Node, edge: &Edge) -> Probability {
-        match node.data.player() {
+        match node.player() {
             Player::Chance => {
                 let n = node.outgoing().len();
                 1.0 / n as Probability
@@ -85,7 +132,7 @@ impl Profile {
         let mut next = root;
         while let Some(from) = next.parent() {
             let edge = next.incoming().expect("has parent");
-            if from.data.player() == root.data.player() {
+            if from.player() == root.player() {
                 prod *= self.cfactual_reach(from);
                 break;
             } else {

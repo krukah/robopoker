@@ -10,14 +10,6 @@ pub struct Child {
 }
 pub struct Data(pub usize);
 impl Data {
-    pub fn player(&self) -> &Player {
-        match self.0 {
-            00 => &Player::P1,
-            01..=03 => &Player::P2,
-            04..=12 => &Player::Chance,
-            _ => unreachable!(),
-        }
-    }
     pub fn payoff(&self, player: &Player) -> Utility {
         const HI_STAKES: Utility = 2e0; // we can modify payoffs to verify convergence
         const LO_STAKES: Utility = 1e0;
