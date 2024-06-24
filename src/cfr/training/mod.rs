@@ -1,2 +1,1 @@
-pub mod minimizer;
-pub mod trainer;
+pub mod solver;
