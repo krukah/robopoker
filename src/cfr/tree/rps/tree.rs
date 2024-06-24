@@ -17,7 +17,7 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn infosets(&self) -> Vec<&Info> {
+    pub fn blocks(&self) -> Vec<&Info> {
         self.infos.values().collect()
     }
     pub fn new() -> Self {

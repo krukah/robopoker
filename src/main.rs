@@ -1,4 +1,4 @@
-use cfr::training::trainer::Trainer;
+use cfr::training::solver::Solver;
 
 mod cards;
 mod cfr;
@@ -10,5 +10,5 @@ pub type Utility = f32;
 pub type Probability = f32;
 
 fn main() {
-    Trainer::train(50_000);
+    Solver::new().solve(50_000);
 }
