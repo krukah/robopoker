@@ -16,7 +16,7 @@ impl Info {
             .map(|i| self.graph().node_weight(*i).expect("valid node index"))
             .collect()
     }
-    pub fn sample(&self) -> &Node {
+    pub fn node(&self) -> &Node {
         self.roots
             .iter()
             .next()
