@@ -55,18 +55,19 @@ impl Solver {
         }
     }
     pub fn step(&mut self) {
-        for block in self.tree.blocks() {
-            if self.walker() != block.sample().player() {
+        for ref block in self.sample() {
+            if self.walker() != block.node().player() {
                 continue;
+            } else {
+                self.update_regret(block);
+                self.update_policy(block);
             }
-            self.update_regret(block);
-            self.update_policy(block);
         }
     }
     pub fn initialize(&mut self) {
         for info in self.tree.blocks() {
-            let actions = info.sample().outgoing();
-            let bucket = info.sample().bucket();
+            let actions = info.node().outgoing();
+            let bucket = info.node().bucket();
             let weight = 1.0 / actions.len() as Probability;
             let regret = 0.0;
             for action in actions {
@@ -83,6 +84,10 @@ impl Solver {
     take Node as argument rather than Info, since regret calcs are implicitly 1-node-infosets in external sampling
     */
 
+    fn sample(&self) -> Vec<Info> {
+        todo!("sample new MC tree")
+    }
+
     // external sampling helper methods derived from epoch
     fn walker(&self) -> &Player {
         match self.epoch % 2 {
@@ -93,14 +98,14 @@ impl Solver {
 
     fn update_regret(&mut self, info: &Info) {
         for (ref action, regret) in self.regret_vector(info) {
-            let bucket = info.sample().bucket();
+            let bucket = info.node().bucket();
             let running = self.regrets.get_mut(bucket, action);
             *running = regret;
         }
     }
     fn update_policy(&mut self, info: &Info) {
         for (ref action, weight) in self.policy_vector(info) {
-            let bucket = info.sample().bucket();
+            let bucket = info.node().bucket();
             let current = self.current.get_mut(bucket, action);
             let average = self.average.get_mut(bucket, action);
             *current = weight;
@@ -114,7 +119,7 @@ impl Solver {
     // regret calculation via regret matching +
     fn policy_vector(&self, infonode: &Info) -> Vec<(Edge, Probability)> {
         let regrets = infonode
-            .sample()
+            .node()
             .outgoing()
             .iter()
             .map(|action| (**action, self.running_regret(infonode, action)))
@@ -126,7 +131,7 @@ impl Solver {
     }
     fn regret_vector(&self, infonode: &Info) -> Vec<(Edge, Utility)> {
         infonode
-            .sample()
+            .node()
             .outgoing()
             .into_iter()
             .map(|action| (*action, self.matched_regret(infonode, action)))
@@ -140,7 +145,7 @@ impl Solver {
         (running + instant).max(Utility::MIN_POSITIVE)
     }
     fn running_regret(&self, infonode: &Info, action: &Edge) -> Utility {
-        let bucket = infonode.sample().bucket();
+        let bucket = infonode.node().bucket();
         let regret = self.regrets.get_ref(bucket, action);
         *regret
     }
@@ -177,6 +182,7 @@ impl Solver {
     }
 
     // recursive sampling methods
+    #[allow(dead_code)]
     fn select_terminal_nodes<'a>(&self, node: &'a Node) -> Terminals<'a> {
         match node.children().len() {
             0 => vec![&node],
