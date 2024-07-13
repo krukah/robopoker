@@ -1,7 +1,9 @@
 use super::abstraction::Abstraction;
 use super::kmeans::KMeans;
 use std::collections::HashMap;
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::hash::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 /// distribution over arbitrary type T
 pub struct Histogram<T> {
@@ -18,9 +20,6 @@ where
     }
     fn domain(&self) -> Vec<&T> {
         self.counts.keys().collect()
-    }
-    fn sample(&self) -> &T {
-        todo!("sample from histogram")
     }
 
     /// earth mover's distance
@@ -43,7 +42,7 @@ where
                 let that_key = that.domain()[i];
                 let spill = extra
                     .get(that_key)
-                    .map(|x| x.clone())
+                    .cloned()
                     .or_else(|| Some(that.weight(that_key)))
                     .expect("key is somewhere");
                 if spill == 0f32 {
@@ -140,6 +139,7 @@ where
         Self { n, counts }
     }
 }
+
 impl<T> Hash for Histogram<T>
 where
     T: Hash,
@@ -147,6 +147,7 @@ where
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         for x in self.counts.keys() {
             x.hash(state);
+            todo!("use a btree to maintain order");
         }
     }
 }
@@ -161,4 +162,9 @@ where
     }
 }
 
-impl<T> Eq for Histogram<T> where T: Eq {}
+impl<T> Eq for Histogram<T>
+where
+    T: Eq,
+{
+    //
+}
