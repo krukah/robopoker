@@ -1,6 +1,6 @@
 use crate::cards::card::Card;
 
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub enum Observation {
     Pre([Card; 2]),
     Flo([Card; 5]),

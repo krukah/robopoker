@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Card {
     rank: Rank,
     suit: Suit,

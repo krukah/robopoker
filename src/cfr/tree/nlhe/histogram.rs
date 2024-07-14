@@ -1,13 +1,12 @@
 use super::abstraction::Abstraction;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-/// distribution over arbitrary type T
 pub struct Histogram {
     n: usize,
-    counts: HashMap<Abstraction, usize>,
+    counts: BTreeMap<Abstraction, usize>,
 }
 
 impl Histogram {
@@ -40,7 +39,7 @@ impl Histogram {
 impl From<Vec<Abstraction>> for Histogram {
     fn from(abstractions: Vec<Abstraction>) -> Self {
         let n = abstractions.len();
-        let mut counts = HashMap::new();
+        let mut counts = BTreeMap::new();
         for abs in abstractions {
             *counts.entry(abs).or_insert(0usize) += 1;
         }
@@ -49,18 +48,17 @@ impl From<Vec<Abstraction>> for Histogram {
 }
 
 impl Hash for Histogram {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        for x in self.counts.keys() {
-            x.hash(state);
-            todo!("use a btree to maintain order");
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for (key, value) in self.counts.iter() {
+            key.hash(state);
+            value.hash(state);
         }
     }
 }
 
 impl PartialEq for Histogram {
     fn eq(&self, other: &Self) -> bool {
-        self.n == other.n;
-        todo!("be fr, compare the histograms")
+        self.counts == other.counts
     }
 }
 
