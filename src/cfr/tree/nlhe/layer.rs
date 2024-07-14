@@ -29,7 +29,7 @@ impl Layer {
     pub fn from(lower: &Self) -> Self {
         let projections = lower.project();
         let histograms = projections.values().collect();
-        let ref centroids = lower.kmeans(histograms, 100);
+        let ref centroids = lower.k_means(histograms, 100);
         Self {
             mapping: lower.upper_mapping(centroids, projections),
             measure: lower.upper_measure(centroids),
@@ -43,19 +43,6 @@ impl Layer {
             .map(|o| (o, self.histogram(&o)))
             .collect::<HashMap<_, _>>()
     }
-    fn measure(&self, a: &Abstraction, b: &Abstraction) -> f32 {
-        self.measure
-            .get(&[*a, *b])
-            .or_else(|| self.measure.get(&[*b, *a]))
-            .copied()
-            .expect("we should have computed distances previously")
-    }
-    fn mapping(&self, observation: &Observation) -> Abstraction {
-        self.mapping
-            .get(observation)
-            .copied()
-            .expect("we should have computed signatures previously")
-    }
     fn histogram(&self, observation: &Observation) -> Histogram {
         Histogram::from(
             self.simulate(observation)
@@ -63,6 +50,19 @@ impl Layer {
                 .map(|o| self.mapping(o))
                 .collect::<Vec<_>>(),
         )
+    }
+    fn mapping(&self, observation: &Observation) -> Abstraction {
+        self.mapping
+            .get(observation)
+            .copied()
+            .expect("we should have computed signatures previously")
+    }
+    fn measure(&self, a: &Abstraction, b: &Abstraction) -> f32 {
+        self.measure
+            .get(&[*a, *b])
+            .or_else(|| self.measure.get(&[*b, *a]))
+            .copied()
+            .expect("we should have computed distances previously")
     }
     fn emd(&self, this: &Histogram, that: &Histogram) -> f32 {
         let n = this.size();
@@ -134,12 +134,12 @@ impl Layer {
         distances
     }
     fn upper_street(&self) -> Street {
-        todo!()
+        todo!("match on street")
     }
 
     // k-means clustering
-    fn kmeans(&self, histograms: Vec<&Histogram>, t: usize) -> Vec<Histogram> {
-        let mut centroids = Self::initials();
+    fn k_means(&self, histograms: Vec<&Histogram>, t: usize) -> Vec<Histogram> {
+        let mut centroids = Self::guesses();
         let k = centroids.len();
         for _ in 0..t {
             let mut clusters: Vec<Vec<&Histogram>> = vec![vec![]; k];
@@ -165,8 +165,7 @@ impl Layer {
         }
         centroids
     }
-
-    fn initials() -> Vec<Histogram> {
+    fn guesses() -> Vec<Histogram> {
         todo!("implement k-means++ initialization")
     }
 }

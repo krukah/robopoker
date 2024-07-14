@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Abstraction(u64);
 
 impl Abstraction {
