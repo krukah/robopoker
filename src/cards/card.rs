@@ -11,9 +11,13 @@ impl Card {
     pub fn suit(&self) -> Suit {
         self.suit
     }
-    const MAX: Self = Self {
+    pub const MAX: Self = Self {
         rank: Rank::MAX,
         suit: Suit::MAX,
+    };
+    pub const MIN: Self = Self {
+        rank: Rank::MIN,
+        suit: Suit::MIN,
     };
 }
 

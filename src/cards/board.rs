@@ -1,19 +1,31 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Street {
-    Pre,
+    Pref,
     Flop,
     Turn,
-    River,
+    Rive,
     Showdown,
+}
+
+impl Street {
+    pub fn next(&self) -> Street {
+        match self {
+            Street::Pref => Street::Flop,
+            Street::Flop => Street::Turn,
+            Street::Turn => Street::Rive,
+            Street::Rive => Street::Showdown,
+            Street::Showdown => unreachable!("No next street after Showdown"),
+        }
+    }
 }
 
 impl Display for Street {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
-            Street::Pre => write!(f, "Pre Flop"),
+            Street::Pref => write!(f, "Pre Flop"),
             Street::Flop => write!(f, "Flop"),
             Street::Turn => write!(f, "Turn"),
-            Street::River => write!(f, "River"),
+            Street::Rive => write!(f, "River"),
             Street::Showdown => write!(f, "Showdown"),
         }
     }
@@ -29,7 +41,7 @@ impl Board {
     pub fn new() -> Board {
         Board {
             cards: Vec::with_capacity(5),
-            street: Street::Pre,
+            street: Street::Pref,
         }
     }
 

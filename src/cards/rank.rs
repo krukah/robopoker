@@ -20,6 +20,7 @@ impl Rank {
         n & 0b00000000000000000001111111111111
     }
     pub const MAX: Self = Rank::Ace;
+    pub const MIN: Self = Rank::Two;
 }
 
 // u8 isomorphism
