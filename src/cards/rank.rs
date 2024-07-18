@@ -15,6 +15,13 @@ pub enum Rank {
     Ace = 12,
 }
 
+impl Rank {
+    pub fn mask(n: u32) -> u32 {
+        n & 0b00000000000000000001111111111111
+    }
+    pub const MAX: Self = Rank::Ace;
+}
+
 // u8 isomorphism
 impl From<u8> for Rank {
     fn from(n: u8) -> Rank {
@@ -56,13 +63,6 @@ impl From<Rank> for u32 {
         1 << u8::from(r)
     }
 }
-
-impl Rank {
-    pub fn mask(n: u32) -> u32 {
-        n & 0b00000000000000000001111111111111
-    }
-}
-
 impl Display for Rank {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(

@@ -11,6 +11,10 @@ impl Card {
     pub fn suit(&self) -> Suit {
         self.suit
     }
+    const MAX: Self = Self {
+        rank: Rank::MAX,
+        suit: Suit::MAX,
+    };
 }
 
 /// u8 isomorphism
