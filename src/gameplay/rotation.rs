@@ -153,7 +153,7 @@ impl Rotation {
         self.pot = 0;
         self.counts = 0;
         self.board.cards.clear();
-        self.board.street = Street::Pre;
+        self.board.street = Street::Pref;
         self.dealer = self.after(self.dealer);
         self.action = self.dealer;
         self.rotate();
@@ -161,7 +161,7 @@ impl Rotation {
     pub fn begin_street(&mut self) {
         self.counts = 0;
         self.action = match self.board.street {
-            Street::Pre => self.after(self.after(self.dealer)),
+            Street::Pref => self.after(self.after(self.dealer)),
             _ => self.dealer,
         };
         self.rotate();
@@ -171,10 +171,10 @@ impl Rotation {
             seat.clear();
         }
         self.board.street = match self.board.street {
-            Street::Pre => Street::Flop,
+            Street::Pref => Street::Flop,
             Street::Flop => Street::Turn,
-            Street::Turn => Street::River,
-            Street::River => Street::Showdown,
+            Street::Turn => Street::Rive,
+            Street::Rive => Street::Showdown,
             Street::Showdown => unreachable!(),
         }
     }

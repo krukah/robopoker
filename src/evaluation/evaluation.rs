@@ -4,7 +4,7 @@
 /// i'll maybe precalculate results and implement LookupEvaluator later
 
 pub trait Evaluator {
-    fn strength(cards: Vec<&Card>) -> Strength;
+    fn strength(cards: &[&Card]) -> Strength;
 }
 
 pub struct LazyEvaluator {
@@ -15,7 +15,7 @@ pub struct LazyEvaluator {
 }
 
 impl Evaluator for LazyEvaluator {
-    fn strength(cards: Vec<&Card>) -> Strength {
+    fn strength(cards: &[&Card]) -> Strength {
         let this = Self {
             hand_set: Self::u32_hand(&cards),
             suit_set: Self::u32_suit(&cards),
@@ -123,7 +123,7 @@ impl LazyEvaluator {
         mask &= mask << 1;
         if mask.count_ones() > 0 {
             return Some(Rank::from(mask));
-        } else if Self::wheel() == (Self::wheel() & u32_cards) {
+        } else if (u32_cards & Self::wheel()) == Self::wheel() {
             return Some(Rank::Five);
         } else {
             return None;
@@ -142,7 +142,7 @@ impl LazyEvaluator {
             .map(|r| Rank::from(r as u8))
     }
 
-    fn rank_counts(cards: &Vec<&Card>) -> [u8; 13] {
+    fn rank_counts(cards: &[&Card]) -> [u8; 13] {
         let mut rank_counts = [0; 13];
         cards
             .iter()
@@ -151,7 +151,7 @@ impl LazyEvaluator {
             .for_each(|r| rank_counts[r] += 1);
         rank_counts
     }
-    fn suit_counts(cards: &Vec<&Card>) -> [u8; 4] {
+    fn suit_counts(cards: &[&Card]) -> [u8; 4] {
         let mut suit_counts = [0; 4];
         cards
             .iter()
@@ -160,7 +160,7 @@ impl LazyEvaluator {
             .for_each(|s| suit_counts[s] += 1);
         suit_counts
     }
-    fn u32_hand(cards: &Vec<&Card>) -> u32 {
+    fn u32_hand(cards: &[&Card]) -> u32 {
         let mut u32_hand = 0;
         cards
             .iter()
@@ -169,7 +169,7 @@ impl LazyEvaluator {
             .for_each(|r| u32_hand |= r);
         u32_hand
     }
-    fn u32_suit(cards: &Vec<&Card>) -> [u32; 4] {
+    fn u32_suit(cards: &[&Card]) -> [u32; 4] {
         let mut u32_suit = [0; 4];
         cards
             .iter()
@@ -179,7 +179,7 @@ impl LazyEvaluator {
         u32_suit
     }
 
-    fn wheel() -> u32 {
+    const fn wheel() -> u32 {
         0b00000000000000000001000000001111
     }
 }

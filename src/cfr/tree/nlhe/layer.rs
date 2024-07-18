@@ -3,6 +3,7 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::observation::Observation;
+use crate::cards::board::Street;
 use std::collections::HashMap;
 
 type Centroids<'a> = &'a Vec<Histogram>;
@@ -10,22 +11,40 @@ type Projections = HashMap<Observation, Histogram>;
 type Mappings = HashMap<Observation, Abstraction>;
 type Measures = HashMap<[Abstraction; 2], f32>;
 
-struct Street;
-
 struct Layer {
-    street: Street,
+    street: Street, // probably try to remove this from the struct - find references and unify
     measure: Measures,
     mapping: Mappings,
 }
 
 impl Layer {
-    fn simulate(&self, _: &Observation) -> Vec<&Observation> {
-        todo!(" select a range of entries from self abstraction    OR    simulate all continuations of this streets")
+    fn predecessors(&self) -> Vec<Observation> {
+        todo!(
+            "
+            generate every possible immediately previous observation at this street
+            conditional on street
+        "
+        )
     }
-    fn generate(&self) -> Vec<Observation> {
-        todo!("generate every possible immediately previous observation at this street")
+    fn successors(&self, _: &Observation) -> Vec<&Observation> {
+        todo!(
+            "
+            select a range of entries from self abstraction 
+            OR
+            simulate all continuations of this streets
+        "
+        );
     }
 
+    pub fn bottom() -> Self {
+        todo!(
+            "
+            * generate all possible river Observations
+            * map them into Abstraction (via Abstraction::from(Observation))
+            * return Layer with Abstraction mapping and distance measure
+        "
+        )
+    }
     pub fn from(lower: &Self) -> Self {
         let projections = lower.project();
         let histograms = projections.values().collect();
@@ -33,31 +52,39 @@ impl Layer {
         Self {
             mapping: lower.upper_mapping(centroids, projections),
             measure: lower.upper_measure(centroids),
-            street: lower.upper_street(),
+            street: Street::next(&lower.street),
         }
     }
 
     fn project(&self) -> Projections {
-        self.generate()
+        self.predecessors()
             .into_iter()
             .map(|o| (o, self.histogram(&o)))
             .collect::<HashMap<_, _>>()
     }
     fn histogram(&self, observation: &Observation) -> Histogram {
         Histogram::from(
-            self.simulate(observation)
+            self.successors(observation)
                 .into_iter()
                 .map(|o| self.mapping(o))
                 .collect::<Vec<_>>(),
         )
     }
     fn mapping(&self, observation: &Observation) -> Abstraction {
+        // match self.street {
+        //    Street::Showdown => Abstraction::from(self.equity(observation)),
+        //    _ => self.mapping.get(observation).copied().expect("we should have computed signatures previously"),
+        // }
         self.mapping
             .get(observation)
             .copied()
             .expect("we should have computed signatures previously")
     }
     fn measure(&self, a: &Abstraction, b: &Abstraction) -> f32 {
+        // match self.street {
+        //    Street::Showdown => (u64::from(*a) - u64::from(*b)).abs()
+        //    _ => self.measure.get(&[*a, *b]).or_else(|| self.measure.get(&[*b, *a])).copied().expect("we should have computed distances previously"),
+        // }
         self.measure
             .get(&[*a, *b])
             .or_else(|| self.measure.get(&[*b, *a]))
@@ -116,7 +143,7 @@ impl Layer {
                     neighbor = centroid;
                 }
             }
-            abstractions.insert(observation, neighbor.abstraction());
+            abstractions.insert(observation, Abstraction::from(neighbor));
         }
         abstractions
     }
@@ -125,7 +152,7 @@ impl Layer {
         for (i, a) in centroids.iter().enumerate() {
             for (j, b) in centroids.iter().enumerate() {
                 if i > j {
-                    let key = [a.abstraction(), b.abstraction()];
+                    let key = [Abstraction::from(a), Abstraction::from(b)];
                     let distance = self.emd(a, b);
                     distances.insert(key, distance);
                 }
@@ -133,13 +160,10 @@ impl Layer {
         }
         distances
     }
-    fn upper_street(&self) -> Street {
-        todo!("match on street")
-    }
 
     // k-means clustering
     fn k_means(&self, histograms: Vec<&Histogram>, t: usize) -> Vec<Histogram> {
-        let mut centroids = Self::guesses();
+        let mut centroids = self.guesses();
         let k = centroids.len();
         for _ in 0..t {
             let mut clusters: Vec<Vec<&Histogram>> = vec![vec![]; k];
@@ -165,7 +189,7 @@ impl Layer {
         }
         centroids
     }
-    fn guesses() -> Vec<Histogram> {
+    fn guesses(&self) -> Vec<Histogram> {
         todo!("implement k-means++ initialization")
     }
 }

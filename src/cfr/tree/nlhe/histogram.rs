@@ -1,6 +1,5 @@
 use super::abstraction::Abstraction;
 use std::collections::BTreeMap;
-use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
 
@@ -11,18 +10,13 @@ pub struct Histogram {
 
 impl Histogram {
     pub fn weight(&self, x: &Abstraction) -> f32 {
-        *self.counts.get(x).unwrap_or(&0) as f32 / self.n as f32
+        self.counts.get(x).cloned().unwrap_or(0) as f32 / self.n as f32
     }
     pub fn domain(&self) -> Vec<&Abstraction> {
         self.counts.keys().collect()
     }
     pub fn size(&self) -> usize {
         self.counts.len()
-    }
-    pub fn abstraction(&self) -> Abstraction {
-        let ref mut hasher = DefaultHasher::new();
-        self.hash(hasher);
-        Abstraction::new(hasher.finish())
     }
     pub fn centroid(histograms: Vec<&Self>) -> Self {
         let mut centroid = Self::from(vec![]);
