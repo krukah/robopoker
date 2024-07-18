@@ -84,8 +84,10 @@ impl Solver {
     take Node as argument rather than Info, since regret calcs are implicitly 1-node-infosets in external sampling
     */
 
+    #[allow(unreachable_code)]
     fn sample(&self) -> Vec<Info> {
-        todo!("sample new MC tree")
+        todo!("sample new MC tree ");
+        todo!("normalize reaches by sampling probability")
     }
 
     // external sampling helper methods derived from epoch

@@ -53,10 +53,10 @@ impl Hand {
     }
     fn street_range(&self, street: Street, bounds: Vec<usize>) -> std::ops::Range<usize> {
         match street {
-            Street::Pre => 0..bounds[0],
+            Street::Pref => 0..bounds[0],
             Street::Flop => bounds[0]..bounds[1],
             Street::Turn => bounds[1]..bounds[2],
-            Street::River => bounds[2]..self.actions.len(),
+            Street::Rive => bounds[2]..self.actions.len(),
             Street::Showdown => unreachable!(),
         }
     }
@@ -77,8 +77,14 @@ impl Hand {
             risked: self.risked(seat.position()),
             status: seat.status(),
             position: seat.position(),
-            strength: LazyEvaluator::strength(self.cards(seat.position())),
+            strength: LazyEvaluator::strength(
+                &self
+                    .cards(seat.position())
+                    .into_iter()
+                    .collect::<Vec<&Card>>()[..],
+            ),
         }
+        //? todo: don't clone the cards
     }
 
     pub fn min_raise(&self) -> u32 {
@@ -162,7 +168,7 @@ impl Hand {
     pub fn next_street(&mut self) {
         self.head.begin_street();
         match self.head.board.street {
-            Street::Pre => {
+            Street::Pref => {
                 for hole in self.head.seats.iter_mut().map(|s| s.hole()) {
                     hole.cards.clear();
                     hole.cards.push(self.deck.draw().unwrap());
@@ -178,7 +184,7 @@ impl Hand {
                 self.apply(Action::Draw(card3));
                 println!("   {}", self.head.board)
             }
-            Street::Turn | Street::River => {
+            Street::Turn | Street::Rive => {
                 let card = self.deck.draw().unwrap();
                 self.apply(Action::Draw(card));
                 println!("   {}", self.head.board)
