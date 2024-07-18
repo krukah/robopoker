@@ -8,6 +8,7 @@ pub enum Suit {
 
 impl Suit {
     pub const MAX: Self = Suit::Spade;
+    pub const MIN: Self = Suit::Club;
 }
 
 impl From<u8> for Suit {
