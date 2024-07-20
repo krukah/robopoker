@@ -1,4 +1,5 @@
 use super::card::Card;
+use std::ops::BitOr;
 
 /// Hand represents an unordered set of Cards
 /// in the limit, it is more memory efficient than Vec<Card>
@@ -8,6 +9,11 @@ use super::card::Card;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
+impl Hand {
+    pub fn size(&self) -> u8 {
+        self.0.count_ones() as u8
+    }
+}
 
 /// u64 isomorphism
 /// we SUM/OR the cards to get the bitstring
@@ -19,8 +25,8 @@ impl From<u64> for Hand {
     }
 }
 impl From<Hand> for u64 {
-    fn from(hand: Hand) -> Self {
-        hand.0
+    fn from(h: Hand) -> Self {
+        h.0
     }
 }
 
@@ -29,8 +35,8 @@ impl From<Hand> for u64 {
 /// [2c, Ts, Jc, Js]
 /// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
 impl From<Hand> for Vec<Card> {
-    fn from(hand: Hand) -> Self {
-        let mut value = hand.0;
+    fn from(h: Hand) -> Self {
+        let mut value = h.0;
         let mut index = 0u8;
         let mut cards = Vec::new();
         while value != 0 {
@@ -45,12 +51,14 @@ impl From<Hand> for Vec<Card> {
 }
 impl From<Vec<Card>> for Hand {
     fn from(cards: Vec<Card>) -> Self {
-        Self(
-            cards
-                .into_iter()
-                .map(|c| u64::from(c))
-                .fold(0, |a, b| a | b),
-        )
+        Self(cards.iter().map(|c| u64::from(*c)).fold(0, |a, b| a | b))
+    }
+}
+
+impl BitOr for Hand {
+    type Output = Hand;
+    fn bitor(self, rhs: Hand) -> Hand {
+        Hand(self.0 | rhs.0)
     }
 }
 
@@ -111,17 +119,17 @@ impl Iterator for HandIterator {
     }
 }
 
-/// we can construct HandIterator a few different ways
-/// - explicitly specifying the length N of the hand
-/// - specifying a starting hand
-/// in both of these cases we need to assign a mask if we want to block any cards
+// we can construct HandIterator a few different ways
+// - explicitly specifying the length N of the hand
+// - specifying a starting hand
+// in both of these cases we need to assign a mask if we want to block any cards
 
-impl From<Hand> for HandIterator {
-    fn from(hand: Hand) -> Self {
-        Self {
-            hand,
-            last: Hand::from(0u64),
-            mask: Hand::from(0u64),
-        }
-    }
-}
+// impl From<Hand> for HandIterator {
+//     fn from(hand: Hand) -> Self {
+//         Self {
+//             hand,
+//             last: Hand::from(0u64),
+//             mask: Hand::from(0u64),
+//         }
+//     }
+// }

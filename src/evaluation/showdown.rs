@@ -34,7 +34,7 @@ impl Showdown {
     }
 
     fn new(payouts: Vec<Payout>) -> Self {
-        let next_rank = Strength::new(BestHand::MAX, Kickers(Vec::new()));
+        let next_rank = Strength::new(Value::MAX, Kickers(Vec::new()));
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
         Self {
@@ -103,5 +103,5 @@ impl Showdown {
     }
 }
 
-use crate::evaluation::strength::{BestHand, Kickers, Strength};
+use crate::evaluation::strength::{Kickers, Strength, Value};
 use crate::gameplay::{payout::Payout, seat::BetStatus};

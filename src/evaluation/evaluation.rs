@@ -29,7 +29,7 @@ impl Evaluator for LazyEvaluator {
 }
 
 impl LazyEvaluator {
-    fn find_best_hand(&self) -> BestHand {
+    fn find_best_hand(&self) -> Value {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
@@ -40,13 +40,13 @@ impl LazyEvaluator {
             .or_else(|| self.find_1_oak())
             .unwrap()
     }
-    fn find_kickers(&self, strength: BestHand) -> Kickers {
+    fn find_kickers(&self, strength: Value) -> Kickers {
         let n = match strength {
-            BestHand::HighCard(_) => 4,
-            BestHand::OnePair(_) => 3,
-            BestHand::ThreeOAK(_) => 2,
-            BestHand::FourOAK(_) => 1,
-            BestHand::TwoPair(_, _) => 1,
+            Value::HighCard(_) => 4,
+            Value::OnePair(_) => 3,
+            Value::ThreeOAK(_) => 2,
+            Value::FourOAK(_) => 1,
+            Value::TwoPair(_, _) => 1,
             _ => return Kickers(Vec::new()),
         };
         Kickers(
@@ -63,46 +63,42 @@ impl LazyEvaluator {
         )
     }
 
-    fn find_flush(&self) -> Option<BestHand> {
+    fn find_flush(&self) -> Option<Value> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
-                .map(BestHand::StraightFlush)
-                .or_else(|| Some(BestHand::Flush(Rank::from(self.suit_set[suit as usize]))))
+                .map(Value::StraightFlush)
+                .or_else(|| Some(Value::Flush(Rank::from(self.suit_set[suit as usize]))))
         })
     }
-    fn find_5_iar(&self) -> Option<BestHand> {
+    fn find_5_iar(&self) -> Option<Value> {
         self.find_rank_of_straight(self.hand_set)
-            .map(|rank| BestHand::Straight(rank))
+            .map(|rank| Value::Straight(rank))
     }
-    fn find_3_oak_2_oak(&self) -> Option<BestHand> {
+    fn find_3_oak_2_oak(&self) -> Option<Value> {
         self.find_rank_of_n_oak(3).and_then(|triple| {
             self.find_rank_of_n_oak_below(2, triple as usize)
-                .map(|couple| BestHand::FullHouse(triple, couple))
+                .map(|couple| Value::FullHouse(triple, couple))
         })
     }
-    fn find_2_oak_2_oak(&self) -> Option<BestHand> {
+    fn find_2_oak_2_oak(&self) -> Option<Value> {
         self.find_rank_of_n_oak(2).and_then(|high| {
             self.find_rank_of_n_oak_below(2, high as usize)
-                .map(|next| BestHand::TwoPair(high, next))
-                .or_else(|| Some(BestHand::OnePair(high)))
+                .map(|next| Value::TwoPair(high, next))
+                .or_else(|| Some(Value::OnePair(high)))
         })
     }
-    fn find_4_oak(&self) -> Option<BestHand> {
-        self.find_rank_of_n_oak(4)
-            .map(|rank| BestHand::FourOAK(rank))
+    fn find_4_oak(&self) -> Option<Value> {
+        self.find_rank_of_n_oak(4).map(|rank| Value::FourOAK(rank))
     }
-    fn find_3_oak(&self) -> Option<BestHand> {
-        self.find_rank_of_n_oak(3)
-            .map(|rank| BestHand::ThreeOAK(rank))
+    fn find_3_oak(&self) -> Option<Value> {
+        self.find_rank_of_n_oak(3).map(|rank| Value::ThreeOAK(rank))
     }
-    fn find_2_oak(&self) -> Option<BestHand> {
+    fn find_2_oak(&self) -> Option<Value> {
         // lowkey unreachable because TwoPair short circuits
-        self.find_rank_of_n_oak(2)
-            .map(|rank| BestHand::OnePair(rank))
+        self.find_rank_of_n_oak(2).map(|rank| Value::OnePair(rank))
     }
-    fn find_1_oak(&self) -> Option<BestHand> {
-        self.find_rank_of_n_oak(1)
-            .map(|rank| BestHand::HighCard(rank))
+    fn find_1_oak(&self) -> Option<Value> {
+        self.find_rank_of_n_oak(1).map(|rank| Value::HighCard(rank))
     }
 
     fn find_suit_of_flush(&self) -> Option<Suit> {
@@ -184,7 +180,7 @@ impl LazyEvaluator {
     }
 }
 
-use super::strength::{BestHand, Kickers, Strength};
+use super::strength::{Kickers, Strength, Value};
 use crate::cards::card::Card;
 use crate::cards::rank::Rank;
 use crate::cards::suit::Suit;
