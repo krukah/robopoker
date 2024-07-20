@@ -1,52 +1,44 @@
+use crate::cards::hand::Hand;
+use crate::evaluation::strength::Strength;
 use std::cmp::Ordering;
 
-use crate::{
-    cards::{board::Street, card::Card},
-    evaluation::{
-        evaluation::{Evaluator, LazyEvaluator},
-        strength::Strength,
-    },
-};
+/// Representation of private cards
+/// might optimize this into less memory
+///  u16      if order does not matter
+/// [Card; 2] if order matters
+/// in either case, we need impl From<Hold> for Hand to preserve contract
+/// this eventual mapping to Hand(u64) then feels like maybe the Hole optimization is futile
+/// haven't reasoned about it enough to tell if worth it
+type Hole = Hand;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct Observation {
-    private: [Card; 2],
-    publics: [Card; 5], // enum over Street
+    secret: Hole,
+    public: Hand,
 }
 
 impl Observation {
     /// this is only available for terminal observations
     pub fn equity(&self) -> f32 {
-        let ref hero = self.private;
-        let ref hero = self.strength(hero);
-        let villains = self.villains();
-        villains
-            .iter()
-            .map(|ref hand| self.strength(hand))
-            .map(|ref rank| hero.cmp(rank))
-            .map(|ref comp| match comp {
+        let this = self.secret;
+        let this = Strength::from(self.public | this);
+        let theirs = self.theirs();
+        let n = theirs.len();
+        theirs
+            .into_iter()
+            .map(|that| Strength::from(self.public | that))
+            .map(|that| match &this.cmp(&that) {
                 Ordering::Less => 0,
                 Ordering::Equal => 1,
                 Ordering::Greater => 2,
             })
             .sum::<u32>() as f32
-            / villains.len() as f32
+            / n as f32
             / 2 as f32
     }
 
     /// this is only available for terminal observations
-    fn strength(&self, private: &[Card; 2]) -> Strength {
-        LazyEvaluator::strength(
-            &Vec::new()
-                .iter()
-                .chain(private.iter())
-                .chain(self.publics.iter())
-                .collect::<Vec<&Card>>()[..],
-        )
-    }
-
-    /// this is only available for terminal observations
-    fn villains(&self) -> Vec<[Card; 2]> {
+    fn theirs(&self) -> Vec<Hole> {
         todo!("terminal: generate all possible villain hands")
     }
 }

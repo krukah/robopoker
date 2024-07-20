@@ -29,7 +29,7 @@ impl Layer {
     fn successors(&self, _: &Observation) -> Vec<&Observation> {
         todo!(
             "
-            select a range of entries from self abstraction 
+            select a range of entries from self abstraction
             OR
             simulate all continuations of this streets
         "
@@ -71,6 +71,10 @@ impl Layer {
         )
     }
     fn mapping(&self, observation: &Observation) -> Abstraction {
+        // this shouldnt ened to reference self.streeet. self.street should emerge from  somewhere
+        // observation.street() ?
+        // layer.street() ?
+        // abstraction.street() ?
         // match self.street {
         //    Street::Showdown => Abstraction::from(self.equity(observation)),
         //    _ => self.mapping.get(observation).copied().expect("we should have computed signatures previously"),
