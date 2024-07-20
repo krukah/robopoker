@@ -1,28 +1,31 @@
 use super::{hand::Hand, rank::Rank, suit::Suit};
-use std::fmt::{Display, Formatter, Result};
 
-#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Card {
-    rank: Rank,
-    suit: Suit,
-}
+/// Card represents a playing card
+/// it is a tuple of Rank and Suit
+/// actually we may as well want to store this as a u8
+/// we expose Rank and Suit via pub methods anyway
+/// and there's not enough entropy to need 16 bits
+/// low-hanging optimization to cut Card memory in half
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Card(u8);
 
 impl Card {
     pub fn rank(&self) -> Rank {
-        self.rank
+        Rank::from(self.0 / 4)
     }
     pub fn suit(&self) -> Suit {
-        self.suit
+        Suit::from(self.0 % 4)
     }
+    pub const MIN: Self = Self(0);
+    pub const MAX: Self = Self(51);
+}
 
-    pub const MAX: Self = Self {
-        rank: Rank::MAX,
-        suit: Suit::MAX,
-    };
-    pub const MIN: Self = Self {
-        rank: Rank::MIN,
-        suit: Suit::MIN,
-    };
+/// (Rank, Suit) isomorphism
+impl From<(Rank, Suit)> for Card {
+    fn from((rank, suit): (Rank, Suit)) -> Self {
+        Self(u8::from(rank) * 4 + u8::from(suit))
+    }
 }
 
 /// u8 isomorphism
@@ -32,15 +35,12 @@ impl Card {
 /// 0b00100111
 impl From<Card> for u8 {
     fn from(c: Card) -> u8 {
-        u8::from(c.suit) + u8::from(c.rank) * 4
+        c.0
     }
 }
 impl From<u8> for Card {
     fn from(n: u8) -> Self {
-        Self {
-            rank: Rank::from(n / 4),
-            suit: Suit::from(n % 4),
-        }
+        Self(n)
     }
 }
 
@@ -51,15 +51,12 @@ impl From<u8> for Card {
 /// 000000000000000 0010 0000100000000
 impl From<Card> for u32 {
     fn from(c: Card) -> u32 {
-        u32::from(c.suit) | u32::from(c.rank)
+        u32::from(c.suit()) | u32::from(c.rank())
     }
 }
 impl From<u32> for Card {
     fn from(n: u32) -> Self {
-        Self {
-            rank: Rank::from(n),
-            suit: Suit::from(n),
-        }
+        Self::from((Rank::from(n), Suit::from(n)))
     }
 }
 
@@ -69,10 +66,7 @@ impl From<u32> for Card {
 /// xxxxxxxxxxxx 0000000000001000000000000000000000000000000000000000
 impl From<u64> for Card {
     fn from(n: u64) -> Self {
-        Self {
-            rank: Rank::from((n.trailing_zeros() / 4) as u8),
-            suit: Suit::from((n.trailing_zeros() % 4) as u8),
-        }
+        Self(n.trailing_zeros() as u8)
     }
 }
 impl From<Card> for u64 {
@@ -81,41 +75,43 @@ impl From<Card> for u64 {
     }
 }
 
-impl Display for Card {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "{}{}", self.rank, self.suit)
+impl std::fmt::Display for Card {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}{}", self.rank(), self.suit())
     }
 }
 
-/// A memory-efficient deterministic Card Iterator.
-#[derive(Default)]
+/// CardIterator is an iterator over all single cards in a deck
+/// it is memory-efficient, using a mask to skip over cards
+/// it is deterministic, as it will always iterate over the same cards in the same order
+/// it is lazy, as it generates cards on the fly (no heap allocation)
+/// it is fast, as it uses bitwise operations
+
 pub struct CardIterator {
     card: Card,
     last: Card,
     mask: Hand,
 }
-
-/// we interface with the Iterator by adding and removing cards from the mask, or by seeking to a specific card.
-/// internally, for impl Iterator::Card, we use ::reveals() to give us the next valid card, which uses ::ignores() to inform which to skip.
 impl CardIterator {
-    fn blocks(&self, card: Card) -> bool {
-        u64::from(self.mask) & u64::from(card) != 0
+    fn exhausted(&self) -> bool {
+        self.last == Card::MAX
     }
-    fn reveal(&self) -> Card {
+    fn blocks(&self, card: Card) -> bool {
+        (u64::from(self.mask) & u64::from(card)) != 0
+    }
+    fn turn(&self) -> Card {
         Card::from((u8::from(self.card) + 1) % 52)
     }
 }
-
-/// we skip over masked cards, effectively are removed from the deck
 impl Iterator for CardIterator {
     type Item = Card;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if self.last == Card::MAX {
+            if self.exhausted() {
                 return None;
             }
             self.last = self.card;
-            self.card = self.reveal();
+            self.card = self.turn();
             if self.blocks(self.card) {
                 continue;
             }
@@ -124,23 +120,25 @@ impl Iterator for CardIterator {
     }
 }
 
-/// we can construct an iterator to start after a specific card without a mask
+/// we can construct CardIterator a few different ways
+/// unclear to me which are useful
+/// will have to check back after we generate some hands
+
 impl From<Card> for CardIterator {
     fn from(card: Card) -> Self {
         Self {
             card,
-            last: Card::default(),
-            mask: Hand::default(),
+            last: Card::from(0u8),
+            mask: Hand::from(0u64),
         }
     }
 }
 
-/// we can also start after Card::MIN and start with a specific mask
 impl From<Hand> for CardIterator {
     fn from(mask: Hand) -> Self {
         Self {
-            card: Card::default(),
-            last: Card::default(),
+            card: Card::from(0u8),
+            last: Card::from(0u8),
             mask,
         }
     }
