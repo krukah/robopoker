@@ -1,5 +1,8 @@
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+use std::fmt::{Display, Formatter, Result};
+
+#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Suit {
+    #[default]
     Club = 0,
     Diamond = 1,
     Heart = 2,
@@ -54,4 +57,3 @@ impl Display for Suit {
         )
     }
 }
-use std::fmt::{Display, Formatter, Result};

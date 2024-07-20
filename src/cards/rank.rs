@@ -1,5 +1,8 @@
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd)]
+use std::fmt::{Display, Formatter, Result};
+
+#[derive(Debug, Default, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Rank {
+    #[default]
     Two = 0,
     Three = 1,
     Four = 2,
@@ -87,5 +90,3 @@ impl Display for Rank {
         )
     }
 }
-
-use std::fmt::{Display, Formatter, Result};

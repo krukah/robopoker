@@ -1,3 +1,4 @@
+use cards::card::Card;
 use cfr::training::solver::Solver;
 
 mod cards;
