@@ -33,12 +33,11 @@ impl From<u64> for Deck {
     }
 }
 impl From<Deck> for u64 {
-    #[rustfmt::skip]
     fn from(deck: Deck) -> u64 {
         deck.cards
             .into_iter()
             .map(|c| u64::from(c))
-            .fold(0 , | a , b | a | b )
+            .fold(0, |a, b| a | b)
     }
 }
 

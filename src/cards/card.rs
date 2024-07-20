@@ -9,7 +9,6 @@ use super::{hand::Hand, rank::Rank, suit::Suit};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Card(u8);
-
 impl Card {
     pub fn rank(&self) -> Rank {
         Rank::from(self.0 / 4)
@@ -23,8 +22,8 @@ impl Card {
 
 /// (Rank, Suit) isomorphism
 impl From<(Rank, Suit)> for Card {
-    fn from((rank, suit): (Rank, Suit)) -> Self {
-        Self(u8::from(rank) * 4 + u8::from(suit))
+    fn from((r, s): (Rank, Suit)) -> Self {
+        Self(u8::from(r) * 4 + u8::from(s))
     }
 }
 
@@ -45,7 +44,7 @@ impl From<u8> for Card {
 }
 
 /// u32 isomorphism
-/// a Card is bitwise OR. Suit and Rank are bitmasks of the 17 LSBs
+/// a Card is bitwise OR. Suit and Rank are bitmasks of the 17 LSBs (so close to u16, alas)
 /// Ts
 /// xxxxxxxxxxxxxxx cdhs AKQJT98765432
 /// 000000000000000 0010 0000100000000
@@ -120,26 +119,26 @@ impl Iterator for CardIterator {
     }
 }
 
-/// we can construct CardIterator a few different ways
-/// unclear to me which are useful
-/// will have to check back after we generate some hands
+// we can construct CardIterator a few different ways
+// unclear to me which are useful
+// will have to check back after we generate some hands
 
-impl From<Card> for CardIterator {
-    fn from(card: Card) -> Self {
-        Self {
-            card,
-            last: Card::from(0u8),
-            mask: Hand::from(0u64),
-        }
-    }
-}
+// impl From<Card> for CardIterator {
+//     fn from(card: Card) -> Self {
+//         Self {
+//             card,
+//             last: Card::from(0u8),
+//             mask: Hand::from(0u64),
+//         }
+//     }
+// }
 
-impl From<Hand> for CardIterator {
-    fn from(mask: Hand) -> Self {
-        Self {
-            card: Card::from(0u8),
-            last: Card::from(0u8),
-            mask,
-        }
-    }
-}
+// impl From<Hand> for CardIterator {
+//     fn from(mask: Hand) -> Self {
+//         Self {
+//             card: Card::from(0u8),
+//             last: Card::from(0u8),
+//             mask,
+//         }
+//     }
+// }
