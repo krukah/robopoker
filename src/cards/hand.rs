@@ -1,18 +1,18 @@
 use super::card::Card;
 
-/// Hand is a bitstring of 52 bits
-/// stored as a u64
+/// Hand represents an unordered set of Cards
+/// in the limit, it is more memory efficient than Vec<Card>
+/// even for small N we avoid heap allocation
+/// stored as a u64, only needs LSB bitstring of 52 bits
 /// each bit represents a card in the (unordered) set
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
 
-impl Default for Hand {
-    fn default() -> Self {
-        Hand(1) // Set the default value to 2c
-    }
-}
-
 /// u64 isomorphism
+/// we SUM/OR the cards to get the bitstring
+/// [2c, Ts, Jc, Js]
+/// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
 impl From<u64> for Hand {
     fn from(n: u64) -> Self {
         Self(n)
@@ -24,14 +24,10 @@ impl From<Hand> for u64 {
     }
 }
 
-/// Vec<Card> isomorphism
+/// Vec<Card> isomorphism (up to Vec permutation)
 /// we SUM/OR the cards to get the bitstring
-impl From<Vec<Card>> for Hand {
-    fn from(cards: Vec<Card>) -> Self {
-        Self(cards.into_iter().map(|c| u64::from(c)).sum())
-    }
-}
-/// we pluck the 1s out of the bitstring and convert them to cards
+/// [2c, Ts, Jc, Js]
+/// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
 impl From<Hand> for Vec<Card> {
     fn from(hand: Hand) -> Self {
         let mut value = hand.0;
@@ -44,8 +40,23 @@ impl From<Hand> for Vec<Card> {
             value = value >> 1;
             index = index + 1;
         }
-        cards.reverse();
         cards
+    }
+}
+impl From<Vec<Card>> for Hand {
+    fn from(cards: Vec<Card>) -> Self {
+        Self(
+            cards
+                .into_iter()
+                .map(|c| u64::from(c))
+                .fold(0, |a, b| a | b),
+        )
+    }
+}
+
+impl std::fmt::Display for Hand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", Vec::<Card>::from(*self))
     }
 }
 
@@ -54,13 +65,19 @@ impl From<Hand> for Vec<Card> {
 /// - inferred from length of initial cards
 /// - specified directly by From<usize> for HandIterator
 /// it is a struct that holds a u64 (and mask) and iterates over all possible hands under that mask
+/// it is memory efficient because it does not store all possible hands
+/// it is deterministic because it always iterates in the same order
+/// it is fast because it uses bitwise operations
+
 pub struct HandIterator {
     hand: Hand,
     last: Hand,
     mask: Hand,
 }
-
 impl HandIterator {
+    fn exhausted(&self) -> bool {
+        self.hand.0.leading_zeros() < 12
+    }
     fn blocks(&self, hand: Hand) -> bool {
         (self.mask.0 & hand.0) != 0
     }
@@ -77,13 +94,11 @@ impl HandIterator {
         Hand(h)
     }
 }
-
-/// iterator over Hand(u64)
 impl Iterator for HandIterator {
     type Item = Hand;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if self.hand.0.leading_zeros() < 12 {
+            if self.exhausted() {
                 return None;
             }
             self.last = self.hand;
@@ -96,13 +111,17 @@ impl Iterator for HandIterator {
     }
 }
 
-/// specifying the length of the hand with no mask
+/// we can construct HandIterator a few different ways
+/// - explicitly specifying the length N of the hand
+/// - specifying a starting hand
+/// in both of these cases we need to assign a mask if we want to block any cards
+
 impl From<Hand> for HandIterator {
     fn from(hand: Hand) -> Self {
         Self {
             hand,
-            last: Hand::default(),
-            mask: Hand::default(),
+            last: Hand::from(0u64),
+            mask: Hand::from(0u64),
         }
     }
 }
