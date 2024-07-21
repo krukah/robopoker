@@ -13,18 +13,21 @@ pub enum Value {
 }
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
 pub struct Strength {
-    hand: Value,
-    kickers: Kickers,
+    value: Value,
+    kicks: Kicks,
 }
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
-pub struct Kickers(pub Vec<Rank>);
+pub struct Kicks(pub Vec<Rank>);
 
 impl Strength {
-    pub fn new(hand: Value, kickers: Kickers) -> Self {
-        Strength { hand, kickers }
+    pub fn new(hand: Value, kickers: Kicks) -> Self {
+        Strength {
+            value: hand,
+            kicks: kickers,
+        }
     }
-    pub fn kickers(&self) -> &Kickers {
-        &self.kickers
+    pub fn kickers(&self) -> &Kicks {
+        &self.kicks
     }
 }
 
@@ -59,7 +62,7 @@ impl Ord for Value {
             .then_with(|| self.secondary().cmp(&other.secondary()))
     }
 }
-impl Ord for Kickers {
+impl Ord for Kicks {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0
             .iter()
@@ -73,8 +76,8 @@ impl Ord for Kickers {
 impl Ord for Strength {
     fn cmp(&self, other: &Self) -> Ordering {
         Ordering::Equal
-            .then_with(|| self.hand.cmp(&&other.hand))
-            .then_with(|| self.kickers().cmp(&other.kickers))
+            .then_with(|| self.value.cmp(&&other.value))
+            .then_with(|| self.kickers().cmp(&other.kicks))
     }
 }
 
@@ -101,7 +104,7 @@ impl Display for Value {
     }
 }
 
-impl Display for Kickers {
+impl Display for Kicks {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for rank in &self.0 {
             write!(f, "{} ", rank)?;
@@ -112,7 +115,7 @@ impl Display for Kickers {
 
 impl Display for Strength {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:<18}", self.hand)
+        write!(f, "{:<18}", self.value)
     }
 }
 

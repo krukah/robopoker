@@ -1,17 +1,29 @@
 use super::card::Card;
-use std::ops::BitOr;
 
-/// Hand represents an unordered set of Cards
-/// in the limit, it is more memory efficient than Vec<Card>
-/// even for small N we avoid heap allocation
-/// stored as a u64, only needs LSB bitstring of 52 bits
-/// each bit represents a card in the (unordered) set
+/// Hand represents an unordered set of Cards.
+/// only in the limit, it is more memory efficient than Vec<Card>, ...
+/// but also, an advantage even for small N is that we avoid heap allocation.
+/// nice to use a single word for the full Hand independent of size
+/// stored as a u64, but only needs LSB bitstring of 52 bits
+/// each bit represents a unique card in the (unordered) set
+/// if necessary, we can modify logic to account for strategy-isomorphic Hands !!
+/// i.e. break a symmetry across suits when no flushes are present
+/// although this might only be possible at the Observation level
+/// perhaps Hand has insufficient information
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
 impl Hand {
     pub fn size(&self) -> u8 {
         self.0.count_ones() as u8
+    }
+}
+
+/// Group operation on Hand follow bitwise OR
+impl std::ops::Add for Hand {
+    type Output = Hand;
+    fn add(self, rhs: Hand) -> Hand {
+        Hand(self.0 | rhs.0)
     }
 }
 
@@ -30,7 +42,7 @@ impl From<Hand> for u64 {
     }
 }
 
-/// Vec<Card> isomorphism (up to Vec permutation)
+/// Vec<Card> isomorphism (up to Vec permutation, this always comes out sorted)
 /// we SUM/OR the cards to get the bitstring
 /// [2c, Ts, Jc, Js]
 /// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
@@ -52,13 +64,6 @@ impl From<Hand> for Vec<Card> {
 impl From<Vec<Card>> for Hand {
     fn from(cards: Vec<Card>) -> Self {
         Self(cards.iter().map(|c| u64::from(*c)).fold(0, |a, b| a | b))
-    }
-}
-
-impl BitOr for Hand {
-    type Output = Hand;
-    fn bitor(self, rhs: Hand) -> Hand {
-        Hand(self.0 | rhs.0)
     }
 }
 
@@ -84,13 +89,13 @@ pub struct HandIterator {
 }
 impl HandIterator {
     fn exhausted(&self) -> bool {
-        self.hand.0.leading_zeros() < 12
+        self.hand.0.leading_zeros() < 12 || self.hand.0 == 0
     }
     fn blocks(&self, hand: Hand) -> bool {
         (self.mask.0 & hand.0) != 0
     }
     fn permute(&self) -> Hand {
-        let x = self.hand.0;
+        let  x = /* 000_100                       */ self.hand.0;
         let  a = /* 000_100 || 000_011 -> 000_111 */ x | (x - 1);
         let  b = /*            000_111 -> 001_000 */ a + 1;
         let  c = /*            000_111 -> 111_000 */ !a;
@@ -113,23 +118,20 @@ impl Iterator for HandIterator {
             self.hand = self.permute();
             if self.blocks(self.hand) {
                 continue;
+            } else {
+                return Some(self.last);
             }
-            return Some(self.last);
         }
     }
 }
 
-// we can construct HandIterator a few different ways
-// - explicitly specifying the length N of the hand
-// - specifying a starting hand
-// in both of these cases we need to assign a mask if we want to block any cards
-
-// impl From<Hand> for HandIterator {
-//     fn from(hand: Hand) -> Self {
-//         Self {
-//             hand,
-//             last: Hand::from(0u64),
-//             mask: Hand::from(0u64),
-//         }
-//     }
-// }
+/// size and mask are immutable and must be decided at construction
+impl From<(usize, Hand)> for HandIterator {
+    fn from((size, mask): (usize, Hand)) -> Self {
+        Self {
+            hand: Hand((1 << size) - 1),
+            last: Hand(0),
+            mask,
+        }
+    }
+}

@@ -113,8 +113,9 @@ impl Iterator for CardIterator {
             self.card = self.turn();
             if self.blocks(self.card) {
                 continue;
+            } else {
+                return Some(self.last);
             }
-            return Some(self.last);
         }
     }
 }

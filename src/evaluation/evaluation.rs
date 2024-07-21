@@ -40,16 +40,16 @@ impl LazyEvaluator {
             .or_else(|| self.find_1_oak())
             .unwrap()
     }
-    fn find_kickers(&self, strength: Value) -> Kickers {
+    fn find_kickers(&self, strength: Value) -> Kicks {
         let n = match strength {
             Value::HighCard(_) => 4,
             Value::OnePair(_) => 3,
             Value::ThreeOAK(_) => 2,
             Value::FourOAK(_) => 1,
             Value::TwoPair(_, _) => 1,
-            _ => return Kickers(Vec::new()),
+            _ => return Kicks(Vec::new()),
         };
-        Kickers(
+        Kicks(
             self.rank_counts
                 .iter()
                 .enumerate()
@@ -119,7 +119,7 @@ impl LazyEvaluator {
         mask &= mask << 1;
         if mask.count_ones() > 0 {
             return Some(Rank::from(mask));
-        } else if (u32_cards & Self::wheel()) == Self::wheel() {
+        } else if (u32_cards & Self::WHEEL) == Self::WHEEL {
             return Some(Rank::Five);
         } else {
             return None;
@@ -175,12 +175,10 @@ impl LazyEvaluator {
         u32_suit
     }
 
-    const fn wheel() -> u32 {
-        0b00000000000000000001000000001111
-    }
+    const WHEEL: u32 = 0b00000000000000000001000000001111;
 }
 
-use super::strength::{Kickers, Strength, Value};
+use super::strength::{Kicks, Strength, Value};
 use crate::cards::card::Card;
 use crate::cards::rank::Rank;
 use crate::cards::suit::Suit;

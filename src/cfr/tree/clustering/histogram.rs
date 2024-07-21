@@ -1,8 +1,8 @@
 use super::abstraction::Abstraction;
 use std::collections::BTreeMap;
 use std::hash::Hash;
-use std::hash::Hasher;
 
+#[derive(Debug, Hash)]
 pub struct Histogram {
     n: usize,
     counts: BTreeMap<Abstraction, usize>,
@@ -39,23 +39,4 @@ impl From<Vec<Abstraction>> for Histogram {
         }
         Self { n, counts }
     }
-}
-
-impl Hash for Histogram {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        for (key, value) in self.counts.iter() {
-            key.hash(state);
-            value.hash(state);
-        }
-    }
-}
-
-impl PartialEq for Histogram {
-    fn eq(&self, other: &Self) -> bool {
-        self.counts == other.counts
-    }
-}
-
-impl Eq for Histogram {
-    //
 }

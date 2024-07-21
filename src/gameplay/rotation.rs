@@ -27,7 +27,7 @@ impl Rotation {
         self.seats.iter().filter(|s| s.stack() > 0).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
-        !(self.are_all_folded() || (self.board.street == Street::Showdown))
+        !(self.are_all_folded() || (self.board.street == Street::Show))
     }
     pub fn has_more_players(&self) -> bool {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
@@ -174,8 +174,8 @@ impl Rotation {
             Street::Pref => Street::Flop,
             Street::Flop => Street::Turn,
             Street::Turn => Street::Rive,
-            Street::Rive => Street::Showdown,
-            Street::Showdown => unreachable!(),
+            Street::Rive => Street::Show,
+            Street::Show => unreachable!(),
         }
     }
     fn rotate(&mut self) {
