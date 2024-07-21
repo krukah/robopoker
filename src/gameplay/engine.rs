@@ -2,13 +2,13 @@
 
 pub struct Table {
     n_hands: u32,
-    hand: Hand,
+    hand: Game,
 }
 
 impl Table {
     pub fn new() -> Self {
         Table {
-            hand: Hand::new(),
+            hand: Game::new(),
             n_hands: 0,
         }
     }
@@ -71,4 +71,4 @@ impl Table {
     }
 }
 
-use super::hand::Hand;
+use super::game::Game;

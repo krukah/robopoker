@@ -1,8 +1,12 @@
 pub mod board;
 pub mod card;
 pub mod deck;
+pub mod evaluator;
 pub mod hand;
 pub mod hole;
+pub mod kicks;
 pub mod rank;
 pub mod street;
+pub mod strength;
 pub mod suit;
+pub mod value;

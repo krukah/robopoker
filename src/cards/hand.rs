@@ -1,4 +1,4 @@
-use super::card::Card;
+use super::{card::Card, kicks::Kicks};
 
 /// Hand represents an unordered set of Cards.
 /// only in the limit, it is more memory efficient than Vec<Card>, ...
@@ -64,6 +64,13 @@ impl From<Hand> for Vec<Card> {
 impl From<Vec<Card>> for Hand {
     fn from(cards: Vec<Card>) -> Self {
         Self(cards.iter().map(|c| u64::from(*c)).fold(0, |a, b| a | b))
+    }
+}
+
+/// Kicker isomorphism
+impl From<Kicks> for Hand {
+    fn from(k: Kicks) -> Self {
+        k.into()
     }
 }
 

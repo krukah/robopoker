@@ -1,6 +1,10 @@
+use super::card::Card;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+
 #[derive(Debug, Clone)]
 pub struct Deck {
-    cards: Vec<Card>, // presize
+    cards: Vec<Card>, // presize, or use u64
 }
 
 impl Deck {
@@ -40,7 +44,3 @@ impl From<Deck> for u64 {
             .fold(0, |a, b| a | b)
     }
 }
-
-use super::card::Card;
-use rand::seq::SliceRandom;
-use rand::thread_rng;

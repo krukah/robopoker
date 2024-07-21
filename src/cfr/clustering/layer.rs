@@ -232,7 +232,15 @@ impl River {
     fn clusters() -> HashMap<Observation, Abstraction> {
         Observation::predecessors(Street::Show)
             .into_iter()
-            .map(|obs| (obs, Abstraction::from(obs.equity())))
+            .enumerate()
+            .map(|(i, obs)| {
+                if i % 1000 == 0 {
+                    println!("{:<10}", i);
+                    return (obs, Abstraction::from(obs.equity()));
+                } else {
+                    return (obs, Abstraction::from(obs.equity()));
+                }
+            })
             .collect::<HashMap<_, _>>()
     }
 }
