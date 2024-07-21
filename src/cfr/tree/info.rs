@@ -1,5 +1,5 @@
-use crate::cfr::tree::rps::action::Edge;
-use crate::cfr::tree::rps::node::Node;
+use crate::cfr::tree::action::Edge;
+use crate::cfr::tree::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::ptr::NonNull;

@@ -1,4 +1,4 @@
-use crate::cfr::tree::rps::action::Edge;
+use crate::cfr::tree::action::Edge;
 use crate::Probability;
 use std::collections::HashMap;
 

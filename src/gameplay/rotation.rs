@@ -1,6 +1,19 @@
 #![allow(dead_code)]
 
-// Node represents the memoryless state of the game in between actions. it records both public and private data structs, and is responsible for managing the rotation of players, the pot, and the board. it's immutable methods reveal pure functions representing the rules of how the game may proceed.
+use super::action::Action;
+use super::seat::BetStatus;
+use super::seat::Seat;
+use crate::cards::board::Board;
+use crate::cards::street::Street;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result;
+
+/// Rotation represents the memoryless state of the game in between actions.
+///
+/// It records both public and private data structs, and is responsible for managing the
+/// rotation of players, the pot, and the board. Its immutable methods reveal
+/// pure functions representing the rules of how the game may proceed.
 #[derive(Debug, Clone)]
 pub struct Rotation {
     pub pot: u32,
@@ -219,10 +232,3 @@ impl Rotation {
         }
     }
 }
-
-use super::{
-    action::Action,
-    seat::{BetStatus, Seat},
-};
-use crate::cards::board::{Board, Street};
-use std::fmt::{Display, Formatter, Result};

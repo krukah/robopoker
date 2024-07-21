@@ -1,3 +1,4 @@
+pub mod clustering;
 pub mod profile;
 pub mod training;
 pub mod tree;

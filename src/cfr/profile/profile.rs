@@ -1,8 +1,8 @@
 use crate::cfr::profile::policy::Policy;
-use crate::cfr::tree::rps::action::Edge;
-use crate::cfr::tree::rps::bucket::Bucket;
-use crate::cfr::tree::rps::node::Node;
-use crate::cfr::tree::rps::player::Player;
+use crate::cfr::tree::action::Edge;
+use crate::cfr::tree::bucket::Bucket;
+use crate::cfr::tree::node::Node;
+use crate::cfr::tree::player::Player;
 use crate::Probability;
 use std::collections::HashMap;
 
