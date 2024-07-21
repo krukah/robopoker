@@ -205,7 +205,7 @@ impl Hand {
 use super::payout::Payout;
 use super::seat::{BetStatus, Seat};
 use super::{action::Action, rotation::Rotation};
-use crate::cards::board::Street;
+use crate::cards::street::Street;
 use crate::cards::{card::Card, deck::Deck};
 use crate::evaluation::evaluation::{Evaluator, LazyEvaluator};
 use crate::evaluation::showdown::Showdown;

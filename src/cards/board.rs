@@ -1,23 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Street {
-    Pref,
-    Flop,
-    Turn,
-    Rive,
-    Show,
-}
-
-impl Display for Street {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        match self {
-            Street::Pref => write!(f, "Pre Flop"),
-            Street::Flop => write!(f, "Flop"),
-            Street::Turn => write!(f, "Turn"),
-            Street::Rive => write!(f, "River"),
-            Street::Show => write!(f, "Showdown"),
-        }
-    }
-}
+use super::card::Card;
+use super::street::Street;
+use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -40,12 +23,9 @@ impl Board {
 
 impl Display for Board {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        for card in &self.cards {
+        for card in self.cards.iter() {
             write!(f, "{}  ", card)?;
         }
         Ok(())
     }
 }
-
-use super::card::Card;
-use std::fmt::{Display, Formatter, Result};

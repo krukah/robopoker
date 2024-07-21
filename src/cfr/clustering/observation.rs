@@ -1,12 +1,25 @@
-use crate::cards::board::Street;
 use crate::cards::hand::{Hand, HandIterator};
+use crate::cards::street::Street;
 use crate::evaluation::strength::Strength;
 use std::cmp::Ordering;
 
+/// Observation represents the memoryless state of the game in between chance actions.
+///
+/// We store each set of cards as a Hand which does not preserve dealing order. We can
+/// generate successors by considering all possible cards that can be dealt. We can calculate
+/// the equity of a given hand by comparing strength all possible opponent hands.
+/// This could be more memory efficient by using [Card; 2] for secret Hands,
+/// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Observation {
     secret: Hole,
     public: Hand,
+}
+
+impl From<(Hole, Hand)> for Observation {
+    fn from((secret, public): (Hole, Hand)) -> Self {
+        Observation { secret, public }
+    }
 }
 
 impl Observation {
@@ -140,13 +153,6 @@ impl Observation {
             / 2 as f32
     }
 }
-
-impl From<(Hole, Hand)> for Observation {
-    fn from((secret, public): (Hole, Hand)) -> Self {
-        Observation { secret, public }
-    }
-}
-
 /// Representation of private cards
 /// might optimize this into less memory
 ///  u16      if order does not matter
