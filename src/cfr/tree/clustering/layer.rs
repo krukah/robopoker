@@ -7,7 +7,7 @@ use crate::cards::board::Street;
 use std::collections::HashMap;
 use std::vec;
 
-struct Layer {
+pub struct Layer {
     street: Street,
     metric: HashMap<Pair, f32>,
     kmeans: HashMap<Observation, Abstraction>,
