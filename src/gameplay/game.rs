@@ -1,5 +1,5 @@
 #[derive(Debug, Clone)]
-pub struct Hand {
+pub struct Game {
     pub bblind: u32,
     pub sblind: u32,
     pub deck: Deck,
@@ -8,9 +8,9 @@ pub struct Hand {
     pub actions: Vec<Action>,
 }
 #[allow(dead_code)]
-impl Hand {
+impl Game {
     pub fn new() -> Self {
-        Hand {
+        Game {
             sblind: 1,
             bblind: 2,
             actions: Vec::new(),
@@ -72,19 +72,21 @@ impl Hand {
         payouts
     }
     fn payout(&self, seat: &Seat) -> Payout {
+        let position = seat.position();
+        let status = seat.status();
+        let risked = self.risked(position);
+        let cards = self
+            .cards(position)
+            .into_iter()
+            .copied()
+            .collect::<Vec<Card>>();
         Payout {
             reward: 0,
-            risked: self.risked(seat.position()),
-            status: seat.status(),
-            position: seat.position(),
-            strength: LazyEvaluator::strength(
-                &self
-                    .cards(seat.position())
-                    .into_iter()
-                    .collect::<Vec<&Card>>()[..],
-            ),
+            risked,
+            status,
+            strength: Strength::from(Hand::from(cards)),
+            position,
         }
-        //? todo: don't clone the cards
     }
 
     pub fn min_raise(&self) -> u32 {
@@ -142,7 +144,7 @@ impl Hand {
 }
 
 // mutable implementation reserved for engine or solver
-impl Hand {
+impl Game {
     pub fn apply(&mut self, action: Action) {
         self.actions.push(action);
         self.head.apply(action);
@@ -205,7 +207,8 @@ impl Hand {
 use super::payout::Payout;
 use super::seat::{BetStatus, Seat};
 use super::{action::Action, rotation::Rotation};
+use crate::cards::hand::Hand;
 use crate::cards::street::Street;
+use crate::cards::strength::Strength;
 use crate::cards::{card::Card, deck::Deck};
-use crate::evaluation::evaluation::{Evaluator, LazyEvaluator};
 use crate::evaluation::showdown::Showdown;

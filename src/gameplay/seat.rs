@@ -35,7 +35,7 @@ impl Seat {
     pub fn hole(&mut self) -> &mut Hole {
         &mut self.hole
     }
-    pub fn act(&self, _hand: &Hand) -> Action {
+    pub fn act(&self, _hand: &Game) -> Action {
         todo!()
     }
 
@@ -57,7 +57,7 @@ impl Seat {
         self.position = position;
     }
 
-    pub fn valid_actions(&self, hand: &Hand) -> Vec<Action> {
+    pub fn valid_actions(&self, hand: &Game) -> Vec<Action> {
         let mut actions = Vec::with_capacity(5);
         if self.can_check(hand) {
             actions.push(Action::Check(self.position));
@@ -77,32 +77,32 @@ impl Seat {
         actions
     }
 
-    pub fn to_shove(&self, hand: &Hand) -> u32 {
+    pub fn to_shove(&self, hand: &Game) -> u32 {
         std::cmp::min(self.stack, hand.head.effective_stack() - self.stake)
     }
-    pub fn to_call(&self, hand: &Hand) -> u32 {
+    pub fn to_call(&self, hand: &Game) -> u32 {
         hand.head.effective_stake() - self.stake
     }
-    pub fn min_raise(&self, hand: &Hand) -> u32 {
+    pub fn min_raise(&self, hand: &Game) -> u32 {
         hand.min_raise() - self.stake
     }
-    pub fn max_raise(&self, hand: &Hand) -> u32 {
+    pub fn max_raise(&self, hand: &Game) -> u32 {
         self.to_shove(hand)
     }
 
-    fn can_check(&self, hand: &Hand) -> bool {
+    fn can_check(&self, hand: &Game) -> bool {
         self.stake == hand.head.effective_stake()
     }
-    fn can_shove(&self, hand: &Hand) -> bool {
+    fn can_shove(&self, hand: &Game) -> bool {
         self.to_shove(hand) > 0
     }
-    fn can_fold(&self, hand: &Hand) -> bool {
+    fn can_fold(&self, hand: &Game) -> bool {
         self.to_call(hand) > 0
     }
-    fn can_raise(&self, hand: &Hand) -> bool {
+    fn can_raise(&self, hand: &Game) -> bool {
         self.to_shove(hand) >= self.min_raise(hand)
     }
-    fn can_call(&self, hand: &Hand) -> bool {
+    fn can_call(&self, hand: &Game) -> bool {
         self.can_fold(hand) && self.can_raise(hand)
     }
 }
@@ -142,7 +142,7 @@ impl Display for BetStatus {
     }
 }
 
-use super::{action::Action, hand::Hand};
+use super::{action::Action, game::Game};
 use crate::cards::hole::Hole;
 use colored::Colorize;
 use std::fmt::{Debug, Display};

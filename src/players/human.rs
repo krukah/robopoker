@@ -3,7 +3,7 @@
 pub struct Human;
 
 impl Human {
-    fn raise(&self, seat: &Seat, hand: &Hand) -> u32 {
+    fn raise(&self, seat: &Seat, hand: &Game) -> u32 {
         Input::new()
             .with_prompt(self.infoset(seat, hand))
             .validate_with(|i: &String| -> Result<(), &str> {
@@ -26,7 +26,7 @@ impl Human {
             .unwrap()
     }
 
-    fn infoset(&self, seat: &Seat, hand: &Hand) -> String {
+    fn infoset(&self, seat: &Seat, hand: &Game) -> String {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             hand.head.board,
@@ -38,7 +38,7 @@ impl Human {
         )
     }
 
-    fn act(&self, seat: &Seat, hand: &Hand) -> Action {
+    fn act(&self, seat: &Seat, hand: &Game) -> Action {
         // get valid actions
         let choices = seat
             .valid_actions(hand)
@@ -82,7 +82,7 @@ impl Debug for Human {
     }
 }
 
-use crate::gameplay::{action::Action, hand::Hand, seat::Seat};
+use crate::gameplay::{action::Action, game::Game, seat::Seat};
 use dialoguer::{Input, Select};
 use std::fmt::{Debug, Formatter};
 use std::result::Result;

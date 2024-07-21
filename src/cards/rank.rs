@@ -26,7 +26,7 @@ impl Rank {
     pub const MIN: Self = Rank::Two;
 }
 
-// u8 isomorphism
+/// u8 isomorphism
 impl From<u8> for Rank {
     fn from(n: u8) -> Rank {
         match n {
