@@ -1,2 +1,2 @@
-pub mod nlhe;
+pub mod clustering;
 pub mod rps;

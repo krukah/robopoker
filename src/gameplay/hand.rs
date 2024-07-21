@@ -57,7 +57,7 @@ impl Hand {
             Street::Flop => bounds[0]..bounds[1],
             Street::Turn => bounds[1]..bounds[2],
             Street::Rive => bounds[2]..self.actions.len(),
-            Street::Showdown => unreachable!(),
+            Street::Show => unreachable!(),
         }
     }
 
@@ -189,7 +189,7 @@ impl Hand {
                 self.apply(Action::Draw(card));
                 println!("   {}", self.head.board)
             }
-            Street::Showdown => unreachable!(),
+            Street::Show => unreachable!(),
         }
     }
     pub fn end(&mut self) {
