@@ -21,12 +21,12 @@ impl Layer {
             .into_iter()
             .map(|obs| (obs, Abstraction::from(obs.equity())))
             .collect::<HashMap<_, _>>();
-        let bins = (0..Abstraction::BUCKETS)
+        let equities = (0..Abstraction::BUCKETS)
             .map(|i| Abstraction::from(i))
             .collect::<Vec<_>>();
         let mut metric = HashMap::new();
-        for (i, a) in bins.iter().enumerate() {
-            for (j, b) in bins.iter().enumerate() {
+        for (i, a) in equities.iter().enumerate() {
+            for (j, b) in equities.iter().enumerate() {
                 if i > j {
                     let key = Pair::from((*a, *b));
                     let distance = (i - j) as f32;
@@ -58,15 +58,15 @@ impl Layer {
     fn histograms(&self) -> HashMap<Observation, Histogram> {
         Observation::predecessors(self.street)
             .into_iter()
-            .map(|o| (o, self.histogram(&o)))
+            .map(|pre| (pre, self.histogram(&pre)))
             .collect::<HashMap<_, _>>()
     }
-    fn histogram(&self, observation: &Observation) -> Histogram {
+    fn histogram(&self, predecessor: &Observation) -> Histogram {
         Histogram::from(
-            observation
+            predecessor
                 .successors()
                 .into_iter()
-                .map(|ref o| self.abstraction(o))
+                .map(|ref suc| self.abstraction(suc))
                 .collect::<Vec<_>>(),
         )
     }

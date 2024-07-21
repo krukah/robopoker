@@ -7,18 +7,6 @@ pub enum Street {
     Show,
 }
 
-impl Street {
-    pub fn next(&self) -> Street {
-        match self {
-            Street::Pref => Street::Flop,
-            Street::Flop => Street::Turn,
-            Street::Turn => Street::Rive,
-            Street::Rive => Street::Show,
-            Street::Show => unreachable!("No next street after Showdown"),
-        }
-    }
-}
-
 impl Display for Street {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
