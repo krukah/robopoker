@@ -83,6 +83,7 @@ impl Observation {
         let mask = Hand::from(0u64);
         let secrets = HandIterator::from((size, mask));
         for secret in secrets {
+            println!("{:?}", secret);
             let size = count;
             let mask = secret;
             let publics = HandIterator::from((size, mask));
