@@ -28,7 +28,8 @@ impl Observation {
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
     pub fn successors(&self) -> Vec<Self> {
-        let mask = self.public + self.secret;
+        let hand = self.secret;
+        let mask = Hand::add(self.public, hand);
         let size = match self.public.size() {
             4 => 1,
             3 => 1,
@@ -37,7 +38,7 @@ impl Observation {
         };
         HandIterator::from((size, mask))
             .into_iter()
-            .map(|hand| Observation::from((self.secret, self.public + hand)))
+            .map(|hand| Observation::from((self.secret, Hand::add(self.public, hand))))
             .collect()
     }
 
@@ -126,7 +127,7 @@ impl Observation {
     /// @return Vec<Hole>: A vector containing all 990 possible opponent hole card combinations
     fn opponents(&self) -> Vec<Hole> {
         let size = 2usize;
-        let mask = self.secret + self.public;
+        let mask = Hand::add(self.secret, self.public);
         HandIterator::from((size, mask)).into_iter().collect()
     }
 
@@ -137,12 +138,12 @@ impl Observation {
     /// But it's a one-time calculation so we can afford to be slow
     pub fn equity(&self) -> f32 {
         let hand = self.secret;
-        let this = Strength::from(self.public + hand);
-        let theirs = self.opponents();
-        let n = theirs.len();
-        theirs
+        let this = Strength::from(Hand::add(self.public, hand));
+        let opponents = self.opponents();
+        let n = opponents.len();
+        opponents
             .into_iter()
-            .map(|hand| Strength::from(self.public + hand))
+            .map(|hand| Strength::from(Hand::add(self.public, hand)))
             .map(|that| match &this.cmp(&that) {
                 Ordering::Less => 0,
                 Ordering::Equal => 1,

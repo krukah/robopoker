@@ -17,13 +17,8 @@ impl Hand {
     pub fn size(&self) -> u8 {
         self.0.count_ones() as u8
     }
-}
-
-/// Group operation on Hand follow bitwise OR
-impl std::ops::Add for Hand {
-    type Output = Hand;
-    fn add(self, rhs: Hand) -> Hand {
-        Hand(self.0 | rhs.0)
+    pub fn add(lhs: Self, rhs: Self) -> Self {
+        Self(lhs.0 | rhs.0)
     }
 }
 
