@@ -1,6 +1,6 @@
 -- Add migration script here
 CREATE TABLE IF NOT EXISTS metric (
-    xor_pair BIGINT PRIMARY KEY,
-    distance NUMERIC,
-    street SMALLINT,
+    xor BIGINT PRIMARY KEY,
+    distance FLOAT,
+    street SMALLINT
 );

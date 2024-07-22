@@ -22,12 +22,6 @@ impl Abstraction {
     const BUCKETS: u8 = 50;
 }
 
-impl From<u8> for Abstraction {
-    fn from(e: u8) -> Self {
-        Self::Equity(e)
-    }
-}
-
 impl From<Observation> for Abstraction {
     fn from(obesrvation: Observation) -> Self {
         Self::Equity((obesrvation.equity() * Self::BUCKETS as f32) as u8)
@@ -49,5 +43,12 @@ impl From<Abstraction> for u64 {
             Abstraction::Equity(e) => e as u64,
             Abstraction::Distro(d) => d,
         }
+    }
+}
+
+/// Conversion to i64 for SQL storage.
+impl From<Abstraction> for i64 {
+    fn from(abstraction: Abstraction) -> Self {
+        u64::from(abstraction) as i64
     }
 }

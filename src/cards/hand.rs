@@ -18,7 +18,19 @@ impl Hand {
         self.0.count_ones() as u8
     }
     pub fn add(lhs: Self, rhs: Self) -> Self {
+        assert!(lhs.0 | rhs.0 == lhs.0 + rhs.0);
         Self(lhs.0 | rhs.0)
+    }
+}
+
+/// size and mask are immutable and must be decided at construction
+impl From<(usize, Hand)> for HandIterator {
+    fn from((size, mask): (usize, Hand)) -> Self {
+        Self {
+            hand: Hand((1 << size) - 1),
+            last: Hand(0),
+            mask,
+        }
     }
 }
 
@@ -71,7 +83,10 @@ impl From<Kicks> for Hand {
 
 impl std::fmt::Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", Vec::<Card>::from(*self))
+        for card in Vec::<Card>::from(*self) {
+            write!(f, "{}", card)?;
+        }
+        Ok(())
     }
 }
 
@@ -123,17 +138,6 @@ impl Iterator for HandIterator {
             } else {
                 return Some(self.last);
             }
-        }
-    }
-}
-
-/// size and mask are immutable and must be decided at construction
-impl From<(usize, Hand)> for HandIterator {
-    fn from((size, mask): (usize, Hand)) -> Self {
-        Self {
-            hand: Hand((1 << size) - 1),
-            last: Hand(0),
-            mask,
         }
     }
 }
