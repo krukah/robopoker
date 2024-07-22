@@ -22,6 +22,14 @@ impl From<(Hole, Hand)> for Observation {
     }
 }
 
+impl From<Observation> for i64 {
+    fn from(observation: Observation) -> Self {
+        let x = u64::from(observation.secret);
+        let y = u64::from(observation.public);
+        (Observation::spread(x) | (Observation::spread(y) << 1)) as i64
+    }
+}
+
 impl Observation {
     /// Generates all possible successors of the current observation.
     ///
@@ -61,7 +69,7 @@ impl Observation {
             Street::Flop => Self::enumerate(1_326, 2),
             Street::Turn => Self::enumerate(25_989_600, 3),
             Street::Rive => Self::enumerate(305_377_800, 4),
-            Street::Show => Self::enumerate(2_809_475_760, 2), // 5), // (!)
+            Street::Show => Self::enumerate(2_809_475_760, 1), // 5), // (!)
         }
     }
 
@@ -103,6 +111,7 @@ impl Observation {
             for public in publics {
                 let board = Observation::from((secret, public));
                 boards.push(board);
+                println!("{}", board);
             }
         }
         boards
@@ -135,15 +144,12 @@ impl Observation {
     /// This calculation integrations across ALL possible opponent hole cards.
     /// I'm not sure this is feasible across ALL 2.8B rivers * ALL 990 opponents.
     /// But it's a one-time calculation so we can afford to be slow
-    #[allow(unreachable_code)]
     pub fn equity(&self) -> f32 {
-        return rand::random();
-
         let hand = self.secret;
         let this = Strength::from(Hand::add(self.public, hand));
         let opponents = self.opponents();
         let n = opponents.len();
-        opponents
+        let equity = opponents
             .into_iter()
             .map(|hand| Strength::from(Hand::add(self.public, hand)))
             .map(|that| match &this.cmp(&that) {
@@ -153,9 +159,34 @@ impl Observation {
             })
             .sum::<u32>() as f32
             / n as f32
-            / 2 as f32
+            / 2 as f32;
+        println!("{} | {} | {:2}", self, this, equity);
+        equity
+    }
+
+    /// (u64, u64) -> u64 mapping that preserves order.
+    ///
+    /// This is a bijection between two u64s that preserves order. We use
+    /// it to identify a combination of
+    /// (unordered private cards) x (unordered public cards) as a single integer.
+    fn spread(x: u64) -> u64 {
+        let mut a = x;
+        a &= 0xFFFFFFFF;
+        a = (a | (a << 16)) & 0x0000FFFF0000FFFF;
+        a = (a | (a << 08)) & 0x00FF00FF00FF00FF;
+        a = (a | (a << 04)) & 0x0F0F0F0F0F0F0F0F;
+        a = (a | (a << 02)) & 0x3333333333333333;
+        a = (a | (a << 01)) & 0x5555555555555555;
+        a
     }
 }
+
+impl std::fmt::Display for Observation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} | {}", self.secret, self.public)
+    }
+}
+
 /// Representation of private cards
 /// might optimize this into less memory
 ///  u16      if order does not matter

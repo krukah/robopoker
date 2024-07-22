@@ -119,27 +119,3 @@ impl Iterator for CardIterator {
         }
     }
 }
-
-// we can construct CardIterator a few different ways
-// unclear to me which are useful
-// will have to check back after we generate some hands
-
-// impl From<Card> for CardIterator {
-//     fn from(card: Card) -> Self {
-//         Self {
-//             card,
-//             last: Card::from(0u8),
-//             mask: Hand::from(0u64),
-//         }
-//     }
-// }
-
-// impl From<Hand> for CardIterator {
-//     fn from(mask: Hand) -> Self {
-//         Self {
-//             card: Card::from(0u8),
-//             last: Card::from(0u8),
-//             mask,
-//         }
-//     }
-// }
