@@ -11,11 +11,6 @@ pub type Probability = f32;
 
 #[tokio::main]
 async fn main() {
-    let ref rivr = Layer::river();
-    // let ref turn = Layer::upper(rivr);
-    // let ref flop = Layer::upper(turn);
-    // let ref pref = Layer::upper(flop);
-
     // Postgres connection semantics
     let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
     let ref pool = sqlx::PgPool::connect(url)
@@ -23,6 +18,10 @@ async fn main() {
         .expect("database connection");
 
     // Abstraction generation
+    let ref rivr = Layer::river();
+    // let ref turn = Layer::upper(rivr);
+    // let ref flop = Layer::upper(turn);
+    // let ref pref = Layer::upper(flop);
 
     // Async persistence
     rivr.save(pool).await;

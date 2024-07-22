@@ -12,21 +12,22 @@ use std::cmp::Ordering;
 /// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Observation {
-    secret: Hole,
+    secret: Hand,
     public: Hand,
 }
 
-impl From<(Hole, Hand)> for Observation {
-    fn from((secret, public): (Hole, Hand)) -> Self {
+impl From<(Hand, Hand)> for Observation {
+    fn from((secret, public): (Hand, Hand)) -> Self {
         Observation { secret, public }
     }
 }
 
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
-        let x = u64::from(observation.secret);
-        let y = u64::from(observation.public);
-        (Observation::spread(x) | (Observation::spread(y) << 1)) as i64
+        let x = u64::from(observation.secret).wrapping_mul(0x517cc1b727220a95);
+        let y = u64::from(observation.public).wrapping_mul(0x9e3779b97f4a7c15);
+        let i = x.wrapping_add(y);
+        i as i64
     }
 }
 
@@ -69,7 +70,7 @@ impl Observation {
             Street::Flop => Self::enumerate(2),
             Street::Turn => Self::enumerate(3),
             Street::Rive => Self::enumerate(4),
-            Street::Show => Self::enumerate(2), // 5), // (!)
+            Street::Show => Self::enumerate(5), // (!)
         }
     }
 
@@ -118,7 +119,7 @@ impl Observation {
             for public in publics {
                 let board = Observation::from((secret, public));
                 boards.push(board);
-                println!("{}", board);
+                println!("Observation {}", board);
             }
         }
         boards
@@ -139,8 +140,8 @@ impl Observation {
     ///   - Visible as community cards (self.public)
     ///
     ///
-    /// @return Vec<Hole>: A vector containing all 990 possible opponent hole card combinations
-    fn opponents(&self) -> Vec<Hole> {
+    /// @return Vec<Hand>: A vector containing all 990 possible opponent hole card combinations
+    fn opponents(&self) -> Vec<Hand> {
         let size = 2usize;
         let mask = Hand::add(self.secret, self.public);
         HandIterator::from((size, mask)).into_iter().collect()
@@ -167,24 +168,8 @@ impl Observation {
             .sum::<u32>() as f32
             / n as f32
             / 2 as f32;
-        println!("{} | {} | {:2}", self, this, equity);
+        println!("Equity Calc {} | {} | {:2}", self, this, equity);
         equity
-    }
-
-    /// (u64, u64) -> u64 mapping that preserves order.
-    ///
-    /// This is a bijection between two u64s that preserves order. We use
-    /// it to identify a combination of
-    /// (unordered private cards) x (unordered public cards) as a single integer.
-    fn spread(x: u64) -> u64 {
-        let mut a = x;
-        a &= 0xFFFFFFFF;
-        a = (a | (a << 16)) & 0x0000FFFF0000FFFF;
-        a = (a | (a << 08)) & 0x00FF00FF00FF00FF;
-        a = (a | (a << 04)) & 0x0F0F0F0F0F0F0F0F;
-        a = (a | (a << 02)) & 0x3333333333333333;
-        a = (a | (a << 01)) & 0x5555555555555555;
-        a
     }
 }
 
@@ -193,12 +178,3 @@ impl std::fmt::Display for Observation {
         write!(f, "{} | {}", self.secret, self.public)
     }
 }
-
-/// Representation of private cards
-/// might optimize this into less memory
-///  u16      if order does not matter
-/// [Card; 2] if order matters
-/// in either case, we need impl From<Hold> for Hand to preserve contract
-/// this eventual mapping to Hand(u64) then feels like maybe the Hole optimization is futile
-/// haven't reasoned about it enough to tell if worth it
-type Hole = Hand;
