@@ -82,7 +82,7 @@ impl Debug for Human {
     }
 }
 
-use crate::gameplay::{action::Action, game::Game, seat::Seat};
+use crate::play::{action::Action, game::Game, seat::Seat};
 use dialoguer::{Input, Select};
 use std::fmt::{Debug, Formatter};
 use std::result::Result;

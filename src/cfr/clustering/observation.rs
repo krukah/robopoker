@@ -61,7 +61,7 @@ impl Observation {
             Street::Flop => Self::enumerate(1_326, 2),
             Street::Turn => Self::enumerate(25_989_600, 3),
             Street::Rive => Self::enumerate(305_377_800, 4),
-            Street::Show => Self::enumerate(2_809_475_760, 5), // (!)
+            Street::Show => Self::enumerate(2_809_475_760, 2), // 5), // (!)
         }
     }
 
@@ -97,7 +97,6 @@ impl Observation {
         let mask = Hand::from(0u64);
         let secrets = HandIterator::from((size, mask));
         for secret in secrets {
-            println!("{:?}", secret);
             let size = count;
             let mask = secret;
             let publics = HandIterator::from((size, mask));
@@ -136,7 +135,10 @@ impl Observation {
     /// This calculation integrations across ALL possible opponent hole cards.
     /// I'm not sure this is feasible across ALL 2.8B rivers * ALL 990 opponents.
     /// But it's a one-time calculation so we can afford to be slow
+    #[allow(unreachable_code)]
     pub fn equity(&self) -> f32 {
+        return rand::random();
+
         let hand = self.secret;
         let this = Strength::from(Hand::add(self.public, hand));
         let opponents = self.opponents();
