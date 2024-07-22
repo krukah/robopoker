@@ -10,7 +10,6 @@ use super::{card::Card, kicks::Kicks};
 /// i.e. break a symmetry across suits when no flushes are present
 /// although this might only be possible at the Observation level
 /// perhaps Hand has insufficient information
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
 impl Hand {
@@ -21,6 +20,7 @@ impl Hand {
         Self(lhs.0 | rhs.0)
     }
 }
+
 /// u64 isomorphism
 /// we SUM/OR the cards to get the bitstring
 /// [2c, Ts, Jc, Js]
@@ -62,6 +62,7 @@ impl From<Vec<Card>> for Hand {
 }
 
 /// Kicker isomorphism
+/// structurally identifcal, semantically different from Hand
 impl From<Kicks> for Hand {
     fn from(k: Kicks) -> Self {
         k.into()
@@ -85,7 +86,7 @@ impl std::fmt::Display for Hand {
 /// it is memory efficient because it does not store all possible hands
 /// it is deterministic because it always iterates in the same order
 /// it is fast because it uses bitwise operations
-
+/// it is flexible because it can be used to iterate over any subset of cards
 pub struct HandIterator {
     hand: Hand,
     last: Hand,
@@ -139,5 +140,19 @@ impl Iterator for HandIterator {
                 return Some(self.last);
             }
         }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let k = self.hand.size() as usize;
+        let n = 52 - self.mask.size() as usize;
+        let size = match k {
+            0 => 1,
+            1 => n,
+            2 => n * (n - 1) / 2,
+            3 => n * (n - 1) * (n - 2) / 6,
+            4 => n * (n - 1) * (n - 2) * (n - 3) / 24,
+            5 => n * (n - 1) * (n - 2) * (n - 3) * (n - 4) / 120,
+            _ => unreachable!("combinatorial explosion"),
+        };
+        (size, Some(size))
     }
 }

@@ -21,9 +21,8 @@ impl Observation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
-    pub fn successors(&self) -> Vec<Self> {
-        let hand = self.secret;
-        let mask = Hand::add(self.public, hand);
+    pub fn successors(&self) -> impl Iterator<Item = Observation> + '_ {
+        let mask = self.hand();
         let size = match self.public.size() {
             4 => 1,
             3 => 1,
@@ -33,7 +32,6 @@ impl Observation {
         HandIterator::from((size, mask))
             .into_iter()
             .map(|hand| Observation::from((self.secret, Hand::add(self.public, hand))))
-            .collect()
     }
 
     /// Generates all possible predecessors of a given street.
@@ -104,9 +102,6 @@ impl Observation {
             for public in publics {
                 let board = Observation::from((secret, public));
                 boards.push(board);
-                if board.select() {
-                    println!("Observation {}", board);
-                }
             }
         }
         boards
@@ -128,10 +123,15 @@ impl Observation {
     ///
     ///
     /// @return Vec<Hand>: A vector containing all 990 possible opponent hole card combinations
-    fn opponents(&self) -> Vec<Hand> {
+    fn opponents(&self) -> HandIterator {
         let size = 2usize;
-        let mask = Hand::add(self.secret, self.public);
-        HandIterator::from((size, mask)).into_iter().collect()
+        let mask = self.hand();
+        HandIterator::from((size, mask))
+    }
+
+    /// Generate mask conditional on .secret, .public
+    fn hand(&self) -> Hand {
+        Hand::add(self.secret, self.public)
     }
 
     /// Calculates the equity of the current observation.
@@ -140,14 +140,12 @@ impl Observation {
     /// I'm not sure this is feasible across ALL 2.8B rivers * ALL 990 opponents.
     /// But it's a one-time calculation so we can afford to be slow
     pub fn equity(&self) -> f32 {
-        let hand = self.secret;
-        let this = Strength::from(Hand::add(self.public, hand));
+        let ours = Strength::from(self.hand());
         let opponents = self.opponents();
-        let n = opponents.len();
+        let n = opponents.size_hint().0;
         let equity = opponents
-            .into_iter()
             .map(|hand| Strength::from(Hand::add(self.public, hand)))
-            .map(|that| match &this.cmp(&that) {
+            .map(|hers| match &ours.cmp(&hers) {
                 Ordering::Less => 0,
                 Ordering::Equal => 1,
                 Ordering::Greater => 2,
@@ -156,7 +154,7 @@ impl Observation {
             / n as f32
             / 2 as f32;
         if self.select() {
-            println!("Equity Calc {} | {} | {:2}", self, this, equity);
+            println!("Equity Calc {} | {} | {:2}", self, ours, equity);
         }
         equity
     }
@@ -175,8 +173,8 @@ impl From<(Hand, Hand)> for Observation {
 
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
-        let x = u64::from(observation.secret).wrapping_mul(0x517cc1b727220a95);
-        let y = u64::from(observation.public).wrapping_mul(0x9e3779b97f4a7c15);
+        let x = u64::from(observation.secret).wrapping_mul(0x9e3779b97f4a7c15);
+        let y = u64::from(observation.public).wrapping_mul(0x517cc1b727220a95);
         let i = x.wrapping_add(y);
         i as i64
     }

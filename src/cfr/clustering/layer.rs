@@ -59,7 +59,6 @@ impl Layer {
         Histogram::from(
             predecessor
                 .successors()
-                .into_iter()
                 .map(|ref succ| self.abstraction(succ))
                 .collect::<Vec<_>>(),
         )
