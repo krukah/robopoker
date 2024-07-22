@@ -16,6 +16,12 @@ pub struct Layer {
 }
 
 impl Layer {
+    /// Async persistence to storage.
+    ///
+    pub async fn save(&self, pool: &sqlx::PgPool) {
+        todo!("implement async persistence")
+    }
+
     /// The River layer is at the bottom of the hierarchy, and is generated from scratch.
     pub fn river() -> Self {
         Self {
