@@ -1,3 +1,7 @@
+use super::{action::Action, game::Game};
+use crate::cards::hole::Hole;
+use colored::Colorize;
+
 #[derive(Debug, Clone)]
 pub struct Seat {
     position: usize,
@@ -106,7 +110,7 @@ impl Seat {
         self.can_fold(hand) && self.can_raise(hand)
     }
 }
-impl Display for Seat {
+impl std::fmt::Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.hole.cards.is_empty() {
             return write!(
@@ -132,7 +136,7 @@ pub enum BetStatus {
     Folded,
 }
 
-impl Display for BetStatus {
+impl std::fmt::Display for BetStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             BetStatus::Playing => write!(f, "P"),
@@ -141,8 +145,3 @@ impl Display for BetStatus {
         }
     }
 }
-
-use super::{action::Action, game::Game};
-use crate::cards::hole::Hole;
-use colored::Colorize;
-use std::fmt::{Debug, Display};

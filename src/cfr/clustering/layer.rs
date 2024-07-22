@@ -82,22 +82,6 @@ impl Layer {
             .expect("we should have computed distances previously")
     }
 
-    /// Precompute the distance between each pair of centroids in the lower-layer.
-    fn metric(&self, centroids: &Vec<Histogram>) -> HashMap<Pair, f32> {
-        println!("Calculating {} distances...", self.street);
-        let mut distances = HashMap::new();
-        for (i, a) in centroids.iter().enumerate() {
-            for (j, b) in centroids.iter().enumerate() {
-                if i > j {
-                    let key = Pair::from((Abstraction::from(a), Abstraction::from(b)));
-                    let distance = self.emd(a, b);
-                    distances.insert(key, distance);
-                }
-            }
-        }
-        distances
-    }
-
     /// Cluster the next layer using the lower-layer's centroids + netric.
     #[rustfmt::skip]
     fn clusters(&self, centroids: &Vec<Histogram>, histograms: HashMap<Observation, Histogram>) -> HashMap<Observation, Abstraction> {
@@ -116,6 +100,22 @@ impl Layer {
             abstractions.insert(observation, Abstraction::from(neighbor));
         }
         abstractions
+    }
+
+    /// Precompute the distance between each pair of centroids in the lower-layer.
+    fn metric(&self, centroids: &Vec<Histogram>) -> HashMap<Pair, f32> {
+        println!("Calculating {} distances...", self.street);
+        let mut distances = HashMap::new();
+        for (i, a) in centroids.iter().enumerate() {
+            for (j, b) in centroids.iter().enumerate() {
+                if i > j {
+                    let key = Pair::from((Abstraction::from(a), Abstraction::from(b)));
+                    let distance = self.emd(a, b);
+                    distances.insert(key, distance);
+                }
+            }
+        }
+        distances
     }
 
     /// Earth mover's distance using our precomputed distance metric.

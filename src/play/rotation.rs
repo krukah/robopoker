@@ -5,9 +5,6 @@ use super::seat::BetStatus;
 use super::seat::Seat;
 use crate::cards::board::Board;
 use crate::cards::street::Street;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result;
 
 /// Rotation represents the memoryless state of the game in between actions.
 ///
@@ -116,19 +113,7 @@ impl Rotation {
     }
 }
 
-impl Display for Rotation {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        writeln!(f, "Pot:   {}", self.pot)?;
-        writeln!(f, "Board: {}", self.board)?;
-        for seat in &self.seats {
-            write!(f, "{}", seat)?;
-        }
-        Ok(())
-    }
-}
-
 // mutable methods are lowkey reserved for the node's owning Hand -- maybe some CFR engine
-
 impl Rotation {
     pub fn apply(&mut self, action: Action) {
         let seat = self.seats.get_mut(self.action).unwrap();
@@ -230,5 +215,16 @@ impl Rotation {
         for (i, seat) in self.seats.iter_mut().enumerate() {
             seat.assign(i);
         }
+    }
+}
+
+impl std::fmt::Display for Rotation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Pot:   {}", self.pot)?;
+        writeln!(f, "Board: {}", self.board)?;
+        for seat in &self.seats {
+            write!(f, "{}", seat)?;
+        }
+        Ok(())
     }
 }

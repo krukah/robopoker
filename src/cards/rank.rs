@@ -1,5 +1,3 @@
-use std::fmt::{Display, Formatter, Result};
-
 #[derive(Debug, Default, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Rank {
     #[default]
@@ -67,8 +65,8 @@ impl From<Rank> for u32 {
         1 << u8::from(r)
     }
 }
-impl Display for Rank {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Rank {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "{}",

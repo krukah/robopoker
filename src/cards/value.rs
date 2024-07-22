@@ -22,15 +22,15 @@ impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::MAX => unreachable!(),
-            Value::FullHouse(r1, r2) => write!(f, "FullHouse     {}, {}", r1, r2),
-            Value::TwoPair(r1, r2) => write!(f, "TwoPair       {}, {}", r1, r2),
-            Value::HighCard(r) => write!(f, "HighCard      {}", r),
-            Value::OnePair(r) => write!(f, "OnePair       {}", r),
-            Value::ThreeOAK(r) => write!(f, "ThreeOfAKind  {}", r),
-            Value::Straight(r) => write!(f, "Straight      {}", r),
-            Value::FourOAK(r) => write!(f, "FourOfAKind   {}", r),
-            Value::Flush(r) => write!(f, "Flush         {}", r),
-            Value::StraightFlush(r) => write!(f, "StraightFlush {}", r),
+            Value::FullHouse(r1, r2) => write!(f, "FullHouse     {}{}", r1, r2),
+            Value::TwoPair(r1, r2) => write!(f, "TwoPair       {}{}", r1, r2),
+            Value::HighCard(r) => write!(f, "HighCard      {} ", r),
+            Value::OnePair(r) => write!(f, "OnePair       {} ", r),
+            Value::ThreeOAK(r) => write!(f, "ThreeOfAKind  {} ", r),
+            Value::Straight(r) => write!(f, "Straight      {} ", r),
+            Value::FourOAK(r) => write!(f, "FourOfAKind   {} ", r),
+            Value::Flush(r) => write!(f, "Flush         {} ", r),
+            Value::StraightFlush(r) => write!(f, "StraightFlush {} ", r),
         }
     }
 }

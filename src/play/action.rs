@@ -1,4 +1,8 @@
 #![allow(dead_code)]
+
+use crate::cards::card::Card;
+use colored::*;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
     Draw(Card),
@@ -10,8 +14,8 @@ pub enum Action {
     Shove(usize, u32),
 }
 
-impl Display for Action {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Action::Draw(card) => write!(f, "{}", format!("DEAL  {}", card).white()),
             Action::Check(id) => write!(f, "{id} {}", "CHECK".cyan()),
@@ -25,7 +29,3 @@ impl Display for Action {
         }
     }
 }
-
-use crate::cards::card::Card;
-use colored::*;
-use std::fmt::{Display, Formatter, Result};

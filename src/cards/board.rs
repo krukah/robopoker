@@ -1,6 +1,5 @@
 use super::card::Card;
 use super::street::Street;
-use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -21,8 +20,8 @@ impl Board {
     }
 }
 
-impl Display for Board {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for card in self.cards.iter() {
             write!(f, "{}  ", card)?;
         }

@@ -1,3 +1,5 @@
+use super::card::Card;
+
 #[derive(Debug, Clone)]
 pub struct Hole {
     pub cards: Vec<Card>, // presize
@@ -11,11 +13,8 @@ impl Hole {
     }
 }
 
-impl Display for Hole {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Hole {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} {}", self.cards[0], self.cards[1])
     }
 }
-
-use super::card::Card;
-use std::fmt::{Display, Formatter, Result};

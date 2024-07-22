@@ -1,5 +1,3 @@
-use std::fmt::{Display, Formatter, Result};
-
 #[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Suit {
     #[default]
@@ -43,8 +41,8 @@ impl From<Suit> for u32 {
     }
 }
 
-impl Display for Suit {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Suit {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "{}",
