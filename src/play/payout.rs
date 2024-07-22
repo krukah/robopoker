@@ -7,8 +7,8 @@ pub struct Payout {
     pub reward: u32,
 }
 
-impl Display for Payout {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Display for Payout {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.reward > 0 {
             write!(
                 f,
@@ -25,4 +25,3 @@ impl Display for Payout {
 use super::seat::BetStatus;
 use crate::cards::strength::Strength;
 use colored::Colorize;
-use std::fmt::Display;

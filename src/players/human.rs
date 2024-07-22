@@ -1,5 +1,9 @@
 #![allow(dead_code)]
 
+use crate::play::{action::Action, game::Game, seat::Seat};
+use dialoguer::{Input, Select};
+
+#[derive(Debug)]
 pub struct Human;
 
 impl Human {
@@ -76,13 +80,3 @@ impl Human {
         }
     }
 }
-impl Debug for Human {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Human")
-    }
-}
-
-use crate::play::{action::Action, game::Game, seat::Seat};
-use dialoguer::{Input, Select};
-use std::fmt::{Debug, Formatter};
-use std::result::Result;
