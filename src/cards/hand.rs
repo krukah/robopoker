@@ -18,22 +18,9 @@ impl Hand {
         self.0.count_ones() as u8
     }
     pub fn add(lhs: Self, rhs: Self) -> Self {
-        assert!(lhs.0 | rhs.0 == lhs.0 + rhs.0);
         Self(lhs.0 | rhs.0)
     }
 }
-
-/// size and mask are immutable and must be decided at construction
-impl From<(usize, Hand)> for HandIterator {
-    fn from((size, mask): (usize, Hand)) -> Self {
-        Self {
-            hand: Hand((1 << size) - 1),
-            last: Hand(0),
-            mask,
-        }
-    }
-}
-
 /// u64 isomorphism
 /// we SUM/OR the cards to get the bitstring
 /// [2c, Ts, Jc, Js]
@@ -104,12 +91,24 @@ pub struct HandIterator {
     last: Hand,
     mask: Hand,
 }
+
+/// size and mask are immutable and must be decided at construction
+impl From<(usize, Hand)> for HandIterator {
+    fn from((size, mask): (usize, Hand)) -> Self {
+        Self {
+            hand: Hand((1 << size) - 1),
+            last: Hand(0),
+            mask,
+        }
+    }
+}
+
 impl HandIterator {
     fn exhausted(&self) -> bool {
         self.hand.0.leading_zeros() < 12 || self.hand.0 == 0
     }
-    fn blocks(&self, hand: Hand) -> bool {
-        (self.mask.0 & hand.0) != 0
+    fn blocked(&self) -> bool {
+        (self.mask.0 & self.last.0) != 0
     }
     fn permute(&self) -> Hand {
         let  x = /* 000_100                       */ self.hand.0;
@@ -124,6 +123,7 @@ impl HandIterator {
         Hand(h)
     }
 }
+
 impl Iterator for HandIterator {
     type Item = Hand;
     fn next(&mut self) -> Option<Self::Item> {
@@ -133,7 +133,7 @@ impl Iterator for HandIterator {
             }
             self.last = self.hand;
             self.hand = self.permute();
-            if self.blocks(self.hand) {
+            if self.blocked() {
                 continue;
             } else {
                 return Some(self.last);

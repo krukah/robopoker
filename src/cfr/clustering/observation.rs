@@ -66,10 +66,10 @@ impl Observation {
     pub fn predecessors(street: Street) -> Vec<Self> {
         match street {
             Street::Pref => panic!("no previous street"),
-            Street::Flop => Self::enumerate(1_326, 2),
-            Street::Turn => Self::enumerate(25_989_600, 3),
-            Street::Rive => Self::enumerate(305_377_800, 4),
-            Street::Show => Self::enumerate(2_809_475_760, 1), // 5), // (!)
+            Street::Flop => Self::enumerate(2),
+            Street::Turn => Self::enumerate(3),
+            Street::Rive => Self::enumerate(4),
+            Street::Show => Self::enumerate(2), // 5), // (!)
         }
     }
 
@@ -99,11 +99,18 @@ impl Observation {
     ///   - Outer loop: Generates all possible secret hands (hole cards)
     ///   - Inner loop: For each secret hand, generates all possible public hands (community cards)
     /// There could be consideration for breaking symmetry and reducing Hands up-to-stategic-isomorphism. This only reduces 2.8B > 2.4B in practice, maybe not worth it.
-    fn enumerate(permutations: usize, count: usize) -> Vec<Self> {
-        let mut boards = Vec::with_capacity(permutations);
+    fn enumerate(count: usize) -> Vec<Self> {
         let size = 2usize;
         let mask = Hand::from(0u64);
         let secrets = HandIterator::from((size, mask));
+        let permutations: usize = match count {
+            2 => 1_326,
+            3 => 25_989_600,
+            4 => 305_377_800,
+            5 => 2_809_475_760,
+            _ => panic!("invalid count"),
+        };
+        let mut boards = Vec::with_capacity(permutations);
         for secret in secrets {
             let size = count;
             let mask = secret;
