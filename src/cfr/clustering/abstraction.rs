@@ -1,4 +1,5 @@
 use super::histogram::Histogram;
+use super::observation::Observation;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -27,9 +28,9 @@ impl From<u8> for Abstraction {
     }
 }
 
-impl From<f32> for Abstraction {
-    fn from(p: f32) -> Self {
-        Self::Equity((p * Self::BUCKETS as f32) as u8)
+impl From<Observation> for Abstraction {
+    fn from(obesrvation: Observation) -> Self {
+        Self::Equity((obesrvation.equity() * Self::BUCKETS as f32) as u8)
     }
 }
 

@@ -25,9 +25,9 @@ impl Layer {
     /// The River layer is at the bottom of the hierarchy, and is generated from scratch.
     pub fn river() -> Self {
         Self {
-            street: Street::Rive,
-            metric: River::distance(),
             clusters: River::clusters(),
+            metric: River::distance(),
+            street: Street::Rive,
         }
     }
 
@@ -90,6 +90,7 @@ impl Layer {
 
     /// Precompute the distance between each pair of centroids in the lower-layer.
     fn metric(&self, centroids: &Vec<Histogram>) -> HashMap<Pair, f32> {
+        println!("Calculating {} distances...", self.street);
         let mut distances = HashMap::new();
         for (i, a) in centroids.iter().enumerate() {
             for (j, b) in centroids.iter().enumerate() {
@@ -106,6 +107,7 @@ impl Layer {
     /// Cluster the next layer using the lower-layer's centroids + netric.
     #[rustfmt::skip]
     fn clusters(&self, centroids: &Vec<Histogram>, histograms: HashMap<Observation, Histogram>) -> HashMap<Observation, Abstraction> {
+        println!("Clustering {}...", self.street);
         let mut abstractions = HashMap::new();
         for (observation, ref histogram) in histograms {
             let mut minimium = f32::MAX;
@@ -206,8 +208,24 @@ impl Layer {
         todo!("implement k-means++ initialization")
     }
 }
+
+/// River layer is generated from scratch, so we give it it's own type.
 struct River;
 impl River {
+    /// Cluster the river layer using showdown equity.
+    ///
+    /// Showdown equity is the probability of winning the hand if the
+    /// opponents cards are turned face up. These are the only Abstractions
+    /// derived as    f32 -> u8  -> Abstraction, compared to the distribution-
+    /// derived Histogram -> u64 -> Abstraction
+    fn clusters() -> HashMap<Observation, Abstraction> {
+        println!("Clustering {}...", Street::Rive);
+        Observation::predecessors(Street::Show)
+            .into_iter()
+            .map(|obs| (obs, Abstraction::from(obs)))
+            .collect::<HashMap<_, _>>()
+    }
+
     /// Distances between river Equities are calculated as the absolute difference in equity.
     ///
     /// These are precomputed without any clustering because we can just have a lookup table
@@ -215,6 +233,7 @@ impl River {
     /// albeit less efficient, than calculating them on the fly, because it allows us to recursively
     /// use Layer::distance to calculate the distance between any two Abstractions at any given Layer.
     fn distance() -> HashMap<Pair, f32> {
+        println!("Calculating {} distances...", Street::Rive);
         let mut metric = HashMap::new();
         let equities = Abstraction::buckets();
         for (i, a) in equities.iter().enumerate() {
@@ -227,19 +246,6 @@ impl River {
             }
         }
         metric
-    }
-
-    /// Cluster the river layer using showdown equity.
-    ///
-    /// Showdown equity is the probability of winning the hand if the
-    /// opponents cards are turned face up. These are the only Abstractions
-    /// derived as    f32 -> u8  -> Abstraction, compared to the distribution-
-    /// derived Histogram -> u64 -> Abstraction
-    fn clusters() -> HashMap<Observation, Abstraction> {
-        Observation::predecessors(Street::Show)
-            .into_iter()
-            .map(|obs| (obs, Abstraction::from(obs.equity())))
-            .collect::<HashMap<_, _>>()
     }
 }
 
