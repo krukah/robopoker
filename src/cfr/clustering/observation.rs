@@ -142,7 +142,7 @@ impl Observation {
     pub fn equity(&self) -> f32 {
         let ours = Strength::from(self.hand());
         let opponents = self.opponents();
-        let n = opponents.size_hint().0;
+        let n = opponents.combinations();
         let equity = opponents
             .map(|hand| Strength::from(Hand::add(self.public, hand)))
             .map(|hers| match &ours.cmp(&hers) {

@@ -200,6 +200,49 @@ impl Layer {
     fn guesses(&self) -> Vec<Histogram> {
         todo!("implement k-means++ initialization")
     }
+
+    /// Async persistence to storage.
+    ///
+    pub async fn save(&self, pool: &sqlx::PgPool) {
+        println!("Saving {}...", self.street);
+        // begin tx
+        let mut tx = pool
+            .begin()
+            .await
+            .expect("crossing fingers, begin transaction");
+        // insert metric
+        for (pair, distance) in self.metric.iter() {
+            sqlx::query(
+                r#"
+                    INSERT INTO metric  (xor, distance, street)
+                    VALUES              ($1, $2, $3)"#,
+            )
+            .bind(i64::from(*pair))
+            .bind(f32::from(*distance))
+            .bind(self.street as i64)
+            .execute(&mut tx)
+            .await
+            .expect("insert metric");
+        }
+        // insert clusters
+        for (observation, abstraction) in self.clusters.iter() {
+            sqlx::query(
+                r#"
+                    INSERT INTO cluster (observation, abstraction, street)
+                    VALUES              ($1, $2, $3)"#,
+            )
+            .bind(i64::from(*observation))
+            .bind(i64::from(*abstraction))
+            .bind(self.street as i64)
+            .execute(&mut tx)
+            .await
+            .expect("insert cluster");
+        }
+        // commit tx
+        tx.commit()
+            .await
+            .expect("crossing fingers, commit transaction");
+    }
 }
 
 /// River layer is generated from scratch, so we give it it's own type.
@@ -253,50 +296,5 @@ impl From<(Abstraction, Abstraction)> for Pair {
 impl From<Pair> for i64 {
     fn from(pair: Pair) -> Self {
         pair.0 as i64
-    }
-}
-
-impl Layer {
-    /// Async persistence to storage.
-    ///
-    pub async fn save(&self, pool: &sqlx::PgPool) {
-        println!("Saving {}...", self.street);
-        // begin tx
-        let mut tx = pool
-            .begin()
-            .await
-            .expect("crossing fingers, begin transaction");
-        // insert metric
-        for (pair, distance) in self.metric.iter() {
-            sqlx::query(
-                r#"
-                INSERT INTO metric  (xor, distance, street)
-                VALUES              ($1, $2, $3)"#,
-            )
-            .bind(i64::from(*pair))
-            .bind(f32::from(*distance))
-            .bind(self.street as i64)
-            .execute(&mut tx)
-            .await
-            .expect("insert metric");
-        }
-        // insert clusters
-        for (observation, abstraction) in self.clusters.iter() {
-            sqlx::query(
-                r#"
-                INSERT INTO cluster (observation, abstraction, street)
-                VALUES              ($1, $2, $3)"#,
-            )
-            .bind(i64::from(*observation))
-            .bind(i64::from(*abstraction))
-            .bind(self.street as i64)
-            .execute(&mut tx)
-            .await
-            .expect("insert cluster");
-        }
-        // commit tx
-        tx.commit()
-            .await
-            .expect("crossing fingers, commit transaction");
     }
 }
