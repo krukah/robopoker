@@ -47,6 +47,7 @@ impl Layer {
             .into_iter()
             .map(|ref pred| (*pred, self.histogram(pred)))
             .collect::<HashMap<_, _>>()
+        // BIG COLLECTION
     }
 
     /// Lookup abstractions of this Observation's children and create a histogram.
@@ -260,6 +261,7 @@ impl River {
             .into_iter()
             .map(|obs| (obs, Abstraction::from(obs)))
             .collect::<HashMap<_, _>>()
+        // BIG COLLECTION
     }
 
     /// Distances between river Equities are calculated as the absolute difference in equity.

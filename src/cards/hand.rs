@@ -106,8 +106,8 @@ impl From<(usize, Hand)> for HandIterator {
 
 impl HandIterator {
     pub fn combinations(&self) -> usize {
-        let n = self.hand.size() as usize;
-        let k = self.mask.size() as usize;
+        let k = self.hand.size() as usize;
+        let n = 52 - self.mask.size() as usize;
         (0..k).fold(1, |x, i| x * (n - i) / (i + 1))
     }
     fn exhausted(&self) -> bool {
