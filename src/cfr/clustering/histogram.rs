@@ -13,17 +13,6 @@ pub struct Histogram {
     weights: BTreeMap<Abstraction, usize>,
 }
 
-impl From<Vec<Abstraction>> for Histogram {
-    fn from(abstractions: Vec<Abstraction>) -> Self {
-        let sum = abstractions.len();
-        let mut weights = BTreeMap::new();
-        for abs in abstractions {
-            *weights.entry(abs).or_insert(0usize) += 1;
-        }
-        Self { sum, weights }
-    }
-}
-
 impl Histogram {
     pub fn weight(&self, abstraction: &Abstraction) -> f32 {
         self.weights.get(abstraction).copied().unwrap_or(0) as f32 / self.sum as f32
@@ -43,5 +32,16 @@ impl Histogram {
             centroid.sum += histogram.sum;
         }
         centroid
+    }
+}
+
+impl From<Vec<Abstraction>> for Histogram {
+    fn from(abstractions: Vec<Abstraction>) -> Self {
+        let sum = abstractions.len();
+        let mut weights = BTreeMap::new();
+        for abs in abstractions {
+            *weights.entry(abs).or_insert(0usize) += 1;
+        }
+        Self { sum, weights }
     }
 }

@@ -1,4 +1,5 @@
-use cfr::{clustering::layer::Layer, training::solver::Solver};
+use cfr::clustering::layer::Layer;
+use cfr::training::solver::Solver;
 
 mod cards;
 mod cfr;
@@ -19,8 +20,6 @@ async fn main() {
 
     // Abstraction generation
     let ref rivr = Layer::river();
-    rivr.save(pool).await;
-
     let ref turn = Layer::upper(rivr);
     let ref flop = Layer::upper(turn);
     let ref pref = Layer::upper(flop);

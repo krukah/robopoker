@@ -17,6 +17,33 @@ pub struct Observation {
 }
 
 impl Observation {
+    /// Calculates the equity of the current observation.
+    ///
+    /// This calculation integrations across ALL possible opponent hole cards.
+    /// I'm not sure this is feasible across ALL 2.8B rivers * ALL 990 opponents.
+    /// But it's a one-time calculation so we can afford to be slow
+    pub fn equity(&self) -> f32 {
+        // BIG LOOP
+        let ours = Strength::from(self.hand());
+        let opponents = self.opponents();
+        let n = opponents.combinations();
+        let equity = opponents
+            .map(|hand| Strength::from(Hand::add(self.public, hand)))
+            .map(|hers| match &ours.cmp(&hers) {
+                Ordering::Less => 0,
+                Ordering::Equal => 1,
+                Ordering::Greater => 2,
+            })
+            .sum::<u32>() as f32
+            / n as f32
+            / 2 as f32;
+        if self.select() {
+            println!("Equity Calc {} | {} | {:2}", self, ours, equity);
+        }
+        equity
+        // BIG COLLECTION
+    }
+
     /// Generates all possible successors of the current observation.
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
@@ -32,6 +59,7 @@ impl Observation {
         HandIterator::from((size, mask))
             .into_iter()
             .map(|hand| Observation::from((self.secret, Hand::add(self.public, hand))))
+        // BIG COLLECTION
     }
 
     /// Generates all possible predecessors of a given street.
@@ -51,10 +79,11 @@ impl Observation {
         match street {
             Street::Pref => panic!("no previous street"),
             Street::Flop => Self::enumerate(2),
-            Street::Turn => Self::enumerate(3),
-            Street::Rive => Self::enumerate(4),
-            Street::Show => Self::enumerate(5), // (!)
+            Street::Turn => Self::enumerate(2),
+            Street::Rive => Self::enumerate(3),
+            Street::Show => Self::enumerate(4), // (!)
         }
+        // BIG COLLECTION
     }
 
     /// Generates all possible situations as a function of street.
@@ -105,6 +134,7 @@ impl Observation {
             }
         }
         boards
+        // BIG COLLECTION
     }
 
     /// Enumerates all possible opponent hole cards given the current observation.
@@ -121,8 +151,6 @@ impl Observation {
     ///   - In our own hole cards (self.secret)
     ///   - Visible as community cards (self.public)
     ///
-    ///
-    /// @return Vec<Hand>: A vector containing all 990 possible opponent hole card combinations
     fn opponents(&self) -> HandIterator {
         let size = 2usize;
         let mask = self.hand();
@@ -134,34 +162,9 @@ impl Observation {
         Hand::add(self.secret, self.public)
     }
 
-    /// Calculates the equity of the current observation.
-    ///
-    /// This calculation integrations across ALL possible opponent hole cards.
-    /// I'm not sure this is feasible across ALL 2.8B rivers * ALL 990 opponents.
-    /// But it's a one-time calculation so we can afford to be slow
-    pub fn equity(&self) -> f32 {
-        let ours = Strength::from(self.hand());
-        let opponents = self.opponents();
-        let n = opponents.combinations();
-        let equity = opponents
-            .map(|hand| Strength::from(Hand::add(self.public, hand)))
-            .map(|hers| match &ours.cmp(&hers) {
-                Ordering::Less => 0,
-                Ordering::Equal => 1,
-                Ordering::Greater => 2,
-            })
-            .sum::<u32>() as f32
-            / n as f32
-            / 2 as f32;
-        if self.select() {
-            println!("Equity Calc {} | {} | {:2}", self, ours, equity);
-        }
-        equity
-    }
-
     /// Determines whether this Observation is selected for logging
     fn select(&self) -> bool {
-        i64::from(*self) % (3331333) == 0
+        i64::from(*self) % (333_1_333) == 0
     }
 }
 
@@ -173,6 +176,7 @@ impl From<(Hand, Hand)> for Observation {
 
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
+        // big prime numbers help us with pseudo-hasing while preserving order
         let x = u64::from(observation.secret).wrapping_mul(0x9e3779b97f4a7c15);
         let y = u64::from(observation.public).wrapping_mul(0x517cc1b727220a95);
         let i = x.wrapping_add(y);
@@ -181,7 +185,7 @@ impl From<Observation> for i64 {
 }
 
 impl std::fmt::Display for Observation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} | {}", self.secret, self.public)
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} + {}", self.secret, self.public)
     }
 }
