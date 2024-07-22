@@ -16,21 +16,6 @@ pub struct Observation {
     public: Hand,
 }
 
-impl From<(Hand, Hand)> for Observation {
-    fn from((secret, public): (Hand, Hand)) -> Self {
-        Observation { secret, public }
-    }
-}
-
-impl From<Observation> for i64 {
-    fn from(observation: Observation) -> Self {
-        let x = u64::from(observation.secret).wrapping_mul(0x517cc1b727220a95);
-        let y = u64::from(observation.public).wrapping_mul(0x9e3779b97f4a7c15);
-        let i = x.wrapping_add(y);
-        i as i64
-    }
-}
-
 impl Observation {
     /// Generates all possible successors of the current observation.
     ///
@@ -119,7 +104,9 @@ impl Observation {
             for public in publics {
                 let board = Observation::from((secret, public));
                 boards.push(board);
-                println!("Observation {}", board);
+                if board.select() {
+                    println!("Observation {}", board);
+                }
             }
         }
         boards
@@ -168,8 +155,30 @@ impl Observation {
             .sum::<u32>() as f32
             / n as f32
             / 2 as f32;
-        println!("Equity Calc {} | {} | {:2}", self, this, equity);
+        if self.select() {
+            println!("Equity Calc {} | {} | {:2}", self, this, equity);
+        }
         equity
+    }
+
+    /// Determines whether this Observation is selected for logging
+    fn select(&self) -> bool {
+        i64::from(*self) % (3331333) == 0
+    }
+}
+
+impl From<(Hand, Hand)> for Observation {
+    fn from((secret, public): (Hand, Hand)) -> Self {
+        Observation { secret, public }
+    }
+}
+
+impl From<Observation> for i64 {
+    fn from(observation: Observation) -> Self {
+        let x = u64::from(observation.secret).wrapping_mul(0x517cc1b727220a95);
+        let y = u64::from(observation.public).wrapping_mul(0x9e3779b97f4a7c15);
+        let i = x.wrapping_add(y);
+        i as i64
     }
 }
 
