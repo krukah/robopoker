@@ -105,6 +105,11 @@ impl From<(usize, Hand)> for HandIterator {
 }
 
 impl HandIterator {
+    pub fn combinations(&self) -> usize {
+        let n = self.hand.size() as usize;
+        let k = self.mask.size() as usize;
+        (0..k).fold(1, |x, i| x * (n - i) / (i + 1))
+    }
     fn exhausted(&self) -> bool {
         self.hand.0.leading_zeros() < 12 || self.hand.0 == 0
     }
@@ -113,14 +118,14 @@ impl HandIterator {
     }
     fn permute(&self) -> Hand {
         let  x = /* 000_100                       */ self.hand.0;
-        let  a = /* 000_100 || 000_011 -> 000_111 */ x | (x - 1);
-        let  b = /*            000_111 -> 001_000 */ a + 1;
-        let  c = /*            000_111 -> 111_000 */ !a;
-        let  d = /* 111_000 && 001_000 -> 001_000 */ c & b;
-        let  e = /*            001_000 -> 000_111 */ d - 1;
-        let  f = /*            000_100 >>     xxx */ 1 + x.trailing_zeros();
-        let  g = /*            000_111 -> 000_000 */ e >> f;
-        let  h = /* 001_000 || 000_000 -> 001_000 */ b | g;
+        let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
+        let  b = /* 001_000 <-                    */ a + 1;
+        let  c = /* 111_000 <-                    */ !a;
+        let  d = /* 001_000 <- 111_000 && 001_000 */ c & b;
+        let  e = /* 000_111 <-                    */ d - 1;
+        let  f = /*         << xxx                */ 1 + x.trailing_zeros();
+        let  g = /* 000_000 <-                    */ e >> f;
+        let  h = /* 001_000 <- 001_000 || 000_000 */ b | g;
         Hand(h)
     }
 }
@@ -142,17 +147,7 @@ impl Iterator for HandIterator {
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let k = self.hand.size() as usize;
-        let n = 52 - self.mask.size() as usize;
-        let size = match k {
-            0 => 1,
-            1 => n,
-            2 => n * (n - 1) / 2,
-            3 => n * (n - 1) * (n - 2) / 6,
-            4 => n * (n - 1) * (n - 2) * (n - 3) / 24,
-            5 => n * (n - 1) * (n - 2) * (n - 3) * (n - 4) / 120,
-            _ => unreachable!("combinatorial explosion"),
-        };
+        let size = self.combinations();
         (size, Some(size))
     }
 }
