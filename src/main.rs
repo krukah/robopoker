@@ -1,4 +1,4 @@
-use clustering::layer::Layer;
+use clustering::layer::{AsyncLayer, Layer};
 use training::solver::Solver;
 
 mod cards;
@@ -16,24 +16,14 @@ pub type Probability = f32;
 #[tokio::main]
 async fn main() {
     const DEFAULT_DB: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
-    // Postgres connection semantics
     let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DB.to_string());
-    let ref pool = sqlx::PgPool::connect(url)
+    let postgres = sqlx::PgPool::connect(url)
         .await
         .expect("database to accept connections");
 
-    // Abstraction generation
-    let ref rivr = Layer::river();
-    let ref turn = Layer::upper(rivr);
-    let ref flop = Layer::upper(turn);
-    let ref pref = Layer::upper(flop);
-
-    // Async persistence
-    // rivr.save(pool).await;
-    rivr.save(pool).await;
-    turn.save(pool).await;
-    flop.save(pool).await;
-    pref.save(pool).await;
+    let river = AsyncLayer::new(postgres);
+    river.river().await;
+    river.propogate().await.propogate().await.propogate().await;
 
     // CFR training iterations
     Solver::new().solve(50_000);
