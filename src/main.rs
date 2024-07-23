@@ -1,4 +1,4 @@
-use clustering::layer::{AsyncLayer, Layer};
+use clustering::layer::Layer;
 use training::solver::Solver;
 
 mod cards;
@@ -21,7 +21,7 @@ async fn main() {
         .await
         .expect("database to accept connections");
 
-    let river = AsyncLayer::new(postgres);
+    let river = Layer::new(postgres);
     river.river().await;
     river.propogate().await.propogate().await.propogate().await;
 
