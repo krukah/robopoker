@@ -1,16 +1,7 @@
 use super::card::Card;
 use super::kicks::Kicks;
 
-/// Hand represents an unordered set of Cards.
-/// only in the limit, it is more memory efficient than Vec<Card>, ...
-/// but also, an advantage even for small N is that we avoid heap allocation.
-/// nice to use a single word for the full Hand independent of size
-/// stored as a u64, but only needs LSB bitstring of 52 bits
-/// each bit represents a unique card in the (unordered) set
-/// if necessary, we can modify logic to account for strategy-isomorphic Hands !!
-/// i.e. break a symmetry across suits when no flushes are present
-/// although this might only be possible at the Observation level
-/// perhaps Hand has insufficient information
+/// Hand represents an unordered set of Cards. only in the limit, it is more memory efficient than Vec<Card>, ... but also, an advantage even for small N is that we avoid heap allocation. nice to use a single word for the full Hand independent of size stored as a u64, but only needs LSB bitstring of 52 bits each bit represents a unique card in the (unordered) set if necessary, we can modify logic to account for strategy-isomorphic Hands !! i.e. break a symmetry across suits when no flushes are present although this might only be possible at the Observation level perhaps Hand has insufficient information
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
 impl Hand {
@@ -19,6 +10,12 @@ impl Hand {
     }
     pub fn add(lhs: Self, rhs: Self) -> Self {
         Self(lhs.0 | rhs.0)
+    }
+    pub fn draw(&mut self) -> Card {
+        let index = self.0.trailing_zeros();
+        let card = Card::from(index as u8);
+        self.0 &= !(1 << index);
+        card
     }
 }
 
