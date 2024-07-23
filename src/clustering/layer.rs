@@ -6,8 +6,6 @@ use crate::cards::street::Street;
 use sqlx::query;
 use std::collections::HashMap;
 use std::vec;
-/// all the same, but async
-///
 
 pub struct Layer {
     street: Street,
@@ -35,7 +33,7 @@ impl Layer {
         println!("Clustering {}...", Street::Rive);
         for obs in Observation::predecessors(Street::Show) {
             let abs = Abstraction::from(obs);
-            self.save_obs(obs, abs).await
+            self.set_obs(obs, abs).await
         }
         println!("Calculating {} distances...", Street::Rive);
         let equities = Abstraction::buckets();
@@ -44,7 +42,7 @@ impl Layer {
                 if i > j {
                     let xor = Pair::from((a.clone(), b.clone()));
                     let distance = (i - j) as f32;
-                    self.save_xor(xor, distance).await;
+                    self.set_xor(xor, distance).await;
                 }
             }
         }
@@ -92,7 +90,7 @@ impl Layer {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
             let obs = observation.clone();
-            self.save_obs(obs, abs).await;
+            self.set_obs(obs, abs).await;
         }
     }
 
@@ -109,45 +107,10 @@ impl Layer {
                     let x = a.histogram();
                     let y = b.histogram();
                     let distance = self.emd(x, y).await;
-                    self.save_xor(xor, distance).await;
+                    self.set_xor(xor, distance).await;
                 }
             }
         }
-    }
-
-    /// Query methods
-    async fn abstraction(&self, obs: Observation) -> Abstraction {
-        let abs = query!(
-            r#"
-                SELECT abstraction
-                FROM cluster
-                WHERE observation = $1 AND street = $2"#,
-            i64::from(obs),
-            self.street as i64
-        )
-        .fetch_one(&self.postgres)
-        .await
-        .expect("to respond to cluster query")
-        .abstraction
-        .expect("to have computed cluster previously");
-        Abstraction::from(abs)
-    }
-
-    async fn distance(&self, xor: Pair) -> f32 {
-        let distance = query!(
-            r#"
-                SELECT distance
-                FROM metric
-                WHERE xor = $1 AND street = $2"#,
-            i64::from(xor),
-            self.street as i64
-        )
-        .fetch_one(&self.postgres)
-        .await
-        .expect("to respond to metric query")
-        .distance
-        .expect("to have computed metric previously");
-        distance as f32
     }
 
     /// Earth mover's distance using our precomputed distance metric.
@@ -176,7 +139,7 @@ impl Layer {
                     continue;
                 }
                 let xor = Pair::from((*this_key, *that_key));
-                let d = self.distance(xor).await;
+                let d = self.get_xor(xor).await;
                 let bonus = spill - goals[j];
                 if (bonus) < 0f32 {
                     extra.insert(*that_key, 0f32);
@@ -193,20 +156,22 @@ impl Layer {
         cost
     }
 
+    // The following methods encapsulate database lookups and inserts.
+
     /// ~1Kb download
+    /// this could possibly be implemented as a join?
     async fn decompose(&self, pred: Observation) -> Histogram {
-        /// this could possibly be implemented as a join?
         let mut abstractions = Vec::new();
         let successors = pred.successors();
         for succ in successors {
-            let abstraction = self.abstraction(succ).await;
+            let abstraction = self.get_obs(succ).await;
             abstractions.push(abstraction);
         }
         Histogram::from(abstractions)
     }
 
     /// Insert row into cluster table
-    async fn save_obs(&self, obs: Observation, abs: Abstraction) {
+    async fn set_obs(&self, obs: Observation, abs: Abstraction) {
         sqlx::query(
             r#"
                 INSERT INTO cluster (observation, abstraction, street)
@@ -223,7 +188,7 @@ impl Layer {
     }
 
     /// Insert row into metric table
-    async fn save_xor(&self, xor: Pair, distance: f32) {
+    async fn set_xor(&self, xor: Pair, distance: f32) {
         sqlx::query(
             r#"
                 INSERT INTO metric  (xor, distance, street)
@@ -237,5 +202,41 @@ impl Layer {
         .execute(&self.postgres)
         .await
         .expect("database insert: metric");
+    }
+
+    /// Query Observation -> Abstraction table
+    async fn get_obs(&self, obs: Observation) -> Abstraction {
+        let abs = query!(
+            r#"
+                SELECT abstraction
+                FROM cluster
+                WHERE observation = $1 AND street = $2"#,
+            i64::from(obs),
+            self.street as i64
+        )
+        .fetch_one(&self.postgres)
+        .await
+        .expect("to respond to cluster query")
+        .abstraction
+        .expect("to have computed cluster previously");
+        Abstraction::from(abs)
+    }
+
+    /// Query Pair -> f32 table
+    async fn get_xor(&self, xor: Pair) -> f32 {
+        let distance = query!(
+            r#"
+                SELECT distance
+                FROM metric
+                WHERE xor = $1 AND street = $2"#,
+            i64::from(xor),
+            self.street as i64
+        )
+        .fetch_one(&self.postgres)
+        .await
+        .expect("to respond to metric query")
+        .distance
+        .expect("to have computed metric previously");
+        distance as f32
     }
 }

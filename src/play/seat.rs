@@ -112,20 +112,7 @@ impl Seat {
 }
 impl std::fmt::Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.hole.cards.is_empty() {
-            return write!(
-                f,
-                "{:<3}{}          {:>7}  ",
-                self.position, self.status, self.stack
-            );
-        }
-        let card1 = self.hole.cards.get(0).unwrap();
-        let card2 = self.hole.cards.get(1).unwrap();
-        write!(
-            f,
-            "{:<3}{}   {}  {} {:>7}  ",
-            self.position, self.status, card1, card2, self.stack,
-        )
+        todo!("just write status and hole")
     }
 }
 

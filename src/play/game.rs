@@ -75,11 +75,7 @@ impl Game {
         let position = seat.position();
         let status = seat.status();
         let risked = self.risked(position);
-        let cards = self
-            .cards(position)
-            .into_iter()
-            .copied()
-            .collect::<Vec<Card>>();
+        let cards = self.cards(position);
         Payout {
             reward: 0,
             risked,
@@ -103,15 +99,11 @@ impl Game {
         let diff = last - prev;
         std::cmp::max(last + diff, last + self.bblind)
     }
-    fn cards(&self, position: usize) -> Vec<&Card> {
+    fn cards(&self, position: usize) -> Vec<Card> {
         let seat = self.head.seat_at_position(position);
-        let hole = seat.peek();
-        let slice_hole = &hole.cards[..];
-        let slice_board = &self.head.board.cards[..];
-        slice_hole
-            .iter()
-            .chain(slice_board.iter())
-            .collect::<Vec<&Card>>()
+        let hole = *seat.peek();
+        let hand = Hand::add(Hand::from(hole), Hand::from(self.head.board));
+        Vec::<Card>::from(hand)
     }
     fn risked(&self, position: usize) -> u32 {
         self.actions
@@ -169,12 +161,10 @@ impl Game {
     }
     pub fn next_street(&mut self) {
         self.head.begin_street();
-        match self.head.board.street {
+        match self.head.board.street() {
             Street::Pref => {
                 for hole in self.head.seats.iter_mut().map(|s| s.hole()) {
-                    hole.cards.clear();
-                    hole.cards.push(self.deck.draw());
-                    hole.cards.push(self.deck.draw());
+                    self.head.board.deal(hole)
                 }
             }
             Street::Flop => {
