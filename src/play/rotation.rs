@@ -37,7 +37,7 @@ impl Rotation {
         self.seats.iter().filter(|s| s.stack() > 0).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
-        !(self.are_all_folded() || (self.board.street == Street::Show))
+        !(self.are_all_folded() || (self.board.street() == Street::Show))
     }
     pub fn has_more_players(&self) -> bool {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
@@ -136,7 +136,7 @@ impl Rotation {
             _ => (),
         }
         match action {
-            Action::Draw(card) => self.board.push(card),
+            Action::Draw(card) => self.board.add(card),
             _ => {
                 self.rotate();
                 println!("{action}");
@@ -150,15 +150,14 @@ impl Rotation {
         }
         self.pot = 0;
         self.counts = 0;
-        self.board.cards.clear();
-        self.board.street = Street::Pref;
+        self.board.clear();
         self.dealer = self.after(self.dealer);
         self.action = self.dealer;
         self.rotate();
     }
     pub fn begin_street(&mut self) {
         self.counts = 0;
-        self.action = match self.board.street {
+        self.action = match self.board.street() {
             Street::Pref => self.after(self.after(self.dealer)),
             _ => self.dealer,
         };
@@ -168,13 +167,7 @@ impl Rotation {
         for seat in self.seats.iter_mut() {
             seat.clear();
         }
-        self.board.street = match self.board.street {
-            Street::Pref => Street::Flop,
-            Street::Flop => Street::Turn,
-            Street::Turn => Street::Rive,
-            Street::Rive => Street::Show,
-            Street::Show => unreachable!(),
-        }
+        self.board.advance();
     }
     fn rotate(&mut self) {
         'left: loop {

@@ -99,6 +99,11 @@ impl Evaluator {
         // remove the value cards from the hand
         // MUST FIX THIS
         // MUST FIX THIS
+        // 0: straigh flush, straight, flush, full house
+        // 1: two pair, 4oak
+        // 2: 3oak
+        // 3: 2oak
+        // 4: 1oak
         Kicks::from(Hand::from(0))
     }
 

@@ -67,6 +67,20 @@ impl From<Kicks> for Hand {
     }
 }
 
+/// Card isomorphism
+/// Hand -> Card loses information, since we only retain the high card
+/// Card -> Hand is a lossless conversion, singleton set
+impl From<Card> for Hand {
+    fn from(c: Card) -> Self {
+        Self::from(u64::from(c))
+    }
+}
+impl From<Hand> for Card {
+    fn from(h: Hand) -> Self {
+        Self::from(u64::from(h))
+    }
+}
+
 impl std::fmt::Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for card in Vec::<Card>::from(*self) {
@@ -114,6 +128,14 @@ impl HandIterator {
     fn blocked(&self) -> bool {
         (self.mask.0 & self.last.0) != 0
     }
+
+    /// TODO: rather than check for mask_block upstream
+    /// we can do some bit shifts to avoid blocked hands
+    /// e.g.
+    /// 00011100 <- permutation
+    /// 00010100 <- mask
+    /// 01011000 <- permutation after mask is intersected
+    /// basically, for each mask-1, shift the remaining permuatation-1s
     fn permute(&self) -> Hand {
         let  x = /* 000_100                       */ self.hand.0;
         let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
