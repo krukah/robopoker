@@ -1,7 +1,11 @@
-use super::abstraction::Abstraction;
-use super::histogram::Histogram;
+#![allow(unused)]
+
+use super::abstraction::{self, Abstraction};
+use super::histogram::{Centroid, Histogram};
 use super::observation::Observation;
+use super::xor::Pair;
 use crate::cards::street::Street;
+use sqlx::query;
 use std::collections::HashMap;
 use std::vec;
 
@@ -13,6 +17,75 @@ pub struct Layer {
     street: Street,
     metric: HashMap<Pair, f32>,
     clusters: HashMap<Observation, Abstraction>,
+}
+
+// Async implementations
+impl Layer {
+    /// Async persistence to storage.
+    ///
+    pub async fn save(&self, pool: &sqlx::PgPool) {
+        println!("Saving {}...", self.street);
+        // begin tx
+        let mut tx = pool
+            .begin()
+            .await
+            .expect("crossing fingers, begin transaction");
+        // insert metric
+        for (xor, distance) in self.metric.iter() {
+            self.insert_row_metric(*xor, *distance, &mut tx).await;
+        }
+        // insert clusters
+        for (observation, abstraction) in self.clusters.iter() {
+            self.insert_row_cluster(*observation, *abstraction, &mut tx)
+                .await;
+        }
+        // commit tx
+        tx.commit()
+            .await
+            .expect("crossing fingers, commit transaction");
+    }
+
+    /// Insert cluster row
+    ///
+    pub async fn insert_row_cluster(
+        &self,
+        obs: Observation,
+        abs: Abstraction,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) {
+        sqlx::query(
+            r#"
+                INSERT INTO cluster (observation, abstraction, street)
+                VALUES              ($1, $2, $3)"#,
+        )
+        .bind(i64::from(obs))
+        .bind(i64::from(abs))
+        .bind(self.street as i64)
+        .execute(tx)
+        .await
+        .expect("insert cluster");
+    }
+
+    /// Insert metric row
+    ///
+    pub async fn insert_row_metric(
+        &self,
+        xor: Pair,
+        distance: f32,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) {
+        sqlx::query(
+            r#"
+                INSERT INTO metric  (xor, distance, street)
+                VALUES              ($1, $2, $3)"#,
+        )
+        .bind(i64::from(xor))
+        .bind(f32::from(distance))
+        .bind(self.street as i64)
+        .execute(tx)
+        .await
+        .expect("insert metric");
+    }
 }
 
 impl Layer {
@@ -104,6 +177,14 @@ impl Layer {
 
     /// Precompute the distance between each pair of centroids in the lower-layer.
     fn metric(&self, centroids: &Vec<Histogram>) -> HashMap<Pair, f32> {
+        //
+        //
+        //
+        //
+        // Make this async
+        //
+        //
+        //
         println!("Calculating {} distances...", self.street);
         let mut distances = HashMap::new();
         for (i, a) in centroids.iter().enumerate() {
@@ -175,6 +256,7 @@ impl Layer {
         for _ in 0..ITERATIONS {
             let mut clusters: Vec<Vec<&Histogram>> = vec![vec![]; k];
             for x in histograms.iter() {
+                // find the closest centroid
                 let mut position = 0usize;
                 let mut minimium = f32::MAX;
                 for (i, y) in centroids.iter().enumerate() {
@@ -200,49 +282,6 @@ impl Layer {
     /// Initial guesses for this layer
     fn guesses(&self) -> Vec<Histogram> {
         todo!("implement k-means++ initialization")
-    }
-
-    /// Async persistence to storage.
-    ///
-    pub async fn save(&self, pool: &sqlx::PgPool) {
-        println!("Saving {}...", self.street);
-        // begin tx
-        let mut tx = pool
-            .begin()
-            .await
-            .expect("crossing fingers, begin transaction");
-        // insert metric
-        for (pair, distance) in self.metric.iter() {
-            sqlx::query(
-                r#"
-                    INSERT INTO metric  (xor, distance, street)
-                    VALUES              ($1, $2, $3)"#,
-            )
-            .bind(i64::from(*pair))
-            .bind(f32::from(*distance))
-            .bind(self.street as i64)
-            .execute(&mut tx)
-            .await
-            .expect("insert metric");
-        }
-        // insert clusters
-        for (observation, abstraction) in self.clusters.iter() {
-            sqlx::query(
-                r#"
-                    INSERT INTO cluster (observation, abstraction, street)
-                    VALUES              ($1, $2, $3)"#,
-            )
-            .bind(i64::from(*observation))
-            .bind(i64::from(*abstraction))
-            .bind(self.street as i64)
-            .execute(&mut tx)
-            .await
-            .expect("insert cluster");
-        }
-        // commit tx
-        tx.commit()
-            .await
-            .expect("crossing fingers, commit transaction");
     }
 }
 
@@ -287,16 +326,204 @@ impl River {
     }
 }
 
-/// A unique identifier for a pair of abstractions.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
-struct Pair(u64);
-impl From<(Abstraction, Abstraction)> for Pair {
-    fn from((a, b): (Abstraction, Abstraction)) -> Self {
-        Self(u64::from(a) ^ u64::from(b))
-    }
+/// all the same, but async
+///
+
+pub struct AsyncLayer {
+    street: Street,
+    postgres: sqlx::PgPool,
+    // predecessors
+    // neighbors
+    // centroids
 }
-impl From<Pair> for i64 {
-    fn from(pair: Pair) -> Self {
-        pair.0 as i64
+
+impl AsyncLayer {
+    async fn guesses(&self) -> Vec<Centroid> {
+        todo!("implement k-means++ initialization")
+    }
+
+    async fn compute(&self) {
+        let ref observations = Observation::predecessors(self.street);
+        let ref mut neighbors = HashMap::<Observation, usize>::with_capacity(observations.len());
+        let ref mut centroids = self.guesses().await;
+        self.kmeans(centroids, neighbors, observations).await;
+        self.upsert(centroids, neighbors).await;
+        self.insert(centroids).await;
+    }
+
+    #[rustfmt::skip]
+    async fn kmeans(&self, centroids: &mut Vec<Centroid>, neighbors: &mut HashMap<Observation, usize>, observations: &Vec<Observation>) {
+        const ITERATIONS: usize = 100;
+        for _ in 0..ITERATIONS {
+            for obs in observations.iter() {
+                let histogram = self.decompose(obs.clone()).await;
+                let ref x = histogram;
+                let mut position = 0usize;
+                let mut minimium = f32::MAX;
+                for (i, centroid) in centroids.iter().enumerate() {
+                    let y = centroid.histogram();
+                    let emd = self.emd(x, y).await;
+                    if emd < minimium {
+                        position = i;
+                        minimium = emd;
+                    }
+                }
+                neighbors.insert(obs.clone(), position);
+                centroids
+                    .get_mut(position)
+                    .expect("position in range")
+                    .collect(histogram);
+            }
+        }
+    }
+
+    async fn upsert(&self, centroids: &[Centroid], neighbors: &HashMap<Observation, usize>) {
+        for (observation, index) in neighbors.iter() {
+            let centroid = centroids.get(*index).expect("index in range");
+            let abs = centroid.signature();
+            let obs = observation.clone();
+            self.save_obs(obs, abs).await;
+        }
+    }
+
+    async fn insert(&self, centroids: &mut Vec<Centroid>) {
+        for centroid in centroids.iter_mut() {
+            centroid.collapse();
+        }
+        for (i, a) in centroids.iter().enumerate() {
+            for (j, b) in centroids.iter().enumerate() {
+                if i > j {
+                    let x = a.signature();
+                    let y = b.signature();
+                    let xor = Pair::from((x, y));
+                    let x = a.histogram();
+                    let y = b.histogram();
+                    let distance = self.emd(x, y).await;
+                    self.save_xor(xor, distance).await;
+                }
+            }
+        }
+    }
+
+    /// Query methods
+    async fn abstraction(&self, obs: Observation) -> Abstraction {
+        let abs = query!(
+            r#"
+                SELECT abstraction
+                FROM cluster
+                WHERE observation = $1 AND street = $2"#,
+            i64::from(obs),
+            self.street as i64
+        )
+        .fetch_one(&self.postgres)
+        .await
+        .expect("to respond to cluster query")
+        .abstraction
+        .expect("to have computed cluster previously");
+        Abstraction::from(abs)
+    }
+
+    async fn distance(&self, xor: Pair) -> f32 {
+        let distance = query!(
+            r#"
+                SELECT distance
+                FROM metric
+                WHERE xor = $1 AND street = $2"#,
+            i64::from(xor),
+            self.street as i64
+        )
+        .fetch_one(&self.postgres)
+        .await
+        .expect("to respond to metric query")
+        .distance
+        .expect("to have computed metric previously");
+        distance as f32
+    }
+
+    /// Earth mover's distance using our precomputed distance metric.
+    ///
+    ///
+    async fn emd(&self, this: &Histogram, that: &Histogram) -> f32 {
+        let n = this.size();
+        let m = that.size();
+        let mut cost = 0.0;
+        let mut extra = HashMap::new();
+        let mut goals = vec![1.0 / n as f32; n];
+        let mut empty = vec![false; n];
+        for i in 0..m {
+            for j in 0..n {
+                if empty[j] {
+                    continue;
+                }
+                let this_key = this.domain()[j];
+                let that_key = that.domain()[i];
+                let spill = extra
+                    .get(that_key)
+                    .cloned()
+                    .or_else(|| Some(that.weight(that_key)))
+                    .expect("key is somewhere");
+                if spill == 0f32 {
+                    continue;
+                }
+                let xor = Pair::from((*this_key, *that_key));
+                let d = self.distance(xor).await;
+                let bonus = spill - goals[j];
+                if (bonus) < 0f32 {
+                    extra.insert(*that_key, 0f32);
+                    cost += d * bonus as f32;
+                    goals[j] -= bonus as f32;
+                } else {
+                    extra.insert(*that_key, bonus);
+                    cost += d * goals[j];
+                    goals[j] = 0.0;
+                    empty[j] = true;
+                }
+            }
+        }
+        cost
+    }
+
+    /// ~1Kb download
+    async fn decompose(&self, pred: Observation) -> Histogram {
+        /// this could possibly be implemented as a join?
+        let mut abstractions = Vec::new();
+        let successors = pred.successors();
+        for succ in successors {
+            let abstraction = self.abstraction(succ).await;
+            abstractions.push(abstraction);
+        }
+        Histogram::from(abstractions)
+    }
+
+    /// Insert row into cluster table
+    async fn save_obs(&self, obs: Observation, abs: Abstraction) {
+        sqlx::query(
+            r#"
+                INSERT INTO cluster (observation, abstraction, street)
+                VALUES              ($1, $2, $3)
+                ON CONFLICT         (observation, street)
+                DO UPDATE SET       abstraction = $2"#,
+        )
+        .bind(i64::from(obs))
+        .bind(i64::from(abs))
+        .bind(self.street as i64)
+        .execute(&self.postgres)
+        .await
+        .expect("database insert: cluster");
+    }
+
+    /// Insert row into metric table
+    async fn save_xor(&self, xor: Pair, distance: f32) {
+        sqlx::query(
+            r#"
+                INSERT INTO metric  (xor, distance, street)
+                VALUES              ($1, $2, $3)"#,
+        )
+        .bind(i64::from(xor))
+        .bind(f32::from(distance))
+        .bind(self.street as i64)
+        .execute(&self.postgres)
+        .await
+        .expect("database insert: metric");
     }
 }
