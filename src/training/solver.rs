@@ -1,12 +1,12 @@
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
-use crate::cfr::profile::profile::Profile;
-use crate::cfr::tree::action::Edge;
-use crate::cfr::tree::info::Info;
-use crate::cfr::tree::node::Node;
-use crate::cfr::tree::player::Player;
-use crate::cfr::tree::tree::Tree;
+use crate::profile::profile::Profile;
+use crate::tree::action::Edge;
+use crate::tree::info::Info;
+use crate::tree::node::Node;
+use crate::tree::player::Player;
+use crate::tree::tree::Tree;
 use crate::Probability;
 use crate::Utility;
 
