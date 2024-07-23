@@ -79,9 +79,9 @@ impl Observation {
         match street {
             Street::Pref => panic!("no previous street"),
             Street::Flop => Self::enumerate(2),
-            Street::Turn => Self::enumerate(2),
-            Street::Rive => Self::enumerate(3),
-            Street::Show => Self::enumerate(4), // (!)
+            Street::Turn => Self::enumerate(3),
+            Street::Rive => Self::enumerate(4),
+            Street::Show => Self::enumerate(5), // (!)
         }
         // BIG COLLECTION
     }

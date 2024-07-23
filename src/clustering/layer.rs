@@ -148,7 +148,7 @@ impl Layer {
 
     /// Lookup precomputed distance between two Abstractions in the lower-layer.
     fn distance(&self, a: &Abstraction, b: &Abstraction) -> f32 {
-        let ref index = Pair::from((*a, *b));
+        let ref index = Pair::from((a.clone(), b.clone()));
         self.metric
             .get(index)
             .copied()
@@ -316,9 +316,9 @@ impl River {
         for (i, a) in equities.iter().enumerate() {
             for (j, b) in equities.iter().enumerate() {
                 if i > j {
-                    let key = Pair::from((*a, *b));
+                    let xor = Pair::from((a.clone(), b.clone()));
                     let distance = (i - j) as f32;
-                    metric.insert(key, distance);
+                    metric.insert(xor, distance);
                 }
             }
         }
@@ -338,17 +338,47 @@ pub struct AsyncLayer {
 }
 
 impl AsyncLayer {
+    pub fn new(postgres: sqlx::PgPool) -> Self {
+        Self {
+            street: Street::Rive,
+            postgres,
+        }
+    }
+
     async fn guesses(&self) -> Vec<Centroid> {
         todo!("implement k-means++ initialization")
     }
 
-    async fn compute(&self) {
+    /// Save the river
+    ///
+    pub async fn river(&self) {
+        println!("Clustering {}...", Street::Rive);
+        for obs in Observation::predecessors(Street::Show) {
+            let abs = Abstraction::from(obs);
+            self.save_obs(obs, abs).await
+        }
+        println!("Calculating {} distances...", Street::Rive);
+        let equities = Abstraction::buckets();
+        for (i, a) in equities.iter().enumerate() {
+            for (j, b) in equities.iter().enumerate() {
+                if i > j {
+                    let xor = Pair::from((a.clone(), b.clone()));
+                    let distance = (i - j) as f32;
+                    self.save_xor(xor, distance).await;
+                }
+            }
+        }
+    }
+
+    pub async fn propogate(mut self) -> Self {
         let ref observations = Observation::predecessors(self.street);
         let ref mut neighbors = HashMap::<Observation, usize>::with_capacity(observations.len());
         let ref mut centroids = self.guesses().await;
         self.kmeans(centroids, neighbors, observations).await;
         self.upsert(centroids, neighbors).await;
         self.insert(centroids).await;
+        self.street = self.street.prev();
+        self
     }
 
     #[rustfmt::skip]
@@ -501,7 +531,7 @@ impl AsyncLayer {
             r#"
                 INSERT INTO cluster (observation, abstraction, street)
                 VALUES              ($1, $2, $3)
-                ON CONFLICT         (observation, street)
+                ON CONFLICT         (observation)
                 DO UPDATE SET       abstraction = $2"#,
         )
         .bind(i64::from(obs))
@@ -517,7 +547,9 @@ impl AsyncLayer {
         sqlx::query(
             r#"
                 INSERT INTO metric  (xor, distance, street)
-                VALUES              ($1, $2, $3)"#,
+                VALUES              ($1, $2, $3)
+                ON CONFLICT         (xor)
+                DO UPDATE SET       distance = $2"#,
         )
         .bind(i64::from(xor))
         .bind(f32::from(distance))
