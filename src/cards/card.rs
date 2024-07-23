@@ -70,6 +70,20 @@ impl From<Card> for u64 {
     }
 }
 
+/// Hand isomorphism
+/// Hand -> Card loses information, since we only retain the high card
+/// Card -> Hand is a lossless conversion, singleton set
+impl From<Card> for Hand {
+    fn from(c: Card) -> Self {
+        Self::from(u64::from(c))
+    }
+}
+impl From<Hand> for Card {
+    fn from(h: Hand) -> Self {
+        Self::from(u64::from(h))
+    }
+}
+
 impl std::fmt::Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}{}", self.rank(), self.suit())
