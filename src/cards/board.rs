@@ -1,6 +1,7 @@
 use super::card::Card;
 use super::street::Street;
 
+///
 #[derive(Debug, Clone)]
 pub struct Board {
     pub cards: Vec<Card>, // presize

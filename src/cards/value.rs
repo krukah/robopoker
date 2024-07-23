@@ -19,7 +19,7 @@ pub enum Value {
 }
 
 impl std::fmt::Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Value::MAX => unreachable!(),
             Value::FullHouse(r1, r2) => write!(f, "FullHouse     {}{}", r1, r2),

@@ -8,7 +8,7 @@ use super::value::Value;
 
 type Masks = u32; // could be u16
 type Count = u8; // could pack this entire struct into a super efficient u128 probably
-type Cards<'a> = &'a Vec<Card>; // could be relaxed or coerced into Vec<Card>
+type Cards<'a> = &'a Vec<Card>; // could be Hand(u64) or generic over Iterator<Card>
 
 /// A lazy evaluator for a hand's strength.
 ///
@@ -37,8 +37,8 @@ impl From<Hand> for Evaluator {
 
 impl From<Evaluator> for Strength {
     fn from(evaluator: Evaluator) -> Self {
-        let value = evaluator.find_best_hand();
-        let kicks = evaluator.find_kickers(value);
+        let value = evaluator.find_value();
+        let kicks = evaluator.find_kicks(value);
         Self::from((value, kicks))
     }
 }
@@ -84,7 +84,7 @@ impl Evaluator {
 
     ///
 
-    fn find_best_hand(&self) -> Value {
+    fn find_value(&self) -> Value {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
@@ -95,7 +95,7 @@ impl Evaluator {
             .or_else(|| self.find_1_oak())
             .expect("at least one card in Hand")
     }
-    fn find_kickers(&self, value: Value) -> Kicks {
+    fn find_kicks(&self, value: Value) -> Kicks {
         // remove the value cards from the hand
         // MUST FIX THIS
         // MUST FIX THIS
