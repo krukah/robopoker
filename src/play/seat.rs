@@ -112,7 +112,15 @@ impl Seat {
 }
 impl std::fmt::Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        todo!("just write status and hole")
+        write!(
+            f,
+            "{}{}{}{}{}",
+            format!("{:02}", self.position).cyan(),
+            format!("{:04}", self.stack).green(),
+            format!("{:04}", self.stake).yellow(),
+            self.status,
+            self.hole
+        )
     }
 }
 

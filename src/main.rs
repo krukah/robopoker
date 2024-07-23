@@ -15,8 +15,8 @@ pub type Probability = f32;
 
 #[tokio::main]
 async fn main() {
-    const DEFAULT_DB: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
-    let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DB.to_string());
+    const DB_URL: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
+    let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| String::from(DB_URL));
     let postgres = sqlx::PgPool::connect(url)
         .await
         .expect("database to accept connections");
