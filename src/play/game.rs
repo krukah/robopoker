@@ -173,21 +173,21 @@ impl Game {
             Street::Pref => {
                 for hole in self.head.seats.iter_mut().map(|s| s.hole()) {
                     hole.cards.clear();
-                    hole.cards.push(self.deck.draw().unwrap());
-                    hole.cards.push(self.deck.draw().unwrap());
+                    hole.cards.push(self.deck.draw());
+                    hole.cards.push(self.deck.draw());
                 }
             }
             Street::Flop => {
-                let card1 = self.deck.draw().unwrap();
-                let card2 = self.deck.draw().unwrap();
-                let card3 = self.deck.draw().unwrap();
+                let card1 = self.deck.draw();
+                let card2 = self.deck.draw();
+                let card3 = self.deck.draw();
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
                 println!("   {}", self.head.board)
             }
             Street::Turn | Street::Rive => {
-                let card = self.deck.draw().unwrap();
+                let card = self.deck.draw();
                 self.apply(Action::Draw(card));
                 println!("   {}", self.head.board)
             }
