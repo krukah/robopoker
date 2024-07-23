@@ -38,20 +38,22 @@ impl Board {
     }
 }
 
-impl std::fmt::Display for Board {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
+/// Board isomorphism
+/// Board -> Hand is infallible
+/// Hand -> Board should select at 0, 3, 4, 5 cards
 impl From<Hand> for Board {
     fn from(hand: Hand) -> Self {
         Self(hand)
     }
 }
-
 impl From<Board> for Hand {
     fn from(board: Board) -> Self {
         board.0
+    }
+}
+
+impl std::fmt::Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

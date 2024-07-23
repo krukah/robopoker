@@ -8,9 +8,16 @@ use super::hand::Hand;
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Kicks(Hand);
 
+/// Kicker isomorphism
+/// structurally identifcal, semantically different from Hand
 impl From<Hand> for Kicks {
     fn from(hand: Hand) -> Self {
         Self(hand)
+    }
+}
+impl From<Kicks> for Hand {
+    fn from(k: Kicks) -> Self {
+        k.0
     }
 }
 
