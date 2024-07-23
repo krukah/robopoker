@@ -2,13 +2,9 @@ use super::{hand::Hand, rank::Rank, suit::Suit};
 
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit
-/// actually we may as well want to store this as a u8
-/// we expose Rank and Suit via pub methods anyway
-/// and there's not enough entropy to need 16 bits
-/// low-hanging optimization to cut Card memory in half
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Card(u8);
+
 impl Card {
     pub fn rank(&self) -> Rank {
         Rank::from(self.0 / 4)
@@ -95,10 +91,10 @@ impl CardIterator {
     fn exhausted(&self) -> bool {
         self.last == Card::MAX
     }
-    fn blocks(&self, card: Card) -> bool {
+    fn blocked(&self, card: Card) -> bool {
         (u64::from(self.mask) & u64::from(card)) != 0
     }
-    fn turn(&self) -> Card {
+    fn advance(&self) -> Card {
         Card::from((u8::from(self.card) + 1) % 52)
     }
 }
@@ -110,8 +106,8 @@ impl Iterator for CardIterator {
                 return None;
             }
             self.last = self.card;
-            self.card = self.turn();
-            if self.blocks(self.card) {
+            self.card = self.advance();
+            if self.blocked(self.card) {
                 continue;
             } else {
                 return Some(self.last);

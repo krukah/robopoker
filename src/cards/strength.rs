@@ -27,7 +27,7 @@ impl From<(Value, Kicks)> for Strength {
 }
 
 impl std::fmt::Display for Strength {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:<18}", self.value)
     }
 }

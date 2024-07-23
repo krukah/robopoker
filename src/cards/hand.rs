@@ -1,4 +1,5 @@
-use super::{card::Card, kicks::Kicks};
+use super::card::Card;
+use super::kicks::Kicks;
 
 /// Hand represents an unordered set of Cards.
 /// only in the limit, it is more memory efficient than Vec<Card>, ...
