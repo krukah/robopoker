@@ -3,9 +3,10 @@ use super::street::Street;
 
 ///
 #[derive(Debug, Clone)]
+// pub struct Board(Hand)
 pub struct Board {
     pub cards: Vec<Card>, // presize
-    pub street: Street,
+    pub street: Street,   // should be derived from self.0.size()
 }
 
 impl Board {
