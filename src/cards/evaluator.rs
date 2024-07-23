@@ -96,15 +96,18 @@ impl Evaluator {
             .expect("at least one card in Hand")
     }
     fn find_kicks(&self, value: Value) -> Kicks {
-        // remove the value cards from the hand
-        // MUST FIX THIS
-        // MUST FIX THIS
-        // 0: straigh flush, straight, flush, full house
-        // 1: two pair, 4oak
-        // 2: 3oak
-        // 3: 2oak
-        // 4: 1oak
         Kicks::from(Hand::from(0))
+        // match value {
+        //     Value::TwoPair(hi, lo) => {
+        //         let mask = 1 << hi as u32 | 1 << lo as u32;
+        //         Kicks::from(Hand::from(self.rank_masks & !mask))
+        //     }
+        //     Value::FourOAK(hi) | Value::ThreeOAK(hi) | Value::OnePair(hi) => {
+        //         let mask = 1 << hi as u32;
+        //         Kicks::from(Hand::from(self.rank_masks & !mask))
+        //     }
+        //     _ => Kicks::from(Hand::from(0)),
+        // }
     }
 
     ///
