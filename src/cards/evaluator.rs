@@ -1,14 +1,10 @@
 use super::card::Card;
 use super::hand::Hand;
-use super::kicks::Kicks;
+use super::kicks::Kickers;
 use super::rank::Rank;
 use super::strength::Strength;
 use super::suit::Suit;
-use super::value::Value;
-
-type Masks = u32; // could be u16
-type Count = u8; // could pack this entire struct into a super efficient u128 probably
-type Cards<'a> = &'a Vec<Card>; // could be Hand(u64) or generic over Iterator<Card>
+use super::value::Ranking;
 
 /// A lazy evaluator for a hand's strength.
 ///
@@ -16,36 +12,37 @@ type Cards<'a> = &'a Vec<Card>; // could be Hand(u64) or generic over Iterator<C
 /// the highest Value hand using bitwise operations. I should
 /// benchmark this and compare to a massive HashMap<Hand, Value> lookup implementation.
 /// alias types useful for readability here
-pub struct Evaluator {
-    rank_masks: Masks,       // which ranks are in the hand, neglecting suit
-    suit_masks: [Masks; 4],  // which ranks are in the hand, grouped by suit
-    suit_count: [Count; 4],  // how many suits (i) are in the hand. neglect rank
-    rank_count: [Count; 13], // how many ranks (i) are in the hand. neglect suit
-}
-
+pub struct Evaluator(Hand);
 impl From<Hand> for Evaluator {
-    fn from(hand: Hand) -> Self {
-        let ref cards = Vec::<Card>::from(hand);
-        Self {
-            rank_masks: Self::rank_masks(cards),
-            suit_masks: Self::suit_masks(cards),
-            suit_count: Self::suit_count(cards),
-            rank_count: Self::rank_count(cards),
-        }
+    fn from(h: Hand) -> Self {
+        Self(h)
     }
 }
 
 impl From<Evaluator> for Strength {
-    fn from(evaluator: Evaluator) -> Self {
-        let value = evaluator.find_value();
-        let kicks = evaluator.find_kicks(value);
+    fn from(e: Evaluator) -> Self {
+        let value = e.find_ranking();
+        let kicks = e.find_kickers(value);
         Self::from((value, kicks))
     }
 }
 
 impl Evaluator {
-    fn rank_count(cards: Cards) -> [u8; 13] {
-        cards
+    /// rank_masks:
+    /// Masks,      
+    /// which ranks are in the hand, neglecting suit
+    fn rank_masks(&self) -> u32 {
+        Vec::<Card>::from(self.0)
+            .iter()
+            .map(|c| c.rank())
+            .map(|r| r as u32)
+            .fold(0, |acc, r| acc | r)
+    }
+    /// rank_count:
+    /// [Count; 13],
+    /// how many ranks (i) are in the hand. neglect suit
+    fn rank_count(&self) -> [u8; 13] {
+        Vec::<Card>::from(self.0)
             .iter()
             .map(|c| c.rank())
             .map(|r| r as usize)
@@ -54,8 +51,11 @@ impl Evaluator {
                 counts
             })
     }
-    fn suit_count(cards: Cards) -> [u8; 4] {
-        cards
+    /// suit_count:
+    /// [Count; 4],  
+    /// how many suits (i) are in the hand. neglect rank
+    fn suit_count(&self) -> [u8; 4] {
+        Vec::<Card>::from(self.0)
             .iter()
             .map(|c| c.suit())
             .map(|s| s as usize)
@@ -64,8 +64,11 @@ impl Evaluator {
                 counts
             })
     }
-    fn suit_masks(cards: Cards) -> [u32; 4] {
-        cards
+    /// suit_masks:
+    /// [Masks; 4],  
+    /// which ranks are in the hand, grouped by suit
+    fn suit_masks(&self) -> [u32; 4] {
+        Vec::<Card>::from(self.0)
             .iter()
             .map(|c| (c.suit(), c.rank()))
             .map(|(s, r)| (s as usize, u32::from(r)))
@@ -74,17 +77,10 @@ impl Evaluator {
                 suits
             })
     }
-    fn rank_masks(cards: Cards) -> u32 {
-        cards
-            .iter()
-            .map(|c| c.rank())
-            .map(|r| r as u32)
-            .fold(0, |acc, r| acc | r)
-    }
 
     ///
 
-    fn find_value(&self) -> Value {
+    fn find_ranking(&self) -> Ranking {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
@@ -95,60 +91,69 @@ impl Evaluator {
             .or_else(|| self.find_1_oak())
             .expect("at least one card in Hand")
     }
-    fn find_kicks(&self, value: Value) -> Kicks {
-        Kicks::from(Hand::from(0))
-        // match value {
-        //     Value::TwoPair(hi, lo) => {
-        //         let mask = 1 << hi as u32 | 1 << lo as u32;
-        //         Kicks::from(Hand::from(self.rank_masks & !mask))
-        //     }
-        //     Value::FourOAK(hi) | Value::ThreeOAK(hi) | Value::OnePair(hi) => {
-        //         let mask = 1 << hi as u32;
-        //         Kicks::from(Hand::from(self.rank_masks & !mask))
-        //     }
-        //     _ => Kicks::from(Hand::from(0)),
-        // }
+    fn find_kickers(&self, value: Ranking) -> Kickers {
+        let n = match value {
+            Ranking::HighCard(_) => 4,
+            Ranking::OnePair(_) => 3,
+            Ranking::ThreeOAK(_) => 2,
+            Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
+            _ => return Kickers::from(0u32),
+        };
+        let mask = match value {
+            Ranking::HighCard(hi)
+            | Ranking::OnePair(hi)
+            | Ranking::ThreeOAK(hi)
+            | Ranking::FourOAK(hi) => !u32::from(hi),
+            Ranking::TwoPair(hi, lo) => !u32::from(hi) & !u32::from(lo),
+            _ => unreachable!(),
+        };
+        let mut bits = !mask & self.rank_masks();
+        while bits.count_ones() > n {
+            bits &= !(1 << bits.trailing_zeros());
+        }
+        Kickers::from(bits)
     }
 
     ///
 
-    fn find_1_oak(&self) -> Option<Value> {
-        self.find_rank_of_n_oak(1).map(Value::HighCard)
+    fn find_1_oak(&self) -> Option<Ranking> {
+        self.find_rank_of_n_oak(1).map(Ranking::HighCard)
     }
-    fn find_2_oak(&self) -> Option<Value> {
-        self.find_rank_of_n_oak(2).map(Value::OnePair)
+    fn find_2_oak(&self) -> Option<Ranking> {
+        self.find_rank_of_n_oak(2).map(Ranking::OnePair)
     }
-    fn find_3_oak(&self) -> Option<Value> {
-        self.find_rank_of_n_oak(3).map(Value::ThreeOAK)
+    fn find_3_oak(&self) -> Option<Ranking> {
+        self.find_rank_of_n_oak(3).map(Ranking::ThreeOAK)
     }
-    fn find_4_oak(&self) -> Option<Value> {
-        self.find_rank_of_n_oak(4).map(Value::FourOAK)
+    fn find_4_oak(&self) -> Option<Ranking> {
+        self.find_rank_of_n_oak(4).map(Ranking::FourOAK)
     }
-    fn find_2_oak_2_oak(&self) -> Option<Value> {
+    fn find_2_oak_2_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(2).and_then(|hi| {
             self.find_rank_of_n_oak_below(2, hi as usize)
-                .map(|lo| Value::TwoPair(hi, lo))
-                .or_else(|| Some(Value::OnePair(hi)))
+                .map(|lo| Ranking::TwoPair(hi, lo))
+                .or_else(|| Some(Ranking::OnePair(hi)))
         })
     }
-    fn find_3_oak_2_oak(&self) -> Option<Value> {
+    fn find_3_oak_2_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(3).and_then(|three| {
             self.find_rank_of_n_oak_below(2, three as usize)
-                .map(|two| Value::FullHouse(three, two))
+                .map(|two| Ranking::FullHouse(three, two))
         })
     }
-    fn find_straight(&self) -> Option<Value> {
-        self.find_rank_of_straight(self.rank_masks)
-            .map(Value::Straight)
+    fn find_straight(&self) -> Option<Ranking> {
+        self.find_rank_of_straight(self.rank_masks())
+            .map(Ranking::Straight)
     }
-    fn find_flush(&self) -> Option<Value> {
+    fn find_flush(&self) -> Option<Ranking> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
-                .map(Value::StraightFlush)
+                .map(Ranking::StraightFlush)
                 .or_else(|| {
-                    let mask = self.suit_masks[suit as usize];
-                    let rank = Rank::from(mask);
-                    Some(Value::Flush(rank))
+                    let bits = self.suit_masks();
+                    let bits = bits[suit as usize];
+                    let rank = Rank::from(bits);
+                    Some(Ranking::Flush(rank))
                 })
         })
     }
@@ -156,14 +161,14 @@ impl Evaluator {
     ///
 
     fn find_rank_of_straight(&self, u32_cards: u32) -> Option<Rank> {
-        const WHEEL: u32 = 0b_0000_0000_0000_0000_0001_0000_0000_1111;
-        let mut mask = u32_cards;
-        mask &= mask << 1;
-        mask &= mask << 1;
-        mask &= mask << 1;
-        mask &= mask << 1;
-        if mask > 0 {
-            return Some(Rank::from(mask));
+        const WHEEL: u32 = 0b0000000000000000000_1000000001111;
+        let mut bits = u32_cards;
+        bits &= bits << 1;
+        bits &= bits << 1;
+        bits &= bits << 1;
+        bits &= bits << 1;
+        if bits > 0 {
+            return Some(Rank::from(bits));
         } else if WHEEL == (WHEEL & u32_cards) {
             return Some(Rank::Five);
         } else {
@@ -171,17 +176,18 @@ impl Evaluator {
         }
     }
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
-        let flush = self.suit_masks[suit as usize];
-        self.find_rank_of_straight(flush)
+        let bits = self.suit_masks();
+        let bits = bits[suit as usize];
+        self.find_rank_of_straight(bits)
     }
     fn find_suit_of_flush(&self) -> Option<Suit> {
-        self.suit_count
+        self.suit_count()
             .iter()
             .position(|&n| n >= 5)
             .map(|i| Suit::from(i as u8))
     }
     fn find_rank_of_n_oak_below(&self, n: u8, high: usize) -> Option<Rank> {
-        self.rank_count
+        self.rank_count()
             .iter()
             .take(high)
             .rev()

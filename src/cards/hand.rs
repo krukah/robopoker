@@ -42,7 +42,7 @@ impl From<Hand> for Vec<Card> {
         let mut value = h.0;
         let mut index = 0u8;
         let mut cards = Vec::new();
-        while value != 0 {
+        while value > 0 {
             if value & 1 == 1 {
                 cards.push(Card::from(index));
             }
@@ -54,7 +54,7 @@ impl From<Hand> for Vec<Card> {
 }
 impl From<Vec<Card>> for Hand {
     fn from(cards: Vec<Card>) -> Self {
-        Self(cards.iter().map(|c| u64::from(*c)).fold(0, |a, b| a | b))
+        Self(cards.iter().map(|c| u64::from(*c)).fold(0u64, |a, b| a | b))
     }
 }
 

@@ -23,7 +23,7 @@ async fn main() {
 
     let river = Layer::new(postgres);
     river.river().await;
-    river.propogate().await.propogate().await.propogate().await;
+    river.cluster().await.cluster().await.cluster().await;
 
     // CFR training iterations
     Solver::new().solve(50_000);
