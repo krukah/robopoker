@@ -1,7 +1,7 @@
 use super::evaluator::Evaluator;
 use super::hand::Hand;
-use super::kicks::Kicks;
-use super::value::Value;
+use super::kicks::Kickers;
+use super::value::Ranking;
 
 /// A hand's strength.
 ///
@@ -10,8 +10,8 @@ use super::value::Value;
 /// kicker cards are used to break ties.
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Strength {
-    value: Value,
-    kicks: Kicks,
+    value: Ranking,
+    kicks: Kickers,
 }
 
 impl From<Hand> for Strength {
@@ -20,8 +20,8 @@ impl From<Hand> for Strength {
     }
 }
 
-impl From<(Value, Kicks)> for Strength {
-    fn from((value, kicks): (Value, Kicks)) -> Self {
+impl From<(Ranking, Kickers)> for Strength {
+    fn from((value, kicks): (Ranking, Kickers)) -> Self {
         Self { value, kicks }
     }
 }

@@ -9,17 +9,17 @@ use std::vec;
 
 pub struct Layer {
     street: Street,
-    postgres: sqlx::PgPool,
+    db: sqlx::PgPool,
     // predecessors
     // neighbors
     // centroids
 }
 
 impl Layer {
-    pub fn new(postgres: sqlx::PgPool) -> Self {
+    pub fn new(db: sqlx::PgPool) -> Self {
         Self {
             street: Street::Rive,
-            postgres,
+            db,
         }
     }
 
@@ -48,7 +48,7 @@ impl Layer {
         }
     }
 
-    pub async fn propogate(mut self) -> Self {
+    pub async fn cluster(mut self) -> Self {
         let ref observations = Observation::predecessors(self.street);
         let ref mut neighbors = HashMap::<Observation, usize>::with_capacity(observations.len());
         let ref mut centroids = self.guesses().await;
@@ -80,7 +80,7 @@ impl Layer {
                 centroids
                     .get_mut(position)
                     .expect("position in range")
-                    .collect(histogram);
+                    .expand(histogram);
             }
         }
     }
@@ -96,7 +96,7 @@ impl Layer {
 
     async fn insert(&self, centroids: &mut Vec<Centroid>) {
         for centroid in centroids.iter_mut() {
-            centroid.collapse();
+            centroid.shrink();
         }
         for (i, a) in centroids.iter().enumerate() {
             for (j, b) in centroids.iter().enumerate() {
@@ -160,6 +160,8 @@ impl Layer {
 
     /// ~1Kb download
     /// this could possibly be implemented as a join?
+    /// fml a big Vec<> of these is gonna have to fit
+    /// in memory for the centroid calculation
     async fn decompose(&self, pred: Observation) -> Histogram {
         let mut abstractions = Vec::new();
         let successors = pred.successors();
@@ -182,7 +184,7 @@ impl Layer {
         .bind(i64::from(obs))
         .bind(i64::from(abs))
         .bind(self.street as i64)
-        .execute(&self.postgres)
+        .execute(&self.db)
         .await
         .expect("database insert: cluster");
     }
@@ -199,7 +201,7 @@ impl Layer {
         .bind(i64::from(xor))
         .bind(f32::from(distance))
         .bind(self.street as i64)
-        .execute(&self.postgres)
+        .execute(&self.db)
         .await
         .expect("database insert: metric");
     }
@@ -214,7 +216,7 @@ impl Layer {
             i64::from(obs),
             self.street as i64
         )
-        .fetch_one(&self.postgres)
+        .fetch_one(&self.db)
         .await
         .expect("to respond to cluster query")
         .abstraction
@@ -232,7 +234,7 @@ impl Layer {
             i64::from(xor),
             self.street as i64
         )
-        .fetch_one(&self.postgres)
+        .fetch_one(&self.db)
         .await
         .expect("to respond to metric query")
         .distance

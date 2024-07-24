@@ -60,10 +60,10 @@ impl Centroid {
         // could precompute if this BTreeMap Hash is too slow, but haven't profiled yet
         Abstraction::from(&self.0)
     }
-    pub fn collect(&mut self, histogram: Histogram) {
+    pub fn expand(&mut self, histogram: Histogram) {
         self.1.push(histogram);
     }
-    pub fn collapse(&mut self) {
+    pub fn shrink(&mut self) {
         self.0.sum = 0;
         self.0.weights.clear();
         for histogram in self.1.iter() {

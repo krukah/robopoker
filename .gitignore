@@ -2,5 +2,6 @@
 .DS_Store
 .vscode/*
 /data
+.todo
 .env
 .swp
