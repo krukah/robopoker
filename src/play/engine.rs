@@ -44,7 +44,7 @@ impl Table {
     }
 
     fn end_turn(&mut self) {
-        let seat = self.hand.head.seat_up_next();
+        let seat = self.hand.head.up();
         let action = seat.act(&self.hand);
         self.hand.apply(action);
         // std::thread::sleep(std::time::Duration::from_millis(100));

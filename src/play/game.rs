@@ -100,7 +100,7 @@ impl Game {
         std::cmp::max(last + diff, last + self.bblind)
     }
     fn cards(&self, position: usize) -> Vec<Card> {
-        let seat = self.head.seat_at_position(position);
+        let seat = self.head.at(position);
         let hole = *seat.peek();
         let hand = Hand::add(Hand::from(hole), Hand::from(self.head.board));
         Vec::<Card>::from(hand)
