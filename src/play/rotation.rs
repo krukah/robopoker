@@ -43,10 +43,10 @@ impl Rotation {
         !(self.are_all_folded() || self.are_all_called() || self.are_all_shoved())
     }
 
-    pub fn seat_up_next(&self) -> &Seat {
+    pub fn up(&self) -> &Seat {
         self.seats.get(self.action).unwrap()
     }
-    pub fn seat_at_position(&self, index: usize) -> &Seat {
+    pub fn at(&self, index: usize) -> &Seat {
         self.seats.iter().find(|s| s.position() == index).unwrap()
     }
     pub fn seat_at_position_mut(&mut self, index: usize) -> &mut Seat {
@@ -176,7 +176,7 @@ impl Rotation {
             }
             self.counts += 1;
             self.action = self.after(self.action);
-            match self.seat_up_next().status() {
+            match self.up().status() {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'left,
             }
@@ -186,7 +186,7 @@ impl Rotation {
         'right: loop {
             self.counts -= 1;
             self.action = self.before(self.action);
-            match self.seat_up_next().status() {
+            match self.up().status() {
                 BetStatus::Playing => return,
                 BetStatus::Folded | BetStatus::Shoved => continue 'right,
             }

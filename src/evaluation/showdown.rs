@@ -1,9 +1,14 @@
+use crate::cards::kicks::Kickers;
+use crate::cards::strength::Strength;
+use crate::cards::value::Ranking;
+use crate::play::{payout::Payout, seat::BetStatus};
+
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
     payouts: Vec<Payout>,
     next_stake: u32,
     prev_stake: u32,
-    next_strength: Strength,
+    next_strength: Strength, // make option to handle initial state
 }
 
 impl Showdown {
@@ -102,9 +107,3 @@ impl Showdown {
         }
     }
 }
-
-use crate::cards::hand::Hand;
-use crate::cards::kicks::Kickers;
-use crate::cards::strength::Strength;
-use crate::cards::value::Ranking;
-use crate::play::{payout::Payout, seat::BetStatus};

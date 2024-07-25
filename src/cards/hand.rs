@@ -4,8 +4,8 @@ use super::card::Card;
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
 impl Hand {
-    pub fn size(&self) -> u8 {
-        self.0.count_ones() as u8
+    pub fn size(&self) -> usize {
+        self.0.count_ones() as usize
     }
     pub fn add(lhs: Self, rhs: Self) -> Self {
         Self(lhs.0 | rhs.0)
@@ -15,6 +15,9 @@ impl Hand {
         let card = Card::from(index as u8);
         self.0 &= !(1 << index);
         card
+    }
+    pub fn take(&mut self, card: Card) {
+        self.0 |= 1 << u64::from(card);
     }
 }
 
@@ -67,6 +70,11 @@ impl std::fmt::Display for Hand {
     }
 }
 
+/// TODO:
+/// unclear if we should
+/// skip over (52 choose m) masked bits in O(1)
+/// or iterate over ((52 - m) choose n) bits in O(exp)
+///
 /// HandIterator allows you to block certain cards and iterate over all possible hands of length n
 /// n can be:
 /// - inferred from length of initial cards
@@ -77,44 +85,55 @@ impl std::fmt::Display for Hand {
 /// it is fast because it uses bitwise operations
 /// it is flexible because it can be used to iterate over any subset of cards
 pub struct HandIterator {
-    hand: Hand,
-    last: Hand,
-    mask: Hand,
+    next: u64,
+    curr: u64,
+    mask: u64,
 }
 
 /// size and mask are immutable and must be decided at construction
 impl From<(usize, Hand)> for HandIterator {
-    fn from((size, mask): (usize, Hand)) -> Self {
+    fn from((n_cards, mask): (usize, Hand)) -> Self {
         Self {
-            hand: Hand((1 << size) - 1),
-            last: Hand(0),
-            mask,
+            next: (1 << n_cards) - 1,
+            curr: 0u64,
+            mask: u64::from(mask),
         }
     }
 }
 
 impl HandIterator {
     pub fn combinations(&self) -> usize {
-        let k = self.hand.size() as usize;
-        let n = 52 - self.mask.size() as usize;
+        let n = 52 - Hand::from(self.mask).size(); // count_ones()
+        let k = Hand::from(self.next).size(); // count_ones()
         (0..k).fold(1, |x, i| x * (n - i) / (i + 1))
     }
+
     fn exhausted(&self) -> bool {
-        self.hand.0.leading_zeros() < 12 || self.hand.0 == 0
-    }
-    fn blocked(&self) -> bool {
-        (self.mask.0 & self.last.0) != 0
+        if self.next == 0 {
+            true
+        } else {
+            self.next.leading_zeros() - self.mask.count_ones() < (64 - 52)
+        }
     }
 
-    /// TODO: rather than check for mask_block upstream
-    /// we can do some bit shifts to avoid blocked hands
-    /// e.g.
-    /// 00011100 <- permutation
-    /// 00010100 <- mask
-    /// 01011000 <- permutation after mask is intersected
-    /// basically, for each mask-1, shift the remaining permuatation-1s
-    fn permute(&self) -> Hand {
-        let  x = /* 000_100                       */ self.hand.0;
+    fn hand(&self) -> Hand {
+        // apply masking by shuffling around bits
+        let mut returned_bits = 0;
+        let mut shifting_bits = self.curr;
+        let mut excluded_bits = self.mask;
+        while excluded_bits > 0 {
+            let lsbs = (1 << excluded_bits.trailing_zeros()) - 1;
+            let msbs = !lsbs;
+            returned_bits = returned_bits /* carry lsbs */ | (shifting_bits & lsbs);
+            excluded_bits = excluded_bits /* erase mask */ & (excluded_bits - 1);
+            shifting_bits = shifting_bits /* erase lsbs */ & msbs;
+            shifting_bits = shifting_bits /* shift left */ << 1;
+        }
+        Hand(returned_bits | shifting_bits)
+    }
+
+    fn permute(bits: u64) -> u64 {
+        let  x = /* 000_100                       */ bits;
         let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
         let  b = /* 001_000 <-                    */ a + 1;
         let  c = /* 111_000 <-                    */ !a;
@@ -123,28 +142,23 @@ impl HandIterator {
         let  f = /*         << xxx                */ 1 + x.trailing_zeros();
         let  g = /* 000_000 <-                    */ e >> f;
         let  h = /* 001_000 <- 001_000 || 000_000 */ b | g;
-        Hand(h)
+        h
     }
 }
 
 impl Iterator for HandIterator {
     type Item = Hand;
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.exhausted() {
-                return None;
-            }
-            self.last = self.hand;
-            self.hand = self.permute();
-            if self.blocked() {
-                continue;
-            } else {
-                return Some(self.last);
-            }
+        if self.exhausted() {
+            None
+        } else {
+            self.curr = self.next;
+            self.next = Self::permute(self.curr);
+            Some(self.hand())
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.combinations();
-        (size, Some(size))
+        let combos = self.combinations();
+        (combos, Some(combos))
     }
 }
