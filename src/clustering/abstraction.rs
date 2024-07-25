@@ -20,8 +20,9 @@ impl Abstraction {
 }
 
 impl From<Observation> for Abstraction {
-    fn from(obesrvation: Observation) -> Self {
-        let quantile = obesrvation.equity() * Self::BUCKETS as f32;
+    fn from(obs: Observation) -> Self {
+        let quantile = obs.equity() * Self::BUCKETS as f32;
+        println!("> {} -> {}", obs, quantile);
         Self(quantile as u64)
     }
 }
