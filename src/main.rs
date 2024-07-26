@@ -2,13 +2,7 @@ use robopoker::*;
 
 #[tokio::main]
 async fn main() {
-    const DB_URL: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
-    let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| String::from(DB_URL));
-    let postgres = sqlx::PgPool::connect(url)
-        .await
-        .expect("database to accept connections");
-
-    let river = clustering::layer::Layer::new(postgres);
+    let river = clustering::layer::Layer::new().await;
     river.river().await;
     river.cluster().await.cluster().await.cluster().await;
 

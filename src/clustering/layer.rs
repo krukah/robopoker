@@ -16,10 +16,10 @@ pub struct Layer {
 }
 
 impl Layer {
-    pub fn new(db: sqlx::PgPool) -> Self {
+    pub async fn new() -> Self {
         Self {
             street: Street::Rive,
-            lookup: Lookup::from(db),
+            lookup: Lookup::new().await,
         }
     }
 
@@ -33,7 +33,7 @@ impl Layer {
         println!("Clustering {}...", Street::Rive);
         for obs in Observation::predecessors(Street::Show) {
             let abs = Abstraction::from(obs);
-            self.lookup.set_obs(self.street, obs, abs).await
+            self.lookup.set_obs(obs, abs).await
         }
         println!("Calculating {} distances...", Street::Rive);
         let equities = Abstraction::buckets();
@@ -42,7 +42,7 @@ impl Layer {
                 if i > j {
                     let xor = Pair::from((a.clone(), b.clone()));
                     let distance = (i - j) as f32;
-                    self.lookup.set_xor(self.street, xor, distance).await;
+                    self.lookup.set_xor(xor, distance).await;
                 }
             }
         }
@@ -90,7 +90,7 @@ impl Layer {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
             let obs = observation.clone();
-            self.lookup.set_obs(self.street, obs, abs).await;
+            self.lookup.set_obs(obs, abs).await;
         }
     }
 
@@ -107,7 +107,7 @@ impl Layer {
                     let x = a.histogram();
                     let y = b.histogram();
                     let distance = self.emd(x, y).await;
-                    self.lookup.set_xor(self.street, xor, distance).await;
+                    self.lookup.set_xor(xor, distance).await;
                 }
             }
         }
