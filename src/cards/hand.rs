@@ -116,7 +116,7 @@ impl HandIterator {
         }
     }
 
-    fn hand_jump(&self) -> Hand {
+    fn jump(&self) -> Hand {
         // apply masking by shuffling around bits
         let mut returned_bits = 0;
         let mut shifting_bits = self.curr;
@@ -130,15 +130,6 @@ impl HandIterator {
             shifting_bits = shifting_bits /* shift left */ << 1;
         }
         Hand(returned_bits | shifting_bits)
-    }
-
-    fn hand_skip(&mut self) -> Hand {
-        // mutate inner state to skip over masked bits
-        // NOTE: logically incorrect, only use for benching rn -- if self.next starts off as verlapping with mask, then we won't skip over the first hand bc it will be assigned to self.curr
-        while self.mask & self.next > 0 {
-            self.next = self.permute();
-        }
-        Hand(self.curr)
     }
 
     fn permute(&self) -> u64 {
@@ -163,7 +154,79 @@ impl Iterator for HandIterator {
         } else {
             self.curr = self.next;
             self.next = self.permute();
-            Some(self.hand_jump())
+            Some(self.jump())
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let combos = self.combinations();
+        (combos, Some(combos))
+    }
+}
+
+pub struct SandIterator {
+    next: u64,
+    curr: u64,
+    mask: u64,
+}
+
+/// size and mask are immutable and must be decided at construction
+impl From<(usize, Hand)> for SandIterator {
+    fn from((n_cards, mask): (usize, Hand)) -> Self {
+        Self {
+            next: (1 << n_cards) - 1,
+            curr: 0u64,
+            mask: u64::from(mask),
+        }
+    }
+}
+
+impl SandIterator {
+    pub fn combinations(&self) -> usize {
+        let n = 52 - Hand::from(self.mask).size(); // count_ones()
+        let k = Hand::from(self.next).size(); // count_ones()
+        (0..k).fold(1, |x, i| x * (n - i) / (i + 1))
+    }
+
+    fn exhausted(&self) -> bool {
+        if self.next == 0 {
+            true
+        } else {
+            self.next.leading_zeros() - self.mask.count_ones() < (64 - 52)
+        }
+    }
+
+    fn skip(&mut self) -> Hand {
+        // mutate inner state to skip over masked bits
+        // NOTE: logically incorrect, only use for benching rn -- if self.next starts off as verlapping with mask, then we won't skip over the first hand bc it will be assigned to self.curr
+        while self.mask & self.next > 0 {
+            self.next = self.permute();
+        }
+        Hand(self.curr)
+    }
+
+    fn permute(&self) -> u64 {
+        let  x = /* 000_100                       */ self.curr;
+        let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
+        let  b = /* 001_000 <-                    */ a + 1;
+        let  c = /* 111_000 <-                    */ !a;
+        let  d = /* 001_000 <- 111_000 && 001_000 */ c & b;
+        let  e = /* 000_111 <-                    */ d - 1;
+        let  f = /*         << xxx                */ 1 + x.trailing_zeros();
+        let  g = /* 000_000 <-                    */ e >> f;
+        let  h = /* 001_000 <- 001_000 || 000_000 */ b | g;
+        h
+    }
+}
+
+impl Iterator for SandIterator {
+    type Item = Hand;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.exhausted() {
+            None
+        } else {
+            self.curr = self.next;
+            self.next = self.permute();
+            Some(self.skip())
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
