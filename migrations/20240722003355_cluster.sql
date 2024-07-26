@@ -1,5 +1,4 @@
--- Add migration script here
-CREATE TABLE IF NOT EXISTS cluster (
+CREATE UNLOGGED TABLE cluster (
     observation BIGINT PRIMARY KEY,
     abstraction BIGINT,
     street SMALLINT
