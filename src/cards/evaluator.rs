@@ -29,7 +29,7 @@ impl From<Evaluator> for Strength {
 
 impl Evaluator {
     /// rank_masks:
-    /// Masks,      
+    /// Masks,
     /// which ranks are in the hand, neglecting suit
     fn rank_masks(&self) -> u32 {
         Vec::<Card>::from(self.0)
@@ -52,7 +52,7 @@ impl Evaluator {
             })
     }
     /// suit_count:
-    /// [Count; 4],  
+    /// [Count; 4],
     /// how many suits (i) are in the hand. neglect rank
     fn suit_count(&self) -> [u8; 4] {
         Vec::<Card>::from(self.0)
@@ -65,7 +65,7 @@ impl Evaluator {
             })
     }
     /// suit_masks:
-    /// [Masks; 4],  
+    /// [Masks; 4],
     /// which ranks are in the hand, grouped by suit
     fn suit_masks(&self) -> [u32; 4] {
         Vec::<Card>::from(self.0)
@@ -187,6 +187,8 @@ impl Evaluator {
             .map(|i| Suit::from(i as u8))
     }
     fn find_rank_of_n_oak_below(&self, n: u8, high: usize) -> Option<Rank> {
+        // TODO
+        // performance bottleneck
         self.rank_count()
             .iter()
             .take(high)

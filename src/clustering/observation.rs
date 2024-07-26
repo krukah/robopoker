@@ -37,9 +37,6 @@ impl Observation {
             .sum::<u32>() as f32
             / n as f32
             / 2 as f32;
-        if self.select() {
-            println!("Equity Calc {} | {} | {:2}", self, ours, equity);
-        }
         equity
         // BIG COLLECTION
     }
@@ -163,6 +160,7 @@ impl Observation {
     }
 
     /// Determines whether this Observation is selected for logging
+    #[allow(dead_code)]
     fn select(&self) -> bool {
         i64::from(*self) % (333_1_333) == 0
     }
