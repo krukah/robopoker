@@ -1,17 +1,4 @@
-use clustering::layer::Layer;
-use training::solver::Solver;
-
-mod cards;
-mod clustering;
-mod evaluation;
-mod play;
-mod players;
-mod profile;
-mod training;
-mod tree;
-
-pub type Utility = f32;
-pub type Probability = f32;
+use robopoker::*;
 
 #[tokio::main]
 async fn main() {
@@ -21,12 +8,20 @@ async fn main() {
         .await
         .expect("database to accept connections");
 
-    let river = Layer::new(postgres);
+    let river = clustering::layer::Layer::new(postgres);
     river.river().await;
     river.cluster().await.cluster().await.cluster().await;
 
     // CFR training iterations
-    Solver::new().solve(50_000);
+    training::solver::Solver::new().solve(50_000);
+
+    // clustering::abstractor::Abstractor::from(postgres).abstract().await;
+    // separate by street
+    // shard equity calculations
+
+    // cfr::training::Trainer::from(postgres).train().await;
+    // implement pseudoharmonic mapping
+    // populate infoset table
 }
 
 /*
