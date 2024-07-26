@@ -2,15 +2,16 @@ use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::observation::Observation;
 use super::xor::Pair;
+use redis::AsyncCommands;
 
 /// Wrapper around sqlx::PgPool. This struct is responsible for all storage interactions.
 /// We can swap this out with Redis or a HashMap or BTreeMap.
 /// TODO: benchmark different persistence implementations
-pub struct Lookup {
+pub struct PostgresLookup {
     db: sqlx::PgPool,
 }
 
-impl Lookup {
+impl PostgresLookup {
     /// Create a new Lookup instance with database connection
     pub async fn new() -> Self {
         const DATABASE_URL: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
@@ -93,6 +94,75 @@ impl Lookup {
     /// this could possibly be implemented as a join?
     /// fml a big Vec<> of these is gonna have to fit
     /// in memory for the centroid calculation
+    pub async fn get_histogram(&self, obs: Observation) -> Histogram {
+        let mut abstractions = Vec::new();
+        let successors = obs.successors();
+        for succ in successors {
+            let abstraction = self.get_obs(succ).await;
+            abstractions.push(abstraction);
+        }
+        Histogram::from(abstractions)
+    }
+}
+
+pub struct RedisLookup {
+    client: redis::Client,
+}
+
+impl RedisLookup {
+    pub async fn new() -> Self {
+        const REDIS_URL: &str = "redis://localhost:6379";
+        let url = std::env::var("REDIS_URL").unwrap_or_else(|_| String::from(REDIS_URL));
+        let client = redis::Client::open(url).expect("Redis client to connect");
+        Self { client }
+    }
+
+    pub async fn set_obs(&self, obs: Observation, abs: Abstraction) {
+        let mut conn = self
+            .client
+            .get_multiplexed_async_connection()
+            .await
+            .expect("Redis connection");
+        let key = format!("cluster:{}", i64::from(obs));
+        conn.set::<String, i64, redis::Value>(key, i64::from(abs))
+            .await
+            .expect("Redis set: cluster");
+    }
+
+    pub async fn set_xor(&self, xor: Pair, distance: f32) {
+        let mut conn = self
+            .client
+            .get_multiplexed_async_connection()
+            .await
+            .expect("Redis connection");
+        let key = format!("metric:{}", i64::from(xor));
+        conn.set::<String, f32, redis::Value>(key, distance)
+            .await
+            .expect("Redis set: metric");
+    }
+
+    pub async fn get_obs(&self, obs: Observation) -> Abstraction {
+        let mut conn = self
+            .client
+            .get_multiplexed_async_connection()
+            .await
+            .expect("Redis connection");
+        let key = format!("cluster:{}", i64::from(obs));
+        let abs: i64 = conn.get(key).await.expect("Redis get: cluster");
+        Abstraction::from(abs)
+    }
+
+    pub async fn get_xor(&self, xor: Pair) -> f32 {
+        let mut conn = self
+            .client
+            .get_multiplexed_async_connection()
+            .await
+            .expect("Redis connection");
+        let key = format!("metric:{}", i64::from(xor));
+        let distance: String = conn.get(key).await.expect("Redis get: metric");
+        distance.parse().expect("Valid f32")
+    }
+
     pub async fn get_histogram(&self, obs: Observation) -> Histogram {
         let mut abstractions = Vec::new();
         let successors = obs.successors();
