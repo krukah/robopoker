@@ -116,7 +116,7 @@ impl HandIterator {
         }
     }
 
-    fn hand(&self) -> Hand {
+    fn hand_jump(&self) -> Hand {
         // apply masking by shuffling around bits
         let mut returned_bits = 0;
         let mut shifting_bits = self.curr;
@@ -132,8 +132,17 @@ impl HandIterator {
         Hand(returned_bits | shifting_bits)
     }
 
-    fn permute(bits: u64) -> u64 {
-        let  x = /* 000_100                       */ bits;
+    fn hand_skip(&mut self) -> Hand {
+        // mutate inner state to skip over masked bits
+        // NOTE: logically incorrect, only use for benching rn -- if self.next starts off as verlapping with mask, then we won't skip over the first hand bc it will be assigned to self.curr
+        while self.mask & self.next > 0 {
+            self.next = self.permute();
+        }
+        Hand(self.curr)
+    }
+
+    fn permute(&self) -> u64 {
+        let  x = /* 000_100                       */ self.curr;
         let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
         let  b = /* 001_000 <-                    */ a + 1;
         let  c = /* 111_000 <-                    */ !a;
@@ -153,8 +162,8 @@ impl Iterator for HandIterator {
             None
         } else {
             self.curr = self.next;
-            self.next = Self::permute(self.curr);
-            Some(self.hand())
+            self.next = self.permute();
+            Some(self.hand_jump())
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
