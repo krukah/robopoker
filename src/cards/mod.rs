@@ -4,6 +4,7 @@ pub mod deck;
 pub mod evaluator;
 pub mod hand;
 pub mod hole;
+pub mod iterator;
 pub mod kicks;
 pub mod rank;
 pub mod street;
