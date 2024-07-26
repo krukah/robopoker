@@ -1,6 +1,6 @@
 use super::abstraction::Abstraction;
 use super::histogram::{Centroid, Histogram};
-use super::lookup::RedisLookup;
+use super::lookup::PostgresLookup;
 use super::observation::Observation;
 use super::xor::Pair;
 use crate::cards::street::Street;
@@ -9,7 +9,7 @@ use std::vec;
 
 pub struct Layer {
     street: Street,
-    lookup: RedisLookup,
+    lookup: PostgresLookup,
     // predecessors
     // neighbors
     // centroids
@@ -19,7 +19,7 @@ impl Layer {
     pub async fn new() -> Self {
         Self {
             street: Street::Rive,
-            lookup: RedisLookup::new().await,
+            lookup: PostgresLookup::new().await,
         }
     }
 
