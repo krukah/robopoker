@@ -1,5 +1,3 @@
-use crate::cards::street::Street;
-
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::observation::Observation;
@@ -12,15 +10,19 @@ pub struct Lookup {
     db: sqlx::PgPool,
 }
 
-impl From<sqlx::PgPool> for Lookup {
-    fn from(db: sqlx::PgPool) -> Self {
-        Self { db }
-    }
-}
-
 impl Lookup {
+    /// Create a new Lookup instance with database connection
+    pub async fn new() -> Self {
+        const DATABASE_URL: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
+        let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| String::from(DATABASE_URL));
+        let postgres = sqlx::PgPool::connect(url)
+            .await
+            .expect("database to accept connections");
+        Self { db: postgres }
+    }
+
     /// Insert row into cluster table
-    pub async fn set_obs(&self, st: Street, obs: Observation, abs: Abstraction) {
+    pub async fn set_obs(&self, obs: Observation, abs: Abstraction) {
         sqlx::query(
             r#"
                 INSERT INTO cluster (observation, abstraction, street)
@@ -30,14 +32,14 @@ impl Lookup {
         )
         .bind(i64::from(obs))
         .bind(i64::from(abs))
-        .bind(st as i64)
+        .bind(0) // TODO: deprecate Street column from schema
         .execute(&self.db)
         .await
         .expect("database insert: cluster");
     }
 
     /// Insert row into metric table
-    pub async fn set_xor(&self, st: Street, xor: Pair, distance: f32) {
+    pub async fn set_xor(&self, xor: Pair, distance: f32) {
         sqlx::query(
             r#"
                 INSERT INTO metric  (xor, distance, street)
@@ -47,7 +49,7 @@ impl Lookup {
         )
         .bind(i64::from(xor))
         .bind(f32::from(distance))
-        .bind(st as i64)
+        .bind(0) // TODO: deprecate Street column from schema
         .execute(&self.db)
         .await
         .expect("database insert: metric");
