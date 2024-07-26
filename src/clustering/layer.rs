@@ -1,15 +1,15 @@
 use super::abstraction::Abstraction;
 use super::histogram::{Centroid, Histogram};
+use super::lookup::Lookup;
 use super::observation::Observation;
 use super::xor::Pair;
 use crate::cards::street::Street;
-use sqlx::query;
 use std::collections::HashMap;
 use std::vec;
 
 pub struct Layer {
     street: Street,
-    db: sqlx::PgPool,
+    lookup: Lookup,
     // predecessors
     // neighbors
     // centroids
@@ -19,7 +19,7 @@ impl Layer {
     pub fn new(db: sqlx::PgPool) -> Self {
         Self {
             street: Street::Rive,
-            db,
+            lookup: Lookup::from(db),
         }
     }
 
@@ -33,7 +33,7 @@ impl Layer {
         println!("Clustering {}...", Street::Rive);
         for obs in Observation::predecessors(Street::Show) {
             let abs = Abstraction::from(obs);
-            self.set_obs(obs, abs).await
+            self.lookup.set_obs(self.street, obs, abs).await
         }
         println!("Calculating {} distances...", Street::Rive);
         let equities = Abstraction::buckets();
@@ -42,7 +42,7 @@ impl Layer {
                 if i > j {
                     let xor = Pair::from((a.clone(), b.clone()));
                     let distance = (i - j) as f32;
-                    self.set_xor(xor, distance).await;
+                    self.lookup.set_xor(self.street, xor, distance).await;
                 }
             }
         }
@@ -64,7 +64,7 @@ impl Layer {
         const ITERATIONS: usize = 100;
         for _ in 0..ITERATIONS {
             for obs in observations.iter() {
-                let histogram = self.decompose(obs.clone()).await;
+                let histogram = self.lookup.get_histogram(obs.clone()).await;
                 let ref x = histogram;
                 let mut position = 0usize;
                 let mut minimium = f32::MAX;
@@ -90,7 +90,7 @@ impl Layer {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
             let obs = observation.clone();
-            self.set_obs(obs, abs).await;
+            self.lookup.set_obs(self.street, obs, abs).await;
         }
     }
 
@@ -107,7 +107,7 @@ impl Layer {
                     let x = a.histogram();
                     let y = b.histogram();
                     let distance = self.emd(x, y).await;
-                    self.set_xor(xor, distance).await;
+                    self.lookup.set_xor(self.street, xor, distance).await;
                 }
             }
         }
@@ -139,7 +139,7 @@ impl Layer {
                     continue;
                 }
                 let xor = Pair::from((*this_key, *that_key));
-                let d = self.get_xor(xor).await;
+                let d = self.lookup.get_xor(xor).await;
                 let bonus = spill - goals[j];
                 if (bonus) < 0f32 {
                     extra.insert(*that_key, 0f32);
@@ -154,91 +154,5 @@ impl Layer {
             }
         }
         cost
-    }
-
-    // The following methods encapsulate database lookups and inserts.
-
-    /// ~1Kb download
-    /// this could possibly be implemented as a join?
-    /// fml a big Vec<> of these is gonna have to fit
-    /// in memory for the centroid calculation
-    async fn decompose(&self, pred: Observation) -> Histogram {
-        let mut abstractions = Vec::new();
-        let successors = pred.successors();
-        for succ in successors {
-            let abstraction = self.get_obs(succ).await;
-            abstractions.push(abstraction);
-        }
-        Histogram::from(abstractions)
-    }
-
-    /// Insert row into cluster table
-    async fn set_obs(&self, obs: Observation, abs: Abstraction) {
-        sqlx::query(
-            r#"
-                INSERT INTO cluster (observation, abstraction, street)
-                VALUES              ($1, $2, $3)
-                ON CONFLICT         (observation)
-                DO UPDATE SET       abstraction = $2"#,
-        )
-        .bind(i64::from(obs))
-        .bind(i64::from(abs))
-        .bind(self.street as i64)
-        .execute(&self.db)
-        .await
-        .expect("database insert: cluster");
-    }
-
-    /// Insert row into metric table
-    async fn set_xor(&self, xor: Pair, distance: f32) {
-        sqlx::query(
-            r#"
-                INSERT INTO metric  (xor, distance, street)
-                VALUES              ($1, $2, $3)
-                ON CONFLICT         (xor)
-                DO UPDATE SET       distance = $2"#,
-        )
-        .bind(i64::from(xor))
-        .bind(f32::from(distance))
-        .bind(self.street as i64)
-        .execute(&self.db)
-        .await
-        .expect("database insert: metric");
-    }
-
-    /// Query Observation -> Abstraction table
-    async fn get_obs(&self, obs: Observation) -> Abstraction {
-        let abs = query!(
-            r#"
-                SELECT abstraction
-                FROM cluster
-                WHERE observation = $1 AND street = $2"#,
-            i64::from(obs),
-            self.street as i64
-        )
-        .fetch_one(&self.db)
-        .await
-        .expect("to respond to cluster query")
-        .abstraction
-        .expect("to have computed cluster previously");
-        Abstraction::from(abs)
-    }
-
-    /// Query Pair -> f32 table
-    async fn get_xor(&self, xor: Pair) -> f32 {
-        let distance = query!(
-            r#"
-                SELECT distance
-                FROM metric
-                WHERE xor = $1 AND street = $2"#,
-            i64::from(xor),
-            self.street as i64
-        )
-        .fetch_one(&self.db)
-        .await
-        .expect("to respond to metric query")
-        .distance
-        .expect("to have computed metric previously");
-        distance as f32
     }
 }
