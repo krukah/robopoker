@@ -1,4 +1,5 @@
-use crate::cards::hand::{Hand, HandIterator};
+use crate::cards::hand::Hand;
+use crate::cards::iterator::HandIterator;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use std::cmp::Ordering;
