@@ -4,7 +4,7 @@ use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 
 #[allow(async_fn_in_trait)]
-pub trait Storage {
+pub trait Storage: Clone {
     async fn new() -> Self;
     async fn set_obs(&mut self, obs: Observation, abs: Abstraction);
     async fn set_xor(&mut self, xor: Pair, distance: f32);
