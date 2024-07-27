@@ -1,13 +1,21 @@
+use cards::street::Street;
 use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() {
+    clustering::abstractor::Abstractor::new()
+        .await
+        .river()
+        .await
+        .cluster(Street::Turn)
+        .await
+        .cluster(Street::Flop)
+        .await
+        .cluster(Street::Pref)
+        .await;
+
     // CFR training iterations
     training::solver::Solver::new().solve(50_000);
-
-    // clustering::abstractor::Abstractor::from(postgres).abstract().await;
-    // separate by street
-    // shard equity calculations
 
     // cfr::training::Trainer::from(postgres).train().await;
     // implement pseudoharmonic mapping
