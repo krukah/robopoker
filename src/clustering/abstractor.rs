@@ -14,7 +14,7 @@ use std::time::Instant;
 use std::vec;
 use tokio::sync::Mutex;
 
-type Lookup = super::persistence::redis::RedisLookup;
+type Lookup = super::persistence::postgres::PostgresLookup;
 
 pub struct Abstractor {
     storage: Lookup,
