@@ -12,7 +12,7 @@ pub struct HashMapLookup {
 impl Storage for HashMapLookup {
     async fn new() -> Self {
         Self {
-            cluster: HashMap::new(),
+            cluster: HashMap::with_capacity(2_800_000_000),
             metrics: HashMap::new(),
         }
     }

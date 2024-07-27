@@ -1,9 +1,8 @@
+use super::hands::HandIterator;
 use crate::cards::hand::Hand;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use std::cmp::Ordering;
-
-use super::hands::HandIterator;
 
 /// Observation represents the memoryless state of the game in between chance actions.
 ///
