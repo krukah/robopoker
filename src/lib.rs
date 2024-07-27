@@ -1,6 +1,5 @@
 pub mod cards;
 pub mod clustering;
-pub mod evaluation;
 pub mod play;
 pub mod players;
 pub mod profile;

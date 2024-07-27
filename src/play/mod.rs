@@ -4,3 +4,4 @@ pub mod game;
 pub mod payout;
 pub mod rotation;
 pub mod seat;
+pub mod showdown;
