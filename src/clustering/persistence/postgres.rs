@@ -51,34 +51,36 @@ impl Storage for PostgresLookup {
     }
     /// Query Observation -> Abstraction table
     async fn get_obs(&self, obs: Observation) -> Abstraction {
-        let abs = sqlx::query!(
-            r#"
-                SELECT abstraction
-                FROM cluster
-                WHERE observation = $1"#,
-            i64::from(obs),
-        )
-        .fetch_one(&self.db)
-        .await
-        .expect("to respond to cluster query")
-        .abstraction
-        .expect("to have computed cluster previously");
-        Abstraction::from(abs)
+        todo!("leaving out for comp")
+        // let abs = sqlx::query!(
+        //     r#"
+        //         SELECT abstraction
+        //         FROM cluster
+        //         WHERE observation = $1"#,
+        //     i64::from(obs),
+        // )
+        // .fetch_one(&self.db)
+        // .await
+        // .expect("to respond to cluster query")
+        // .abstraction
+        // .expect("to have computed cluster previously");
+        // Abstraction::from(abs)
     }
     /// Query Pair -> f32 table
     async fn get_xor(&self, xor: Pair) -> f32 {
-        let distance = sqlx::query!(
-            r#"
-                SELECT distance
-                FROM metric
-                WHERE xor = $1"#,
-            i64::from(xor),
-        )
-        .fetch_one(&self.db)
-        .await
-        .expect("to respond to metric query")
-        .distance
-        .expect("to have computed metric previously");
-        distance as f32
+        todo!("leaving out for comp")
+        // let distance = sqlx::query!(
+        //     r#"
+        //         SELECT distance
+        //         FROM metric
+        //         WHERE xor = $1"#,
+        //     i64::from(xor),
+        // )
+        // .fetch_one(&self.db)
+        // .await
+        // .expect("to respond to metric query")
+        // .distance
+        // .expect("to have computed metric previously");
+        // distance as f32
     }
 }
