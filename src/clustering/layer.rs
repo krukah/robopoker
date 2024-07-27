@@ -1,13 +1,15 @@
 use super::abstraction::Abstraction;
-use super::histogram::{Centroid, Histogram};
-use super::lookup::PostgresLookup;
+use super::histogram::Centroid;
+use super::histogram::Histogram;
 use super::observation::Observation;
+use super::persistence::postgres::PostgresLookup;
+use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
 use std::vec;
 
-pub struct Layer {
+pub struct Abstractor {
     street: Street,
     lookup: PostgresLookup,
     // predecessors
@@ -15,7 +17,7 @@ pub struct Layer {
     // centroids
 }
 
-impl Layer {
+impl Abstractor {
     pub async fn new() -> Self {
         Self {
             street: Street::Rive,
@@ -29,7 +31,7 @@ impl Layer {
 
     /// Save the river
     ///
-    pub async fn river(&self) {
+    pub async fn river(&mut self) {
         println!("Clustering {}...", Street::Rive);
         for obs in Observation::predecessors(Street::Show) {
             let abs = Abstraction::from(obs);
@@ -85,7 +87,7 @@ impl Layer {
         }
     }
 
-    async fn upsert(&self, centroids: &[Centroid], neighbors: &HashMap<Observation, usize>) {
+    async fn upsert(&mut self, centroids: &[Centroid], neighbors: &HashMap<Observation, usize>) {
         for (observation, index) in neighbors.iter() {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
@@ -94,7 +96,7 @@ impl Layer {
         }
     }
 
-    async fn insert(&self, centroids: &mut Vec<Centroid>) {
+    async fn insert(&mut self, centroids: &mut Vec<Centroid>) {
         for centroid in centroids.iter_mut() {
             centroid.shrink();
         }
