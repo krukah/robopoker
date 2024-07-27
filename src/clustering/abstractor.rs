@@ -31,32 +31,34 @@ impl Abstractor {
 
     /// Save the river
     ///
-    #[rustfmt::skip]
-    pub async fn river(&mut self) {
+    pub async fn river(&mut self) -> &mut Self {
         let begin = Instant::now();
         let mut check = begin;
 
         println!("Clustering {}...", Street::Rive);
         for (i, river) in Observation::all(Street::Rive).into_iter().enumerate() {
             let equity = river.equity();
-            let quantile = equity * Abstraction::BUCKETS as f32;
-            let abstraction = Abstraction::from(quantile as u64);
+            let bucket = equity * Abstraction::BUCKETS as f32;
+            let abstraction = Abstraction::from(bucket as u64);
             self.storage.set_obs(river, abstraction).await;
 
-            if i % 1_000_000 == 0 {
+            if (i % 1_000_000 == 0) & (i > 0) {
                 let now = Instant::now();
                 let check_duration = now.duration_since(check);
                 let total_duration = now.duration_since(begin);
                 println!("{} observations clustered", i);
                 println!("Time for last million: {:.2?}", check_duration);
                 println!("Total time elapsed: {:.2?}", total_duration);
+                #[rustfmt::skip]
                 println!("Average time per million: {:.2?}", total_duration / i as u32 / 1_000_000 as u32);
                 check = now;
             }
         }
+        self
     }
 
-    pub async fn cluster(mut self, street: Street) -> Self {
+    pub async fn cluster(&mut self, street: Street) -> &mut Self {
+        assert!(street != Street::Rive);
         // maybe predecessors moves to Abstractor
         // this becomes wrapped in a loop over streets
         // for street in Street::iter() { match street { => Obs::preds(s) } }
