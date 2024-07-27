@@ -2,7 +2,7 @@ use super::abstraction::Abstraction;
 use super::histogram::Centroid;
 use super::histogram::Histogram;
 use super::observation::Observation;
-use super::persistence::postgres::PostgresLookup;
+use super::persistence::hashmap::HashMapLookup;
 use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
@@ -11,13 +11,13 @@ use std::time::Instant;
 use std::vec;
 
 pub struct Abstractor {
-    storage: PostgresLookup,
+    storage: HashMapLookup,
 }
 
 impl Abstractor {
     pub async fn new() -> Self {
         Self {
-            storage: PostgresLookup::new().await,
+            storage: HashMapLookup::new().await,
         }
     }
 
@@ -41,17 +41,27 @@ impl Abstractor {
             let bucket = equity * Abstraction::BUCKETS as f32;
             let abstraction = Abstraction::from(bucket as u64);
             self.storage.set_obs(river, abstraction).await;
-
-            if (i % 1_000_000 == 0) & (i > 0) {
-                let now = Instant::now();
-                let check_duration = now.duration_since(check);
-                let total_duration = now.duration_since(begin);
-                println!("{} observations clustered", i);
-                println!("Time for last million: {:.2?}", check_duration);
-                println!("Total time elapsed: {:.2?}", total_duration);
-                #[rustfmt::skip]
-                println!("Average time per million: {:.2?}", total_duration / i as u32 / 1_000_000 as u32);
-                check = now;
+            {
+                if (i % 1_000 == 0) & (i > 0) {
+                    let now = Instant::now();
+                    let check_t = now.duration_since(check);
+                    let total_t = now.duration_since(begin);
+                    check = now;
+                    use std::io::Write;
+                    print!("\x1B[6F\x1B[2K");
+                    println!("{:10} Observations", i);
+                    print!("\x1B[2K");
+                    println!("Elapsed: {:.0?}", total_t);
+                    print!("\x1B[2K");
+                    println!("Last 1k: {:.0?}", check_t);
+                    print!("\x1B[2K");
+                    println!("Mean 1k: {:.0?}", (total_t / (i / 1_000) as u32));
+                    print!("\x1B[2K");
+                    println!("{} => {:.3}", river, equity);
+                    print!("\x1B[2K");
+                    println!();
+                    std::io::stdout().flush().unwrap();
+                }
             }
         }
         self
