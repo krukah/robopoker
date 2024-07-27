@@ -17,45 +17,45 @@ impl Storage for RedisLookup {
         Self { client }
     }
     async fn set_obs(&mut self, obs: Observation, abs: Abstraction) {
-        let mut conn = self
-            .client
+        let key = i64::from(obs);
+        self.client
             .get_multiplexed_async_connection()
             .await
-            .expect("Redis connection");
-        let key = format!("cluster:{}", i64::from(obs));
-        conn.set::<String, i64, redis::Value>(key, i64::from(abs))
+            .expect("Redis connection")
+            .set::<i64, i64, redis::Value>(key, i64::from(abs))
             .await
             .expect("Redis set: cluster");
     }
     async fn set_xor(&mut self, xor: Pair, distance: f32) {
-        let mut conn = self
-            .client
+        let key = i64::from(xor);
+        self.client
             .get_multiplexed_async_connection()
             .await
-            .expect("Redis connection");
-        let key = format!("metric:{}", i64::from(xor));
-        conn.set::<String, f32, redis::Value>(key, distance)
+            .expect("Redis connection")
+            .set::<i64, f32, redis::Value>(key, distance)
             .await
             .expect("Redis set: metric");
     }
     async fn get_obs(&self, obs: Observation) -> Abstraction {
-        let mut conn = self
+        let key = i64::from(obs);
+        let abs: i64 = self
             .client
             .get_multiplexed_async_connection()
             .await
-            .expect("Redis connection");
-        let key = format!("cluster:{}", i64::from(obs));
-        let abs: i64 = conn.get(key).await.expect("Redis get: cluster");
+            .expect("Redis connection")
+            .get(key)
+            .await
+            .expect("Redis get: cluster");
         Abstraction::from(abs)
     }
     async fn get_xor(&self, xor: Pair) -> f32 {
-        let mut conn = self
-            .client
+        let key = i64::from(xor);
+        self.client
             .get_multiplexed_async_connection()
             .await
-            .expect("Redis connection");
-        let key = format!("metric:{}", i64::from(xor));
-        let distance: String = conn.get(key).await.expect("Redis get: metric");
-        distance.parse().expect("Valid f32")
+            .expect("Redis connection")
+            .get::<i64, f32>(key)
+            .await
+            .expect("Redis get: metric")
     }
 }
