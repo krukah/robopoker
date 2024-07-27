@@ -15,7 +15,7 @@ pub struct MemoryLookup {
 impl Storage for MemoryLookup {
     async fn new() -> Self {
         Self {
-            cluster: Arc::new(Mutex::new(HashMap::with_capacity(2_800_000_000))),
+            cluster: Arc::new(Mutex::new(HashMap::with_capacity(2_809_475_760))),
             metrics: Arc::new(Mutex::new(HashMap::new())),
         }
     }
