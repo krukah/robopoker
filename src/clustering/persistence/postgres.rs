@@ -3,6 +3,7 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 
+#[derive(Clone)]
 pub struct PostgresLookup {
     db: sqlx::PgPool,
 }

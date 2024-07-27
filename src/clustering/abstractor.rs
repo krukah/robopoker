@@ -1,8 +1,10 @@
+// use tokio::sync::Mutex;
+
 use super::abstraction::Abstraction;
 use super::histogram::Centroid;
 use super::histogram::Histogram;
 use super::observation::Observation;
-use super::persistence::hashmap::HashMapLookup;
+use super::persistence::postgres::PostgresLookup;
 use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
@@ -11,13 +13,15 @@ use std::time::Instant;
 use std::vec;
 
 pub struct Abstractor {
-    storage: HashMapLookup,
+    storage: PostgresLookup,
+    progress: Progress, /* s>> */
 }
 
 impl Abstractor {
     pub async fn new() -> Self {
         Self {
-            storage: HashMapLookup::new().await,
+            progress: /* Arc::new(Mutex::new( */Progress::new()/* )) */,
+            storage: PostgresLookup::new().await,
         }
     }
 
@@ -32,37 +36,25 @@ impl Abstractor {
     /// Save the river
     ///
     pub async fn river(&mut self) -> &mut Self {
-        let begin = Instant::now();
-        let mut check = begin;
-
-        println!("Clustering {}...", Street::Rive);
-        for (i, river) in Observation::all(Street::Rive).into_iter().enumerate() {
-            let equity = river.equity();
-            let bucket = equity * Abstraction::BUCKETS as f32;
-            let abstraction = Abstraction::from(bucket as u64);
-            self.storage.set_obs(river, abstraction).await;
-            {
-                if (i % 1_000 == 0) & (i > 0) {
-                    let now = Instant::now();
-                    let check_t = now.duration_since(check);
-                    let total_t = now.duration_since(begin);
-                    check = now;
-                    use std::io::Write;
-                    print!("\x1B[6F\x1B[2K");
-                    println!("{:10} Observations", i);
-                    print!("\x1B[2K");
-                    println!("Elapsed: {:.0?}", total_t);
-                    print!("\x1B[2K");
-                    println!("Last 1k: {:.0?}", check_t);
-                    print!("\x1B[2K");
-                    println!("Mean 1k: {:.0?}", (total_t / (i / 1_000) as u32));
-                    print!("\x1B[2K");
-                    println!("{} => {:.3}", river, equity);
-                    print!("\x1B[2K");
-                    println!();
-                    std::io::stdout().flush().unwrap();
-                }
+        // let mut handles = vec![];
+        let rivers = Observation::all(Street::Rive);
+        self.progress /* .lock().await */
+            .reset();
+        let chunk = rivers.len() / 4;
+        for chunk in rivers.chunks(chunk) {
+            // let mut storage = self.storage/* .clone() */;
+            // let progress = self.progress/* .clone() */;
+            // let future = async move {
+            for river in chunk {
+                let equity = river.equity();
+                let bucket = equity * Abstraction::BUCKETS as f32;
+                let abstraction = Abstraction::from(bucket as u64);
+                self.storage.set_obs(river.clone(), abstraction).await;
+                self.progress /* .lock().await */
+                    .update();
             }
+            // };
+            // handles.push(tokio::task::spawn(future));
         }
         self
     }
@@ -81,8 +73,12 @@ impl Abstractor {
         self
     }
 
-    #[rustfmt::skip]
-    async fn kmeans(&self, centroids: &mut Vec<Centroid>, neighbors: &mut HashMap<Observation, usize>, observations: &Vec<Observation>) {
+    async fn kmeans(
+        &self,
+        centroids: &mut Vec<Centroid>,
+        neighbors: &mut HashMap<Observation, usize>,
+        observations: &Vec<Observation>,
+    ) {
         const ITERATIONS: usize = 100;
         for _ in 0..ITERATIONS {
             for obs in observations.iter() {
@@ -176,5 +172,54 @@ impl Abstractor {
             }
         }
         cost
+    }
+}
+
+struct Progress {
+    begin: Instant,
+    check: Instant,
+    complete: usize,
+}
+
+impl Progress {
+    fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            complete: 0,
+            begin: now,
+            check: now,
+        }
+    }
+
+    fn update(&mut self) {
+        self.complete += 1;
+        if self.complete % 1_000 == 0 {
+            let now = Instant::now();
+            self.display();
+            self.check = now;
+        }
+    }
+
+    fn display(&self) {
+        use std::io::Write;
+        let now = Instant::now();
+        let total_t = now.duration_since(self.begin);
+        let check_t = now.duration_since(self.check);
+        println!("\x1B[6F\x1B[2K{:10} Observations", self.complete);
+        println!("\x1B[2K Elapsed: {:.0?}", total_t);
+        println!("\x1B[2K Last 1k: {:.0?}", check_t);
+        println!(
+            "\x1B[2K Mean 1k: {:.0?}",
+            (total_t / (self.complete / 1_000) as u32)
+        );
+        println!("\x1B[2K");
+        std::io::stdout().flush().unwrap();
+    }
+
+    fn reset(&mut self) {
+        let now = Instant::now();
+        self.complete = 0;
+        self.begin = now;
+        self.check = now;
     }
 }
