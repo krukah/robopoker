@@ -196,9 +196,9 @@ impl Game {
 }
 use super::payout::Payout;
 use super::seat::{BetStatus, Seat};
+use super::showdown::Showdown;
 use super::{action::Action, rotation::Rotation};
 use crate::cards::hand::Hand;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::cards::{card::Card, deck::Deck};
-use crate::evaluation::showdown::Showdown;
