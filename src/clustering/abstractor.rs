@@ -4,18 +4,20 @@ use super::abstraction::Abstraction;
 use super::histogram::Centroid;
 use super::histogram::Histogram;
 use super::observation::Observation;
-use super::persistence::postgres::PostgresLookup;
 use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::time::Instant;
 use std::vec;
 use tokio::sync::Mutex;
 
+type Lookup = super::persistence::redis::RedisLookup;
+
 pub struct Abstractor {
-    storage: PostgresLookup,
+    storage: Lookup,
     progress: Arc<Mutex<Progress>>,
 }
 
@@ -23,7 +25,7 @@ impl Abstractor {
     pub async fn new() -> Self {
         Self {
             progress: Arc::new(Mutex::new(Progress::new())),
-            storage: PostgresLookup::new().await,
+            storage: Lookup::new().await,
         }
     }
 
@@ -38,7 +40,7 @@ impl Abstractor {
     /// Save the river
     ///
     pub async fn river(&mut self) -> &mut Self {
-        const N_THREADS: usize = 6;
+        const N_THREADS: usize = 10;
         // weird borrowing issues. i own Vec<Observation> and want to
         // break it up to pass into tokio::task::spawn
         // but because i create it in this scope, it is not 'static
@@ -59,7 +61,7 @@ impl Abstractor {
                     let bucket = equity * Abstraction::BUCKETS as f32;
                     let abstraction = Abstraction::from(bucket as u64);
                     storage.set_obs(river.clone(), abstraction).await;
-                    progress.lock().await.update();
+                    progress.lock().await.update(river, equity);
                 }
             };
             handles.push(tokio::task::spawn(future));
@@ -187,48 +189,45 @@ impl Abstractor {
 struct Progress {
     begin: Instant,
     check: Instant,
-    complete: usize,
+    complete: AtomicUsize,
 }
 
 impl Progress {
     fn new() -> Self {
         let now = Instant::now();
         Self {
-            complete: 0,
+            complete: AtomicUsize::new(0),
             begin: now,
             check: now,
         }
     }
 
-    fn update(&mut self) {
-        self.complete += 1;
-        if self.complete % 1_000 == 0 {
-            let now = Instant::now();
-            self.display();
-            self.check = now;
-        }
-    }
-
-    fn display(&self) {
+    fn update(&mut self, river: &Observation, equity: f32) {
         use std::io::Write;
-        let now = Instant::now();
-        let total_t = now.duration_since(self.begin);
-        let check_t = now.duration_since(self.check);
-        println!("\x1B[6F\x1B[2K{:10} Observations", self.complete);
-        println!("\x1B[2K Elapsed: {:.0?}", total_t);
-        println!("\x1B[2K Last 1k: {:.0?}", check_t);
-        println!(
-            "\x1B[2K Mean 1k: {:.0?}",
-            (total_t / (self.complete / 1_000) as u32)
-        );
-        println!("\x1B[2K");
-        std::io::stdout().flush().unwrap();
+        use std::sync::atomic::Ordering;
+
+        let complete = self.complete.fetch_add(1, Ordering::SeqCst) + 1;
+        if complete % 1_000 == 0 {
+            let now = Instant::now();
+            let total_t = now.duration_since(self.begin);
+            let check_t = now.duration_since(self.check);
+            self.check = now;
+            println!("\x1B4F\x1B[2K{:10} Observations", complete);
+            println!("\x1B[2K Elapsed: {:.0?}", total_t);
+            println!("\x1B[2K Last 1k: {:.0?}", check_t);
+            println!(
+                "\x1B[2K Mean 1k: {:.0?}",
+                (total_t / (complete / 1_000) as u32)
+            );
+            println!("\x1B[2K {} -> {:.3}", river, equity);
+            std::io::stdout().flush().unwrap();
+        }
     }
 
     #[allow(dead_code)]
     fn reset(&mut self) {
         let now = Instant::now();
-        self.complete = 0;
+        self.complete = AtomicUsize::new(0);
         self.begin = now;
         self.check = now;
     }

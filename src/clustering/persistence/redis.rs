@@ -4,6 +4,7 @@ use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 use redis::AsyncCommands;
 
+#[derive(Clone)]
 pub struct RedisLookup {
     client: redis::Client,
 }
