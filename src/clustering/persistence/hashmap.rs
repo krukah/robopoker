@@ -1,6 +1,5 @@
 use super::storage::Storage;
 use crate::clustering::abstraction::Abstraction;
-use crate::clustering::histogram::Histogram;
 use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 use std::collections::HashMap;
@@ -34,14 +33,5 @@ impl Storage for HashMapLookup {
             .get(xor)
             .copied()
             .expect("xor to have been populated")
-    }
-    async fn get_histogram(&self, obs: Observation) -> Histogram {
-        let mut abstractions = Vec::new();
-        let successors = obs.successors();
-        for succ in successors {
-            let abstraction = self.get_obs(succ).await;
-            abstractions.push(abstraction);
-        }
-        Histogram::from(abstractions)
     }
 }

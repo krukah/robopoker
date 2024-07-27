@@ -1,6 +1,5 @@
 use super::storage::Storage;
 use crate::clustering::abstraction::Abstraction;
-use crate::clustering::histogram::Histogram;
 use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 
@@ -81,18 +80,5 @@ impl Storage for PostgresLookup {
         .distance
         .expect("to have computed metric previously");
         distance as f32
-    }
-    /// ~1Kb download
-    /// this could possibly be implemented as a join?
-    /// fml a big Vec<> of these is gonna have to fit
-    /// in memory for the centroid calculation
-    async fn get_histogram(&self, obs: Observation) -> Histogram {
-        let mut abstractions = Vec::new();
-        let successors = obs.successors();
-        for succ in successors {
-            let abstraction = self.get_obs(succ).await;
-            abstractions.push(abstraction);
-        }
-        Histogram::from(abstractions)
     }
 }

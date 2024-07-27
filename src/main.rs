@@ -1,11 +1,7 @@
 use robopoker::*;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() {
-    let mut river = clustering::layer::Abstractor::new().await;
-    river.river().await;
-    river.cluster().await.cluster().await.cluster().await;
-
     // CFR training iterations
     training::solver::Solver::new().solve(50_000);
 

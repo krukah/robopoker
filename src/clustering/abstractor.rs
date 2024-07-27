@@ -7,22 +7,22 @@ use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
+use std::time::Instant;
 use std::vec;
 
 pub struct Abstractor {
-    street: Street,
-    lookup: PostgresLookup,
-    // predecessors
-    // neighbors
-    // centroids
+    storage: PostgresLookup,
 }
 
 impl Abstractor {
     pub async fn new() -> Self {
         Self {
-            street: Street::Rive,
-            lookup: PostgresLookup::new().await,
+            storage: PostgresLookup::new().await,
         }
+    }
+
+    pub async fn learn() {
+        todo!("the whole thing across all layers streets")
     }
 
     async fn guesses(&self) -> Vec<Centroid> {
@@ -31,33 +31,41 @@ impl Abstractor {
 
     /// Save the river
     ///
+    #[rustfmt::skip]
     pub async fn river(&mut self) {
+        let begin = Instant::now();
+        let mut check = begin;
+
         println!("Clustering {}...", Street::Rive);
-        for obs in Observation::predecessors(Street::Show) {
-            let abs = Abstraction::from(obs);
-            self.lookup.set_obs(obs, abs).await
-        }
-        println!("Calculating {} distances...", Street::Rive);
-        let equities = Abstraction::buckets();
-        for (i, a) in equities.iter().enumerate() {
-            for (j, b) in equities.iter().enumerate() {
-                if i > j {
-                    let xor = Pair::from((a.clone(), b.clone()));
-                    let distance = (i - j) as f32;
-                    self.lookup.set_xor(xor, distance).await;
-                }
+        for (i, river) in Observation::all(Street::Rive).into_iter().enumerate() {
+            let equity = river.equity();
+            let quantile = equity * Abstraction::BUCKETS as f32;
+            let abstraction = Abstraction::from(quantile as u64);
+            self.storage.set_obs(river, abstraction).await;
+
+            if i % 1_000_000 == 0 {
+                let now = Instant::now();
+                let check_duration = now.duration_since(check);
+                let total_duration = now.duration_since(begin);
+                println!("{} observations clustered", i);
+                println!("Time for last million: {:.2?}", check_duration);
+                println!("Total time elapsed: {:.2?}", total_duration);
+                println!("Average time per million: {:.2?}", total_duration / i as u32 / 1_000_000 as u32);
+                check = now;
             }
         }
     }
 
-    pub async fn cluster(mut self) -> Self {
-        let ref observations = Observation::predecessors(self.street);
-        let ref mut neighbors = HashMap::<Observation, usize>::with_capacity(observations.len());
+    pub async fn cluster(mut self, street: Street) -> Self {
+        // maybe predecessors moves to Abstractor
+        // this becomes wrapped in a loop over streets
+        // for street in Street::iter() { match street { => Obs::preds(s) } }
+        let ref possibilities = Observation::all(street);
+        let ref mut neighbors = HashMap::<Observation, usize>::with_capacity(possibilities.len());
         let ref mut centroids = self.guesses().await;
-        self.kmeans(centroids, neighbors, observations).await;
+        self.kmeans(centroids, neighbors, possibilities).await;
         self.upsert(centroids, neighbors).await;
         self.insert(centroids).await;
-        self.street = self.street.prev();
         self
     }
 
@@ -66,7 +74,7 @@ impl Abstractor {
         const ITERATIONS: usize = 100;
         for _ in 0..ITERATIONS {
             for obs in observations.iter() {
-                let histogram = self.lookup.get_histogram(obs.clone()).await;
+                let histogram = self.storage.get_histogram(obs.clone()).await;
                 let ref x = histogram;
                 let mut position = 0usize;
                 let mut minimium = f32::MAX;
@@ -92,7 +100,7 @@ impl Abstractor {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
             let obs = observation.clone();
-            self.lookup.set_obs(obs, abs).await;
+            self.storage.set_obs(obs, abs).await;
         }
     }
 
@@ -109,7 +117,7 @@ impl Abstractor {
                     let x = a.histogram();
                     let y = b.histogram();
                     let distance = self.emd(x, y).await;
-                    self.lookup.set_xor(xor, distance).await;
+                    self.storage.set_xor(xor, distance).await;
                 }
             }
         }
@@ -141,7 +149,7 @@ impl Abstractor {
                     continue;
                 }
                 let xor = Pair::from((*this_key, *that_key));
-                let d = self.lookup.get_xor(xor).await;
+                let d = self.storage.get_xor(xor).await;
                 let bonus = spill - goals[j];
                 if (bonus) < 0f32 {
                     extra.insert(*that_key, 0f32);
