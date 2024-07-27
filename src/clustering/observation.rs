@@ -19,6 +19,7 @@ pub struct Observation {
 
 impl Observation {
     pub fn all(street: Street) -> Vec<Observation> {
+        println!("Generating all {} observations...", street);
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
