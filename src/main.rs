@@ -2,7 +2,7 @@ use robopoker::*;
 
 #[tokio::main]
 async fn main() {
-    let river = clustering::layer::Layer::new().await;
+    let mut river = clustering::layer::Abstractor::new().await;
     river.river().await;
     river.cluster().await.cluster().await.cluster().await;
 
