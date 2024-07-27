@@ -1,5 +1,4 @@
 use super::histogram::Histogram;
-use super::observation::Observation;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -16,14 +15,7 @@ impl Abstraction {
     pub fn buckets() -> Vec<Self> {
         (0..Self::BUCKETS).map(|i| Self(i as u64)).collect()
     }
-    const BUCKETS: u8 = 50;
-}
-
-impl From<Observation> for Abstraction {
-    fn from(obs: Observation) -> Self {
-        let quantile = obs.equity() * Self::BUCKETS as f32;
-        Self(quantile as u64)
-    }
+    pub const BUCKETS: u8 = 50;
 }
 
 impl From<&Histogram> for Abstraction {
@@ -40,6 +32,11 @@ impl From<Abstraction> for u64 {
         match a {
             Abstraction(n) => n,
         }
+    }
+}
+impl From<u64> for Abstraction {
+    fn from(n: u64) -> Self {
+        Abstraction(n)
     }
 }
 
