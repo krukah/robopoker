@@ -40,33 +40,40 @@ impl Abstractor {
     /// Save the river
     ///
     pub async fn river(&mut self) -> &mut Self {
-        const N_THREADS: usize = 10;
+        const N_THREADS: usize = 4;
+        const N_RIVERS: usize = 2_809_475_760;
         // weird borrowing issues. i own Vec<Observation> and want to
         // break it up to pass into tokio::task::spawn
         // but because i create it in this scope, it is not 'static
         // so i could either:
         // - use itertools::Itertools::chunks to move ownership into async closure block
         // - use Box::leak to cast to 'static, albeith leaking memory
-        // - use Arc::new to reference the Vec<Observation> without
-        let mut handles = vec![];
         let rivers = Observation::all(Street::Rive); // 2.8B
-        let rivers = Box::leak(Box::new(rivers)); // cast to 'static
-        let chunks = rivers.chunks(rivers.len() / N_THREADS);
-        for chunk in chunks {
-            let mut storage = self.storage.clone();
-            let progress = self.progress.clone();
-            let future = async move {
-                for river in chunk {
-                    let equity = river.equity();
-                    let bucket = equity * Abstraction::BUCKETS as f32;
-                    let abstraction = Abstraction::from(bucket as u64);
-                    storage.set_obs(river.clone(), abstraction).await;
-                    progress.lock().await.update(river, equity);
-                }
-            };
-            handles.push(tokio::task::spawn(future));
-        }
-        futures::future::join_all(handles).await;
+        let rivers = Box::leak(Box::new(rivers)); // for cast to 'static across tokio threads
+        let ref rivers = Arc::new(rivers); // for Arc::clone across physical threads
+        self.progress.lock().await.reset();
+        futures::future::join_all(
+            (0..N_THREADS)
+                .map(|i| {
+                    let rivers = rivers.clone();
+                    let progress = self.progress.clone();
+                    let mut storage = self.storage.clone();
+                    tokio::task::spawn(async move {
+                        let beg = i * (N_RIVERS / N_THREADS);
+                        let end = (beg + (N_RIVERS / N_THREADS)).min(N_RIVERS);
+                        for idx in beg..end {
+                            let ref river = rivers[idx];
+                            let equity = river.equity();
+                            let bucket = equity * Abstraction::BUCKETS as f32;
+                            let abstraction = Abstraction::from(bucket as u64);
+                            storage.set_obs(river.clone(), abstraction).await;
+                            progress.lock().await.update(river, equity);
+                        }
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .await;
         self
     }
 
