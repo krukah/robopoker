@@ -13,10 +13,14 @@ impl Storage for PostgresLookup {
     async fn new() -> Self {
         const DATABASE_URL: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
         let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| String::from(DATABASE_URL));
-        let postgres = sqlx::PgPool::connect(url)
+        let pool = sqlx::PgPool::connect(url)
             .await
             .expect("database to accept connections");
-        Self { db: postgres }
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .expect("migrations to run");
+        Self { db: pool }
     }
     /// Insert row into cluster table
     async fn set_obs(&mut self, obs: Observation, abs: Abstraction) {
