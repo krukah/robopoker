@@ -9,18 +9,20 @@ use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Instant;
 use std::vec;
+use tokio::sync::Mutex;
 
 pub struct Abstractor {
     storage: PostgresLookup,
-    progress: Progress, /* s>> */
+    progress: Arc<Mutex<Progress>>,
 }
 
 impl Abstractor {
     pub async fn new() -> Self {
         Self {
-            progress: /* Arc::new(Mutex::new( */Progress::new()/* )) */,
+            progress: Arc::new(Mutex::new(Progress::new())),
             storage: PostgresLookup::new().await,
         }
     }
@@ -36,26 +38,33 @@ impl Abstractor {
     /// Save the river
     ///
     pub async fn river(&mut self) -> &mut Self {
-        // let mut handles = vec![];
-        let rivers = Observation::all(Street::Rive);
-        self.progress /* .lock().await */
-            .reset();
-        let chunk = rivers.len() / 4;
-        for chunk in rivers.chunks(chunk) {
-            // let mut storage = self.storage/* .clone() */;
-            // let progress = self.progress/* .clone() */;
-            // let future = async move {
-            for river in chunk {
-                let equity = river.equity();
-                let bucket = equity * Abstraction::BUCKETS as f32;
-                let abstraction = Abstraction::from(bucket as u64);
-                self.storage.set_obs(river.clone(), abstraction).await;
-                self.progress /* .lock().await */
-                    .update();
-            }
-            // };
-            // handles.push(tokio::task::spawn(future));
+        const N_THREADS: usize = 6;
+        // weird borrowing issues. i own Vec<Observation> and want to
+        // break it up to pass into tokio::task::spawn
+        // but because i create it in this scope, it is not 'static
+        // so i could either:
+        // - use itertools::Itertools::chunks to move ownership into async closure block
+        // - use Box::leak to cast to 'static, albeith leaking memory
+        // - use Arc::new to reference the Vec<Observation> without
+        let mut handles = vec![];
+        let rivers = Observation::all(Street::Rive); // 2.8B
+        let rivers = Box::leak(Box::new(rivers)); // cast to 'static
+        let chunks = rivers.chunks(rivers.len() / N_THREADS);
+        for chunk in chunks {
+            let mut storage = self.storage.clone();
+            let progress = self.progress.clone();
+            let future = async move {
+                for river in chunk {
+                    let equity = river.equity();
+                    let bucket = equity * Abstraction::BUCKETS as f32;
+                    let abstraction = Abstraction::from(bucket as u64);
+                    storage.set_obs(river.clone(), abstraction).await;
+                    progress.lock().await.update();
+                }
+            };
+            handles.push(tokio::task::spawn(future));
         }
+        futures::future::join_all(handles).await;
         self
     }
 
@@ -216,6 +225,7 @@ impl Progress {
         std::io::stdout().flush().unwrap();
     }
 
+    #[allow(dead_code)]
     fn reset(&mut self) {
         let now = Instant::now();
         self.complete = 0;
