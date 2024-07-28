@@ -36,7 +36,7 @@ impl Abstractor {
     /// Save the river
     ///
     pub async fn river(&mut self) -> &mut Self {
-        const N_TASKS: usize = 16;
+        const N_TASKS: usize = 4;
         const N_RIVERS: usize = 2_809_475_760;
         const N_PER_TASK: usize = N_RIVERS / N_TASKS;
         // weird borrowing issues. i own Vec<Observation> and want to
