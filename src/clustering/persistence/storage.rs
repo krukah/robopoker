@@ -8,6 +8,8 @@ pub trait Storage: Clone {
     async fn new() -> Self;
     async fn set_obs(&mut self, obs: Observation, abs: Abstraction);
     async fn set_xor(&mut self, xor: Pair, distance: f32);
+    async fn set_obs_batch(&mut self, batch: Vec<(Observation, Abstraction)>);
+    async fn set_xor_batch(&mut self, batch: Vec<(Pair, f32)>);
     async fn get_obs(&self, obs: Observation) -> Abstraction;
     async fn get_xor(&self, xor: Pair) -> f32;
 

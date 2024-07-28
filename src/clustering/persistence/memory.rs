@@ -25,6 +25,18 @@ impl Storage for MemoryLookup {
     async fn set_xor(&mut self, xor: Pair, distance: f32) {
         self.metrics.lock().await.insert(xor, distance);
     }
+    async fn set_obs_batch(&mut self, batch: Vec<(Observation, Abstraction)>) {
+        let mut cluster = self.cluster.lock().await;
+        for (obs, abs) in batch {
+            cluster.insert(obs, abs);
+        }
+    }
+    async fn set_xor_batch(&mut self, batch: Vec<(Pair, f32)>) {
+        let mut metrics = self.metrics.lock().await;
+        for (xor, distance) in batch {
+            metrics.insert(xor, distance);
+        }
+    }
     async fn get_obs(&self, ref obs: Observation) -> Abstraction {
         self.cluster
             .lock()

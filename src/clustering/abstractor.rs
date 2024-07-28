@@ -29,10 +29,6 @@ impl Abstractor {
         }
     }
 
-    pub async fn learn() {
-        todo!("the whole thing across all layers streets")
-    }
-
     async fn guesses(&self) -> Vec<Centroid> {
         todo!("implement k-means++ initialization")
     }
@@ -48,6 +44,7 @@ impl Abstractor {
         // so i could either:
         // - use itertools::Itertools::chunks to move ownership into async closure block
         // - use Box::leak to cast to 'static, albeith leaking memory
+        // - modify Observation::all to return a shard of the full Vec<Observation>, and call it in the async block
         let rivers = Observation::all(Street::Rive); // 2.8B
         let rivers = Box::leak(Box::new(rivers)); // for cast to 'static across tokio threads
         let ref rivers = Arc::new(rivers); // for Arc::clone across physical threads
@@ -63,11 +60,11 @@ impl Abstractor {
                         let end = (beg + (N_RIVERS / N_THREADS)).min(N_RIVERS);
                         for idx in beg..end {
                             let ref river = rivers[idx];
-                            let equity = river.equity();
+                            let equity = river.equity(); // potential bottle: CPU
                             let bucket = equity * Abstraction::BUCKETS as f32;
                             let abstraction = Abstraction::from(bucket as u64);
-                            storage.set_obs(river.clone(), abstraction).await;
-                            progress.lock().await.update(river, equity);
+                            storage.set_obs(river.clone(), abstraction).await; // potential bottle: IO
+                            progress.lock().await.update(river, equity); // potential bottle: thread contention
                         }
                     })
                 })
