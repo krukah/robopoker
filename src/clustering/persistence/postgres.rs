@@ -11,8 +11,7 @@ pub struct PostgresLookup {
 impl Storage for PostgresLookup {
     /// Create a new Lookup instance with database connection
     async fn new() -> Self {
-        const DATABASE_URL: &str = "postgres://postgres:postgrespassword@localhost:5432/robopoker";
-        let ref url = std::env::var("DATABASE_URL").unwrap_or_else(|_| String::from(DATABASE_URL));
+        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
         let pool = sqlx::PgPool::connect(url)
             .await
             .expect("database to accept connections");
@@ -22,6 +21,7 @@ impl Storage for PostgresLookup {
             .expect("migrations to run");
         Self { db: pool }
     }
+
     /// Insert row into cluster table
     async fn set_obs(&mut self, obs: Observation, abs: Abstraction) {
         sqlx::query(
@@ -38,6 +38,7 @@ impl Storage for PostgresLookup {
         .await
         .expect("database insert: cluster");
     }
+
     /// Insert row into metric table
     async fn set_xor(&mut self, xor: Pair, distance: f32) {
         sqlx::query(
@@ -54,6 +55,7 @@ impl Storage for PostgresLookup {
         .await
         .expect("database insert: metric");
     }
+
     /// Query Observation -> Abstraction table
     async fn get_obs(&self, obs: Observation) -> Abstraction {
         let abs = sqlx::query!(
@@ -70,6 +72,7 @@ impl Storage for PostgresLookup {
         .expect("to have computed cluster previously");
         Abstraction::from(abs)
     }
+
     /// Query Pair -> f32 table
     async fn get_xor(&self, xor: Pair) -> f32 {
         let distance = sqlx::query!(
@@ -85,5 +88,57 @@ impl Storage for PostgresLookup {
         .distance
         .expect("to have computed metric previously");
         distance as f32
+    }
+
+    /// Insert multiple rows into cluster table in batch
+    async fn set_obs_batch(&mut self, batch: Vec<(Observation, Abstraction)>) {
+        sqlx::QueryBuilder::new(
+            r#"
+                INSERT INTO cluster
+                (observation, abstraction, street)
+            "#,
+        )
+        .push_values(batch, |mut b, (obs, abs)| {
+            b.push_bind(i64::from(obs))
+                .push_bind(i64::from(abs))
+                .push_bind(0); // TODO: deprecate Street column from schema
+        })
+        .push(
+            r#"
+                ON CONFLICT (observation)
+                DO UPDATE
+                SET abstraction = EXCLUDED.abstraction
+            "#,
+        )
+        .build()
+        .execute(&self.db)
+        .await
+        .expect("batch insert cluster");
+    }
+
+    /// Insert multiple rows into metric table in batch
+    async fn set_xor_batch(&mut self, batch: Vec<(Pair, f32)>) {
+        sqlx::QueryBuilder::new(
+            r#"
+                INSERT INTO metric
+                (xor, distance, street)
+            "#,
+        )
+        .push_values(batch, |mut b, (xor, distance)| {
+            b.push_bind(i64::from(xor))
+                .push_bind(f32::from(distance))
+                .push_bind(0); // TODO: deprecate Street column from schema
+        })
+        .push(
+            r#"
+                ON CONFLICT (xor)
+                DO UPDATE
+                SET distance = EXCLUDED.distance
+            "#,
+        )
+        .build()
+        .execute(&self.db)
+        .await
+        .expect("batch insert metric");
     }
 }

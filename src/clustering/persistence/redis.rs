@@ -58,4 +58,10 @@ impl Storage for RedisLookup {
             .await
             .expect("Redis get: metric")
     }
+    async fn set_obs_batch(&mut self, _: Vec<(Observation, Abstraction)>) {
+        todo!("redis batch insert")
+    }
+    async fn set_xor_batch(&mut self, _: Vec<(Pair, f32)>) {
+        todo!("redis batch insert")
+    }
 }
