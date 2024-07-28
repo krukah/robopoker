@@ -36,8 +36,9 @@ impl Abstractor {
     /// Save the river
     ///
     pub async fn river(&mut self) -> &mut Self {
-        const N_THREADS: usize = 4;
+        const N_TASKS: usize = 16;
         const N_RIVERS: usize = 2_809_475_760;
+        const N_PER_TASK: usize = N_RIVERS / N_TASKS;
         // weird borrowing issues. i own Vec<Observation> and want to
         // break it up to pass into tokio::task::spawn
         // but because i create it in this scope, it is not 'static
@@ -50,20 +51,20 @@ impl Abstractor {
         let ref rivers = Arc::new(rivers); // for Arc::clone across physical threads
         self.progress.lock().await.reset();
         futures::future::join_all(
-            (0..N_THREADS)
+            (0..N_TASKS)
                 .map(|i| {
                     let rivers = rivers.clone();
                     let progress = self.progress.clone();
                     let mut storage = self.storage.clone();
                     tokio::task::spawn(async move {
-                        let beg = i * (N_RIVERS / N_THREADS);
-                        let end = (beg + (N_RIVERS / N_THREADS)).min(N_RIVERS);
+                        let beg = i * N_PER_TASK;
+                        let end = (beg + N_PER_TASK).min(N_RIVERS);
                         for idx in beg..end {
                             let ref river = rivers[idx];
                             let equity = river.equity(); // potential bottle: CPU
                             let bucket = equity * Abstraction::BUCKETS as f32;
                             let abstraction = Abstraction::from(bucket as u64);
-                            storage.set_obs(river.clone(), abstraction).await; // potential bottle: IO
+                            storage.set_obs(river.clone(), abstraction).await; // potential bottle: disk
                             progress.lock().await.update(river, equity); // potential bottle: thread contention
                         }
                     })
