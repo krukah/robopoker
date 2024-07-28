@@ -32,6 +32,9 @@ impl Observation {
             let publics = HandIterator::from((n, secret));
             for public in publics {
                 observations.push(Observation::from((secret, public)));
+                // match None =>
+                // self.secrets.next()
+                // self.publics.mask = secret
             }
         }
         observations
@@ -120,3 +123,26 @@ impl std::fmt::Display for Observation {
         write!(f, "{} + {}", self.secret, self.public)
     }
 }
+
+//
+//
+// TODO
+//
+//
+//
+// struct ObservationIterator
+// impl From<Street> for ObservationIterator {} // get all possible observations for street. replaces ::all()
+// impl From<Observation> for ObservationIterator {} //  get successors / children of observation. replaces ::outnodes()
+// impl Iterator for ObservationIterator {}
+// impl ObservationIterator { fn constrain(self, Shard) -> Self }
+//
+//
+//
+//
+// TODO
+//
+// struct Shard(usize, usize) // := (index, total)
+//
+// struct BoundedHandIterator { shard: Shard, iter: HandIterator }
+// impl From<Shard> for BoundedHandIterator {} // get all possible hands for shard. replaces HandIterator::from()
+// impl

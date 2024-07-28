@@ -48,7 +48,7 @@ impl Abstractor {
         // - modify Observation::all to return a shard of the full Vec<Observation>, and call it in the async block
         let rivers = Observation::all(Street::Rive); // 2.8B
         let rivers = Box::leak(Box::new(rivers)); // for cast to 'static across tokio threads
-        let ref rivers = Arc::new(rivers); // for Arc::clone across physical threads
+        let ref rivers = Arc::new(rivers); // for Arc::clone and Send across physical threads
         self.progress.lock().await.reset();
         futures::future::join_all(
             (0..N_TASKS)

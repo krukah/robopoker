@@ -1,7 +1,7 @@
 use cards::street::Street;
 use robopoker::*;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     clustering::abstractor::Abstractor::new()
         .await
