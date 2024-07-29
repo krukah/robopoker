@@ -5,7 +5,7 @@ use crate::clustering::xor::Pair;
 
 #[derive(Clone)]
 pub struct PostgresLookup {
-    db: sqlx::PgPool,
+    pool: sqlx::PgPool,
 }
 
 impl Storage for PostgresLookup {
@@ -19,7 +19,7 @@ impl Storage for PostgresLookup {
             .run(&pool)
             .await
             .expect("migrations to run");
-        Self { db: pool }
+        Self { pool }
     }
 
     /// Insert row into cluster table
@@ -34,7 +34,7 @@ impl Storage for PostgresLookup {
         .bind(i64::from(obs))
         .bind(i64::from(abs))
         .bind(0) // TODO: deprecate Street column from schema
-        .execute(&self.db)
+        .execute(&self.pool)
         .await
         .expect("database insert: cluster");
     }
@@ -51,43 +51,47 @@ impl Storage for PostgresLookup {
         .bind(i64::from(xor))
         .bind(f32::from(distance))
         .bind(0) // TODO: deprecate Street column from schema
-        .execute(&self.db)
+        .execute(&self.pool)
         .await
         .expect("database insert: metric");
     }
 
     /// Query Observation -> Abstraction table
     async fn get_obs(&self, obs: Observation) -> Abstraction {
-        let abs = sqlx::query!(
+        let query = format!(
             r#"
                 SELECT abstraction
                 FROM cluster
-                WHERE observation = $1"#,
+                WHERE observation = {}
+            "#,
             i64::from(obs),
-        )
-        .fetch_one(&self.db)
-        .await
-        .expect("to respond to cluster query")
-        .abstraction
-        .expect("to have computed cluster previously");
-        Abstraction::from(abs)
+        );
+        let hash = sqlx::query_as::<_, (Option<i64>,)>(query.as_str())
+            .fetch_one(&self.pool)
+            .await
+            .expect("to respond to cluster query")
+            .0
+            .expect("to have computed cluster previously");
+        Abstraction::from(hash)
     }
 
     /// Query Pair -> f32 table
     async fn get_xor(&self, xor: Pair) -> f32 {
-        let distance = sqlx::query!(
+        let query = format!(
             r#"
                 SELECT distance
                 FROM metric
-                WHERE xor = $1"#,
+                WHERE xor = {}
+            "#,
             i64::from(xor),
-        )
-        .fetch_one(&self.db)
-        .await
-        .expect("to respond to metric query")
-        .distance
-        .expect("to have computed metric previously");
-        distance as f32
+        );
+        let distance = sqlx::query_as::<_, (Option<f32>,)>(query.as_str())
+            .fetch_one(&self.pool)
+            .await
+            .expect("to respond to metric query")
+            .0
+            .expect("to have computed metric previously");
+        distance
     }
 
     /// Insert multiple rows into cluster table in batch
@@ -99,8 +103,8 @@ impl Storage for PostgresLookup {
             "#,
         )
         .push_values(batch, |mut b, (obs, abs)| {
-            b.push_bind(i64::from(obs))
-                .push_bind(i64::from(abs))
+            b.push_bind(i64::from(obs.clone()))
+                .push_bind(i64::from(abs.clone()))
                 .push_bind(0); // TODO: deprecate Street column from schema
         })
         .push(
@@ -111,7 +115,7 @@ impl Storage for PostgresLookup {
             "#,
         )
         .build()
-        .execute(&self.db)
+        .execute(&self.pool)
         .await
         .expect("batch insert cluster");
     }
@@ -125,8 +129,8 @@ impl Storage for PostgresLookup {
             "#,
         )
         .push_values(batch, |mut b, (xor, distance)| {
-            b.push_bind(i64::from(xor))
-                .push_bind(f32::from(distance))
+            b.push_bind(i64::from(xor.clone()))
+                .push_bind(f32::from(distance.clone()))
                 .push_bind(0); // TODO: deprecate Street column from schema
         })
         .push(
@@ -137,7 +141,7 @@ impl Storage for PostgresLookup {
             "#,
         )
         .build()
-        .execute(&self.db)
+        .execute(&self.pool)
         .await
         .expect("batch insert metric");
     }
