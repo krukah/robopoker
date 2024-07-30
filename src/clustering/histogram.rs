@@ -60,6 +60,7 @@ impl Centroid {
         // could precompute if this BTreeMap Hash is too slow, but haven't profiled yet
         Abstraction::from(&self.0)
     }
+    /// maybe we don't keep the new Histogram in memory, and keep a running average to preserve meory
     pub fn expand(&mut self, histogram: Histogram) {
         self.1.push(histogram);
     }

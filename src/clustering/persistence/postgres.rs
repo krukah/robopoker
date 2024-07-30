@@ -29,11 +29,12 @@ impl Storage for PostgresLookup {
                 INSERT INTO cluster (observation, abstraction, street)
                 VALUES              ($1, $2, $3)
                 ON CONFLICT         (observation)
-                DO UPDATE SET       abstraction = $2"#,
+                DO UPDATE SET       abstraction = $2
+            "#,
         )
         .bind(i64::from(obs))
         .bind(i64::from(abs))
-        .bind(0) // TODO: deprecate Street column from schema
+        .bind(obs.street() as i8)
         .execute(&self.pool)
         .await
         .expect("database insert: cluster");
@@ -46,7 +47,8 @@ impl Storage for PostgresLookup {
                 INSERT INTO metric  (xor, distance, street)
                 VALUES              ($1, $2, $3)
                 ON CONFLICT         (xor)
-                DO UPDATE SET       distance = $2"#,
+                DO UPDATE SET       distance = $2
+            "#,
         )
         .bind(i64::from(xor))
         .bind(f32::from(distance))
@@ -99,13 +101,13 @@ impl Storage for PostgresLookup {
         sqlx::QueryBuilder::new(
             r#"
                 INSERT INTO cluster
-                (observation, abstraction, street)
+                (street, observation, abstraction)
             "#,
         )
-        .push_values(batch, |mut b, (obs, abs)| {
-            b.push_bind(i64::from(obs.clone()))
-                .push_bind(i64::from(abs.clone()))
-                .push_bind(0); // TODO: deprecate Street column from schema
+        .push_values(batch, |mut list, (obs, abs)| {
+            list.push_bind(obs.street() as i8)
+                .push_bind(i64::from(obs.clone()))
+                .push_bind(i64::from(abs.clone()));
         })
         .push(
             r#"
@@ -125,13 +127,13 @@ impl Storage for PostgresLookup {
         sqlx::QueryBuilder::new(
             r#"
                 INSERT INTO metric
-                (xor, distance, street)
+                (street, xor, distance)
             "#,
         )
-        .push_values(batch, |mut b, (xor, distance)| {
-            b.push_bind(i64::from(xor.clone()))
-                .push_bind(f32::from(distance.clone()))
-                .push_bind(0); // TODO: deprecate Street column from schema
+        .push_values(batch, |mut list, (xor, distance)| {
+            list.push_bind(0)
+                .push_bind(i64::from(xor.clone()))
+                .push_bind(f32::from(distance.clone())); // TODO: deprecate Street column from schema
         })
         .push(
             r#"

@@ -20,14 +20,14 @@ pub struct Observation {
 
 impl Observation {
     pub fn all(street: Street) -> Vec<Observation> {
-        println!("Generating all {} observations...", street);
+        println!("Exhausting all {} observations...", street);
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
             Street::Rive => 5,
             _ => panic!("no other transitions"),
         };
-        let mut observations = Vec::new();
+        let mut observations = Vec::new(); // TODO make with_capacity, conditional on street
         let secrets = HandIterator::from((2usize, Hand::from(0u64)));
         for secret in secrets {
             let publics = HandIterator::from((n, secret));
@@ -35,6 +35,7 @@ impl Observation {
                 observations.push(Observation::from((secret, public)));
             }
         }
+        println!("Exhausted {} {} observations", observations.len(), street);
         observations
     }
     /// Calculates the equity of the current observation.
@@ -112,14 +113,28 @@ impl From<Observation> for i64 {
             .iter()
             .chain(Vec::<Card>::from(observation.secret).iter())
             .copied()
-            .map(|card| u8::from(card) as u64)
+            .map(|card| 1 + u8::from(card) as u64) // distinguish between 0x00 and 2c
             .fold(0u64, |acc, card| acc << 8 | card) as i64
     }
 }
 
 impl From<i64> for Observation {
-    fn from(_: i64) -> Self {
-        todo!("invert the i64 -> Observation conversion")
+    fn from(hand: i64) -> Self {
+        let mut hand = hand as u64;
+        let mut secret = Hand::from(0u64);
+        let mut public = Hand::from(0u64);
+        let mut i = 0;
+        while hand > 0 {
+            let card = Hand::from(u64::from(Card::from((hand & 0xFF) - 1)));
+            if i < 2 {
+                secret = Hand::add(secret, card);
+            } else {
+                public = Hand::add(public, card);
+            }
+            i += 1;
+            hand >>= 8;
+        }
+        Observation { secret, public }
     }
 }
 
