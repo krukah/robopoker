@@ -120,10 +120,10 @@ impl From<Observation> for i64 {
 
 impl From<i64> for Observation {
     fn from(hand: i64) -> Self {
+        let mut i = 0;
         let mut hand = hand as u64;
         let mut secret = Hand::from(0u64);
         let mut public = Hand::from(0u64);
-        let mut i = 0;
         while hand > 0 {
             let card = Hand::from(u64::from(Card::from((hand & 0xFF) - 1)));
             if i < 2 {
