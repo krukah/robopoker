@@ -34,7 +34,7 @@ impl Storage for PostgresLookup {
         )
         .bind(i64::from(obs))
         .bind(i64::from(abs))
-        .bind(obs.street() as i8)
+        .bind(obs.street() as i16)
         .execute(&self.pool)
         .await
         .expect("database insert: cluster");
@@ -105,7 +105,7 @@ impl Storage for PostgresLookup {
             "#,
         )
         .push_values(batch, |mut list, (obs, abs)| {
-            list.push_bind(obs.street() as i8)
+            list.push_bind(obs.street() as i16)
                 .push_bind(i64::from(obs.clone()))
                 .push_bind(i64::from(abs.clone()));
         })
