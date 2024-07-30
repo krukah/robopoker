@@ -15,7 +15,8 @@ impl Abstraction {
     pub fn buckets() -> Vec<Self> {
         (0..Self::BUCKETS).map(|i| Self(i as u64)).collect()
     }
-    pub const BUCKETS: u8 = 50;
+    /// not sure if 3% buckets is the right granularity, especially for more sensitive parts of the probability regime near 1.0
+    pub const BUCKETS: u8 = 32;
 }
 
 impl From<&Histogram> for Abstraction {
