@@ -1,4 +1,5 @@
 use super::hands::HandIterator;
+use crate::cards::card::Card;
 use crate::cards::hand::Hand;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
@@ -32,9 +33,6 @@ impl Observation {
             let publics = HandIterator::from((n, secret));
             for public in publics {
                 observations.push(Observation::from((secret, public)));
-                // match None =>
-                // self.secrets.next()
-                // self.publics.mask = secret
             }
         }
         observations
@@ -75,16 +73,16 @@ impl Observation {
             Street::Turn => 1,
             _ => panic!("no children for river"),
         };
+        HandIterator::from((n_revealed, excluded))
+            .map(|reveal| Hand::add(self.public, reveal))
+            .map(|public| Observation::from((self.secret, public)))
         // BIG ITERATOR
         // LOOP over (2 + street)-handed OBSERVATIONS
         // EXPAND the current observation's BOARD CARDS
         // PRESERVE the current observation's HOLE CARDS
-        HandIterator::from((n_revealed, excluded))
-            .map(|reveal| Hand::add(self.public, reveal))
-            .map(|public| Observation::from((self.secret, public)))
     }
 
-    fn street(&self) -> Street {
+    pub fn street(&self) -> Street {
         match self.public.size() {
             0 => Street::Pref,
             3 => Street::Flop,
@@ -95,7 +93,7 @@ impl Observation {
     }
 
     /// Generate mask conditional on .secret, .public
-    fn observed(&self) -> Hand {
+    pub fn observed(&self) -> Hand {
         Hand::add(self.secret, self.public)
     }
 }
@@ -110,11 +108,18 @@ impl From<(Hand, Hand)> for Observation {
 
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
-        // big prime numbers help us with pseudo-hasing while preserving order
-        let x = u64::from(observation.secret).wrapping_mul(0x9e3779b97f4a7c15);
-        let y = u64::from(observation.public).wrapping_mul(0x517cc1b727220a95);
-        let i = x.wrapping_add(y);
-        i as i64
+        Vec::<Card>::from(observation.public)
+            .iter()
+            .chain(Vec::<Card>::from(observation.secret).iter())
+            .copied()
+            .map(|card| u8::from(card) as u64)
+            .fold(0u64, |acc, card| acc << 8 | card) as i64
+    }
+}
+
+impl From<i64> for Observation {
+    fn from(_: i64) -> Self {
+        todo!("invert the i64 -> Observation conversion")
     }
 }
 
@@ -123,26 +128,3 @@ impl std::fmt::Display for Observation {
         write!(f, "{} + {}", self.secret, self.public)
     }
 }
-
-//
-//
-// TODO
-//
-//
-//
-// struct ObservationIterator
-// impl From<Street> for ObservationIterator {} // get all possible observations for street. replaces ::all()
-// impl From<Observation> for ObservationIterator {} //  get successors / children of observation. replaces ::outnodes()
-// impl Iterator for ObservationIterator {}
-// impl ObservationIterator { fn constrain(self, Shard) -> Self }
-//
-//
-//
-//
-// TODO
-//
-// struct Shard(usize, usize) // := (index, total)
-//
-// struct BoundedHandIterator { shard: Shard, iter: HandIterator }
-// impl From<Shard> for BoundedHandIterator {} // get all possible hands for shard. replaces HandIterator::from()
-// impl
