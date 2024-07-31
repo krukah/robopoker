@@ -17,64 +17,76 @@ type Lookup = super::persistence::postgres::PostgresLookup;
 
 pub struct Abstractor {
     storage: Lookup,
-    progress: Arc<Mutex<Progress>>,
 }
 
 impl Abstractor {
     pub async fn new() -> Self {
         Self {
-            progress: Arc::new(Mutex::new(Progress::new())),
             storage: Lookup::new().await,
         }
     }
 
-    async fn guesses(&self) -> Vec<Centroid> {
+    async fn initials(&self) -> Vec<Centroid> {
         todo!("implement k-means++ initialization")
     }
 
-    /// Save the river
-    ///
     pub async fn river(&mut self) -> &mut Self {
-        const N_TASKS: usize = 4;
-        const N_RIVERS: usize = 2_809_475_760;
-        const N_PER_TASK: usize = N_RIVERS / N_TASKS;
-        // const N_PER_BATCH: usize = 128;
-        // weird borrowing issues. i own Vec<Observation> and want to
-        // break it up to pass into tokio::task::spawn
-        // but because i create it in this scope, it is not 'static
-        // so i could either:
-        // - use itertools::Itertools::chunks to move ownership into async closure block
-        // - use Box::leak to cast to 'static, albeith leaking memory
-        // - modify Observation::all to return a shard of the full Vec<Observation>, and call it in the async block
-        let rivers = Observation::all(Street::Rive); // 2.8B
-        let rivers = Box::leak(Box::new(rivers)); // for cast to 'static across tokio threads
-        let ref rivers = Arc::new(rivers); // for Arc::clone and Send across physical threads
-        self.progress.lock().await.reset();
-        futures::future::join_all(
-            (0..N_TASKS)
-                .map(|i| {
-                    let rivers = rivers.clone();
-                    let progress = self.progress.clone();
-                    let mut storage = self.storage.clone();
-                    tokio::task::spawn(async move {
-                        let beg = i * N_PER_TASK;
-                        let end = (beg + N_PER_TASK).min(rivers.len() + 1);
-                        for river in rivers[beg..end].iter() {
-                            let equity = river.equity(); // potential bottle: CPU
+        const TASKS: usize = 2;
+        const RIVERS: usize = 2_809_475_760;
+        const RIVRS_BATCH: usize = 16_384;
+        const BATCHS_TASK: usize = RIVERS / TASKS / RIVRS_BATCH;
+        let mut tasks = Vec::with_capacity(TASKS);
+        let ref riversfull = Arc::new(Observation::all(Street::Rive));
+        let ref mut progress = Arc::new(Mutex::new(Progress::new()));
+        for itask in 0..TASKS {
+            let mut storage = self.storage.clone();
+            let riverstask = Arc::clone(riversfull);
+            let progress = Arc::clone(progress);
+            let task = async move {
+                for ibatch in 0..BATCHS_TASK {
+                    let mut batch = Vec::with_capacity(RIVRS_BATCH);
+                    for iriver in 0..RIVRS_BATCH {
+                        let i = RIVRS_BATCH * BATCHS_TASK * itask + RIVRS_BATCH * ibatch + iriver;
+                        if let Some(observation) = riverstask.get(i) {
+                            let equity = observation.equity();
                             let bucket = equity * Abstraction::BUCKETS as f32;
                             let abstraction = Abstraction::from(bucket as u64);
-                            let observation = river.clone();
-                            storage.set_obs(observation, abstraction).await; // potential bottle: disk
-                            progress.lock().await.update(river, equity); // potential bottle: thread contention
+                            batch.push((observation.clone(), abstraction));
+                            progress.lock().await.update(observation, equity);
                         }
-                    })
-                })
-                .collect::<Vec<_>>(),
-        )
-        .await;
+                    }
+                    storage.set_obs_batch(batch).await;
+                }
+            };
+            tasks.push(tokio::task::spawn(task));
+        }
+        futures::future::join_all(tasks).await;
         self
     }
 
+    ///
+    /// things conditional on street: initials, Observation::all
+    ///
+    /// shared MEMORY state:
+    /// Vec<Centroid<(Hash, Histogram)>>
+    /// >> established in initials()
+    /// >> updated (absorbs histo) after each observation gets mapped to a centroid
+    ///
+    /// owned MEMORY state:
+    /// Vec<Obs>
+    /// Map<Obs, Histogram>
+    /// >> lookup/move to shared ASYNC if too big in memory
+    ///
+    /// shared ASYNC state:
+    /// Map<Obs , Centroid<Hash>>
+    /// >> this could be table
+    /// Map<Pair, f32>
+    /// >> we could get from db and keep in memory
+    ///
+    /// each iteration of K-means requires join_all across worker threads
+    ///
+    /// possibilities can be divided into chunks to handle by thread
+    /// think about each thread running as Vec<Obs> -> async (Centroids, Neighbors, Distances)
     pub async fn cluster(&mut self, street: Street) -> &mut Self {
         assert!(street != Street::Rive);
         // maybe predecessors moves to Abstractor
@@ -82,15 +94,15 @@ impl Abstractor {
         // for street in Street::iter() { match street { => Obs::preds(s) } }
         let ref possibilities = Observation::all(street);
         let ref mut neighbors = HashMap::<Observation, usize>::with_capacity(possibilities.len());
-        let ref mut centroids = self.guesses().await;
-        self.kmeans(centroids, neighbors, possibilities).await;
-        self.upsert(centroids, neighbors).await;
-        self.insert(centroids).await;
+        let ref mut centroids = self.initials().await;
+        self.set_abstractions(centroids, neighbors, possibilities)
+            .await;
+        self.set_distances(centroids).await;
         self
     }
 
-    async fn kmeans(
-        &self,
+    async fn set_abstractions(
+        &mut self,
         centroids: &mut Vec<Centroid>,
         neighbors: &mut HashMap<Observation, usize>,
         observations: &Vec<Observation>,
@@ -110,6 +122,8 @@ impl Abstractor {
                         minimium = emd;
                     }
                 }
+                // storage.neighbors.async_distances(obs, centroid);
+                /* we can also wait til the last iteration to insert this i believe */
                 neighbors.insert(obs.clone(), position);
                 centroids
                     .get_mut(position)
@@ -117,9 +131,7 @@ impl Abstractor {
                     .expand(histogram);
             }
         }
-    }
-
-    async fn upsert(&mut self, centroids: &[Centroid], neighbors: &HashMap<Observation, usize>) {
+        // some optimization about keeping neighbors in database rather than hashamp
         for (observation, index) in neighbors.iter() {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
@@ -128,7 +140,7 @@ impl Abstractor {
         }
     }
 
-    async fn insert(&mut self, centroids: &mut Vec<Centroid>) {
+    async fn set_distances(&mut self, centroids: &mut Vec<Centroid>) {
         for centroid in centroids.iter_mut() {
             centroid.shrink();
         }

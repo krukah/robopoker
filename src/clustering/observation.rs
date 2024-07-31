@@ -100,6 +100,7 @@ impl Observation {
 }
 
 impl From<(Hand, Hand)> for Observation {
+    /// TODO: implement strategic isomorphism
     fn from((secret, public): (Hand, Hand)) -> Self {
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
