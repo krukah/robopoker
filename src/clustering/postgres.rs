@@ -1,5 +1,5 @@
-use super::storage::Storage;
 use crate::clustering::abstraction::Abstraction;
+use crate::clustering::histogram::Histogram;
 use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 
@@ -8,9 +8,9 @@ pub struct PostgresLookup {
     pool: sqlx::PgPool,
 }
 
-impl Storage for PostgresLookup {
+impl PostgresLookup {
     /// Create a new Lookup instance with database connection
-    async fn new() -> Self {
+    pub async fn new() -> Self {
         let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
         let pool = sqlx::PgPool::connect(url)
             .await
@@ -23,7 +23,7 @@ impl Storage for PostgresLookup {
     }
 
     /// Insert row into cluster table
-    async fn set_obs(&mut self, obs: Observation, abs: Abstraction) {
+    pub async fn set_obs(&mut self, obs: Observation, abs: Abstraction) {
         sqlx::query(
             r#"
                 INSERT INTO cluster (observation, abstraction, street)
@@ -41,7 +41,7 @@ impl Storage for PostgresLookup {
     }
 
     /// Insert row into metric table
-    async fn set_xor(&mut self, xor: Pair, distance: f32) {
+    pub async fn set_xor(&mut self, xor: Pair, distance: f32) {
         sqlx::query(
             r#"
                 INSERT INTO metric  (xor, distance, street)
@@ -59,7 +59,7 @@ impl Storage for PostgresLookup {
     }
 
     /// Query Observation -> Abstraction table
-    async fn get_obs(&self, obs: Observation) -> Abstraction {
+    pub async fn get_obs(&self, obs: Observation) -> Abstraction {
         let query = format!(
             r#"
                 SELECT abstraction
@@ -78,7 +78,7 @@ impl Storage for PostgresLookup {
     }
 
     /// Query Pair -> f32 table
-    async fn get_xor(&self, xor: Pair) -> f32 {
+    pub async fn get_xor(&self, xor: Pair) -> f32 {
         let query = format!(
             r#"
                 SELECT distance
@@ -97,7 +97,7 @@ impl Storage for PostgresLookup {
     }
 
     /// Insert multiple rows into cluster table in batch
-    async fn set_obs_batch(&mut self, batch: Vec<(Observation, Abstraction)>) {
+    pub async fn set_obs_batch(&mut self, batch: Vec<(Observation, Abstraction)>) {
         sqlx::QueryBuilder::new(
             r#"
                 INSERT INTO cluster
@@ -123,7 +123,7 @@ impl Storage for PostgresLookup {
     }
 
     /// Insert multiple rows into metric table in batch
-    async fn set_xor_batch(&mut self, batch: Vec<(Pair, f32)>) {
+    pub async fn set_xor_batch(&mut self, batch: Vec<(Pair, f32)>) {
         sqlx::QueryBuilder::new(
             r#"
                 INSERT INTO metric
@@ -146,5 +146,19 @@ impl Storage for PostgresLookup {
         .execute(&self.pool)
         .await
         .expect("batch insert metric");
+    }
+
+    /// ~1Kb download
+    /// this could possibly be implemented as a join?
+    /// fml a big Vec<> of these is gonna have to fit
+    /// in memory for the centroid calculation
+    pub async fn get_histogram(&self, obs: Observation) -> Histogram {
+        let mut abstractions = Vec::new();
+        let successors = obs.outnodes();
+        for succ in successors {
+            let abstraction = self.get_obs(succ).await;
+            abstractions.push(abstraction);
+        }
+        Histogram::from(abstractions)
     }
 }

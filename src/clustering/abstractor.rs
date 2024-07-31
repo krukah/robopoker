@@ -4,7 +4,6 @@ use super::abstraction::Abstraction;
 use super::histogram::Centroid;
 use super::histogram::Histogram;
 use super::observation::Observation;
-use super::persistence::storage::Storage;
 use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
@@ -13,7 +12,7 @@ use std::time::Instant;
 use std::vec;
 use tokio::sync::Mutex;
 
-type Lookup = super::persistence::postgres::PostgresLookup;
+type Lookup = super::postgres::PostgresLookup;
 
 pub struct Abstractor(Lookup);
 
