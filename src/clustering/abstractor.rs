@@ -15,15 +15,11 @@ use tokio::sync::Mutex;
 
 type Lookup = super::persistence::postgres::PostgresLookup;
 
-pub struct Abstractor {
-    storage: Lookup,
-}
+pub struct Abstractor(Lookup);
 
 impl Abstractor {
     pub async fn new() -> Self {
-        Self {
-            storage: Lookup::new().await,
-        }
+        Self(Lookup::new().await)
     }
 
     async fn initials(&self) -> Vec<Centroid> {
@@ -35,24 +31,27 @@ impl Abstractor {
         const RIVERS: usize = 2_809_475_760;
         const RIVRS_BATCH: usize = 16_384;
         const BATCHS_TASK: usize = RIVERS / TASKS / RIVRS_BATCH;
+        const RIVERS_TASK: usize = RIVERS / TASKS;
         let mut tasks = Vec::with_capacity(TASKS);
-        let ref riversfull = Arc::new(Observation::all(Street::Rive));
+        let ref terminals = Arc::new(Observation::all(Street::Rive));
         let ref mut progress = Arc::new(Mutex::new(Progress::new()));
         for itask in 0..TASKS {
-            let mut storage = self.storage.clone();
-            let riverstask = Arc::clone(riversfull);
+            let mut storage = self.0.clone();
+            let terminals = Arc::clone(terminals);
             let progress = Arc::clone(progress);
             let task = async move {
                 for ibatch in 0..BATCHS_TASK {
                     let mut batch = Vec::with_capacity(RIVRS_BATCH);
                     for iriver in 0..RIVRS_BATCH {
-                        let i = RIVRS_BATCH * BATCHS_TASK * itask + RIVRS_BATCH * ibatch + iriver;
-                        if let Some(observation) = riverstask.get(i) {
+                        let i = iriver + (ibatch * RIVRS_BATCH) + (itask * RIVERS_TASK);
+                        if let Some(observation) = terminals.get(i) {
                             let equity = observation.equity();
                             let bucket = equity * Abstraction::BUCKETS as f32;
                             let abstraction = Abstraction::from(bucket as u64);
                             batch.push((observation.clone(), abstraction));
                             progress.lock().await.update(observation, equity);
+                        } else {
+                            break;
                         }
                     }
                     storage.set_obs_batch(batch).await;
@@ -110,7 +109,7 @@ impl Abstractor {
         const ITERATIONS: usize = 100;
         for _ in 0..ITERATIONS {
             for obs in observations.iter() {
-                let histogram = self.storage.get_histogram(obs.clone()).await;
+                let histogram = self.0.get_histogram(obs.clone()).await;
                 let ref x = histogram;
                 let mut position = 0usize;
                 let mut minimium = f32::MAX;
@@ -136,7 +135,7 @@ impl Abstractor {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
             let obs = observation.clone();
-            self.storage.set_obs(obs, abs).await;
+            self.0.set_obs(obs, abs).await;
         }
     }
 
@@ -153,7 +152,7 @@ impl Abstractor {
                     let x = a.histogram();
                     let y = b.histogram();
                     let distance = self.emd(x, y).await;
-                    self.storage.set_xor(xor, distance).await;
+                    self.0.set_xor(xor, distance).await;
                 }
             }
         }
@@ -185,7 +184,7 @@ impl Abstractor {
                     continue;
                 }
                 let xor = Pair::from((*this_key, *that_key));
-                let d = self.storage.get_xor(xor).await;
+                let d = self.0.get_xor(xor).await;
                 let bonus = spill - goals[j];
                 if (bonus) < 0f32 {
                     extra.insert(*that_key, 0f32);

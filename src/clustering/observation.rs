@@ -108,6 +108,10 @@ impl From<(Hand, Hand)> for Observation {
     }
 }
 
+/// i64 isomorphism
+///
+/// Packs all the cards in order, starting from LSBs.
+/// Good for database serialization. Interchangable with u64
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
         Vec::<Card>::from(observation.public)
@@ -118,23 +122,25 @@ impl From<Observation> for i64 {
             .fold(0u64, |acc, card| acc << 8 | card) as i64
     }
 }
-
 impl From<i64> for Observation {
-    fn from(hand: i64) -> Self {
+    fn from(bits: i64) -> Self {
         let mut i = 0;
-        let mut hand = hand as u64;
+        let mut bits = bits as u64;
         let mut secret = Hand::from(0u64);
         let mut public = Hand::from(0u64);
-        while hand > 0 {
-            let card = Hand::from(u64::from(Card::from((hand & 0xFF) - 1)));
+        while bits > 0 {
+            let card = ((bits & 0xFF) - 1) as u8;
+            let hand = Hand::from(u64::from(Card::from(card)));
             if i < 2 {
-                secret = Hand::add(secret, card);
+                secret = Hand::add(secret, hand);
             } else {
-                public = Hand::add(public, card);
+                public = Hand::add(public, hand);
             }
             i += 1;
-            hand >>= 8;
+            bits >>= 8;
         }
+        assert!(secret.size() == 2);
+        assert!(public.size() <= 5);
         Observation { secret, public }
     }
 }
