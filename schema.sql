@@ -8,3 +8,5 @@ CREATE UNLOGGED TABLE IF NOT EXISTS distance (
     distance FLOAT,
     street CHAR(1)
 );
+TRUNCATE TABLE centroid;
+TRUNCATE TABLE distance;

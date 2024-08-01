@@ -231,6 +231,7 @@ impl Observer {
 ///
 ///
 ///
+
 const BATCH_MIN: usize = 10_000;
 const BATCH_MAX: usize = 10_000 * 2;
 
@@ -249,6 +250,25 @@ impl BatchUploader {
             .await
             .expect("to connect to database");
         tokio::spawn(connection);
+        client
+            .batch_execute(
+                r#"
+                    CREATE UNLOGGED TABLE IF NOT EXISTS centroid (
+                        observation BIGINT PRIMARY KEY,
+                        abstraction BIGINT,
+                        street CHAR(1)
+                    );
+                    CREATE UNLOGGED TABLE IF NOT EXISTS distance (
+                        xor BIGINT PRIMARY KEY,
+                        distance FLOAT,
+                        street CHAR(1)
+                    );
+                    TRUNCATE TABLE centroid;
+                    TRUNCATE TABLE distance;
+                "#,
+            )
+            .await
+            .expect("to intialize tables");
         Self {
             rx,
             buffer,
@@ -285,9 +305,9 @@ impl BatchUploader {
             )
             .await
             .expect("to begin COPY transaction");
-        let writer = BinaryCopyInWriter::new(sink, &[Type::INT2, Type::INT8, Type::INT8]);
+        let writer = BinaryCopyInWriter::new(sink, &[Type::CHAR, Type::INT8, Type::INT8]);
         futures::pin_mut!(writer);
-        for (obs, abs) in self.buffer.iter() {
+        for (obs, abs) in self.buffer.drain(..) {
             let ref street = obs.street() as i8;
             let ref observation = i64::from(obs.clone());
             let ref abstraction = i64::from(abs.clone());
@@ -297,7 +317,6 @@ impl BatchUploader {
                 .await
                 .expect("to write row");
         }
-        self.buffer.clear();
         writer.finish().await.expect("to complete COPY transaction");
     }
 }
