@@ -1,65 +1,21 @@
-// use tokio::sync::Mutex;
-
-use super::abstraction::Abstraction;
 use super::histogram::Centroid;
 use super::histogram::Histogram;
 use super::observation::Observation;
 use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Instant;
 use std::vec;
-use tokio::sync::Mutex;
-
 type Lookup = super::postgres::PostgresLookup;
 
-pub struct Abstractor(Lookup);
+pub struct AbstractionAlgorithm(Lookup);
 
-impl Abstractor {
+impl AbstractionAlgorithm {
     pub async fn new() -> Self {
         Self(Lookup::new().await)
     }
 
     async fn initials(&self) -> Vec<Centroid> {
         todo!("implement k-means++ initialization")
-    }
-
-    pub async fn river(&mut self) -> &mut Self {
-        const TASKS: usize = 2;
-        const RIVERS: usize = 2_809_475_760;
-        const RIVRS_BATCH: usize = 16_384;
-        const BATCHS_TASK: usize = RIVERS / TASKS / RIVRS_BATCH;
-        const RIVERS_TASK: usize = RIVERS / TASKS;
-        let mut tasks = Vec::with_capacity(TASKS);
-        let ref terminals = Arc::new(Observation::all(Street::Rive));
-        let ref mut progress = Arc::new(Mutex::new(Progress::new()));
-        for itask in 0..TASKS {
-            let mut storage = self.0.clone();
-            let terminals = Arc::clone(terminals);
-            let progress = Arc::clone(progress);
-            let task = async move {
-                for ibatch in 0..BATCHS_TASK {
-                    let mut batch = Vec::with_capacity(RIVRS_BATCH);
-                    for iriver in 0..RIVRS_BATCH {
-                        let i = iriver + (ibatch * RIVRS_BATCH) + (itask * RIVERS_TASK);
-                        if let Some(observation) = terminals.get(i) {
-                            let equity = observation.equity();
-                            let bucket = equity * Abstraction::BUCKETS as f32;
-                            let abstraction = Abstraction::from(bucket as u64);
-                            batch.push((observation.clone(), abstraction));
-                            progress.lock().await.update(observation, equity);
-                        } else {
-                            break;
-                        }
-                    }
-                    storage.set_obs_batch(batch).await;
-                }
-            };
-            tasks.push(tokio::task::spawn(task));
-        }
-        futures::future::join_all(tasks).await;
-        self
     }
 
     ///
@@ -134,7 +90,7 @@ impl Abstractor {
             let centroid = centroids.get(*index).expect("index in range");
             let abs = centroid.signature();
             let obs = observation.clone();
-            self.0.set_obs(obs, abs).await;
+            self.0.set_centroid(obs, abs).await;
         }
     }
 
@@ -151,7 +107,7 @@ impl Abstractor {
                     let x = a.histogram();
                     let y = b.histogram();
                     let distance = self.emd(x, y).await;
-                    self.0.set_xor(xor, distance).await;
+                    self.0.set_distance(xor, distance).await;
                 }
             }
         }
@@ -183,7 +139,7 @@ impl Abstractor {
                     continue;
                 }
                 let xor = Pair::from((*this_key, *that_key));
-                let d = self.0.get_xor(xor).await;
+                let d = self.0.get_distance(xor).await;
                 let bonus = spill - goals[j];
                 if (bonus) < 0f32 {
                     extra.insert(*that_key, 0f32);
@@ -198,50 +154,5 @@ impl Abstractor {
             }
         }
         cost
-    }
-}
-
-struct Progress {
-    begin: Instant,
-    check: Instant,
-    complete: usize,
-}
-
-impl Progress {
-    fn new() -> Self {
-        let now = Instant::now();
-        Self {
-            complete: 0,
-            begin: now,
-            check: now,
-        }
-    }
-
-    fn update(&mut self, river: &Observation, equity: f32) {
-        use std::io::Write;
-        self.complete += 1;
-        if self.complete % 1_000 == 0 {
-            let now = Instant::now();
-            let total_t = now.duration_since(self.begin);
-            let check_t = now.duration_since(self.check);
-            self.check = now;
-            println!("\x1B4F\x1B[2K{:10} Observations", self.complete);
-            println!("\x1B[2K Elapsed: {:.0?}", total_t);
-            println!("\x1B[2K Last 1k: {:.0?}", check_t);
-            println!(
-                "\x1B[2K Mean 1k: {:.0?}",
-                (total_t / (self.complete / 1_000) as u32)
-            );
-            println!("\x1B[2K {} -> {:.3}", river, equity);
-            std::io::stdout().flush().unwrap();
-        }
-    }
-
-    #[allow(dead_code)]
-    fn reset(&mut self) {
-        let now = Instant::now();
-        self.complete = 0;
-        self.begin = now;
-        self.check = now;
     }
 }

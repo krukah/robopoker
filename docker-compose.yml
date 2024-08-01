@@ -8,11 +8,14 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgres://username:password@postgres:5432/robopoker
-
   postgres:
     image: postgres:latest
+    ports:
+      - "5432:5432"
+    networks:
+      - robopoker
     volumes:
-      - pg:/var/lib/postgresql/data
+      - robopoker:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U username -d robopoker"]
       interval: 5s
@@ -22,6 +25,8 @@ services:
       - POSTGRES_USER=username
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=robopoker
-
 volumes:
-  pg:
+  robopoker:
+networks:
+  robopoker:
+    driver: bridge

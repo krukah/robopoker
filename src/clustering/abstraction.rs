@@ -1,4 +1,5 @@
 use super::histogram::Histogram;
+use super::observation::Observation;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -25,6 +26,13 @@ impl From<&Histogram> for Abstraction {
         histogram.hash(hasher);
         let bucket = hasher.finish();
         Self(bucket)
+    }
+}
+impl From<&Observation> for Abstraction {
+    fn from(observation: &Observation) -> Self {
+        let equity = observation.equity();
+        let bucket = equity * Self::BUCKETS as f32;
+        Self::from(bucket as u64)
     }
 }
 

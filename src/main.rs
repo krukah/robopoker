@@ -1,19 +1,8 @@
-use cards::street::Street;
 use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    clustering::abstractor::Abstractor::new()
-        .await
-        .river()
-        .await
-        .cluster(Street::Turn)
-        .await
-        .cluster(Street::Flop)
-        .await
-        .cluster(Street::Pref)
-        .await;
-
+    clustering::postgres::Populator::river().await;
     // CFR training iterations
     training::solver::Solver::new().solve(50_000);
 

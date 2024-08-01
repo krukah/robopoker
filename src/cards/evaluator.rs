@@ -84,9 +84,9 @@ impl Evaluator {
         })
     }
     fn find_3_oak_2_oak(&self) -> Option<Ranking> {
-        self.find_rank_of_n_oak(3).and_then(|three| {
-            self.find_rank_of_n_oak_under(2, Some(three))
-                .map(|two| Ranking::FullHouse(three, two))
+        self.find_rank_of_n_oak(3).and_then(|trips| {
+            self.find_rank_of_n_oak_under(2, Some(trips))
+                .map(|pairs| Ranking::FullHouse(trips, pairs))
         })
     }
     fn find_straight(&self) -> Option<Ranking> {
