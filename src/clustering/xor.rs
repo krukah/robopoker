@@ -1,4 +1,4 @@
-use super::abstraction::Abstraction;
+use super::equivalence::Abstraction;
 
 /// A unique identifier for a pair of abstractions.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]

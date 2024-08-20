@@ -5,11 +5,12 @@ use super::xor::Pair;
 use crate::cards::street::Street;
 use std::collections::HashMap;
 use std::vec;
+
 type Lookup = super::postgres::PostgresLookup;
 
-pub struct AbstractionAlgorithm(Lookup);
+pub struct UpperAbstractionAlgo(Lookup);
 
-impl AbstractionAlgorithm {
+impl UpperAbstractionAlgo {
     pub async fn new() -> Self {
         Self(Lookup::new().await)
     }
@@ -64,7 +65,7 @@ impl AbstractionAlgorithm {
         const ITERATIONS: usize = 100;
         for _ in 0..ITERATIONS {
             for obs in observations.iter() {
-                let histogram = self.0.get_histogram(obs.clone()).await;
+                let ref histogram = self.0.get_histogram(obs.clone()).await;
                 let ref x = histogram;
                 let mut position = 0usize;
                 let mut minimium = f32::MAX;
@@ -82,7 +83,7 @@ impl AbstractionAlgorithm {
                 centroids
                     .get_mut(position)
                     .expect("position in range")
-                    .expand(histogram);
+                    .merge(histogram);
             }
         }
         // some optimization about keeping neighbors in database rather than hashamp
@@ -95,9 +96,6 @@ impl AbstractionAlgorithm {
     }
 
     async fn set_distances(&mut self, centroids: &mut Vec<Centroid>) {
-        for centroid in centroids.iter_mut() {
-            centroid.shrink();
-        }
         for (i, a) in centroids.iter().enumerate() {
             for (j, b) in centroids.iter().enumerate() {
                 if i > j {
@@ -128,6 +126,7 @@ impl AbstractionAlgorithm {
                 if empty[j] {
                     continue;
                 }
+                // weird clone/copy semantics
                 let this_key = this.domain()[j];
                 let that_key = that.domain()[i];
                 let spill = extra
@@ -138,7 +137,7 @@ impl AbstractionAlgorithm {
                 if spill == 0f32 {
                     continue;
                 }
-                let xor = Pair::from((*this_key, *that_key));
+                let xor = Pair::from((this_key.clone(), that_key.clone()));
                 let d = self.0.get_distance(xor).await;
                 let bonus = spill - goals[j];
                 if (bonus) < 0f32 {
@@ -156,3 +155,40 @@ impl AbstractionAlgorithm {
         cost
     }
 }
+
+// struct KMeans {
+//     t: usize,
+//     data: HashMap<Observation, Histogram>,
+//     centroids: [Histogram; K],
+// }
+// impl KMeans {
+//     async fn new(street: Street) -> Self {
+//         todo!("grab all histograms from database. use join or parallelized select")
+//     }
+
+//     async fn cluster(&self) {}
+
+//     async fn initials(&self) -> [Centroid; K] {
+//         todo!("k-means initialization")
+//     }
+// }
+
+// use std::sync::Arc;
+// const K: usize = 10;
+// type Index = usize;
+
+// async fn neighbor(x: &Histogram, centroids: Arc<[Histogram; K]>) -> Index {
+//     let mut position = 0usize;
+//     let mut minimium = f32::MAX;
+//     for (i, y) in centroids.iter().enumerate() {
+//         let emd = self.emd(x, y).await;
+//         if emd < minimium {
+//             position = i;
+//             minimium = emd;
+//         }
+//     }
+//     position
+// }
+
+// Arc<HashMap<Observation, Histogram>>
+//  Arc<
