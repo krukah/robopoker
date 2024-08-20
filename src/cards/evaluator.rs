@@ -108,16 +108,16 @@ impl Evaluator {
 
     ///
 
-    fn find_rank_of_straight(&self, u32_cards: u32) -> Option<Rank> {
+    fn find_rank_of_straight(&self, hand: u32) -> Option<Rank> {
         const WHEEL: u32 = 0b_1000000001111;
-        let mut bits = u32_cards;
+        let mut bits = hand;
         bits &= bits << 1;
         bits &= bits << 1;
         bits &= bits << 1;
         bits &= bits << 1;
         if bits > 0 {
             return Some(Rank::from(bits));
-        } else if WHEEL == (WHEEL & u32_cards) {
+        } else if WHEEL == (WHEEL & hand) {
             return Some(Rank::Five);
         } else {
             return None;
