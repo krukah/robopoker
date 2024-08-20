@@ -61,7 +61,7 @@ impl Showdown {
             .iter()
             .filter(|p| p.strength < self.next_strength)
             .filter(|p| p.status != BetStatus::Folded)
-            .map(|p| p.strength.clone()) //? can we copy, rather than clone, the kickers
+            .map(|p| p.strength)
             .max()
     }
 

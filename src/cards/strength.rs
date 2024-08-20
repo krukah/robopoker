@@ -8,7 +8,7 @@ use super::value::Ranking;
 /// This will always be constructed from a Hand, which is an unordered
 /// set of Cards. The strength is determined by the Hand's value, and the
 /// kicker cards are used to break ties.
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Strength {
     value: Ranking,
     kicks: Kickers,
