@@ -2,17 +2,11 @@ use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    clustering::postgres::Populator::river().await;
-    // CFR training iterations
+    clustering::lower_abstraction::LowerAbstractionAlgo::river().await;
     training::solver::Solver::new().solve(50_000);
-
-    // cfr::training::Trainer::from(postgres).train().await;
-    // implement pseudoharmonic mapping
-    // populate infoset table
 }
 
 /*
-
    2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
    2019. Regret Circuits: Composability of Regret Minimizers. In Proceedings of the International Conference on Machine Learning (ICML), 2019. arXiv version. (https://arxiv.org/abs/1811.02540)
    2019. Stable-Predictive Optimistic Counterfactual Regret Minimization. In ICML. arXiv version. (https://arxiv.org/pdf/1902.04982.pdf)
@@ -57,5 +51,4 @@ async fn main() {
    2010. Computing Equilibria by Incorporating Qualitative Models (http://www.cs.cmu.edu/~sandholm/qualitative.aamas10.pdf). In AAMAS. Extended version (http://www.cs.cmu.edu/~sandholm/qualitative.TR10.pdf): CMU technical report 20CMU-CS-10-105.
    2010. Speeding Up Gradient-Based Algorithms for Sequential Games (Extended Abstract) (http://www.cs.cmu.edu/~sandholm/speedup.aamas10.pdf). In AAMAS.
    2009. Computing Equilibria in Multiplayer Stochastic Games of Imperfect Information (http://www.cs.cmu.edu/~sandholm/stochgames.ijcai09.pdf). In IJCAI.
-
 */

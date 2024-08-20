@@ -1,4 +1,4 @@
-use super::abstraction::Abstraction;
+use super::equivalence::Abstraction;
 use std::collections::BTreeMap;
 use std::hash::Hash;
 
@@ -7,10 +7,10 @@ use std::hash::Hash;
 /// The sum of the weights is the total number of samples.
 /// The weight of an abstraction is the number of times it was sampled.
 /// We derive Hash from BTreeMap which allows us to identify a unique Histogram.
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, Default)]
 pub struct Histogram {
-    sum: usize,
-    weights: BTreeMap<Abstraction, usize>,
+    pub(super) sum: usize,
+    pub(super) weights: BTreeMap<Abstraction, usize>,
 }
 
 impl Histogram {
@@ -23,15 +23,11 @@ impl Histogram {
     pub fn size(&self) -> usize {
         self.weights.len()
     }
-    pub fn centroid(histograms: Vec<&Histogram>) -> Histogram {
-        let mut centroid = Self::from(vec![]);
-        for histogram in histograms {
-            for (key, count) in histogram.weights.iter() {
-                *centroid.weights.entry(*key).or_insert(0) += count;
-            }
-            centroid.sum += histogram.sum;
+    pub fn merge(&mut self, other: &Self) {
+        self.sum += other.sum;
+        for (key, count) in other.weights.iter() {
+            *self.weights.entry(key.clone()).or_insert(0) += count;
         }
-        centroid
     }
 }
 
@@ -50,7 +46,7 @@ impl From<Vec<Abstraction>> for Histogram {
 ///
 /// It is used to collect histograms and collapse them into a single histogram.
 /// Tightly coupled with k-means implementaiton in Layer
-pub struct Centroid(Histogram, Vec<Histogram>);
+pub struct Centroid(Histogram, Abstraction);
 
 impl Centroid {
     pub fn histogram(&self) -> &Histogram {
@@ -61,18 +57,7 @@ impl Centroid {
         Abstraction::from(&self.0)
     }
     /// maybe we don't keep the new Histogram in memory, and keep a running average to preserve meory
-    pub fn expand(&mut self, histogram: Histogram) {
-        self.1.push(histogram);
-    }
-    pub fn shrink(&mut self) {
-        self.0.sum = 0;
-        self.0.weights.clear();
-        for histogram in self.1.iter() {
-            for (key, count) in histogram.weights.iter() {
-                *self.0.weights.entry(*key).or_insert(0) += count;
-            }
-            self.0.sum += histogram.sum;
-        }
-        self.1.clear();
+    pub fn merge(&mut self, other: &Histogram) {
+        self.0.merge(other);
     }
 }
