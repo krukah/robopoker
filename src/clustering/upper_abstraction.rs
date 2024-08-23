@@ -1,7 +1,7 @@
 use super::histogram::Centroid;
 use super::histogram::Histogram;
-use super::observation::Observation;
 use super::xor::Pair;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use std::collections::HashMap;
 use std::vec;

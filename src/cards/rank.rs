@@ -65,6 +65,23 @@ impl From<Rank> for u32 {
         1 << u8::from(r)
     }
 }
+
+/// u16 isomorphism
+///
+/// This is the same as u32, just uses fewer bits
+/// With 13 ranks we don't need all 32 bits
+impl From<u16> for Rank {
+    fn from(n: u16) -> Rank {
+        let msb = (16 - n.leading_zeros() - 1) as u8;
+        Rank::from(msb)
+    }
+}
+impl From<Rank> for u16 {
+    fn from(r: Rank) -> u16 {
+        1 << u8::from(r)
+    }
+}
+
 impl std::fmt::Display for Rank {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(

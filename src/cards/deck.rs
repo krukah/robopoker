@@ -8,8 +8,11 @@ impl Deck {
         Self(Hand::from((1 << 52) - 1))
     }
 
-    pub fn draw(&mut self) -> Card {
-        self.0.draw()
+    pub fn flip(&mut self) -> Card {
+        let index = self.0 .0.trailing_zeros();
+        let card = Card::from(index as u8);
+        self.0 .0 &= !(1 << index);
+        card
     }
 }
 

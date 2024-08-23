@@ -1,17 +1,8 @@
-use crate::clustering::equivalence::Abstraction;
+use crate::cards::observation::Observation;
+use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::observation::Observation;
 use crate::clustering::xor::Pair;
 
-///
-///
-///
-///
-///
-///
-///
-///
-///
 #[derive(Clone)]
 pub struct PostgresLookup {
     pool: sqlx::PgPool,
