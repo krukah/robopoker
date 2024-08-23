@@ -39,7 +39,7 @@ impl Showdown {
     }
 
     fn new(payouts: Vec<Payout>) -> Self {
-        let next_rank = Strength::from((Ranking::MAX, Kickers::from(0u32)));
+        let next_rank = Strength::from((Ranking::MAX, Kickers::from(0u16)));
         let next_stake = u32::MIN;
         let prev_stake = u32::MIN;
         Self {

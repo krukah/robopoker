@@ -46,12 +46,16 @@ impl From<u8> for Card {
 /// 000000000000000 0010 0000100000000
 impl From<Card> for u32 {
     fn from(c: Card) -> u32 {
-        u32::from(c.suit()) | u32::from(c.rank())
+        let rank = u16::from(c.rank()) as u32;
+        let suit = 1 << (13 + u8::from(c.suit()));
+        rank | suit
     }
 }
 impl From<u32> for Card {
     fn from(n: u32) -> Self {
-        Self::from((Rank::from(n), Suit::from(n)))
+        let rank = Rank::from(n as u16);
+        let suit = Suit::from((n >> 13).trailing_zeros() as u8);
+        Self::from((rank, suit))
     }
 }
 
