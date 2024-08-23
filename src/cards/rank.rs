@@ -16,14 +16,6 @@ pub enum Rank {
     Ace = 12,
 }
 
-impl Rank {
-    pub fn mask(n: u32) -> u32 {
-        n & 0b00000000000000000001111111111111
-    }
-    pub const MAX: Self = Rank::Ace;
-    pub const MIN: Self = Rank::Two;
-}
-
 /// u8 isomorphism
 impl From<u8> for Rank {
     fn from(n: u8) -> Rank {
@@ -51,28 +43,13 @@ impl From<Rank> for u8 {
     }
 }
 
-/// u32 isomorphism.
-/// with this we get the highest rank in a union of cards in u32 representation
-/// xxxxxxxxxxxxxxx xxxx 0000Txxxxxxxx
-impl From<u32> for Rank {
-    fn from(n: u32) -> Rank {
-        let msb = (32 - Rank::mask(n).leading_zeros() - 1) as u8;
-        Rank::from(msb)
-    }
-}
-impl From<Rank> for u32 {
-    fn from(r: Rank) -> u32 {
-        1 << u8::from(r)
-    }
-}
-
 /// u16 isomorphism
 ///
-/// This is the same as u32, just uses fewer bits
-/// With 13 ranks we don't need all 32 bits
+/// With 13 ranks we only need 13 bits
 impl From<u16> for Rank {
     fn from(n: u16) -> Rank {
-        let msb = (16 - n.leading_zeros() - 1) as u8;
+        const MASK: u16 = 0b1111111111111;
+        let msb = (16 - 1 - (n & MASK).leading_zeros()) as u8;
         Rank::from(msb)
     }
 }

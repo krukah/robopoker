@@ -1,5 +1,7 @@
-use super::{card::Card, hand::Hand};
+use super::card::Card;
+use super::hand::Hand;
 
+/// Deck extends much of Hand functionality, with ability to remove cards from itself. Random selection via ::draw(), or sequential via ::flip().
 #[derive(Debug, Clone, Copy)]
 pub struct Deck(Hand);
 
@@ -9,21 +11,17 @@ impl Deck {
     }
 
     pub fn flip(&mut self) -> Card {
-        let index = self.0 .0.trailing_zeros();
-        let card = Card::from(index as u8);
-        self.0 .0 &= !(1 << index);
-        card
+        let value = u64::from(self.0);
+        let zeros = value.trailing_zeros();
+        self.0 = Hand::from(value & !(1 << zeros));
+        Card::from(zeros as u8)
     }
-}
 
-// u64 isomorphism
-impl From<u64> for Deck {
-    fn from(n: u64) -> Self {
-        Self(Hand::from(n))
-    }
-}
-impl From<Deck> for u64 {
-    fn from(deck: Deck) -> u64 {
-        u64::from(deck.0)
+    pub fn draw(&mut self) -> Card {
+        //? TODO: index should be a randomly selected bit index to distinguish from flip
+        let value = u64::from(self.0);
+        let index = value.trailing_zeros();
+        self.0 = Hand::from(value & !(1 << index));
+        Card::from(index as u8)
     }
 }

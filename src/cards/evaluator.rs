@@ -45,14 +45,14 @@ impl Evaluator {
             Ranking::OnePair(_) => 3,
             Ranking::ThreeOAK(_) => 2,
             Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
-            _ => return Kickers::from(0u32),
+            _ => return Kickers::from(0u16),
         };
         let mask = match value {
             Ranking::HighCard(hi)
             | Ranking::OnePair(hi)
             | Ranking::ThreeOAK(hi)
-            | Ranking::FourOAK(hi) => u32::from(hi),
-            Ranking::TwoPair(hi, lo) => u32::from(hi) | u32::from(lo),
+            | Ranking::FourOAK(hi) => u16::from(hi),
+            Ranking::TwoPair(hi, lo) => u16::from(hi) | u16::from(lo),
             _ => unreachable!(),
         };
         let mut bits = mask & self.rank_masks();
@@ -108,8 +108,8 @@ impl Evaluator {
 
     ///
 
-    fn find_rank_of_straight(&self, hand: u32) -> Option<Rank> {
-        const WHEEL: u32 = 0b_1000000001111;
+    fn find_rank_of_straight(&self, hand: u16) -> Option<Rank> {
+        const WHEEL: u16 = 0b_1000000001111;
         let mut bits = hand;
         bits &= bits << 1;
         bits &= bits << 1;
@@ -134,9 +134,6 @@ impl Evaluator {
             .position(|&n| n >= 5)
             .map(|i| Suit::from(i as u8))
     }
-    fn find_rank_of_n_oak(&self, n: usize) -> Option<Rank> {
-        self.find_rank_of_n_oak_under(n, None)
-    }
     fn find_rank_of_n_oak_under(&self, oak: usize, rank: Option<Rank>) -> Option<Rank> {
         let rank = rank.map(|c| u8::from(c)).unwrap_or(13) as u64;
         let mask = (1u64 << (4 * rank)) - 1;
@@ -152,16 +149,19 @@ impl Evaluator {
         }
         None
     }
+    fn find_rank_of_n_oak(&self, n: usize) -> Option<Rank> {
+        self.find_rank_of_n_oak_under(n, None)
+    }
     ///
 
     /// rank_masks:
     /// Masks,
     /// which ranks are in the hand, neglecting suit
-    fn rank_masks(&self) -> u32 {
+    fn rank_masks(&self) -> u16 {
         Vec::<Card>::from(self.0)
             .iter()
             .map(|c| c.rank())
-            .map(|r| r as u32)
+            .map(|r| r as u16)
             .fold(0, |acc, r| acc | r)
     }
     /// suit_count:
@@ -180,11 +180,11 @@ impl Evaluator {
     /// suit_masks:
     /// [Masks; 4],
     /// which ranks are in the hand, grouped by suit
-    fn suit_masks(&self) -> [u32; 4] {
+    fn suit_masks(&self) -> [u16; 4] {
         Vec::<Card>::from(self.0)
             .iter()
             .map(|c| (c.suit(), c.rank()))
-            .map(|(s, r)| (s as usize, u32::from(r)))
+            .map(|(s, r)| (s as usize, u16::from(r)))
             .fold([0; 4], |mut suits, (s, r)| {
                 suits[s] |= r;
                 suits
