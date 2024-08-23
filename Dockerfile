@@ -1,8 +1,10 @@
+# Build stage
 FROM rust:1.80 AS builder
 WORKDIR /usr/src/robopoker
 COPY . .
 RUN cargo build --release
 
+# Binary stage
 FROM debian:bookworm-slim AS binary
 RUN apt-get update && \
     apt-get install -y libssl3 ca-certificates && \

@@ -1,5 +1,5 @@
 use super::histogram::Histogram;
-use super::observation::Observation;
+use crate::cards::observation::Observation;
 use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -38,9 +38,7 @@ impl From<&Observation> for Abstraction {
 
 impl From<Abstraction> for u64 {
     fn from(a: Abstraction) -> Self {
-        match a {
-            Abstraction(n) => n,
-        }
+        a.0
     }
 }
 impl From<u64> for Abstraction {

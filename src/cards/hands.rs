@@ -1,4 +1,4 @@
-use crate::cards::hand::Hand;
+use super::hand::Hand;
 
 /// HandIterator allows you to block certain cards and iterate over all possible hands of length n
 /// n can be:

@@ -1,4 +1,4 @@
-use super::equivalence::Abstraction;
+use super::abstraction::Abstraction;
 use std::collections::BTreeMap;
 use std::hash::Hash;
 
@@ -46,7 +46,7 @@ impl From<Vec<Abstraction>> for Histogram {
 ///
 /// It is used to collect histograms and collapse them into a single histogram.
 /// Tightly coupled with k-means implementaiton in Layer
-pub struct Centroid(Histogram, Abstraction);
+pub struct Centroid(Histogram);
 
 impl Centroid {
     pub fn histogram(&self) -> &Histogram {

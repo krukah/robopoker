@@ -1,8 +1,8 @@
+use super::card::Card;
+use super::hand::Hand;
 use super::hands::HandIterator;
-use crate::cards::card::Card;
-use crate::cards::hand::Hand;
-use crate::cards::street::Street;
-use crate::cards::strength::Strength;
+use super::street::Street;
+use super::strength::Strength;
 use std::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
@@ -38,6 +38,7 @@ impl Observation {
         println!("Exhausted {} {} observations", observations.len(), street);
         observations
     }
+
     /// Calculates the equity of the current observation.
     ///
     /// This calculation integrations across ALL possible opponent hole cards.
@@ -45,9 +46,9 @@ impl Observation {
     /// But it's a one-time calculation so we can afford to be slow
     pub fn equity(&self) -> f32 {
         assert!(self.street() == Street::Rive);
-        let observed = self.observed();
-        let hero = Strength::from(observed);
-        let opponents = HandIterator::from((2usize, observed));
+        let hand = Hand::add(self.public, self.secret);
+        let hero = Strength::from(hand);
+        let opponents = HandIterator::from((2usize, hand));
         let n = opponents.combinations();
         opponents
             .map(|oppo| Hand::add(self.public, oppo))
@@ -66,8 +67,8 @@ impl Observation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
-    pub fn outnodes(&self) -> impl IntoIterator<Item = Observation> + '_ {
-        let excluded = self.observed();
+    pub fn outnodes(&self) -> impl IntoIterator<Item = Self> + '_ {
+        let excluded = Hand::add(self.public, self.secret);
         let n_revealed = match self.street() {
             Street::Pref => 3,
             Street::Flop => 1,
@@ -91,11 +92,6 @@ impl Observation {
             5 => Street::Rive,
             _ => panic!("no other sizes"),
         }
-    }
-
-    /// Generate mask conditional on .secret, .public
-    pub fn observed(&self) -> Hand {
-        Hand::add(self.secret, self.public)
     }
 }
 

@@ -2,7 +2,7 @@ use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    clustering::lower_abstraction::LowerAbstractionAlgo::river().await;
+    clustering::lower_abstraction::RiverAbstraction::cluster().await;
     training::solver::Solver::new().solve(50_000);
 }
 

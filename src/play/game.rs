@@ -168,16 +168,16 @@ impl Game {
                 }
             }
             Street::Flop => {
-                let card1 = self.deck.draw();
-                let card2 = self.deck.draw();
-                let card3 = self.deck.draw();
+                let card1 = self.deck.flip();
+                let card2 = self.deck.flip();
+                let card3 = self.deck.flip();
                 self.apply(Action::Draw(card1));
                 self.apply(Action::Draw(card2));
                 self.apply(Action::Draw(card3));
                 println!("   {}", self.head.board)
             }
             Street::Turn | Street::Rive => {
-                let card = self.deck.draw();
+                let card = self.deck.flip();
                 self.apply(Action::Draw(card));
                 println!("   {}", self.head.board)
             }
