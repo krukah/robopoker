@@ -13,3 +13,4 @@ sqlx            = { version = "0.8", features = ["runtime-tokio-native-tls", "po
 tokio-postgres  = "0.7.11"
 futures         = "0.3"
 bytes           = "1.0"
+num_cpus = "1.16.0"
