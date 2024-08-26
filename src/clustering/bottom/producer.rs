@@ -1,8 +1,7 @@
-use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
-
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 
 pub struct Producer {
     tx: Sender<(Observation, Abstraction)>,
@@ -20,8 +19,9 @@ impl Producer {
     }
 
     pub(super) async fn run(self) {
-        let beg = self.shard * super::RIVERS_PER_TASK;
-        let end = self.shard * super::RIVERS_PER_TASK + super::RIVERS_PER_TASK;
+        let n = self.rivers.len() / num_cpus::get();
+        let beg = self.shard * n;
+        let end = self.shard * n + n;
         for index in beg..end {
             if let Some(observation) = self.rivers.get(index) {
                 let abstraction = Abstraction::from(observation);

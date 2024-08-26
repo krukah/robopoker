@@ -1,8 +1,10 @@
 use super::progress::Progress;
-use crate::{cards::observation::Observation, clustering::abstraction::Abstraction};
+use crate::clustering::bottom::Abstraction;
+use crate::clustering::bottom::Observation;
 use std::pin::Pin;
 use tokio::sync::mpsc::Receiver;
-use tokio_postgres::{binary_copy::BinaryCopyInWriter, types::Type};
+use tokio_postgres::binary_copy::BinaryCopyInWriter;
+use tokio_postgres::types::Type;
 
 pub struct Consumer {
     rx: Receiver<(Observation, Abstraction)>,
