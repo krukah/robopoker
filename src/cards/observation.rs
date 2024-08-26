@@ -20,13 +20,13 @@ pub struct Observation {
 
 impl Observation {
     pub fn all(street: Street) -> Vec<Observation> {
-        println!("Exhausting all {} observations...", street);
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
             Street::Rive => 5,
             _ => panic!("no other transitions"),
         };
+        println!("exhausting all {} observations...", street);
         let mut observations = Vec::new(); // TODO make with_capacity, conditional on street
         let secrets = HandIterator::from((2usize, Hand::from(0u64)));
         for secret in secrets {
@@ -35,7 +35,6 @@ impl Observation {
                 observations.push(Observation::from((secret, public)));
             }
         }
-        println!("Exhausted {} {} observations", observations.len(), street);
         observations
     }
 
@@ -54,9 +53,9 @@ impl Observation {
             .map(|oppo| Hand::add(self.public, oppo))
             .map(|hand| Strength::from(hand))
             .map(|oppo| match &hero.cmp(&oppo) {
-                Ordering::Less => 0,
-                Ordering::Equal => 1,
                 Ordering::Greater => 2,
+                Ordering::Equal => 1,
+                Ordering::Less => 0,
             })
             .sum::<u32>() as f32
             / n as f32
@@ -67,21 +66,21 @@ impl Observation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
-    pub fn outnodes(&self) -> impl IntoIterator<Item = Self> + '_ {
+    pub fn outnodes(&self) -> Vec<Observation> {
+        // LOOP over (2 + street)-handed OBSERVATIONS
+        // EXPAND the current observation's BOARD CARDS
+        // PRESERVE the current observation's HOLE CARDS
         let excluded = Hand::add(self.public, self.secret);
-        let n_revealed = match self.street() {
+        let expanded = match self.street() {
             Street::Pref => 3,
             Street::Flop => 1,
             Street::Turn => 1,
             _ => panic!("no children for river"),
         };
-        HandIterator::from((n_revealed, excluded))
+        HandIterator::from((expanded, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Observation::from((self.secret, public)))
-        // BIG ITERATOR
-        // LOOP over (2 + street)-handed OBSERVATIONS
-        // EXPAND the current observation's BOARD CARDS
-        // PRESERVE the current observation's HOLE CARDS
+            .collect::<Vec<Self>>()
     }
 
     pub fn street(&self) -> Street {
