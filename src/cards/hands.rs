@@ -36,7 +36,7 @@ impl HandIterator {
         let  x = /* 000_100                       */ self.next;
         let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
         let  b = /* 001_000 <-                    */ a + 1;
-        let  c = /* 111_000 <-                    */ !a;
+        let  c = /* 111_000 <-                    */ !   a;
         let  d = /* 001_000 <- 111_000 && 001_000 */ c & b;
         let  e = /* 000_111 <-                    */ d - 1;
         let  f = /*         << xxx                */ 1 + x.trailing_zeros();

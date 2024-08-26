@@ -1,8 +1,12 @@
+use super::seat::Status;
+use crate::cards::strength::Strength;
+use colored::Colorize;
+
 #[derive(Debug, Clone)]
 pub struct Payout {
     pub position: usize,
     pub strength: Strength,
-    pub status: BetStatus,
+    pub status: Status,
     pub risked: u32,
     pub reward: u32,
 }
@@ -21,7 +25,3 @@ impl std::fmt::Display for Payout {
         }
     }
 }
-
-use super::seat::BetStatus;
-use crate::cards::strength::Strength;
-use colored::Colorize;

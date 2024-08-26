@@ -8,7 +8,7 @@ pub mod hole;
 pub mod kicks;
 pub mod observation;
 pub mod rank;
+pub mod ranking;
 pub mod street;
 pub mod strength;
 pub mod suit;
-pub mod value;

@@ -42,11 +42,11 @@ impl Layer {
             for (_, (data, last)) in self.observations.iter_mut() {
                 let mut nearests = f32::MAX;
                 let mut neighbor = Abstraction::default();
-                for (abs, (mean, _)) in self.abstractions.iter_mut() {
+                for (abstraction, (mean, _)) in self.abstractions.iter_mut() {
                     let distance = self.metric.emd(data, mean);
                     if distance < nearests {
                         nearests = distance;
-                        neighbor = abs.clone();
+                        neighbor = abstraction.clone();
                     }
                 }
                 self.abstractions
@@ -60,6 +60,20 @@ impl Layer {
     }
 
     /// Calculate and return the metric using EMD distances between abstractions
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
+    /// TODO
     /// TODO
     /// this won't work for River because we have no emd.
     /// Need pattern match on street.
@@ -88,7 +102,8 @@ impl Layer {
             .map(|upper| (upper, (self.observations.project(upper), Abstraction::default())))
             .collect()
     }
-
+    
+    #[rustfmt::skip]
     /// K Means++ implementation yields initial histograms. Abstractions are random and require uniqueness.
     fn abstractions(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
         // 0. Initialize data structures
@@ -110,13 +125,12 @@ impl Layer {
         const K: usize = 100;
         while means.len() < K {
             let distances = observations
-                .map(|histogram| {
-                    means
-                        .iter()
-                        .map(|centroid| self.metric.emd(centroid, histogram))
-                        .min_by(|a, b| a.partial_cmp(b).unwrap())
-                        .expect("find minimum")
-                })
+                .map(|histogram| means
+                    .iter()
+                    .map(|centroid| self.metric.emd(centroid, histogram))
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .expect("find minimum")
+                )
                 .map(|min| min * min)
                 .collect::<Vec<f32>>();
             let choice = WeightedIndex::new(distances)

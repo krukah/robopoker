@@ -90,7 +90,7 @@ impl Game {
             .head
             .seats
             .iter()
-            .filter(|s| s.status() != BetStatus::Folded)
+            .filter(|s| s.status() != Status::Folding)
             .map(|s| s.stake())
             .collect::<Vec<u32>>();
         stakes.sort_unstable();
@@ -155,7 +155,7 @@ impl Game {
         let seat = self.head.seat_at_position_mut(pointer);
         let bet = std::cmp::min(size, seat.stack());
         if seat.stack() <= bet {
-            seat.set(BetStatus::Shoved);
+            seat.set(Status::Shoving);
         }
         self.apply(Action::Blind(pointer, bet));
     }
@@ -195,7 +195,7 @@ impl Game {
     }
 }
 use super::payout::Payout;
-use super::seat::{BetStatus, Seat};
+use super::seat::{Status, Seat};
 use super::showdown::Showdown;
 use super::{action::Action, rotation::Rotation};
 use crate::cards::hand::Hand;

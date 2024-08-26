@@ -1,7 +1,7 @@
 use super::evaluator::Evaluator;
 use super::hand::Hand;
 use super::kicks::Kickers;
-use super::value::Ranking;
+use super::ranking::Ranking;
 
 /// A hand's strength.
 ///

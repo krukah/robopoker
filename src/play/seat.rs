@@ -8,7 +8,7 @@ pub struct Seat {
     hole: Hole,
     stack: u32,
     stake: u32,
-    status: BetStatus,
+    status: Status,
 }
 
 impl Seat {
@@ -17,7 +17,7 @@ impl Seat {
             position,
             stack,
             stake: 0,
-            status: BetStatus::Playing,
+            status: Status::Playing,
             hole: Hole::new(),
         }
     }
@@ -30,7 +30,7 @@ impl Seat {
     pub fn stake(&self) -> u32 {
         self.stake
     }
-    pub fn status(&self) -> BetStatus {
+    pub fn status(&self) -> Status {
         self.status
     }
     pub fn peek(&self) -> &Hole {
@@ -51,7 +51,7 @@ impl Seat {
         println!("{}{}", self, winnings);
         self.stack += winnings;
     }
-    pub fn set(&mut self, status: BetStatus) {
+    pub fn set(&mut self, status: Status) {
         self.status = status;
     }
     pub fn clear(&mut self) {
@@ -125,18 +125,18 @@ impl std::fmt::Display for Seat {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BetStatus {
+pub enum Status {
     Playing,
-    Shoved,
-    Folded,
+    Shoving,
+    Folding,
 }
 
-impl std::fmt::Display for BetStatus {
+impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            BetStatus::Playing => write!(f, "P"),
-            BetStatus::Shoved => write!(f, "S"),
-            BetStatus::Folded => write!(f, "{}", "F".red()),
+            Status::Playing => write!(f, "P"),
+            Status::Shoving => write!(f, "S"),
+            Status::Folding => write!(f, "{}", "F".red()),
         }
     }
 }
