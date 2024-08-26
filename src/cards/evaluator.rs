@@ -2,7 +2,6 @@ use super::card::Card;
 use super::hand::Hand;
 use super::kicks::Kickers;
 use super::rank::Rank;
-use super::strength::Strength;
 use super::suit::Suit;
 use super::value::Ranking;
 
@@ -19,16 +18,8 @@ impl From<Hand> for Evaluator {
     }
 }
 
-impl From<Evaluator> for Strength {
-    fn from(e: Evaluator) -> Self {
-        let value = e.find_ranking();
-        let kicks = e.find_kickers(value);
-        Self::from((value, kicks))
-    }
-}
-
 impl Evaluator {
-    fn find_ranking(&self) -> Ranking {
+    pub fn find_ranking(&self) -> Ranking {
         self.find_flush()
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
@@ -39,20 +30,20 @@ impl Evaluator {
             .or_else(|| self.find_1_oak())
             .expect("at least one card in Hand")
     }
-    fn find_kickers(&self, value: Ranking) -> Kickers {
+    pub fn find_kickers(&self, value: Ranking) -> Kickers {
         let n = match value {
+            Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
             Ranking::HighCard(_) => 4,
             Ranking::OnePair(_) => 3,
             Ranking::ThreeOAK(_) => 2,
-            Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
             _ => return Kickers::from(0u16),
         };
         let mask = match value {
+            Ranking::TwoPair(hi, lo) => u16::from(hi) | u16::from(lo),
             Ranking::HighCard(hi)
             | Ranking::OnePair(hi)
             | Ranking::ThreeOAK(hi)
             | Ranking::FourOAK(hi) => u16::from(hi),
-            Ranking::TwoPair(hi, lo) => u16::from(hi) | u16::from(lo),
             _ => unreachable!(),
         };
         let mut bits = mask & self.rank_masks();
@@ -116,11 +107,11 @@ impl Evaluator {
         bits &= bits << 1;
         bits &= bits << 1;
         if bits > 0 {
-            return Some(Rank::from(bits));
+            Some(Rank::from(bits))
         } else if WHEEL == (WHEEL & hand) {
-            return Some(Rank::Five);
+            Some(Rank::Five)
         } else {
-            return None;
+            None
         }
     }
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
