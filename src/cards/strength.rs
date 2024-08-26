@@ -20,6 +20,14 @@ impl From<Hand> for Strength {
     }
 }
 
+impl From<Evaluator> for Strength {
+    fn from(e: Evaluator) -> Self {
+        let value = e.find_ranking();
+        let kicks = e.find_kickers(value);
+        Self::from((value, kicks))
+    }
+}
+
 impl From<(Ranking, Kickers)> for Strength {
     fn from((value, kicks): (Ranking, Kickers)) -> Self {
         Self { value, kicks }
