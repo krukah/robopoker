@@ -8,6 +8,8 @@ pub struct Progress {
 }
 impl Progress {
     const CHECKPOINT: usize = 50_000;
+    const TOTAL: usize = 2_809_475_760;
+
     pub fn new() -> Self {
         let now = Instant::now();
         Self {
@@ -32,7 +34,7 @@ impl Progress {
             #[rustfmt::skip]
             println!("Last Freq:{:>10.0}", Self::CHECKPOINT as f32 / delta_t.as_secs_f32());
             #[rustfmt::skip]
-            println!("{:10}{:>10.1}%", self.complete, (self.complete as f32 / crate::clustering::river::RIVERS as f32) * 100.0);
+            println!("{:10}{:>10.1}%", self.complete, (self.complete as f32 / Self::TOTAL as f32) * 100.0);
             std::io::stdout().flush().unwrap();
         }
     }

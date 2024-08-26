@@ -1,28 +1,31 @@
 use super::abstraction::Abstraction;
-use crate::cards::{observation::Observation, street::Street};
-use consumer::Consumer;
-use producer::Producer;
+use super::upper::layer::Layer;
+use crate::cards::observation::Observation;
+use crate::cards::street::Street;
+use crate::clustering::bottom::consumer::Consumer;
+use crate::clustering::bottom::producer::Producer;
 use std::sync::Arc;
 
 pub mod consumer;
 pub mod producer;
 pub mod progress;
 
-const TASKS: usize = 8;
-const RIVERS: usize = 2_809_475_760;
-const RIVERS_PER_TASK: usize = RIVERS / TASKS;
-
-pub async fn cluster() {
-    let mut tasks = Vec::with_capacity(TASKS);
+pub async fn upload() {
+    let cpus = num_cpus::get();
+    let mut tasks = Vec::with_capacity(cpus);
     let ref observations = Arc::new(Observation::all(Street::Rive));
     let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
     let consumer = Consumer::new(rx).await;
     tasks.push(tokio::spawn(consumer.run()));
-    for task in 0..TASKS {
+    for task in 0..cpus {
         let tx = tx.clone();
         let observations = observations.clone();
         let producer = Producer::new(task, tx, observations);
         tasks.push(tokio::task::spawn(producer.run()));
     }
     futures::future::join_all(tasks).await;
+}
+
+pub async fn download() -> Layer {
+    todo!()
 }
