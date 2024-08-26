@@ -46,7 +46,7 @@ impl Solver {
         &self.average
     }
 
-    pub fn solve(&mut self, epochs: usize) {
+    pub fn minimize(&mut self, epochs: usize) {
         self.initialize();
         while self.epoch < epochs {
             self.step();

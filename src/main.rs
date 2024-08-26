@@ -2,8 +2,15 @@ use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    clustering::river::cluster().await;
-    training::solver::Solver::new().solve(50_000);
+    clustering::upper::layer::Layer::bottom()
+        .await
+        .raise()
+        .await
+        .raise()
+        .await
+        .raise()
+        .await;
+    training::solver::Solver::new().minimize(50_000);
 }
 
 /*
