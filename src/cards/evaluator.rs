@@ -2,8 +2,8 @@ use super::card::Card;
 use super::hand::Hand;
 use super::kicks::Kickers;
 use super::rank::Rank;
+use super::ranking::Ranking;
 use super::suit::Suit;
-use super::value::Ranking;
 
 /// A lazy evaluator for a hand's strength.
 ///

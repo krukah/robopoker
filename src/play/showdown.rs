@@ -1,7 +1,7 @@
 use crate::cards::kicks::Kickers;
+use crate::cards::ranking::Ranking;
 use crate::cards::strength::Strength;
-use crate::cards::value::Ranking;
-use crate::play::{payout::Payout, seat::BetStatus};
+use crate::play::{payout::Payout, seat::Status};
 
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
@@ -16,7 +16,7 @@ impl Showdown {
         let reward = payouts.iter().map(|p| p.risked).sum::<u32>();
         let winner = payouts
             .iter_mut()
-            .find(|p| p.status != BetStatus::Folded)
+            .find(|p| p.status != Status::Folding)
             .unwrap();
         winner.reward = reward;
         payouts
@@ -60,7 +60,7 @@ impl Showdown {
         self.payouts
             .iter()
             .filter(|p| p.strength < self.next_strength)
-            .filter(|p| p.status != BetStatus::Folded)
+            .filter(|p| p.status != Status::Folding)
             .map(|p| p.strength)
             .max()
     }
@@ -71,7 +71,7 @@ impl Showdown {
             .iter()
             .filter(|p| p.strength == self.next_strength)
             .filter(|p| p.risked > self.prev_stake)
-            .filter(|p| p.status != BetStatus::Folded)
+            .filter(|p| p.status != Status::Folding)
             .map(|p| p.risked)
             .min()
     }
@@ -90,7 +90,7 @@ impl Showdown {
             .iter_mut()
             .filter(|p| p.strength == self.next_strength)
             .filter(|p| p.risked > self.prev_stake)
-            .filter(|p| p.status != BetStatus::Folded)
+            .filter(|p| p.status != Status::Folding)
             .collect()
     }
 

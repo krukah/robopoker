@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use super::action::Action;
-use super::seat::BetStatus;
 use super::seat::Seat;
+use super::seat::Status;
 use crate::cards::board::Board;
 use crate::cards::street::Street;
 
@@ -13,10 +13,12 @@ use crate::cards::street::Street;
 /// pure functions representing the rules of how the game may proceed.
 #[derive(Debug, Clone)]
 pub struct Rotation {
-    pub pot: u32,
+    // -- this is the real Rotation
     pub dealer: usize,
     pub counts: usize,
     pub action: usize,
+    // -- this is the real Rotation
+    pub pot: u32,
     pub board: Board,
     pub seats: Vec<Seat>,
 }
@@ -80,7 +82,7 @@ impl Rotation {
         // exactly one player has not folded
         self.seats
             .iter()
-            .filter(|s| s.status() != BetStatus::Folded)
+            .filter(|s| s.status() != Status::Folding)
             .count()
             == 1
     }
@@ -88,8 +90,8 @@ impl Rotation {
         // everyone who isn't folded is all in
         self.seats
             .iter()
-            .filter(|s| s.status() != BetStatus::Folded)
-            .all(|s| s.status() == BetStatus::Shoved)
+            .filter(|s| s.status() != Status::Folding)
+            .all(|s| s.status() == Status::Shoving)
     }
     pub fn are_all_called(&self) -> bool {
         // everyone who isn't folded has matched the bet
@@ -99,7 +101,7 @@ impl Rotation {
         let is_one_playing = self
             .seats
             .iter()
-            .filter(|s| s.status() == BetStatus::Playing)
+            .filter(|s| s.status() == Status::Playing)
             .count()
             == 1;
         let has_no_decision = is_first_decision && is_one_playing;
@@ -107,7 +109,7 @@ impl Rotation {
         let has_all_matched = self
             .seats
             .iter()
-            .filter(|s| s.status() == BetStatus::Playing)
+            .filter(|s| s.status() == Status::Playing)
             .all(|s| s.stake() == stakes);
         (has_all_decided || has_no_decision) && has_all_matched
     }
@@ -131,8 +133,8 @@ impl Rotation {
             _ => (),
         }
         match action {
-            Action::Fold(..) => seat.set(BetStatus::Folded),
-            Action::Shove(..) => seat.set(BetStatus::Shoved),
+            Action::Fold(..) => seat.set(Status::Folding),
+            Action::Shove(..) => seat.set(Status::Shoving),
             _ => (),
         }
         match action {
@@ -145,7 +147,7 @@ impl Rotation {
     }
     pub fn begin_hand(&mut self) {
         for seat in self.seats.iter_mut() {
-            seat.set(BetStatus::Playing);
+            seat.set(Status::Playing);
             seat.clear();
         }
         self.pot = 0;
@@ -177,8 +179,8 @@ impl Rotation {
             self.counts += 1;
             self.action = self.after(self.action);
             match self.up().status() {
-                BetStatus::Playing => return,
-                BetStatus::Folded | BetStatus::Shoved => continue 'left,
+                Status::Playing => return,
+                Status::Folding | Status::Shoving => continue 'left,
             }
         }
     }
@@ -187,8 +189,8 @@ impl Rotation {
             self.counts -= 1;
             self.action = self.before(self.action);
             match self.up().status() {
-                BetStatus::Playing => return,
-                BetStatus::Folded | BetStatus::Shoved => continue 'right,
+                Status::Playing => return,
+                Status::Folding | Status::Shoving => continue 'right,
             }
         }
     }

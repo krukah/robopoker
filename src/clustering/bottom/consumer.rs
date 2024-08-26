@@ -6,6 +6,28 @@ use tokio::sync::mpsc::Receiver;
 use tokio_postgres::binary_copy::BinaryCopyInWriter;
 use tokio_postgres::types::Type;
 
+const ROWS: &'static [Type] = &[Type::INT8, Type::INT8];
+const INIT: &'static str = r#"
+            BEGIN;
+            CREATE UNLOGGED TABLE IF NOT EXISTS centroid (
+                observation BIGINT PRIMARY KEY,
+                abstraction BIGINT,
+            );
+            CREATE UNLOGGED TABLE IF NOT EXISTS distance (
+                xor         BIGINT PRIMARY KEY,
+                distance    FLOAT,
+            );
+            TRUNCATE TABLE centroid;
+            TRUNCATE TABLE distance;
+        "#;
+const COPY: &'static str = r#"
+            COPY centroid (
+                observation,
+                abstraction
+            )
+            FROM STDIN BINARY FREEZE;
+        "#;
+
 pub struct Consumer {
     rx: Receiver<(Observation, Abstraction)>,
     writer: BinaryCopyInWriter,
@@ -37,6 +59,9 @@ impl Consumer {
         let mut progress = Progress::new();
         while let Some((obs, abs)) = self.rx.recv().await {
             progress.tick();
+            // MARK
+            // this would be where we inset into a HashMap<Obs, Abs>]
+            // self.observations.insert(obs, abs);
             let ref street = obs.street() as i8;
             let ref observation = i64::from(obs);
             let ref abstraction = i64::from(abs);
@@ -56,32 +81,3 @@ impl Consumer {
             .expect("commit transaction");
     }
 }
-
-const INIT: &'static str = r#"
-            BEGIN;
-            CREATE UNLOGGED TABLE IF NOT EXISTS centroid (
-                observation BIGINT PRIMARY KEY,
-                abstraction BIGINT,
-                street      CHAR(1)
-            );
-            CREATE UNLOGGED TABLE IF NOT EXISTS distance (
-                xor         BIGINT PRIMARY KEY,
-                distance    FLOAT,
-                street      CHAR(1)
-            );
-            TRUNCATE TABLE centroid;
-            TRUNCATE TABLE distance;
-        "#;
-const COPY: &'static str = r#"
-            COPY centroid (
-                street,
-                observation,
-                abstraction
-            )
-            FROM STDIN BINARY FREEZE;
-        "#;
-const ROWS: &'static [Type] = &[
-    Type::CHAR, // street
-    Type::INT8, // observation
-    Type::INT8, // abstraction
-];
