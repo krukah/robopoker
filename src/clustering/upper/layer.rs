@@ -9,12 +9,16 @@ use crate::clustering::bottom::consumer::Consumer;
 use crate::clustering::bottom::producer::Producer;
 use crate::clustering::bottom::progress::Progress;
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::Arc;
+use tokio_postgres::binary_copy::BinaryCopyInWriter;
+use tokio_postgres::types::Type;
+use tokio_postgres::Client;
 
 pub struct Layer {
     street: Street,
-    pub(super) metric: HashMap<Pair, f32>,
-    pub(super) observations: HashMap<Observation, (Histogram, Abstraction)>,
+    metric: HashMap<Pair, f32>,
+    observations: HashMap<Observation, (Histogram, Abstraction)>,
     abstractions: HashMap<Abstraction, (Histogram, Histogram)>,
 }
 
@@ -150,7 +154,7 @@ impl Layer {
         let mut metric = HashMap::new();
         for i in 0..Abstraction::EQUITIES as u64 {
             for j in i..Abstraction::EQUITIES as u64 {
-                let distance = (i - j) as f32;
+                let distance = (j - i) as f32;
                 let ref i = Abstraction::from(i);
                 let ref j = Abstraction::from(j);
                 let index = Pair::from((i, j));
@@ -176,101 +180,106 @@ impl Layer {
         consumer.await.expect("equity mapping task completes")
     }
 
-    /// upload to database
+    /// Upload to database
     async fn upload(&self) {
-        println!("uploading {} {}", self.street, self.observations.len());
-        use tokio_postgres::binary_copy::BinaryCopyInWriter;
-        use tokio_postgres::types::Type;
-        const ROW_TYPE: &'static [Type] = &[Type::INT8, Type::INT8];
-        const CENTROID: &'static str = r#" 
-            CREATE UNLOGGED TABLE IF NOT EXISTS centroid (
-                observation BIGINT PRIMARY KEY,
-                abstraction BIGINT,
-            );
-            TRUNCATE TABLE centroid;
-            COPY centroid (
-                observation,
-                abstraction
-            )
-            FROM STDIN BINARY FREEZE;
-        "#;
-        const DISTANCE: &'static str = r#"
-            CREATE UNLOGGED TABLE IF NOT EXISTS distance (
-                xor         BIGINT PRIMARY KEY,
-                distance    FLOAT,
-            );
-            TRUNCATE TABLE distance;
-            COPY distance (
-                xor,
-                distance,
-            )
-            FROM STDIN BINARY FREEZE;
-        "#;
-
         let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
-        let (client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
+        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
             .await
             .expect("connect to database");
         tokio::spawn(connection);
+        // maybe wrap this in a transaction?
+        Self::truncate(client).await;
+        self.upload_distance(client).await;
+        self.upload_centroid(client).await;
+    }
+
+    /// Truncate the database tables
+    async fn truncate(client: &Client) {
         client
-            .execute("BEGIN", &[])
+            .batch_execute(
+                r#"
+                    DROP TABLE IF EXISTS centroid;
+                    DROP TABLE IF EXISTS distance;
+                    CREATE UNLOGGED TABLE centroid (
+                        observation BIGINT PRIMARY KEY,
+                        abstraction BIGINT
+                    );
+                    CREATE UNLOGGED TABLE distance (
+                        xor         BIGINT PRIMARY KEY,
+                        distance    REAL
+                    );
+                    TRUNCATE TABLE centroid;
+                    TRUNCATE TABLE distance;
+                "#,
+            )
             .await
             .expect("begin transaction");
-        // transaction has begun
-        // transaction has begun
-        // transaction has begun
+    }
+
+    /// Upload centroid data to the database
+    /// would love to be able to FREEZE table for initial river COPY
+    async fn upload_centroid(&self, client: &Client) {
         let sink = client
-            .copy_in(CENTROID)
+            .copy_in(
+                r#" 
+                    COPY centroid (
+                        observation,
+                        abstraction
+                    )
+                    FROM STDIN BINARY;
+                "#,
+            )
             .await
             .expect("get sink for COPY transaction");
-        let ref mut writer = BinaryCopyInWriter::new(sink, ROW_TYPE);
-        let mut writer = unsafe { std::pin::Pin::new_unchecked(writer) };
-        let mut progress = Progress::new();
-        // first do centroids
-        // first do centroids
-        // first do centroids
+        let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::INT8]);
+        let mut writer = unsafe { Pin::new_unchecked(writer) };
+        let mut progress = Progress::new(self.observations.len());
         for (observation, (_, abstraction)) in self.observations.iter() {
-            progress.tick();
-            let ref observation = i64::from(observation.clone()); // this copy can be optimized out later
-            let ref abstraction = i64::from(abstraction.clone()); // this copy can be optimized out later
+            let ref observation = i64::from(observation.clone()); // zero copy if impl ToSql
+            let ref abstraction = i64::from(abstraction.clone()); // zero copy if impl ToSql
             writer
                 .as_mut()
                 .write(&[observation, abstraction])
                 .await
                 .expect("write row into heap");
+            progress.tick();
         }
         writer
             .finish()
             .await
-            .expect("complete 2.8B rows of COPY transaction");
-        // now do distances
-        // now do distances
-        // now do distances
+            .expect("complete centroid COPY transaction");
+    }
+
+    /// Upload distance data to the database
+    /// would love to be able to FREEZE table for initial river COPY
+    async fn upload_distance(&self, client: &Client) {
         let sink = client
-            .copy_in(DISTANCE)
+            .copy_in(
+                r#"
+                    COPY distance (
+                        xor,
+                        distance
+                    )
+                    FROM STDIN BINARY;
+                "#,
+            )
             .await
             .expect("get sink for COPY transaction");
-        let ref mut writer = BinaryCopyInWriter::new(sink, ROW_TYPE);
-        let mut writer = unsafe { std::pin::Pin::new_unchecked(writer) };
-        let mut progress = Progress::new();
-        // now do distances
-        // now do distances
-        // now do distances
+        let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::FLOAT4]);
+        let mut writer = unsafe { Pin::new_unchecked(writer) };
+        let mut progress = Progress::new(self.metric.len());
         for (pair, distance) in self.metric.iter() {
-            progress.tick();
-            let ref pair = i64::from(pair.clone()); // this copy can be optimized out later
+            let ref pair = i64::from(pair.clone()); // zero copy if impl ToSql
             writer
                 .as_mut()
                 .write(&[pair, distance])
                 .await
                 .expect("write row into heap");
+            progress.tick();
         }
-        // finally commit
-        // finally commit
-        // finally commit
-        client
-            .execute("COMMIT", &[])
+        writer
+            .finish()
             .await
-            .expect("commit transaction");
+            .expect("complete distance COPY transaction");
     }
 }

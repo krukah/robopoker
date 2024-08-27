@@ -19,14 +19,12 @@ impl Consumer {
     }
 
     pub async fn run(mut self) -> HashMap<Observation, (Histogram, Abstraction)> {
-        let mut progress = Progress::new();
-        println!("starting consumer");
+        let mut progress = Progress::new(2_809_475_760);
         while let Some((observation, abstraction)) = self.rx.recv().await {
             progress.tick();
             let histogram = Histogram::witness(Histogram::default(), abstraction.clone());
             self.table.insert(observation, (histogram, abstraction));
         }
-        println!("finished consumer");
         self.table
     }
 }
