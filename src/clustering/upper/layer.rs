@@ -188,12 +188,12 @@ impl Layer {
             .expect("connect to database");
         tokio::spawn(connection);
         // maybe wrap this in a transaction?
-        Self::truncate(client).await;
         self.upload_distance(client).await;
         self.upload_centroid(client).await;
     }
 
     /// Truncate the database tables
+    #[allow(unused)]
     async fn truncate(client: &Client) {
         client
             .batch_execute(
