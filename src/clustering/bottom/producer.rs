@@ -23,16 +23,16 @@ impl Producer {
         let beg = self.shard * n;
         let end = self.shard * n + n;
         for index in beg..end {
-            if let Some(observation) = self.rivers.get(index) {
-                let abstraction = Abstraction::from(observation);
-                let observation = observation.clone();
-                self.tx
-                    .send((observation, abstraction))
-                    .await
-                    .expect("channel to be open");
-                return;
-            } else {
-                return;
+            match self.rivers.get(index) {
+                None => return,
+                Some(observation) => {
+                    let abstraction = Abstraction::from(observation);
+                    let observation = observation.clone();
+                    self.tx
+                        .send((observation, abstraction))
+                        .await
+                        .expect("channel to be open");
+                }
             }
         }
     }
