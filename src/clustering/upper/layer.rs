@@ -7,13 +7,14 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::bottom::consumer::Consumer;
 use crate::clustering::bottom::producer::Producer;
+use crate::clustering::bottom::progress::Progress;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct Layer {
     street: Street,
-    metric: HashMap<Pair, f32>,
-    observations: HashMap<Observation, (Histogram, Abstraction)>,
+    pub(super) metric: HashMap<Pair, f32>,
+    pub(super) observations: HashMap<Observation, (Histogram, Abstraction)>,
     abstractions: HashMap<Abstraction, (Histogram, Histogram)>,
 }
 
@@ -42,15 +43,6 @@ impl Layer {
         layer.kmeans(100);
         layer.upload().await;
         layer
-    }
-
-    async fn upload(&self) {
-        for (observation, (_, abstraction)) in self.observations.iter() {
-            todo!("databse insert")
-        }
-        for (pair, distance) in self.metric.iter() {
-            todo!("database insert")
-        }
     }
 
     /// Run kmeans iterations.
@@ -178,5 +170,108 @@ impl Layer {
             .collect::<Vec<_>>();
         futures::future::join_all(producers).await;
         consumer.await.expect("equity mapping task completes")
+    }
+
+    /// upload to database
+    async fn upload(&self) {
+        use tokio_postgres::binary_copy::BinaryCopyInWriter;
+        use tokio_postgres::types::Type;
+
+        const ROW_TYPE: &'static [Type] = &[Type::INT8, Type::INT8];
+        const CENTROID: &'static str = r#" 
+            CREATE UNLOGGED TABLE IF NOT EXISTS centroid (
+                observation BIGINT PRIMARY KEY,
+                abstraction BIGINT,
+                street      CHAR(1)
+            );
+            TRUNCATE TABLE centroid;
+            COPY centroid (
+                street,
+                observation,
+                abstraction
+            )
+            FROM STDIN BINARY FREEZE;
+        "#;
+        const DISTANCE: &'static str = r#"
+            BEGIN;
+            CREATE UNLOGGED TABLE IF NOT EXISTS distance (
+                xor         BIGINT PRIMARY KEY,
+                distance    FLOAT,
+                street      CHAR(1)
+            );
+            TRUNCATE TABLE distance;
+            COPY distance (
+                xor,
+                distance,
+                street
+            )
+            FROM STDIN BINARY FREEZE;
+        "#;
+
+        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
+        let (client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
+            .await
+            .expect("connect to database");
+        tokio::spawn(connection);
+        client
+            .execute("BEGIN", &[])
+            .await
+            .expect("begin transaction");
+        // transaction has begun
+        // transaction has begun
+        // transaction has begun
+        let sink = client
+            .copy_in(CENTROID)
+            .await
+            .expect("get sink for COPY transaction");
+        let ref mut writer = BinaryCopyInWriter::new(sink, ROW_TYPE);
+        let mut writer = unsafe { std::pin::Pin::new_unchecked(writer) };
+        let mut progress = Progress::new();
+        // first do centroids
+        // first do centroids
+        // first do centroids
+        for (observation, (_, abstraction)) in self.observations.iter() {
+            progress.tick();
+            let ref observation = i64::from(observation.clone()); // this copy can be optimized out later
+            let ref abstraction = i64::from(abstraction.clone()); // this copy can be optimized out later
+            writer
+                .as_mut()
+                .write(&[observation, abstraction])
+                .await
+                .expect("write row into heap");
+        }
+        writer
+            .finish()
+            .await
+            .expect("complete 2.8B rows of COPY transaction");
+        // now do distances
+        // now do distances
+        // now do distances
+        let sink = client
+            .copy_in(DISTANCE)
+            .await
+            .expect("get sink for COPY transaction");
+        let ref mut writer = BinaryCopyInWriter::new(sink, ROW_TYPE);
+        let mut writer = unsafe { std::pin::Pin::new_unchecked(writer) };
+        let mut progress = Progress::new();
+        // now do distances
+        // now do distances
+        // now do distances
+        for (pair, distance) in self.metric.iter() {
+            progress.tick();
+            let ref pair = i64::from(pair.clone()); // this copy can be optimized out later
+            writer
+                .as_mut()
+                .write(&[pair, distance])
+                .await
+                .expect("write row into heap");
+        }
+        // finally commit
+        // finally commit
+        // finally commit
+        client
+            .execute("COMMIT", &[])
+            .await
+            .expect("commit transaction");
     }
 }
