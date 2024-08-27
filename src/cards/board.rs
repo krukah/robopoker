@@ -16,7 +16,7 @@ impl Board {
     }
 
     pub fn add(&mut self, card: Card) {
-        self.0 = Hand::add(self.0, Hand::from(card));
+        self.0 = Hand::add(self.0, Hand::from(u64::from(card)));
     }
 
     pub fn clear(&mut self) {

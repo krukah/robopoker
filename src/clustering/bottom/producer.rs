@@ -10,7 +10,7 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub(super) fn new(
+    pub fn new(
         shard: usize,
         tx: Sender<(Observation, Abstraction)>,
         rivers: Arc<Vec<Observation>>,
@@ -18,7 +18,7 @@ impl Producer {
         Self { tx, shard, rivers }
     }
 
-    pub(super) async fn run(self) {
+    pub async fn run(self) {
         let n = self.rivers.len() / num_cpus::get();
         let beg = self.shard * n;
         let end = self.shard * n + n;

@@ -16,6 +16,10 @@ pub enum Rank {
     Ace = 12,
 }
 
+impl Rank {
+    pub const MASK: u16 = 0b1111111111111;
+}
+
 /// u8 isomorphism
 impl From<u8> for Rank {
     fn from(n: u8) -> Rank {
@@ -48,8 +52,7 @@ impl From<Rank> for u8 {
 /// With 13 ranks we only need 13 bits
 impl From<u16> for Rank {
     fn from(n: u16) -> Rank {
-        const MASK: u16 = 0b1111111111111;
-        let msb = (16 - 1 - (n & MASK).leading_zeros()) as u8;
+        let msb = (16 - 1 - (n & Self::MASK).leading_zeros()) as u8;
         Rank::from(msb)
     }
 }

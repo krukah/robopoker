@@ -5,7 +5,10 @@ use super::xor::Pair;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
+use crate::clustering::bottom::consumer::Consumer;
+use crate::clustering::bottom::producer::Producer;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct Layer {
     street: Street,
@@ -16,9 +19,13 @@ pub struct Layer {
 
 impl Layer {
     /// async download from database to create initial River layer.
-    pub async fn bottom() -> Self {
-        crate::clustering::bottom::upload().await;
-        crate::clustering::bottom::download().await
+    pub async fn bottom() -> Self { 
+        Self {
+            street: Street::Rive,
+            metric: Self::lower_metric(),
+            observations: Self::lower_observations().await,
+            abstractions: HashMap::default(),
+        } 
     }
 
     /// Yield the next layer of abstraction by kmeans clustering
@@ -26,9 +33,9 @@ impl Layer {
     pub async fn raise(self) -> Self {
         let mut next = Self {
             street: self.street.prev(),
-            metric: self.metric(),
-            abstractions: self.abstractions(),
-            observations: self.observations(),
+            metric: self.raise_metric(),
+            observations: self.raise_observations(),
+            abstractions: self.raise_abstractions(),
         };
         next.kmeans(100);
         next
@@ -59,25 +66,8 @@ impl Layer {
         }
     }
 
-    /// Calculate and return the metric using EMD distances between abstractions
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// TODO
-    /// this won't work for River because we have no emd.
-    /// Need pattern match on street.
-    fn metric(&self) -> HashMap<Pair, f32> {
+    /// Calculate and return the metric using EMD distances between abstractions 
+    fn raise_metric(&self) -> HashMap<Pair, f32> {
         let ref centroids = self.abstractions;
         let mut metric = HashMap::new();
         for (i, (x, _)) in centroids.iter().enumerate() {
@@ -94,9 +84,9 @@ impl Layer {
         metric
     }
 
-    #[rustfmt::skip]
     /// Generate all possible obersvations. Assign them to arbitrary abstractions. They will be overwritten during kmeans iterations. We start from River which comes from database from equity abstractions.
-    fn observations(&self) -> HashMap<Observation, (Histogram, Abstraction)> {
+    #[rustfmt::skip]
+    fn raise_observations(&self) -> HashMap<Observation, (Histogram, Abstraction)> {
         Observation::all(self.street.prev())
             .into_iter()
             .map(|upper| (upper, (self.observations.project(upper), Abstraction::default())))
@@ -105,29 +95,29 @@ impl Layer {
     
     #[rustfmt::skip]
     /// K Means++ implementation yields initial histograms. Abstractions are random and require uniqueness.
-    fn abstractions(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
+    fn raise_abstractions(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
         // 0. Initialize data structures
-        let mut means = Vec::new();
-        let ref mut observations = self.observations.values().map(|(histogram, _)| histogram);
+        let mut initials = Vec::new();
+        let ref mut histograms = self.observations.values().map(|(histogram, _)| histogram);
         let ref mut rng = rand::thread_rng();
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
         use rand::seq::SliceRandom;
         // 1. Choose 1st centroid randomly from the dataset
-        let sample = observations
+        let sample = histograms
             .collect::<Vec<&Histogram>>()
             .choose(rng)
             .expect("non-empty lower observations")
             .to_owned()
             .clone();
-        means.push(sample);
+        initials.push(sample);
         // 2. Choose nth centroid with probability proportional to squared distance of nearest neighbors
         const K: usize = 100;
-        while means.len() < K {
-            let distances = observations
-                .map(|histogram| means
+        while initials.len() < K {
+            let distances = histograms
+                .map(|histogram| initials
                     .iter()
-                    .map(|centroid| self.metric.emd(centroid, histogram))
+                    .map(|initial| self.metric.emd(initial, histogram))
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .expect("find minimum")
                 )
@@ -136,16 +126,45 @@ impl Layer {
             let choice = WeightedIndex::new(distances)
                 .expect("valid weights")
                 .sample(rng);
-            let sample = observations
+            let sample = histograms
                 .nth(choice)
                 .expect("shared index with lowers")
                 .clone();
-            means.push(sample);
+            initials.push(sample);
         }
         // 3. Collect histograms and label with arbitrary (random) Abstractions
-        means
+        initials
             .into_iter()
             .map(|mean| (Abstraction::random(), (mean, Histogram::default())))
             .collect::<HashMap<_, _>>()
+    }
+
+    /// Generate the  baseline metric between equity bucket abstractions. Keeping the u64->f32 conversion is fine for distance since it preserves distance
+    fn lower_metric() -> HashMap<Pair, f32> {
+        let mut metric = HashMap::new();
+        for i in 0..Abstraction::EQUITIES as u64 {
+            for j in i..Abstraction::EQUITIES as u64 {
+                let distance = (i - j) as f32;
+                let ref i = Abstraction::from(i);
+                let ref j = Abstraction::from(j);
+                let index = Pair::from((i, j));
+                metric.insert(index, distance);
+            }
+        }
+        metric
+    }
+
+    // construct observation -> abstraction map via equity calculations
+    async fn lower_observations() -> HashMap<Observation, (Histogram, Abstraction)> {
+        let ref observations = Arc::new(Observation::all(Street::Rive));
+        let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
+        let consumer = Consumer::new(rx).await;
+        let consumer = tokio::spawn(consumer.run());
+        let producers = (0..num_cpus::get())
+            .map(|i| Producer::new(i, tx.clone(), observations.clone()))
+            .map(|p| tokio::spawn(p.run()))
+            .collect::<Vec<_>>();
+        futures::future::join_all(producers).await;
+        consumer.await.expect("equity mapping task completes")
     }
 }

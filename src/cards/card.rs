@@ -1,4 +1,5 @@
-use super::{hand::Hand, rank::Rank, suit::Suit};
+use super::rank::Rank;
+use super::suit::Suit;
 
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit
@@ -46,8 +47,8 @@ impl From<u8> for Card {
 /// 000000000000000 0010 0000100000000
 impl From<Card> for u32 {
     fn from(c: Card) -> u32 {
+        let suit = (1 << 13) << u8::from(c.suit());
         let rank = u16::from(c.rank()) as u32;
-        let suit = 1 << (13 + u8::from(c.suit()));
         rank | suit
     }
 }
@@ -71,20 +72,6 @@ impl From<u64> for Card {
 impl From<Card> for u64 {
     fn from(c: Card) -> u64 {
         1 << u8::from(c)
-    }
-}
-
-/// Hand isomorphism
-/// Hand -> Card loses information, since we only retain the high card
-/// Card -> Hand is a lossless conversion, singleton set
-impl From<Card> for Hand {
-    fn from(c: Card) -> Self {
-        Self::from(u64::from(c))
-    }
-}
-impl From<Hand> for Card {
-    fn from(h: Hand) -> Self {
-        Self::from(u64::from(h))
     }
 }
 

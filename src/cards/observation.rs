@@ -1,3 +1,5 @@
+use crate::cards::rank::Rank;
+
 use super::card::Card;
 use super::hand::Hand;
 use super::hands::HandIterator;
@@ -124,7 +126,7 @@ impl From<i64> for Observation {
         let mut secret = Hand::from(0u64);
         let mut public = Hand::from(0u64);
         while bits > 0 {
-            let card = ((bits & 0xFF) - 1) as u8;
+            let card = ((bits & Rank::MASK as u64) - 1) as u8;
             let hand = Hand::from(u64::from(Card::from(card)));
             if i < 2 {
                 secret = Hand::add(secret, hand);

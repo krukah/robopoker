@@ -7,7 +7,7 @@ pub struct Progress {
     complete: u32,
 }
 impl Progress {
-    const CHECKPOINT: usize = 50_000;
+    const CHECKPOINT: usize = 10_000;
     const TOTAL: usize = 2_809_475_760;
 
     pub fn new() -> Self {
