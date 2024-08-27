@@ -4,11 +4,11 @@ use robopoker::*;
 async fn main() {
     clustering::upper::layer::Layer::bottom()
         .await
-        .raise()
+        .lift()
         .await
-        .raise()
+        .lift()
         .await
-        .raise()
+        .lift()
         .await;
     training::solver::Solver::new().minimize(50_000);
 }

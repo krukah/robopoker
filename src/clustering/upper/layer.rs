@@ -19,26 +19,38 @@ pub struct Layer {
 
 impl Layer {
     /// async download from database to create initial River layer.
-    pub async fn bottom() -> Self { 
-        Self {
+    pub async fn bottom() -> Self {
+        let layer = Self {
             street: Street::Rive,
-            metric: Self::lower_metric(),
-            observations: Self::lower_observations().await,
+            metric: Self::bottom_metric(),
+            observations: Self::bottom_observations().await,
             abstractions: HashMap::default(),
-        } 
+        };
+        layer.upload().await;
+        layer
     }
 
     /// Yield the next layer of abstraction by kmeans clustering
     /// TODO; make this async and persist to database after each layer
-    pub async fn raise(self) -> Self {
-        let mut next = Self {
+    pub async fn lift(self) -> Self {
+        let mut layer = Self {
             street: self.street.prev(),
-            metric: self.raise_metric(),
-            observations: self.raise_observations(),
-            abstractions: self.raise_abstractions(),
+            metric: self.lift_metric(),
+            observations: self.lift_observations(),
+            abstractions: self.lift_abstractions(),
         };
-        next.kmeans(100);
-        next
+        layer.kmeans(100);
+        layer.upload().await;
+        layer
+    }
+
+    async fn upload(&self) {
+        for (observation, (_, abstraction)) in self.observations.iter() {
+            todo!("databse insert")
+        }
+        for (pair, distance) in self.metric.iter() {
+            todo!("database insert")
+        }
     }
 
     /// Run kmeans iterations.
@@ -66,8 +78,8 @@ impl Layer {
         }
     }
 
-    /// Calculate and return the metric using EMD distances between abstractions 
-    fn raise_metric(&self) -> HashMap<Pair, f32> {
+    /// Calculate and return the metric using EMD distances between abstractions
+    fn lift_metric(&self) -> HashMap<Pair, f32> {
         let ref centroids = self.abstractions;
         let mut metric = HashMap::new();
         for (i, (x, _)) in centroids.iter().enumerate() {
@@ -86,16 +98,16 @@ impl Layer {
 
     /// Generate all possible obersvations. Assign them to arbitrary abstractions. They will be overwritten during kmeans iterations. We start from River which comes from database from equity abstractions.
     #[rustfmt::skip]
-    fn raise_observations(&self) -> HashMap<Observation, (Histogram, Abstraction)> {
+    fn lift_observations(&self) -> HashMap<Observation, (Histogram, Abstraction)> {
         Observation::all(self.street.prev())
             .into_iter()
             .map(|upper| (upper, (self.observations.project(upper), Abstraction::default())))
             .collect()
     }
-    
-    #[rustfmt::skip]
+
     /// K Means++ implementation yields initial histograms. Abstractions are random and require uniqueness.
-    fn raise_abstractions(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
+    #[rustfmt::skip]
+    fn lift_abstractions(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
         // 0. Initialize data structures
         let mut initials = Vec::new();
         let ref mut histograms = self.observations.values().map(|(histogram, _)| histogram);
@@ -140,7 +152,7 @@ impl Layer {
     }
 
     /// Generate the  baseline metric between equity bucket abstractions. Keeping the u64->f32 conversion is fine for distance since it preserves distance
-    fn lower_metric() -> HashMap<Pair, f32> {
+    fn bottom_metric() -> HashMap<Pair, f32> {
         let mut metric = HashMap::new();
         for i in 0..Abstraction::EQUITIES as u64 {
             for j in i..Abstraction::EQUITIES as u64 {
@@ -155,7 +167,7 @@ impl Layer {
     }
 
     // construct observation -> abstraction map via equity calculations
-    async fn lower_observations() -> HashMap<Observation, (Histogram, Abstraction)> {
+    async fn bottom_observations() -> HashMap<Observation, (Histogram, Abstraction)> {
         let ref observations = Arc::new(Observation::all(Street::Rive));
         let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
         let consumer = Consumer::new(rx).await;
