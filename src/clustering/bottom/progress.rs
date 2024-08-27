@@ -29,11 +29,12 @@ impl Progress {
             print!("\r"); // Move cursor to the beginning of the line
             print!("\x1B[K"); // Clear the line
             print!(
-                "Elapsed: {:8.0?} | Mean Freq: {:10.0} | Last Freq: {:10.0} | Progress: {:6.2}%",
+                "Elapsed: {:8.0?} | Mean Freq: {:10.0} | Last Freq: {:10.0} | Progress: {:6.2}% {:>10}",
                 total_t,
                 self.ticks as f32 / total_t.as_secs_f32(),
                 Self::CHECKPOINT as f32 / delta_t.as_secs_f32(),
-                (self.ticks as f32 / self.total as f32) * 100.0
+                (self.ticks as f32 / self.total as f32) * 100.0,
+                self.ticks
             );
             std::io::stdout().flush().unwrap();
         }
