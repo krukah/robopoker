@@ -30,6 +30,7 @@ impl Producer {
                     .send((observation, abstraction))
                     .await
                     .expect("channel to be open");
+                return;
             } else {
                 return;
             }

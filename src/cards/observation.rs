@@ -28,7 +28,7 @@ impl Observation {
             Street::Rive => 5,
             _ => panic!("no other transitions"),
         };
-        println!("exhausting all {} observations...", street);
+        println!("exhausting all observations {}", street);
         let mut observations = Vec::new(); // TODO make with_capacity, conditional on street
         let secrets = HandIterator::from((2usize, Hand::from(0u64)));
         for secret in secrets {

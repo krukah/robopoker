@@ -20,16 +20,19 @@ impl Histogram {
     pub fn domain(&self) -> Vec<&Abstraction> {
         self.weights.keys().collect()
     }
-    pub fn absorb(&mut self, other: &Self) {
-        self.sum += other.sum;
-        for (key, count) in other.weights.iter() {
-            *self.weights.entry(key.clone()).or_insert(0) += count;
-        }
-    }
     pub fn witness(self, abstraction: Abstraction) -> Self {
         let mut this = self;
         *this.weights.entry(abstraction).or_insert(0) += 1;
         this.sum += 1;
         this
+    }
+    /// Absorb the other histogram into this one.
+    /// Note that this implicitly assumes sum normalizations are the same,
+    /// which should hold until we implement Observation isomorphisms!
+    pub fn absorb(&mut self, other: &Self) {
+        self.sum += other.sum;
+        for (key, count) in other.weights.iter() {
+            *self.weights.entry(key.clone()).or_insert(0) += count;
+        }
     }
 }
