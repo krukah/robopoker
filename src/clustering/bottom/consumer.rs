@@ -14,7 +14,7 @@ impl Consumer {
     pub fn new(rx: Receiver<(Observation, Abstraction)>) -> Self {
         Self {
             rx,
-            table: HashMap::new(),
+            table: HashMap::with_capacity(2_809_475_760),
         }
     }
 
