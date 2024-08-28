@@ -12,6 +12,7 @@ pub trait Metric {
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32;
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32;
 }
+
 impl Metric for HashMap<Pair, f32> {
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32 {
         let n = x.domain().len();
@@ -84,6 +85,6 @@ impl Metric for HashMap<Pair, f32> {
     }
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
         let ref xor = Pair::from((x, y));
-        self.get(xor).expect("precalculated distance").clone()
+        self.get(xor).expect("precalculated distance").to_owned()
     }
 }
