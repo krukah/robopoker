@@ -13,9 +13,9 @@ impl Progress {
         let now = Instant::now();
         Self {
             total,
+            ticks: 0,
             begin: now,
             delta: now,
-            ticks: 0,
         }
     }
     pub fn tick(&mut self) {
@@ -26,15 +26,15 @@ impl Progress {
             let total_t = now.duration_since(self.begin);
             let delta_t = now.duration_since(self.delta);
             self.delta = now;
-            print!("\r"); // Move cursor to the beginning of the line
-            print!("\x1B[K"); // Clear the line
+            print!("\r");
+            print!("\x1B[K");
             print!(
-                "Elapsed: {:8.0?} | Mean Freq: {:10.0} | Last Freq: {:10.0} | Progress: {:6.2}% {:>10}",
+                "{:8.0?} {:>10} {:6.2}%   mean {:6.0}   last {:6.0}",
                 total_t,
+                self.ticks,
+                self.ticks as f32 / self.total as f32 * 100f32,
                 self.ticks as f32 / total_t.as_secs_f32(),
                 Self::CHECKPOINT as f32 / delta_t.as_secs_f32(),
-                (self.ticks as f32 / self.total as f32) * 100.0,
-                self.ticks
             );
             std::io::stdout().flush().unwrap();
         }
