@@ -208,8 +208,6 @@ impl Layer {
                         xor         BIGINT PRIMARY KEY,
                         distance    REAL
                     );
-                    TRUNCATE TABLE centroid;
-                    TRUNCATE TABLE distance;
                 "#,
             )
             .await
