@@ -18,26 +18,71 @@ impl Metric for HashMap<Pair, f32> {
         self.get(xor).expect("precalculated distance").clone()
     }
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32 {
-        let mut journey = 0.0;
-        let mut remains = 1.0;
-        for absx in x.domain() {
-            let massx = x.weight(absx);
-            let mut removed = 0.0;
-            for absy in y.domain() {
-                let massy = y.weight(absy);
-                let distance = self.similarity(absx, absy);
-                let delta = massx.min(massy - removed).min(remains);
-                journey += delta * distance;
-                removed += delta;
-                remains -= delta;
-                if remains <= 0.0 {
-                    break;
+        let n = x.domain().len();
+        let m = y.domain().len();
+        let mut cost = 0.0;
+        let mut targets = x
+            .domain()
+            .iter()
+            .map(|&a| (a, 1.0 / n as f32))
+            .collect::<HashMap<&Abstraction, f32>>();
+        let mut remains = y
+            .domain()
+            .iter()
+            .map(|&a| (a, y.weight(a)))
+            .collect::<HashMap<&Abstraction, f32>>();
+        let mut removed = x
+            .domain()
+            .iter()
+            .map(|&a| (a, false))
+            .collect::<HashMap<&Abstraction, bool>>();
+        for _ in 0..m {
+            for supplier in x.domain() {
+                if *removed
+                    .get(supplier)
+                    .expect("xabs not found in removed mass")
+                {
+                    continue;
+                }
+                let (ref neighbor, nearest) = y
+                    .domain()
+                    .iter()
+                    .map(|candidate| (candidate.to_owned(), self.similarity(supplier, candidate)))
+                    .min_by(|&(_, ref a), &(_, ref b)| a.partial_cmp(b).expect("not NaN"))
+                    .expect("receiver domain is empty");
+                let supply = remains
+                    .get(neighbor)
+                    .expect("yabs not found in remains mass")
+                    .clone();
+                if supply == 0.0 {
+                    continue;
+                }
+                let target = targets
+                    .get(supplier)
+                    .expect("xabs not found in targets mass")
+                    .clone();
+                if supply < target {
+                    cost += supply * nearest;
+                    *targets
+                        .get_mut(supplier)
+                        .expect("xabs not found in targets mass") -= supply;
+                    *remains
+                        .get_mut(neighbor)
+                        .expect("yabs not found in remains mass") = 0.0;
+                } else {
+                    cost += target * nearest;
+                    *remains
+                        .get_mut(neighbor)
+                        .expect("yabs not found in remains mass") -= target;
+                    *targets
+                        .get_mut(supplier)
+                        .expect("xabs not found in targets mass") = 0.0;
+                    *removed
+                        .get_mut(supplier)
+                        .expect("xabs not found in removed mass") = true;
                 }
             }
-            if remains <= 0.0 {
-                break;
-            }
         }
-        journey
+        cost
     }
 }
