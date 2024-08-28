@@ -22,13 +22,13 @@ pub struct Observation {
 
 impl Observation {
     pub fn all(street: Street) -> Vec<Observation> {
+        println!("enumerating all observations at {}", street);
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
             Street::Rive => 5,
-            _ => panic!("no other transitions"),
+            _ => unreachable!("no other transitions"),
         };
-        println!("exhausting all observations {}", street);
         let mut observations = Vec::new(); // TODO make with_capacity, conditional on street
         let secrets = HandIterator::from((2usize, Hand::from(0u64)));
         for secret in secrets {
@@ -77,7 +77,7 @@ impl Observation {
             Street::Pref => 3,
             Street::Flop => 1,
             Street::Turn => 1,
-            _ => panic!("no children for river"),
+            _ => unreachable!("no children for river"),
         };
         HandIterator::from((expanded, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
@@ -91,7 +91,7 @@ impl Observation {
             3 => Street::Flop,
             4 => Street::Turn,
             5 => Street::Rive,
-            _ => panic!("no other sizes"),
+            _ => unreachable!("no other sizes"),
         }
     }
 }
