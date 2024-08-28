@@ -45,3 +45,26 @@ impl From<i64> for Abstraction {
         Abstraction(n as u64)
     }
 }
+
+/// Bypass conversion to i64 for SQL storage and impl ToSql directly
+impl tokio_postgres::types::ToSql for Abstraction {
+    fn to_sql(
+        &self,
+        ty: &tokio_postgres::types::Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        i64::from(*self).to_sql(ty, out)
+    }
+
+    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
+        <i64 as tokio_postgres::types::ToSql>::accepts(ty)
+    }
+
+    fn to_sql_checked(
+        &self,
+        ty: &tokio_postgres::types::Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        i64::from(*self).to_sql_checked(ty, out)
+    }
+}

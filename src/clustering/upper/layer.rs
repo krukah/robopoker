@@ -244,8 +244,6 @@ impl Layer {
         let mut writer = unsafe { Pin::new_unchecked(writer) };
         let mut progress = Progress::new(self.points.len());
         for (observation, (_, abstraction)) in self.points.iter() {
-            let ref observation = i64::from(observation.clone()); // zero copy if impl ToSql
-            let ref abstraction = i64::from(abstraction.clone()); // zero copy if impl ToSql
             writer
                 .as_mut()
                 .write(&[observation, abstraction])
@@ -278,7 +276,6 @@ impl Layer {
         let mut writer = unsafe { Pin::new_unchecked(writer) };
         let mut progress = Progress::new(self.metric.len());
         for (pair, distance) in self.metric.iter() {
-            let ref pair = i64::from(pair.clone()); // zero copy if impl ToSql
             writer
                 .as_mut()
                 .write(&[pair, distance])
