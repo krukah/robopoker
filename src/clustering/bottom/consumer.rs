@@ -12,10 +12,8 @@ pub struct Consumer {
 
 impl Consumer {
     pub fn new(rx: Receiver<(Observation, Abstraction)>) -> Self {
-        Self {
-            rx,
-            table: HashMap::with_capacity(2_809_475_760),
-        }
+        let table = HashMap::with_capacity(2_809_475_760);
+        Self { rx, table }
     }
 
     pub async fn run(mut self) -> HashMap<Observation, (Histogram, Abstraction)> {

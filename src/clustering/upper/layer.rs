@@ -30,7 +30,7 @@ impl Layer {
             street: Street::Rive,
             kmeans: HashMap::default(),
             metric: Self::bottom_metric(),
-            points: Self::bottom_observations().await,
+            points: Self::bottom_points().await,
         };
         layer.upload().await;
         layer
@@ -75,6 +75,17 @@ impl Layer {
         }
     }
 
+    /// Number of centroids in k means. Loosely speaking, the size of our abstraction space.
+    fn k(&self) -> usize {
+        match self.street {
+            Street::Rive => 100,
+            Street::Turn => 200,
+            Street::Flop => 200,
+            Street::Pref => 1,
+            _ => unreachable!(),
+        }
+    }
+
     /// Calculate and return the metric using EMD distances between abstractions
     fn raise_metric(&self) -> HashMap<Pair, f32> {
         let ref centroids = self.kmeans;
@@ -103,7 +114,6 @@ impl Layer {
     }
 
     /// K Means++ implementation yields initial histograms. Abstractions are random and require uniqueness.
-    #[rustfmt::skip]
     fn raise_kmeans(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
         println!("initializing abstraction centroids");
         // 0. Initialize data structures
@@ -122,15 +132,15 @@ impl Layer {
             .clone();
         initials.push(sample);
         // 2. Choose nth centroid with probability proportional to squared distance of nearest neighbors
-        const K: usize = 100;
-        while initials.len() < K {
+        while initials.len() < self.k() {
             let distances = histograms
-                .map(|histogram| initials
-                    .iter()
-                    .map(|initial| self.metric.emd(initial, histogram))
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .expect("find minimum")
-                )
+                .map(|histogram| {
+                    initials
+                        .iter()
+                        .map(|initial| self.metric.emd(initial, histogram))
+                        .min_by(|a, b| a.partial_cmp(b).unwrap())
+                        .expect("find minimum")
+                })
                 .map(|min| min * min)
                 .collect::<Vec<f32>>();
             let choice = WeightedIndex::new(distances)
@@ -165,7 +175,7 @@ impl Layer {
     }
 
     // construct observation -> abstraction map via equity calculations
-    async fn bottom_observations() -> HashMap<Observation, (Histogram, Abstraction)> {
+    async fn bottom_points() -> HashMap<Observation, (Histogram, Abstraction)> {
         println!("clustering bottom layer");
         let ref observations = Arc::new(Observation::all(Street::Rive));
         let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
