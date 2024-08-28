@@ -13,10 +13,6 @@ pub trait Metric {
     fn similarity(&self, x: &Abstraction, y: &Abstraction) -> f32;
 }
 impl Metric for HashMap<Pair, f32> {
-    fn similarity(&self, x: &Abstraction, y: &Abstraction) -> f32 {
-        let ref xor = Pair::from((x, y));
-        self.get(xor).expect("precalculated distance").clone()
-    }
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32 {
         let n = x.domain().len();
         let m = y.domain().len();
@@ -26,21 +22,22 @@ impl Metric for HashMap<Pair, f32> {
             .iter()
             .map(|&a| (a, 1.0 / n as f32))
             .collect::<HashMap<&Abstraction, f32>>();
-        let mut remains = y
-            .domain()
-            .iter()
-            .map(|&a| (a, y.weight(a)))
-            .collect::<HashMap<&Abstraction, f32>>();
         let mut removed = x
             .domain()
             .iter()
             .map(|&a| (a, false))
             .collect::<HashMap<&Abstraction, bool>>();
+        let mut remains = y
+            .domain()
+            .iter()
+            .map(|&a| (a, y.weight(a)))
+            .collect::<HashMap<&Abstraction, f32>>();
         for _ in 0..m {
             for supplier in x.domain() {
-                if *removed
+                if removed
                     .get(supplier)
                     .expect("xabs not found in removed mass")
+                    .to_owned()
                 {
                     continue;
                 }
@@ -50,17 +47,17 @@ impl Metric for HashMap<Pair, f32> {
                     .map(|candidate| (candidate.to_owned(), self.similarity(supplier, candidate)))
                     .min_by(|&(_, ref a), &(_, ref b)| a.partial_cmp(b).expect("not NaN"))
                     .expect("receiver domain is empty");
-                let supply = remains
-                    .get(neighbor)
-                    .expect("yabs not found in remains mass")
-                    .clone();
-                if supply == 0.0 {
-                    continue;
-                }
                 let target = targets
                     .get(supplier)
                     .expect("xabs not found in targets mass")
-                    .clone();
+                    .to_owned();
+                let supply = remains
+                    .get(neighbor)
+                    .expect("yabs not found in remains mass")
+                    .to_owned();
+                if supply == 0.0 {
+                    continue;
+                }
                 if supply < target {
                     cost += supply * nearest;
                     *targets
@@ -84,5 +81,9 @@ impl Metric for HashMap<Pair, f32> {
             }
         }
         cost
+    }
+    fn similarity(&self, x: &Abstraction, y: &Abstraction) -> f32 {
+        let ref xor = Pair::from((x, y));
+        self.get(xor).expect("precalculated distance").clone()
     }
 }
