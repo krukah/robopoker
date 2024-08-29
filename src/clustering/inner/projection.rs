@@ -1,30 +1,30 @@
-use super::histogram::Histogram;
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::clustering::histogram::Histogram;
 use std::collections::HashMap;
 
 /// Enables inter- and intra-layer projections for hierarchical clustering.
 ///
-/// Defines methods for translating the lower(upper) observations into abstractions(distributions) in the lower layer
+/// Defines methods for translating the outer(inner) observations into abstractions(distributions) in the outer layer
 /// It is crucial for maintaining the hierarchical structure of the clustering algorithm
 /// and [normalizing, compressing, generalizing] potential-awareness between different streets or levels of abstraction.
 /// All expectations are such that Observation::all(street) and obs.outnodes() will project perfectly across layers
 pub trait Projection {
-    fn convert(&self, lower: Observation) -> Abstraction;
-    fn project(&self, upper: Observation) -> Histogram;
+    fn convert(&self, outer: Observation) -> Abstraction;
+    fn project(&self, inner: Observation) -> Histogram;
 }
 impl Projection for HashMap<Observation, (Histogram, Abstraction)> {
-    fn convert(&self, ref lower: Observation) -> Abstraction {
-        self.get(lower)
+    fn convert(&self, ref outer: Observation) -> Abstraction {
+        self.get(outer)
             .expect("abstraction calculated in previous layer")
             .1
             .clone()
     }
-    fn project(&self, ref upper: Observation) -> Histogram {
-        upper
+    fn project(&self, ref inner: Observation) -> Histogram {
+        inner
             .outnodes()
             .into_iter()
-            .map(|lower| self.convert(lower))
+            .map(|outer| self.convert(outer))
             .fold(Histogram::default(), |hist, abs| hist.witness(abs))
     }
 }

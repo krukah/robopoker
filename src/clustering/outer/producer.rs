@@ -26,7 +26,7 @@ impl Producer {
             match self.rivers.get(index) {
                 None => return,
                 Some(observation) => {
-                    let abstraction = Abstraction::from(observation);
+                    let abstraction = Abstraction::from(*observation);
                     let observation = observation.clone();
                     self.tx
                         .send((observation, abstraction))
