@@ -22,7 +22,7 @@ impl Consumer {
     /// but it's worth it to maintain the same HashMap<Observation, (Histogram, Abstraction)> interface.
     /// especially since this is a one-time equity abstraction cost that we keep in database for future use.
     pub async fn run(mut self) -> HashMap<Observation, (Histogram, Abstraction)> {
-        let mut progress = Progress::new(2_809_475_760, 500_000);
+        let mut progress = Progress::new(2_809_475_760, 10_000_000);
         while let Some((observation, abstraction)) = self.input.recv().await {
             let histogram = Histogram::witness(Histogram::default(), abstraction.clone());
             self.table.insert(observation, (histogram, abstraction));
