@@ -33,20 +33,20 @@ impl Metric for HashMap<Pair, f32> {
             .map(|&a| (a, y.weight(a)))
             .collect::<HashMap<&Abstraction, f32>>(); // this is effectively a clone
         for _ in 0..m {
-            for from in x_domain.iter() {
+            for source in x_domain.iter() {
                 // skip if we have already moved all the earth from this source
-                if *completed.get(from).expect("from in spent domain") {
+                if *completed.get(source).expect("in x domain") {
                     continue;
                 }
                 // find the nearest neighbor of X (source) from Y (sink)
-                let (ref into, nearest) = y
+                let (ref drains, nearest) = y
                     .domain()
                     .iter()
-                    .map(|mean| (*mean, self.distance(from, mean)))
+                    .map(|mean| (*mean, self.distance(source, mean)))
                     .min_by(|&(_, ref a), &(_, ref b)| a.partial_cmp(b).expect("not NaN"))
-                    .expect("y domain is not empty");
-                let demand = *pressures.get(from).expect("from in x domain");
-                let vacant = *vacancies.get(into).expect("into in y domain");
+                    .expect("y domain not empty");
+                let demand = *pressures.get(source).expect("in x domain");
+                let vacant = *vacancies.get(drains).expect("in y domain");
                 // decide if we can remove earth from both distributions
                 if vacant > 0.0 {
                     energy += nearest * demand.min(vacant);
@@ -55,12 +55,12 @@ impl Metric for HashMap<Pair, f32> {
                 }
                 // remove earth from both distributions
                 if demand > vacant {
-                    *pressures.get_mut(from).expect("from in x domain") -= vacant;
-                    *vacancies.get_mut(into).expect("into in y domain") = 0.0;
+                    *pressures.get_mut(source).expect("in x domain") -= vacant;
+                    *vacancies.get_mut(drains).expect("in y domain") = 0.0;
                 } else {
-                    *completed.get_mut(from).expect("from in x domain") = true;
-                    *pressures.get_mut(from).expect("from in x domain") = 0.0;
-                    *vacancies.get_mut(into).expect("into in y domain") -= demand;
+                    *completed.get_mut(source).expect("in x domain") = true;
+                    *pressures.get_mut(source).expect("in x domain") = 0.0;
+                    *vacancies.get_mut(drains).expect("in y domain") -= demand;
                 }
             }
         }
