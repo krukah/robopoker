@@ -264,7 +264,7 @@ impl Layer {
             .expect("get sink for COPY transaction");
         let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::INT8]);
         let mut writer = unsafe { Pin::new_unchecked(writer) };
-        let mut progress = Progress::new(self.points.len(), 100_000);
+        let mut progress = Progress::new(self.points.len(), 10_000_000);
         for (observation, (_, abstraction)) in self.points.iter() {
             writer
                 .as_mut()
