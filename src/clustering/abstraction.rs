@@ -15,8 +15,8 @@ impl Abstraction {
         Self(rand::random::<u64>())
     }
 }
-impl From<&Observation> for Abstraction {
-    fn from(observation: &Observation) -> Self {
+impl From<Observation> for Abstraction {
+    fn from(observation: Observation) -> Self {
         let equity = observation.equity();
         let bucket = equity * Self::EQUITIES as f32;
         Self::from(bucket as u64)
