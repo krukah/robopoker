@@ -3,16 +3,18 @@ use tokio::time::Instant;
 /// A struct to track and display progress of a long-running operation.
 pub struct Progress {
     total: usize,
+    check: usize,
     ticks: usize,
     begin: Instant,
     delta: Instant,
 }
 impl Progress {
-    const CHECKPOINT: usize = 1_000_000;
-    pub fn new(total: usize) -> Self {
+    pub fn new(total: usize, check: usize) -> Self {
+        println!("starting progress {:>8} {:>10}", check, total);
         let now = Instant::now();
         Self {
             total,
+            check,
             ticks: 0,
             begin: now,
             delta: now,
@@ -20,7 +22,7 @@ impl Progress {
     }
     pub fn tick(&mut self) {
         self.ticks += 1;
-        if self.ticks % Self::CHECKPOINT == 0 {
+        if self.ticks % self.check == 0 {
             use std::io::Write;
             let now = Instant::now();
             let total_t = now.duration_since(self.begin);
@@ -34,7 +36,7 @@ impl Progress {
                 self.ticks,
                 self.ticks as f32 / self.total as f32 * 100f32,
                 self.ticks as f32 / total_t.as_secs_f32(),
-                Self::CHECKPOINT as f32 / delta_t.as_secs_f32(),
+                self.check as f32 / delta_t.as_secs_f32(),
             );
             std::io::stdout().flush().unwrap();
         }

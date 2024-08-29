@@ -22,7 +22,6 @@ pub struct Observation {
 
 impl Observation {
     pub fn all(street: Street) -> Vec<Observation> {
-        println!("enumerating all observations at {}", street);
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
