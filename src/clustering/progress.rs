@@ -10,7 +10,7 @@ pub struct Progress {
 }
 impl Progress {
     pub fn new(total: usize, check: usize) -> Self {
-        println!("starting progress {:>8} {:>10}", check, total);
+        println!("progress {:>8} {:>10}", check, total);
         let now = Instant::now();
         Self {
             total,

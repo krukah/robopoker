@@ -1,7 +1,7 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Enables inter- and intra-layer projections for hierarchical clustering.
 ///
@@ -11,9 +11,10 @@ use std::collections::HashMap;
 /// All expectations are such that Observation::all(street) and obs.outnodes() will project perfectly across layers
 pub trait Projection {
     fn convert(&self, outer: Observation) -> Abstraction;
-    fn project(&self, inner: Observation) -> Histogram;
+    fn project(&self, inner: Observation) -> Histogram; // (_, BTreeMap<Abstraction, usize>)
 }
-impl Projection for HashMap<Observation, (Histogram, Abstraction)> {
+
+impl Projection for BTreeMap<Observation, (Histogram, Abstraction)> {
     fn convert(&self, ref outer: Observation) -> Abstraction {
         self.get(outer)
             .expect("abstraction calculated in previous layer")

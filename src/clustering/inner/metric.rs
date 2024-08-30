@@ -1,7 +1,7 @@
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::xor::Pair;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Trait for defining distance metrics between abstractions and histograms.
 ///
@@ -13,7 +13,7 @@ pub trait Metric {
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32;
 }
 
-impl Metric for HashMap<Pair, f32> {
+impl Metric for BTreeMap<Pair, f32> {
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32 {
         let x_domain = x.domain();
         let y_domain = y.domain();
@@ -23,15 +23,15 @@ impl Metric for HashMap<Pair, f32> {
         let mut completed = x_domain
             .iter()
             .map(|&a| (a, false))
-            .collect::<HashMap<&Abstraction, bool>>();
+            .collect::<BTreeMap<&Abstraction, bool>>();
         let mut pressures = x_domain
             .iter()
             .map(|&a| (a, 1.0 / n as f32))
-            .collect::<HashMap<&Abstraction, f32>>();
+            .collect::<BTreeMap<&Abstraction, f32>>();
         let mut vacancies = y_domain
             .iter()
             .map(|&a| (a, y.weight(a)))
-            .collect::<HashMap<&Abstraction, f32>>(); // this is effectively a clone
+            .collect::<BTreeMap<&Abstraction, f32>>(); // this is effectively a clone
         for _ in 0..m {
             for source in x_domain.iter() {
                 // skip if we have already moved all the earth from this source

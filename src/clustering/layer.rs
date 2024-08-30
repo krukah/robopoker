@@ -8,7 +8,7 @@ use crate::clustering::outer::consumer::Consumer;
 use crate::clustering::outer::producer::Producer;
 use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio_postgres::binary_copy::BinaryCopyInWriter;
@@ -18,9 +18,9 @@ use tokio_postgres::Client;
 /// KMeans hiearchical clustering. Every Observation is to be clustered with "similar" observations. River cards are the base case, where similarity metric is defined by equity. For each higher layer, we compare distributions of next-layer outcomes. Distances are measured by EMD and unsupervised kmeans clustering is used to cluster similar distributions. Potential-aware imperfect recall!
 pub struct Layer {
     street: Street,
-    metric: HashMap<Pair, f32>,
-    points: HashMap<Observation, (Histogram, Abstraction)>,
-    kmeans: HashMap<Abstraction, (Histogram, Histogram)>,
+    metric: BTreeMap<Pair, f32>,
+    points: BTreeMap<Observation, (Histogram, Abstraction)>,
+    kmeans: BTreeMap<Abstraction, (Histogram, Histogram)>,
 }
 
 impl Layer {
@@ -28,7 +28,7 @@ impl Layer {
     pub async fn outer() -> Self {
         let layer = Self {
             street: Street::Rive,
-            kmeans: HashMap::default(),
+            kmeans: BTreeMap::default(),
             metric: Self::outer_metric(),
             points: Self::outer_points().await,
         };
@@ -100,10 +100,10 @@ impl Layer {
     }
 
     /// Compute the metric of the next innermost layer.
-    fn inner_metric(&self) -> HashMap<Pair, f32> {
+    fn inner_metric(&self) -> BTreeMap<Pair, f32> {
         println!("computing metric {} < {}", self.street.prev(), self.street);
         let ref centroids = self.kmeans;
-        let mut metric = HashMap::new();
+        let mut metric = BTreeMap::new();
         for (i, (x, _)) in centroids.iter().enumerate() {
             for (j, (y, _)) in centroids.iter().enumerate() {
                 if i > j {
@@ -121,7 +121,7 @@ impl Layer {
     /// Generate all possible obersvations of the next innermost layer.
     /// Assign them to arbitrary abstractions. They will be overwritten during kmeans iterations.
     /// Base case is River which comes from equity bucket calculation.
-    fn inner_points(&self) -> HashMap<Observation, (Histogram, Abstraction)> {
+    fn inner_points(&self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
         println!("projecting {} < {}", self.street.prev(), self.street);
         Observation::all(self.street.prev())
             .into_iter()
@@ -131,7 +131,7 @@ impl Layer {
 
     /// K Means++ implementation yields initial histograms
     /// Abstraction labels are random and require uniqueness.
-    fn inner_kmeans(&self) -> HashMap<Abstraction, (Histogram, Histogram)> {
+    fn inner_kmeans(&self) -> BTreeMap<Abstraction, (Histogram, Histogram)> {
         println!("choosing means {} < {}", self.street.prev(), self.street);
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
@@ -161,25 +161,25 @@ impl Layer {
                 .map(|min| min * min)
                 .collect::<Vec<f32>>();
             let choice = WeightedIndex::new(distances)
-                .expect("valid weights")
+                .expect("valid weights array")
                 .sample(rng);
             let sample = histograms
                 .nth(choice)
                 .expect("shared index with lowers")
-                .clone();
+                .to_owned();
             kmeans.push(sample);
         }
         // 3. Collect histograms and label with arbitrary (random) Abstractions
         kmeans
             .into_iter()
             .map(|mean| (Abstraction::random(), (mean, Histogram::default())))
-            .collect::<HashMap<_, _>>()
+            .collect::<BTreeMap<_, _>>()
     }
 
     /// Generate the  baseline metric between equity bucket abstractions. Keeping the u64->f32 conversion is fine for distance since it preserves distance
-    fn outer_metric() -> HashMap<Pair, f32> {
+    fn outer_metric() -> BTreeMap<Pair, f32> {
         println!("calculating equity bucket metric");
-        let mut metric = HashMap::new();
+        let mut metric = BTreeMap::new();
         for i in 0..Abstraction::EQUITIES as u64 {
             for j in i..Abstraction::EQUITIES as u64 {
                 let distance = (j - i) as f32;
@@ -193,7 +193,7 @@ impl Layer {
     }
 
     // construct observation -> abstraction map via equity calculations
-    async fn outer_points() -> HashMap<Observation, (Histogram, Abstraction)> {
+    async fn outer_points() -> BTreeMap<Observation, (Histogram, Abstraction)> {
         println!("calculating equity bucket observations");
         let ref observations = Arc::new(Observation::all(Street::Rive));
         let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
