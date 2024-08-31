@@ -18,8 +18,8 @@ use tokio_postgres::Client;
 /// KMeans hiearchical clustering. Every Observation is to be clustered with "similar" observations. River cards are the base case, where similarity metric is defined by equity. For each higher layer, we compare distributions of next-layer outcomes. Distances are measured by EMD and unsupervised kmeans clustering is used to cluster similar distributions. Potential-aware imperfect recall!
 pub struct Layer {
     street: Street,
-    metric: BTreeMap<Pair, f32>,
-    points: BTreeMap<Observation, (Histogram, Abstraction)>,
+    metric: BTreeMap<Pair, f32>, // impl Metric
+    points: BTreeMap<Observation, (Histogram, Abstraction)>, // impl Projection
     kmeans: BTreeMap<Abstraction, (Histogram, Histogram)>,
 }
 
@@ -53,14 +53,14 @@ impl Layer {
     /// Number of centroids in k means on inner layer. Loosely speaking, the size of our abstraction space.
     fn k(&self) -> usize {
         match self.street.prev() {
-            Street::Turn => 5_000,
-            Street::Flop => 5_000,
+            Street::Turn => 500,
+            Street::Flop => 500,
             Street::Pref => 169,
             _ => unreachable!("no other prev"),
         }
     }
 
-    /// Number of kmeans iterations to run on current layer.  
+    /// Number of kmeans iterations to run on current layer.
     fn t(&self) -> usize {
         match self.street.prev() {
             Street::Turn => 100,
@@ -78,22 +78,30 @@ impl Layer {
         let t = self.t();
         let ref mut progress = Progress::new(t, 10);
         for _ in 0..t {
+            // find nearest neighbor. shift centroid accordingly
             for (_, (data, last)) in self.points.iter_mut() {
                 let mut nearests = f32::MAX;
                 let mut neighbor = Abstraction::default();
-                for (abstraction, (mean, _)) in self.kmeans.iter_mut() {
+                for (centroid, (mean, _)) in self.kmeans.iter_mut() {
                     let distance = self.metric.emd(data, mean);
                     if distance < nearests {
                         nearests = distance;
-                        neighbor = *abstraction;
+                        neighbor = *centroid;
                     }
                 }
+                // update nearest neighbor abstraction of this observation
+                let ref mut neighbor = neighbor;
                 self.kmeans
-                    .get_mut(&neighbor)
+                    .get_mut(neighbor)
                     .expect("replaced default abstraction")
                     .0
                     .absorb(data);
-                let _ = std::mem::replace(last, neighbor);
+                std::mem::swap(last, neighbor);
+            }
+            // swap old and new centroids. prepare for next iteration
+            for (_, (old, new)) in self.kmeans.iter_mut() {
+                old.clear();
+                std::mem::swap(old, new);
             }
             progress.tick();
         }
@@ -252,7 +260,7 @@ impl Layer {
     async fn upload_centroid(&self, client: &Client) {
         let sink = client
             .copy_in(
-                r#" 
+                r#"
                 COPY centroid (
                     observation,
                     abstraction
