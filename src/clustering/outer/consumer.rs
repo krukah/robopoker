@@ -24,11 +24,13 @@ impl Consumer {
     pub async fn run(mut self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
         let mut progress = Progress::new(2_809_475_760, 10_000_000);
         while let Some((observation, abstraction)) = self.input.recv().await {
-            let histogram = Histogram::witness(Histogram::default(), abstraction.clone());
-            self.table.insert(observation, (histogram, abstraction));
+            let dirac = Histogram::default().witness(abstraction.clone());
+            self.table.insert(observation, (dirac, abstraction));
             progress.tick();
-            // database insert
         }
         self.table
     }
 }
+
+// TODO
+// let's be generic over the Metric type. Implement for Map<Pair, f32> the same way we implement for Map<Observation, (Histogram, Abstraction)>

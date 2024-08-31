@@ -10,22 +10,22 @@ use std::collections::BTreeMap;
 /// and [normalizing, compressing, generalizing] potential-awareness between different streets or levels of abstraction.
 /// All expectations are such that Observation::all(street) and obs.outnodes() will project perfectly across layers
 pub trait Projection {
-    fn convert(&self, outer: Observation) -> Abstraction;
     fn project(&self, inner: Observation) -> Histogram; // (_, BTreeMap<Abstraction, usize>)
+    fn convert(&self, outer: Observation) -> Abstraction;
 }
 
 impl Projection for BTreeMap<Observation, (Histogram, Abstraction)> {
-    fn convert(&self, ref outer: Observation) -> Abstraction {
-        self.get(outer)
-            .expect("abstraction calculated in previous layer")
-            .1
-            .clone()
-    }
     fn project(&self, ref inner: Observation) -> Histogram {
         inner
             .outnodes()
             .into_iter()
             .map(|outer| self.convert(outer))
             .fold(Histogram::default(), |hist, abs| hist.witness(abs))
+    }
+    fn convert(&self, ref outer: Observation) -> Abstraction {
+        self.get(outer)
+            .expect("abstraction calculated in previous layer")
+            .1
+            .clone()
     }
 }
