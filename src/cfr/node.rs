@@ -1,7 +1,7 @@
 use super::bucket::Bucket;
 use super::player::Player;
-use crate::tree::action::Edge;
-use crate::tree::data::Data;
+use crate::cfr::data::Data;
+use crate::cfr::edge::Edge;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;

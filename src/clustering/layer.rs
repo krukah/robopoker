@@ -1,12 +1,12 @@
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
+use crate::clustering::consumer::Consumer;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::inner::metric::Metric;
-use crate::clustering::inner::projection::Projection;
-use crate::clustering::outer::consumer::Consumer;
-use crate::clustering::outer::producer::Producer;
+use crate::clustering::metric::Metric;
+use crate::clustering::producer::Producer;
 use crate::clustering::progress::Progress;
+use crate::clustering::projection::Projection;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 use std::pin::Pin;

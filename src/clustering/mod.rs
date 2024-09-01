@@ -1,7 +1,9 @@
 pub mod abstraction;
+pub mod consumer;
 pub mod histogram;
-pub mod inner;
 pub mod layer;
-pub mod outer;
+pub mod metric;
+pub mod producer;
 pub mod progress;
+pub mod projection;
 pub mod xor;

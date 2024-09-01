@@ -1,10 +1,10 @@
 use super::info::Info;
 use super::node::Node;
 use super::player::Player;
-use crate::tree::action::Edge;
-use crate::tree::bucket::Bucket;
-use crate::tree::data::Child;
-use crate::tree::data::Data;
+use crate::cfr::bucket::Bucket;
+use crate::cfr::data::Child;
+use crate::cfr::data::Data;
+use crate::cfr::edge::Edge;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
