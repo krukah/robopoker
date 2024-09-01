@@ -81,9 +81,9 @@ impl Tree {
     fn engulf(&self, data: Data) -> Node {
         Node::from((self.index(), self.graph(), data))
     }
-    fn attach(&mut self, node: Node, from: Option<Edge>, head: NodeIndex) -> NodeIndex {
+    fn attach(&mut self, node: Node, edge: Option<Edge>, head: NodeIndex) -> NodeIndex {
         let tail = self.index();
-        if let Some(edge) = from {
+        if let Some(edge) = edge {
             self.graph.add_node(node);
             self.graph.add_edge(head, tail, edge);
         } else {

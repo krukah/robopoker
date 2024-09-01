@@ -21,7 +21,7 @@ impl Data {
         match self.0 {
             00 => &Bucket::P1,
             01..=03 => &Bucket::P2,
-            04..=12 => &Bucket::Ignore,
+            04..=12 => &Bucket::IGNORE,
             _ => unreachable!(),
         }
     }

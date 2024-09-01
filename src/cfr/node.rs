@@ -9,6 +9,16 @@ use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
 use std::ptr::NonNull;
 
+#[allow(dead_code)]
+trait Walkable {
+    fn history(&self) -> Vec<&Edge>;
+    fn outgoing(&self) -> Vec<&Edge>;
+    fn incoming(&self) -> Option<&Edge>;
+    fn parent(&self) -> Option<&Self>;
+    fn children(&self) -> Vec<&Self>;
+    fn follow(&self, edge: &Edge) -> &Self;
+}
+
 pub struct Node {
     graph: NonNull<DiGraph<Self, Edge>>,
     index: NodeIndex,
@@ -23,6 +33,9 @@ impl Node {
     fn graph(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
     }
+    pub fn index(&self) -> NodeIndex {
+        self.index
+    }
 
     pub fn bucket(&self) -> &Bucket {
         self.datum.bucket()
@@ -31,6 +44,8 @@ impl Node {
         self.datum.player()
     }
     pub fn payoff(root: &Node, leaf: &Node) -> Utility {
+        assert!(true, "should be terminal node");
+        todo!("use some Payoff::from(Showdown::from(Game)) type");
         let stakes = leaf.datum.stakes();
         let direction = match root.player() {
             Player::P1 => 0. + 1.,
@@ -40,10 +55,10 @@ impl Node {
         direction * stakes
     }
 
-    pub fn index(&self) -> NodeIndex {
-        self.index
-    }
-
+    /// Navigational methods
+    ///
+    /// maybe make these methods private and implement Walkable for Node?
+    /// or add &Node as argument and impl Walkable for Tree?
     pub fn history(&self) -> Vec<&Edge> {
         match self.incoming() {
             None => vec![],
