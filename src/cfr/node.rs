@@ -10,9 +10,9 @@ use petgraph::Direction::Outgoing;
 use std::ptr::NonNull;
 
 pub struct Node {
-    pub graph: NonNull<DiGraph<Self, Edge>>,
-    pub index: NodeIndex,
-    pub data: Data,
+    graph: NonNull<DiGraph<Self, Edge>>,
+    index: NodeIndex,
+    datum: Data,
 }
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
@@ -25,57 +25,35 @@ impl Node {
     }
 
     pub fn bucket(&self) -> &Bucket {
-        // MARK: very different
-        match self.data.0 {
-            00 => &Bucket::P1,
-            01..=03 => &Bucket::P2,
-            04..=12 => &Bucket::Ignore,
-            _ => unreachable!(),
-        }
+        self.datum.bucket()
     }
     pub fn player(&self) -> &Player {
-        // MARK: very different
-        match self.data.0 {
-            00 => &Player::P1,
-            01..=03 => &Player::P2,
-            04..=12 => &Player::Chance,
-            _ => unreachable!(),
-        }
+        self.datum.player()
     }
     pub fn payoff(root: &Node, leaf: &Node) -> Utility {
-        // MARK: very different
-        const HI_STAKES: Utility = 2e0; // we can modify payoffs to verify convergence
-        const LO_STAKES: Utility = 1e0;
+        let stakes = leaf.datum.stakes();
         let direction = match root.player() {
             Player::P1 => 0. + 1.,
             Player::P2 => 0. - 1.,
             _ => unreachable!("payoff should not be queried for chance"),
         };
-        let payoff = match leaf.data.0 {
-            04 | 08 | 12 => 0.0,
-            07 => 0. + LO_STAKES, // P > R
-            05 => 0. - LO_STAKES, // R < P
-            06 => 0. + HI_STAKES, // R > S
-            11 => 0. + HI_STAKES, // S > P
-            10 => 0. - HI_STAKES, // S < R
-            09 => 0. - HI_STAKES, // P < S
-            _ => unreachable!("eval at terminal node, depth > 1"),
-        };
-        direction * payoff
+        direction * stakes
     }
 
-    #[allow(dead_code)] // use history for creating buckets
+    pub fn index(&self) -> NodeIndex {
+        self.index
+    }
+
     pub fn history(&self) -> Vec<&Edge> {
         match self.incoming() {
             None => vec![],
             Some(edge) => {
-                let mut history = self.parent().unwrap().history();
+                let mut history = self.parent().expect("root handled above").history();
                 history.push(edge);
                 history
             }
         }
     }
-
     pub fn outgoing(&self) -> Vec<&Edge> {
         self.graph()
             .edges_directed(self.index, Outgoing)
@@ -88,7 +66,7 @@ impl Node {
             .next()
             .map(|e| e.weight())
     }
-    pub fn parent<'tree>(&'tree self) -> Option<&'tree Self> {
+    pub fn parent(&self) -> Option<&Self> {
         self.graph()
             .neighbors_directed(self.index, Incoming)
             .next()
@@ -98,7 +76,7 @@ impl Node {
                     .expect("if incoming edge, then parent")
             })
     }
-    pub fn children<'tree>(&'tree self) -> Vec<&'tree Self> {
+    pub fn children(&self) -> Vec<&Self> {
         self.graph()
             .neighbors_directed(self.index, Outgoing)
             .map(|c| {
@@ -108,11 +86,21 @@ impl Node {
             })
             .collect()
     }
-    pub fn follow<'tree>(&'tree self, edge: &Edge) -> &'tree Self {
+    pub fn follow(&self, edge: &Edge) -> &Self {
         self.children()
             .iter()
             .find(|child| edge == child.incoming().unwrap())
-            .unwrap()
+            .expect("valid edge to follow")
         //? TODO O(A) performance
+    }
+}
+
+impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)> for Node {
+    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)) -> Self {
+        Self {
+            index,
+            graph,
+            datum,
+        }
     }
 }

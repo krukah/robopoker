@@ -11,12 +11,11 @@ use crate::Probability;
 use crate::Utility;
 
 type Epoch = usize;
-type Regrets = Profile;
 
 pub struct Solver {
     tree: Tree,
     epoch: Epoch,
-    regrets: Regrets,
+    regrets: Profile,
     current: Profile,
     average: Profile,
 }
@@ -26,7 +25,7 @@ impl Solver {
             tree: Tree::new(),
             epoch: 0,
             average: Profile::new(),
-            current: Regrets::new(),
+            current: Profile::new(),
             regrets: Profile::new(),
         }
     }
@@ -34,7 +33,7 @@ impl Solver {
         const CHECKPOINT: Epoch = 1_000;
         if self.epoch % CHECKPOINT == 0 {
             println!("T{}", self.epoch);
-            for (bucket, strategy) in self.average().0.iter() {
+            for (bucket, strategy) in self.average().strategies() {
                 for (action, weight) in strategy.0.iter() {
                     println!("Bucket {:?}  {:?}: {:.4?}", bucket, action, weight);
                 }
@@ -56,11 +55,11 @@ impl Solver {
     }
     pub fn step(&mut self) {
         for ref block in self.sample() {
-            if self.walker() != block.node().player() {
-                continue;
-            } else {
+            if self.walker() == block.node().player() {
                 self.update_regret(block);
                 self.update_policy(block);
+            } else {
+                continue;
             }
         }
     }
@@ -84,7 +83,6 @@ impl Solver {
     take Node as argument rather than Info, since regret calcs are implicitly 1-node-infosets in external sampling
     */
 
-    #[allow(unreachable_code)]
     fn sample(&self) -> Vec<Info> {
         todo!("sample new MC tree ");
         todo!("normalize reaches by sampling probability")
@@ -92,6 +90,7 @@ impl Solver {
 
     // external sampling helper methods derived from epoch
     fn walker(&self) -> &Player {
+        todo!("walker should be derived from the current profile");
         match self.epoch % 2 {
             0 => &Player::P1,
             _ => &Player::P2,
@@ -99,10 +98,10 @@ impl Solver {
     }
 
     fn update_regret(&mut self, info: &Info) {
-        for (ref action, regret) in self.regret_vector(info) {
+        for (ref action, ref mut regret) in self.regret_vector(info) {
             let bucket = info.node().bucket();
             let running = self.regrets.get_mut(bucket, action);
-            *running = regret;
+            std::mem::swap(running, regret);
         }
     }
     fn update_policy(&mut self, info: &Info) {
@@ -172,7 +171,7 @@ impl Solver {
         self.current.expected_reach(root) * self.visiting_value(root)
     }
     fn visiting_value(&self, root: &Node) -> Utility {
-        self.sample_terminal_nodes(root)
+        self.explore(root)
             .iter()
             .map(|leaf| self.relative_value(root, leaf))
             .sum::<Utility>()
@@ -183,51 +182,47 @@ impl Solver {
             * self.current.sampling_reach(root, leaf)
     }
 
-    // recursive sampling methods
-    #[allow(dead_code)]
-    fn select_terminal_nodes<'a>(&self, node: &'a Node) -> Terminals<'a> {
-        match node.children().len() {
-            0 => vec![&node],
-            _ => node
-                .children()
-                .iter()
-                .map(|child| self.select_terminal_nodes(child))
-                .flatten()
-                .collect(),
-        }
-    }
-    fn sample_terminal_nodes<'a>(&self, node: &'a Node) -> Terminals<'a> {
+    /// implementation of external sampling tree search.
+    /// explores all children if the walker is the same player as the current node
+    /// otherwise explores a single randomly selected child
+    fn explore<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
         if 0 == node.children().len() {
-            vec![&node]
+            vec![node]
         } else if self.walker() == node.player() {
-            self.sample_terminal_nodes_all(node)
+            self.explore_all(node)
         } else {
-            self.sample_terminal_nodes_one(node)
+            self.explore_one(node)
         }
     }
-    fn sample_terminal_nodes_all<'a>(&self, node: &'a Node) -> Terminals<'a> {
+    /// explores all children of the current node
+    /// high branching factor -> exploring all our options
+    fn explore_all<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
         node.children()
             .iter()
-            .map(|child| self.sample_terminal_nodes(child)) // mut self.regrets ( child.bucket(), child.incoming() ) = self.walk(child)
+            .map(|child| self.explore(child))
             .flatten()
             .collect()
     }
-    fn sample_terminal_nodes_one<'a>(&self, node: &'a Node) -> Terminals<'a> {
+    /// explores a single randomly selected child
+    /// low branching factor -> prevent compinatoric explosion.
+    ///
+    /// implementation assumes we'll have a policy for this Node/Bucket/Info, i.e.
+    /// - static Tree
+    /// - dynamic terminal Node / descendant selection
+    fn explore_one<'a>(&self, node: &'a Node) -> Vec<&'a Node> {
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
-
-        let seed = [(self.epoch + node.index.index()) as u8; 32];
+        let seed = [(self.epoch + node.index().index()) as u8; 32];
         let ref mut rng = SmallRng::from_seed(seed);
         let ref weights = node
             .outgoing()
             .iter()
             .map(|edge| self.current.weight(node, edge))
             .collect::<Vec<Probability>>();
-        let distribution = WeightedIndex::new(weights).expect("same length");
-        let child = distribution.sample(rng);
+        let child = WeightedIndex::new(weights)
+            .expect("same length, at least one > 0")
+            .sample(rng);
         let child = node.children().remove(child); // kidnapped!
-        self.sample_terminal_nodes(child)
+        self.explore(child)
     }
 }
-
-type Terminals<'a> = Vec<&'a Node>;

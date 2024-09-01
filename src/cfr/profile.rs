@@ -7,7 +7,7 @@ use crate::Probability;
 use std::collections::HashMap;
 
 //? don't love how epoch is contagious across Trainer < Minimizer < Profile > >
-pub struct Profile(pub HashMap<Bucket, Policy>);
+pub struct Profile(HashMap<Bucket, Policy>);
 
 impl Profile {
     pub fn new() -> Self {
@@ -38,6 +38,10 @@ impl Profile {
             .insert(edge, value);
     }
 
+    pub fn strategies(&self) -> impl Iterator<Item = (&Bucket, &Policy)> {
+        self.0.iter()
+    }
+
     // probability calculations
     pub fn weight(&self, node: &Node, edge: &Edge) -> Probability {
         match node.player() {
@@ -54,34 +58,31 @@ impl Profile {
     pub fn cfactual_reach(&self, root: &Node) -> Probability {
         let mut prod = 1.0;
         let mut next = root;
-        while let Some(from) = next.parent() {
-            let edge = next.incoming().expect("has parent");
-            if from.player() == root.player() {
-                prod *= self.cfactual_reach(from);
+        while let (Some(head), Some(edge)) = (next.parent(), next.incoming()) {
+            if head.player() == root.player() {
+                prod *= self.cfactual_reach(head);
                 break;
             } else {
-                prod *= self.weight(from, edge);
+                prod *= self.weight(head, edge);
             }
-            next = from;
+            next = head;
         }
         prod
     }
     pub fn expected_reach(&self, node: &Node) -> Probability {
-        match node.parent() {
-            None => 1.0,
-            Some(from) => {
-                let edge = node.incoming().expect("has parent");
-                self.weight(from, edge) * self.expected_reach(from)
-            }
+        if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
+            self.weight(head, edge) * self.expected_reach(head)
+        } else {
+            1.0
         }
     }
     pub fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
         if root.bucket() == leaf.bucket() {
             1.0
         } else {
-            let node = leaf.parent().expect("if has parent, then has incoming");
-            let from = leaf.incoming().expect("if has parent, then has incoming");
-            self.weight(node, from) * self.relative_reach(root, node)
+            let head = leaf.parent().expect("if has parent, then has incoming");
+            let edge = leaf.incoming().expect("if has parent, then has incoming");
+            self.weight(head, edge) * self.relative_reach(root, head)
         }
     }
     pub fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {

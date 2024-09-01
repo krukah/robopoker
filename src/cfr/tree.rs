@@ -1,10 +1,10 @@
-use super::info::Info;
-use super::node::Node;
-use super::player::Player;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::data::Child;
 use crate::cfr::data::Data;
 use crate::cfr::edge::Edge;
+use crate::cfr::info::Info;
+use crate::cfr::node::Node;
+use crate::cfr::player::Player;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
@@ -30,56 +30,57 @@ impl Tree {
         this
     }
 
-    fn index(&self) -> NodeIndex {
-        NodeIndex::new(self.graph.node_count())
-    }
-    fn graph(&self) -> NonNull<DiGraph<Node, Edge>> {
-        NonNull::from(self.graph.as_ref())
-    }
-    fn wrap(&self, data: Data) -> Node {
-        Node {
-            data,
-            index: self.index(),
-            graph: self.graph(),
-        }
-    }
-
     fn dfs(&mut self) {
-        // let index = 0;
         let root = (Self::root(), None, NodeIndex::from(0));
         let mut parents = vec![root];
         while let Some(parent) = parents.pop() {
             let mut children = self.spawn(&parent.0);
-            let data = parent.0;
-            let from = parent.1;
-            let head = parent.2;
-            let node = self.wrap(data); // , index
+            let (data, from, head) = parent;
+            let node = self.engulf(data); // , index
             let tail = self.attach(node, from, head); // , mut index
             while let Some(child) = children.pop() {
                 let data = child.data;
-                let from = Some(child.edge);
-                parents.push((data, from, tail));
+                let edge = Some(child.edge);
+                parents.push((data, edge, tail));
             }
         }
     }
 
     fn bucketize(&mut self) {
         for node in self.graph.node_weights() {
-            if node.player() == &Player::Chance {
+            let index = node.index();
+            let player = node.player();
+            let bucket = node.bucket();
+            if player == &Player::Chance {
                 continue;
-            } else if let Some(info) = self.infos.get_mut(node.bucket()) {
-                info.roots.push(node.index);
             } else {
-                let mut info = Info {
-                    roots: Vec::new(),
-                    graph: self.graph(),
-                };
-                info.roots.push(node.index);
-                self.infos.insert(*node.bucket(), info);
+                match self.infos.get_mut(bucket) {
+                    Some(info) => info.push(index),
+                    None => {
+                        let info = Info::from((index, self.graph()));
+                        let bucket = bucket.to_owned();
+                        self.infos.insert(bucket, info);
+                    }
+                }
             }
         }
     }
 
+    fn root() -> Data {
+        Data::root()
+    }
+    fn spawn(&self, data: &Data) -> Vec<Child> {
+        data.spawn()
+    }
+    fn index(&self) -> NodeIndex {
+        NodeIndex::new(self.graph.node_count())
+    }
+    fn graph(&self) -> NonNull<DiGraph<Node, Edge>> {
+        NonNull::from(self.graph.as_ref())
+    }
+    fn engulf(&self, data: Data) -> Node {
+        Node::from((self.index(), self.graph(), data))
+    }
     fn attach(&mut self, node: Node, from: Option<Edge>, head: NodeIndex) -> NodeIndex {
         let tail = self.index();
         if let Some(edge) = from {
@@ -89,81 +90,5 @@ impl Tree {
             self.graph.add_node(node);
         }
         tail
-    }
-
-    // tree-building methods.
-    // memory-allocating.
-    // full tree defined recursively by ::root() + ::children()
-
-    fn root() -> Data {
-        // MARK: very different
-        Data(0)
-    }
-    fn spawn(&self, data: &Data) -> Vec<Child> {
-        // MARK: very different
-        match data.0 {
-            // P1 moves
-            00 => vec![
-                Child {
-                    data: Data(01),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Data(02),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Data(03),
-                    edge: Edge::SC,
-                },
-            ],
-            // P2 moves
-            01 => vec![
-                Child {
-                    data: Data(04),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Data(05),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Data(06),
-                    edge: Edge::SC,
-                },
-            ],
-            02 => vec![
-                Child {
-                    data: Data(07),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Data(08),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Data(09),
-                    edge: Edge::SC,
-                },
-            ],
-            03 => vec![
-                Child {
-                    data: Data(10),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Data(11),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Data(12),
-                    edge: Edge::SC,
-                },
-            ],
-            // terminal nodes
-            04..=12 => Vec::new(),
-            //
-            _ => unreachable!(),
-        }
     }
 }
