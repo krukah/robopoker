@@ -24,30 +24,41 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// async download from database to create initial River layer.
+    /// Upload to database. We'll open a new connection for each layer, whatever.
+    pub async fn upload(self) -> Self {
+        println!("uploading {}", self.street);
+        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
+        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
+            .await
+            .expect("connect to database");
+        tokio::spawn(connection);
+        self.truncate(client).await;
+        self.upload_distance(client).await;
+        self.upload_centroid(client).await;
+        self
+    }
+
+    /// async equity calculations to create initial River layer.
     pub async fn outer() -> Self {
-        let layer = Self {
+        Self {
             street: Street::Rive,
             kmeans: BTreeMap::default(),
             metric: Self::outer_metric(),
             points: Self::outer_points().await,
-        };
-        layer.upload().await;
-        layer
+        }
     }
 
     /// Yield the next layer of abstraction by kmeans clustering. The recursive nature of layer methods encapsulates the hiearchy of learned abstractions via kmeans.
     /// TODO; make this async and persist to database after each layer
-    pub async fn inner(self) -> Self {
-        let mut layer = Self {
+    pub fn inner(&self) -> Self {
+        let mut inner = Self {
             street: self.street.prev(),
             kmeans: self.inner_kmeans(),
             metric: self.inner_metric(),
             points: self.inner_points(),
         };
-        layer.cluster();
-        layer.upload().await;
-        layer
+        inner.cluster();
+        inner
     }
 
     /// Number of centroids in k means on inner layer. Loosely speaking, the size of our abstraction space.
@@ -107,7 +118,7 @@ impl Layer {
         }
     }
 
-    /// Compute the metric of the next innermost layer.
+    /// Compute the metric of the next innermost layer. Take outer product of centroid histograms over measure.
     fn inner_metric(&self) -> BTreeMap<Pair, f32> {
         println!("computing metric {} < {}", self.street.prev(), self.street);
         let ref centroids = self.kmeans;
@@ -219,19 +230,6 @@ impl Layer {
 
 /// SQL operations
 impl Layer {
-    /// Upload to database
-    async fn upload(&self) {
-        println!("uploading {}", self.street);
-        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
-        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
-            .await
-            .expect("connect to database");
-        tokio::spawn(connection);
-        self.truncate(client).await;
-        self.upload_distance(client).await;
-        self.upload_centroid(client).await;
-    }
-
     /// Truncate the database tables
     async fn truncate(&self, client: &Client) {
         if self.street == Street::Rive {
