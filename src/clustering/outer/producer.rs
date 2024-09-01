@@ -19,14 +19,14 @@ impl Producer {
     }
 
     pub async fn run(self) {
-        let n = self.rivers.len() / num_cpus::get();
-        let beg = self.shard * n;
-        let end = self.shard * n + n;
+        let len = self.rivers.len() / num_cpus::get();
+        let beg = self.shard * len;
+        let end = self.shard * len + len;
         for index in beg..end {
             match self.rivers.get(index) {
                 None => return,
-                Some(observation) => {
-                    let abstraction = Abstraction::from(*observation);
+                Some(&observation) => {
+                    let abstraction = Abstraction::from(observation);
                     let observation = observation.clone();
                     self.tx
                         .send((observation, abstraction))
