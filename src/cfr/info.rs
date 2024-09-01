@@ -5,11 +5,14 @@ use petgraph::graph::NodeIndex;
 use std::ptr::NonNull;
 
 pub struct Info {
-    pub roots: Vec<NodeIndex>,
-    pub graph: NonNull<DiGraph<Node, Edge>>,
+    roots: Vec<NodeIndex>,
+    graph: NonNull<DiGraph<Node, Edge>>,
 }
 
 impl Info {
+    pub fn push(&mut self, index: NodeIndex) {
+        self.roots.push(index)
+    }
     pub fn roots(&self) -> Vec<&Node> {
         self.roots
             .iter()
@@ -25,5 +28,12 @@ impl Info {
     }
     fn graph(&self) -> &DiGraph<Node, Edge> {
         unsafe { self.graph.as_ref() }
+    }
+}
+
+impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>)> for Info {
+    fn from((index, graph): (NodeIndex, NonNull<DiGraph<Node, Edge>>)) -> Self {
+        let roots = vec![index];
+        Self { roots, graph }
     }
 }

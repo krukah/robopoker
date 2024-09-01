@@ -29,11 +29,11 @@ impl Observation {
             _ => unreachable!("no other transitions"),
         };
         let mut observations = Vec::new(); // TODO make with_capacity, conditional on street
-        let secrets = HandIterator::from((2usize, Hand::from(0u64)));
-        for secret in secrets {
-            let publics = HandIterator::from((n, secret));
-            for public in publics {
-                observations.push(Observation::from((secret, public)));
+        let holes = HandIterator::from((2usize, Hand::from(0u64)));
+        for hole in holes {
+            let boards = HandIterator::from((n, hole));
+            for board in boards {
+                observations.push(Observation::from((hole, board)));
             }
         }
         observations
