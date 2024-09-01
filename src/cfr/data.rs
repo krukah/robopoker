@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::action::Edge;
+use super::edge::Edge;
 
 pub struct Data(pub usize);
 

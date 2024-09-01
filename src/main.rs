@@ -2,6 +2,7 @@ use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
+    // The k-means earth mover's distance hand-clustering algorithm.
     clustering::layer::Layer::outer()
         .await
         .upload()
@@ -15,7 +16,9 @@ async fn main() {
         .inner()
         .upload()
         .await;
-    training::solver::Solver::new().minimize(50_000);
+
+    // The counter-factual regret minimization.
+    cfr::solver::Solver::new().minimize(50_000);
 }
 
 /*

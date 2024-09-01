@@ -1,4 +1,4 @@
-use crate::tree::action::Edge;
+use crate::cfr::edge::Edge;
 use crate::Probability;
 use std::collections::HashMap;
 

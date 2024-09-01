@@ -5,7 +5,7 @@ pub struct Hole(Hand);
 
 impl Hole {
     pub fn new() -> Self {
-        Self(Hand::from(0u64))
+        Self(Hand::from(3u64))
     }
 }
 
@@ -17,6 +17,7 @@ impl std::fmt::Display for Hole {
 
 impl From<Hand> for Hole {
     fn from(hand: Hand) -> Self {
+        assert!(hand.size() == 2);
         Self(hand)
     }
 }
