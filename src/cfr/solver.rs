@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use super::bucket::Bucket;
 use crate::cfr::edge::Edge;
 use crate::cfr::info::Info;
 use crate::cfr::node::Node;
@@ -6,18 +9,24 @@ use crate::cfr::profile::Profile;
 use crate::cfr::tree::Tree;
 use crate::Probability;
 use crate::Utility;
-use rand::rngs::SmallRng;
-use rand::SeedableRng;
 
-pub struct Solution {
+struct Solution(HashMap<Bucket, HashMap<Edge, Memory>>);
+struct Memory {
+    profile: Probability,
+    regrets: Probability,
+    average: Probability,
+}
+
+// ==
+
+pub struct Solver {
     t: usize,
     regrets: Profile,
     current: Profile,
     average: Profile,
 }
 
-/// CFR Solver
-impl Solution {
+impl Solver {
     pub fn new() -> Self {
         Self {
             t: 0,
@@ -61,55 +70,7 @@ impl Solution {
     /// - use the current profile as a sampling distribution
     /// - initialize unreached Buckets with normalized probabilities
     fn sample(&self) -> Tree {
-        todo!("sample new MC tree. use DFS to expand, self.profile to sample");
-        todo!("maybe initialize unreached Buckets with normalized probabilities");
-        /*
-        pub fn new() -> Self {
-            let mut this = Self {
-                infos: HashMap::new(),
-                graph: Box::new(DiGraph::new()),
-            };
-            this.dfs();
-            this.bucketize();
-            this
-        }
-
-        fn dfs(&mut self) {
-            let root = (Self::root(), None, NodeIndex::from(0));
-            let mut parents = vec![root];
-            while let Some(parent) = parents.pop() {
-                let mut children = self.spawn(&parent.0);
-                let (data, from, head) = parent;
-                let node = self.engulf(data); // , index
-                let tail = self.attach(node, from, head); // , mut index
-                while let Some(child) = children.pop() {
-                    let data = child.data;
-                    let edge = Some(child.edge);
-                    parents.push((data, edge, tail));
-                }
-            }
-        }
-
-        fn bucketize(&mut self) {
-            for node in self.graph.node_weights() {
-                let index = node.index();
-                let player = node.player();
-                let bucket = node.bucket();
-                if player == &Player::Chance {
-                    continue;
-                } else {
-                    match self.infos.get_mut(bucket) {
-                        Some(info) => info.push(index),
-                        None => {
-                            let info = Info::from((index, self.graph()));
-                            let bucket = bucket.to_owned();
-                            self.infos.insert(bucket, info);
-                        }
-                    }
-                }
-            }
-        }
-         */
+        Tree::new()
     }
 
     /// update regrets via regret matching
@@ -120,7 +81,6 @@ impl Solution {
             std::mem::swap(running, regret);
         }
     }
-    /// update policy via cumulative regrets
     fn update_policy(&mut self, info: &Info) {
         for (ref action, weight) in self.policy_vector(info) {
             let bucket = info.node().bucket();
@@ -146,7 +106,6 @@ impl Solution {
         let policy = regrets.into_iter().map(|(a, r)| (a, r / sum)).collect();
         policy
     }
-    /// regret storage and calculation
     fn regret_vector(&self, infonode: &Info) -> Vec<(Edge, Utility)> {
         infonode
             .node()
@@ -206,49 +165,5 @@ impl Solution {
             0 => &Player::P1,
             _ => &Player::P2,
         }
-    }
-    /// Given existing Tree/Graph/Node, implement external sampling tree search.
-    /// the walker/player comparision is the selection mechanism:
-    /// - explores all children if the walker is this epoch's traverser
-    /// - explores a single randomly selected child otherwise
-    fn explore<'tree>(&self, node: &'tree Node) -> Vec<&'tree Node> {
-        if 0 == node.children().len() {
-            vec![node]
-        } else if self.walker() == node.player() {
-            self.explore_all(node)
-        } else {
-            self.explore_one(node)
-        }
-    }
-    /// explores all children of the current node
-    /// high branching factor -> exploring all our options
-    fn explore_all<'tree>(&self, node: &'tree Node) -> Vec<&'tree Node> {
-        node.children()
-            .iter()
-            .map(|child| self.explore(child))
-            .flatten()
-            .collect()
-    }
-    /// explores a single randomly selected child
-    /// low branching factor -> prevent compinatoric explosion.
-    ///
-    /// implementation assumes we'll have a policy for this Node/Bucket/Info, i.e.
-    /// - static Tree
-    /// - dynamic terminal Node / descendant selection
-    fn explore_one<'tree>(&self, node: &'tree Node) -> Vec<&'tree Node> {
-        use rand::distributions::Distribution;
-        use rand::distributions::WeightedIndex;
-        let seed = [(self.t + node.index().index()) as u8; 32];
-        let ref mut rng = SmallRng::from_seed(seed);
-        let ref weights = node
-            .outgoing()
-            .iter()
-            .map(|edge| self.current.weight(node, edge))
-            .collect::<Vec<Probability>>();
-        let child = WeightedIndex::new(weights)
-            .expect("same length, at least one > 0")
-            .sample(rng);
-        let child = node.children().remove(child); // kidnapped!
-        self.explore(child)
     }
 }
