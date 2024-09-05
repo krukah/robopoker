@@ -9,16 +9,6 @@ use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
 use std::ptr::NonNull;
 
-#[allow(dead_code)]
-trait Walkable {
-    fn history(&self) -> Vec<&Edge>;
-    fn outgoing(&self) -> Vec<&Edge>;
-    fn incoming(&self) -> Option<&Edge>;
-    fn parent(&self) -> Option<&Self>;
-    fn children(&self) -> Vec<&Self>;
-    fn follow(&self, edge: &Edge) -> &Self;
-}
-
 pub struct Node {
     graph: NonNull<DiGraph<Self, Edge>>,
     index: NodeIndex,
@@ -32,6 +22,9 @@ impl Node {
     // which ensures that the graph is valid...
     fn graph(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
+    }
+    pub fn datum(&self) -> &Data {
+        &self.datum
     }
     pub fn index(&self) -> NodeIndex {
         self.index

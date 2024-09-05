@@ -5,6 +5,17 @@ use crate::Utility;
 
 pub struct Child(pub Data, pub Edge);
 
+impl From<(Data, Edge)> for Child {
+    fn from(tuple: (Data, Edge)) -> Self {
+        Child(tuple.0, tuple.1)
+    }
+}
+impl From<Child> for (Data, Edge) {
+    fn from(child: Child) -> Self {
+        (child.0, child.1)
+    }
+}
+
 pub struct Data(usize); // Either<(Game, Observation)>, Abstraction
 
 impl Data {
