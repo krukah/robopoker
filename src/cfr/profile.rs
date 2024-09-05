@@ -1,3 +1,4 @@
+use super::data::Data;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::edge::Edge;
 use crate::cfr::node::Node;
@@ -42,17 +43,38 @@ impl Profile {
         self.0.iter()
     }
 
+    pub fn get(&self, bucket: &Bucket, edge: &Edge) -> Probability {
+        *self
+            .0
+            .get(bucket)
+            .expect("valid bucket")
+            .0
+            .get(edge)
+            .expect("policy initialized for actions")
+    }
+
     // probability calculations
     pub fn weight(&self, node: &Node, edge: &Edge) -> Probability {
+        // TODO this
+        // should be function of BUCKET not NODE
+        // but then how to get Player? only need it for chance nodes anyway...
+        // maybe it's a function of Bucket?
+        // tension between children being computed before or after weight calls
+        // if before, then we need to know the player to call the right strategy
+
+        // fn weight_for_tree_sample(node: &Node, edge: &Edge) -> Probability {
+        //     let bucket = node.bucket();
+        //     *self.get_ref(bucket, edge)
+        // }
+        // if after,  we have the luxury of taking uniform over all actions
+        //
+        // {
+        //     let bucket = node.bucket();
+        //     *self.get_ref(bucket, edge)
+        // }
         match node.player() {
-            Player::Chance => {
-                let n = node.outgoing().len();
-                1.0 / n as Probability
-            }
-            _ => {
-                let bucket = node.bucket();
-                *self.get_ref(bucket, edge)
-            }
+            Player::Chance => 1.0 / node.outgoing().len() as Probability,
+            _ => self.get(node.bucket(), edge),
         }
     }
     pub fn cfactual_reach(&self, root: &Node) -> Probability {
