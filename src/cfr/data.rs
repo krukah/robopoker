@@ -3,10 +3,7 @@ use crate::cfr::edge::Edge;
 use crate::cfr::player::Player;
 use crate::Utility;
 
-pub struct Child {
-    pub data: Data,
-    pub edge: Edge,
-}
+pub struct Child(pub Data, pub Edge);
 
 pub struct Data(usize); // Either<(Game, Observation)>, Abstraction
 
@@ -57,61 +54,25 @@ impl Data {
         match self.0 {
             // P1 moves
             00 => vec![
-                Child {
-                    data: Self(01),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Self(02),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Self(03),
-                    edge: Edge::SC,
-                },
+                Child(Self(01), Edge::RO),
+                Child(Self(02), Edge::PA),
+                Child(Self(03), Edge::SC),
             ],
             // P2 moves
             01 => vec![
-                Child {
-                    data: Self(04),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Self(05),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Self(06),
-                    edge: Edge::SC,
-                },
+                Child(Self(04), Edge::RO),
+                Child(Self(05), Edge::PA),
+                Child(Self(06), Edge::SC),
             ],
             02 => vec![
-                Child {
-                    data: Self(07),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Self(08),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Self(09),
-                    edge: Edge::SC,
-                },
+                Child(Self(07), Edge::RO),
+                Child(Self(08), Edge::PA),
+                Child(Self(09), Edge::SC),
             ],
             03 => vec![
-                Child {
-                    data: Self(10),
-                    edge: Edge::RO,
-                },
-                Child {
-                    data: Self(11),
-                    edge: Edge::PA,
-                },
-                Child {
-                    data: Self(12),
-                    edge: Edge::SC,
-                },
+                Child(Self(10), Edge::RO),
+                Child(Self(11), Edge::PA),
+                Child(Self(12), Edge::SC),
             ],
             // terminal nodes
             04..=12 => Vec::new(),
