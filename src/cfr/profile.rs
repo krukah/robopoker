@@ -1,113 +1,204 @@
-use super::data::Data;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::edge::Edge;
+use crate::cfr::info::Info;
+use crate::cfr::memory::Memory;
 use crate::cfr::node::Node;
 use crate::cfr::player::Player;
-use crate::cfr::policy::Policy;
 use crate::Probability;
+use crate::Utility;
 use std::collections::HashMap;
 
-//? don't love how epoch is contagious across Trainer < Minimizer < Profile > >
-pub struct Profile(HashMap<Bucket, Policy>);
-
+pub struct Profile(HashMap<Bucket, HashMap<Edge, Memory>>);
 impl Profile {
-    pub fn new() -> Self {
-        Self(HashMap::new())
+    /// TODO achieve zero-copy on policy/regret vector updates.
+    /// just need to align lifetimes?
+    pub fn empty() -> Self {
+        Self(HashMap::default())
     }
 
-    pub fn get_ref(&self, bucket: &Bucket, edge: &Edge) -> &f32 {
-        self.0
-            .get(bucket)
-            .expect("valid bucket")
-            .0
-            .get(edge)
-            .expect("policy initialized for actions")
+    // online minimization via regret matching ++
+    // online minimization via regret matching ++
+    // online minimization via regret matching ++
+    // online minimization via regret matching ++
+    pub fn update_regret(&mut self, infoset: &Info, _: usize) {
+        for (action, ref regret) in self.regret_vector(infoset) {
+            let bucket = infoset.node().bucket().to_owned();
+            let memory = self.memory(bucket, action);
+            memory.regret += *regret;
+        }
     }
-    pub fn get_mut(&mut self, bucket: &Bucket, edge: &Edge) -> &mut f32 {
-        self.0
-            .get_mut(bucket)
-            .expect("valid bucket")
-            .0
-            .get_mut(edge)
-            .expect("policy initialized for actions")
+    pub fn update_policy(&mut self, infoset: &Info, t: usize) {
+        for (action, ref weight) in self.policy_vector(infoset) {
+            let bucket = infoset.node().bucket().to_owned();
+            let memory = self.memory(bucket, action);
+            memory.policy = *weight;
+            memory.advice *= t as Probability;
+            memory.advice += weight;
+            memory.advice /= t as Probability + 1.0;
+        }
     }
-    pub fn set_val(&mut self, bucket: Bucket, edge: Edge, value: f32) {
+
+    // write-through memory
+    // write-through memory
+    // write-through memory
+    // write-through memory
+    pub fn memory(&mut self, bucket: Bucket, edge: Edge) -> &mut Memory {
         self.0
             .entry(bucket)
-            .or_insert_with(Policy::new)
-            .0
-            .insert(edge, value);
+            .or_insert_with(HashMap::new)
+            .entry(edge)
+            .or_insert_with(Memory::new)
     }
 
-    pub fn strategies(&self) -> impl Iterator<Item = (&Bucket, &Policy)> {
-        self.0.iter()
-    }
-
-    pub fn get(&self, bucket: &Bucket, edge: &Edge) -> Probability {
-        *self
-            .0
+    // regret and policy lookups
+    // regret and policy lookups
+    // regret and policy lookups
+    // regret and policy lookups
+    fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
+        self.0
             .get(bucket)
-            .expect("valid bucket")
-            .0
+            .expect("bucket/edge has been visited before")
             .get(edge)
-            .expect("policy initialized for actions")
+            .expect("bucket/edge has been visited before")
+            .regret
+            .to_owned()
+    }
+    fn policy(&self, bucket: &Bucket, edge: &Edge) -> Probability {
+        self.0
+            .get(bucket)
+            .expect("bucket/edge has been visited before")
+            .get(edge)
+            .expect("bucket/edge has been visited before")
+            .policy
+            .to_owned()
+    }
+
+    // regret and policy vector calculations
+    // regret and policy vector calculations
+    // regret and policy vector calculations
+    // regret and policy vector calculations
+    fn policy_vector(&self, infoset: &Info) -> HashMap<Edge, Probability> {
+        let regrets = infoset
+            .node()
+            .outgoing()
+            .into_iter()
+            .map(|action| (action.to_owned(), self.running_regret(infoset, &action)))
+            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
+            .collect::<HashMap<Edge, Utility>>();
+        let summed = regrets.values().sum::<Utility>();
+        let vector = regrets
+            .into_iter()
+            .map(|(a, r)| (a, r / summed))
+            .collect::<HashMap<Edge, Probability>>();
+        vector
+    }
+    fn regret_vector(&self, infoset: &Info) -> HashMap<Edge, Utility> {
+        infoset
+            .node()
+            .outgoing()
+            .into_iter()
+            .map(|action| (action.to_owned(), self.matched_regret(infoset, action)))
+            .collect()
+    }
+    fn instant_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+        infoset
+            .roots()
+            .iter()
+            .map(|root| self.gain(root, action))
+            .sum::<Utility>()
+    }
+    fn running_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+        let bucket = infoset.node().bucket();
+        let regret = self.regret(bucket, action);
+        regret
+    }
+    fn matched_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+        let running = self.running_regret(infoset, action);
+        let instant = self.instant_regret(infoset, action);
+        (running + instant).max(Utility::MIN_POSITIVE)
+    }
+
+    // utility calculations
+    // utility calculations
+    // utility calculations
+    // utility calculations
+    fn gain(&self, root: &Node, edge: &Edge) -> Utility {
+        let expected = self.expected_value(root);
+        let cfactual = self.cfactual_value(root, edge);
+        cfactual - expected
+        // should hoist outside of action/edge loop.
+        // label each Node with EV
+        // then use that memoized value for CFV
+        // memoize via Cell<Option<Utility>>
+    }
+    fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
+        self.cfactual_reach(root) * self.terminal_value(root.follow(edge))
+    }
+    fn expected_value(&self, root: &Node) -> Utility {
+        self.expected_reach(root) * self.terminal_value(root)
+    }
+    fn terminal_value(&self, root: &Node) -> Utility {
+        root.leaves()
+            .iter()
+            .map(|leaf| self.relative_value(root, leaf))
+            .sum::<Utility>()
+    }
+    fn relative_value(&self, root: &Node, leaf: &Node) -> Utility {
+        Node::payoff(root, leaf)
+            * self.relative_reach(root, leaf)
+            * self.sampling_reach(root, leaf)
+            * 1.
     }
 
     // probability calculations
-    pub fn weight(&self, node: &Node, edge: &Edge) -> Probability {
-        // TODO this
-        // should be function of BUCKET not NODE
-        // but then how to get Player? only need it for chance nodes anyway...
-        // maybe it's a function of Bucket?
-        // tension between children being computed before or after weight calls
-        // if before, then we need to know the player to call the right strategy
-
-        // fn weight_for_tree_sample(node: &Node, edge: &Edge) -> Probability {
-        //     let bucket = node.bucket();
-        //     *self.get_ref(bucket, edge)
-        // }
-        // if after,  we have the luxury of taking uniform over all actions
-        //
-        // {
-        //     let bucket = node.bucket();
-        //     *self.get_ref(bucket, edge)
-        // }
-        match node.player() {
-            Player::Chance => 1.0 / node.outgoing().len() as Probability,
-            _ => self.get(node.bucket(), edge),
+    // probability calculations
+    // probability calculations
+    // probability calculations
+    fn probability(&self, node: &Node, edge: &Edge) -> Probability {
+        if node.player() == &Player::Chance {
+            1. / node.outgoing().len() as Probability
+        } else {
+            self.policy(node.bucket(), edge)
         }
     }
-    pub fn cfactual_reach(&self, root: &Node) -> Probability {
-        let mut prod = 1.0;
-        let mut next = root;
-        while let (Some(head), Some(edge)) = (next.parent(), next.incoming()) {
-            if head.player() == root.player() {
-                prod *= self.cfactual_reach(head);
-                break;
-            } else {
-                prod *= self.weight(head, edge);
-            }
-            next = head;
-        }
-        prod
-    }
-    pub fn expected_reach(&self, node: &Node) -> Probability {
+    fn cfactual_reach(&self, node: &Node) -> Probability {
         if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
-            self.weight(head, edge) * self.expected_reach(head)
+            if head.player() == node.player() {
+                self.cfactual_reach(head)
+            } else {
+                self.cfactual_reach(head) * self.probability(head, edge)
+            }
         } else {
             1.0
         }
     }
-    pub fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
-        if root.bucket() == leaf.bucket() {
-            1.0
+    fn expected_reach(&self, node: &Node) -> Probability {
+        if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
+            self.expected_reach(head) * self.probability(head, edge)
         } else {
-            let head = leaf.parent().expect("if has parent, then has incoming");
-            let edge = leaf.incoming().expect("if has parent, then has incoming");
-            self.weight(head, edge) * self.relative_reach(root, head)
+            1.0
         }
     }
-    pub fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {
+    fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
+        if root.bucket() != leaf.bucket() {
+            let head = leaf
+                .parent()
+                .expect("leaf is a descendant of root, therefore has a parent");
+            let edge = leaf
+                .incoming()
+                .expect("leaf is a descendant of root, therefore has a parent");
+            self.relative_reach(root, head) * self.probability(head, edge)
+        } else {
+            1.0
+        }
+    }
+    fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {
         1.0 / 1.0
+    }
+}
+
+impl std::fmt::Display for Profile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "INFOSETS {}", self.0.len())
     }
 }

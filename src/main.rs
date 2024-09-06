@@ -18,7 +18,7 @@ async fn main() {
         .await;
 
     // The counter-factual regret minimization.
-    cfr::solver::Solver::new().solve(50_000);
+    cfr::trainer::Trainer::train(50_000);
 }
 
 /*

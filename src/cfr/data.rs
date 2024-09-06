@@ -17,6 +17,11 @@ impl From<Child> for (Data, Edge) {
 }
 
 pub struct Data(usize); // Either<(Game, Observation)>, Abstraction
+/// pot
+/// n_bets
+/// observation
+/// abstraction
+/// rotation
 
 impl Data {
     pub fn root() -> Self {
