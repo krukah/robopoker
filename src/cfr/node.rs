@@ -53,13 +53,12 @@ impl Node {
     /// maybe make these methods private and implement Walkable for Node?
     /// or add &Node as argument and impl Walkable for Tree?
     pub fn history(&self) -> Vec<&Edge> {
-        match self.incoming() {
-            None => vec![],
-            Some(edge) => {
-                let mut history = self.parent().expect("root handled above").history();
-                history.push(edge);
-                history
-            }
+        if let (Some(edge), Some(head)) = (self.incoming(), self.parent()) {
+            let mut history = head.history();
+            history.push(edge);
+            history
+        } else {
+            vec![]
         }
     }
     pub fn outgoing(&self) -> Vec<&Edge> {
@@ -100,6 +99,16 @@ impl Node {
             .find(|child| edge == child.incoming().unwrap())
             .expect("valid edge to follow")
         //? TODO O(A) performance
+    }
+    pub fn leaves(&self) -> Vec<&Self> {
+        if self.children().is_empty() {
+            vec![self]
+        } else {
+            self.children()
+                .iter()
+                .flat_map(|child| child.leaves())
+                .collect()
+        }
     }
 }
 
