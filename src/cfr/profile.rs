@@ -39,9 +39,10 @@ impl Profile {
     // online minimization via regret matching ++
     fn update_regret(&mut self, infoset: &Info) {
         for (action, ref regret) in self.regret_vector(infoset) {
+            let t = self.1;
             let bucket = infoset.node().bucket().to_owned();
             let memory = self.memory(bucket, action);
-            memory.regret += *regret;
+            memory.regret = *regret;
         }
     }
     fn update_policy(&mut self, infoset: &Info) {
@@ -53,7 +54,6 @@ impl Profile {
             memory.advice *= t as Probability;
             memory.advice += weight;
             memory.advice /= t as Probability + 1.0;
-            self.1 += 1;
         }
     }
 
