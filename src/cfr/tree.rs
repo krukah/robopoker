@@ -104,7 +104,7 @@ impl Tree {
         let chance = children
             .iter()
             .map(|(_, edge)| profile.policy(self.node(head).bucket(), edge))
-            .collect::<Vec<f32>>();
+            .collect::<Vec<Probability>>();
         let choice = WeightedIndex::new(chance)
             .expect("same length, at least one > 0")
             .sample(rng);

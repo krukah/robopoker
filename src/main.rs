@@ -18,7 +18,7 @@ async fn main() {
     //     .await;
 
     // The counter-factual regret minimization.
-    cfr::profile::Profile::train(50_000);
+    cfr::profile::Profile::train(5000);
 }
 
 /*
