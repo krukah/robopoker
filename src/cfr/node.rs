@@ -7,22 +7,17 @@ use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
-use std::ptr::NonNull;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Node {
-    graph: NonNull<DiGraph<Self, Edge>>,
+    graph: Rc<RefCell<DiGraph<Self, Edge>>>,
     index: NodeIndex,
     datum: Data,
 }
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl Node {
-    // SAFETY: Node is only created by Tree...
-    // who owns the Box<DiGraph>...
-    // which ensures that the graph is valid...
-    fn graph(&self) -> &DiGraph<Self, Edge> {
-        unsafe { self.graph.as_ref() }
-    }
     pub fn datum(&self) -> &Data {
         &self.datum
     }
@@ -36,11 +31,11 @@ impl Node {
     pub fn player(&self) -> &Player {
         self.datum.player()
     }
-    pub fn payoff(root: &Node, leaf: &Node) -> Utility {
+    pub fn payoff(node: &Node, leaf: &Node) -> Utility {
         assert!(true, "should be terminal node");
-        todo!("use some Payoff::from(Showdown::from(Game)) type");
+        // todo!("use some Payoff::from(Showdown::from(Game)) type");
         let stakes = leaf.datum.stakes();
-        let direction = match root.player() {
+        let direction = match node.player() {
             Player::P1 => 0. + 1.,
             Player::P2 => 0. - 1.,
             _ => unreachable!("payoff should not be queried for chance"),
@@ -110,10 +105,16 @@ impl Node {
                 .collect()
         }
     }
+    // SAFETY: Node is only created by Tree...
+    // who owns the Box<DiGraph>...
+    // which ensures that the graph is valid...
+    fn graph(&self) -> &DiGraph<Self, Edge> {
+        unsafe { self.graph.as_ptr().as_ref().expect("valid graph") }
+    }
 }
 
-impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)> for Node {
-    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)) -> Self {
+impl From<(NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>, Data)> for Node {
+    fn from((index, graph, datum): (NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>, Data)) -> Self {
         Self {
             index,
             graph,

@@ -1,3 +1,5 @@
+use super::data::Data;
+use super::tree::Tree;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::edge::Edge;
 use crate::cfr::info::Info;
@@ -8,33 +10,50 @@ use crate::Probability;
 use crate::Utility;
 use std::collections::HashMap;
 
-pub struct Profile(HashMap<Bucket, HashMap<Edge, Memory>>);
+pub struct Profile(HashMap<Bucket, HashMap<Edge, Memory>>, usize);
 impl Profile {
-    /// TODO achieve zero-copy on policy/regret vector updates.
-    /// just need to align lifetimes?
-    pub fn empty() -> Self {
-        Self(HashMap::default())
+    pub fn train(epochs: usize) {
+        let mut profile = Self(HashMap::default(), 0);
+        while profile.step() < epochs {
+            let ref mut profile = profile;
+            let mut tree = Tree::empty();
+            tree.dfs(profile);
+            for ref infoset in tree.infosets() {
+                profile.update_regret(infoset);
+                profile.update_policy(infoset);
+            }
+        }
+        println!("{}", profile);
+        std::mem::drop(profile);
+        // should persist/upload/write to disk here async fn Profile::save(&self)
+    }
+
+    fn step(&mut self) -> usize {
+        self.1 += 1;
+        self.1
     }
 
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     // online minimization via regret matching ++
-    pub fn update_regret(&mut self, infoset: &Info, _: usize) {
+    fn update_regret(&mut self, infoset: &Info) {
         for (action, ref regret) in self.regret_vector(infoset) {
             let bucket = infoset.node().bucket().to_owned();
             let memory = self.memory(bucket, action);
             memory.regret += *regret;
         }
     }
-    pub fn update_policy(&mut self, infoset: &Info, t: usize) {
+    fn update_policy(&mut self, infoset: &Info) {
         for (action, ref weight) in self.policy_vector(infoset) {
+            let t = self.1;
             let bucket = infoset.node().bucket().to_owned();
             let memory = self.memory(bucket, action);
             memory.policy = *weight;
             memory.advice *= t as Probability;
             memory.advice += weight;
             memory.advice /= t as Probability + 1.0;
+            self.1 += 1;
         }
     }
 
@@ -42,7 +61,16 @@ impl Profile {
     // write-through memory
     // write-through memory
     // write-through memory
-    pub fn memory(&mut self, bucket: Bucket, edge: Edge) -> &mut Memory {
+
+    pub fn remember(&mut self, bucket: Bucket, children: &Vec<(Data, Edge)>) {
+        if !self.0.contains_key(&bucket) {
+            self.0.insert(bucket, HashMap::new());
+            for (_, edge) in children.iter() {
+                self.memory(bucket, edge.to_owned()).policy = 1. / children.len() as Probability;
+            }
+        }
+    }
+    fn memory(&mut self, bucket: Bucket, edge: Edge) -> &mut Memory {
         self.0
             .entry(bucket)
             .or_insert_with(HashMap::new)
@@ -57,20 +85,26 @@ impl Profile {
     fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
         self.0
             .get(bucket)
-            .expect("bucket/edge has been visited before")
+            .expect("regret bucket/edge has been visited before")
             .get(edge)
-            .expect("bucket/edge has been visited before")
+            .expect("regret bucket/edge has been visited before")
             .regret
             .to_owned()
     }
-    fn policy(&self, bucket: &Bucket, edge: &Edge) -> Probability {
+    pub fn policy(&self, bucket: &Bucket, edge: &Edge) -> Probability {
         self.0
             .get(bucket)
-            .expect("bucket/edge has been visited before")
+            .expect("policy bucket/edge has been visited before")
             .get(edge)
-            .expect("bucket/edge has been visited before")
+            .expect("policy bucket/edge has been visited before")
             .policy
             .to_owned()
+    }
+    pub fn walker(&self) -> &Player {
+        match self.1 % 2 {
+            0 => &Player::P1,
+            _ => &Player::P2,
+        }
     }
 
     // regret and policy vector calculations
@@ -132,16 +166,21 @@ impl Profile {
         // memoize via Cell<Option<Utility>>
     }
     fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
-        self.cfactual_reach(root) * self.terminal_value(root.follow(edge))
+        self.cfactual_reach(root)
+            * root
+                .follow(edge)
+                .leaves()
+                .iter()
+                .map(|leaf| self.relative_value(root, leaf))
+                .sum::<Utility>()
     }
     fn expected_value(&self, root: &Node) -> Utility {
-        self.expected_reach(root) * self.terminal_value(root)
-    }
-    fn terminal_value(&self, root: &Node) -> Utility {
-        root.leaves()
-            .iter()
-            .map(|leaf| self.relative_value(root, leaf))
-            .sum::<Utility>()
+        self.expected_reach(root)
+            * root
+                .leaves()
+                .iter()
+                .map(|leaf| self.relative_value(root, leaf))
+                .sum::<Utility>()
     }
     fn relative_value(&self, root: &Node, leaf: &Node) -> Utility {
         Node::payoff(root, leaf)
@@ -154,7 +193,7 @@ impl Profile {
     // probability calculations
     // probability calculations
     // probability calculations
-    fn probability(&self, node: &Node, edge: &Edge) -> Probability {
+    fn reach(&self, node: &Node, edge: &Edge) -> Probability {
         if node.player() == &Player::Chance {
             1. / node.outgoing().len() as Probability
         } else {
@@ -166,7 +205,7 @@ impl Profile {
             if head.player() == node.player() {
                 self.cfactual_reach(head)
             } else {
-                self.cfactual_reach(head) * self.probability(head, edge)
+                self.cfactual_reach(head) * self.reach(head, edge)
             }
         } else {
             1.0
@@ -174,7 +213,7 @@ impl Profile {
     }
     fn expected_reach(&self, node: &Node) -> Probability {
         if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
-            self.expected_reach(head) * self.probability(head, edge)
+            self.expected_reach(head) * self.reach(head, edge)
         } else {
             1.0
         }
@@ -187,7 +226,7 @@ impl Profile {
             let edge = leaf
                 .incoming()
                 .expect("leaf is a descendant of root, therefore has a parent");
-            self.relative_reach(root, head) * self.probability(head, edge)
+            self.relative_reach(root, head) * self.reach(head, edge)
         } else {
             1.0
         }
@@ -199,6 +238,11 @@ impl Profile {
 
 impl std::fmt::Display for Profile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "INFOSETS {}", self.0.len())
+        for (bucket, edges) in &self.0 {
+            for (edge, memory) in edges {
+                writeln!(f, "{:?} {:?}: {:.4}", bucket, edge, memory)?;
+            }
+        }
+        Ok(())
     }
 }

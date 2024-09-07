@@ -2,11 +2,19 @@ use crate::cfr::edge::Edge;
 use crate::cfr::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
-use std::ptr::NonNull;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Info {
     roots: Vec<NodeIndex>,
-    graph: NonNull<DiGraph<Node, Edge>>,
+    graph: Rc<RefCell<DiGraph<Node, Edge>>>,
+}
+
+impl From<(NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>)> for Info {
+    fn from((index, graph): (NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>)) -> Self {
+        let roots = vec![index];
+        Self { roots, graph }
+    }
 }
 
 impl Info {
@@ -23,17 +31,11 @@ impl Info {
         self.roots
             .iter()
             .next()
-            .map(|i| self.graph().node_weight(*i).expect("valid node index"))
+            .copied()
+            .map(|i| self.graph().node_weight(i).expect("valid node index"))
             .expect("non-empty infoset")
     }
     fn graph(&self) -> &DiGraph<Node, Edge> {
-        unsafe { self.graph.as_ref() }
-    }
-}
-
-impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>)> for Info {
-    fn from((index, graph): (NodeIndex, NonNull<DiGraph<Node, Edge>>)) -> Self {
-        let roots = vec![index];
-        Self { roots, graph }
+        unsafe { self.graph.as_ptr().as_ref().expect("valid graph") }
     }
 }
