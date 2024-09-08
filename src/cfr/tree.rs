@@ -10,6 +10,7 @@ use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ptr::NonNull;
 use std::rc::Rc;
 /// trees
 pub struct Tree {
@@ -18,62 +19,68 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn empty() -> Self {
-        let infos = HashMap::new();
-        let graph = Rc::new(RefCell::new(DiGraph::with_capacity(0, 0)));
-        Self { infos, graph }
-    }
-    /// start from root node and allow data.spawn() to recursively, declaratively build the Tree.
-    /// in this sense, Data defines the tree implicitly in its spawn() implementation.
-    pub fn dfs(&mut self, profile: &mut Profile) {
-        // println!("building tree from root");
-        let root = self.wrap(Data::root());
-        let root = self.graph.borrow_mut().add_node(root);
-        assert!(root.index() == 0);
-        for (leaf, from) in self.sample(root, profile) {
-            self.sprawl(profile, leaf, from, root);
-        }
-        self.bucket();
-    }
     pub fn infosets(self) -> Vec<Info> {
         // println!("yielding ownership of infosets");
         self.infos.into_values().collect()
     }
+
+    /// start from root node and allow data.spawn() to recursively, declaratively build the Tree.
+    /// in this sense, Data defines the tree implicitly in its spawn() implementation.
+    pub fn dfs(profile: &mut Profile) -> Self {
+        // println!("building tree from root");
+        let mut tree = Self::empty();
+        let root = tree.append(Data::root(), profile);
+        let root = tree.graph_mut().add_node(root);
+        assert!(root.index() == 0);
+        for (leaf, from) in tree.sample(root, profile) {
+            tree.sprawl(profile, leaf, from, root);
+        }
+        tree
+    }
     fn sprawl(&mut self, profile: &mut Profile, node: Data, edge: Edge, seed: NodeIndex) {
         // wrap Node Edge NodeIndex into a Child data struct
-        let node = self.wrap(node);
-        let node = self.graph.borrow_mut().add_node(node);
-        let edge = self.graph.borrow_mut().add_edge(seed, node, edge);
+        let node = self.append(node, profile);
+        let node = self.graph_mut().add_node(node);
+        let edge = self.graph_mut().add_edge(seed, node, edge);
         assert!(node.index() == edge.index() + 1);
         for (tail, from) in self.sample(node, profile) {
             self.sprawl(profile, tail, from, node);
         }
     }
-    fn bucket(&mut self) {
-        // println!("bucketing tree into infosets");
-        for node in self.graph.borrow().node_weights() {
-            if node.player() == &Player::Chance {
-                continue;
-            } else if let Some(info) = self.infos.get_mut(node.bucket()) {
-                let index = node.index();
-                info.push(index);
+    fn append(&mut self, data: Data, profile: &mut Profile) -> Node {
+        let bucket = data.bucket().to_owned();
+        let player = data.player().to_owned();
+        let count = self.graph().node_count();
+        let index = NodeIndex::new(count);
+        let node = Node::from((index, self.graph.clone(), data));
+        if player != Player::Chance {
+            if let Some(infoset) = self.infos.get_mut(&bucket) {
+                // old bucket
+                infoset.push(index);
             } else {
-                let index = node.index();
-                let bucket = node.bucket().to_owned();
-                let infoset = Info::from((index, self.graph.clone()));
-                self.infos.insert(bucket, infoset);
+                // new bucket
+                let info = Info::from((index, self.graph.clone()));
+                let edges = node
+                    .datum()
+                    .spawn()
+                    .into_iter()
+                    .map(|child| child.into())
+                    .map(|(_, edge)| edge)
+                    .collect::<Vec<Edge>>();
+                let p = 1. / edges.len() as Probability;
+                for action in edges {
+                    profile.insert(bucket, action, p);
+                }
+                self.infos.insert(bucket, info);
             }
         }
+        node
     }
-
-    fn wrap(&self, data: Data) -> Node {
-        let graph = self.graph.clone();
-        let index = self.graph().node_count();
-        let index = NodeIndex::new(index);
-        Node::from((index, graph, data))
+    fn empty() -> Self {
+        let infos = HashMap::new();
+        let graph = Rc::new(RefCell::new(DiGraph::with_capacity(0, 0)));
+        Self { infos, graph }
     }
-
-    /// TODO condition on epoch and node player to decide branching factor in tree unpacking
     fn sample(&self, head: NodeIndex, profile: &mut Profile) -> Vec<(Data, Edge)> {
         let player = self.node(head).player();
         let walker = profile.walker();
@@ -92,7 +99,6 @@ impl Tree {
             .into_iter()
             .map(|child| child.into())
             .collect::<Vec<(Data, Edge)>>();
-        profile.remember(head.bucket().to_owned(), &children);
         children
     }
     fn sample_one(&self, head: NodeIndex, profile: &mut Profile) -> Vec<(Data, Edge)> {
@@ -119,6 +125,12 @@ impl Tree {
             .expect("being spawned safely in recursion")
     }
     fn graph(&self) -> &DiGraph<Node, Edge> {
-        unsafe { self.graph.as_ptr().as_ref().expect("valid graph") }
+        unsafe { self.graph.as_ptr().as_ref().expect("non null") }
+    }
+    fn graph_mut(&mut self) -> &mut DiGraph<Node, Edge> {
+        unsafe { self.graph.as_ptr().as_mut().expect("non null") }
+    }
+    fn graph_raw(&self) -> NonNull<DiGraph<Node, Edge>> {
+        unsafe { NonNull::new_unchecked(self.graph.as_ptr()) }
     }
 }
