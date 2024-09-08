@@ -1,4 +1,3 @@
-use super::data::Data;
 use super::tree::Tree;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::edge::Edge;
@@ -13,18 +12,16 @@ use std::collections::HashMap;
 pub struct Profile(HashMap<Bucket, HashMap<Edge, Memory>>, usize);
 impl Profile {
     pub fn train(epochs: usize) {
-        let mut profile = Self(HashMap::default(), 0);
-        while profile.step() < epochs {
-            let ref mut profile = profile;
-            let mut tree = Tree::empty();
-            tree.dfs(profile);
-            for ref infoset in tree.infosets() {
+        let mut solution = Self(HashMap::default(), 0);
+        while solution.step() < epochs {
+            let ref mut profile = solution;
+            for ref infoset in Tree::dfs(profile).infosets() {
                 profile.update_regret(infoset);
                 profile.update_policy(infoset);
             }
         }
-        println!("{}", profile);
-        std::mem::drop(profile);
+        println!("{}", solution);
+        std::mem::drop(solution);
         // should persist/upload/write to disk here async fn Profile::save(&self)
     }
 
@@ -38,18 +35,17 @@ impl Profile {
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     fn update_regret(&mut self, infoset: &Info) {
-        for (action, ref regret) in self.regret_vector(infoset) {
-            let t = self.1;
-            let bucket = infoset.node().bucket().to_owned();
-            let memory = self.memory(bucket, action);
+        for (ref action, ref regret) in self.regret_vector(infoset) {
+            let bucket = infoset.node().bucket();
+            let memory = self.update(bucket, action);
             memory.regret = *regret;
         }
     }
     fn update_policy(&mut self, infoset: &Info) {
-        for (action, ref weight) in self.policy_vector(infoset) {
+        for (ref action, ref weight) in self.policy_vector(infoset) {
             let t = self.1;
-            let bucket = infoset.node().bucket().to_owned();
-            let memory = self.memory(bucket, action);
+            let bucket = infoset.node().bucket();
+            let memory = self.update(bucket, action);
             memory.policy = *weight;
             memory.advice *= t as Probability;
             memory.advice += weight;
@@ -61,21 +57,20 @@ impl Profile {
     // write-through memory
     // write-through memory
     // write-through memory
-
-    pub fn remember(&mut self, bucket: Bucket, children: &Vec<(Data, Edge)>) {
-        if !self.0.contains_key(&bucket) {
-            self.0.insert(bucket, HashMap::new());
-            for (_, edge) in children.iter() {
-                self.memory(bucket, edge.to_owned()).policy = 1. / children.len() as Probability;
-            }
-        }
-    }
-    fn memory(&mut self, bucket: Bucket, edge: Edge) -> &mut Memory {
+    pub fn insert(&mut self, bucket: Bucket, edge: Edge, probability: Probability) {
         self.0
             .entry(bucket)
             .or_insert_with(HashMap::new)
             .entry(edge)
             .or_insert_with(Memory::new)
+            .policy = probability;
+    }
+    fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
+        self.0
+            .get_mut(bucket)
+            .expect("Bucket should exist")
+            .get_mut(edge)
+            .expect("Edge should exist in the bucket")
     }
 
     // regret and policy lookups
