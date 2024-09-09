@@ -55,32 +55,32 @@ impl Node {
         }
     }
     pub fn outgoing(&self) -> Vec<&Edge> {
-        self.graph()
+        self.graph_ref()
             .edges_directed(self.index, Outgoing)
             .map(|e| e.weight())
             .collect()
     }
     pub fn incoming(&self) -> Option<&Edge> {
-        self.graph()
+        self.graph_ref()
             .edges_directed(self.index, Incoming)
             .next()
             .map(|e| e.weight())
     }
     pub fn parent(&self) -> Option<&Self> {
-        self.graph()
+        self.graph_ref()
             .neighbors_directed(self.index, Incoming)
             .next()
             .map(|p| {
-                self.graph()
+                self.graph_ref()
                     .node_weight(p)
                     .expect("if incoming edge, then parent")
             })
     }
     pub fn children(&self) -> Vec<&Self> {
-        self.graph()
+        self.graph_ref()
             .neighbors_directed(self.index, Outgoing)
             .map(|c| {
-                self.graph()
+                self.graph_ref()
                     .node_weight(c)
                     .expect("if outgoing edge, then child")
             })
@@ -109,7 +109,7 @@ impl Node {
     /// Info is created from a Node
     /// Node is created from a Tree
     /// Tree owns its Graph
-    fn graph(&self) -> &DiGraph<Self, Edge> {
+    fn graph_ref(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
     }
 }
