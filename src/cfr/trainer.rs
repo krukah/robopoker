@@ -1,8 +1,3 @@
-#![allow(unused)]
-use petgraph::graph::NodeIndex;
-
-use crate::Probability;
-
 use super::data::Data;
 use super::edge::Edge;
 use super::info::Info;
@@ -10,6 +5,8 @@ use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
+use crate::Probability;
+use petgraph::graph::NodeIndex;
 
 pub struct Trainer(Profile, Tree);
 
@@ -87,21 +84,25 @@ impl Trainer {
     /// compared to chance sampling, internal sampling, or full tree sampling.
     fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
         let node = self.1.node(head);
-        let walker = self.0.walker();
-        let player = node.player();
-        let bucket = node.bucket();
         let mut children = node.datum().spawn();
         if children.is_empty() {
             vec![]
-        } else if walker == player {
+        } else if node.player() == self.0.walker() {
             children
         } else {
-            return children;
-            // early return because we need to know
-            // how to determinstically sample the same Edge
-            // for a given Infoset. something like (Bucket, Epoch)
-            // might be unique identifiers for each (Infoset, Iteration)
-            let ref mut rng = rand::thread_rng();
+            let bucket = node.bucket();
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::Hash;
+            use std::hash::Hasher;
+            let ref mut hasher = DefaultHasher::new();
+            bucket.hash(hasher);
+            self.0.epochs().hash(hasher);
+            let seed = hasher.finish();
+            // use hash to seed RNG
+            use rand::rngs::StdRng;
+            use rand::SeedableRng;
+            let ref mut rng = StdRng::seed_from_u64(seed);
+            // sample from weighted distribution of children
             use rand::distributions::Distribution;
             use rand::distributions::WeightedIndex;
             let chance = children

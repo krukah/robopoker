@@ -38,6 +38,9 @@ impl Profile {
     // profile and time lookups
     // profile and time lookups
     // profile and time lookups
+    pub fn epochs(&self) -> usize {
+        self.1
+    }
     pub fn walker(&self) -> &Player {
         match self.1 % 2 {
             0 => &Player::P1,

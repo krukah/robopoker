@@ -25,7 +25,7 @@ impl Info {
         self.roots
             .iter()
             .copied()
-            .map(|i| self.graph().node_weight(i).expect("valid node index"))
+            .map(|i| self.graph_ref().node_weight(i).expect("valid node index"))
             .collect()
     }
     pub fn node(&self) -> &Node {
@@ -33,7 +33,7 @@ impl Info {
             .iter()
             .next()
             .copied()
-            .map(|i| self.graph().node_weight(i).expect("valid node index"))
+            .map(|i| self.graph_ref().node_weight(i).expect("valid node index"))
             .expect("non-empty infoset")
     }
     /// SAFETY:
@@ -42,7 +42,7 @@ impl Info {
     /// Info is created from a Node
     /// Node is created from a Tree
     /// Tree owns its Graph
-    fn graph(&self) -> &DiGraph<Node, Edge> {
+    fn graph_ref(&self) -> &DiGraph<Node, Edge> {
         unsafe { self.graph.as_ref() }
     }
 }
