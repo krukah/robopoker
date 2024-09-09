@@ -47,19 +47,11 @@ impl Profile {
             _ => &Player::P2,
         }
     }
-    pub fn policy(&self, node: &Node, edge: &Edge) -> Probability {
-        if node.player() == &Player::Chance {
-            1. / node.outgoing().len() as Probability
-        } else if node.player() != self.walker() {
-            1.
+    pub fn weight(&self, node: &Node, edge: &Edge) -> Probability {
+        if self.walker() == node.player() {
+            self.reach(node, edge)
         } else {
-            self.0
-                .get(node.bucket())
-                .expect("policy bucket/edge has been visited before")
-                .get(edge)
-                .expect("policy bucket/edge has been visited before")
-                .policy
-                .to_owned()
+            1.
         }
     }
     pub fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {

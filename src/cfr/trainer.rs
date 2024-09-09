@@ -105,7 +105,7 @@ impl Trainer {
             let ref mut rng = StdRng::seed_from_u64(hasher.finish());
             let chance = children
                 .iter()
-                .map(|(_, edge)| self.0.policy(node, edge))
+                .map(|(_, edge)| self.0.weight(node, edge))
                 .collect::<Vec<Probability>>();
             let choice = WeightedIndex::new(chance)
                 .expect("at least one > 0")
