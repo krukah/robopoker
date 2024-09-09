@@ -47,14 +47,20 @@ impl Profile {
             _ => &Player::P2,
         }
     }
-    pub fn policy(&self, bucket: &Bucket, edge: &Edge) -> Probability {
-        self.0
-            .get(bucket)
-            .expect("policy bucket/edge has been visited before")
-            .get(edge)
-            .expect("policy bucket/edge has been visited before")
-            .policy
-            .to_owned()
+    pub fn policy(&self, node: &Node, edge: &Edge) -> Probability {
+        if node.player() == &Player::Chance {
+            1. / node.outgoing().len() as Probability
+        } else if node.player() != self.walker() {
+            1.
+        } else {
+            self.0
+                .get(node.bucket())
+                .expect("policy bucket/edge has been visited before")
+                .get(edge)
+                .expect("policy bucket/edge has been visited before")
+                .policy
+                .to_owned()
+        }
     }
     pub fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
         self.0
@@ -78,14 +84,14 @@ impl Profile {
         }
     }
     pub fn update_policy(&mut self, infoset: &Info) {
-        for (ref action, ref weight) in self.policy_vector(infoset) {
-            let t = self.1;
+        for (ref action, ref policy) in self.policy_vector(infoset) {
+            let epochs = self.epochs();
             let bucket = infoset.node().bucket();
             let update = self.update(bucket, action);
-            update.policy = *weight;
-            update.advice *= t as Probability;
-            update.advice += weight;
-            update.advice /= t as Probability + 1.0;
+            update.policy = *policy;
+            update.advice *= epochs as Probability;
+            update.advice += policy;
+            update.advice /= epochs as Probability + 1.0;
         }
     }
 
@@ -204,7 +210,13 @@ impl Profile {
         if node.player() == &Player::Chance {
             1. / node.outgoing().len() as Probability
         } else {
-            self.policy(node.bucket(), edge)
+            self.0
+                .get(node.bucket())
+                .expect("policy bucket/edge has been visited before")
+                .get(edge)
+                .expect("policy bucket/edge has been visited before")
+                .policy
+                .to_owned()
         }
     }
     fn cfactual_reach(&self, node: &Node) -> Probability {
