@@ -38,7 +38,7 @@ impl Data {
 
     pub fn stakes(&self) -> Utility {
         // todo!("need to calc on the fly or store in struct");
-        const HI_STAKES: Utility = 3e0; // we can modify payoffs to verify convergence
+        const HI_STAKES: Utility = 2e0; // we can modify payoffs to verify convergence
         const LO_STAKES: Utility = 1e0;
         match self.0 {
             02 | 07 | 12 => 0.0,

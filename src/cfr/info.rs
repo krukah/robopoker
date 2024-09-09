@@ -4,6 +4,7 @@ use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::ptr::NonNull;
 
+#[derive(Debug, Clone)]
 pub struct Info {
     roots: Vec<NodeIndex>,
     graph: NonNull<DiGraph<Node, Edge>>,
@@ -17,13 +18,14 @@ impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>)> for Info {
 }
 
 impl Info {
-    pub fn push(&mut self, index: NodeIndex) {
+    pub fn add(&mut self, index: NodeIndex) {
         self.roots.push(index)
     }
     pub fn roots(&self) -> Vec<&Node> {
         self.roots
             .iter()
-            .map(|i| self.graph().node_weight(*i).expect("valid node index"))
+            .copied()
+            .map(|i| self.graph().node_weight(i).expect("valid node index"))
             .collect()
     }
     pub fn node(&self) -> &Node {
@@ -34,7 +36,13 @@ impl Info {
             .map(|i| self.graph().node_weight(i).expect("valid node index"))
             .expect("non-empty infoset")
     }
+    /// SAFETY:
+    /// we have logical assurance that lifetimes work out effectively:
+    /// 'info: 'node: 'tree
+    /// Info is created from a Node
+    /// Node is created from a Tree
+    /// Tree owns its Graph
     fn graph(&self) -> &DiGraph<Node, Edge> {
-        unsafe { self.graph.as_ptr().as_ref().expect("valid graph") }
+        unsafe { self.graph.as_ref() }
     }
 }
