@@ -17,9 +17,11 @@ impl Trainer {
     }
     pub fn train(&mut self, epochs: usize) {
         while self.0.step() < epochs {
-            for ref infoset in self.resample() {
-                self.0.update_regret(infoset);
-                self.0.update_policy(infoset);
+            for ref infoset in self.sample() {
+                if self.0.walker() == infoset.node().player() {
+                    self.0.update_regret(infoset);
+                    self.0.update_policy(infoset);
+                }
             }
         }
         println!("{}", self.0);
@@ -28,7 +30,7 @@ impl Trainer {
     /// the only thing we really need the tree for is to yield infosets for us to sample.
     /// these blocks can be sampled using whatever sampling scheme we like, it's
     /// encapsulated by the Tree itself and how it chooses to unfold from its Nodes.
-    fn resample(&mut self) -> Vec<Info> {
+    fn sample(&mut self) -> Vec<Info> {
         self.1 = Tree::empty();
         self.dfs();
         self.1.infosets()
@@ -86,28 +88,24 @@ impl Trainer {
         let node = self.1.node(head);
         let mut children = node.datum().spawn();
         if children.is_empty() {
-            vec![]
-        } else if node.player() == self.0.walker() {
+            children
+        } else if self.0.walker() == node.player() {
             children
         } else {
-            let bucket = node.bucket();
+            use rand::distributions::Distribution;
+            use rand::distributions::WeightedIndex;
+            use rand::rngs::StdRng;
+            use rand::SeedableRng;
             use std::collections::hash_map::DefaultHasher;
             use std::hash::Hash;
             use std::hash::Hasher;
             let ref mut hasher = DefaultHasher::new();
-            bucket.hash(hasher);
             self.0.epochs().hash(hasher);
-            let seed = hasher.finish();
-            // use hash to seed RNG
-            use rand::rngs::StdRng;
-            use rand::SeedableRng;
-            let ref mut rng = StdRng::seed_from_u64(seed);
-            // sample from weighted distribution of children
-            use rand::distributions::Distribution;
-            use rand::distributions::WeightedIndex;
+            node.bucket().hash(hasher);
+            let ref mut rng = StdRng::seed_from_u64(hasher.finish());
             let chance = children
                 .iter()
-                .map(|(_, edge)| self.0.policy(bucket, edge))
+                .map(|(_, edge)| self.0.policy(node, edge))
                 .collect::<Vec<Probability>>();
             let choice = WeightedIndex::new(chance)
                 .expect("at least one > 0")
