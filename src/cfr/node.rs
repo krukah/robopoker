@@ -7,11 +7,10 @@ use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::ptr::NonNull;
 
 pub struct Node {
-    graph: Rc<RefCell<DiGraph<Self, Edge>>>,
+    graph: NonNull<DiGraph<Self, Edge>>,
     index: NodeIndex,
     datum: Data,
 }
@@ -109,12 +108,12 @@ impl Node {
     // who owns the Box<DiGraph>...
     // which ensures that the graph is valid...
     fn graph(&self) -> &DiGraph<Self, Edge> {
-        unsafe { self.graph.as_ptr().as_ref().expect("valid graph") }
+        unsafe { self.graph.as_ref() }
     }
 }
 
-impl From<(NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>, Data)> for Node {
-    fn from((index, graph, datum): (NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>, Data)) -> Self {
+impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)> for Node {
+    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)) -> Self {
         Self {
             index,
             graph,

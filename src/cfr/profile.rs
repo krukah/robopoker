@@ -11,6 +11,21 @@ use std::collections::HashMap;
 
 pub struct Profile(HashMap<Bucket, HashMap<Edge, Memory>>, usize);
 impl Profile {
+    pub fn witness(&mut self, node: &Node) {
+        let bucket = node.bucket();
+        if !self.0.contains_key(bucket) {
+            let edges = node
+                .datum()
+                .spawn()
+                .into_iter()
+                .map(|(_, edge)| edge)
+                .collect::<Vec<Edge>>();
+            let p = 1. / edges.len() as Probability;
+            for action in edges {
+                self.insert(bucket.to_owned(), action, p);
+            }
+        }
+    }
     pub fn train(epochs: usize) {
         let mut solution = Self(HashMap::default(), 0);
         while solution.step() < epochs {
