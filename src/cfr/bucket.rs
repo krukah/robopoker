@@ -1,5 +1,5 @@
 /// Product of Information Abstraction , Action Abstraction
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Bucket(usize);
 
 impl Bucket {

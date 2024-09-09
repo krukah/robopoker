@@ -1,4 +1,3 @@
-use super::tree::Tree;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::edge::Edge;
 use crate::cfr::info::Info;
@@ -7,10 +6,18 @@ use crate::cfr::node::Node;
 use crate::cfr::player::Player;
 use crate::Probability;
 use crate::Utility;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-pub struct Profile(HashMap<Bucket, HashMap<Edge, Memory>>, usize);
+pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
 impl Profile {
+    /// basic constructor
+    pub fn empty() -> Self {
+        Self(BTreeMap::new(), 0)
+    }
+    pub fn step(&mut self) -> usize {
+        self.1 += 1;
+        self.1
+    }
     pub fn witness(&mut self, node: &Node) {
         let bucket = node.bucket();
         if !self.0.contains_key(bucket) {
@@ -26,80 +33,16 @@ impl Profile {
             }
         }
     }
-    pub fn train(epochs: usize) {
-        let mut solution = Self(HashMap::default(), 0);
-        while solution.step() < epochs {
-            let ref mut profile = solution;
-            for ref infoset in Tree::dfs(profile).infosets() {
-                profile.update_regret(infoset);
-                profile.update_policy(infoset);
-            }
+
+    // profile and time lookups
+    // profile and time lookups
+    // profile and time lookups
+    // profile and time lookups
+    pub fn walker(&self) -> &Player {
+        match self.1 % 2 {
+            0 => &Player::P1,
+            _ => &Player::P2,
         }
-        println!("{}", solution);
-        std::mem::drop(solution);
-        // should persist/upload/write to disk here async fn Profile::save(&self)
-    }
-
-    fn step(&mut self) -> usize {
-        self.1 += 1;
-        self.1
-    }
-
-    // online minimization via regret matching ++
-    // online minimization via regret matching ++
-    // online minimization via regret matching ++
-    // online minimization via regret matching ++
-    fn update_regret(&mut self, infoset: &Info) {
-        for (ref action, ref regret) in self.regret_vector(infoset) {
-            let bucket = infoset.node().bucket();
-            let memory = self.update(bucket, action);
-            memory.regret = *regret;
-        }
-    }
-    fn update_policy(&mut self, infoset: &Info) {
-        for (ref action, ref weight) in self.policy_vector(infoset) {
-            let t = self.1;
-            let bucket = infoset.node().bucket();
-            let memory = self.update(bucket, action);
-            memory.policy = *weight;
-            memory.advice *= t as Probability;
-            memory.advice += weight;
-            memory.advice /= t as Probability + 1.0;
-        }
-    }
-
-    // write-through memory
-    // write-through memory
-    // write-through memory
-    // write-through memory
-    pub fn insert(&mut self, bucket: Bucket, edge: Edge, probability: Probability) {
-        self.0
-            .entry(bucket)
-            .or_insert_with(HashMap::new)
-            .entry(edge)
-            .or_insert_with(Memory::new)
-            .policy = probability;
-    }
-    fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
-        self.0
-            .get_mut(bucket)
-            .expect("Bucket should exist")
-            .get_mut(edge)
-            .expect("Edge should exist in the bucket")
-    }
-
-    // regret and policy lookups
-    // regret and policy lookups
-    // regret and policy lookups
-    // regret and policy lookups
-    fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
-        self.0
-            .get(bucket)
-            .expect("regret bucket/edge has been visited before")
-            .get(edge)
-            .expect("regret bucket/edge has been visited before")
-            .regret
-            .to_owned()
     }
     pub fn policy(&self, bucket: &Bucket, edge: &Edge) -> Probability {
         self.0
@@ -110,33 +53,79 @@ impl Profile {
             .policy
             .to_owned()
     }
-    pub fn walker(&self) -> &Player {
-        match self.1 % 2 {
-            0 => &Player::P1,
-            _ => &Player::P2,
+    pub fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
+        self.0
+            .get(bucket)
+            .expect("regret bucket/edge has been visited before")
+            .get(edge)
+            .expect("regret bucket/edge has been visited before")
+            .regret
+            .to_owned()
+    }
+
+    // online minimization via regret matching ++
+    // online minimization via regret matching ++
+    // online minimization via regret matching ++
+    // online minimization via regret matching ++
+    pub fn update_regret(&mut self, infoset: &Info) {
+        for (ref action, ref regret) in self.regret_vector(infoset) {
+            let bucket = infoset.node().bucket();
+            let update = self.update(bucket, action);
+            update.regret = *regret;
+        }
+    }
+    pub fn update_policy(&mut self, infoset: &Info) {
+        for (ref action, ref weight) in self.policy_vector(infoset) {
+            let t = self.1;
+            let bucket = infoset.node().bucket();
+            let update = self.update(bucket, action);
+            update.policy = *weight;
+            update.advice *= t as Probability;
+            update.advice += weight;
+            update.advice /= t as Probability + 1.0;
         }
     }
 
-    // regret and policy vector calculations
-    // regret and policy vector calculations
-    // regret and policy vector calculations
-    // regret and policy vector calculations
-    fn policy_vector(&self, infoset: &Info) -> HashMap<Edge, Probability> {
+    // write-through memory
+    // write-through memory
+    // write-through memory
+    // write-through memory
+    fn insert(&mut self, bucket: Bucket, edge: Edge, probability: Probability) {
+        self.0
+            .entry(bucket)
+            .or_insert_with(BTreeMap::new)
+            .entry(edge)
+            .or_insert_with(Memory::new)
+            .policy = probability;
+    }
+    fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
+        self.0
+            .get_mut(bucket)
+            .expect("conditional on update, bucket should be visited")
+            .get_mut(edge)
+            .expect("conditional on update, action should be visited")
+    }
+
+    // update vector calculations
+    // update vector calculations
+    // update vector calculations
+    // update vector calculations
+    fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
         let regrets = infoset
             .node()
             .outgoing()
             .into_iter()
-            .map(|action| (action.to_owned(), self.running_regret(infoset, &action)))
+            .map(|action| (action.to_owned(), self.running_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
-            .collect::<HashMap<Edge, Utility>>();
+            .collect::<BTreeMap<Edge, Utility>>();
         let summed = regrets.values().sum::<Utility>();
         let vector = regrets
             .into_iter()
             .map(|(a, r)| (a, r / summed))
-            .collect::<HashMap<Edge, Probability>>();
+            .collect::<BTreeMap<Edge, Probability>>();
         vector
     }
-    fn regret_vector(&self, infoset: &Info) -> HashMap<Edge, Utility> {
+    fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
         infoset
             .node()
             .outgoing()
@@ -144,22 +133,27 @@ impl Profile {
             .map(|action| (action.to_owned(), self.matched_regret(infoset, action)))
             .collect()
     }
-    fn instant_regret(&self, infoset: &Info, action: &Edge) -> Utility {
-        infoset
-            .roots()
-            .iter()
-            .map(|root| self.gain(root, action))
-            .sum::<Utility>()
+
+    // regret calculations
+    /// regret calculations
+    /// regret calculations
+    /// regret calculations
+    fn matched_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+        let running = self.running_regret(infoset, action);
+        let instant = self.instant_regret(infoset, action);
+        (running + instant).max(Utility::MIN_POSITIVE)
     }
     fn running_regret(&self, infoset: &Info, action: &Edge) -> Utility {
         let bucket = infoset.node().bucket();
         let regret = self.regret(bucket, action);
         regret
     }
-    fn matched_regret(&self, infoset: &Info, action: &Edge) -> Utility {
-        let running = self.running_regret(infoset, action);
-        let instant = self.instant_regret(infoset, action);
-        (running + instant).max(Utility::MIN_POSITIVE)
+    fn instant_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+        infoset
+            .roots()
+            .iter()
+            .map(|root| self.gain(root, action))
+            .sum::<Utility>()
     }
 
     // utility calculations

@@ -30,11 +30,10 @@ impl Node {
     pub fn player(&self) -> &Player {
         self.datum.player()
     }
-    pub fn payoff(node: &Node, leaf: &Node) -> Utility {
-        assert!(true, "should be terminal node");
+    pub fn payoff(decision: &Node, outcome: &Node) -> Utility {
         // todo!("use some Payoff::from(Showdown::from(Game)) type");
-        let stakes = leaf.datum.stakes();
-        let direction = match node.player() {
+        let stakes = outcome.datum.stakes();
+        let direction = match decision.player() {
             Player::P1 => 0. + 1.,
             Player::P2 => 0. - 1.,
             _ => unreachable!("payoff should not be queried for chance"),
@@ -104,9 +103,12 @@ impl Node {
                 .collect()
         }
     }
-    // SAFETY: Node is only created by Tree...
-    // who owns the Box<DiGraph>...
-    // which ensures that the graph is valid...
+    /// SAFETY:
+    /// we have logical assurance that lifetimes work out effectively:
+    /// 'info: 'node: 'tree
+    /// Info is created from a Node
+    /// Node is created from a Tree
+    /// Tree owns its Graph
     fn graph(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
     }

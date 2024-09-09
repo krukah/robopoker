@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub enum Edge {
     RO,
     PA,
