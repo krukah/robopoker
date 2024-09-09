@@ -8,13 +8,12 @@ use crate::cfr::profile::Profile;
 use crate::Probability;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ptr::NonNull;
-use std::rc::Rc;
+
 /// trees
 pub struct Tree {
-    graph: Rc<RefCell<DiGraph<Node, Edge>>>,
+    graph: Box<DiGraph<Node, Edge>>,
     infos: HashMap<Bucket, Info>,
 }
 
@@ -48,37 +47,30 @@ impl Tree {
         }
     }
     fn append(&mut self, data: Data, profile: &mut Profile) -> Node {
-        let bucket = data.bucket().to_owned();
         let player = data.player().to_owned();
-        let count = self.graph().node_count();
-        let index = NodeIndex::new(count);
-        let node = Node::from((index, self.graph.clone(), data));
+        let index = NodeIndex::new(self.graph_ref().node_count());
+        let graph = self.graph_raw();
+        let node = Node::from((index, graph, data));
         if player != Player::Chance {
-            if let Some(infoset) = self.infos.get_mut(&bucket) {
-                // old bucket
-                infoset.push(index);
-            } else {
-                // new bucket
-                let info = Info::from((index, self.graph.clone()));
-                let edges = node
-                    .datum()
-                    .spawn()
-                    .into_iter()
-                    .map(|child| child.into())
-                    .map(|(_, edge)| edge)
-                    .collect::<Vec<Edge>>();
-                let p = 1. / edges.len() as Probability;
-                for action in edges {
-                    profile.insert(bucket, action, p);
-                }
-                self.infos.insert(bucket, info);
-            }
+            self.witness(&node);
+            profile.witness(&node);
         }
         node
     }
+    fn witness(&mut self, node: &Node) {
+        let bucket = node.bucket();
+        let index = node.index();
+        if let Some(infoset) = self.infos.get_mut(bucket) {
+            infoset.push(index);
+        } else {
+            let graph = self.graph_raw();
+            let infoset = Info::from((index, graph));
+            self.infos.insert(bucket.clone(), infoset);
+        }
+    }
     fn empty() -> Self {
         let infos = HashMap::new();
-        let graph = Rc::new(RefCell::new(DiGraph::with_capacity(0, 0)));
+        let graph = Box::new(DiGraph::with_capacity(0, 0));
         Self { infos, graph }
     }
     fn sample(&self, head: NodeIndex, profile: &mut Profile) -> Vec<(Data, Edge)> {
@@ -91,15 +83,8 @@ impl Tree {
             // self.sample_one(head, profile)
         }
     }
-    fn sample_all(&self, head: NodeIndex, profile: &mut Profile) -> Vec<(Data, Edge)> {
-        let head = self.node(head);
-        let children = head
-            .datum()
-            .spawn()
-            .into_iter()
-            .map(|child| child.into())
-            .collect::<Vec<(Data, Edge)>>();
-        children
+    fn sample_all(&self, head: NodeIndex, _: &mut Profile) -> Vec<(Data, Edge)> {
+        self.node(head).datum().spawn()
     }
     fn sample_one(&self, head: NodeIndex, profile: &mut Profile) -> Vec<(Data, Edge)> {
         let ref mut rng = rand::thread_rng();
@@ -120,17 +105,17 @@ impl Tree {
         vec![chosen]
     }
     fn node(&self, head: NodeIndex) -> &Node {
-        self.graph()
+        self.graph_ref()
             .node_weight(head)
             .expect("being spawned safely in recursion")
     }
-    fn graph(&self) -> &DiGraph<Node, Edge> {
-        unsafe { self.graph.as_ptr().as_ref().expect("non null") }
+    fn graph_ref(&self) -> &DiGraph<Node, Edge> {
+        self.graph.as_ref()
     }
     fn graph_mut(&mut self) -> &mut DiGraph<Node, Edge> {
-        unsafe { self.graph.as_ptr().as_mut().expect("non null") }
+        self.graph.as_mut()
     }
     fn graph_raw(&self) -> NonNull<DiGraph<Node, Edge>> {
-        unsafe { NonNull::new_unchecked(self.graph.as_ptr()) }
+        NonNull::from(self.graph.as_ref())
     }
 }

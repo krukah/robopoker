@@ -2,16 +2,15 @@ use crate::cfr::edge::Edge;
 use crate::cfr::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::ptr::NonNull;
 
 pub struct Info {
     roots: Vec<NodeIndex>,
-    graph: Rc<RefCell<DiGraph<Node, Edge>>>,
+    graph: NonNull<DiGraph<Node, Edge>>,
 }
 
-impl From<(NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>)> for Info {
-    fn from((index, graph): (NodeIndex, Rc<RefCell<DiGraph<Node, Edge>>>)) -> Self {
+impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>)> for Info {
+    fn from((index, graph): (NodeIndex, NonNull<DiGraph<Node, Edge>>)) -> Self {
         let roots = vec![index];
         Self { roots, graph }
     }
