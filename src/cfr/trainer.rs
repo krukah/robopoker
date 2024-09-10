@@ -7,6 +7,9 @@ use super::profile::Profile;
 use super::tree::Tree;
 use crate::Probability;
 use petgraph::graph::NodeIndex;
+use rand::rngs::StdRng;
+use rand::Rng;
+use rand::SeedableRng;
 
 pub struct Trainer(Profile, Tree);
 
@@ -89,23 +92,23 @@ impl Trainer {
         let mut children = node.datum().spawn();
         if children.is_empty() {
             children
-        } else if self.0.walker() == node.player() {
+        } else if node.player() == self.0.walker() {
             children
+        } else if node.player() == &Player::Chance {
+            let ref mut rng = self.rng(&node);
+            // choose random child uniformly
+            let choice = rng.gen_range(0..children.len());
+            let chosen = children.remove(choice);
+            vec![chosen]
         } else {
+            let ref mut rng = self.rng(&node);
+            // choose child according to reach probabilities in strategy profile
             use rand::distributions::Distribution;
             use rand::distributions::WeightedIndex;
-            use rand::rngs::StdRng;
-            use rand::SeedableRng;
-            use std::collections::hash_map::DefaultHasher;
-            use std::hash::Hash;
-            use std::hash::Hasher;
-            let ref mut hasher = DefaultHasher::new();
-            self.0.epochs().hash(hasher);
-            node.bucket().hash(hasher);
-            let ref mut rng = StdRng::seed_from_u64(hasher.finish());
             let chance = children
                 .iter()
-                .map(|(_, edge)| self.0.weight(node, edge))
+                // .map(|(_, edge)| self.0.weight(node, edge)) // TODO
+                .map(|(_, _)| 1.)
                 .collect::<Vec<Probability>>();
             let choice = WeightedIndex::new(chance)
                 .expect("at least one > 0")
@@ -113,5 +116,22 @@ impl Trainer {
             let chosen = children.remove(choice);
             vec![chosen]
         }
+    }
+
+    /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
+    /// for our Monte Carlo sampling. this may be better off as a function of
+    /// (&Profile, &Node)      or
+    /// (&Profile, &Bucket)
+    /// but i like that it's here, since it's directly tied to tree-sampling. which is higher-level
+    /// than either Tree or Profile.
+    fn rng(&self, node: &Node) -> StdRng {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::Hash;
+        use std::hash::Hasher;
+        let ref mut hasher = DefaultHasher::new();
+        self.0.epochs().hash(hasher);
+        node.bucket().hash(hasher);
+        let seed = hasher.finish();
+        StdRng::seed_from_u64(seed)
     }
 }

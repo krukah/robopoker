@@ -47,13 +47,6 @@ impl Profile {
             _ => &Player::P2,
         }
     }
-    pub fn weight(&self, node: &Node, edge: &Edge) -> Probability {
-        if self.walker() == node.player() {
-            self.reach(node, edge)
-        } else {
-            1.
-        }
-    }
     pub fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
         self.0
             .get(bucket)
