@@ -16,8 +16,9 @@ impl Memory {
 
 impl std::fmt::Display for Memory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, " A: {:.3}", self.advice)?;
-        write!(f, " R: {:.3}", self.regret)?;
+        write!(f, " POLICY: {:<8.3}", self.policy)?;
+        write!(f, " ADVICE: {:<8.3}", self.advice)?;
+        write!(f, " REGRET: {:<8.3}", self.regret)?;
         Ok(())
     }
 }

@@ -7,6 +7,8 @@ use super::profile::Profile;
 use super::tree::Tree;
 use crate::Probability;
 use petgraph::graph::NodeIndex;
+use rand::distributions::Distribution;
+use rand::distributions::WeightedIndex;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
@@ -19,7 +21,7 @@ impl Trainer {
         Self(Profile::empty(), Tree::empty())
     }
     pub fn train(&mut self, epochs: usize) {
-        while self.0.step() < epochs {
+        while self.0.step() <= epochs {
             for ref infoset in self.sample() {
                 if self.0.walker() == infoset.node().player() {
                     self.0.update_regret(infoset);
@@ -87,35 +89,42 @@ impl Trainer {
     /// while only probing a single child for non-traverser Nodes.
     /// this lands us in a high-variance, cheap-traversal, low-memory solution,
     /// compared to chance sampling, internal sampling, or full tree sampling.
+    ///
+    /// i think this could also be modified into a recursive CFR calcuation
     fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
-        let node = self.1.node(head);
+        let ref node = self.1.node(head);
         let mut children = node.datum().spawn();
         if children.is_empty() {
+            // terminal nodes have no children
             children
         } else if node.player() == self.0.walker() {
+            // sample all possible actions for the traverser
             children
         } else if node.player() == &Player::Chance {
-            let ref mut rng = self.rng(&node);
-            // choose random child uniformly
-            let choice = rng.gen_range(0..children.len());
+            // choose random child uniformly. this is specific to the game of poker,
+            // where each action at chance node/info/buckets is uniformly likely.
+            let ref mut rng = self.rng(node);
+            let n = children.len();
+            let choice = rng.gen_range(0..n);
             let chosen = children.remove(choice);
             vec![chosen]
         } else {
-            let ref mut rng = self.rng(&node);
-            // choose child according to reach probabilities in strategy profile
-            use rand::distributions::Distribution;
-            use rand::distributions::WeightedIndex;
-            let chance = children
+            // choose child according to reach probabilities in strategy profile.
+            // on first iteration, this is equivalent to sampling uniformly.
+            let ref mut rng = self.rng(node);
+            let policy = children
                 .iter()
-                // .map(|(_, edge)| self.0.weight(node, edge)) // TODO
-                .map(|(_, _)| 1.)
+                .map(|(_, edge)| self.0.policy(node, edge))
                 .collect::<Vec<Probability>>();
-            let choice = WeightedIndex::new(chance)
-                .expect("at least one > 0")
+            let choice = WeightedIndex::new(policy)
+                .expect("at least one policy > 0")
                 .sample(rng);
             let chosen = children.remove(choice);
             vec![chosen]
         }
+        // i thought for a long time here
+        // should we weight the Monte Carlo external node sampling?
+        // should we weight the sampling reach in regret calculation?
     }
 
     /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
