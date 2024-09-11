@@ -15,6 +15,16 @@ pub struct Node {
     datum: Data,
 }
 
+impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)> for Node {
+    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)) -> Self {
+        Self {
+            index,
+            graph,
+            datum,
+        }
+    }
+}
+
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl Node {
     pub fn datum(&self) -> &Data {
@@ -111,15 +121,5 @@ impl Node {
     /// Tree owns its Graph
     fn graph_ref(&self) -> &DiGraph<Self, Edge> {
         unsafe { self.graph.as_ref() }
-    }
-}
-
-impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)> for Node {
-    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Data)) -> Self {
-        Self {
-            index,
-            graph,
-            datum,
-        }
     }
 }

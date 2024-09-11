@@ -56,22 +56,42 @@ impl Profile {
             .regret
             .to_owned()
     }
-
+    /// only used for Tree sampling in Monte Carlo Trainer.
+    /// assertions remain valid as long as Trainer::children is consistent
+    /// with external sampling rules, where this fn is used to
+    /// emulate the "opponent" strategy. the opponent is just whoever is not
+    /// the traverser
+    pub fn policy(&self, node: &Node, edge: &Edge) -> Probability {
+        assert!(node.player() != &Player::Chance);
+        assert!(node.player() != self.walker());
+        self.0
+            .get(node.bucket())
+            .expect("policy bucket/edge has been visited before")
+            .get(edge)
+            .expect("policy bucket/edge has been visited before")
+            .policy
+            .to_owned()
+    }
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     pub fn update_regret(&mut self, infoset: &Info) {
+        assert!(infoset.node().player() == self.walker());
+        assert!(infoset.node().outgoing().len() == 3);
+        let bucket = infoset.node().bucket();
         for (ref action, ref regret) in self.regret_vector(infoset) {
-            let bucket = infoset.node().bucket();
             let update = self.update(bucket, action);
             update.regret = *regret;
         }
     }
     pub fn update_policy(&mut self, infoset: &Info) {
+        assert!(infoset.node().player() == self.walker());
+        assert!(infoset.node().outgoing().len() == 3);
+        let epochs = (self.epochs()) >> 1; //@no-tail-increment
+        let bucket = infoset.node().bucket();
+        self.normalize(bucket);
         for (ref action, ref policy) in self.policy_vector(infoset) {
-            let epochs = self.epochs();
-            let bucket = infoset.node().bucket();
             let update = self.update(bucket, action);
             update.policy = *policy;
             update.advice *= epochs as Probability;
@@ -99,12 +119,42 @@ impl Profile {
             .get_mut(edge)
             .expect("conditional on update, action should be visited")
     }
+    fn normalize(&mut self, bucket: &Bucket) {
+        let sum = self
+            .0
+            .get(bucket)
+            .expect("conditional on normalize, bucket should be visited")
+            .values()
+            .map(|m| m.policy)
+            .sum::<Probability>();
+        for edge in self
+            .0
+            .get_mut(bucket)
+            .expect("conditional on normalize, bucket should be visited")
+            .values_mut()
+        {
+            edge.policy /= sum;
+        }
+    }
 
     // update vector calculations
     // update vector calculations
     // update vector calculations
     // update vector calculations
+    fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
+        assert!(infoset.node().player() == self.walker());
+        assert!(infoset.node().outgoing().len() == 3);
+        infoset
+            .node()
+            .outgoing()
+            .into_iter()
+            .map(|action| (action.to_owned(), self.matched_regret(infoset, action)))
+            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
+            .collect()
+    }
     fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
+        assert!(infoset.node().player() == self.walker());
+        assert!(infoset.node().outgoing().len() == 3);
         let regrets = infoset
             .node()
             .outgoing()
@@ -112,35 +162,25 @@ impl Profile {
             .map(|action| (action.to_owned(), self.running_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect::<BTreeMap<Edge, Utility>>();
-        let summed = regrets.values().sum::<Utility>();
-        let vector = regrets
+        let denominator = regrets.values().sum::<Utility>();
+        regrets
             .into_iter()
-            .map(|(a, r)| (a, r / summed))
-            .collect::<BTreeMap<Edge, Probability>>();
-        vector
-    }
-    fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
-        infoset
-            .node()
-            .outgoing()
-            .into_iter()
-            .map(|action| (action.to_owned(), self.matched_regret(infoset, action)))
-            .collect()
+            .map(|(a, r)| (a, r / denominator))
+            .collect::<BTreeMap<Edge, Probability>>()
     }
 
-    // regret calculations
+    /// regret calculations
     /// regret calculations
     /// regret calculations
     /// regret calculations
     fn matched_regret(&self, infoset: &Info, action: &Edge) -> Utility {
         let running = self.running_regret(infoset, action);
         let instant = self.instant_regret(infoset, action);
-        (running + instant).max(Utility::MIN_POSITIVE)
+        running + instant
     }
     fn running_regret(&self, infoset: &Info, action: &Edge) -> Utility {
         let bucket = infoset.node().bucket();
-        let regret = self.regret(bucket, action);
-        regret
+        self.regret(bucket, action)
     }
     fn instant_regret(&self, infoset: &Info, action: &Edge) -> Utility {
         infoset
@@ -193,7 +233,8 @@ impl Profile {
     // probability calculations
     fn reach(&self, node: &Node, edge: &Edge) -> Probability {
         if node.player() == &Player::Chance {
-            1. / node.outgoing().len() as Probability
+            assert!(node.outgoing().len() == 1);
+            1.
         } else {
             self.0
                 .get(node.bucket())
@@ -236,7 +277,7 @@ impl Profile {
         }
     }
     fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {
-        1.0 / 1.0
+        1.0
     }
 }
 
