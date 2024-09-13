@@ -107,6 +107,12 @@ impl Trainer {
             let n = children.len();
             let choice = rng.gen_range(0..n);
             let chosen = children.remove(choice);
+            // println!(
+            // "  at {:?} , {} : {}",
+            // node.bucket(),
+            // self.0.epochs(),
+            // choice
+            // );
             vec![chosen]
         } else {
             // choose child according to reach probabilities in strategy profile.
@@ -119,6 +125,12 @@ impl Trainer {
             let choice = WeightedIndex::new(policy)
                 .expect("at least one policy > 0")
                 .sample(rng);
+            // println!(
+            // "  at {:?} , {} : {}",
+            // node.bucket(),
+            // self.0.epochs(),
+            // choice
+            // );
             let chosen = children.remove(choice);
             vec![chosen]
         }

@@ -40,10 +40,10 @@ impl Node {
     pub fn player(&self) -> &Player {
         self.datum.player()
     }
-    pub fn payoff(decision: &Node, outcome: &Node) -> Utility {
+    pub fn payoff(&self, player: &Player) -> Utility {
         // todo!("use some Payoff::from(Showdown::from(Game)) type");
-        let stakes = outcome.datum.stakes();
-        let direction = match decision.player() {
+        let stakes = self.datum.stakes();
+        let direction = match player {
             Player::P1 => 0. + 1.,
             Player::P2 => 0. - 1.,
             _ => unreachable!("payoff should not be queried for chance"),
