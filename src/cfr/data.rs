@@ -22,7 +22,7 @@ impl Data {
             00 => &Bucket::P1,
             01 | 05 | 09 => &Bucket::P2,
             02..=04 | 06..=08 | 10..=12 => &Bucket::IGNORE,
-            _ => unreachable!(),
+            _ => unreachable!("no other nodes"),
         }
     }
 
@@ -32,7 +32,7 @@ impl Data {
             00 => &Player::P1,
             01 | 05 | 09 => &Player::P2,
             02..=04 | 06..=08 | 10..=12 => &Player::Chance,
-            _ => unreachable!(),
+            _ => unreachable!("no other nodes"),
         }
     }
 
@@ -88,7 +88,7 @@ impl Data {
             ],
             // terminal nodes
             02..=04 | 06..=08 | 10..=12 => vec![],
-            _ => panic!("invalid node index {}", self.0),
+            _ => unreachable!("no other nodes"),
         }
     }
 }

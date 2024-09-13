@@ -10,7 +10,6 @@ use std::collections::BTreeMap;
 
 pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
 impl Profile {
-    /// basic constructor
     pub fn empty() -> Self {
         Self(BTreeMap::new(), 0)
     }
@@ -20,24 +19,17 @@ impl Profile {
     }
     pub fn witness(&mut self, node: &Node) {
         let bucket = node.bucket();
-        if !self.0.contains_key(bucket) {
-            let edges = node
-                .datum()
-                .spawn()
-                .into_iter()
-                .map(|(_, edge)| edge)
-                .collect::<Vec<Edge>>();
-            let p = 1. / edges.len() as Probability;
-            for action in edges {
-                self.insert(bucket.to_owned(), action, p);
+        if self.0.contains_key(bucket) {
+            return;
+        } else {
+            let edges = node.datum().edges();
+            let uniform = 1. / edges.len() as Probability;
+            for edge in edges {
+                self.insert(bucket.clone(), edge, uniform);
             }
         }
     }
 
-    // profile and time lookups
-    // profile and time lookups
-    // profile and time lookups
-    // profile and time lookups
     pub fn epochs(&self) -> usize {
         self.1
     }
@@ -77,6 +69,7 @@ impl Profile {
     // online minimization via regret matching ++
     // online minimization via regret matching ++
     pub fn update_regret(&mut self, infoset: &Info) {
+        // assert rules of external sampling scheme
         assert!(infoset.node().player() == self.walker());
         assert!(infoset.node().outgoing().len() == 3);
         let bucket = infoset.node().bucket();
@@ -88,15 +81,15 @@ impl Profile {
     pub fn update_policy(&mut self, infoset: &Info) {
         assert!(infoset.node().player() == self.walker());
         assert!(infoset.node().outgoing().len() == 3);
-        let epochs = (self.epochs()) >> 1; //@no-tail-increment
+        let epochs = self.epochs() / 2;
         let bucket = infoset.node().bucket();
-        self.normalize(bucket);
+        // self.normalize(bucket);
         for (ref action, ref policy) in self.policy_vector(infoset) {
             let update = self.update(bucket, action);
             update.policy = *policy;
             update.advice *= epochs as Probability;
             update.advice += policy;
-            update.advice /= epochs as Probability + 1.0;
+            update.advice /= epochs as Probability + 1.;
         }
     }
 
@@ -109,7 +102,7 @@ impl Profile {
             .entry(bucket)
             .or_insert_with(BTreeMap::new)
             .entry(edge)
-            .or_insert_with(Memory::new)
+            .or_insert_with(Memory::default)
             .policy = probability;
     }
     fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
@@ -137,10 +130,15 @@ impl Profile {
         }
     }
 
-    // update vector calculations
-    // update vector calculations
-    // update vector calculations
-    // update vector calculations
+    /// memory update calculations
+    /// memory update calculations
+    /// memory update calculations
+
+    /// using our current strategy Profile,
+    /// compute the regret vector
+    /// by calculating the marginal Utitlity
+    /// missed out on for not having followed
+    /// every walkable Edge at this Infoset/Node/Bucket
     fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
         assert!(infoset.node().player() == self.walker());
         assert!(infoset.node().outgoing().len() == 3);
@@ -152,6 +150,11 @@ impl Profile {
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect()
     }
+    /// using our current regret Profile,
+    /// compute a new strategy vector
+    /// by following a given Edge
+    /// proportionally to how much regret we felt
+    /// for not having followed that Edge in the past.
     fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
         assert!(infoset.node().player() == self.walker());
         assert!(infoset.node().outgoing().len() == 3);
@@ -162,82 +165,120 @@ impl Profile {
             .map(|action| (action.to_owned(), self.running_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect::<BTreeMap<Edge, Utility>>();
-        let denominator = regrets.values().sum::<Utility>();
-        regrets
-            .into_iter()
-            .map(|(a, r)| (a, r / denominator))
-            .collect::<BTreeMap<Edge, Probability>>()
+        let sum = regrets.values().sum::<Utility>();
+        regrets.into_iter().map(|(a, r)| (a, r / sum)).collect()
     }
 
     /// regret calculations
     /// regret calculations
     /// regret calculations
-    /// regret calculations
+
+    /// on this Profile iteration,
+    /// upon visiting this Infoset,
+    /// how much regret do we feel
+    /// across our strategy vector?
     fn matched_regret(&self, infoset: &Info, action: &Edge) -> Utility {
         let running = self.running_regret(infoset, action);
         let instant = self.instant_regret(infoset, action);
         running + instant
     }
-    fn running_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+    /// historically,
+    /// upon visiting any Node inthis Infoset,
+    /// how much cumulative Utility have we missed out on
+    /// for not having followed this Edge?
+    fn running_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         let bucket = infoset.node().bucket();
-        self.regret(bucket, action)
+        self.regret(bucket, edge)
     }
-    fn instant_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+    /// conditional on being in this Infoset,
+    /// distributed across all its head Nodes,
+    /// with paths weighted according to our Profile:
+    /// if we follow this Edge 100% of the time,
+    /// what is the expected marginal increase in Utility?
+    fn instant_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         infoset
-            .roots()
+            .heads()
             .iter()
-            .map(|root| self.gain(root, action))
+            .map(|head| self.gain(head, edge))
             .sum::<Utility>()
     }
 
-    // utility calculations
-    // utility calculations
-    // utility calculations
-    // utility calculations
-    fn gain(&self, root: &Node, edge: &Edge) -> Utility {
-        let expected = self.expected_value(root);
-        let cfactual = self.cfactual_value(root, edge);
+    /// utility calculations
+    /// utility calculations
+    /// utility calculations
+
+    /// if at this given head Node,
+    /// we diverged from our Profile strategy
+    /// by "playing toward" this Infoset
+    /// and following this Edge 100% of the time,
+    /// what is the expected marginal increase in Utility?
+    fn gain(&self, head: &Node, edge: &Edge) -> Utility {
+        assert!(head.player() == self.walker());
+        let expected = self.profiled_value(head);
+        let cfactual = self.cfactual_value(head, edge);
         cfactual - expected
-        // should hoist outside of action/edge loop.
+        // could hoist this outside of action/edge loop.
         // label each Node with EV
         // then use that memoized value for CFV
         // memoize via Cell<Option<Utility>>
     }
-    fn cfactual_value(&self, root: &Node, edge: &Edge) -> Utility {
-        self.cfactual_reach(root)
-            * root
-                .follow(edge)
-                .leaves()
+    /// if,
+    /// counterfactually,
+    /// we had intended to get ourselves in this infoset,
+    /// then what would be the expected Utility of this leaf?
+    fn cfactual_value(&self, head: &Node, edge: &Edge) -> Utility {
+        assert!(head.player() == self.walker());
+        let foot = head.follow(edge);
+        self.cfactual_reach(head, foot)
+            * foot
+                .leaves() // terminal nodes
                 .iter()
-                .map(|leaf| self.relative_value(root, leaf))
+                .map(|leaf| leaf.payoff(head.player()) * self.relative_reach(foot, leaf)) // aggregated value over terminals
                 .sum::<Utility>()
     }
-    fn expected_value(&self, root: &Node) -> Utility {
-        self.expected_reach(root)
-            * root
+    /// assuming we start at root Node,
+    /// and that we sample the Tree according to Profile,
+    /// how much Utility do we expect upon
+    /// visiting this Node?
+    fn profiled_value(&self, head: &Node) -> Utility {
+        assert!(head.player() == self.walker());
+        self.profiled_reach(head)
+            * head
                 .leaves()
                 .iter()
-                .map(|leaf| self.relative_value(root, leaf))
+                .map(|leaf| self.relative_value(head, leaf))
                 .sum::<Utility>()
     }
-    fn relative_value(&self, root: &Node, leaf: &Node) -> Utility {
-        Node::payoff(root, leaf)
-            * self.relative_reach(root, leaf)
-            * self.sampling_reach(root, leaf)
+    /// assuming we start at a given head Node,
+    /// and that we sample the tree according to Profile,
+    /// how much Utility does
+    /// this leaf Node backpropagate up to us?
+    fn relative_value(&self, head: &Node, leaf: &Node) -> Utility {
+        assert!(head.player() == self.walker());
+        assert!(leaf.children().len() == 0);
+        leaf.payoff(head.player())
+            * self.relative_reach(head, leaf)
+            * self.sampling_reach(head, leaf)
             * 1.
     }
 
-    // probability calculations
-    // probability calculations
-    // probability calculations
-    // probability calculations
-    fn reach(&self, node: &Node, edge: &Edge) -> Probability {
-        if node.player() == &Player::Chance {
-            assert!(node.outgoing().len() == 1);
+    /// reach calculations
+    /// reach calculations
+    /// reach calculations
+
+    /// given a Node on a Tree,
+    /// what is the Probability
+    /// that flows forward through this given Edge?
+    /// note that we assume
+    /// - Tree is sampled according to external sampling rules
+    /// - we've visited this Infoset at least once, while sampling the Tree
+    fn reach(&self, head: &Node, edge: &Edge) -> Probability {
+        if head.player() == &Player::Chance {
+            assert!(head.outgoing().len() == 1);
             1.
         } else {
             self.0
-                .get(node.bucket())
+                .get(head.bucket())
                 .expect("policy bucket/edge has been visited before")
                 .get(edge)
                 .expect("policy bucket/edge has been visited before")
@@ -245,39 +286,56 @@ impl Profile {
                 .to_owned()
         }
     }
-    fn cfactual_reach(&self, node: &Node) -> Probability {
-        if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
-            if head.player() == node.player() {
-                self.cfactual_reach(head)
+    /// if,
+    /// counterfactually,
+    /// we had intended to get ourselves in this infoset,
+    /// then what would be the Probability of us being
+    /// in this infoset? that is, assuming our opponents
+    /// played according to distributions from Profile,
+    /// but we did not.
+    fn cfactual_reach(&self, info: &Node, tail: &Node) -> Probability {
+        if let (Some(head), Some(edge)) = (tail.parent(), tail.incoming()) {
+            if head.player() == info.player() {
+                self.cfactual_reach(head, info)
             } else {
-                self.cfactual_reach(head) * self.reach(head, edge)
+                self.cfactual_reach(head, info) * self.reach(head, edge)
             }
         } else {
-            1.0
+            1.
         }
     }
-    fn expected_reach(&self, node: &Node) -> Probability {
-        if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
-            self.expected_reach(head) * self.reach(head, edge)
+    /// if we were to play by the Profile,
+    /// up to this Node in the Tree,
+    /// then what is the probability of visiting this Node?
+    fn profiled_reach(&self, head: &Node) -> Probability {
+        if let (Some(head), Some(edge)) = (head.parent(), head.incoming()) {
+            self.profiled_reach(head) * self.reach(head, edge)
         } else {
-            1.0
+            1.
         }
     }
-    fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
-        if root.bucket() != leaf.bucket() {
-            let head = leaf
-                .parent()
-                .expect("leaf is a descendant of root, therefore has a parent");
-            let edge = leaf
-                .incoming()
-                .expect("leaf is a descendant of root, therefore has a parent");
-            self.relative_reach(root, head) * self.reach(head, edge)
+    /// conditional on being in a given Infoset,
+    /// what is the Probability of
+    /// visiting this particular leaf Node,
+    /// given the distribution offered by Profile?
+    fn relative_reach(&self, head: &Node, tail: &Node) -> Probability {
+        if head.bucket() != tail.bucket() {
+            if let (Some(head), Some(edge)) = (tail.parent(), tail.incoming()) {
+                self.relative_reach(head, head) * self.reach(head, edge)
+            } else {
+                unreachable!("outer bucket inequality implies leaf must have parent")
+            }
         } else {
-            1.0
+            1.
         }
     }
-    fn sampling_reach(&self, _: &Node, _: &Node) -> Probability {
-        1.0
+    /// MCCFR requires we adjust our reach in counterfactual
+    /// regret calculation to account for the under- and over-sampling
+    /// of regret across different Infosets.
+    /// the parameter they use in literature is q, weird
+    /// we can think of this as a form of importance sampling.
+    fn sampling_reach(&self, info: &Node, leaf: &Node) -> Probability {
+        1. / self.cfactual_reach(info, leaf)
     }
 }
 

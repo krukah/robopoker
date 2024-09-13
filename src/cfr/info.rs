@@ -21,7 +21,7 @@ impl Info {
     pub fn add(&mut self, index: NodeIndex) {
         self.roots.push(index)
     }
-    pub fn roots(&self) -> Vec<&Node> {
+    pub fn heads(&self) -> Vec<&Node> {
         self.roots
             .iter()
             .copied()
