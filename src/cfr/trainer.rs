@@ -102,7 +102,7 @@ impl Trainer {
             // sample all possible actions for the traverser
             children
         } else if node.player() == &Player::Chance {
-            return children;
+            unreachable!("RPS specific");
             // choose random child uniformly. this is specific to the game of poker,
             // where each action at chance node/info/buckets is uniformly likely.
             let ref mut rng = self.rng(node);

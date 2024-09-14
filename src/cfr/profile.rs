@@ -218,7 +218,7 @@ impl Profile {
     /// what is the expected marginal increase in Utility?
     fn gain(&self, head: &Node, edge: &Edge) -> Utility {
         assert!(head.player() == self.walker());
-        let expected = self.profiled_value(head);
+        let expected = self.expected_value(head);
         let cfactual = self.cfactual_value(head, edge);
         cfactual - expected
         //? HOIST
@@ -227,44 +227,44 @@ impl Profile {
         // then use that memoized value for CFV
         // memoize via Cell<Option<Utility>>
     }
+    /// assuming we start at root Node,
+    /// and that we sample the Tree according to Profile,
+    /// how much Utility do we expect upon
+    /// visiting this Node?
+    fn expected_value(&self, head: &Node) -> Utility {
+        assert!(head.player() == self.walker());
+        self.profiled_reach(head)
+            * head
+                .leaves()
+                .iter()
+                .map(|leaf| self.terminal_value(head, leaf))
+                .sum::<Utility>()
+    }
     /// if,
     /// counterfactually,
     /// we had intended to get ourselves in this infoset,
     /// then what would be the expected Utility of this leaf?
     fn cfactual_value(&self, head: &Node, edge: &Edge) -> Utility {
         assert!(head.player() == self.walker());
-        let foot = head.follow(edge);
-        self.cfactual_reach(head, foot)
-            * foot
-                .leaves() // terminal nodes
-                .iter()
-                .map(|leaf| leaf.payoff(head.player()) * self.relative_reach(foot, leaf)) // aggregated value over terminals
-                .sum::<Utility>()
-    }
-    /// assuming we start at root Node,
-    /// and that we sample the Tree according to Profile,
-    /// how much Utility do we expect upon
-    /// visiting this Node?
-    fn profiled_value(&self, head: &Node) -> Utility {
-        assert!(head.player() == self.walker());
-        self.profiled_reach(head)
+        self.external_reach(head)
             * head
+                .follow(edge)
                 .leaves()
                 .iter()
-                .map(|leaf| self.relative_value(head, leaf))
+                .map(|leaf| self.terminal_value(head, leaf))
                 .sum::<Utility>()
     }
+
     /// assuming we start at a given head Node,
     /// and that we sample the tree according to Profile,
     /// how much Utility does
     /// this leaf Node backpropagate up to us?
-    fn relative_value(&self, head: &Node, leaf: &Node) -> Utility {
+    fn terminal_value(&self, head: &Node, leaf: &Node) -> Utility {
         assert!(head.player() == self.walker());
         assert!(leaf.children().len() == 0);
-        leaf.payoff(head.player())
-            * self.relative_reach(head, leaf)
-            * self.sampling_reach(head, leaf)
-            * 1.
+        leaf.payoff(self.walker())  // Terminal Utility
+        * self.relative_reach(head, leaf) // Path Probability
+        / self.sampling_reach(head, leaf) // Importance Sampling
     }
 
     /// reach calculations
@@ -279,8 +279,9 @@ impl Profile {
     /// - we've visited this Infoset at least once, while sampling the Tree
     fn reach(&self, head: &Node, edge: &Edge) -> Probability {
         if head.player() == &Player::Chance {
-            assert!(head.outgoing().len() == 1);
-            1.
+            //. RPS specific
+            assert!(head.children().len() == 0);
+            unreachable!("early return 1. rather than entering recursive branch")
         } else {
             self.0
                 .get(head.bucket())
@@ -298,12 +299,12 @@ impl Profile {
     /// in this infoset? that is, assuming our opponents
     /// played according to distributions from Profile,
     /// but we did not.
-    fn cfactual_reach(&self, info: &Node, tail: &Node) -> Probability {
+    fn external_reach(&self, tail: &Node) -> Probability {
         if let (Some(head), Some(edge)) = (tail.parent(), tail.incoming()) {
-            if head.player() == info.player() {
-                self.cfactual_reach(head, info)
+            if head.player() == self.walker() {
+                self.external_reach(head)
             } else {
-                self.cfactual_reach(head, info) * self.reach(head, edge)
+                self.external_reach(head) * self.reach(head, edge)
             }
         } else {
             1.
@@ -324,14 +325,14 @@ impl Profile {
     /// visiting this particular leaf Node,
     /// given the distribution offered by Profile?
     fn relative_reach(&self, head: &Node, tail: &Node) -> Probability {
-        if head.bucket() != tail.bucket() {
+        if head.bucket() == tail.bucket() {
+            1.
+        } else {
             if let (Some(head), Some(edge)) = (tail.parent(), tail.incoming()) {
                 self.relative_reach(head, head) * self.reach(head, edge)
             } else {
-                unreachable!("outer bucket inequality implies leaf must have parent")
+                unreachable!("tail must have parent")
             }
-        } else {
-            1.
         }
     }
     /// MCCFR requires we adjust our reach in counterfactual
