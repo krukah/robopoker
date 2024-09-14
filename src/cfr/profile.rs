@@ -35,7 +35,7 @@ impl Profile {
     }
     pub fn walker(&self) -> &Player {
         match self.1 % 2 {
-            0 => &Player::P1,
+            1 => &Player::P1,
             _ => &Player::P2,
         }
     }
@@ -112,6 +112,7 @@ impl Profile {
             .get_mut(edge)
             .expect("conditional on update, action should be visited")
     }
+    #[allow(dead_code)]
     fn normalize(&mut self, bucket: &Bucket) {
         let sum = self
             .0
@@ -146,7 +147,7 @@ impl Profile {
             .node()
             .outgoing()
             .into_iter()
-            .map(|action| (action.to_owned(), self.matched_regret(infoset, action)))
+            .map(|action| (action.to_owned(), self.accrued_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect()
     }
@@ -177,7 +178,7 @@ impl Profile {
     /// upon visiting this Infoset,
     /// how much regret do we feel
     /// across our strategy vector?
-    fn matched_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+    fn accrued_regret(&self, infoset: &Info, action: &Edge) -> Utility {
         let running = self.running_regret(infoset, action);
         let instant = self.instant_regret(infoset, action);
         running + instant
@@ -201,6 +202,9 @@ impl Profile {
             .iter()
             .map(|head| self.gain(head, edge))
             .sum::<Utility>()
+        //? HOIST
+        // calculate self.profiled_value(head)
+        // in the outer scop
     }
 
     /// utility calculations
@@ -217,6 +221,7 @@ impl Profile {
         let expected = self.profiled_value(head);
         let cfactual = self.cfactual_value(head, edge);
         cfactual - expected
+        //? HOIST
         // could hoist this outside of action/edge loop.
         // label each Node with EV
         // then use that memoized value for CFV
@@ -334,8 +339,9 @@ impl Profile {
     /// of regret across different Infosets.
     /// the parameter they use in literature is q, weird
     /// we can think of this as a form of importance sampling.
+    #[allow(unused_variables)]
     fn sampling_reach(&self, info: &Node, leaf: &Node) -> Probability {
-        1. / self.cfactual_reach(info, leaf)
+        1.
     }
 }
 

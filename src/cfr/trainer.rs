@@ -91,6 +91,7 @@ impl Trainer {
     /// compared to chance sampling, internal sampling, or full tree sampling.
     ///
     /// i think this could also be modified into a recursive CFR calcuation
+    #[allow(unused)]
     fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
         let ref node = self.1.node(head);
         let mut children = node.datum().spawn();
@@ -101,6 +102,7 @@ impl Trainer {
             // sample all possible actions for the traverser
             children
         } else if node.player() == &Player::Chance {
+            return children;
             // choose random child uniformly. this is specific to the game of poker,
             // where each action at chance node/info/buckets is uniformly likely.
             let ref mut rng = self.rng(node);
@@ -115,6 +117,7 @@ impl Trainer {
             // );
             vec![chosen]
         } else {
+            return children;
             // choose child according to reach probabilities in strategy profile.
             // on first iteration, this is equivalent to sampling uniformly.
             let ref mut rng = self.rng(node);
