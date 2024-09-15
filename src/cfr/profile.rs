@@ -13,10 +13,22 @@ impl Profile {
     pub fn empty() -> Self {
         Self(BTreeMap::new(), 0)
     }
+    /// increment Epoch counter
+    /// and return current count
     pub fn step(&mut self) -> usize {
         self.1 += 1;
         self.1
     }
+    /// idempotent initialization of Profile
+    /// at a given Node.
+    ///
+    /// if we've already visited this Infoset,
+    /// then we can skip over it.
+    ///
+    /// otherwise, we initialize the strategy
+    /// at this Node with uniform distribution
+    /// over its spawned support:
+    /// Data -> Vec<(Data, Edge)>.
     pub fn witness(&mut self, node: &Node) {
         let bucket = node.bucket();
         if self.0.contains_key(bucket) {
@@ -25,28 +37,65 @@ impl Profile {
             let edges = node.datum().edges();
             let uniform = 1. / edges.len() as Probability;
             for edge in edges {
-                self.insert(bucket.clone(), edge, uniform);
+                self.0
+                    .entry(bucket.clone())
+                    .or_insert_with(BTreeMap::new)
+                    .entry(edge)
+                    .or_insert_with(Memory::default)
+                    .policy = uniform;
             }
         }
     }
 
-    pub fn epochs(&self) -> usize {
-        self.1
-    }
-    pub fn walker(&self) -> &Player {
-        match self.1 % 2 {
-            1 => &Player::P1,
-            _ => &Player::P2,
+    /// update regret memory
+    /// we calculated positive regrets for every Edge
+    /// and replace our old regret with the new
+    /// new_regret = (old_regret + now_regret) . max(0)
+    pub fn update_regret(&mut self, infoset: &Info) {
+        assert!(infoset.node().player() == self.walker());
+        let bucket = infoset.node().bucket();
+        for (ref action, ref regret) in self.regret_vector(infoset) {
+            let update = self.update(bucket, action);
+            update.regret = *regret;
         }
     }
-    pub fn regret(&self, bucket: &Bucket, edge: &Edge) -> Utility {
-        self.0
-            .get(bucket)
-            .expect("regret bucket/edge has been visited before")
-            .get(edge)
-            .expect("regret bucket/edge has been visited before")
-            .regret
-            .to_owned()
+    /// update strategy vector
+    /// lookup our old/running regret vector.
+    /// make strategy proportional to this cumulative regret:
+    /// p ( action ) = action_regret / sum_actions if sum > 0 ;
+    ///              =             1 / num_actions if sum = 0 .
+    pub fn update_policy(&mut self, infoset: &Info) {
+        assert!(infoset.node().player() == self.walker());
+        let epochs = self.epochs();
+        let bucket = infoset.node().bucket();
+        // self.normalize(bucket);
+        for (ref action, ref policy) in self.policy_vector(infoset) {
+            let update = self.update(bucket, action);
+            update.policy = *policy;
+            update.advice *= epochs as Probability;
+            update.advice += policy;
+            update.advice /= epochs as Probability + 1.;
+        }
+    }
+
+    /// how many Epochs have we traversed the Tree so far?
+    ///
+    /// the online nature of the CFR training algorithm
+    /// makes this value intrinsic to the learned Profile
+    /// weights, hence the tight coupling.
+    /// training can be paused, exported, imported, resumed.
+    /// division by 2 is used to allow each player
+    /// one iteration to walk the Tree in a single Epoch
+    pub fn epochs(&self) -> usize {
+        self.1 / 2
+    }
+    /// which player is traversing the Tree on this Epoch?
+    /// used extensively in assertions and utility calculations
+    pub fn walker(&self) -> &Player {
+        match self.1 % 2 {
+            0 => &Player::P1,
+            _ => &Player::P2,
+        }
     }
     /// only used for Tree sampling in Monte Carlo Trainer.
     /// assertions remain valid as long as Trainer::children is consistent
@@ -64,47 +113,11 @@ impl Profile {
             .policy
             .to_owned()
     }
-    // online minimization via regret matching ++
-    // online minimization via regret matching ++
-    // online minimization via regret matching ++
-    // online minimization via regret matching ++
-    pub fn update_regret(&mut self, infoset: &Info) {
-        // assert rules of external sampling scheme
-        assert!(infoset.node().player() == self.walker());
-        assert!(infoset.node().outgoing().len() == 3);
-        let bucket = infoset.node().bucket();
-        for (ref action, ref regret) in self.regret_vector(infoset) {
-            let update = self.update(bucket, action);
-            update.regret = *regret;
-        }
-    }
-    pub fn update_policy(&mut self, infoset: &Info) {
-        assert!(infoset.node().player() == self.walker());
-        assert!(infoset.node().outgoing().len() == 3);
-        let epochs = self.epochs() / 2;
-        let bucket = infoset.node().bucket();
-        // self.normalize(bucket);
-        for (ref action, ref policy) in self.policy_vector(infoset) {
-            let update = self.update(bucket, action);
-            update.policy = *policy;
-            update.advice *= epochs as Probability;
-            update.advice += policy;
-            update.advice /= epochs as Probability + 1.;
-        }
-    }
 
-    // write-through memory
-    // write-through memory
-    // write-through memory
-    // write-through memory
-    fn insert(&mut self, bucket: Bucket, edge: Edge, probability: Probability) {
-        self.0
-            .entry(bucket)
-            .or_insert_with(BTreeMap::new)
-            .entry(edge)
-            .or_insert_with(Memory::default)
-            .policy = probability;
-    }
+    /// access to regrets, policy, and averaged policy
+    /// are tightly coupled.
+    /// we use this in Self::update_*
+    /// to replace any of the three values
     fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
         self.0
             .get_mut(bucket)
@@ -112,6 +125,10 @@ impl Profile {
             .get_mut(edge)
             .expect("conditional on update, action should be visited")
     }
+    /// if we ever run into floating point issues
+    /// from accumulated error in policy calculations,
+    /// we can use this to rescale all the values
+    /// in a given bucket
     #[allow(dead_code)]
     fn normalize(&mut self, bucket: &Bucket) {
         let sum = self
@@ -142,7 +159,6 @@ impl Profile {
     /// every walkable Edge at this Infoset/Node/Bucket
     fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
         assert!(infoset.node().player() == self.walker());
-        assert!(infoset.node().outgoing().len() == 3);
         infoset
             .node()
             .outgoing()
@@ -158,7 +174,6 @@ impl Profile {
     /// for not having followed that Edge in the past.
     fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
         assert!(infoset.node().player() == self.walker());
-        assert!(infoset.node().outgoing().len() == 3);
         let regrets = infoset
             .node()
             .outgoing()
@@ -179,6 +194,7 @@ impl Profile {
     /// how much regret do we feel
     /// across our strategy vector?
     fn accrued_regret(&self, infoset: &Info, action: &Edge) -> Utility {
+        assert!(infoset.node().player() == self.walker());
         let running = self.running_regret(infoset, action);
         let instant = self.instant_regret(infoset, action);
         running + instant
@@ -188,8 +204,14 @@ impl Profile {
     /// how much cumulative Utility have we missed out on
     /// for not having followed this Edge?
     fn running_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
-        let bucket = infoset.node().bucket();
-        self.regret(bucket, edge)
+        assert!(infoset.node().player() == self.walker());
+        self.0
+            .get(infoset.node().bucket())
+            .expect("regret bucket/edge has been visited before")
+            .get(edge)
+            .expect("regret bucket/edge has been visited before")
+            .regret
+            .to_owned()
     }
     /// conditional on being in this Infoset,
     /// distributed across all its head Nodes,
@@ -197,6 +219,7 @@ impl Profile {
     /// if we follow this Edge 100% of the time,
     /// what is the expected marginal increase in Utility?
     fn instant_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+        assert!(infoset.node().player() == self.walker());
         infoset
             .heads()
             .iter()
@@ -254,7 +277,6 @@ impl Profile {
                 .map(|leaf| self.terminal_value(head, leaf))
                 .sum::<Utility>()
     }
-
     /// assuming we start at a given head Node,
     /// and that we sample the tree according to Profile,
     /// how much Utility does
@@ -263,8 +285,8 @@ impl Profile {
         assert!(head.player() == self.walker());
         assert!(leaf.children().len() == 0);
         leaf.payoff(self.walker())  // Terminal Utility
+        / self.external_reach(leaf) // Importance Sampling
         * self.relative_reach(head, leaf) // Path Probability
-        / self.sampling_reach(head, leaf) // Importance Sampling
     }
 
     /// reach calculations
@@ -299,8 +321,13 @@ impl Profile {
     /// in this infoset? that is, assuming our opponents
     /// played according to distributions from Profile,
     /// but we did not.
-    fn external_reach(&self, tail: &Node) -> Probability {
-        if let (Some(head), Some(edge)) = (tail.parent(), tail.incoming()) {
+    ///
+    /// this function also serves as a form of importance sampling.
+    /// MCCFR requires we adjust our reach in counterfactual
+    /// regret calculation to account for the under- and over-sampling
+    /// of regret across different Infosets.
+    fn external_reach(&self, node: &Node) -> Probability {
+        if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
             if head.player() == self.walker() {
                 self.external_reach(head)
             } else {
@@ -324,25 +351,16 @@ impl Profile {
     /// what is the Probability of
     /// visiting this particular leaf Node,
     /// given the distribution offered by Profile?
-    fn relative_reach(&self, head: &Node, tail: &Node) -> Probability {
-        if head.bucket() == tail.bucket() {
+    fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
+        if root.bucket() == leaf.bucket() {
             1.
         } else {
-            if let (Some(head), Some(edge)) = (tail.parent(), tail.incoming()) {
-                self.relative_reach(head, head) * self.reach(head, edge)
+            if let (Some(head), Some(edge)) = (leaf.parent(), leaf.incoming()) {
+                self.relative_reach(root, head) * self.reach(head, edge)
             } else {
                 unreachable!("tail must have parent")
             }
         }
-    }
-    /// MCCFR requires we adjust our reach in counterfactual
-    /// regret calculation to account for the under- and over-sampling
-    /// of regret across different Infosets.
-    /// the parameter they use in literature is q, weird
-    /// we can think of this as a form of importance sampling.
-    #[allow(unused_variables)]
-    fn sampling_reach(&self, info: &Node, leaf: &Node) -> Probability {
-        1.
     }
 }
 
