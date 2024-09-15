@@ -12,12 +12,10 @@ pub struct Data(usize);
 
 impl Data {
     pub fn root() -> Self {
-        // todo!("need to calc on the fly or store in struct");
         Self(0)
     }
 
     pub fn bucket(&self) -> &Bucket {
-        // todo!("need to calc on the fly or store in struct");
         match self.0 {
             00 => &Bucket::P1,
             01 | 05 | 09 => &Bucket::P2,
@@ -27,7 +25,6 @@ impl Data {
     }
 
     pub fn player(&self) -> &Player {
-        // todo!("need to calc on the fly or store in struct");
         match self.0 {
             00 => &Player::P1,
             01 | 05 | 09 => &Player::P2,
@@ -36,8 +33,7 @@ impl Data {
         }
     }
 
-    pub fn stakes(&self) -> Utility {
-        // todo!("need to calc on the fly or store in struct");
+    pub fn payoff(&self) -> Utility {
         const HI_STAKES: Utility = 2e0; // we can modify payoffs to verify convergence
         const LO_STAKES: Utility = 1e0;
         match self.0 {
@@ -53,7 +49,6 @@ impl Data {
     }
 
     pub fn edges(&self) -> Vec<Edge> {
-        // todo!("need to calc on the fly or store in struct");
         match self.0 {
             00 | 01 | 05 | 09 => vec![Edge::RO, Edge::PA, Edge::SC],
             00..=12 => vec![],
