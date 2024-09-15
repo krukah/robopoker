@@ -1,12 +1,14 @@
 #[derive(Debug, Clone)]
 pub struct Game {
-    pub bblind: u32,
-    pub sblind: u32,
-    pub deck: Deck,
-    pub tail: Rotation,
+    // pub pot: Chips,
+    // pub board: Board,
     pub head: Rotation,
-    pub actions: Vec<Action>,
+    pub deck: Deck,           // implied by Rotation
+    pub bblind: Chips,        // const fn
+    pub sblind: Chips,        // const fn
+    pub actions: Vec<Action>, // externalized
 }
+
 #[allow(dead_code)]
 impl Game {
     pub fn new() -> Self {
@@ -15,7 +17,6 @@ impl Game {
             bblind: 2,
             actions: Vec::new(),
             deck: Deck::new(),
-            tail: Rotation::new(),
             head: Rotation::new(),
         }
     }
@@ -28,43 +29,43 @@ impl Game {
         }
     }
 
-    fn street_bets(&self, street: Street) -> Vec<Action> {
-        let edges = self.street_bounds();
-        let range = self.street_range(street, edges);
-        self.actions[range].to_vec()
-    }
-    fn street_bounds(&self) -> Vec<usize> {
-        let mut n_draws = 0usize;
-        let mut boundaries = Vec::new();
-        self.actions
-            .iter()
-            .enumerate()
-            .filter(|(_, a)| match a {
-                Action::Draw(..) => true,
-                _ => false,
-            })
-            .for_each(|(i, _)| {
-                n_draws += 1;
-                if n_draws >= 3 {
-                    boundaries.push(i);
-                }
-            });
-        boundaries
-    }
-    fn street_range(&self, street: Street, bounds: Vec<usize>) -> std::ops::Range<usize> {
-        match street {
-            Street::Pref => 0..bounds[0],
-            Street::Flop => bounds[0]..bounds[1],
-            Street::Turn => bounds[1]..bounds[2],
-            Street::Rive => bounds[2]..self.actions.len(),
-            Street::Show => unreachable!(),
-        }
-    }
+    // fn street_bets(&self, street: Street) -> Vec<Action> {
+    //     let edges = self.street_bounds();
+    //     let range = self.street_range(street, edges);
+    //     self.actions[range].to_vec()
+    // }
+    // fn street_bounds(&self) -> Vec<usize> {
+    //     let mut n_draws = 0usize;
+    //     let mut boundaries = Vec::new();
+    //     self.actions
+    //         .iter()
+    //         .enumerate()
+    //         .filter(|(_, a)| match a {
+    //             Action::Draw(..) => true,
+    //             _ => false,
+    //         })
+    //         .for_each(|(i, _)| {
+    //             n_draws += 1;
+    //             if n_draws >= 3 {
+    //                 boundaries.push(i);
+    //             }
+    //         });
+    //     boundaries
+    // }
+    // fn street_range(&self, street: Street, bounds: Vec<usize>) -> std::ops::Range<usize> {
+    //     match street {
+    //         Street::Pref => 0..bounds[0],
+    //         Street::Flop => bounds[0]..bounds[1],
+    //         Street::Turn => bounds[1]..bounds[2],
+    //         Street::Rive => bounds[2]..self.actions.len(),
+    //         Street::Show => unreachable!(),
+    //     }
+    // }
 
     fn starting_payouts(&self) -> Vec<Payout> {
         let mut payouts = self
             .head
-            .seats
+            .chairs
             .iter()
             .map(|s| self.payout(s))
             .collect::<Vec<Payout>>();
@@ -85,14 +86,14 @@ impl Game {
         }
     }
 
-    pub fn min_raise(&self) -> u32 {
+    pub fn min_raise(&self) -> Chips {
         let mut stakes = self
             .head
-            .seats
+            .chairs
             .iter()
             .filter(|s| s.status() != Status::Folding)
             .map(|s| s.stake())
-            .collect::<Vec<u32>>();
+            .collect::<Vec<Chips>>();
         stakes.sort_unstable();
         let last = stakes.pop().unwrap_or(0);
         let prev = stakes.pop().unwrap_or(0);
@@ -105,7 +106,7 @@ impl Game {
         let hand = Hand::add(Hand::from(hole), Hand::from(self.head.board));
         Vec::<Card>::from(hand)
     }
-    fn risked(&self, position: usize) -> u32 {
+    fn risked(&self, position: usize) -> Chips {
         self.actions
             .iter()
             .filter(|a| match a {
@@ -125,8 +126,8 @@ impl Game {
             .sum()
     }
     fn priority(&self, position: usize) -> usize {
-        (self.head.seats.len() + position - self.head.after(self.head.dealer))
-            % self.head.seats.len()
+        (self.head.chairs.len() + position - self.head.after(self.head.dealer))
+            % self.head.chairs.len()
     }
     fn order(&self, a: &Payout, b: &Payout) -> std::cmp::Ordering {
         let x = self.priority(a.position);
@@ -143,14 +144,13 @@ impl Game {
     }
     pub fn start(&mut self) {
         self.head.begin_hand();
-        self.tail = self.head.clone();
         self.actions.clear();
         self.post(self.sblind);
         self.post(self.bblind);
         self.head.counts = 0;
         self.deck = Deck::new();
     }
-    pub fn post(&mut self, size: u32) {
+    pub fn post(&mut self, size: Chips) {
         let pointer = self.head.action;
         let seat = self.head.seat_at_position_mut(pointer);
         let bet = std::cmp::min(size, seat.stack());
@@ -163,7 +163,7 @@ impl Game {
         self.head.begin_street();
         match self.head.board.street() {
             Street::Pref => {
-                for hole in self.head.seats.iter_mut().map(|s| s.hole()) {
+                for hole in self.head.chairs.iter_mut().map(|s| s.hole()) {
                     self.head.board.deal(hole)
                 }
             }
@@ -195,8 +195,9 @@ impl Game {
     }
 }
 use super::payout::Payout;
-use super::seat::{Status, Seat};
+use super::seat::{Seat, Status};
 use super::showdown::Showdown;
+use super::Chips;
 use super::{action::Action, rotation::Rotation};
 use crate::cards::hand::Hand;
 use crate::cards::street::Street;

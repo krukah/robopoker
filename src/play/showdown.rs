@@ -1,3 +1,4 @@
+use super::Chips;
 use crate::cards::kicks::Kickers;
 use crate::cards::ranking::Ranking;
 use crate::cards::strength::Strength;
@@ -6,14 +7,14 @@ use crate::play::{payout::Payout, seat::Status};
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
     payouts: Vec<Payout>,
-    next_stake: u32,
-    prev_stake: u32,
+    next_stake: Chips,
+    prev_stake: Chips,
     next_strength: Strength, // make option to handle initial state
 }
 
 impl Showdown {
     pub fn concede(mut payouts: Vec<Payout>) -> Vec<Payout> {
-        let reward = payouts.iter().map(|p| p.risked).sum::<u32>();
+        let reward = payouts.iter().map(|p| p.risked).sum::<Chips>();
         let winner = payouts
             .iter_mut()
             .find(|p| p.status != Status::Folding)
@@ -40,8 +41,8 @@ impl Showdown {
 
     fn new(payouts: Vec<Payout>) -> Self {
         let next_rank = Strength::from((Ranking::MAX, Kickers::from(0u16)));
-        let next_stake = u32::MIN;
-        let prev_stake = u32::MIN;
+        let next_stake = Chips::MIN;
+        let prev_stake = Chips::MIN;
         Self {
             payouts,
             next_strength: next_rank,
@@ -51,8 +52,8 @@ impl Showdown {
     }
 
     fn is_complete(&self) -> bool {
-        let staked = self.payouts.iter().map(|p| p.risked).sum::<u32>();
-        let reward = self.payouts.iter().map(|p| p.reward).sum::<u32>();
+        let staked = self.payouts.iter().map(|p| p.risked).sum::<Chips>();
+        let reward = self.payouts.iter().map(|p| p.reward).sum::<Chips>();
         staked == reward
     }
 
@@ -65,7 +66,7 @@ impl Showdown {
             .max()
     }
 
-    fn next_stake(&mut self) -> Option<u32> {
+    fn next_stake(&mut self) -> Option<Chips> {
         self.prev_stake = self.next_stake;
         self.payouts
             .iter()
@@ -76,7 +77,7 @@ impl Showdown {
             .min()
     }
 
-    fn winnings(&self) -> u32 {
+    fn winnings(&self) -> Chips {
         self.payouts
             .iter()
             .map(|p| p.risked)
@@ -97,7 +98,7 @@ impl Showdown {
     fn distribute(&mut self) {
         let winnings = self.winnings();
         let mut winners = self.winners();
-        let share = winnings / winners.len() as u32;
+        let share = winnings / winners.len() as Chips;
         for winner in winners.iter_mut() {
             winner.reward += share;
         }

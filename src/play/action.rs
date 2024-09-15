@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use super::Chips;
 use crate::cards::card::Card;
 use colored::*;
 
@@ -8,10 +9,10 @@ pub enum Action {
     Draw(Card),
     Check(usize),
     Fold(usize),
-    Call(usize, u32),
-    Blind(usize, u32),
-    Raise(usize, u32),
-    Shove(usize, u32),
+    Call(usize, Chips),
+    Blind(usize, Chips),
+    Raise(usize, Chips),
+    Shove(usize, Chips),
 }
 
 impl std::fmt::Display for Action {

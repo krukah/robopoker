@@ -1,53 +1,55 @@
-use super::{action::Action, game::Game};
+use super::action::Action;
+use super::game::Game;
+use super::Chips;
 use crate::cards::hole::Hole;
 use colored::Colorize;
 
 #[derive(Debug, Clone)]
 pub struct Seat {
-    position: usize,
-    hole: Hole,
-    stack: u32,
-    stake: u32,
+    cards: Hole,
+    stack: Chips,
+    stake: Chips,
     status: Status,
+    position: usize, // removed
 }
 
 impl Seat {
-    pub fn new(stack: u32, position: usize) -> Seat {
+    pub fn new(stack: Chips, position: usize) -> Seat {
         Seat {
             position,
             stack,
             stake: 0,
             status: Status::Playing,
-            hole: Hole::new(),
+            cards: Hole::new(),
         }
     }
     pub fn position(&self) -> usize {
         self.position
     }
-    pub fn stack(&self) -> u32 {
+    pub fn stack(&self) -> Chips {
         self.stack
     }
-    pub fn stake(&self) -> u32 {
+    pub fn stake(&self) -> Chips {
         self.stake
     }
     pub fn status(&self) -> Status {
         self.status
     }
     pub fn peek(&self) -> &Hole {
-        &self.hole
+        &self.cards
     }
     pub fn hole(&mut self) -> &mut Hole {
-        &mut self.hole
+        &mut self.cards
     }
     pub fn act(&self, _hand: &Game) -> Action {
         todo!()
     }
 
-    pub fn bet(&mut self, bet: u32) {
+    pub fn bet(&mut self, bet: Chips) {
         self.stack -= bet;
         self.stake += bet;
     }
-    pub fn win(&mut self, winnings: u32) {
+    pub fn win(&mut self, winnings: Chips) {
         println!("{}{}", self, winnings);
         self.stack += winnings;
     }
@@ -81,16 +83,16 @@ impl Seat {
         actions
     }
 
-    pub fn to_shove(&self, hand: &Game) -> u32 {
+    pub fn to_shove(&self, hand: &Game) -> Chips {
         std::cmp::min(self.stack, hand.head.effective_stack() - self.stake)
     }
-    pub fn to_call(&self, hand: &Game) -> u32 {
+    pub fn to_call(&self, hand: &Game) -> Chips {
         hand.head.effective_stake() - self.stake
     }
-    pub fn min_raise(&self, hand: &Game) -> u32 {
+    pub fn min_raise(&self, hand: &Game) -> Chips {
         hand.min_raise() - self.stake
     }
-    pub fn max_raise(&self, hand: &Game) -> u32 {
+    pub fn max_raise(&self, hand: &Game) -> Chips {
         self.to_shove(hand)
     }
 
@@ -119,7 +121,7 @@ impl std::fmt::Display for Seat {
             format!("{:04}", self.stack).green(),
             format!("{:04}", self.stake).yellow(),
             self.status,
-            self.hole
+            self.cards
         )
     }
 }
