@@ -42,7 +42,7 @@ impl Node {
     }
     pub fn payoff(&self, player: &Player) -> Utility {
         // todo!("use some Payoff::from(Showdown::from(Game)) type");
-        let stakes = self.datum.stakes();
+        let stakes = self.datum.payoff();
         let direction = match player {
             Player::P1 => 0. + 1.,
             Player::P2 => 0. - 1.,
