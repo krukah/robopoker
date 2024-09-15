@@ -32,7 +32,6 @@ impl Trainer {
                 }
             }
         }
-        println!("{}", self.0);
     }
 
     /// the only thing we really need the tree for is to yield infosets for us to sample.
@@ -143,5 +142,11 @@ impl Trainer {
         node.bucket().hash(hasher);
         self.0.epochs().hash(hasher);
         SmallRng::seed_from_u64(hasher.finish())
+    }
+}
+
+impl std::fmt::Display for Trainer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Trainer profile:\n{}", self.0)
     }
 }

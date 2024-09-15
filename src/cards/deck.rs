@@ -16,12 +16,15 @@ impl Deck {
         self.0 = Hand::from(value & !(1 << zeros));
         Card::from(zeros as u8)
     }
-
     pub fn draw(&mut self) -> Card {
-        //? TODO: index should be a randomly selected bit index to distinguish from flip
-        let value = u64::from(self.0);
-        let index = value.trailing_zeros();
-        self.0 = Hand::from(value & !(1 << index));
-        Card::from(index as u8)
+        use rand::Rng;
+        let deck = u64::from(self.0);
+        let mut rng = rand::thread_rng();
+        let mut card = rng.gen_range(0..64);
+        while deck & (1 << card) == 0 {
+            card = rng.gen_range(0..64);
+        }
+        self.0 = Hand::from(deck & !(1 << card));
+        Card::from(card as u8)
     }
 }
