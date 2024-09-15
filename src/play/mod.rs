@@ -5,3 +5,5 @@ pub mod payout;
 pub mod rotation;
 pub mod seat;
 pub mod showdown;
+
+pub type Chips = u32;

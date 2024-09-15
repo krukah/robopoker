@@ -3,6 +3,7 @@
 use super::action::Action;
 use super::seat::Seat;
 use super::seat::Status;
+use super::Chips;
 use crate::cards::board::Board;
 use crate::cards::street::Street;
 
@@ -17,16 +18,16 @@ pub struct Rotation {
     pub dealer: usize,
     pub counts: usize,
     pub action: usize,
-    // -- this is the real Rotation
-    pub pot: u32,
+    pub chairs: Vec<Seat>, // [Seat;10]
+    // hoist this into Game
+    pub pot: Chips,
     pub board: Board,
-    pub seats: Vec<Seat>,
 }
 
 impl Rotation {
     pub fn new() -> Self {
         Rotation {
-            seats: Vec::with_capacity(10),
+            chairs: Vec::with_capacity(10),
             board: Board::new(),
             pot: 0,
             dealer: 0,
@@ -36,7 +37,7 @@ impl Rotation {
     }
 
     pub fn has_more_hands(&self) -> bool {
-        self.seats.iter().filter(|s| s.stack() > 0).count() > 1
+        self.chairs.iter().filter(|s| s.stack() > 0).count() > 1
     }
     pub fn has_more_streets(&self) -> bool {
         !(self.are_all_folded() || (self.board.street() == Street::Show))
@@ -46,41 +47,41 @@ impl Rotation {
     }
 
     pub fn up(&self) -> &Seat {
-        self.seats.get(self.action).unwrap()
+        self.chairs.get(self.action).unwrap()
     }
     pub fn at(&self, index: usize) -> &Seat {
-        self.seats.iter().find(|s| s.position() == index).unwrap()
+        self.chairs.iter().find(|s| s.position() == index).unwrap()
     }
     pub fn seat_at_position_mut(&mut self, index: usize) -> &mut Seat {
-        self.seats
+        self.chairs
             .iter_mut()
             .find(|s| s.position() == index)
             .unwrap()
     }
     pub fn after(&self, index: usize) -> usize {
-        (index + 1) % self.seats.len()
+        (index + 1) % self.chairs.len()
     }
     pub fn before(&self, index: usize) -> usize {
-        (index + self.seats.len() - 1) % self.seats.len()
+        (index + self.chairs.len() - 1) % self.chairs.len()
     }
 
-    pub fn effective_stack(&self) -> u32 {
+    pub fn effective_stack(&self) -> Chips {
         let mut totals = self
-            .seats
+            .chairs
             .iter()
             .map(|s| s.stack() + s.stake())
-            .collect::<Vec<u32>>();
+            .collect::<Vec<Chips>>();
         totals.sort();
         totals.pop().unwrap_or(0);
         totals.pop().unwrap_or(0)
     }
-    pub fn effective_stake(&self) -> u32 {
-        self.seats.iter().map(|s| s.stake()).max().unwrap()
+    pub fn effective_stake(&self) -> Chips {
+        self.chairs.iter().map(|s| s.stake()).max().unwrap()
     }
 
     pub fn are_all_folded(&self) -> bool {
         // exactly one player has not folded
-        self.seats
+        self.chairs
             .iter()
             .filter(|s| s.status() != Status::Folding)
             .count()
@@ -88,7 +89,7 @@ impl Rotation {
     }
     pub fn are_all_shoved(&self) -> bool {
         // everyone who isn't folded is all in
-        self.seats
+        self.chairs
             .iter()
             .filter(|s| s.status() != Status::Folding)
             .all(|s| s.status() == Status::Shoving)
@@ -99,15 +100,15 @@ impl Rotation {
         let stakes = self.effective_stake();
         let is_first_decision = self.counts == 0;
         let is_one_playing = self
-            .seats
+            .chairs
             .iter()
             .filter(|s| s.status() == Status::Playing)
             .count()
             == 1;
         let has_no_decision = is_first_decision && is_one_playing;
-        let has_all_decided = self.counts > self.seats.len();
+        let has_all_decided = self.counts > self.chairs.len();
         let has_all_matched = self
-            .seats
+            .chairs
             .iter()
             .filter(|s| s.status() == Status::Playing)
             .all(|s| s.stake() == stakes);
@@ -118,7 +119,7 @@ impl Rotation {
 // mutable methods are lowkey reserved for the node's owning Hand -- maybe some CFR engine
 impl Rotation {
     pub fn apply(&mut self, action: Action) {
-        let seat = self.seats.get_mut(self.action).unwrap();
+        let seat = self.chairs.get_mut(self.action).unwrap();
         // bets entail pot and stack change
         // folds and all-ins entail status change
         // choice actions entail rotation & logging, chance action entails board change
@@ -146,7 +147,7 @@ impl Rotation {
         }
     }
     pub fn begin_hand(&mut self) {
-        for seat in self.seats.iter_mut() {
+        for seat in self.chairs.iter_mut() {
             seat.set(Status::Playing);
             seat.clear();
         }
@@ -166,7 +167,7 @@ impl Rotation {
         self.rotate();
     }
     pub fn end_street(&mut self) {
-        for seat in self.seats.iter_mut() {
+        for seat in self.chairs.iter_mut() {
             seat.clear();
         }
         self.board.advance();
@@ -195,19 +196,19 @@ impl Rotation {
         }
     }
     pub fn prune(&mut self) {
-        self.seats.retain(|s| s.stack() > 0);
-        for (i, seat) in self.seats.iter_mut().enumerate() {
+        self.chairs.retain(|s| s.stack() > 0);
+        for (i, seat) in self.chairs.iter_mut().enumerate() {
             seat.assign(i);
         }
     }
-    pub fn sit_down(&mut self, stack: u32) {
-        let position = self.seats.len();
+    pub fn sit_down(&mut self, stack: Chips) {
+        let position = self.chairs.len();
         let seat = Seat::new(stack, position);
-        self.seats.push(seat);
+        self.chairs.push(seat);
     }
     pub fn stand_up(&mut self, position: usize) {
-        self.seats.remove(position);
-        for (i, seat) in self.seats.iter_mut().enumerate() {
+        self.chairs.remove(position);
+        for (i, seat) in self.chairs.iter_mut().enumerate() {
             seat.assign(i);
         }
     }
@@ -217,7 +218,7 @@ impl std::fmt::Display for Rotation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "Pot:   {}", self.pot)?;
         writeln!(f, "Board: {}", self.board)?;
-        for seat in &self.seats {
+        for seat in &self.chairs {
             write!(f, "{}", seat)?;
         }
         Ok(())

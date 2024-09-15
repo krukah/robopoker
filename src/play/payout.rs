@@ -1,4 +1,5 @@
 use super::seat::Status;
+use super::Chips;
 use crate::cards::strength::Strength;
 use colored::Colorize;
 
@@ -7,8 +8,8 @@ pub struct Payout {
     pub position: usize,
     pub strength: Strength,
     pub status: Status,
-    pub risked: u32,
-    pub reward: u32,
+    pub risked: Chips,
+    pub reward: Chips,
 }
 
 impl std::fmt::Display for Payout {

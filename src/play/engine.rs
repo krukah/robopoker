@@ -27,7 +27,7 @@ impl Table {
         }
     }
 
-    pub fn gain_seat(&mut self, stack: u32) {
+    pub fn gain_seat(&mut self, stack: Chips) {
         self.hand.head.sit_down(stack);
     }
     pub fn drop_seat(&mut self, position: usize) {
@@ -71,4 +71,4 @@ impl Table {
     }
 }
 
-use super::game::Game;
+use super::{game::Game, Chips};
