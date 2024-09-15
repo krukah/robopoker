@@ -9,9 +9,12 @@ use crate::Probability;
 use petgraph::graph::NodeIndex;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::Rng;
 use rand::SeedableRng;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 pub struct Trainer(Profile, Tree);
 
@@ -22,7 +25,7 @@ impl Trainer {
     }
     pub fn train(&mut self, epochs: usize) {
         while self.0.step() <= epochs {
-            for ref infoset in self.sample() {
+            for ref infoset in self.blocks() {
                 if self.0.walker() == infoset.node().player() {
                     self.0.update_regret(infoset);
                     self.0.update_policy(infoset);
@@ -35,7 +38,7 @@ impl Trainer {
     /// the only thing we really need the tree for is to yield infosets for us to sample.
     /// these blocks can be sampled using whatever sampling scheme we like, it's
     /// encapsulated by the Tree itself and how it chooses to unfold from its Nodes.
-    fn sample(&mut self) -> Vec<Info> {
+    fn blocks(&mut self) -> Vec<Info> {
         self.1 = Tree::empty();
         self.dfs();
         self.1.infosets()
@@ -49,7 +52,7 @@ impl Trainer {
         let root = Data::root();
         let head = self.attach(root);
         let head = self.1.graph_mut().add_node(head);
-        for (tail, from) in self.children(head) {
+        for (tail, from) in self.sample(head) {
             self.unfold(tail, from, head);
         }
         assert!(head.index() == 0);
@@ -62,7 +65,7 @@ impl Trainer {
         let head = self.attach(head);
         let head = self.1.graph_mut().add_node(head);
         let edge = self.1.graph_mut().add_edge(root, head, edge);
-        for (tail, from) in self.children(head) {
+        for (tail, from) in self.sample(head) {
             self.unfold(tail, from, head);
         }
         assert!(head.index() == edge.index() + 1);
@@ -91,71 +94,54 @@ impl Trainer {
     /// compared to chance sampling, internal sampling, or full tree sampling.
     ///
     /// i think this could also be modified into a recursive CFR calcuation
-    #[allow(unused)]
-    fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
+    fn sample(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
         let ref node = self.1.node(head);
-        let mut children = node.datum().spawn();
-        if children.is_empty() {
-            // terminal nodes have no children
-            children
-        } else if node.player() == self.0.walker() {
-            // sample all possible actions for the traverser
-            children
-        } else if node.player() == &Player::Chance {
-            unreachable!("RPS specific");
-            // choose random child uniformly. this is specific to the game of poker,
-            // where each action at chance node/info/buckets is uniformly likely.
+        let mut sample = self.children(head);
+        // terminal nodes have no children and we sample all possible actions for the traverser
+        if node.player() == self.0.walker() || sample.is_empty() {
+            sample
+        }
+        // choose random child uniformly. this is specific to the game of poker,
+        // where each action at chance node/info/buckets is uniformly likely.
+        else if node.player() == &Player::Chance {
             let ref mut rng = self.rng(node);
-            let n = children.len();
+            let n = sample.len();
             let choice = rng.gen_range(0..n);
-            let chosen = children.remove(choice);
-            // println!(
-            // "  at {:?} , {} : {}",
-            // node.bucket(),
-            // self.0.epochs(),
-            // choice
-            // );
-            vec![chosen]
-        } else {
-            return children;
-            // choose child according to reach probabilities in strategy profile.
-            // on first iteration, this is equivalent to sampling uniformly.
+            let chosen = sample.remove(choice);
+            vec![chosen];
+            unreachable!("RPS specific")
+        }
+        // choose child according to reach probabilities in strategy profile.
+        // on first iteration, this is equivalent to sampling uniformly.
+        else {
             let ref mut rng = self.rng(node);
-            let policy = children
+            let policy = sample
                 .iter()
                 .map(|(_, edge)| self.0.policy(node, edge))
                 .collect::<Vec<Probability>>();
             let choice = WeightedIndex::new(policy)
                 .expect("at least one policy > 0")
                 .sample(rng);
-            // println!(
-            // "  at {:?} , {} : {}",
-            // node.bucket(),
-            // self.0.epochs(),
-            // choice
-            // );
-            let chosen = children.remove(choice);
+            let chosen = sample.remove(choice);
             vec![chosen]
         }
-        // i thought for a long time here
-        // should we weight the Monte Carlo external node sampling?
-        // should we weight the sampling reach in regret calculation?
     }
-
+    /// produce the children of a Node.
+    /// we may need some Trainer-level references to produce children
+    /// so this is a method on Trainer for now.
+    fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
+        self.1.node(head).datum().spawn()
+    }
     /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
     /// for our Monte Carlo sampling. this may be better off as a function of
     /// (&Profile, &Node)      or
     /// (&Profile, &Bucket)
     /// but i like that it's here, since it's directly tied to tree-sampling. which is higher-level
     /// than either Tree or Profile.
-    fn rng(&self, node: &Node) -> StdRng {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::Hash;
-        use std::hash::Hasher;
+    fn rng(&self, node: &Node) -> SmallRng {
         let ref mut hasher = DefaultHasher::new();
-        self.0.epochs().hash(hasher);
         node.bucket().hash(hasher);
-        let seed = hasher.finish();
-        StdRng::seed_from_u64(seed)
+        self.0.epochs().hash(hasher);
+        SmallRng::seed_from_u64(hasher.finish())
     }
 }
