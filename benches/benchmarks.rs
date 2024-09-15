@@ -17,13 +17,11 @@ fn custom_criterion() -> Criterion<WallTime> {
         .sample_size(10)
         .measurement_time(std::time::Duration::from_secs(1))
 }
-
 fn benchmark_rps_training(c: &mut Criterion) {
     let mut group = c.benchmark_group("RPS Training");
     group.throughput(Throughput::Elements(10_000));
-
-    let mut trainer = Trainer::empty();
-    group.bench_function(BenchmarkId::new("MCCFR", 10_000), |b| {
+    group.bench_function(BenchmarkId::new("MCCFR", "10,000 iterations"), |b| {
+        let mut trainer = Trainer::empty();
         b.iter(|| trainer.train(10_000))
     });
     group.finish();
@@ -31,13 +29,17 @@ fn benchmark_rps_training(c: &mut Criterion) {
 
 fn benchmark_exhaustive_flops(c: &mut Criterion) {
     let mut group = c.benchmark_group("Exhaustive Flops");
-    group.bench_function("Enumeration", |b| b.iter(|| Observation::all(Street::Flop)));
+    group.throughput(Throughput::Elements(1)); // If you're enumerating one flop at a time
+    group.bench_function(BenchmarkId::new("flop enumeration", "flop"), |b| {
+        b.iter(|| Observation::all(Street::Flop))
+    });
     group.finish();
 }
 
 fn benchmark_exhaustive_equity_calculation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Equity Calculation");
-    group.bench_function("RNG 7 card hand", |b| {
+    group.throughput(Throughput::Elements(1)); // One equity calculation per iteration
+    group.bench_function(BenchmarkId::new("equity calculation", "showdown"), |b| {
         b.iter(|| {
             let mut deck = Deck::new();
             let secret = Hand::from((0..2).map(|_| deck.draw()).collect::<Vec<_>>());
@@ -51,7 +53,8 @@ fn benchmark_exhaustive_equity_calculation(c: &mut Criterion) {
 
 fn benchmark_evaluator_7_card(c: &mut Criterion) {
     let mut group = c.benchmark_group("Hand Evaluation");
-    group.bench_function("RNG 7 card hand", |b| {
+    group.throughput(Throughput::Elements(1)); // One hand evaluation per iteration
+    group.bench_function(BenchmarkId::new("hand evaluation", "7 cards"), |b| {
         b.iter(|| {
             let mut deck = Deck::new();
             let hand = Hand::from((0..7).map(|_| deck.draw()).collect::<Vec<_>>());
