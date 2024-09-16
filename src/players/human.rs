@@ -34,7 +34,7 @@ impl Human {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             hand.head.board,
-            seat.hole_ref(),
+            seat.cards(),
             hand.head.pot,
             seat.stack(),
             seat.to_call(hand),

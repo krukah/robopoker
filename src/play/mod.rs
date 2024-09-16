@@ -6,4 +6,4 @@ pub mod rotation;
 pub mod seat;
 pub mod showdown;
 
-pub type Chips = u32;
+pub type Chips = u16;
