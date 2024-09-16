@@ -15,10 +15,10 @@ impl Human {
                     Ok(value) => value,
                     Err(_) => return Err("Enter a positive integer"),
                 };
-                if input < seat.min_raise(hand) {
+                if input < hand.head.min_raise() {
                     return Err("Raise too small");
                 }
-                if input > seat.max_raise(hand) {
+                if input > hand.head.max_raise() {
                     return Err("Raise too large");
                 }
                 Ok(())
@@ -34,7 +34,7 @@ impl Human {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             hand.head.board,
-            seat.peek(),
+            seat.hole_ref(),
             hand.head.pot,
             seat.stack(),
             seat.to_call(hand),

@@ -1,3 +1,4 @@
+use super::game::Game;
 use super::Chips;
 use crate::cards::kicks::Kickers;
 use crate::cards::ranking::Ranking;
@@ -10,6 +11,12 @@ pub struct Showdown {
     next_stake: Chips,
     prev_stake: Chips,
     next_strength: Strength, // make option to handle initial state
+}
+
+impl From<Game> for Showdown {
+    fn from(game: Game) -> Self {
+        todo!()
+    }
 }
 
 impl Showdown {

@@ -5,11 +5,17 @@ use super::card::Card;
 pub struct Hand(u64);
 
 impl Hand {
+    pub fn empty() -> Self {
+        Self(0)
+    }
     pub fn size(&self) -> usize {
         self.0.count_ones() as usize
     }
     pub fn add(lhs: Self, rhs: Self) -> Self {
         Self(lhs.0 | rhs.0)
+    }
+    pub fn complement(&self) -> Self {
+        Self(self.0 ^ ((1 << 52) - 1))
     }
 }
 
