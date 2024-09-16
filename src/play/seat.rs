@@ -1,5 +1,6 @@
 use super::action::Action;
 use super::game::Game;
+use super::showdown::Showdown;
 use super::Chips;
 use crate::cards::hole::Hole;
 use colored::Colorize;
@@ -9,7 +10,7 @@ pub struct Seat {
     cards: Hole,
     stack: Chips,
     stake: Chips,
-    status: Status,
+    state: State,
 }
 
 impl Seat {
@@ -17,7 +18,7 @@ impl Seat {
         Seat {
             stack,
             stake: 0,
-            status: Status::Playing,
+            state: State::Playing,
             cards: Hole::new(),
         }
     }
@@ -27,14 +28,11 @@ impl Seat {
     pub fn stake(&self) -> Chips {
         self.stake
     }
-    pub fn status(&self) -> Status {
-        self.status
+    pub fn state(&self) -> State {
+        self.state
     }
-    pub fn hole_ref(&self) -> &Hole {
+    pub fn cards(&self) -> &Hole {
         &self.cards
-    }
-    pub fn hole_mut(&mut self) -> &mut Hole {
-        &mut self.cards
     }
     pub fn act(&self, _: &Game) -> Action {
         todo!()
@@ -48,8 +46,8 @@ impl Seat {
         println!("{}{}", self, winnings);
         self.stack += winnings;
     }
-    pub fn set_sttus(&mut self, status: Status) {
-        self.status = status;
+    pub fn set_state(&mut self, status: State) {
+        self.state = status;
     }
     pub fn set_cards(&mut self, cards: Hole) {
         self.cards = cards;
@@ -65,25 +63,25 @@ impl std::fmt::Display for Seat {
             "{}{}{}{}",
             format!("{:04}", self.stack).green(),
             format!("{:04}", self.stake).yellow(),
-            self.status,
+            self.state,
             self.cards
         )
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Status {
+pub enum State {
     Playing,
     Shoving,
     Folding,
 }
 
-impl std::fmt::Display for Status {
+impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Status::Playing => write!(f, "{}", "P".green()),
-            Status::Shoving => write!(f, "{}", "S".yellow()),
-            Status::Folding => write!(f, "{}", "F".red()),
+            State::Playing => write!(f, "{}", "P".green()),
+            State::Shoving => write!(f, "{}", "S".yellow()),
+            State::Folding => write!(f, "{}", "F".red()),
         }
     }
 }

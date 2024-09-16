@@ -1,9 +1,10 @@
 use super::game::Game;
+use super::rotation::Spot;
 use super::Chips;
 use crate::cards::kicks::Kickers;
 use crate::cards::ranking::Ranking;
 use crate::cards::strength::Strength;
-use crate::play::{payout::Payout, seat::Status};
+use crate::play::{payout::Payout, seat::State};
 
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
@@ -12,9 +13,8 @@ pub struct Showdown {
     prev_stake: Chips,
     next_strength: Strength, // make option to handle initial state
 }
-
-impl From<Game> for Showdown {
-    fn from(game: Game) -> Self {
+impl From<Spot> for Showdown {
+    fn from(spot: Spot) -> Self {
         todo!()
     }
 }
@@ -24,7 +24,7 @@ impl Showdown {
         let reward = payouts.iter().map(|p| p.risked).sum::<Chips>();
         let winner = payouts
             .iter_mut()
-            .find(|p| p.status != Status::Folding)
+            .find(|p| p.status != State::Folding)
             .unwrap();
         winner.reward = reward;
         payouts
@@ -47,14 +47,14 @@ impl Showdown {
     }
 
     fn new(payouts: Vec<Payout>) -> Self {
-        let next_rank = Strength::from((Ranking::MAX, Kickers::from(0u16)));
+        let next_strength = Strength::from((Ranking::MAX, Kickers::from(0u16)));
         let next_stake = Chips::MIN;
         let prev_stake = Chips::MIN;
         Self {
             payouts,
-            next_strength: next_rank,
             next_stake,
             prev_stake,
+            next_strength,
         }
     }
 
@@ -68,7 +68,7 @@ impl Showdown {
         self.payouts
             .iter()
             .filter(|p| p.strength < self.next_strength)
-            .filter(|p| p.status != Status::Folding)
+            .filter(|p| p.status != State::Folding)
             .map(|p| p.strength)
             .max()
     }
@@ -79,7 +79,7 @@ impl Showdown {
             .iter()
             .filter(|p| p.strength == self.next_strength)
             .filter(|p| p.risked > self.prev_stake)
-            .filter(|p| p.status != Status::Folding)
+            .filter(|p| p.status != State::Folding)
             .map(|p| p.risked)
             .min()
     }
@@ -98,7 +98,7 @@ impl Showdown {
             .iter_mut()
             .filter(|p| p.strength == self.next_strength)
             .filter(|p| p.risked > self.prev_stake)
-            .filter(|p| p.status != Status::Folding)
+            .filter(|p| p.status != State::Folding)
             .collect()
     }
 

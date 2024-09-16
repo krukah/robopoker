@@ -145,7 +145,7 @@ impl Game {
 // }
 // }
 use super::payout::Payout;
-use super::seat::{Seat, Status};
+use super::seat::{Seat, State};
 use super::showdown::Showdown;
 use super::Chips;
 use super::{action::Action, rotation::Spot};
