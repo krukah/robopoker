@@ -1,3 +1,4 @@
+use super::card::Card;
 use super::hand::Hand;
 
 #[derive(Debug, Clone, Copy)]
@@ -24,5 +25,14 @@ impl From<Hand> for Hole {
 impl From<Hole> for Hand {
     fn from(hole: Hole) -> Self {
         hole.0
+    }
+}
+
+impl From<(Card, Card)> for Hole {
+    fn from(cards: (Card, Card)) -> Self {
+        let a = u64::from(cards.0);
+        let b = u64::from(cards.1);
+        let hand = Hand::from(a | b);
+        Self(hand)
     }
 }

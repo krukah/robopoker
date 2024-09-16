@@ -27,13 +27,6 @@ impl Table {
         }
     }
 
-    pub fn gain_seat(&mut self, stack: Chips) {
-        self.hand.head.sit_down(stack);
-    }
-    pub fn drop_seat(&mut self, position: usize) {
-        self.hand.head.stand_up(position);
-    }
-
     fn begin_street(&mut self) {
         self.hand.next_street();
     }
@@ -44,7 +37,7 @@ impl Table {
     }
 
     fn end_turn(&mut self) {
-        let seat = self.hand.head.up();
+        let seat = self.hand.head.actor();
         let action = seat.act(&self.hand);
         self.hand.apply(action);
         // std::thread::sleep(std::time::Duration::from_millis(100));

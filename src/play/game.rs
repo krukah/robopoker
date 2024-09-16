@@ -1,23 +1,20 @@
 #[derive(Debug, Clone)]
 pub struct Game {
-    // pub pot: Chips,
-    // pub board: Board,
-    pub head: Rotation,
-    pub deck: Deck,           // implied by Rotation
-    pub bblind: Chips,        // const fn
-    pub sblind: Chips,        // const fn
-    pub actions: Vec<Action>, // externalized
+    //  pot: Chips,
+    //  board: Board,
+    head: Spot,
+    history: Vec<Action>,
+    //  deck: Deck,           // implied by Rotation
+    //  bblind: Chips,        // const fn
+    //  sblind: Chips,        // const fn
 }
 
 #[allow(dead_code)]
 impl Game {
     pub fn new() -> Self {
         Game {
-            sblind: 1,
-            bblind: 2,
-            actions: Vec::new(),
-            deck: Deck::new(),
-            head: Rotation::new(),
+            history: Vec::new(),
+            head: Spot::new(),
         }
     }
     pub fn settlement(&self) -> Vec<Payout> {
@@ -28,39 +25,6 @@ impl Game {
             Showdown::settle(payouts)
         }
     }
-
-    // fn street_bets(&self, street: Street) -> Vec<Action> {
-    //     let edges = self.street_bounds();
-    //     let range = self.street_range(street, edges);
-    //     self.actions[range].to_vec()
-    // }
-    // fn street_bounds(&self) -> Vec<usize> {
-    //     let mut n_draws = 0usize;
-    //     let mut boundaries = Vec::new();
-    //     self.actions
-    //         .iter()
-    //         .enumerate()
-    //         .filter(|(_, a)| match a {
-    //             Action::Draw(..) => true,
-    //             _ => false,
-    //         })
-    //         .for_each(|(i, _)| {
-    //             n_draws += 1;
-    //             if n_draws >= 3 {
-    //                 boundaries.push(i);
-    //             }
-    //         });
-    //     boundaries
-    // }
-    // fn street_range(&self, street: Street, bounds: Vec<usize>) -> std::ops::Range<usize> {
-    //     match street {
-    //         Street::Pref => 0..bounds[0],
-    //         Street::Flop => bounds[0]..bounds[1],
-    //         Street::Turn => bounds[1]..bounds[2],
-    //         Street::Rive => bounds[2]..self.actions.len(),
-    //         Street::Show => unreachable!(),
-    //     }
-    // }
 
     fn starting_payouts(&self) -> Vec<Payout> {
         let mut payouts = self
@@ -74,40 +38,21 @@ impl Game {
     }
     fn payout(&self, seat: &Seat) -> Payout {
         let position = seat.position();
-        let status = seat.status();
-        let risked = self.risked(position);
         let cards = self.cards(position);
         Payout {
             reward: 0,
-            risked,
-            status,
             strength: Strength::from(Hand::from(cards)),
-            position,
         }
     }
 
-    pub fn min_raise(&self) -> Chips {
-        let mut stakes = self
-            .head
-            .chairs
-            .iter()
-            .filter(|s| s.status() != Status::Folding)
-            .map(|s| s.stake())
-            .collect::<Vec<Chips>>();
-        stakes.sort_unstable();
-        let last = stakes.pop().unwrap_or(0);
-        let prev = stakes.pop().unwrap_or(0);
-        let diff = last - prev;
-        std::cmp::max(last + diff, last + self.bblind)
-    }
     fn cards(&self, position: usize) -> Vec<Card> {
-        let seat = self.head.at(position);
+        let seat = self.head.actor_ref();
         let hole = *seat.peek();
         let hand = Hand::add(Hand::from(hole), Hand::from(self.head.board));
         Vec::<Card>::from(hand)
     }
     fn risked(&self, position: usize) -> Chips {
-        self.actions
+        self.history
             .iter()
             .filter(|a| match a {
                 Action::Call(id_, _)
@@ -125,80 +70,85 @@ impl Game {
             })
             .sum()
     }
-    fn priority(&self, position: usize) -> usize {
-        (self.head.chairs.len() + position - self.head.after(self.head.dealer))
-            % self.head.chairs.len()
-    }
-    fn order(&self, a: &Payout, b: &Payout) -> std::cmp::Ordering {
-        let x = self.priority(a.position);
-        let y = self.priority(b.position);
-        x.cmp(&y)
-    }
 }
 
 // mutable implementation reserved for engine or solver
-impl Game {
-    pub fn apply(&mut self, action: Action) {
-        self.actions.push(action);
-        self.head.apply(action);
-    }
-    pub fn start(&mut self) {
-        self.head.begin_hand();
-        self.actions.clear();
-        self.post(self.sblind);
-        self.post(self.bblind);
-        self.head.counts = 0;
-        self.deck = Deck::new();
-    }
-    pub fn post(&mut self, size: Chips) {
-        let pointer = self.head.action;
-        let seat = self.head.seat_at_position_mut(pointer);
-        let bet = std::cmp::min(size, seat.stack());
-        if seat.stack() <= bet {
-            seat.set(Status::Shoving);
-        }
-        self.apply(Action::Blind(pointer, bet));
-    }
-    pub fn next_street(&mut self) {
-        self.head.begin_street();
-        match self.head.board.street() {
-            Street::Pref => {
-                for hole in self.head.chairs.iter_mut().map(|s| s.hole()) {
-                    self.head.board.deal(hole)
-                }
-            }
-            Street::Flop => {
-                let card1 = self.deck.flip();
-                let card2 = self.deck.flip();
-                let card3 = self.deck.flip();
-                self.apply(Action::Draw(card1));
-                self.apply(Action::Draw(card2));
-                self.apply(Action::Draw(card3));
-                println!("   {}", self.head.board)
-            }
-            Street::Turn | Street::Rive => {
-                let card = self.deck.flip();
-                self.apply(Action::Draw(card));
-                println!("   {}", self.head.board)
-            }
-            Street::Show => unreachable!(),
-        }
-    }
-    pub fn end(&mut self) {
-        let mut payouts = self.settlement();
-        payouts.sort_by(|a, b| a.position.cmp(&b.position));
-        for payout in payouts {
-            let seat = self.head.seat_at_position_mut(payout.position);
-            seat.win(payout.reward);
-        }
-        self.head.prune()
-    }
-}
+// impl Game {
+// fn priority(&self, position: usize) -> usize {
+//     (self.head.chairs.len() + position - self.head.after(self.head.dealer))
+//         % self.head.chairs.len()
+// }
+// fn order(&self, a: &Payout, b: &Payout) -> std::cmp::Ordering {
+//     let x = self.priority(a.position);
+//     let y = self.priority(b.position);
+//     x.cmp(&y)
+// }
+// pub fn start(&mut self) {
+//     self.head.begin_hand();
+//     self.history.clear();
+//     self.post(self.sblind);
+//     self.post(self.bblind);
+//     self.head.counts = 0;
+//     self.deck = Deck::new();
+// }
+// pub fn post(&mut self, size: Chips) {
+//     let mut seat = self.head.actor_mut();
+//     let stack = seat.stack();
+//     if stack <= size {
+//         seat.reset_state(Status::Shoving);
+//         self.head.apply(Action::Blind(stack));
+//     } else {
+//         self.head.apply(Action::Blind(size));
+//     }
+// }
+// pub fn end(&mut self) {
+//     let mut payouts = self.settlement();
+//     payouts.sort_by(|a, b| a.position.cmp(&b.position));
+//     for payout in payouts {
+//         let seat = self.head.seat_at_position_mut(payout.position);
+//         seat.win(payout.reward);
+//     }
+//     self.head.prune()
+// }
+
+// fn street_bets(&self, street: Street) -> Vec<Action> {
+//     let edges = self.street_bounds();
+//     let range = self.street_range(street, edges);
+//     self.actions[range].to_vec()
+// }
+// fn street_bounds(&self) -> Vec<usize> {
+//     let mut n_draws = 0usize;
+//     let mut boundaries = Vec::new();
+//     self.actions
+//         .iter()
+//         .enumerate()
+//         .filter(|(_, a)| match a {
+//             Action::Draw(..) => true,
+//             _ => false,
+//         })
+//         .for_each(|(i, _)| {
+//             n_draws += 1;
+//             if n_draws >= 3 {
+//                 boundaries.push(i);
+//             }
+//         });
+//     boundaries
+// }
+// fn street_range(&self, street: Street, bounds: Vec<usize>) -> std::ops::Range<usize> {
+//     match street {
+//         Street::Pref => 0..bounds[0],
+//         Street::Flop => bounds[0]..bounds[1],
+//         Street::Turn => bounds[1]..bounds[2],
+//         Street::Rive => bounds[2]..self.actions.len(),
+//         Street::Show => unreachable!(),
+//     }
+// }
+// }
 use super::payout::Payout;
 use super::seat::{Seat, Status};
 use super::showdown::Showdown;
 use super::Chips;
-use super::{action::Action, rotation::Rotation};
+use super::{action::Action, rotation::Spot};
 use crate::cards::hand::Hand;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
