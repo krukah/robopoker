@@ -5,6 +5,17 @@ use super::hand::Hand;
 #[derive(Debug, Clone, Copy)]
 pub struct Deck(Hand);
 
+impl From<Deck> for Hand {
+    fn from(deck: Deck) -> Self {
+        deck.0
+    }
+}
+impl From<Hand> for Deck {
+    fn from(hand: Hand) -> Self {
+        Self(hand)
+    }
+}
+
 impl Deck {
     pub fn new() -> Self {
         Self(Hand::from((1 << 52) - 1))
