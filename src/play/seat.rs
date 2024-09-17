@@ -36,18 +36,11 @@ impl Seat {
     pub fn cards(&self) -> &Hole {
         &self.cards
     }
-    // pub fn act(&self, _: &Game) -> Action {
-    //     todo!()
-    // }
 
     pub fn bet(&mut self, bet: &Chips) {
         self.stack -= bet;
         self.stake += bet;
     }
-    // pub fn win(&mut self, winnings: &Chips) {
-    //     println!("{}{}", self, winnings);
-    //     self.stack += winnings;
-    // }
     pub fn set_state(&mut self, state: State) {
         self.state = state;
     }

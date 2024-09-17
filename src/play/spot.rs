@@ -38,6 +38,16 @@ impl Spot {
         self.update_boards(action);
         self.update_rotate(action);
     }
+
+    pub fn actor(&self) -> &Seat {
+        self.actor_ref()
+    }
+    pub fn pot(&self) -> Chips {
+        self.chips
+    }
+    pub fn board(&self) -> Board {
+        self.board
+    }
     pub fn options(&self) -> Vec<Action> {
         let mut options = Vec::new();
         if self.is_terminal() {
@@ -69,31 +79,6 @@ impl Spot {
         // when we construct our MCCFR tree
     }
 
-    //  actor getters
-    //  actor getters
-    //  actor getters
-
-    fn head(&self) -> usize {
-        assert!(self.seats.len() == N);
-        (self.dealer + self.nturns) % N
-    }
-    fn actor_ref(&self) -> &Seat {
-        let index = self.head();
-        self.seats
-            .get(index)
-            .expect("index should be in bounds bc modulo")
-    }
-    fn actor_mut(&mut self) -> &mut Seat {
-        let index = self.head();
-        self.seats
-            .get_mut(index)
-            .expect("index should be in bounds bc modulo")
-    }
-
-    // lazy deck generation
-    // lazy deck generation
-    // lazy deck generation
-
     fn deck(&self) -> Deck {
         let board = Hand::from(self.board);
         let mut removed = Hand::add(Hand::empty(), board);
@@ -105,9 +90,22 @@ impl Spot {
         Deck::from(removed.complement())
     }
 
-    // effective chip calcs
-    // effective chip calcs
-    // effective chip calcs
+    fn actor_idx(&self) -> usize {
+        assert!(self.seats.len() == N);
+        (self.dealer + self.nturns) % N
+    }
+    fn actor_ref(&self) -> &Seat {
+        let index = self.actor_idx();
+        self.seats
+            .get(index)
+            .expect("index should be in bounds bc modulo")
+    }
+    fn actor_mut(&mut self) -> &mut Seat {
+        let index = self.actor_idx();
+        self.seats
+            .get_mut(index)
+            .expect("index should be in bounds bc modulo")
+    }
 
     fn effective_stack(&self) -> Chips {
         let mut totals = self
@@ -126,16 +124,13 @@ impl Spot {
             .max()
             .expect("non-empty seats")
     }
+
     const fn bblind() -> Chips {
         20
     }
     const fn sblind() -> Chips {
         10
     }
-
-    // state machine methods
-    // state machine methods
-    // state machine methods
 
     fn update_stacks(&mut self, action: &Action) {
         match action {
@@ -175,10 +170,6 @@ impl Spot {
             },
         }
     }
-
-    // state transitions
-    // state transitions
-    // state transitions
 
     fn next_hand(&mut self) {
         self.next_hand_public();
@@ -246,10 +237,6 @@ impl Spot {
         }
     }
 
-    // end-of-street indicators
-    // end-of-street indicators
-    // end-of-street indicators
-
     fn is_awaiting(&self) -> bool {
         self.are_all_folded() || self.is_awaiting_revealed()
     }
@@ -312,10 +299,6 @@ impl Spot {
             .all(|s| s.stake() == call)
     }
 
-    // action constraints
-    // action constraints
-    // action constraints
-
     fn can_fold(&self) -> bool {
         self.to_call() > 0
     }
@@ -332,17 +315,13 @@ impl Spot {
         self.to_shove() > 0
     }
 
-    // bet constraints
-    // bet constraints
-    // bet constraints
-
-    fn to_call(&self) -> Chips {
+    pub fn to_call(&self) -> Chips {
         self.effective_stake() - self.actor_ref().stake()
     }
-    fn to_shove(&self) -> Chips {
+    pub fn to_shove(&self) -> Chips {
         std::cmp::max(self.actor_ref().stack(), self.to_call())
     }
-    fn to_raise(&self) -> Chips {
+    pub fn to_raise(&self) -> Chips {
         let mut stakes = self
             .seats
             .iter()
@@ -355,10 +334,6 @@ impl Spot {
         let diff = most - next;
         std::cmp::max(most + diff, most + Self::bblind())
     }
-
-    // payout mechanisms
-    // payout mechanisms
-    // payout mechanisms
 
     fn settle(&self) -> [Payout; N] {
         assert!(self.is_terminal());

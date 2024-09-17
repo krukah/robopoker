@@ -2,13 +2,13 @@
 
 pub struct Table {
     n_hands: u32,
-    hand: Game,
+    hand: History,
 }
 
 impl Table {
     pub fn new() -> Self {
         Table {
-            hand: Game::new(),
+            hand: History::new(),
             n_hands: 0,
         }
     }
@@ -52,16 +52,6 @@ impl Table {
         self.hand.end();
         // std::thread::sleep(std::time::Duration::from_millis(1000));
     }
-
-    fn has_turns(&self) -> bool {
-        self.hand.head.has_more_players()
-    }
-    fn has_streets(&self) -> bool {
-        self.hand.head.has_more_streets()
-    }
-    fn has_hands(&self) -> bool {
-        self.hand.head.has_more_hands() // && self.n_hands < 500000
-    }
 }
 
-use super::{game::Game, Chips};
+use super::{game::History, Chips};
