@@ -1,13 +1,17 @@
 #![allow(dead_code)]
 
 use super::action::Action;
+use super::payout::Payout;
 use super::seat::Seat;
 use super::seat::State;
 use super::Chips;
+use super::N;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
 use crate::cards::street::Street;
+use crate::cards::strength::Strength;
+use crate::play::showdown::Showdown;
 
 /// Rotation represents the memoryless state of the game in between actions.
 ///
@@ -17,7 +21,7 @@ use crate::cards::street::Street;
 /// This full game state will also be our CFR node representation.
 #[derive(Debug, Clone, Copy)]
 pub struct Spot {
-    seats: [Seat; 2],
+    seats: [Seat; N],
     chips: Chips,
     board: Board,
     dealer: usize,
@@ -40,7 +44,7 @@ impl Spot {
             return options;
         }
         if self.is_awaiting() {
-            options.push(Action::Draw(self.remaining().draw()));
+            options.push(Action::Draw(self.deck().draw()));
             return options;
         }
         if self.can_call() {
@@ -70,7 +74,8 @@ impl Spot {
     //  actor getters
 
     fn head(&self) -> usize {
-        (self.dealer + self.nturns) % self.seats.len()
+        assert!(self.seats.len() == N);
+        (self.dealer + self.nturns) % N
     }
     fn actor_ref(&self) -> &Seat {
         let index = self.head();
@@ -89,7 +94,7 @@ impl Spot {
     // lazy deck generation
     // lazy deck generation
 
-    fn remaining(&self) -> Deck {
+    fn deck(&self) -> Deck {
         let board = Hand::from(self.board);
         let mut removed = Hand::add(Hand::empty(), board);
         for seat in self.seats.iter() {
@@ -176,33 +181,35 @@ impl Spot {
     // state transitions
 
     fn next_hand(&mut self) {
-        self.next_hand_table();
-        self.next_hand_button();
-        self.next_hand_players();
-        self.next_hand_post_blinds(Self::sblind());
-        self.next_hand_post_blinds(Self::bblind());
+        self.next_hand_public();
+        self.next_hand_rotate();
+        self.next_hand_stacks();
+        self.next_hand_blinds(Self::sblind());
+        self.next_hand_blinds(Self::bblind());
     }
-    fn next_hand_table(&mut self) {
+    fn next_hand_public(&mut self) {
         self.chips = 0;
         self.board.clear();
         assert!(self.board.street() == Street::Pref);
     }
-    fn next_hand_button(&mut self) {
+    fn next_hand_rotate(&mut self) {
+        assert!(self.seats.len() == N);
         assert!(self.board.street() == Street::Pref);
         self.nturns = 0;
         self.dealer += 1;
-        self.dealer %= self.seats.len();
+        self.dealer %= N;
     }
-    fn next_hand_players(&mut self) {
+    fn next_hand_stacks(&mut self) {
         assert!(self.board.street() == Street::Pref);
         let mut deck = Deck::new();
         for seat in self.seats.iter_mut() {
             seat.set_state(State::Playing);
             seat.set_cards(deck.hole());
             seat.set_stake();
+            seat.set_spent();
         }
     }
-    fn next_hand_post_blinds(&mut self, blind: Chips) {
+    fn next_hand_blinds(&mut self, blind: Chips) {
         assert!(self.board.street() == Street::Pref);
         let stack = self.actor_ref().stack();
         if blind < stack {
@@ -213,14 +220,14 @@ impl Spot {
     }
 
     fn next_street(&mut self) {
-        self.next_street_board();
-        self.next_street_seats();
+        self.next_street_public();
+        self.next_street_stacks();
         self.nturns = 0;
     }
-    fn next_street_board(&mut self) {
+    fn next_street_public(&mut self) {
         assert!(self.board.street() != Street::Rive);
         assert!(self.board.street() != Street::Show);
-        let mut deck = self.remaining();
+        let mut deck = self.deck();
         match self.board.street() {
             Street::Rive | Street::Show => {}
             Street::Flop | Street::Turn => {
@@ -233,7 +240,7 @@ impl Spot {
             }
         }
     }
-    fn next_street_seats(&mut self) {
+    fn next_street_stacks(&mut self) {
         for seat in self.seats.iter_mut() {
             seat.set_stake();
         }
@@ -283,12 +290,12 @@ impl Spot {
             }
     }
     fn is_after_rotation(&self) -> bool {
+        assert!(self.seats.len() == N);
         self.nturns
-            >= self.seats.len()
-                + match self.board.street() {
-                    Street::Pref => 2,
-                    _ => 0,
-                }
+            >= match self.board.street() {
+                Street::Pref => N + 2,
+                _ => N,
+            }
     }
     fn is_only_one_playing(&self) -> bool {
         self.seats
@@ -348,11 +355,45 @@ impl Spot {
         let diff = most - next;
         std::cmp::max(most + diff, most + Self::bblind())
     }
+
+    // payout mechanisms
+    // payout mechanisms
+    // payout mechanisms
+
+    fn settle(&self) -> [Payout; N] {
+        assert!(self.is_terminal());
+        Showdown::from(self.ledger()).settle()
+    }
+    fn ledger(&self) -> [Payout; N] {
+        assert!(self.is_terminal());
+        self.seats
+            .iter()
+            .map(|seat| self.summary(seat))
+            .collect::<Vec<Payout>>()
+            .try_into()
+            .expect("const N")
+    }
+    fn summary(&self, seat: &Seat) -> Payout {
+        assert!(self.is_terminal());
+        Payout {
+            reward: 0,
+            risked: seat.spent(),
+            status: seat.state(),
+            strength: self.strength(seat),
+        }
+    }
+    fn strength(&self, seat: &Seat) -> Strength {
+        assert!(self.is_terminal());
+        let hole = seat.cards().to_owned();
+        let hand = Hand::from(hole);
+        let hand = Hand::add(Hand::from(self.board), hand);
+        Strength::from(hand)
+    }
 }
 
 impl std::fmt::Display for Spot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{:>8}   {}", self.chips, self.board)?;
+        writeln!(f, "{:>6}   {}", self.chips, self.board)?;
         for seat in &self.seats {
             write!(f, "{}", seat)?;
         }

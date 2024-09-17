@@ -5,8 +5,8 @@ use super::hand::Hand;
 pub struct Hole(Hand);
 
 impl Hole {
-    pub fn new() -> Self {
-        Self(Hand::from(3u64))
+    pub fn empty() -> Self {
+        Self(Hand::empty())
     }
 }
 
