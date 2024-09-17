@@ -1,6 +1,3 @@
-use super::action::Action;
-use super::game::Game;
-use super::showdown::Showdown;
 use super::Chips;
 use crate::cards::hole::Hole;
 use colored::Colorize;
@@ -8,6 +5,7 @@ use colored::Colorize;
 #[derive(Debug, Clone, Copy)]
 pub struct Seat {
     cards: Hole,
+    spent: Chips,
     stack: Chips,
     stake: Chips,
     state: State,
@@ -17,9 +15,10 @@ impl Seat {
     pub fn new(stack: Chips) -> Seat {
         Seat {
             stack,
+            spent: 0,
             stake: 0,
             state: State::Playing,
-            cards: Hole::new(),
+            cards: Hole::empty(),
         }
     }
     pub fn stack(&self) -> Chips {
@@ -31,23 +30,26 @@ impl Seat {
     pub fn state(&self) -> State {
         self.state
     }
+    pub fn spent(&self) -> Chips {
+        self.spent
+    }
     pub fn cards(&self) -> &Hole {
         &self.cards
     }
-    pub fn act(&self, _: &Game) -> Action {
-        todo!()
-    }
+    // pub fn act(&self, _: &Game) -> Action {
+    //     todo!()
+    // }
 
     pub fn bet(&mut self, bet: &Chips) {
         self.stack -= bet;
         self.stake += bet;
     }
-    pub fn win(&mut self, winnings: &Chips) {
-        println!("{}{}", self, winnings);
-        self.stack += winnings;
-    }
-    pub fn set_state(&mut self, status: State) {
-        self.state = status;
+    // pub fn win(&mut self, winnings: &Chips) {
+    //     println!("{}{}", self, winnings);
+    //     self.stack += winnings;
+    // }
+    pub fn set_state(&mut self, state: State) {
+        self.state = state;
     }
     pub fn set_cards(&mut self, cards: Hole) {
         self.cards = cards;
@@ -55,7 +57,11 @@ impl Seat {
     pub fn set_stake(&mut self) {
         self.stake = 0;
     }
+    pub fn set_spent(&mut self) {
+        self.spent = 0;
+    }
 }
+
 impl std::fmt::Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(

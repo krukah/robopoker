@@ -5,7 +5,7 @@ use super::rank::Rank;
 /// This is a simplified version of the hand's value, and does not include the hand's kicker cards.
 /// The value is ordered by the hand's strength, and the kicker cards are used to break ties.
 /// WARNING: Implementation of Ord will not correctly compare Suits.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Kickers(u16);
 
 /// u32 isomorphism
