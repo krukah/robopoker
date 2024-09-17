@@ -2,6 +2,7 @@ use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
+    play::spot::Spot::new().play();
     // The counter-factual regret minimization.
     cfr::trainer::Trainer::empty().train(1e5 as usize);
     // // The k-means earth mover's distance hand-clustering algorithm.
