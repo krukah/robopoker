@@ -1,24 +1,26 @@
 #![allow(dead_code)]
-
-use crate::play::{action::Action, game::Game, seat::Seat};
-use dialoguer::{Input, Select};
+use crate::play::action::Action;
+use crate::play::spot::Spot;
+use crate::play::Chips;
+use dialoguer::Input;
+use dialoguer::Select;
 
 #[derive(Debug)]
 pub struct Human;
 
 impl Human {
-    fn raise(&self, seat: &Seat, hand: &Game) -> u32 {
+    fn raise(&self, spot: &Spot) -> Chips {
         Input::new()
-            .with_prompt(self.infoset(seat, hand))
+            .with_prompt(self.infoset(spot))
             .validate_with(|i: &String| -> Result<(), &str> {
-                let input = match i.parse::<u32>() {
+                let input = match i.parse::<Chips>() {
                     Ok(value) => value,
                     Err(_) => return Err("Enter a positive integer"),
                 };
-                if input < hand.head.min_raise() {
+                if input < spot.to_raise() {
                     return Err("Raise too small");
                 }
-                if input > hand.head.max_raise() {
+                if input > spot.to_shove() {
                     return Err("Raise too large");
                 }
                 Ok(())
@@ -26,54 +28,64 @@ impl Human {
             .report(false)
             .interact()
             .unwrap()
-            .parse::<u32>()
+            .parse::<Chips>()
             .unwrap()
     }
 
-    fn infoset(&self, seat: &Seat, hand: &Game) -> String {
+    fn infoset(&self, spot: &Spot) -> String {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
-            hand.head.board,
-            seat.cards(),
-            hand.head.pot,
-            seat.stack(),
-            seat.to_call(hand),
-            seat.min_raise(hand),
+            spot.board(),
+            spot.actor().cards(),
+            spot.pot(),
+            spot.actor().stack(),
+            spot.to_call(),
+            spot.to_raise(),
         )
     }
+    fn act(&self, spot: &Spot) -> Action {
+        let ref choices = self.available(spot);
+        let selection = self.selection(choices, spot);
+        self.bind(choices, selection, spot)
+    }
 
-    fn act(&self, seat: &Seat, hand: &Game) -> Action {
-        // get valid actions
-        let choices = seat
-            .valid_actions(hand)
+    fn available(&self, spot: &Spot) -> Vec<&str> {
+        spot.options()
             .iter()
             .map(|a| match a {
-                Action::Fold(_) => "Fold",
-                Action::Check(_) => "Check",
-                Action::Call(_, _) => "Call",
-                Action::Raise(_, _) => "Raise",
-                Action::Shove(_, _) => "Shove",
+                Action::Fold => "Fold",
+                Action::Check => "Check",
+                Action::Call(_) => "Call",
+                Action::Raise(_) => "Raise",
+                Action::Shove(_) => "Shove",
                 _ => unreachable!(),
             })
-            .collect::<Vec<&str>>();
-        let selection = Select::new()
-            .with_prompt(self.infoset(seat, hand))
+            .collect::<Vec<&str>>()
+    }
+
+    fn selection(&self, choices: &[&str], spot: &Spot) -> usize {
+        Select::new()
+            .with_prompt(self.infoset(spot))
             .report(false)
-            .items(choices.as_slice())
+            .items(choices)
             .default(0)
             .interact()
-            .unwrap();
+            .unwrap()
+    }
+
+    fn bind(&self, choices: &[&str], selection: usize, spot: &Spot) -> Action {
         match choices[selection] {
-            "Fold" => Action::Fold(seat.position()),
-            "Check" => Action::Check(seat.position()),
-            "Call" => Action::Call(seat.position(), seat.to_call(hand)),
-            "Shove" => Action::Shove(seat.position(), seat.to_shove(hand)),
+            "Fold" => Action::Fold,
+            "Check" => Action::Check,
+            "Call" => Action::Call(spot.to_call()),
+            "Shove" => Action::Shove(spot.to_shove()),
             "Raise" => {
-                let raise = self.raise(seat, hand);
-                let shove = seat.to_shove(hand);
-                match raise == shove {
-                    true => Action::Shove(seat.position(), shove),
-                    false => Action::Raise(seat.position(), raise),
+                let raise = self.raise(spot);
+                let shove = spot.to_shove();
+                if raise == shove {
+                    Action::Shove(shove)
+                } else {
+                    Action::Raise(raise)
                 }
             }
             _ => unreachable!(),
