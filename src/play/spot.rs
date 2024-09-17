@@ -29,6 +29,33 @@ pub struct Spot {
 }
 
 impl Spot {
+    pub fn new() -> Self {
+        let seats: [Seat; N] = std::array::from_fn(|_| Seat::new(100));
+        Self {
+            chips: 0,
+            seats,
+            board: Board::empty(),
+            dealer: 0usize,
+            nturns: 0usize,
+        }
+    }
+    pub fn play(&mut self) {
+        while self.has_hands() {
+            println!("new hand...");
+            self.next_hand();
+            while self.has_cards() {
+                println!("next street...");
+                self.next_street();
+                while self.has_turns() {
+                    println!("player's turn...");
+                    self.apply(crate::players::human::Human::act(self));
+                }
+            }
+            println!("end of hand: {}", self);
+        }
+        println!("game over.");
+    }
+
     /// apply an Action to the game state.
     /// rotate if it's a decision == not a Card Draw.
     pub fn apply(&mut self, ref action: Action) {
@@ -171,7 +198,7 @@ impl Spot {
         }
     }
 
-    fn next_hand(&mut self) {
+    pub fn next_hand(&mut self) {
         self.next_hand_public();
         self.next_hand_rotate();
         self.next_hand_stacks();
@@ -210,7 +237,7 @@ impl Spot {
         }
     }
 
-    fn next_street(&mut self) {
+    pub fn next_street(&mut self) {
         self.next_street_public();
         self.next_street_stacks();
         self.nturns = 0;
@@ -237,16 +264,28 @@ impl Spot {
         }
     }
 
-    fn is_awaiting(&self) -> bool {
+    pub fn has_turns(&self) -> bool {
+        !self.is_awaiting()
+    }
+    pub fn has_hands(&self) -> bool {
+        !self.is_terminal()
+    }
+    pub fn has_cards(&self) -> bool {
+        !self.is_terminal()
+    }
+    pub fn is_complete(&self) -> bool {
+        self.seats.iter().any(|s| s.stack() == 0)
+    }
+    pub fn is_awaiting(&self) -> bool {
         self.are_all_folded() || self.is_awaiting_revealed()
     }
-    fn is_terminal(&self) -> bool {
+    pub fn is_terminal(&self) -> bool {
         self.are_all_folded() || self.is_awaiting_showdown()
     }
-    fn is_awaiting_showdown(&self) -> bool {
+    pub fn is_awaiting_showdown(&self) -> bool {
         self.is_awaiting_revealed() && self.board.street() == Street::Rive
     }
-    fn is_awaiting_revealed(&self) -> bool {
+    pub fn is_awaiting_revealed(&self) -> bool {
         self.are_all_called() || self.are_all_shoved()
     }
 

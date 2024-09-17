@@ -9,9 +9,15 @@ use dialoguer::Select;
 pub struct Human;
 
 impl Human {
-    fn raise(&self, spot: &Spot) -> Chips {
+    pub fn act(spot: &Spot) -> Action {
+        let ref choices = Self::available(spot);
+        let choice = Self::selection(choices, spot);
+        Self::choose(choices, choice, spot)
+    }
+
+    fn raise(spot: &Spot) -> Chips {
         Input::new()
-            .with_prompt(self.infoset(spot))
+            .with_prompt(Self::infoset(spot))
             .validate_with(|i: &String| -> Result<(), &str> {
                 let input = match i.parse::<Chips>() {
                     Ok(value) => value,
@@ -32,7 +38,7 @@ impl Human {
             .unwrap()
     }
 
-    fn infoset(&self, spot: &Spot) -> String {
+    fn infoset(spot: &Spot) -> String {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             spot.board(),
@@ -43,13 +49,8 @@ impl Human {
             spot.to_raise(),
         )
     }
-    fn act(&self, spot: &Spot) -> Action {
-        let ref choices = self.available(spot);
-        let selection = self.selection(choices, spot);
-        self.bind(choices, selection, spot)
-    }
 
-    fn available(&self, spot: &Spot) -> Vec<&str> {
+    fn available(spot: &Spot) -> Vec<&str> {
         spot.options()
             .iter()
             .map(|a| match a {
@@ -63,9 +64,9 @@ impl Human {
             .collect::<Vec<&str>>()
     }
 
-    fn selection(&self, choices: &[&str], spot: &Spot) -> usize {
+    fn selection(choices: &[&str], spot: &Spot) -> usize {
         Select::new()
-            .with_prompt(self.infoset(spot))
+            .with_prompt(Self::infoset(spot))
             .report(false)
             .items(choices)
             .default(0)
@@ -73,14 +74,14 @@ impl Human {
             .unwrap()
     }
 
-    fn bind(&self, choices: &[&str], selection: usize, spot: &Spot) -> Action {
+    fn choose(choices: &[&str], selection: usize, spot: &Spot) -> Action {
         match choices[selection] {
             "Fold" => Action::Fold,
             "Check" => Action::Check,
             "Call" => Action::Call(spot.to_call()),
             "Shove" => Action::Shove(spot.to_shove()),
             "Raise" => {
-                let raise = self.raise(spot);
+                let raise = Self::raise(spot);
                 let shove = spot.to_shove();
                 if raise == shove {
                     Action::Shove(shove)
