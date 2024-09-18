@@ -26,7 +26,7 @@ impl Deck {
     /// remove a specific card from the deck
     pub fn remove(&mut self, card: Card) {
         let this = u64::from(self.0);
-        let card = u64::from(card);
+        let card = u8::from(card);
         let mask = !(1 << card);
         self.0 = Hand::from(this & mask);
     }
@@ -35,14 +35,15 @@ impl Deck {
     pub fn draw(&mut self) -> Card {
         assert!(self.0.size() > 0);
         let n = self.0.size();
-        let i = rand::thread_rng().gen_range(0..n);
+        let i = rand::thread_rng().gen_range(0..n as u8);
+        let mut ones = 0u8;
         let mut deck = u64::from(self.0);
-        let mut ones = 0;
+        let mut card = u64::from(self.0).trailing_zeros() as u8;
         while ones < i {
-            deck &= deck - 1;
-            ones += 1;
+            card = deck.trailing_zeros() as u8;
+            deck = deck & (deck - 1);
+            ones = ones + 1;
         }
-        let card = deck.trailing_zeros() as u8;
         let card = Card::from(card);
         self.remove(card);
         card
@@ -53,6 +54,8 @@ impl Deck {
     pub fn hole(&mut self) -> Hole {
         let a = self.draw();
         let b = self.draw();
+        println!("HOLE {} {}", a, b);
+        assert!(a != b);
         Hole::from((a, b))
     }
 }
