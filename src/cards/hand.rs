@@ -12,6 +12,7 @@ impl Hand {
         self.0.count_ones() as usize
     }
     pub fn add(lhs: Self, rhs: Self) -> Self {
+        assert!(u64::from(lhs) & u64::from(rhs) == 0);
         Self(lhs.0 | rhs.0)
     }
     pub fn complement(&self) -> Self {

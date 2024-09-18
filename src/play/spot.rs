@@ -12,6 +12,7 @@ use crate::cards::hand::Hand;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::play::showdown::Showdown;
+use crate::players::human::Human;
 
 /// Rotation represents the memoryless state of the game in between actions.
 ///
@@ -24,8 +25,8 @@ pub struct Spot {
     seats: [Seat; N],
     chips: Chips,
     board: Board,
-    dealer: usize,
-    nturns: usize,
+    dealer: Position,
+    player: Position,
 }
 
 impl Spot {
@@ -36,30 +37,31 @@ impl Spot {
             seats,
             board: Board::empty(),
             dealer: 0usize,
-            nturns: 0usize,
+            player: 0usize,
         }
     }
-    pub fn play(&mut self) {
-        while self.has_hands() {
-            println!("new hand...");
-            self.next_hand();
-            while self.has_cards() {
-                println!("next street...");
-                self.next_street();
-                while self.has_turns() {
-                    println!("player's turn...");
-                    self.apply(crate::players::human::Human::act(self));
+    pub fn play_loop(&mut self) {
+        println!("play_loop");
+        self.next_hand();
+        loop {
+            match self.chooser() {
+                Continuation::Decision(_) => {
+                    self.apply(Human::act(self));
+                }
+                Continuation::Awaiting(_) => {
+                    self.next_street();
+                }
+                Continuation::Terminal => {
+                    self.next_hand();
                 }
             }
-            println!("end of hand: {}", self);
         }
-        println!("game over.");
     }
-
     /// apply an Action to the game state.
     /// rotate if it's a decision == not a Card Draw.
     pub fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
+        println!("{}", action);
         self.update_stacks(action);
         self.update_states(action);
         self.update_boards(action);
@@ -80,7 +82,7 @@ impl Spot {
         if self.is_terminal() {
             return options;
         }
-        if self.is_awaiting() {
+        if self.is_sampling() {
             options.push(Action::Draw(self.deck().draw()));
             return options;
         }
@@ -110,16 +112,15 @@ impl Spot {
         let board = Hand::from(self.board);
         let mut removed = Hand::add(Hand::empty(), board);
         for seat in self.seats.iter() {
-            let hole = seat.cards().to_owned();
-            let hole = Hand::from(hole);
+            let hole = Hand::from(seat.cards());
             removed = Hand::add(removed, hole);
         }
         Deck::from(removed.complement())
     }
 
-    fn actor_idx(&self) -> usize {
+    fn actor_idx(&self) -> Position {
         assert!(self.seats.len() == N);
-        (self.dealer + self.nturns) % N
+        (self.dealer + self.player) % N
     }
     fn actor_ref(&self) -> &Seat {
         let index = self.actor_idx();
@@ -153,10 +154,10 @@ impl Spot {
     }
 
     const fn bblind() -> Chips {
-        20
+        2
     }
     const fn sblind() -> Chips {
-        10
+        1
     }
 
     fn update_stacks(&mut self, action: &Action) {
@@ -185,10 +186,10 @@ impl Spot {
         match action {
             Action::Draw(_) => {}
             _ => 'left: loop {
-                if self.is_awaiting() {
+                if self.is_everyone_waiting() {
                     break 'left;
                 }
-                self.nturns += 1;
+                self.player += 1;
                 match self.actor_ref().state() {
                     State::Playing => break 'left,
                     State::Folding => continue 'left,
@@ -198,7 +199,9 @@ impl Spot {
         }
     }
 
+    //
     pub fn next_hand(&mut self) {
+        println!("next hand");
         self.next_hand_public();
         self.next_hand_rotate();
         self.next_hand_stacks();
@@ -213,7 +216,7 @@ impl Spot {
     fn next_hand_rotate(&mut self) {
         assert!(self.seats.len() == N);
         assert!(self.board.street() == Street::Pref);
-        self.nturns = 0;
+        self.player = 0;
         self.dealer += 1;
         self.dealer %= N;
     }
@@ -237,20 +240,20 @@ impl Spot {
         }
     }
 
+    //
     pub fn next_street(&mut self) {
+        println!("next street");
         self.next_street_public();
         self.next_street_stacks();
-        self.nturns = 0;
+        self.player = 0;
     }
     fn next_street_public(&mut self) {
-        assert!(self.board.street() != Street::Rive);
         assert!(self.board.street() != Street::Show);
         let mut deck = self.deck();
         match self.board.street() {
             Street::Rive | Street::Show => {}
-            Street::Flop | Street::Turn => {
-                self.apply(Action::Draw(deck.draw()));
-            }
+            Street::Flop => self.apply(Action::Draw(deck.draw())),
+            Street::Turn => self.apply(Action::Draw(deck.draw())),
             Street::Pref => {
                 self.apply(Action::Draw(deck.draw()));
                 self.apply(Action::Draw(deck.draw()));
@@ -264,80 +267,76 @@ impl Spot {
         }
     }
 
-    pub fn has_turns(&self) -> bool {
-        !self.is_awaiting()
+    //
+    pub fn chooser(&self) -> Continuation {
+        if self.is_terminal() {
+            return Continuation::Terminal;
+        }
+        if self.is_sampling() {
+            return Continuation::Awaiting(self.board.street().next());
+        }
+        if self.is_decision() {
+            return Continuation::Decision(self.player);
+        }
+        unreachable!("game rules violated")
     }
-    pub fn has_hands(&self) -> bool {
-        !self.is_terminal()
+    fn is_terminal(&self) -> bool {
+        self.board.street() == Street::Rive && self.is_everyone_waiting()
+            || self.is_everyone_folding()
     }
-    pub fn has_cards(&self) -> bool {
-        !self.is_terminal()
+    fn is_sampling(&self) -> bool {
+        self.board.street() != Street::Rive && self.is_everyone_waiting()
     }
-    pub fn is_complete(&self) -> bool {
-        self.seats.iter().any(|s| s.stack() == 0)
-    }
-    pub fn is_awaiting(&self) -> bool {
-        self.are_all_folded() || self.is_awaiting_revealed()
-    }
-    pub fn is_terminal(&self) -> bool {
-        self.are_all_folded() || self.is_awaiting_showdown()
-    }
-    pub fn is_awaiting_showdown(&self) -> bool {
-        self.is_awaiting_revealed() && self.board.street() == Street::Rive
-    }
-    pub fn is_awaiting_revealed(&self) -> bool {
-        self.are_all_called() || self.are_all_shoved()
+    fn is_decision(&self) -> bool {
+        self.actor().state() == State::Playing
+            && !self.is_terminal() // could be assertions?
+            && !self.is_sampling() // could be assertions?
     }
 
-    fn are_all_folded(&self) -> bool {
+    //
+    fn is_everyone_waiting(&self) -> bool {
+        self.is_everyone_shoving() || self.is_everyone_calling()
+    }
+    fn is_everyone_calling(&self) -> bool {
+        self.is_everyone_matched() && self.is_everyone_decided()
+    }
+    fn is_everyone_shoving(&self) -> bool {
+        self.player == 0
+            && self
+                .seats
+                .iter()
+                .filter(|s| s.state() == State::Playing)
+                .count()
+                == 1
+            || self
+                .seats
+                .iter()
+                .filter(|s| s.state() != State::Folding)
+                .all(|s| s.state() == State::Shoving)
+    }
+    fn is_everyone_matched(&self) -> bool {
+        let stake = self.effective_stake();
+        self.seats
+            .iter()
+            .filter(|s| s.state() == State::Playing)
+            .all(|s| s.stake() == stake)
+    }
+    fn is_everyone_folding(&self) -> bool {
         self.seats
             .iter()
             .filter(|s| s.state() != State::Folding)
             .count()
             == 1
     }
-    fn are_all_shoved(&self) -> bool {
-        self.seats
-            .iter()
-            .filter(|s| s.state() != State::Folding)
-            .all(|s| s.state() == State::Shoving)
-    }
-    fn are_all_called(&self) -> bool {
-        self.is_everyone_matched()
-            && (self.is_after_rotation()
-                || (self.is_first_decision() && self.is_only_one_playing()))
-    }
-
-    fn is_first_decision(&self) -> bool {
-        self.nturns
-            == match self.board.street() {
-                Street::Pref => 2,
-                _ => 0,
-            }
-    }
-    fn is_after_rotation(&self) -> bool {
-        assert!(self.seats.len() == N);
-        self.nturns
+    fn is_everyone_decided(&self) -> bool {
+        self.player
             >= match self.board.street() {
                 Street::Pref => N + 2,
                 _ => N,
             }
     }
-    fn is_only_one_playing(&self) -> bool {
-        self.seats
-            .iter()
-            .filter(|s| s.state() == State::Playing)
-            .count()
-            == 1
-    }
-    fn is_everyone_matched(&self) -> bool {
-        let call = self.effective_stake();
-        self.seats
-            .iter()
-            .filter(|s| s.state() == State::Playing)
-            .all(|s| s.stake() == call)
-    }
 
+    //
     fn can_fold(&self) -> bool {
         self.to_call() > 0
     }
@@ -348,12 +347,13 @@ impl Spot {
         self.effective_stake() == self.actor_ref().stake()
     }
     fn can_raise(&self) -> bool {
-        self.to_shove() >= self.to_raise()
+        self.to_shove() > self.to_raise()
     }
     fn can_shove(&self) -> bool {
         self.to_shove() > 0
     }
 
+    //
     pub fn to_call(&self) -> Chips {
         self.effective_stake() - self.actor_ref().stake()
     }
@@ -371,23 +371,18 @@ impl Spot {
         let most = stakes.pop().unwrap_or(0);
         let next = stakes.pop().unwrap_or(0);
         let diff = most - next;
-        std::cmp::max(most + diff, most + Self::bblind())
+        std::cmp::max(most + diff, most + Self::bblind()) - self.actor().stake()
     }
 
-    fn settle(&self) -> [Payout; N] {
+    //
+    fn strength(&self, seat: &Seat) -> Strength {
         assert!(self.is_terminal());
-        Showdown::from(self.ledger()).settle()
+        let hole = seat.cards();
+        let hand = Hand::from(hole);
+        let hand = Hand::add(Hand::from(self.board), hand);
+        Strength::from(hand)
     }
-    fn ledger(&self) -> [Payout; N] {
-        assert!(self.is_terminal());
-        self.seats
-            .iter()
-            .map(|seat| self.summary(seat))
-            .collect::<Vec<Payout>>()
-            .try_into()
-            .expect("const N")
-    }
-    fn summary(&self, seat: &Seat) -> Payout {
+    fn entry(&self, seat: &Seat) -> Payout {
         assert!(self.is_terminal());
         Payout {
             reward: 0,
@@ -396,21 +391,30 @@ impl Spot {
             strength: self.strength(seat),
         }
     }
-    fn strength(&self, seat: &Seat) -> Strength {
+    fn ledger(&self) -> [Payout; N] {
         assert!(self.is_terminal());
-        let hole = seat.cards().to_owned();
-        let hand = Hand::from(hole);
-        let hand = Hand::add(Hand::from(self.board), hand);
-        Strength::from(hand)
+        self.seats
+            .iter()
+            .map(|seat| self.entry(seat))
+            .collect::<Vec<Payout>>()
+            .try_into()
+            .expect("const N")
+    }
+    fn showdown(&self) -> Showdown {
+        assert!(self.is_terminal());
+        Showdown::from(self.ledger())
     }
 }
 
 impl std::fmt::Display for Spot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{:>6}   {}", self.chips, self.board)?;
-        for seat in &self.seats {
-            write!(f, "{}", seat)?;
-        }
-        Ok(())
+        writeln!(f, "{:>6}   {}", self.chips, self.board)
     }
 }
+
+pub enum Continuation {
+    Decision(Position),
+    Awaiting(Street),
+    Terminal,
+}
+type Position = usize;

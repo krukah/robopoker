@@ -33,13 +33,14 @@ impl Seat {
     pub fn spent(&self) -> Chips {
         self.spent
     }
-    pub fn cards(&self) -> &Hole {
-        &self.cards
+    pub fn cards(&self) -> Hole {
+        self.cards
     }
 
     pub fn bet(&mut self, bet: &Chips) {
         self.stack -= bet;
         self.stake += bet;
+        self.spent += bet;
     }
     pub fn set_state(&mut self, state: State) {
         self.state = state;
@@ -59,11 +60,10 @@ impl std::fmt::Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{}{}{}{}",
-            format!("{:04}", self.stack).green(),
-            format!("{:04}", self.stake).yellow(),
+            "{} {} {}",
+            format!("{:>4}", self.stack).green(),
+            self.cards,
             self.state,
-            self.cards
         )
     }
 }

@@ -2,23 +2,26 @@ use robopoker::*;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    play::spot::Spot::new().play();
+    // CLI game with yourself.
+    play::spot::Spot::new().play_loop();
+
     // The counter-factual regret minimization.
     cfr::trainer::Trainer::empty().train(1e5 as usize);
-    // // The k-means earth mover's distance hand-clustering algorithm.
-    // clustering::layer::Layer::outer()
-    //     .await
-    //     .upload()
-    //     .await
-    //     .inner()
-    //     .upload()
-    //     .await
-    //     .inner()
-    //     .upload()
-    //     .await
-    //     .inner()
-    //     .upload()
-    //     .await;
+
+    // The k-means earth mover's distance hand-clustering algorithm.
+    clustering::layer::Layer::outer()
+        .await
+        .upload()
+        .await
+        .inner()
+        .upload()
+        .await
+        .inner()
+        .upload()
+        .await
+        .inner()
+        .upload()
+        .await;
 }
 
 /*
