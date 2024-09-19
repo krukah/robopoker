@@ -3,7 +3,7 @@ use robopoker::*;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     // CLI game with yourself.
-    play::game::Game::new().play();
+    play::game::Game::play();
 
     // The counter-factual regret minimization.
     cfr::trainer::Trainer::empty().train(1e5 as usize);

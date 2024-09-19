@@ -30,7 +30,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
+    pub fn root() -> Self {
         let seats: [Seat; N] = std::array::from_fn(|_| Seat::new(100));
         Self {
             chips: 0,
@@ -40,19 +40,20 @@ impl Game {
             player: 0usize,
         }
     }
-    pub fn play(&mut self) {
+    pub fn play() {
         println!("play");
-        self.next_hand();
+        let mut node = Self::root();
+        node.next_hand();
         loop {
-            match self.chooser() {
+            match node.chooser() {
                 Continuation::Decision(_) => {
-                    self.apply(Human::act(self));
+                    node.apply(Human::act(&node));
                 }
                 Continuation::Awaiting(_) => {
-                    self.next_street();
+                    node.next_street();
                 }
                 Continuation::Terminal => {
-                    self.next_hand();
+                    node.next_hand();
                 }
             }
         }
