@@ -18,6 +18,17 @@ impl From<Hand> for Deck {
     }
 }
 
+impl Iterator for Deck {
+    type Item = Card;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0.size() > 0 {
+            Some(self.draw())
+        } else {
+            None
+        }
+    }
+}
+
 impl Deck {
     pub fn new() -> Self {
         Self(Hand::from((1 << 52) - 1))
@@ -54,8 +65,6 @@ impl Deck {
     pub fn hole(&mut self) -> Hole {
         let a = self.draw();
         let b = self.draw();
-        println!("HOLE {} {}", a, b);
-        assert!(a != b);
         Hole::from((a, b))
     }
 }
