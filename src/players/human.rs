@@ -10,9 +10,19 @@ pub struct Human;
 
 impl Human {
     pub fn act(spot: &Game) -> Action {
+        return Self::random(spot);
         let ref choices = Self::available(spot);
         let choice = Self::selection(choices, spot);
         Self::choose(choices, choice, spot)
+    }
+
+    fn random(game: &Game) -> Action {
+        use rand::seq::SliceRandom;
+        let ref mut rng = rand::thread_rng();
+        game.options()
+            .choose(rng)
+            .copied()
+            .expect("decision node has options")
     }
 
     fn raise(spot: &Game) -> Chips {

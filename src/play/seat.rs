@@ -37,6 +37,9 @@ impl Seat {
         self.cards
     }
 
+    pub fn win(&mut self, win: Chips) {
+        self.stack += win;
+    }
     pub fn bet(&mut self, bet: &Chips) {
         self.stack -= bet;
         self.stake += bet;

@@ -26,7 +26,7 @@ impl From<[Payout; N]> for Showdown {
 }
 
 impl Showdown {
-    pub fn settle(mut self) -> [Payout; N] {
+    pub fn settlement(mut self) -> [Payout; N] {
         'outer: while let Some(strength) = self.strongest() {
             self.best = strength;
             'inner: while let Some(amount) = self.rewarded() {

@@ -6,6 +6,7 @@ use super::seat::Seat;
 use super::seat::State;
 use super::Chips;
 use super::N;
+use super::STACK;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
@@ -31,19 +32,22 @@ pub struct Game {
 
 impl Game {
     pub fn root() -> Self {
-        let seats: [Seat; N] = std::array::from_fn(|_| Seat::new(100));
-        Self {
+        println!("root");
+        let mut root = Self {
             chips: 0,
-            seats,
+            seats: [Seat::new(STACK); N],
             board: Board::empty(),
             dealer: 0usize,
             player: 0usize,
-        }
+        };
+        root.next_hand_deal_cards();
+        root.next_hand_post_blinds(Self::sblind());
+        root.next_hand_post_blinds(Self::bblind());
+        root
     }
-    pub fn play() {
+    pub fn play() -> ! {
         println!("play");
         let mut node = Self::root();
-        node.next_hand();
         loop {
             match node.chooser() {
                 Continuation::Decision(_) => {
@@ -83,11 +87,9 @@ impl Game {
         if self.is_terminal() {
             return options;
         }
-        // maybe expensive sample, might be OD to Iterate full Deck
         if self.is_sampling() {
-            for card in self.deck() {
-                options.push(Action::Draw(card));
-            }
+            // for card in self.deck() {}
+            options.push(Action::Draw(self.deck().draw()));
             return options;
         }
         if self.can_call() {
@@ -206,26 +208,28 @@ impl Game {
 
     //
     pub fn next_hand(&mut self) {
+        assert!(self.seats.iter().all(|s| s.stack() > 0), "game over");
         println!("next hand");
-        self.next_hand_public();
-        self.next_hand_rotate();
-        self.next_hand_stacks();
-        self.next_hand_blinds(Self::sblind());
-        self.next_hand_blinds(Self::bblind());
+        self.next_hand_give_chips();
+        self.next_hand_wipe_board();
+        self.next_hand_deal_cards();
+        self.next_hand_move_button();
+        self.next_hand_post_blinds(Self::sblind());
+        self.next_hand_post_blinds(Self::bblind());
     }
-    fn next_hand_public(&mut self) {
+    fn next_hand_give_chips(&mut self) {
+        let settlement = self.showdown().settlement();
+        let seats = self.seats.iter_mut();
+        for (payout, seat) in settlement.iter().zip(seats) {
+            seat.win(payout.reward);
+        }
+    }
+    fn next_hand_wipe_board(&mut self) {
         self.chips = 0;
         self.board.clear();
         assert!(self.board.street() == Street::Pref);
     }
-    fn next_hand_rotate(&mut self) {
-        assert!(self.seats.len() == N);
-        assert!(self.board.street() == Street::Pref);
-        self.player = 0;
-        self.dealer += 1;
-        self.dealer %= N;
-    }
-    fn next_hand_stacks(&mut self) {
+    fn next_hand_deal_cards(&mut self) {
         assert!(self.board.street() == Street::Pref);
         let mut deck = Deck::new();
         for seat in self.seats.iter_mut() {
@@ -235,7 +239,14 @@ impl Game {
             seat.set_spent();
         }
     }
-    fn next_hand_blinds(&mut self, blind: Chips) {
+    fn next_hand_move_button(&mut self) {
+        assert!(self.seats.len() == N);
+        assert!(self.board.street() == Street::Pref);
+        self.dealer += 1;
+        self.dealer %= N;
+        self.player = 0;
+    }
+    fn next_hand_post_blinds(&mut self, blind: Chips) {
         assert!(self.board.street() == Street::Pref);
         let stack = self.actor_ref().stack();
         if blind < stack {
@@ -247,7 +258,7 @@ impl Game {
 
     //
     pub fn next_street(&mut self) {
-        println!("{}", self.board.street().next());
+        println!("next street ({})", self.board.street().next());
         self.next_street_public();
         self.next_street_stacks();
         self.player = 0;
@@ -415,7 +426,11 @@ impl Game {
 
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{:>6}   {}", self.chips, self.board)
+        for seat in self.seats.iter() {
+            write!(f, "{:>6}", seat.stack())?;
+        }
+        write!(f, " :: {:>6} {}", self.chips, self.board)?;
+        Ok(())
     }
 }
 
