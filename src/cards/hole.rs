@@ -33,6 +33,7 @@ impl From<(Card, Card)> for Hole {
         let a = u64::from(cards.0);
         let b = u64::from(cards.1);
         let hand = Hand::from(a | b);
+        assert!(a != b);
         Self(hand)
     }
 }
