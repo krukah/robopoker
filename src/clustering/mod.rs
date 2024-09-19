@@ -4,7 +4,6 @@ pub mod consumer;
 pub mod histogram;
 pub mod layer;
 pub mod metric;
-pub mod persistence;
 pub mod producer;
 pub mod progress;
 pub mod projection;
