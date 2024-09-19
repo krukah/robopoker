@@ -10,10 +10,18 @@ use super::STACK;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::play::showdown::Showdown;
 use crate::players::human::Human;
+
+type Position = usize;
+pub enum Continuation {
+    Decision(Position),
+    Awaiting(Street),
+    Terminal,
+}
 
 /// Rotation represents the memoryless state of the game in between actions.
 ///
@@ -40,6 +48,7 @@ impl Game {
             dealer: 0usize,
             player: 0usize,
         };
+        root.rotate();
         root.next_hand_deal_cards();
         root.next_hand_post_blinds(Self::sblind());
         root.next_hand_post_blinds(Self::bblind());
@@ -66,7 +75,7 @@ impl Game {
     /// rotate if it's a decision == not a Card Draw.
     pub fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
-        println!("{}", action);
+        println!("{} {}", self.actor_idx(), action);
         self.update_stacks(action);
         self.update_states(action);
         self.update_boards(action);
@@ -192,17 +201,17 @@ impl Game {
     fn update_rotate(&mut self, action: &Action) {
         match action {
             Action::Draw(_) => {}
-            _ => 'left: loop {
-                if self.is_everyone_waiting() {
-                    break 'left;
-                }
-                self.player += 1;
-                match self.actor_ref().state() {
-                    State::Playing => break 'left,
-                    State::Folding => continue 'left,
-                    State::Shoving => continue 'left,
-                }
-            },
+            _ => self.rotate(),
+        }
+    }
+    fn rotate(&mut self) {
+        'left: loop {
+            self.player += 1;
+            match self.actor_ref().state() {
+                State::Playing => break 'left,
+                State::Folding => continue 'left,
+                State::Shoving => continue 'left,
+            }
         }
     }
 
@@ -216,6 +225,7 @@ impl Game {
         self.next_hand_move_button();
         self.next_hand_post_blinds(Self::sblind());
         self.next_hand_post_blinds(Self::bblind());
+        panic!()
     }
     fn next_hand_give_chips(&mut self) {
         let settlement = self.showdown().settlement();
@@ -245,6 +255,7 @@ impl Game {
         self.dealer += 1;
         self.dealer %= N;
         self.player = 0;
+        self.rotate();
     }
     fn next_hand_post_blinds(&mut self, blind: Chips) {
         assert!(self.board.street() == Street::Pref);
@@ -259,15 +270,15 @@ impl Game {
     //
     pub fn next_street(&mut self) {
         println!("next street ({})", self.board.street().next());
+        self.player = 0;
+        self.rotate();
         self.next_street_public();
         self.next_street_stacks();
-        self.player = 0;
     }
     fn next_street_public(&mut self) {
-        assert!(self.board.street() != Street::Show);
         let mut deck = self.deck();
         match self.board.street() {
-            Street::Rive | Street::Show => {}
+            Street::Rive | Street::Show => unreachable!("terminal"),
             Street::Flop => self.apply(Action::Draw(deck.draw())),
             Street::Turn => self.apply(Action::Draw(deck.draw())),
             Street::Pref => {
@@ -304,9 +315,10 @@ impl Game {
         self.board.street() != Street::Rive && self.is_everyone_waiting()
     }
     fn is_decision(&self) -> bool {
-        self.actor().state() == State::Playing
-            && !self.is_terminal() // could be assertions?
-            && !self.is_sampling() // could be assertions?
+        assert!(!self.is_terminal());
+        assert!(!self.is_sampling());
+        assert!(self.actor().state() == State::Playing);
+        true
     }
 
     //
@@ -366,7 +378,7 @@ impl Game {
         self.to_shove() > self.to_raise()
     }
     fn can_shove(&self) -> bool {
-        self.to_shove() > 0
+        self.to_shove() > 0 && false
     }
 
     //
@@ -434,9 +446,10 @@ impl std::fmt::Display for Game {
     }
 }
 
-pub enum Continuation {
-    Decision(Position),
-    Awaiting(Street),
-    Terminal,
+impl From<Game> for Observation {
+    fn from(game: Game) -> Self {
+        let secret = Hand::from(game.actor().cards());
+        let public = Hand::from(game.board());
+        Observation::from((secret, public))
+    }
 }
-type Position = usize;
