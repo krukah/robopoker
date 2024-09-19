@@ -216,8 +216,9 @@ impl Game {
     }
 
     //
-    pub fn next_hand(&mut self) {
+    fn next_hand(&mut self) {
         assert!(self.seats.iter().all(|s| s.stack() > 0), "game over");
+        assert!(false);
         println!("next hand");
         self.next_hand_give_chips();
         self.next_hand_wipe_board();
@@ -225,7 +226,6 @@ impl Game {
         self.next_hand_move_button();
         self.next_hand_post_blinds(Self::sblind());
         self.next_hand_post_blinds(Self::bblind());
-        panic!()
     }
     fn next_hand_give_chips(&mut self) {
         let settlement = self.showdown().settlement();
@@ -268,7 +268,7 @@ impl Game {
     }
 
     //
-    pub fn next_street(&mut self) {
+    fn next_street(&mut self) {
         println!("next street ({})", self.board.street().next());
         self.player = 0;
         self.rotate();
@@ -358,7 +358,7 @@ impl Game {
     }
     fn is_everyone_decided(&self) -> bool {
         self.player
-            >= match self.board.street() {
+            > match self.board.street() {
                 Street::Pref => N + 2,
                 _ => N,
             }
