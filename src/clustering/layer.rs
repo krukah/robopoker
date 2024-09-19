@@ -227,6 +227,7 @@ impl Layer {
         self.upload_centroid(client).await;
         self
     }
+
     /// Truncate the database tables
     async fn truncate(&self, client: &Client) {
         if self.street == Street::Rive {

@@ -4,14 +4,19 @@ use super::abstraction::Abstraction;
 use super::layer::Layer;
 use crate::cards::observation::Observation;
 
-struct Abstractor;
+pub struct Abstractor;
 
 impl Abstractor {
     pub fn abstracted(&self, observation: Observation) -> Abstraction {
         unimplemented!()
     }
 
-    pub async fn cluster() {
+    pub async fn download() -> Self {
+        unimplemented!()
+    }
+
+    pub async fn upload() {
+        return;
         Layer::outer()
             .await
             .save()
