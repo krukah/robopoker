@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::play::action::Action;
-use crate::play::spot::Spot;
+use crate::play::game::Game;
 use crate::play::Chips;
 use dialoguer::Input;
 use dialoguer::Select;
@@ -9,13 +9,13 @@ use dialoguer::Select;
 pub struct Human;
 
 impl Human {
-    pub fn act(spot: &Spot) -> Action {
+    pub fn act(spot: &Game) -> Action {
         let ref choices = Self::available(spot);
         let choice = Self::selection(choices, spot);
         Self::choose(choices, choice, spot)
     }
 
-    fn raise(spot: &Spot) -> Chips {
+    fn raise(spot: &Game) -> Chips {
         Input::new()
             .with_prompt(Self::infoset(spot))
             .validate_with(|i: &String| -> Result<(), &str> {
@@ -38,7 +38,7 @@ impl Human {
             .unwrap()
     }
 
-    fn infoset(spot: &Spot) -> String {
+    fn infoset(spot: &Game) -> String {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             spot.board(),
@@ -50,7 +50,7 @@ impl Human {
         )
     }
 
-    fn available(spot: &Spot) -> Vec<&str> {
+    fn available(spot: &Game) -> Vec<&str> {
         spot.options()
             .iter()
             .map(|a| match a {
@@ -64,7 +64,7 @@ impl Human {
             .collect::<Vec<&str>>()
     }
 
-    fn selection(choices: &[&str], spot: &Spot) -> usize {
+    fn selection(choices: &[&str], spot: &Game) -> usize {
         Select::new()
             .with_prompt(Self::infoset(spot))
             .report(false)
@@ -74,7 +74,7 @@ impl Human {
             .unwrap()
     }
 
-    fn choose(choices: &[&str], selection: usize, spot: &Spot) -> Action {
+    fn choose(choices: &[&str], selection: usize, spot: &Game) -> Action {
         match choices[selection] {
             "Fold" => Action::Fold,
             "Check" => Action::Check,

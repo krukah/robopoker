@@ -21,7 +21,7 @@ use crate::players::human::Human;
 /// pure functions representing the rules of how the game may proceed.
 /// This full game state will also be our CFR node representation.
 #[derive(Debug, Clone, Copy)]
-pub struct Spot {
+pub struct Game {
     seats: [Seat; N],
     chips: Chips,
     board: Board,
@@ -29,7 +29,7 @@ pub struct Spot {
     player: Position,
 }
 
-impl Spot {
+impl Game {
     pub fn new() -> Self {
         let seats: [Seat; N] = std::array::from_fn(|_| Seat::new(100));
         Self {
@@ -40,8 +40,8 @@ impl Spot {
             player: 0usize,
         }
     }
-    pub fn play_loop(&mut self) {
-        println!("play_loop");
+    pub fn play(&mut self) {
+        println!("play");
         self.next_hand();
         loop {
             match self.chooser() {
@@ -82,8 +82,11 @@ impl Spot {
         if self.is_terminal() {
             return options;
         }
+        // maybe expensive sample, might be OD to Iterate full Deck
         if self.is_sampling() {
-            options.push(Action::Draw(self.deck().draw()));
+            for card in self.deck() {
+                options.push(Action::Draw(card));
+            }
             return options;
         }
         if self.can_call() {
@@ -95,15 +98,16 @@ impl Spot {
         if self.can_shove() {
             options.push(Action::Shove(self.to_shove()));
         }
-        if self.can_fold() {
-            options.push(Action::Fold);
-        }
         if self.can_check() {
             options.push(Action::Check);
+        }
+        if self.can_fold() {
+            options.push(Action::Fold);
         }
         options
         //? TODO
         // nothing in here about Action::Blind() being possible,
+        // it's only accessible from Game::root()
         // presumably we won't care about this
         // when we construct our MCCFR tree
     }
@@ -242,7 +246,7 @@ impl Spot {
 
     //
     pub fn next_street(&mut self) {
-        println!("next street");
+        println!("{}", self.board.street().next());
         self.next_street_public();
         self.next_street_stacks();
         self.player = 0;
@@ -358,7 +362,7 @@ impl Spot {
         self.effective_stake() - self.actor_ref().stake()
     }
     pub fn to_shove(&self) -> Chips {
-        std::cmp::max(self.actor_ref().stack(), self.to_call())
+        self.actor_ref().stack()
     }
     pub fn to_raise(&self) -> Chips {
         let mut stakes = self
@@ -368,10 +372,12 @@ impl Spot {
             .map(|s| s.stake())
             .collect::<Vec<Chips>>();
         stakes.sort_unstable();
-        let most = stakes.pop().unwrap_or(0);
-        let next = stakes.pop().unwrap_or(0);
-        let diff = most - next;
-        std::cmp::max(most + diff, most + Self::bblind()) - self.actor().stake()
+        let most_large_stake = stakes.pop().unwrap_or(0);
+        let next_large_stake = stakes.pop().unwrap_or(0);
+        let relative_raise = most_large_stake - self.actor().stake();
+        let marginal_raise = most_large_stake - next_large_stake;
+        let required_raise = std::cmp::max(marginal_raise, Self::bblind());
+        relative_raise + required_raise
     }
 
     //
@@ -406,7 +412,7 @@ impl Spot {
     }
 }
 
-impl std::fmt::Display for Spot {
+impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f, "{:>6}   {}", self.chips, self.board)
     }
