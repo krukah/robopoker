@@ -12,16 +12,16 @@ async fn main() {
     // The k-means earth mover's distance hand-clustering algorithm.
     clustering::layer::Layer::outer()
         .await
-        .upload()
+        .save()
         .await
         .inner()
-        .upload()
+        .save()
         .await
         .inner()
-        .upload()
+        .save()
         .await
         .inner()
-        .upload()
+        .save()
         .await;
 }
 

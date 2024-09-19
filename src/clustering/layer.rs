@@ -24,20 +24,6 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// Upload to database. We'll open a new connection for each layer, whatever.
-    pub async fn upload(self) -> Self {
-        println!("uploading {}", self.street);
-        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
-        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
-            .await
-            .expect("connect to database");
-        tokio::spawn(connection);
-        self.truncate(client).await;
-        self.upload_distance(client).await;
-        self.upload_centroid(client).await;
-        self
-    }
-
     /// async equity calculations to create initial River layer.
     pub async fn outer() -> Self {
         Self {
@@ -227,10 +213,20 @@ impl Layer {
         futures::future::join_all(producers).await;
         consumer.await.expect("equity mapping task completes")
     }
-}
 
-/// SQL operations
-impl Layer {
+    /// Upload to database. We'll open a new connection for each layer, whatever.
+    pub async fn save(self) -> Self {
+        println!("uploading {}", self.street);
+        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
+        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
+            .await
+            .expect("connect to database");
+        tokio::spawn(connection);
+        self.truncate(client).await;
+        self.upload_distance(client).await;
+        self.upload_centroid(client).await;
+        self
+    }
     /// Truncate the database tables
     async fn truncate(&self, client: &Client) {
         if self.street == Street::Rive {
