@@ -1,5 +1,6 @@
 use robopoker::*;
 
+#[allow(unreachable_code)]
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     // CLI game with yourself.

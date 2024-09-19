@@ -1,7 +1,9 @@
 pub mod abstraction;
+pub mod abstractor;
 pub mod consumer;
 pub mod histogram;
 pub mod layer;
+pub mod loadable;
 pub mod metric;
 pub mod producer;
 pub mod progress;
