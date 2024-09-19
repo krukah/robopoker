@@ -5,5 +5,5 @@ pub mod seat;
 pub mod showdown;
 
 pub type Chips = u16;
-pub const N: usize = 2;
-pub const STACK: Chips = 100_00;
+pub const N: usize = 4;
+pub const STACK: Chips = 1_000;
