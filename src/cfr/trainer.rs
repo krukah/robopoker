@@ -16,6 +16,16 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
 
+/// need to add named fields
+/// also need to add Abstractor
+/// so we can lookup Abstractions from Observations from Game
+/// also need some async upload/download methods for Profile
+/// could be cool to do online learning with it
+/// adn then most immediately
+/// need to generate Tree dynamically w MCMC
+/// as dictated by Game rules, i.e. Game::options()
+/// but this happens in Tree maybe?
+/// nah, ::sample() is where we need to do that
 pub struct Trainer(Profile, Tree);
 
 impl Trainer {

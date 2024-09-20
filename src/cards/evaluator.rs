@@ -20,7 +20,7 @@ impl From<Hand> for Evaluator {
 
 impl Evaluator {
     pub fn find_ranking(&self) -> Ranking {
-        self.find_flush()
+        None.or_else(|| self.find_flush())
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
             .or_else(|| self.find_straight())
@@ -152,7 +152,7 @@ impl Evaluator {
         Vec::<Card>::from(self.0)
             .iter()
             .map(|c| c.rank())
-            .map(|r| r as u16)
+            .map(|r| u16::from(r))
             .fold(0, |acc, r| acc | r)
     }
     /// suit_count:
@@ -162,9 +162,9 @@ impl Evaluator {
         Vec::<Card>::from(self.0)
             .iter()
             .map(|c| c.suit())
-            .map(|s| s as usize)
+            .map(|s| u8::from(s))
             .fold([0; 4], |mut counts, s| {
-                counts[s] += 1;
+                counts[s as usize] += 1;
                 counts
             })
     }
@@ -175,9 +175,9 @@ impl Evaluator {
         Vec::<Card>::from(self.0)
             .iter()
             .map(|c| (c.suit(), c.rank()))
-            .map(|(s, r)| (s as usize, u16::from(r)))
+            .map(|(s, r)| (u8::from(s), u16::from(r)))
             .fold([0; 4], |mut suits, (s, r)| {
-                suits[s] |= r;
+                suits[s as usize] |= r;
                 suits
             })
     }

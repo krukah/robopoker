@@ -7,28 +7,25 @@ use crate::cards::observation::Observation;
 pub struct Abstractor;
 
 impl Abstractor {
-    pub fn abstracted(&self, observation: Observation) -> Abstraction {
-        unimplemented!()
-    }
-
-    pub async fn download() -> Self {
-        unimplemented!()
-    }
-
     pub async fn upload() {
-        return;
         Layer::outer()
             .await
-            .save()
+            .save() // river
             .await
             .inner()
-            .save()
+            .save() // turn
             .await
             .inner()
-            .save()
+            .save() // flop
             .await
             .inner()
-            .save()
+            .save() // preflop
             .await;
+    }
+    pub async fn download() -> Self {
+        todo!("try to load ~1.2TB of Obs -> Abs map into memory, lmao")
+    }
+    pub fn lookup(&self, observation: Observation) -> Abstraction {
+        todo!("hopefully just a simple Hash or BTree lookup")
     }
 }
