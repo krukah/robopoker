@@ -46,9 +46,22 @@ impl From<Board> for Hand {
         board.0
     }
 }
-
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(
+            f,
+            "{}",
+            Vec::<Card>::from(self.0)
+                .into_iter()
+                .map(|c| format!("{}", c))
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
     }
 }
+
+// impl std::fmt::Display for Board {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         write!(f, "{}", self.0)
+//     }
+// }
