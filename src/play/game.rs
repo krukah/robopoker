@@ -71,8 +71,7 @@ impl Game {
             }
         }
     }
-    /// apply an Action to the game state.
-    /// rotate if it's a decision == not a Card Draw.
+
     pub fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
         self.update_stdout(action);
@@ -81,11 +80,10 @@ impl Game {
         self.update_boards(action);
         self.update_rotation(action);
     }
-
     pub fn actor(&self) -> &Seat {
         self.actor_ref()
     }
-    pub fn pot(&self) -> Chips {
+    pub fn chips(&self) -> Chips {
         self.chips
     }
     pub fn board(&self) -> Board {
@@ -122,6 +120,18 @@ impl Game {
         // it's only accessible from Game::root()
         // presumably we won't care about this
         // when we construct our MCCFR tree
+    }
+    pub fn chooser(&self) -> Continuation {
+        if self.is_terminal() {
+            return Continuation::Terminal;
+        }
+        if self.is_sampling() {
+            return Continuation::Awaiting(self.board.street().next());
+        }
+        if self.is_decision() {
+            return Continuation::Decision(self.player);
+        }
+        unreachable!("game rules violated")
     }
 
     fn deck(&self) -> Deck {
@@ -311,18 +321,6 @@ impl Game {
     }
 
     //
-    pub fn chooser(&self) -> Continuation {
-        if self.is_terminal() {
-            return Continuation::Terminal;
-        }
-        if self.is_sampling() {
-            return Continuation::Awaiting(self.board.street().next());
-        }
-        if self.is_decision() {
-            return Continuation::Decision(self.player);
-        }
-        unreachable!("game rules violated")
-    }
     fn is_terminal(&self) -> bool {
         self.board.street() == Street::Rive && self.is_everyone_waiting()
             || self.is_everyone_folding()
@@ -423,10 +421,10 @@ impl Game {
     //
     fn strength(&self, seat: &Seat) -> Strength {
         assert!(self.is_terminal());
-        let hole = seat.cards();
-        let hand = Hand::from(hole);
-        let hand = Hand::add(Hand::from(self.board), hand);
-        Strength::from(hand)
+        Strength::from(Hand::add(
+            Hand::from(seat.cards()),
+            Hand::from(self.board()),
+        ))
     }
     fn entry(&self, seat: &Seat) -> Payout {
         assert!(self.is_terminal());
@@ -464,8 +462,9 @@ impl std::fmt::Display for Game {
 
 impl From<Game> for Observation {
     fn from(game: Game) -> Self {
-        let secret = Hand::from(game.actor().cards());
-        let public = Hand::from(game.board());
-        Observation::from((secret, public))
+        Observation::from((
+            Hand::from(game.actor().cards()), //
+            Hand::from(game.board()),         //
+        ))
     }
 }

@@ -24,16 +24,6 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// async equity calculations to create initial River layer.
-    pub async fn outer() -> Self {
-        Self {
-            street: Street::Rive,
-            kmeans: BTreeMap::default(),
-            metric: Self::outer_metric(),
-            points: Self::outer_points().await,
-        }
-    }
-
     /// Yield the next layer of abstraction by kmeans clustering. The recursive nature of layer methods encapsulates the hiearchy of learned abstractions via kmeans.
     /// TODO; make this async and persist to database after each layer
     pub fn inner(&self) -> Self {
@@ -45,6 +35,30 @@ impl Layer {
         };
         inner.cluster();
         inner
+    }
+
+    /// async equity calculations to create initial River layer.
+    pub async fn outer() -> Self {
+        Self {
+            street: Street::Rive,
+            kmeans: BTreeMap::default(),
+            metric: Self::outer_metric(),
+            points: Self::outer_points().await,
+        }
+    }
+
+    /// Upload to database. We'll open a new connection for each layer, whatever.
+    pub async fn save(self) -> Self {
+        println!("uploading {}", self.street);
+        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
+        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
+            .await
+            .expect("connect to database");
+        tokio::spawn(connection);
+        self.truncate(client).await;
+        self.upload_distance(client).await;
+        self.upload_centroid(client).await;
+        self
     }
 
     /// Number of centroids in k means on inner layer. Loosely speaking, the size of our abstraction space.
@@ -213,21 +227,13 @@ impl Layer {
         futures::future::join_all(producers).await;
         consumer.await.expect("equity mapping task completes")
     }
+}
 
-    /// Upload to database. We'll open a new connection for each layer, whatever.
-    pub async fn save(self) -> Self {
-        println!("uploading {}", self.street);
-        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
-        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
-            .await
-            .expect("connect to database");
-        tokio::spawn(connection);
-        self.truncate(client).await;
-        self.upload_distance(client).await;
-        self.upload_centroid(client).await;
-        self
-    }
+/*
+persistence methods
+*/
 
+impl Layer {
     /// Truncate the database tables
     async fn truncate(&self, client: &Client) {
         if self.street == Street::Rive {
@@ -254,16 +260,15 @@ impl Layer {
     /// Upload centroid data to the database
     /// would love to be able to FREEZE table for initial river COPY
     async fn upload_centroid(&self, client: &Client) {
-        let sink = client
-            .copy_in(
-                r#"
-                COPY centroid (
-                    observation,
-                    abstraction
-                )
-                FROM STDIN BINARY;
-                "#,
+        const STATEMENT: &str = r#"
+            COPY centroid (
+                observation,
+                abstraction
             )
+            FROM STDIN BINARY;
+        "#;
+        let sink = client
+            .copy_in(STATEMENT)
             .await
             .expect("get sink for COPY transaction");
         let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::INT8]);
@@ -286,16 +291,15 @@ impl Layer {
     /// Upload distance data to the database
     /// would love to be able to FREEZE table for initial river COPY
     async fn upload_distance(&self, client: &Client) {
-        let sink = client
-            .copy_in(
-                r#"
-                COPY distance (
-                    xor,
-                    distance
-                )
-                FROM STDIN BINARY;
-                "#,
+        const STATEMENT: &str = r#"
+            COPY distance (
+                xor,
+                distance
             )
+            FROM STDIN BINARY;
+        "#;
+        let sink = client
+            .copy_in(STATEMENT)
             .await
             .expect("get sink for COPY transaction");
         let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::FLOAT4]);

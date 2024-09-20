@@ -48,15 +48,15 @@ impl Human {
             .unwrap()
     }
 
-    fn infoset(spot: &Game) -> String {
+    fn infoset(game: &Game) -> String {
         format!(
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
-            spot.board(),
-            spot.actor().cards(),
-            spot.pot(),
-            spot.actor().stack(),
-            spot.to_call(),
-            spot.to_raise(),
+            game.board(),
+            game.actor().cards(),
+            game.chips(),
+            game.actor().stack(),
+            game.to_call(),
+            game.to_raise(),
         )
     }
 

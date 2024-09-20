@@ -5,8 +5,10 @@ use robopoker::*;
 async fn main() {
     // The k-means earth mover's distance hand-clustering algorithm.
     // clustering::abstractor::Abstractor::upload().await;
+
     // The counter-factual regret minimization.
     // cfr::trainer::Trainer::empty().train(1e5 as usize);
+
     // CLI game with yourself.
     play::game::Game::play();
 }
