@@ -75,11 +75,11 @@ impl Game {
     /// rotate if it's a decision == not a Card Draw.
     pub fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
-        println!("{} {}", self.actor_idx(), action);
+        self.update_stdout(action);
         self.update_stacks(action);
         self.update_states(action);
         self.update_boards(action);
-        self.update_rotate(action);
+        self.update_rotation(action);
     }
 
     pub fn actor(&self) -> &Seat {
@@ -198,10 +198,20 @@ impl Game {
             _ => {}
         }
     }
-    fn update_rotate(&mut self, action: &Action) {
+    fn update_rotation(&mut self, action: &Action) {
         match action {
             Action::Draw(_) => {}
             _ => self.rotate(),
+        }
+    }
+    fn update_stdout(&self, action: &Action) {
+        match action {
+            Action::Draw(_) => {
+                println!("  {}", action);
+            }
+            _ => {
+                println!("{} {}", self.actor_idx(), action);
+            }
         }
     }
     fn rotate(&mut self) {
@@ -218,8 +228,6 @@ impl Game {
     //
     fn next_hand(&mut self) {
         assert!(self.seats.iter().all(|s| s.stack() > 0), "game over");
-        assert!(false);
-        println!("next hand");
         self.next_hand_give_chips();
         self.next_hand_wipe_board();
         self.next_hand_deal_cards();
@@ -228,11 +236,19 @@ impl Game {
         self.next_hand_post_blinds(Self::bblind());
     }
     fn next_hand_give_chips(&mut self) {
-        let settlement = self.showdown().settlement();
-        let seats = self.seats.iter_mut();
-        for (payout, seat) in settlement.iter().zip(seats) {
-            seat.win(payout.reward);
+        println!("::::::::::::::");
+        println!("{}", self.board());
+        for (i, (settlement, seat)) in self
+            .showdown()
+            .settlement()
+            .iter()
+            .zip(self.seats.iter_mut())
+            .enumerate()
+        {
+            println!("{} {} {:>7} {}", i, seat.cards(), seat.stack(), settlement);
+            seat.win(settlement.reward);
         }
+        println!();
     }
     fn next_hand_wipe_board(&mut self) {
         self.chips = 0;
@@ -269,7 +285,7 @@ impl Game {
 
     //
     fn next_street(&mut self) {
-        println!("next street ({})", self.board.street().next());
+        println!("{}", self.board.street().next());
         self.player = 0;
         self.rotate();
         self.next_street_public();
