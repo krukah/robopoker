@@ -4,6 +4,7 @@ use crate::cfr::info::Info;
 use crate::cfr::memory::Memory;
 use crate::cfr::node::Node;
 use crate::cfr::player::Player;
+use crate::play::continuation::Continuation;
 use crate::Probability;
 use crate::Utility;
 use std::collections::BTreeMap;
@@ -91,10 +92,10 @@ impl Profile {
     }
     /// which player is traversing the Tree on this Epoch?
     /// used extensively in assertions and utility calculations
-    pub fn walker(&self) -> &Player {
+    pub fn walker(&self) -> Player {
         match self.1 % 2 {
-            0 => &Player::P1,
-            _ => &Player::P2,
+            0 => Player::Choice(Continuation::Decision(0)),
+            _ => Player::Choice(Continuation::Decision(1)),
         }
     }
     /// only used for Tree sampling in Monte Carlo Trainer.
@@ -103,7 +104,7 @@ impl Profile {
     /// emulate the "opponent" strategy. the opponent is just whoever is not
     /// the traverser
     pub fn policy(&self, node: &Node, edge: &Edge) -> Probability {
-        assert!(node.player() != &Player::Chance);
+        assert!(node.player() != Player::chance().to_owned());
         assert!(node.player() != self.walker());
         self.0
             .get(node.bucket())
@@ -284,7 +285,8 @@ impl Profile {
     fn terminal_value(&self, head: &Node, leaf: &Node) -> Utility {
         assert!(head.player() == self.walker());
         assert!(leaf.children().len() == 0);
-        leaf.payoff(self.walker())  // Terminal Utility
+        let ref player = self.walker();
+        leaf.payoff(player)  // Terminal Utility
         / self.external_reach(leaf) // Importance Sampling
         * self.relative_reach(head, leaf) // Path Probability
     }
@@ -300,7 +302,7 @@ impl Profile {
     /// - Tree is sampled according to external sampling rules
     /// - we've visited this Infoset at least once, while sampling the Tree
     fn reach(&self, head: &Node, edge: &Edge) -> Probability {
-        if head.player() == &Player::Chance {
+        if head.player() == Player::chance() {
             //. RPS specific
             assert!(head.children().len() == 0);
             unreachable!("early return 1. rather than entering recursive branch")

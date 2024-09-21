@@ -11,6 +11,12 @@ pub struct Payout {
     pub strength: Strength,
 }
 
+impl Payout {
+    pub fn pnl(&self) -> Chips {
+        self.reward - self.risked
+    }
+}
+
 impl std::fmt::Display for Payout {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.reward > 0 {

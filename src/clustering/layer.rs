@@ -48,7 +48,7 @@ impl Layer {
     }
 
     /// Upload to database. We'll open a new connection for each layer, whatever.
-    pub async fn save(self) -> Self {
+    pub async fn upload(self) -> Self {
         println!("uploading {}", self.street);
         let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
         let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)

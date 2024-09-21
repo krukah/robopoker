@@ -116,7 +116,7 @@ impl Trainer {
         }
         // choose random child uniformly. this is specific to the game of poker,
         // where each action at chance node/info/buckets is uniformly likely.
-        else if node.player() == &Player::Chance {
+        else if node.player() == Player::chance() {
             let ref mut rng = self.rng(node);
             let n = sample.len();
             let choice = rng.gen_range(0..n);

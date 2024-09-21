@@ -1,10 +1,16 @@
+use crate::play::continuation::Continuation;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Player {
-    P1,
-    P2,
+    Choice(Continuation),
     Chance,
+}
+
+impl Player {
+    pub const fn chance() -> Self {
+        Self::Chance
+    }
 }
 
 #[allow(unused)]

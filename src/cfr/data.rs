@@ -1,8 +1,8 @@
 use crate::cfr::bucket::Bucket;
 use crate::cfr::edge::Edge;
 use crate::cfr::player::Player;
+use crate::play::continuation::Continuation;
 use crate::play::game::Game;
-use crate::Utility;
 
 /// pot
 /// n_bets
@@ -35,13 +35,12 @@ impl Data {
     pub fn bucket(&self) -> &Bucket {
         &self.bucket
     }
-
-    pub fn player(&self) -> &Player {
-        todo!("use game.actor() or game.chooser()")
-    }
-
-    pub fn payoff(&self) -> Utility {
-        todo!("use game.settlement()")
+    pub fn player(&self) -> Player {
+        match self.game.chooser() {
+            Continuation::Decision(position) => Player::Choice(Continuation::Decision(position)),
+            Continuation::Awaiting(_) => Player::Chance,
+            Continuation::Terminal => Player::Chance,
+        }
     }
 
     pub fn edges(&self) -> Vec<Edge> {
