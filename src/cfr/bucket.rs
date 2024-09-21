@@ -1,11 +1,11 @@
-use crate::clustering::abstraction::Abstraction;
+use crate::clustering::abstraction::CardAbstraction;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Bucket(Abstraction);
+pub struct Bucket(CardAbstraction);
 
-impl From<Abstraction> for Bucket {
-    fn from(abstraction: Abstraction) -> Self {
+impl From<CardAbstraction> for Bucket {
+    fn from(abstraction: CardAbstraction) -> Self {
         Self(abstraction)
     }
 }

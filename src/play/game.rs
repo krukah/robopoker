@@ -10,7 +10,7 @@ use super::STACK;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
-use crate::cards::observation::Observation;
+use crate::cards::observation::CardObservation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::play::continuation::Continuation;
@@ -68,10 +68,10 @@ impl Game {
     }
 
     pub fn imagine(&self, action: Action) -> Self {
+        return todo!("don't allow for partial application of flop cards, and maybe others");
         let mut clone = self.clone();
         clone.apply(action);
         clone;
-        todo!("don't allow for partial application of flop cards, and maybe others")
     }
     pub fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
@@ -463,9 +463,9 @@ impl std::fmt::Display for Game {
     }
 }
 
-impl From<&Game> for Observation {
+impl From<&Game> for CardObservation {
     fn from(game: &Game) -> Self {
-        Observation::from((
+        CardObservation::from((
             Hand::from(game.actor().cards()), //
             Hand::from(game.board()),         //
         ))
