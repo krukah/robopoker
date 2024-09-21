@@ -18,16 +18,16 @@ impl Abstractor {
     pub async fn upload() {
         Layer::outer()
             .await
-            .save() // river
+            .upload() // river
             .await
             .inner()
-            .save() // turn
+            .upload() // turn
             .await
             .inner()
-            .save() // flop
+            .upload() // flop
             .await
             .inner()
-            .save() // preflop
+            .upload() // preflop
             .await;
     }
     pub fn children(&self, game: &Game) -> Vec<(Data, Edge)> {

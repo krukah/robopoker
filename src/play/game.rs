@@ -13,16 +13,11 @@ use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
+use crate::play::continuation::Continuation;
 use crate::play::showdown::Showdown;
 use crate::players::human::Human;
 
 type Position = usize;
-pub enum Continuation {
-    Decision(Position),
-    Awaiting(Street),
-    Terminal,
-}
-
 /// Rotation represents the memoryless state of the game in between actions.
 ///
 /// It records both public and private data structs, and is responsible for managing the
@@ -135,7 +130,7 @@ impl Game {
             return Continuation::Awaiting(self.board.street().next());
         }
         if self.is_decision() {
-            return Continuation::Decision(self.player);
+            return Continuation::Decision(self.actor_relative_idx());
         }
         unreachable!("game rules violated")
     }
@@ -149,19 +144,22 @@ impl Game {
         }
         Deck::from(removed.complement())
     }
-
-    fn actor_idx(&self) -> Position {
+    fn actor_relative_idx(&self) -> Position {
+        assert!(self.seats.len() == N);
+        self.player.wrapping_sub(self.dealer) % N
+    }
+    fn actor_absolute_idx(&self) -> Position {
         assert!(self.seats.len() == N);
         (self.dealer + self.player) % N
     }
     fn actor_ref(&self) -> &Seat {
-        let index = self.actor_idx();
+        let index = self.actor_absolute_idx();
         self.seats
             .get(index)
             .expect("index should be in bounds bc modulo")
     }
     fn actor_mut(&mut self) -> &mut Seat {
-        let index = self.actor_idx();
+        let index = self.actor_absolute_idx();
         self.seats
             .get_mut(index)
             .expect("index should be in bounds bc modulo")
@@ -226,7 +224,7 @@ impl Game {
                 println!("  {}", action);
             }
             _ => {
-                println!("{} {}", self.actor_idx(), action);
+                println!("{} {}", self.actor_absolute_idx(), action);
             }
         }
     }
@@ -255,7 +253,6 @@ impl Game {
         println!("::::::::::::::");
         println!("{}", self.board());
         for (i, (settlement, seat)) in self
-            .showdown()
             .settlement()
             .iter()
             .zip(self.seats.iter_mut())
@@ -450,9 +447,9 @@ impl Game {
             .try_into()
             .expect("const N")
     }
-    fn showdown(&self) -> Showdown {
+    pub fn settlement(&self) -> [Payout; N] {
         assert!(self.is_terminal());
-        Showdown::from(self.ledger())
+        Showdown::from(self.ledger()).settlement()
     }
 }
 

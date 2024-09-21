@@ -2,6 +2,7 @@ use super::bucket::Bucket;
 use super::player::Player;
 use crate::cfr::data::Data;
 use crate::cfr::edge::Edge;
+use crate::play::continuation::Continuation;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
@@ -37,18 +38,25 @@ impl Node {
     pub fn bucket(&self) -> &Bucket {
         self.datum.bucket()
     }
-    pub fn player(&self) -> &Player {
+    pub fn player(&self) -> Player {
         self.datum.player()
     }
     pub fn payoff(&self, player: &Player) -> Utility {
-        // todo!("use some Payoff::from(Showdown::from(Game)) type");
-        let stakes = self.datum.payoff();
-        let direction = match player {
-            Player::P1 => 0. + 1.,
-            Player::P2 => 0. - 1.,
-            _ => unreachable!("payoff should not be queried for chance"),
+        let position = match player {
+            Player::Choice(Continuation::Decision(x)) => x.to_owned(),
+            _ => unreachable!("payoffs defined relative to decider"),
         };
-        direction * stakes
+        match player {
+            Player::Choice(_) => unreachable!("payoffs defined relative to decider"),
+            Player::Chance => self
+                .datum()
+                .game()
+                .settlement()
+                .get(position)
+                .clone()
+                .map(|settlement| settlement.pnl() as f32)
+                .expect("player index in bounds"),
+        }
     }
 
     /// Navigational methods
