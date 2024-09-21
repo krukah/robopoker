@@ -1,10 +1,10 @@
-use crate::clustering::abstraction::Abstraction;
+use crate::clustering::abstraction::CardAbstraction;
 
 /// A unique identifier for a pair of abstractions.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Debug)]
 pub struct Pair(u64);
-impl From<(&Abstraction, &Abstraction)> for Pair {
-    fn from((a, b): (&Abstraction, &Abstraction)) -> Self {
+impl From<(&CardAbstraction, &CardAbstraction)> for Pair {
+    fn from((a, b): (&CardAbstraction, &CardAbstraction)) -> Self {
         Self(u64::from(*a) ^ u64::from(*b))
     }
 }

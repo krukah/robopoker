@@ -1,5 +1,5 @@
-use crate::cards::observation::Observation;
-use crate::clustering::abstraction::Abstraction;
+use crate::cards::observation::CardObservation;
+use crate::clustering::abstraction::CardAbstraction;
 use crate::clustering::histogram::Histogram;
 use std::collections::BTreeMap;
 
@@ -10,19 +10,19 @@ use std::collections::BTreeMap;
 /// and [normalizing, compressing, generalizing] potential-awareness between different streets or levels of abstraction.
 /// All expectations are such that Observation::all(street) and obs.outnodes() will project perfectly across layers
 pub trait Projection {
-    fn project(&self, inner: Observation) -> Histogram; // (_, BTreeMap<Abstraction, usize>)
-    fn convert(&self, outer: Observation) -> Abstraction;
+    fn project(&self, inner: CardObservation) -> Histogram; // (_, BTreeMap<Abstraction, usize>)
+    fn convert(&self, outer: CardObservation) -> CardAbstraction;
 }
 
-impl Projection for BTreeMap<Observation, (Histogram, Abstraction)> {
-    fn project(&self, ref inner: Observation) -> Histogram {
+impl Projection for BTreeMap<CardObservation, (Histogram, CardAbstraction)> {
+    fn project(&self, ref inner: CardObservation) -> Histogram {
         inner
             .outnodes()
             .into_iter()
             .map(|outer| self.convert(outer))
             .fold(Histogram::default(), |hist, abs| hist.witness(abs))
     }
-    fn convert(&self, ref outer: Observation) -> Abstraction {
+    fn convert(&self, ref outer: CardObservation) -> CardAbstraction {
         self.get(outer)
             .expect("abstraction calculated in previous layer")
             .1

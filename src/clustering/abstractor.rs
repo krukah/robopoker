@@ -1,15 +1,13 @@
-#![allow(unused)]
-
-use super::abstraction::Abstraction;
+use super::abstraction::CardAbstraction;
 use super::layer::Layer;
-use crate::cards::observation::Observation;
+use crate::cards::observation::CardObservation;
 use crate::cfr::bucket::Bucket;
 use crate::cfr::data::Data;
 use crate::cfr::edge::Edge;
 use crate::play::game::Game;
 use std::collections::BTreeMap;
 
-pub struct Abstractor(BTreeMap<Observation, Abstraction>);
+pub struct Abstractor(BTreeMap<CardObservation, CardAbstraction>);
 
 impl Abstractor {
     pub async fn download() -> Self {
@@ -43,14 +41,19 @@ impl Abstractor {
         Data::from((game, bucket))
     }
     fn bucket(&self, game: &Game) -> Bucket {
-        let observation = Observation::from(game);
-        let abstraction = self.abstraction(observation);
+        let observation = CardObservation::from(game);
+        let abstraction = self.card_abstraction(observation);
         Bucket::from(abstraction)
     }
-    fn abstraction(&self, ref observation: Observation) -> Abstraction {
+    fn card_abstraction(&self, ref observation: CardObservation) -> CardAbstraction {
         self.0
             .get(observation)
             .copied()
             .expect("download should have all observations")
     }
+    fn path_abstraction(&self, _: Vec<&Edge>) -> PathAbstraction {
+        todo!("pseudoharmonic action mapping for path abstraction")
+    }
 }
+
+struct PathAbstraction;

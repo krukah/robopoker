@@ -15,13 +15,13 @@ use std::cmp::Ordering;
 /// This could be more memory efficient by using [Card; 2] for secret Hands,
 /// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-pub struct Observation {
+pub struct CardObservation {
     secret: Hand,
     public: Hand,
 }
 
-impl Observation {
-    pub fn all(street: Street) -> Vec<Observation> {
+impl CardObservation {
+    pub fn all(street: Street) -> Vec<CardObservation> {
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
@@ -33,7 +33,7 @@ impl Observation {
         for hole in holes {
             let boards = HandIterator::from((n, hole));
             for board in boards {
-                observations.push(Observation::from((hole, board)));
+                observations.push(CardObservation::from((hole, board)));
             }
         }
         observations
@@ -67,7 +67,7 @@ impl Observation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
-    pub fn outnodes(&self) -> Vec<Observation> {
+    pub fn outnodes(&self) -> Vec<CardObservation> {
         // LOOP over (2 + street)-handed OBSERVATIONS
         // EXPAND the current observation's BOARD CARDS
         // PRESERVE the current observation's HOLE CARDS
@@ -80,7 +80,7 @@ impl Observation {
         };
         HandIterator::from((expanded, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
-            .map(|public| Observation::from((self.secret, public)))
+            .map(|public| CardObservation::from((self.secret, public)))
             .collect::<Vec<Self>>()
     }
 
@@ -95,12 +95,12 @@ impl Observation {
     }
 }
 
-impl From<(Hand, Hand)> for Observation {
+impl From<(Hand, Hand)> for CardObservation {
     /// TODO: implement strategic isomorphism
     fn from((secret, public): (Hand, Hand)) -> Self {
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
-        Observation { secret, public }
+        CardObservation { secret, public }
     }
 }
 
@@ -108,8 +108,8 @@ impl From<(Hand, Hand)> for Observation {
 ///
 /// Packs all the cards in order, starting from LSBs.
 /// Good for database serialization. Interchangable with u64
-impl From<Observation> for i64 {
-    fn from(observation: Observation) -> Self {
+impl From<CardObservation> for i64 {
+    fn from(observation: CardObservation) -> Self {
         Vec::<Card>::from(observation.public)
             .iter()
             .chain(Vec::<Card>::from(observation.secret).iter())
@@ -118,7 +118,7 @@ impl From<Observation> for i64 {
             .fold(0u64, |acc, card| acc << 8 | card) as i64
     }
 }
-impl From<i64> for Observation {
+impl From<i64> for CardObservation {
     fn from(bits: i64) -> Self {
         let mut i = 0;
         let mut bits = bits as u64;
@@ -137,12 +137,12 @@ impl From<i64> for Observation {
         }
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
-        Observation { secret, public }
+        CardObservation { secret, public }
     }
 }
 
 /// conversion to i64 for SQL storage and impl ToSql directly
-impl tokio_postgres::types::ToSql for Observation {
+impl tokio_postgres::types::ToSql for CardObservation {
     fn to_sql(
         &self,
         ty: &tokio_postgres::types::Type,
@@ -164,7 +164,7 @@ impl tokio_postgres::types::ToSql for Observation {
     }
 }
 
-impl std::fmt::Display for Observation {
+impl std::fmt::Display for CardObservation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} + {}", self.secret, self.public)
     }

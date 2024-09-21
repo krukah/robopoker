@@ -27,22 +27,18 @@ impl Data {
             bucket: todo!(),
         }
     }
-
     pub fn game(&self) -> &Game {
         &self.game
     }
-
     pub fn bucket(&self) -> &Bucket {
         &self.bucket
     }
     pub fn player(&self) -> Player {
         match self.game.chooser() {
-            Continuation::Decision(position) => Player::Choice(Continuation::Decision(position)),
-            Continuation::Awaiting(_) => Player::Chance,
-            Continuation::Terminal => Player::Chance,
+            a @ Continuation::Decision(_) => Player::Choice(a),
+            _ => Player::Chance,
         }
     }
-
     pub fn edges(&self) -> Vec<Edge> {
         self.game
             .options()

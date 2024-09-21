@@ -121,8 +121,7 @@ impl Trainer {
             let n = sample.len();
             let choice = rng.gen_range(0..n);
             let chosen = sample.remove(choice);
-            vec![chosen];
-            unreachable!("RPS specific")
+            vec![chosen]
         }
         // choose child according to reach probabilities in strategy profile.
         // on first iteration, this is equivalent to sampling uniformly.
