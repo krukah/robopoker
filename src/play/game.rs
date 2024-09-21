@@ -72,6 +72,12 @@ impl Game {
         }
     }
 
+    pub fn imagine(&self, action: Action) -> Self {
+        let mut clone = self.clone();
+        clone.apply(action);
+        clone;
+        todo!("don't allow for partial application of flop cards, and maybe others")
+    }
     pub fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
         self.update_stdout(action);
@@ -460,8 +466,8 @@ impl std::fmt::Display for Game {
     }
 }
 
-impl From<Game> for Observation {
-    fn from(game: Game) -> Self {
+impl From<&Game> for Observation {
+    fn from(game: &Game) -> Self {
         Observation::from((
             Hand::from(game.actor().cards()), //
             Hand::from(game.board()),         //

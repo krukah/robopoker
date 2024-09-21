@@ -7,7 +7,6 @@ use robopoker::cards::hand::Hand;
 use robopoker::cards::observation::Observation;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
-use robopoker::cfr::trainer::Trainer;
 
 fn custom_criterion() -> Criterion<WallTime> {
     Criterion::default()
@@ -16,15 +15,6 @@ fn custom_criterion() -> Criterion<WallTime> {
         .significance_level(0.01)
         .sample_size(10)
         .measurement_time(std::time::Duration::from_secs(1))
-}
-fn benchmark_rps_training(c: &mut Criterion) {
-    let mut group = c.benchmark_group("RPS Training");
-    group.throughput(Throughput::Elements(10_000));
-    group.bench_function(BenchmarkId::new("MCCFR", "10,000 iterations"), |b| {
-        let mut trainer = Trainer::empty();
-        b.iter(|| trainer.train(10_000))
-    });
-    group.finish();
 }
 
 fn benchmark_exhaustive_flops(c: &mut Criterion) {
@@ -68,6 +58,6 @@ fn benchmark_evaluator_7_card(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = custom_criterion();
-    targets = benchmark_exhaustive_equity_calculation, benchmark_exhaustive_flops, benchmark_evaluator_7_card, benchmark_rps_training
+    targets = benchmark_exhaustive_equity_calculation, benchmark_exhaustive_flops, benchmark_evaluator_7_card
 }
 criterion_main!(benches);
