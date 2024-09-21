@@ -5,6 +5,7 @@ use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
+use crate::clustering::abstractor::Abstractor;
 use crate::Probability;
 use petgraph::graph::NodeIndex;
 use rand::distributions::Distribution;
@@ -20,25 +21,28 @@ use std::hash::Hasher;
 /// also need to add Abstractor
 /// so we can lookup Abstractions from Observations from Game
 /// also need some async upload/download methods for Profile
-/// could be cool to do online learning with it
-/// adn then most immediately
-/// need to generate Tree dynamically w MCMC
-/// as dictated by Game rules, i.e. Game::options()
-/// but this happens in Tree maybe?
-/// nah, ::sample() is where we need to do that
-pub struct Trainer(Profile, Tree);
+// need to generate Tree dynamically w MCMC
+pub struct Trainer {
+    abstractor: Abstractor,
+    profile: Profile,
+    tree: Tree,
+}
 
 impl Trainer {
     /// i'm making this a static method but in theory we could
-    pub fn empty() -> Self {
-        Self(Profile::empty(), Tree::empty())
+    pub async fn empty() -> Self {
+        Self {
+            abstractor: Abstractor::download().await,
+            profile: Profile::empty(),
+            tree: Tree::empty(),
+        }
     }
     pub fn train(&mut self, epochs: usize) {
-        while self.0.step() <= epochs {
+        while self.profile.step() <= epochs {
             for ref infoset in self.blocks() {
-                if self.0.walker() == infoset.node().player() {
-                    self.0.update_regret(infoset);
-                    self.0.update_policy(infoset);
+                if self.profile.walker() == infoset.node().player() {
+                    self.profile.update_regret(infoset);
+                    self.profile.update_policy(infoset);
                 }
             }
         }
@@ -48,9 +52,9 @@ impl Trainer {
     /// these blocks can be sampled using whatever sampling scheme we like, it's
     /// encapsulated by the Tree itself and how it chooses to unfold from its Nodes.
     fn blocks(&mut self) -> Vec<Info> {
-        self.1 = Tree::empty();
+        self.tree = Tree::empty();
         self.dfs();
-        self.1.infosets()
+        self.tree.infosets()
     }
 
     /// start from root node and allow data.spawn() to recursively, declaratively build the Tree.
@@ -60,7 +64,7 @@ impl Trainer {
     fn dfs(&mut self) {
         let root = Data::root();
         let head = self.attach(root);
-        let head = self.1.graph_mut().add_node(head);
+        let head = self.tree.graph_mut().add_node(head);
         for (tail, from) in self.sample(head) {
             self.unfold(tail, from, head);
         }
@@ -72,8 +76,8 @@ impl Trainer {
     /// we construct the appropriate references in self.attach() to ensure safety.
     fn unfold(&mut self, head: Data, edge: Edge, root: NodeIndex) {
         let head = self.attach(head);
-        let head = self.1.graph_mut().add_node(head);
-        let edge = self.1.graph_mut().add_edge(root, head, edge);
+        let head = self.tree.graph_mut().add_node(head);
+        let edge = self.tree.graph_mut().add_edge(root, head, edge);
         for (tail, from) in self.sample(head) {
             self.unfold(tail, from, head);
         }
@@ -85,13 +89,13 @@ impl Trainer {
     /// update the Tree to witness the new Node.
     fn attach(&mut self, data: Data) -> Node {
         let player = data.player().clone();
-        let graph = self.1.graph_raw();
-        let count = self.1.graph_ref().node_count();
+        let graph = self.tree.graph_raw();
+        let count = self.tree.graph_ref().node_count();
         let index = NodeIndex::new(count);
         let node = Node::from((index, graph, data));
         if player != Player::Chance {
-            self.0.witness(&node);
-            self.1.witness(&node);
+            self.profile.witness(&node);
+            self.tree.witness(&node);
         }
         node
     }
@@ -104,10 +108,10 @@ impl Trainer {
     ///
     /// i think this could also be modified into a recursive CFR calcuation
     fn sample(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
-        let ref node = self.1.node(head);
+        let ref node = self.tree.node(head);
         let mut sample = self.children(head);
         // terminal nodes have no children and we sample all possible actions for the traverser
-        if node.player() == self.0.walker() || sample.is_empty() {
+        if node.player() == self.profile.walker() || sample.is_empty() {
             sample
         }
         // choose random child uniformly. this is specific to the game of poker,
@@ -126,7 +130,7 @@ impl Trainer {
             let ref mut rng = self.rng(node);
             let policy = sample
                 .iter()
-                .map(|(_, edge)| self.0.policy(node, edge))
+                .map(|(_, edge)| self.profile.policy(node, edge))
                 .collect::<Vec<Probability>>();
             let choice = WeightedIndex::new(policy)
                 .expect("at least one policy > 0")
@@ -139,7 +143,8 @@ impl Trainer {
     /// we may need some Trainer-level references to produce children
     /// so this is a method on Trainer for now.
     fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
-        self.1.node(head).datum().spawn()
+        self.abstractor
+            .children(self.tree.node(head).datum().game())
     }
     /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
     /// for our Monte Carlo sampling. this may be better off as a function of
@@ -150,13 +155,13 @@ impl Trainer {
     fn rng(&self, node: &Node) -> SmallRng {
         let ref mut hasher = DefaultHasher::new();
         node.bucket().hash(hasher);
-        self.0.epochs().hash(hasher);
+        self.profile.epochs().hash(hasher);
         SmallRng::seed_from_u64(hasher.finish())
     }
 }
 
 impl std::fmt::Display for Trainer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Trainer profile:\n{}", self.0)
+        write!(f, "Trainer profile:\n{}", self.profile)
     }
 }

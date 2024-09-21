@@ -1,10 +1,13 @@
+use crate::play::action::Action;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub enum Edge {
-    RO,
-    PA,
-    SC,
+pub struct Edge(Action);
+
+impl From<Action> for Edge {
+    fn from(action: Action) -> Self {
+        Self(action)
+    }
 }
 
 #[allow(unused)]
