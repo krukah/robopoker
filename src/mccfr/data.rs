@@ -35,7 +35,7 @@ impl Data {
     }
     pub fn player(&self) -> Player {
         match self.game.chooser() {
-            a @ Continuation::Decision(_) => Player::Choice(a),
+            x @ Continuation::Decision(_) => Player::Choice(x),
             _ => Player::Chance,
         }
     }

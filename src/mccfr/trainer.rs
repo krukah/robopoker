@@ -30,9 +30,9 @@ pub struct Trainer {
 
 impl Trainer {
     /// i'm making this a static method but in theory we could
-    pub async fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
-            explorer: Explorer::download().await,
+            explorer: Explorer::download(),
             profile: Profile::empty(),
             tree: Tree::empty(),
         }

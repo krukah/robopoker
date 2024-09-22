@@ -9,11 +9,7 @@ use crate::clustering::progress::Progress;
 use crate::clustering::projection::Projection;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
-use std::pin::Pin;
 use std::sync::Arc;
-use tokio_postgres::binary_copy::BinaryCopyInWriter;
-use tokio_postgres::types::Type;
-use tokio_postgres::Client;
 
 /// KMeans hiearchical clustering. Every Observation is to be clustered with "similar" observations. River cards are the base case, where similarity metric is defined by equity. For each higher layer, we compare distributions of next-layer outcomes. Distances are measured by EMD and unsupervised kmeans clustering is used to cluster similar distributions. Potential-aware imperfect recall!
 pub struct Layer {
@@ -46,18 +42,12 @@ impl Layer {
             points: Self::outer_points().await,
         }
     }
-
-    /// Upload to database. We'll open a new connection for each layer, whatever.
-    pub async fn upload(self) -> Self {
+    /// Write to file. We'll open a new file for each layer, whatever.
+    pub fn upload(self) -> Self {
         println!("uploading {}", self.street);
-        let ref url = std::env::var("DATABASE_URL").expect("DATABASE_URL in environment");
-        let (ref client, connection) = tokio_postgres::connect(url, tokio_postgres::NoTls)
-            .await
-            .expect("connect to database");
-        tokio::spawn(connection);
-        self.truncate(client).await;
-        self.upload_distance(client).await;
-        self.upload_centroid(client).await;
+        self.truncate();
+        self.upload_distance();
+        self.upload_centroid();
         self
     }
 
@@ -239,88 +229,41 @@ persistence methods
 */
 
 impl Layer {
-    /// Truncate the database tables
-    async fn truncate(&self, client: &Client) {
-        if self.street == Street::Rive {
-            client
-                .batch_execute(
-                    r#"
-                    DROP TABLE IF EXISTS centroid;
-                    DROP TABLE IF EXISTS distance;
-                    CREATE UNLOGGED TABLE centroid (
-                        observation BIGINT PRIMARY KEY,
-                        abstraction BIGINT
-                    );
-                    CREATE UNLOGGED TABLE distance (
-                        xor         BIGINT PRIMARY KEY,
-                        distance    REAL
-                    );
-                    "#,
-                )
-                .await
-                .expect("nuke");
-        }
+    /// Truncate the files
+    fn truncate(&self) {
+        std::fs::remove_file(format!("centroid_{}.bin", self.street)).ok();
+        std::fs::remove_file(format!("distance_{}.bin", self.street)).ok();
     }
 
-    /// Upload centroid data to the database
-    /// would love to be able to FREEZE table for initial river COPY
-    async fn upload_centroid(&self, client: &Client) {
-        const STATEMENT: &str = r#"
-            COPY centroid (
-                observation,
-                abstraction
-            )
-            FROM STDIN BINARY;
-        "#;
-        let sink = client
-            .copy_in(STATEMENT)
-            .await
-            .expect("get sink for COPY transaction");
-        let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::INT8]);
-        let mut writer = unsafe { Pin::new_unchecked(writer) };
+    /// Write centroid data to a file
+    fn upload_centroid(&self) {
+        println!("uploading centroid {}", self.street);
+        use std::io::Write;
+        let mut file =
+            std::fs::File::create(format!("centroid_{}.bin", self.street)).expect("create file");
         let mut progress = Progress::new(self.points.len(), 10_000_000);
         for (observation, (_, abstraction)) in self.points.iter() {
-            writer
-                .as_mut()
-                .write(&[observation, abstraction])
-                .await
-                .expect("write row into heap");
+            let obs = i64::from(*observation) as u64;
+            let abs = i64::from(*abstraction) as u64;
+            let ref bytes = [obs.to_le_bytes(), abs.to_le_bytes()].concat();
+            file.write_all(bytes).expect("write to file");
             progress.tick();
         }
-        writer
-            .finish()
-            .await
-            .expect("complete centroid COPY transaction");
     }
 
-    /// Upload distance data to the database
-    /// would love to be able to FREEZE table for initial river COPY
-    async fn upload_distance(&self, client: &Client) {
-        const STATEMENT: &str = r#"
-            COPY distance (
-                xor,
-                distance
-            )
-            FROM STDIN BINARY;
-        "#;
-        let sink = client
-            .copy_in(STATEMENT)
-            .await
-            .expect("get sink for COPY transaction");
-        let ref mut writer = BinaryCopyInWriter::new(sink, &[Type::INT8, Type::FLOAT4]);
-        let mut writer = unsafe { Pin::new_unchecked(writer) };
+    /// Write distance data to a file
+    fn upload_distance(&self) {
+        println!("uploading distance {}", self.street);
+        use std::io::Write;
+        let mut file =
+            std::fs::File::create(format!("distance_{}.bin", self.street)).expect("create file");
         let mut progress = Progress::new(self.metric.len(), 1_000);
         for (pair, distance) in self.metric.iter() {
-            writer
-                .as_mut()
-                .write(&[pair, distance])
-                .await
-                .expect("write row into heap");
+            let pair = i64::from(*pair) as u64;
+            let distance = f64::from(*distance);
+            let ref bytes = [pair.to_le_bytes(), distance.to_le_bytes()].concat();
+            file.write_all(bytes).expect("write to file");
             progress.tick();
         }
-        writer
-            .finish()
-            .await
-            .expect("complete distance COPY transaction");
     }
 }
