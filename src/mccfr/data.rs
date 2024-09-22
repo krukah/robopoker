@@ -24,7 +24,7 @@ impl Data {
     pub fn root() -> Self {
         Self {
             game: Game::root(),
-            bucket: todo!(),
+            bucket: Bucket::root(),
         }
     }
     pub fn game(&self) -> &Game {
