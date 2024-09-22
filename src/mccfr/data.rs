@@ -1,6 +1,6 @@
-use crate::cfr::bucket::Bucket;
-use crate::cfr::edge::Edge;
-use crate::cfr::player::Player;
+use crate::mccfr::bucket::Bucket;
+use crate::mccfr::edge::Edge;
+use crate::mccfr::player::Player;
 use crate::play::continuation::Continuation;
 use crate::play::game::Game;
 

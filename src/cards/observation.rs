@@ -15,13 +15,13 @@ use std::cmp::Ordering;
 /// This could be more memory efficient by using [Card; 2] for secret Hands,
 /// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-pub struct CardObservation {
+pub struct NodeObservation {
     secret: Hand,
     public: Hand,
 }
 
-impl CardObservation {
-    pub fn all(street: Street) -> Vec<CardObservation> {
+impl NodeObservation {
+    pub fn all(street: Street) -> Vec<NodeObservation> {
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
@@ -33,7 +33,7 @@ impl CardObservation {
         for hole in holes {
             let boards = HandIterator::from((n, hole));
             for board in boards {
-                observations.push(CardObservation::from((hole, board)));
+                observations.push(NodeObservation::from((hole, board)));
             }
         }
         observations
@@ -67,7 +67,7 @@ impl CardObservation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
-    pub fn outnodes(&self) -> Vec<CardObservation> {
+    pub fn outnodes(&self) -> Vec<NodeObservation> {
         // LOOP over (2 + street)-handed OBSERVATIONS
         // EXPAND the current observation's BOARD CARDS
         // PRESERVE the current observation's HOLE CARDS
@@ -80,7 +80,7 @@ impl CardObservation {
         };
         HandIterator::from((expanded, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
-            .map(|public| CardObservation::from((self.secret, public)))
+            .map(|public| NodeObservation::from((self.secret, public)))
             .collect::<Vec<Self>>()
     }
 
@@ -95,12 +95,12 @@ impl CardObservation {
     }
 }
 
-impl From<(Hand, Hand)> for CardObservation {
+impl From<(Hand, Hand)> for NodeObservation {
     /// TODO: implement strategic isomorphism
     fn from((secret, public): (Hand, Hand)) -> Self {
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
-        CardObservation { secret, public }
+        NodeObservation { secret, public }
     }
 }
 
@@ -108,8 +108,8 @@ impl From<(Hand, Hand)> for CardObservation {
 ///
 /// Packs all the cards in order, starting from LSBs.
 /// Good for database serialization. Interchangable with u64
-impl From<CardObservation> for i64 {
-    fn from(observation: CardObservation) -> Self {
+impl From<NodeObservation> for i64 {
+    fn from(observation: NodeObservation) -> Self {
         Vec::<Card>::from(observation.public)
             .iter()
             .chain(Vec::<Card>::from(observation.secret).iter())
@@ -118,7 +118,7 @@ impl From<CardObservation> for i64 {
             .fold(0u64, |acc, card| acc << 8 | card) as i64
     }
 }
-impl From<i64> for CardObservation {
+impl From<i64> for NodeObservation {
     fn from(bits: i64) -> Self {
         let mut i = 0;
         let mut bits = bits as u64;
@@ -137,12 +137,12 @@ impl From<i64> for CardObservation {
         }
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
-        CardObservation { secret, public }
+        NodeObservation { secret, public }
     }
 }
 
 /// conversion to i64 for SQL storage and impl ToSql directly
-impl tokio_postgres::types::ToSql for CardObservation {
+impl tokio_postgres::types::ToSql for NodeObservation {
     fn to_sql(
         &self,
         ty: &tokio_postgres::types::Type,
@@ -164,7 +164,7 @@ impl tokio_postgres::types::ToSql for CardObservation {
     }
 }
 
-impl std::fmt::Display for CardObservation {
+impl std::fmt::Display for NodeObservation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} + {}", self.secret, self.public)
     }

@@ -1,4 +1,4 @@
-use crate::clustering::abstraction::CardAbstraction;
+use crate::clustering::abstraction::NodeAbstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 /// essential for clustering algorithms and comparing distributions.
 pub trait Metric {
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32;
-    fn distance(&self, x: &CardAbstraction, y: &CardAbstraction) -> f32;
+    fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32;
 }
 
 impl Metric for BTreeMap<Pair, f32> {
@@ -23,15 +23,15 @@ impl Metric for BTreeMap<Pair, f32> {
         let mut completed = x_domain
             .iter()
             .map(|&a| (a, false))
-            .collect::<BTreeMap<&CardAbstraction, bool>>();
+            .collect::<BTreeMap<&NodeAbstraction, bool>>();
         let mut pressures = x_domain
             .iter()
             .map(|&a| (a, 1.0 / n as f32))
-            .collect::<BTreeMap<&CardAbstraction, f32>>();
+            .collect::<BTreeMap<&NodeAbstraction, f32>>();
         let mut vacancies = y_domain
             .iter()
             .map(|&a| (a, y.weight(a)))
-            .collect::<BTreeMap<&CardAbstraction, f32>>(); // this is effectively a clone
+            .collect::<BTreeMap<&NodeAbstraction, f32>>(); // this is effectively a clone
         for _ in 0..m {
             for source in x_domain.iter() {
                 // skip if we have already moved all the earth from this source
@@ -66,7 +66,7 @@ impl Metric for BTreeMap<Pair, f32> {
         }
         energy
     }
-    fn distance(&self, x: &CardAbstraction, y: &CardAbstraction) -> f32 {
+    fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32 {
         let ref xor = Pair::from((x, y));
         *self.get(xor).expect("precalculated distance")
     }

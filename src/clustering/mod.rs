@@ -1,6 +1,6 @@
 pub mod abstraction;
-pub mod abstractor;
 pub mod consumer;
+pub mod explorer;
 pub mod histogram;
 pub mod layer;
 pub mod metric;
