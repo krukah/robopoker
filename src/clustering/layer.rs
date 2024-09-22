@@ -237,12 +237,11 @@ impl Layer {
 
     /// Write centroid data to a file
     fn upload_centroid(&self) {
-        println!("uploading centroid {}", self.street);
-        use std::io::Write;
         let mut file =
             std::fs::File::create(format!("centroid_{}.bin", self.street)).expect("create file");
         let mut progress = Progress::new(self.points.len(), 10_000_000);
         for (observation, (_, abstraction)) in self.points.iter() {
+            use std::io::Write;
             let obs = i64::from(*observation) as u64;
             let abs = i64::from(*abstraction) as u64;
             let ref bytes = [obs.to_le_bytes(), abs.to_le_bytes()].concat();
@@ -253,12 +252,11 @@ impl Layer {
 
     /// Write distance data to a file
     fn upload_distance(&self) {
-        println!("uploading distance {}", self.street);
-        use std::io::Write;
         let mut file =
             std::fs::File::create(format!("distance_{}.bin", self.street)).expect("create file");
         let mut progress = Progress::new(self.metric.len(), 1_000);
         for (pair, distance) in self.metric.iter() {
+            use std::io::Write;
             let pair = i64::from(*pair) as u64;
             let distance = f64::from(*distance);
             let ref bytes = [pair.to_le_bytes(), distance.to_le_bytes()].concat();
