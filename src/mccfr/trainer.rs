@@ -5,7 +5,7 @@ use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
-use crate::clustering::abstractor::Abstractor;
+use crate::clustering::explorer::Explorer;
 use crate::Probability;
 use petgraph::graph::NodeIndex;
 use rand::distributions::Distribution;
@@ -23,7 +23,7 @@ use std::hash::Hasher;
 /// also need some async upload/download methods for Profile
 // need to generate Tree dynamically w MCMC
 pub struct Trainer {
-    abstractor: Abstractor,
+    explorer: Explorer,
     profile: Profile,
     tree: Tree,
 }
@@ -32,7 +32,7 @@ impl Trainer {
     /// i'm making this a static method but in theory we could
     pub async fn empty() -> Self {
         Self {
-            abstractor: Abstractor::download().await,
+            explorer: Explorer::download().await,
             profile: Profile::empty(),
             tree: Tree::empty(),
         }
@@ -142,8 +142,14 @@ impl Trainer {
     /// we may need some Trainer-level references to produce children
     /// so this is a method on Trainer for now.
     fn children(&self, head: NodeIndex) -> Vec<(Data, Edge)> {
-        self.abstractor
-            .children(self.tree.node(head).datum().game())
+        let game = self.tree.node(head).datum().game();
+        let path = self
+            .tree
+            .node(head)
+            .history()
+            .into_iter()
+            .collect::<Vec<&Edge>>();
+        self.explorer.children(game, path)
     }
     /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
     /// for our Monte Carlo sampling. this may be better off as a function of

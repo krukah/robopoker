@@ -1,4 +1,4 @@
-use crate::clustering::abstraction::CardAbstraction;
+use crate::clustering::abstraction::NodeAbstraction;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 
@@ -9,17 +9,17 @@ use std::ops::AddAssign;
 #[derive(Debug, Default, Clone)]
 pub struct Histogram {
     norm: usize,
-    weights: HashMap<CardAbstraction, usize>,
+    weights: HashMap<NodeAbstraction, usize>,
 }
 
 impl Histogram {
-    pub fn weight(&self, abstraction: &CardAbstraction) -> f32 {
+    pub fn weight(&self, abstraction: &NodeAbstraction) -> f32 {
         self.weights.get(abstraction).copied().unwrap_or(0usize) as f32 / self.norm as f32
     }
-    pub fn domain(&self) -> Vec<&CardAbstraction> {
+    pub fn domain(&self) -> Vec<&NodeAbstraction> {
         self.weights.keys().collect()
     }
-    pub fn witness(self, abstraction: CardAbstraction) -> Self {
+    pub fn witness(self, abstraction: NodeAbstraction) -> Self {
         let mut this = self;
         this.norm.add_assign(1usize);
         this.weights

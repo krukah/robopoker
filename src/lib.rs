@@ -1,6 +1,6 @@
 pub mod cards;
-pub mod cfr;
 pub mod clustering;
+pub mod mccfr;
 pub mod play;
 pub mod players;
 pub mod rts;

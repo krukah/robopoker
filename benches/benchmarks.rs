@@ -4,7 +4,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use robopoker::cards::deck::Deck;
 use robopoker::cards::evaluator::Evaluator;
 use robopoker::cards::hand::Hand;
-use robopoker::cards::observation::CardObservation;
+use robopoker::cards::observation::NodeObservation;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
 
@@ -21,7 +21,7 @@ fn benchmark_exhaustive_flops(c: &mut Criterion) {
     let mut group = c.benchmark_group("Exhaustive Flops");
     group.throughput(Throughput::Elements(1)); // If you're enumerating one flop at a time
     group.bench_function(BenchmarkId::new("flop enumeration", "flop"), |b| {
-        b.iter(|| CardObservation::all(Street::Flop))
+        b.iter(|| NodeObservation::all(Street::Flop))
     });
     group.finish();
 }
@@ -34,7 +34,7 @@ fn benchmark_exhaustive_equity_calculation(c: &mut Criterion) {
             let mut deck = Deck::new();
             let secret = Hand::from((0..2).map(|_| deck.draw()).collect::<Vec<_>>());
             let public = Hand::from((0..5).map(|_| deck.draw()).collect::<Vec<_>>());
-            let observation = CardObservation::from((secret, public));
+            let observation = NodeObservation::from((secret, public));
             observation.equity()
         })
     });

@@ -1,9 +1,9 @@
-use crate::cfr::bucket::Bucket;
-use crate::cfr::edge::Edge;
-use crate::cfr::info::Info;
-use crate::cfr::memory::Memory;
-use crate::cfr::node::Node;
-use crate::cfr::player::Player;
+use crate::mccfr::bucket::Bucket;
+use crate::mccfr::edge::Edge;
+use crate::mccfr::info::Info;
+use crate::mccfr::memory::Memory;
+use crate::mccfr::node::Node;
+use crate::mccfr::player::Player;
 use crate::play::continuation::Continuation;
 use crate::Probability;
 use crate::Utility;

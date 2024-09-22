@@ -1,6 +1,6 @@
-use crate::cards::observation::CardObservation;
+use crate::cards::observation::NodeObservation;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::CardAbstraction;
+use crate::clustering::abstraction::NodeAbstraction;
 use crate::clustering::consumer::Consumer;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
@@ -19,8 +19,8 @@ use tokio_postgres::Client;
 pub struct Layer {
     street: Street,
     metric: BTreeMap<Pair, f32>, // impl Metric
-    points: BTreeMap<CardObservation, (Histogram, CardAbstraction)>, // impl Projection
-    kmeans: BTreeMap<CardAbstraction, (Histogram, Histogram)>,
+    points: BTreeMap<NodeObservation, (Histogram, NodeAbstraction)>, // impl Projection
+    kmeans: BTreeMap<NodeAbstraction, (Histogram, Histogram)>,
 }
 
 impl Layer {
@@ -93,7 +93,7 @@ impl Layer {
             // find nearest neighbor. shift centroid accordingly
             for (_, (data, last)) in self.points.iter_mut() {
                 let mut nearests = f32::MAX;
-                let mut neighbor = CardAbstraction::default();
+                let mut neighbor = NodeAbstraction::default();
                 for (centroid, (mean, _)) in self.kmeans.iter_mut() {
                     let distance = self.metric.emd(data, mean);
                     if distance < nearests {
@@ -141,14 +141,14 @@ impl Layer {
     /// Generate all possible obersvations of the next innermost layer.
     /// Assign them to arbitrary abstractions. They will be overwritten during kmeans iterations.
     /// Base case is River which comes from equity bucket calculation.
-    fn inner_points(&self) -> BTreeMap<CardObservation, (Histogram, CardAbstraction)> {
+    fn inner_points(&self) -> BTreeMap<NodeObservation, (Histogram, NodeAbstraction)> {
         println!("projecting {} < {}", self.street.prev(), self.street);
-        CardObservation::all(self.street.prev())
+        NodeObservation::all(self.street.prev())
             .into_iter()
             .map(|inner| {
                 (
                     inner,
-                    (self.points.project(inner), CardAbstraction::default()),
+                    (self.points.project(inner), NodeAbstraction::default()),
                 )
             })
             .collect()
@@ -156,7 +156,7 @@ impl Layer {
 
     /// K Means++ implementation yields initial histograms
     /// Abstraction labels are random and require uniqueness.
-    fn inner_kmeans(&self) -> BTreeMap<CardAbstraction, (Histogram, Histogram)> {
+    fn inner_kmeans(&self) -> BTreeMap<NodeAbstraction, (Histogram, Histogram)> {
         println!("choosing means {} < {}", self.street.prev(), self.street);
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
@@ -197,7 +197,7 @@ impl Layer {
         // 3. Collect histograms and label with arbitrary (random) Abstractions
         kmeans
             .into_iter()
-            .map(|mean| (CardAbstraction::random(), (mean, Histogram::default())))
+            .map(|mean| (NodeAbstraction::random(), (mean, Histogram::default())))
             .collect::<BTreeMap<_, _>>()
     }
 
@@ -205,11 +205,11 @@ impl Layer {
     fn outer_metric() -> BTreeMap<Pair, f32> {
         println!("calculating equity bucket metric");
         let mut metric = BTreeMap::new();
-        for i in 0..CardAbstraction::EQUITIES as u64 {
-            for j in i..CardAbstraction::EQUITIES as u64 {
+        for i in 0..NodeAbstraction::EQUITIES as u64 {
+            for j in i..NodeAbstraction::EQUITIES as u64 {
                 let distance = (j - i) as f32;
-                let ref i = CardAbstraction::from(i);
-                let ref j = CardAbstraction::from(j);
+                let ref i = NodeAbstraction::from(i);
+                let ref j = NodeAbstraction::from(j);
                 let index = Pair::from((i, j));
                 metric.insert(index, distance);
             }
@@ -218,10 +218,10 @@ impl Layer {
     }
 
     // construct observation -> abstraction map via equity calculations
-    async fn outer_points() -> BTreeMap<CardObservation, (Histogram, CardAbstraction)> {
+    async fn outer_points() -> BTreeMap<NodeObservation, (Histogram, NodeAbstraction)> {
         println!("calculating equity bucket observations");
-        let ref observations = Arc::new(CardObservation::all(Street::Rive));
-        let (tx, rx) = tokio::sync::mpsc::channel::<(CardObservation, CardAbstraction)>(1024);
+        let ref observations = Arc::new(NodeObservation::all(Street::Rive));
+        let (tx, rx) = tokio::sync::mpsc::channel::<(NodeObservation, NodeAbstraction)>(1024);
         let consumer = Consumer::new(rx);
         let consumer = tokio::spawn(consumer.run());
         let producers = (0..num_cpus::get())

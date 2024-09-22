@@ -1,7 +1,7 @@
-use crate::cfr::bucket::Bucket;
-use crate::cfr::edge::Edge;
-use crate::cfr::info::Info;
-use crate::cfr::node::Node;
+use crate::mccfr::bucket::Bucket;
+use crate::mccfr::edge::Edge;
+use crate::mccfr::info::Info;
+use crate::mccfr::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::collections::BTreeMap;
