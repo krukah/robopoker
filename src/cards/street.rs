@@ -4,7 +4,6 @@ pub enum Street {
     Flop,
     Turn,
     Rive,
-    Show,
 }
 
 impl Street {
@@ -14,19 +13,21 @@ impl Street {
             Street::Pref => Street::Flop,
             Street::Flop => Street::Turn,
             Street::Turn => Street::Rive,
-            Street::Rive => Street::Show,
-            Street::Show => panic!("no next street"),
+            Street::Rive => unreachable!("terminal"),
         }
     }
 
     pub fn prev(&self) -> Street {
         match self {
-            Street::Pref => panic!("no previous street"),
+            Street::Pref => unreachable!("initial"),
             Street::Flop => Street::Pref,
             Street::Turn => Street::Flop,
             Street::Rive => Street::Turn,
-            Street::Show => Street::Rive,
         }
+    }
+
+    pub fn all() -> &'static [Street] {
+        &[Street::Pref, Street::Flop, Street::Turn, Street::Rive]
     }
 }
 
@@ -37,7 +38,6 @@ impl std::fmt::Display for Street {
             Street::Flop => write!(f, "Flop"),
             Street::Turn => write!(f, "Turn"),
             Street::Rive => write!(f, "River"),
-            Street::Show => write!(f, "Showdown"),
         }
     }
 }

@@ -1,33 +1,72 @@
 use super::abstraction::NodeAbstraction;
 use super::layer::Layer;
 use crate::cards::observation::NodeObservation;
+use crate::cards::street::Street;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::play::action::Action;
 use crate::play::game::Game;
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::Read;
+
+/// need to figure out how to  onsturct this
+/// psuedo harmonic action mapping for path abstraction
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
+struct PathAbstraction(u64);
+
+/// the product of
+/// "information abstraction" and
+/// "action absraction" are what we index the (regret, strategy, average, ...) on
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct Abstraction {
+    path: PathAbstraction,
+    node: NodeAbstraction,
+}
+impl From<(PathAbstraction, NodeAbstraction)> for Abstraction {
+    fn from(abstraction: (PathAbstraction, NodeAbstraction)) -> Self {
+        Self {
+            path: abstraction.0,
+            node: abstraction.1,
+        }
+    }
+}
 
 pub struct Explorer(BTreeMap<NodeObservation, NodeAbstraction>);
+const BUFFER: usize = 1024 * 1024;
 
 impl Explorer {
-    pub async fn download() -> Self {
-        todo!("try to load ~1.2TB of Obs -> Abs map into memory, lmao")
+    pub fn download() -> Self {
+        let mut map = BTreeMap::new();
+        for street in Street::all() {
+            println!("downloading street {}", street);
+            let file = File::open(format!("centroid_{}.bin", street)).expect("file open");
+            let mut reader = BufReader::with_capacity(BUFFER, file);
+            let mut buffer = [0u8; 16];
+            while reader.read_exact(&mut buffer).is_ok() {
+                let obs_u64 = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
+                let abs_u64 = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
+                let observation = NodeObservation::from(obs_u64 as i64);
+                let abstraction = NodeAbstraction::from(abs_u64 as i64);
+                map.insert(observation, abstraction);
+            }
+        }
+        Self(map)
     }
     pub async fn upload() {
         Layer::outer()
             .await
             .upload() // river
-            .await
             .inner()
             .upload() // turn
-            .await
+            .inner()
             .inner()
             .upload() // flop
-            .await
             .inner()
             .upload() // preflop
-            .await;
+    ;
     }
 
     pub fn children(&self, game: &Game, ref history: Vec<&Edge>) -> Vec<(Data, Edge)> {
@@ -64,39 +103,5 @@ impl Explorer {
     }
     fn path_abstraction(&self, path: &Vec<&Edge>) -> PathAbstraction {
         todo!("pseudoharmonic action mapping for path abstraction")
-    }
-}
-/// the product of
-/// "information abstraction" and
-/// "action absraction" are what we index the (regret, strategy, average, ...) on
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Abstraction {
-    path: PathAbstraction,
-    node: NodeAbstraction,
-}
-impl From<(PathAbstraction, NodeAbstraction)> for Abstraction {
-    fn from(abstraction: (PathAbstraction, NodeAbstraction)) -> Self {
-        Self {
-            path: abstraction.0,
-            node: abstraction.1,
-        }
-    }
-}
-
-/// need to figure out how to  onsturct this
-/// psuedo harmonic action mapping for path abstraction
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-struct PathAbstraction(u64);
-
-/// just staple the past actions, via ::history(), together
-struct PathObservation(Vec<Edge>);
-/// combination of path and card observation
-/// uncompressed, but Abstractor will "compress" it
-/// from its learned hierachical KMEANS EMD mapping
-/// and also psuedo harmonic action mapping
-struct Observation(PathObservation, NodeObservation);
-impl From<Observation> for (PathObservation, NodeObservation) {
-    fn from(observation: Observation) -> Self {
-        (observation.0, observation.1)
     }
 }

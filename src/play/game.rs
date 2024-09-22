@@ -55,7 +55,8 @@ impl Game {
         loop {
             match node.chooser() {
                 Continuation::Decision(_) => {
-                    node.apply(Human::act(&node));
+                    let action = Human::act(&node);
+                    node.apply(action);
                 }
                 Continuation::Awaiting(_) => {
                     node.next_street();
@@ -68,7 +69,7 @@ impl Game {
     }
 
     pub fn consider(&self, _action: Action) -> Self {
-        return todo!("don't allow for partial application of flop cards, and maybe others");
+        return todo!("don't allow for partial application of flop cards, and maybe others. actually we only need to check if we're preflop, in which case we apply 2 additional draws from self.deck()");
         // let mut clone = self.clone();
         // clone.apply(action);
         // clone;
@@ -307,7 +308,7 @@ impl Game {
     fn next_street_public(&mut self) {
         let mut deck = self.deck();
         match self.board.street() {
-            Street::Rive | Street::Show => unreachable!("terminal"),
+            Street::Rive => unreachable!("terminal"),
             Street::Flop => self.apply(Action::Draw(deck.draw())),
             Street::Turn => self.apply(Action::Draw(deck.draw())),
             Street::Pref => {
