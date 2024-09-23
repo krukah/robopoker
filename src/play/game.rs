@@ -8,12 +8,13 @@ use super::Chips;
 use super::N;
 use super::STACK;
 use crate::cards::board::Board;
+use crate::cards::card::Card;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
 use crate::cards::observation::NodeObservation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
-use crate::play::continuation::Continuation;
+use crate::play::continuation::Transition;
 use crate::play::showdown::Showdown;
 use crate::players::human::Human;
 
@@ -44,9 +45,9 @@ impl Game {
             player: 0usize,
         };
         root.rotate();
-        root.next_hand_deal_cards();
-        root.next_hand_post_blinds(Self::sblind());
-        root.next_hand_post_blinds(Self::bblind());
+        root.deal_cards();
+        root.post_blinds(Self::sblind());
+        root.post_blinds(Self::bblind());
         root
     }
     pub fn play() -> ! {
@@ -54,33 +55,56 @@ impl Game {
         let mut node = Self::root();
         loop {
             match node.chooser() {
-                Continuation::Decision(_) => {
-                    let action = Human::act(&node);
-                    node.apply(action);
+                Transition::Terminal => {
+                    node.into_terminal();
                 }
-                Continuation::Awaiting(_) => {
-                    node.next_street();
+                Transition::Awaiting(street) => {
+                    node.show_revealed(street);
                 }
-                Continuation::Terminal => {
-                    node.next_hand();
+                Transition::Decision(_) => {
+                    node.make_decision();
                 }
             }
         }
     }
-
-    pub fn consider(&self, _action: Action) -> Self {
-        return todo!("don't allow for partial application of flop cards, and maybe others. actually we only need to check if we're preflop, in which case we apply 2 additional draws from self.deck()");
-        // let mut clone = self.clone();
-        // clone.apply(action);
-        // clone;
+    /// HACK
+    /// for chance transitions, only bc of Preflop,
+    /// we use an arbitrary (MIN) draw card
+    /// it will be "coerced" into an Edge::Chance
+    /// variant in the end anyway, in MCCFR
+    ///
+    /// it should actually just be a fix to the
+    /// Player Terminal Continuation complex
+    /// information gets lost and reintorudced at different layers of abstraction
+    pub fn children(&self) -> Vec<(Game, Action)> {
+        match self.chooser() {
+            Transition::Terminal => vec![],
+            Transition::Awaiting(street) => {
+                let mut child = self.clone();
+                child.show_revealed(street);
+                vec![(child, Action::Draw(Card::MAX))] //? TODO should we return a single draw? or use the street enum to drive this? let's use the street enum. it's inside of Awaiting(_). and we can condition on
+            }
+            Transition::Decision(_) => self
+                .options()
+                .into_iter()
+                .map(|decision| {
+                    assert!(!matches!(decision, Action::Draw(_)),);
+                    assert!(!matches!(decision, Action::Blind(_)),);
+                    let mut child = self.clone();
+                    child.apply(decision);
+                    (child, decision)
+                })
+                .collect(),
+        }
     }
-    pub fn apply(&mut self, ref action: Action) {
+
+    fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
         self.update_stdout(action);
         self.update_stacks(action);
         self.update_states(action);
         self.update_boards(action);
-        self.update_rotation(action);
+        self.update_nseats(action);
     }
     pub fn actor(&self) -> &Seat {
         self.actor_ref()
@@ -123,15 +147,15 @@ impl Game {
         // presumably we won't care about this
         // when we construct our MCCFR tree
     }
-    pub fn chooser(&self) -> Continuation {
+    pub fn chooser(&self) -> Transition {
         if self.is_terminal() {
-            return Continuation::Terminal;
+            return Transition::Terminal;
         }
         if self.is_sampling() {
-            return Continuation::Awaiting(self.board.street().next());
+            return Transition::Awaiting(self.board.street().next());
         }
         if self.is_decision() {
-            return Continuation::Decision(self.actor_relative_idx());
+            return Transition::Decision(self.actor_relative_idx());
         }
         unreachable!("game rules violated")
     }
@@ -213,7 +237,7 @@ impl Game {
             _ => {}
         }
     }
-    fn update_rotation(&mut self, action: &Action) {
+    fn update_nseats(&mut self, action: &Action) {
         match action {
             Action::Draw(_) => {}
             _ => self.rotate(),
@@ -241,16 +265,18 @@ impl Game {
     }
 
     //
-    fn next_hand(&mut self) {
+    fn into_terminal(&mut self) {
         assert!(self.seats.iter().all(|s| s.stack() > 0), "game over");
-        self.next_hand_give_chips();
-        self.next_hand_wipe_board();
-        self.next_hand_deal_cards();
-        self.next_hand_move_button();
-        self.next_hand_post_blinds(Self::sblind());
-        self.next_hand_post_blinds(Self::bblind());
+        // conclusion of this hand
+        self.give_chips();
+        // beginning of next hand
+        self.wipe_board();
+        self.deal_cards();
+        self.move_button();
+        self.post_blinds(Self::sblind());
+        self.post_blinds(Self::bblind());
     }
-    fn next_hand_give_chips(&mut self) {
+    fn give_chips(&mut self) {
         println!("::::::::::::::");
         println!("{}", self.board());
         for (i, (settlement, seat)) in self
@@ -264,12 +290,12 @@ impl Game {
         }
         println!();
     }
-    fn next_hand_wipe_board(&mut self) {
+    fn wipe_board(&mut self) {
         self.chips = 0;
         self.board.clear();
         assert!(self.board.street() == Street::Pref);
     }
-    fn next_hand_deal_cards(&mut self) {
+    fn deal_cards(&mut self) {
         assert!(self.board.street() == Street::Pref);
         let mut deck = Deck::new();
         for seat in self.seats.iter_mut() {
@@ -279,7 +305,7 @@ impl Game {
             seat.set_spent();
         }
     }
-    fn next_hand_move_button(&mut self) {
+    fn move_button(&mut self) {
         assert!(self.seats.len() == N);
         assert!(self.board.street() == Street::Pref);
         self.dealer += 1;
@@ -287,7 +313,7 @@ impl Game {
         self.player = 0;
         self.rotate();
     }
-    fn next_hand_post_blinds(&mut self, blind: Chips) {
+    fn post_blinds(&mut self, blind: Chips) {
         assert!(self.board.street() == Street::Pref);
         let stack = self.actor_ref().stack();
         if blind < stack {
@@ -298,8 +324,9 @@ impl Game {
     }
 
     //
-    fn next_street(&mut self) {
-        println!("{}", self.board.street().next());
+    fn show_revealed(&mut self, street: Street) {
+        assert!(self.board.street().next() == street);
+        println!("{}", street);
         self.player = 0;
         self.rotate();
         self.next_street_public();
@@ -322,6 +349,11 @@ impl Game {
         for seat in self.seats.iter_mut() {
             seat.set_stake();
         }
+    }
+
+    //
+    fn make_decision(&mut self) {
+        self.apply(Human::act(&self));
     }
 
     //

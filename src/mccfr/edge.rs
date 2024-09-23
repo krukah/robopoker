@@ -2,26 +2,16 @@ use crate::play::action::Action;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Edge(Action);
+pub enum Edge {
+    Choice(Action),
+    Chance,
+}
 
 impl From<Action> for Edge {
     fn from(action: Action) -> Self {
-        Self(action)
+        match action {
+            Action::Draw(_) | Action::Blind(_) => Self::Chance,
+            _ => Self::Choice(action),
+        }
     }
 }
-
-#[allow(unused)]
-trait CFREdge
-where
-    Self: Sized,
-    Self: Clone,
-    Self: Copy,
-    Self: Hash,
-    Self: Eq,
-    Self: PartialEq,
-    Self: Ord,
-    Self: PartialOrd,
-{
-}
-
-impl CFREdge for Edge {}
