@@ -1,7 +1,7 @@
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::player::Player;
-use crate::play::continuation::Continuation;
+use crate::play::continuation::Transition;
 use crate::play::game::Game;
 
 /// pot
@@ -35,7 +35,7 @@ impl Data {
     }
     pub fn player(&self) -> Player {
         match self.game.chooser() {
-            x @ Continuation::Decision(_) => Player::Choice(x),
+            x @ Transition::Decision(_) => Player::Choice(x),
             _ => Player::Chance,
         }
     }

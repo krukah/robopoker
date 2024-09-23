@@ -4,10 +4,10 @@ use robopoker::*;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::explorer::Explorer::upload();
+    clustering::explorer::Explorer::upload().await;
 
     // The counter-factual regret minimization.
-    mccfr::trainer::Trainer::empty().train(1e5 as usize);
+    mccfr::trainer::Solver::empty().train(1e5 as usize);
 
     // CLI game with yourself.
     play::game::Game::play();

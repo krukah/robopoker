@@ -2,7 +2,7 @@ use super::bucket::Bucket;
 use super::player::Player;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
-use crate::play::continuation::Continuation;
+use crate::play::continuation::Transition;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
@@ -43,7 +43,7 @@ impl Node {
     }
     pub fn payoff(&self, player: &Player) -> Utility {
         let position = match player {
-            Player::Choice(Continuation::Decision(x)) => x.to_owned(),
+            Player::Choice(Transition::Decision(x)) => x.to_owned(),
             _ => unreachable!("payoffs defined relative to decider"),
         };
         match player {

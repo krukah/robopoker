@@ -44,7 +44,7 @@ impl Layer {
     }
     /// Write to file. We'll open a new file for each layer, whatever.
     pub fn upload(self) -> Self {
-        println!("uploading {}", self.street);
+        println!("writing layer {}", self.street);
         self.truncate();
         self.upload_distance();
         self.upload_centroid();
@@ -151,10 +151,11 @@ impl Layer {
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
         use rand::seq::SliceRandom;
+        use rand::SeedableRng;
         // 0. Initialize data structures
         let mut kmeans = Vec::new();
         let ref mut histograms = self.points.values().map(|(histogram, _)| histogram);
-        let ref mut rng = rand::thread_rng();
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
         // 1. Choose 1st centroid randomly from the dataset
         let sample = histograms
             .collect::<Vec<&Histogram>>()

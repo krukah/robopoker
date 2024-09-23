@@ -5,10 +5,17 @@ use crate::cards::street::Street;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
-use crate::play::action::Action;
+use crate::mccfr::node::Node;
+use crate::mccfr::player::Player;
+use crate::mccfr::profile::Profile;
 use crate::play::game::Game;
+use crate::Probability;
+use rand::distributions::Distribution;
+use rand::distributions::WeightedIndex;
+use rand::Rng;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::hash::Hash;
 use std::io::BufReader;
 use std::io::Read;
 
@@ -43,9 +50,9 @@ impl Explorer {
         for street in Street::all() {
             println!("downloading street {}", street);
             let file = File::open(format!("centroid_{}.bin", street)).expect("file open");
-            let mut reader = BufReader::with_capacity(BUFFER, file);
-            let mut buffer = [0u8; 16];
-            while reader.read_exact(&mut buffer).is_ok() {
+            let ref mut reader = BufReader::with_capacity(BUFFER, file);
+            let ref mut buffer = [0u8; 16];
+            while reader.read_exact(buffer).is_ok() {
                 let obs_u64 = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
                 let abs_u64 = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
                 let observation = NodeObservation::from(obs_u64 as i64);
@@ -62,37 +69,80 @@ impl Explorer {
             .inner()
             .upload() // turn
             .inner()
-            .inner()
             .upload() // flop
             .inner()
             .upload() // preflop
     ;
     }
 
-    pub fn children(&self, game: &Game, ref history: Vec<&Edge>) -> Vec<(Data, Edge)> {
-        game.options()
+    /// sample children of a Node, according to the distribution defined by Profile.
+    /// we use external chance sampling, AKA explore all children of the traversing Player,
+    /// while only probing a single child for non-traverser Nodes.
+    /// this lands us in a high-variance, cheap-traversal, low-memory solution,
+    /// compared to chance sampling, internal sampling, or full tree sampling.
+    ///
+    /// i think this could also be modified into a recursive CFR calcuation
+    pub fn sample(&self, node: &Node, profile: &Profile) -> Vec<(Data, Edge)> {
+        let mut children = self.children(node);
+        // terminal nodes have no children and we sample all possible actions for the traverser
+        if node.player() == profile.walker() || children.is_empty() {
+            children
+        }
+        // choose random child uniformly. this is specific to the game of poker,
+        // where each action at chance node/info/buckets is uniformly likely.
+        else if node.player() == Player::chance() {
+            let ref mut rng = profile.rng(node);
+            let n = children.len();
+            let choice = rng.gen_range(0..n);
+            let chosen = children.remove(choice);
+            vec![chosen]
+        }
+        // choose child according to reach probabilities in strategy profile.
+        // on first iteration, this is equivalent to sampling uniformly.
+        else {
+            let ref mut rng = profile.rng(node);
+            let policy = children
+                .iter()
+                .map(|(_, edge)| profile.policy(node, edge))
+                .collect::<Vec<Probability>>();
+            let choice = WeightedIndex::new(policy)
+                .expect("at least one policy > 0")
+                .sample(rng);
+            let chosen = children.remove(choice);
+            vec![chosen]
+        }
+    }
+
+    /// produce the children of a Node.
+    /// we may need some Trainer-level references to produce children
+    fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+        let ref game = node.datum().game();
+        let ref path = node.history().into_iter().collect::<Vec<&Edge>>();
+        game.children()
             .into_iter()
-            .map(|action| (game.consider(action), action))
-            .map(|(child, birth)| self.explore(child, birth, history))
+            .map(|(g, a)| (g, Edge::from(a)))
+            .map(|(g, e)| self.extend(g, e, path))
             .collect()
     }
 
-    fn explore(&self, game: Game, action: Action, history: &Vec<&Edge>) -> (Data, Edge) {
-        let ref edge = Edge::from(action);
-        let mut history = history.clone();
-        history.push(edge);
+    /// extend a path with an Edge
+    /// wrap the (Game, Bucket) in a Data
+    fn extend(&self, game: Game, edge: Edge, path: &Vec<&Edge>) -> (Data, Edge) {
+        let mut history = path.clone();
+        history.push(&edge);
         let data = self.data(game, history);
-        let edge = edge.to_owned();
         (data, edge)
     }
+    /// generate a Bucket from Game
+    /// wrap the (Game, Bucket) in a Data
     fn data(&self, game: Game, path: Vec<&Edge>) -> Data {
-        Data::from((
-            game,
-            Bucket::from(Abstraction::from((
-                self.path_abstraction(&path),
-                self.card_abstraction(&game),
-            ))),
-        ))
+        Data::from((game, self.bucket(&game, &path)))
+    }
+    fn bucket(&self, ref game: &Game, ref path: &Vec<&Edge>) -> Bucket {
+        Bucket::from(Abstraction::from((
+            self.path_abstraction(path),
+            self.card_abstraction(game),
+        )))
     }
     fn card_abstraction(&self, game: &Game) -> NodeAbstraction {
         let ref observation = NodeObservation::from(game);

@@ -1,9 +1,9 @@
-use crate::play::continuation::Continuation;
+use crate::play::continuation::Transition;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Player {
-    Choice(Continuation),
+    Choice(Transition),
     Chance,
 }
 

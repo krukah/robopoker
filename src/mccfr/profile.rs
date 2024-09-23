@@ -4,10 +4,14 @@ use crate::mccfr::info::Info;
 use crate::mccfr::memory::Memory;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
-use crate::play::continuation::Continuation;
+use crate::play::continuation::Transition;
 use crate::Probability;
 use crate::Utility;
+use rand::rngs::SmallRng;
+use rand::SeedableRng;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 
 pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
 impl Profile {
@@ -65,6 +69,7 @@ impl Profile {
     /// make strategy proportional to this cumulative regret:
     /// p ( action ) = action_regret / sum_actions if sum > 0 ;
     ///              =             1 / num_actions if sum = 0 .
+    /// "CFR+ discounts prior iterations' contribution to the average strategy, but not the regrets."
     pub fn update_policy(&mut self, infoset: &Info) {
         assert!(infoset.node().player() == self.walker());
         let epochs = self.epochs();
@@ -94,8 +99,8 @@ impl Profile {
     /// used extensively in assertions and utility calculations
     pub fn walker(&self) -> Player {
         match self.1 % 2 {
-            0 => Player::Choice(Continuation::Decision(0)),
-            _ => Player::Choice(Continuation::Decision(1)),
+            0 => Player::Choice(Transition::Decision(0)),
+            _ => Player::Choice(Transition::Decision(1)),
         }
     }
     /// only used for Tree sampling in Monte Carlo Trainer.
@@ -113,6 +118,14 @@ impl Profile {
             .expect("policy bucket/edge has been visited before")
             .policy
             .to_owned()
+    }
+    /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
+    /// for our Monte Carlo sampling.
+    pub fn rng(&self, node: &Node) -> SmallRng {
+        let ref mut hasher = DefaultHasher::new();
+        node.bucket().hash(hasher);
+        self.epochs().hash(hasher);
+        SmallRng::seed_from_u64(hasher.finish())
     }
 
     /// access to regrets, policy, and averaged policy
