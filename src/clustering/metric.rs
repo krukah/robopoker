@@ -39,8 +39,7 @@ impl Metric for BTreeMap<Pair, f32> {
                     continue;
                 }
                 // find the nearest neighbor of X (source) from Y (sink)
-                let (ref drains, nearest) = y
-                    .domain()
+                let (ref drains, nearest) = y_domain
                     .iter()
                     .map(|mean| (*mean, self.distance(source, mean)))
                     .min_by(|&(_, ref a), &(_, ref b)| a.partial_cmp(b).expect("not NaN"))
@@ -64,11 +63,10 @@ impl Metric for BTreeMap<Pair, f32> {
                 }
             }
         }
-        println!("emd: {}", energy);
         energy
     }
     fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32 {
         let ref xor = Pair::from((x, y));
-        *self.get(xor).expect("precalculated distance")
+        self.get(xor).copied().expect("precalculated distance")
     }
 }

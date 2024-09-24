@@ -202,38 +202,46 @@ impl Layer {
     /// K Means++ implementation yields initial histograms
     /// Abstraction labels are random and require uniqueness.
     fn inner_kmeans(&self) -> BTreeMap<NodeAbstraction, (Histogram, Histogram)> {
+        println!("cluster {} >> into >> {}", self.street, self.street.prev());
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
         use rand::seq::SliceRandom;
         use rand::SeedableRng;
-        println!("cluster {} >> into >> {}", self.street, self.street.prev());
         // 0. Initialize data structures
-        let mut centroids = Vec::new();
-        let ref mut histograms = self.distributions.values().map(|(histogram, _)| histogram);
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
         // 1. Choose 1st centroid randomly from the dataset
-        let sample = histograms
-            .collect::<Vec<&Histogram>>()
-            .choose(rng)
-            .expect("non-empty lower observations")
-            .to_owned()
-            .clone();
-        centroids.push(sample);
+        let mut centroids = Vec::new();
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
+        centroids.push(
+            self.distributions
+                .values()
+                .map(|(hist, _)| hist)
+                .collect::<Vec<&Histogram>>()
+                .choose(rng)
+                .cloned()
+                .cloned()
+                .expect("non-empty lower observations"),
+        );
         // 2. Choose nth centroid with probability proportional to squared distance of nearest neighbors
         while centroids.len() < self.k() {
-            let ref mut starting = centroids;
-            let weights = histograms
-                .map(|histogram| self.proximity(starting, histogram))
+            let ref mut centroids = centroids;
+            let weights = self
+                .distributions
+                .values()
+                .map(|(hist, _)| hist)
+                .map(|histogram| self.proximity(centroids, histogram))
                 .map(|min| min * min)
                 .collect::<Vec<f32>>();
             let choice = WeightedIndex::new(weights)
                 .expect("valid weights array")
                 .sample(rng);
-            let sample = histograms
+            let sample = self
+                .distributions
+                .values()
+                .map(|(hist, _)| hist)
                 .nth(choice)
                 .expect("shared index with lowers")
                 .to_owned();
-            starting.push(sample);
+            centroids.push(sample);
         }
         // 3. Collect histograms and label with arbitrary (random) Abstractions
         centroids
@@ -242,7 +250,10 @@ impl Layer {
             .collect::<BTreeMap<_, _>>()
     }
 
-    fn proximity(&self, centroids: &mut Vec<Histogram>, x: &Histogram) -> f32 {
+    /// Find the minimum distance between a histogram and
+    /// a list of already existing centroids
+    /// for k means ++ initialization
+    fn proximity(&self, centroids: &Vec<Histogram>, x: &Histogram) -> f32 {
         centroids
             .iter()
             .map(|mean| self.metric.emd(mean, x))
@@ -324,7 +335,7 @@ impl Layer {
         }
     }
 
-    /// read centroid data from a file  
+    /// read centroid data from a file
     pub fn download_centroid(street: Street) -> BTreeMap<NodeObservation, NodeAbstraction> {
         let mut map = BTreeMap::new();
         let file = std::fs::File::open(format!("centroid_{}.bin", street)).expect("file open");
