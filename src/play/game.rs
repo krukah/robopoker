@@ -50,23 +50,7 @@ impl Game {
         root.post_blinds(Self::bblind());
         root
     }
-    pub fn play() -> ! {
-        println!("play");
-        let mut node = Self::root();
-        loop {
-            match node.chooser() {
-                Transition::Terminal => {
-                    node.into_terminal();
-                }
-                Transition::Awaiting(street) => {
-                    node.show_revealed(street);
-                }
-                Transition::Decision(_) => {
-                    node.make_decision();
-                }
-            }
-        }
-    }
+
     /// HACK
     /// for chance transitions, only bc of Preflop,
     /// we use an arbitrary (MIN) draw card
@@ -98,6 +82,27 @@ impl Game {
         }
     }
 
+    /// play against yourself in an infinite loop
+    /// similar to children(), except a single decision action will come from
+    /// Human::act() rather than all possible decision actions
+    /// coming from self.options()
+    pub fn play() -> ! {
+        let mut node = Self::root();
+        loop {
+            match node.chooser() {
+                Transition::Terminal => {
+                    node.into_terminal(); // node.clone(); node...(&mut self) ; node = node
+                }
+                Transition::Awaiting(street) => {
+                    node.show_revealed(street); // node.clone(); node...(&mut self) ; node = node
+                }
+                Transition::Decision(_) => {
+                    node.make_decision(); // node.clone(); node...(&mut self) ; node = node
+                }
+            }
+        }
+    }
+
     fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
         self.update_stdout(action);
@@ -106,6 +111,7 @@ impl Game {
         self.update_boards(action);
         self.update_nseats(action);
     }
+
     pub fn actor(&self) -> &Seat {
         self.actor_ref()
     }

@@ -46,21 +46,13 @@ const BUFFER: usize = 1024 * 1024;
 
 impl Explorer {
     pub fn download() -> Self {
-        let mut map = BTreeMap::new();
+        let mut abstractions = BTreeMap::new();
         for street in Street::all() {
-            println!("downloading street {}", street);
-            let file = File::open(format!("centroid_{}.bin", street)).expect("file open");
-            let ref mut reader = BufReader::with_capacity(BUFFER, file);
-            let ref mut buffer = [0u8; 16];
-            while reader.read_exact(buffer).is_ok() {
-                let obs_u64 = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
-                let abs_u64 = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
-                let observation = NodeObservation::from(obs_u64 as i64);
-                let abstraction = NodeAbstraction::from(abs_u64 as i64);
-                map.insert(observation, abstraction);
+            for (o, a) in Layer::download_centroid(street.clone()) {
+                abstractions.insert(o, a);
             }
         }
-        Self(map)
+        Self(abstractions)
     }
     pub async fn upload() {
         Layer::outer()
