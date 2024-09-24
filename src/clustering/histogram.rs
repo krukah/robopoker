@@ -1,3 +1,4 @@
+use crate::cards::observation::NodeObservation;
 use crate::clustering::abstraction::NodeAbstraction;
 use std::collections::HashMap;
 use std::ops::AddAssign;
@@ -43,5 +44,16 @@ impl Histogram {
                 .or_insert(0usize)
                 .add_assign(count.to_owned());
         }
+    }
+}
+
+impl From<NodeObservation> for Histogram {
+    fn from(observation: NodeObservation) -> Self {
+        assert!(observation.street() == crate::cards::street::Street::Turn);
+        observation
+            .outnodes()
+            .into_iter()
+            .map(|obs| NodeAbstraction::from(obs))
+            .fold(Histogram::default(), |hist, abs| hist.witness(abs))
     }
 }
