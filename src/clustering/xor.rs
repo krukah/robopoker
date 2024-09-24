@@ -13,6 +13,11 @@ impl From<Pair> for i64 {
         pair.0 as i64
     }
 }
+impl From<i64> for Pair {
+    fn from(i: i64) -> Self {
+        Self(i as u64)
+    }
+}
 
 impl tokio_postgres::types::ToSql for Pair {
     fn to_sql(
