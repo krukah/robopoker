@@ -14,11 +14,7 @@ use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::Rng;
 use std::collections::BTreeMap;
-use std::fs::File;
 use std::hash::Hash;
-use std::io::BufReader;
-use std::io::Read;
-
 /// need to figure out how to  onsturct this
 /// psuedo harmonic action mapping for path abstraction
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
@@ -42,7 +38,6 @@ impl From<(PathAbstraction, NodeAbstraction)> for Abstraction {
 }
 
 pub struct Explorer(BTreeMap<NodeObservation, NodeAbstraction>);
-const BUFFER: usize = 1024 * 1024;
 
 impl Explorer {
     pub fn download() -> Self {
