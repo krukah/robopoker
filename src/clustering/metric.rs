@@ -64,6 +64,7 @@ impl Metric for BTreeMap<Pair, f32> {
                 }
             }
         }
+        println!("emd: {}", energy);
         energy
     }
     fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32 {
