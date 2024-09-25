@@ -70,3 +70,44 @@ impl Metric for BTreeMap<Pair, f32> {
         self.get(xor).copied().expect("precalculated distance")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cards::observation::NodeObservation;
+    use crate::cards::street::Street;
+    use crate::cards::strength::Strength;
+    use crate::clustering::histogram::Histogram;
+    use crate::clustering::layer::Layer;
+    use rand::seq::SliceRandom;
+    /// select two random Turn hands
+    /// and calculate the EMD between them
+    /// not apples to apples but results should be intuitive
+    /// (?)
+    #[tokio::test]
+    async fn test_random_streets_emd() {
+        let obs1 = NodeObservation::from(Street::Turn);
+        let obs2 = NodeObservation::from(Street::Turn);
+        let ref h1 = Histogram::from(obs1.clone());
+        let ref h2 = Histogram::from(obs2.clone());
+        println!("{} {}\n{}", Strength::from(obs1.clone()), obs1, h1);
+        println!("{} {}\n{}", Strength::from(obs2.clone()), obs2, h2);
+        println!("EMD A << B: {}", Layer::outer_metric().emd(h1, h2));
+        println!("EMD B << A: {}", Layer::outer_metric().emd(h2, h1));
+    }
+
+    #[tokio::test]
+    async fn test_random_pair_symmetry() {
+        let ref mut rng = rand::thread_rng();
+        let metric = Layer::outer_metric();
+        let histo = Histogram::from(NodeObservation::from(Street::Turn));
+        let ref pair = histo
+            .domain()
+            .choose_multiple(rng, 2)
+            .cloned()
+            .collect::<Vec<_>>();
+        let d1 = metric.distance(pair[0], pair[1]);
+        let d2 = metric.distance(pair[1], pair[0]);
+        assert!(d1 == d2,);
+    }
+}
