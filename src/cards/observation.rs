@@ -1,6 +1,7 @@
 use crate::cards::rank::Rank;
 
 use super::card::Card;
+use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
 use super::street::Street;
@@ -104,6 +105,22 @@ impl From<(Hand, Hand)> for NodeObservation {
     }
 }
 
+/// Generate a random observation for a given street
+impl From<Street> for NodeObservation {
+    fn from(street: Street) -> Self {
+        let n = match street {
+            Street::Pref => 0,
+            Street::Flop => 3,
+            Street::Turn => 4,
+            Street::Rive => 5,
+        };
+        let mut deck = Deck::new();
+        let public = Hand::from((0..n).map(|_| deck.draw()).collect::<Vec<Card>>());
+        let secret = Hand::from((0..2).map(|_| deck.draw()).collect::<Vec<Card>>());
+        Self::from((secret, public))
+    }
+}
+
 /// i64 isomorphism
 ///
 /// Packs all the cards in order, starting from LSBs.
@@ -138,6 +155,12 @@ impl From<i64> for NodeObservation {
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
         NodeObservation { secret, public }
+    }
+}
+
+impl From<NodeObservation> for Strength {
+    fn from(observation: NodeObservation) -> Self {
+        Strength::from(Hand::add(observation.public, observation.secret))
     }
 }
 

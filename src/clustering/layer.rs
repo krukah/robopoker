@@ -153,7 +153,7 @@ impl Layer {
     fn recycle(&mut self) {
         for (_, (old, new)) in self.kabstractions.iter_mut() {
             std::mem::swap(old, new);
-            new.clear();
+            new.destroy();
         }
     }
 
@@ -262,12 +262,19 @@ impl Layer {
     }
 
     /// Generate the  baseline metric between equity bucket abstractions. Keeping the u64->f32 conversion is fine for distance since it preserves distance
-    fn outer_metric() -> BTreeMap<Pair, f32> {
-        println!("calculating equity bucket metric");
+    pub fn outer_metric() -> BTreeMap<Pair, f32> {
+        // println!("calculating equity bucket metric");
         let mut metric = BTreeMap::new();
-        for i in 0..NodeAbstraction::EQUITIES as u64 {
-            for j in i..NodeAbstraction::EQUITIES as u64 {
+        for i in 1..=NodeAbstraction::N as u64 {
+            for j in i..=NodeAbstraction::N as u64 {
                 let distance = (j - i) as f32;
+                // it could be interesting to make this quadratic...
+                // kinda like E[ equity^2 ] metric
+                // but only for Turn <: River projections
+                // more interestingly, it may capture the idea of
+                // "1% edge over your opponent means
+                // more in the ~99% regime
+                // than in the ~1% regime"
                 let ref i = NodeAbstraction::from(i);
                 let ref j = NodeAbstraction::from(j);
                 let index = Pair::from((i, j));
