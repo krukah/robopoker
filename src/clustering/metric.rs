@@ -99,8 +99,8 @@ mod tests {
         let obs2 = NodeObservation::from(Street::Turn);
         let ref h1 = Histogram::from(obs1.clone());
         let ref h2 = Histogram::from(obs2.clone());
-        println!("{}{} {}", h1, Strength::from(obs1.clone()), obs1);
-        println!("{}{} {}", h2, Strength::from(obs2.clone()), obs2);
+        println!("{}\n{} {}", h1, Strength::from(obs1.clone()), obs1);
+        println!("{}\n{} {}", h2, Strength::from(obs2.clone()), obs2);
         println!();
         println!("EMD A >> B: {}", Layer::outer_metric().emd(h1, h2));
         println!("EMD B >> A: {}", Layer::outer_metric().emd(h2, h1));
