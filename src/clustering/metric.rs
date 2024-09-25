@@ -14,38 +14,46 @@ pub trait Metric {
 }
 
 impl Metric for BTreeMap<Pair, f32> {
-    fn emd(&self, x: &Histogram, y: &Histogram) -> f32 {
-        let x_domain = x.domain();
-        let y_domain = y.domain();
-        let n = x_domain.len();
-        let m = y_domain.len();
+    /// Earth Mover's Distance (EMD) between histograms
+    ///
+    /// This function calculates the Earth Mover's Distance (EMD) between two histograms.
+    /// EMD is a measure of the distance between two probability distributions.
+    /// It is calculated by finding the minimum amount of "work" required to transform
+    /// one distribution into the other.
+    ///
+    /// Beware the asymmetry:
+    /// EMD(X,Y) != EMD(Y,X)
+    /// Centroid should be the "hole" (sink) in the EMD calculation
+    fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
+        let x = source.domain();
+        let y = target.domain();
         let mut energy = 0.0;
-        let mut completed = x_domain
+        let mut hasmoved = x
             .iter()
             .map(|&a| (a, false))
             .collect::<BTreeMap<&NodeAbstraction, bool>>();
-        let mut pressures = x_domain
+        let mut notmoved = x
             .iter()
-            .map(|&a| (a, 1.0 / n as f32))
+            .map(|&a| (a, 1.0 / x.len() as f32))
             .collect::<BTreeMap<&NodeAbstraction, f32>>();
-        let mut vacancies = y_domain
+        let mut unfilled = y
             .iter()
-            .map(|&a| (a, y.weight(a)))
+            .map(|&a| (a, target.weight(a)))
             .collect::<BTreeMap<&NodeAbstraction, f32>>(); // this is effectively a clone
-        for _ in 0..m {
-            for source in x_domain.iter() {
+        for _ in 0..y.len() {
+            for pile in x.iter() {
                 // skip if we have already moved all the earth from this source
-                if *completed.get(source).expect("in x domain") {
+                if *hasmoved.get(pile).expect("in x domain") {
                     continue;
                 }
                 // find the nearest neighbor of X (source) from Y (sink)
-                let (ref drains, nearest) = y_domain
+                let (ref hole, nearest) = y
                     .iter()
-                    .map(|mean| (*mean, self.distance(source, mean)))
+                    .map(|mean| (*mean, self.distance(pile, mean)))
                     .min_by(|&(_, ref a), &(_, ref b)| a.partial_cmp(b).expect("not NaN"))
                     .expect("y domain not empty");
-                let demand = *pressures.get(source).expect("in x domain");
-                let vacant = *vacancies.get(drains).expect("in y domain");
+                let demand = *notmoved.get(pile).expect("in x domain");
+                let vacant = *unfilled.get(hole).expect("in y domain");
                 // decide if we can remove earth from both distributions
                 if vacant > 0.0 {
                     energy += nearest * demand.min(vacant);
@@ -54,12 +62,12 @@ impl Metric for BTreeMap<Pair, f32> {
                 }
                 // remove earth from both distributions
                 if demand > vacant {
-                    *pressures.get_mut(source).expect("in x domain") -= vacant;
-                    *vacancies.get_mut(drains).expect("in y domain") = 0.0;
+                    *notmoved.get_mut(pile).expect("in x domain") -= vacant;
+                    *unfilled.get_mut(hole).expect("in y domain") = 0.0;
                 } else {
-                    *completed.get_mut(source).expect("in x domain") = true;
-                    *pressures.get_mut(source).expect("in x domain") = 0.0;
-                    *vacancies.get_mut(drains).expect("in y domain") -= demand;
+                    *hasmoved.get_mut(pile).expect("in x domain") = true;
+                    *notmoved.get_mut(pile).expect("in x domain") = 0.0;
+                    *unfilled.get_mut(hole).expect("in y domain") -= demand;
                 }
             }
         }
