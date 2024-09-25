@@ -1,6 +1,6 @@
 use crate::cards::observation::NodeObservation;
 use crate::clustering::abstraction::NodeAbstraction;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ops::AddAssign;
 
 /// A distribution over arbitrary Abstractions.
@@ -10,7 +10,7 @@ use std::ops::AddAssign;
 #[derive(Debug, Default, Clone)]
 pub struct Histogram {
     norm: usize,
-    weights: HashMap<NodeAbstraction, usize>,
+    weights: BTreeMap<NodeAbstraction, usize>,
 }
 
 impl Histogram {
@@ -29,7 +29,7 @@ impl Histogram {
             .add_assign(1usize);
         this
     }
-    pub fn clear(&mut self) {
+    pub fn destroy(&mut self) {
         self.norm = 0;
         self.weights.clear();
     }
@@ -56,5 +56,51 @@ impl From<NodeObservation> for Histogram {
             .into_iter()
             .map(|obs| NodeAbstraction::from(obs))
             .fold(Histogram::default(), |hist, abs| hist.witness(abs))
+    }
+}
+impl std::fmt::Display for Histogram {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // 1. interpret each key of the Histogram as probability
+        let ref distribution = self
+            .weights
+            .keys()
+            .map(|key| u64::from(key.clone()) as f32 / NodeAbstraction::N_EQUITY_QUANTILES as f32)
+            .collect::<Vec<f32>>();
+        // 2. they should already be sorted bc BTreeMap
+        // 3. Create 32 bins for the x-axis
+        let n_x_bins = 32;
+        let ref mut bins = vec![0.0; n_x_bins];
+        for probability in distribution {
+            let x = probability * n_x_bins as f32;
+            let x = x.floor() as usize;
+            let x = x.min(n_x_bins - 1);
+            bins[x] += probability;
+        }
+        // 4. Print the histogram
+        writeln!(f)?;
+        let n_y_bins = 8;
+        for y in (1..=n_y_bins).rev() {
+            for bin in bins.iter().copied() {
+                if bin >= y as f32 / n_y_bins as f32 {
+                    write!(f, "█")?;
+                } else if bin >= y as f32 / n_y_bins as f32 - 0.75 / n_y_bins as f32 {
+                    write!(f, "▆")?;
+                } else if bin >= y as f32 / n_y_bins as f32 - 0.50 / n_y_bins as f32 {
+                    write!(f, "▄")?;
+                } else if bin >= y as f32 / n_y_bins as f32 - 0.25 / n_y_bins as f32 {
+                    write!(f, "▂")?;
+                } else {
+                    write!(f, " ")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        // 5. Print x-axis
+        for _ in 0..n_x_bins {
+            write!(f, ".")?;
+        }
+        writeln!(f)?;
+        // 6. flush to STDOUT
+        Ok(())
     }
 }
