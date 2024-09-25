@@ -79,7 +79,7 @@ impl Layer {
         println!("clustering kmeans {} < {}", self.street.prev(), self.street);
         let t = self.t();
         let mut layer = self;
-        let ref mut progress = Progress::new(t, 10);
+        let ref mut progress = Progress::new(t, 25);
         for _ in 0..t {
             for observation in layer
                 .distributions
@@ -172,7 +172,8 @@ impl Layer {
                     let index = Pair::from((x, y));
                     let ref x = centroids.get(x).expect("in centroids").0;
                     let ref y = centroids.get(y).expect("in centroids").0;
-                    let distance = self.metric.emd(x, y); // + self.metric.emd(y, x);
+                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
+                    let distance = distance / 2.0;
                     metric.insert(index, distance);
                 }
             }
@@ -316,7 +317,7 @@ impl Layer {
     fn upload_centroid(&self) {
         let mut file =
             std::fs::File::create(format!("centroid_{}.bin", self.street)).expect("create file");
-        let mut progress = Progress::new(self.distributions.len(), 10_000_000);
+        let mut progress = Progress::new(self.distributions.len(), self.distributions.len() / 20);
         for (observation, (_, abstraction)) in self.distributions.iter() {
             use std::io::Write;
             let obs = i64::from(*observation) as u64;
@@ -331,7 +332,7 @@ impl Layer {
     fn upload_distance(&self) {
         let mut file =
             std::fs::File::create(format!("distance_{}.bin", self.street)).expect("create file");
-        let mut progress = Progress::new(self.metric.len(), 1_000);
+        let mut progress = Progress::new(self.metric.len(), self.metric.len() / 20);
         for (pair, distance) in self.metric.iter() {
             use std::io::Write;
             let pair = i64::from(*pair) as u64;
