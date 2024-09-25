@@ -16,7 +16,7 @@ pub trait Metric {
 impl Metric for BTreeMap<Pair, f32> {
     /// Earth Mover's Distance (EMD) between histograms
     ///
-    /// This function calculates the Earth Mover's Distance (EMD) between two histograms.
+    /// This function approximates the Earth Mover's Distance (EMD) between two histograms.
     /// EMD is a measure of the distance between two probability distributions.
     /// It is calculated by finding the minimum amount of "work" required to transform
     /// one distribution into the other.
@@ -47,16 +47,16 @@ impl Metric for BTreeMap<Pair, f32> {
                     continue;
                 }
                 // find the nearest neighbor of X (source) from Y (sink)
-                let (ref hole, nearest) = y
+                let (hole, distance) = y
                     .iter()
-                    .map(|mean| (*mean, self.distance(pile, mean)))
-                    .min_by(|&(_, ref a), &(_, ref b)| a.partial_cmp(b).expect("not NaN"))
+                    .map(|sink| (*sink, self.distance(pile, sink)))
+                    .min_by(|(_, ref a), (_, ref b)| a.partial_cmp(b).expect("not NaN"))
                     .expect("y domain not empty");
+                // decide if we can remove earth from both distributions
                 let demand = *notmoved.get(pile).expect("in x domain");
                 let vacant = *unfilled.get(hole).expect("in y domain");
-                // decide if we can remove earth from both distributions
                 if vacant > 0.0 {
-                    energy += nearest * demand.min(vacant);
+                    energy += distance * demand.min(vacant);
                 } else {
                     continue;
                 }
@@ -73,6 +73,10 @@ impl Metric for BTreeMap<Pair, f32> {
         }
         energy
     }
+
+    /// generated recursively and hiearchically
+    /// we can calculate the distance between two abstractions
+    /// by eagerly finding distance between their centroids
     fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32 {
         let ref xor = Pair::from((x, y));
         self.get(xor).copied().expect("precalculated distance")

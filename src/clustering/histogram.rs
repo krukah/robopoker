@@ -46,6 +46,16 @@ impl Histogram {
                 .add_assign(count.to_owned());
         }
     }
+
+    /// ONLY WORKS FOR STREET::TURN
+    pub fn expectation(&self) -> f32 {
+        self.weights
+            .iter()
+            .map(|(key, value)| (u64::from(key.clone()) as f32, value.clone() as f32))
+            .map(|(x, y)| (x / NodeAbstraction::N as f32, y / self.norm as f32))
+            .map(|(x, y)| x * y)
+            .sum()
+    }
 }
 
 impl From<NodeObservation> for Histogram {
@@ -101,7 +111,6 @@ impl std::fmt::Display for Histogram {
         for _ in 0..n_x_bins {
             write!(f, "-")?;
         }
-        writeln!(f)?;
         // 6. flush to STDOUT
         Ok(())
     }
