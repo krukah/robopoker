@@ -18,10 +18,12 @@ impl NodeAbstraction {
 
 impl From<NodeObservation> for NodeAbstraction {
     fn from(observation: NodeObservation) -> Self {
+        assert!(observation.street() == Street::Rive);
+        use crate::cards::street::Street;
         let equity = observation.equity();
         let quantile = equity * (Self::N - 1) as f32;
-        let quantile = quantile.floor() as u8 as u64 + 1;
-        Self::from(quantile)
+        let quantile = quantile.floor() as u8 + 1;
+        Self(quantile as u64)
     }
 }
 

@@ -109,8 +109,8 @@ impl Layer {
             .get(observation)
             .expect("in continuations")
             .0;
-        for (centroid, (average, _)) in self.kabstractions.iter() {
-            let distance = self.metric.emd(average, histogram);
+        for (centroid, (target, _)) in self.kabstractions.iter() {
+            let distance = self.metric.emd(histogram, target);
             if distance < nearests {
                 nearests = distance;
                 neighbor = centroid.to_owned();
@@ -172,7 +172,7 @@ impl Layer {
                     let index = Pair::from((x, y));
                     let ref x = centroids.get(x).expect("in centroids").0;
                     let ref y = centroids.get(y).expect("in centroids").0;
-                    let distance = self.metric.emd(x, y);
+                    let distance = self.metric.emd(x, y); // + self.metric.emd(y, x);
                     metric.insert(index, distance);
                 }
             }
@@ -256,9 +256,9 @@ impl Layer {
     fn proximity(&self, centroids: &Vec<Histogram>, x: &Histogram) -> f32 {
         centroids
             .iter()
-            .map(|mean| self.metric.emd(mean, x))
+            .map(|target| self.metric.emd(x, target))
             .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .expect("find minimum")
+            .expect("find nearest neighbor")
     }
 
     /// Generate the  baseline metric between equity bucket abstractions. Keeping the u64->f32 conversion is fine for distance since it preserves distance
