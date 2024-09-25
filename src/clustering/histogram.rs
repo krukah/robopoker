@@ -58,27 +58,29 @@ impl From<NodeObservation> for Histogram {
             .fold(Histogram::default(), |hist, abs| hist.witness(abs))
     }
 }
+
 impl std::fmt::Display for Histogram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // 1. interpret each key of the Histogram as probability
         let ref distribution = self
             .weights
-            .keys()
-            .map(|key| u64::from(key.clone()) as f32 / NodeAbstraction::N_EQUITY_QUANTILES as f32)
-            .collect::<Vec<f32>>();
+            .iter()
+            .map(|(key, value)| (u64::from(key.clone()) as f32, value.clone() as f32))
+            .map(|(x, y)| (x / NodeAbstraction::N as f32, y / self.norm as f32))
+            .collect::<Vec<(f32, f32)>>();
         // 2. they should already be sorted bc BTreeMap
         // 3. Create 32 bins for the x-axis
         let n_x_bins = 32;
         let ref mut bins = vec![0.0; n_x_bins];
-        for probability in distribution {
-            let x = probability * n_x_bins as f32;
+        for (key, value) in distribution {
+            let x = key * n_x_bins as f32;
             let x = x.floor() as usize;
             let x = x.min(n_x_bins - 1);
-            bins[x] += probability;
+            bins[x] += value;
         }
         // 4. Print the histogram
         writeln!(f)?;
-        let n_y_bins = 8;
+        let n_y_bins = 10;
         for y in (1..=n_y_bins).rev() {
             for bin in bins.iter().copied() {
                 if bin >= y as f32 / n_y_bins as f32 {
@@ -97,7 +99,7 @@ impl std::fmt::Display for Histogram {
         }
         // 5. Print x-axis
         for _ in 0..n_x_bins {
-            write!(f, ".")?;
+            write!(f, "-")?;
         }
         writeln!(f)?;
         // 6. flush to STDOUT
