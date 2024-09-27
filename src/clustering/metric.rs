@@ -1,4 +1,4 @@
-use crate::clustering::abstraction::NodeAbstraction;
+use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 /// essential for clustering algorithms and comparing distributions.
 pub trait Metric {
     fn emd(&self, x: &Histogram, y: &Histogram) -> f32;
-    fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32;
+    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32;
 }
 
 impl Metric for BTreeMap<Pair, f32> {
@@ -31,15 +31,15 @@ impl Metric for BTreeMap<Pair, f32> {
         let mut hasmoved = x
             .iter()
             .map(|&a| (a, false))
-            .collect::<BTreeMap<&NodeAbstraction, bool>>();
+            .collect::<BTreeMap<&Abstraction, bool>>();
         let mut notmoved = x
             .iter()
             .map(|&a| (a, 1.0 / x.len() as f32))
-            .collect::<BTreeMap<&NodeAbstraction, f32>>();
+            .collect::<BTreeMap<&Abstraction, f32>>();
         let mut unfilled = y
             .iter()
             .map(|&a| (a, target.weight(a)))
-            .collect::<BTreeMap<&NodeAbstraction, f32>>(); // this is effectively a clone
+            .collect::<BTreeMap<&Abstraction, f32>>(); // this is effectively a clone
         for _ in 0..y.len() {
             for pile in x.iter() {
                 // skip if we have already moved all the earth from this source
@@ -77,7 +77,7 @@ impl Metric for BTreeMap<Pair, f32> {
     /// generated recursively and hiearchically
     /// we can calculate the distance between two abstractions
     /// by eagerly finding distance between their centroids
-    fn distance(&self, x: &NodeAbstraction, y: &NodeAbstraction) -> f32 {
+    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
         let ref xor = Pair::from((x, y));
         self.get(xor).copied().expect("precalculated distance")
     }
@@ -86,7 +86,7 @@ impl Metric for BTreeMap<Pair, f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::NodeObservation;
+    use crate::cards::observation::Observation;
     use crate::cards::street::Street;
     use crate::cards::strength::Strength;
     use crate::clustering::histogram::Histogram;
@@ -95,8 +95,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_random_streets_emd() {
-        let obs1 = NodeObservation::from(Street::Turn);
-        let obs2 = NodeObservation::from(Street::Turn);
+        let obs1 = Observation::from(Street::Turn);
+        let obs2 = Observation::from(Street::Turn);
         let ref h1 = Histogram::from(obs1.clone());
         let ref h2 = Histogram::from(obs2.clone());
         println!("{}\n{} {}", h1, Strength::from(obs1.clone()), obs1);
@@ -110,7 +110,7 @@ mod tests {
     async fn test_random_pair_symmetry() {
         let ref mut rng = rand::thread_rng();
         let metric = Layer::outer_metric();
-        let histo = Histogram::from(NodeObservation::from(Street::Turn));
+        let histo = Histogram::from(Observation::from(Street::Turn));
         let ref pair = histo
             .domain()
             .choose_multiple(rng, 2)

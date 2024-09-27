@@ -1,4 +1,4 @@
-use crate::cards::observation::NodeObservation;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::clustering::histogram::Histogram;
@@ -7,7 +7,7 @@ use crate::clustering::histogram::Histogram;
 struct Potential;
 impl std::fmt::Display for Potential {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let observation = NodeObservation::from(Street::Turn);
+        let observation = Observation::from(Street::Turn);
         let distribution = Histogram::from(observation.clone());
         let strength = Strength::from(observation.clone());
         let equity = distribution.expectation();

@@ -1,19 +1,19 @@
-use crate::cards::observation::NodeObservation;
-use crate::clustering::abstraction::NodeAbstraction;
+use crate::cards::observation::Observation;
+use crate::clustering::abstraction::Abstraction;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 pub struct Producer {
-    tx: Sender<(NodeObservation, NodeAbstraction)>,
+    tx: Sender<(Observation, Abstraction)>,
     shard: usize,
-    rivers: Arc<Vec<NodeObservation>>,
+    rivers: Arc<Vec<Observation>>,
 }
 
 impl Producer {
     pub fn new(
         shard: usize,
-        tx: Sender<(NodeObservation, NodeAbstraction)>,
-        rivers: Arc<Vec<NodeObservation>>,
+        tx: Sender<(Observation, Abstraction)>,
+        rivers: Arc<Vec<Observation>>,
     ) -> Self {
         Self { tx, shard, rivers }
     }
@@ -26,7 +26,7 @@ impl Producer {
             match self.rivers.get(index) {
                 None => return,
                 Some(&observation) => {
-                    let abstraction = NodeAbstraction::from(observation);
+                    let abstraction = Abstraction::from(observation);
                     let observation = observation.clone();
                     self.tx
                         .send((observation, abstraction))

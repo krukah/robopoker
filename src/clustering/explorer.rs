@@ -1,8 +1,9 @@
-use super::abstraction::NodeAbstraction;
+use super::abstraction::Abstraction;
 use super::layer::Layer;
-use crate::cards::observation::NodeObservation;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::mccfr::bucket::Bucket;
+use crate::mccfr::bucket::Path;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
@@ -15,30 +16,15 @@ use rand::distributions::WeightedIndex;
 use rand::Rng;
 use std::collections::BTreeMap;
 use std::hash::Hash;
-
-/// need to figure out how to  onsturct this
-/// psuedo harmonic action mapping for path abstraction
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-struct PathAbstraction(u64);
-
 /// the product of
 /// "information abstraction" and
 /// "action absraction" are what we index the (regret, strategy, average, ...) on
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Abstraction {
-    path: PathAbstraction,
-    node: NodeAbstraction,
+pub struct BucketAbstraction {
+    path: Path,
+    node: Abstraction,
 }
-impl From<(PathAbstraction, NodeAbstraction)> for Abstraction {
-    fn from(abstraction: (PathAbstraction, NodeAbstraction)) -> Self {
-        Self {
-            path: abstraction.0,
-            node: abstraction.1,
-        }
-    }
-}
-
-pub struct Explorer(BTreeMap<NodeObservation, NodeAbstraction>);
+pub struct Explorer(BTreeMap<Observation, Abstraction>);
 
 impl Explorer {
     pub fn download() -> Self {
@@ -109,13 +95,13 @@ impl Explorer {
         game.children()
             .into_iter()
             .map(|(g, a)| (g, Edge::from(a)))
-            .map(|(g, e)| self.extend(g, e, path))
+            .map(|(g, e)| self.explore(g, e, path))
             .collect()
     }
 
     /// extend a path with an Edge
     /// wrap the (Game, Bucket) in a Data
-    fn extend(&self, game: Game, edge: Edge, path: &Vec<&Edge>) -> (Data, Edge) {
+    fn explore(&self, game: Game, edge: Edge, path: &Vec<&Edge>) -> (Data, Edge) {
         let mut history = path.clone();
         history.push(&edge);
         let data = self.data(game, history);
@@ -124,22 +110,25 @@ impl Explorer {
     /// generate a Bucket from Game
     /// wrap the (Game, Bucket) in a Data
     fn data(&self, game: Game, path: Vec<&Edge>) -> Data {
-        Data::from((game, self.bucket(&game, &path)))
+        let bucket = self.bucket(&game, &path);
+        Data::from((game, bucket))
     }
-    fn bucket(&self, ref game: &Game, ref path: &Vec<&Edge>) -> Bucket {
-        Bucket::from(Abstraction::from((
-            self.path_abstraction(path),
-            self.card_abstraction(game),
-        )))
+    fn bucket(&self, game: &Game, path: &Vec<&Edge>) -> Bucket {
+        let path = self.path_abstraction(path);
+        let card = self.card_abstraction(game);
+        Bucket::from((path, card))
     }
-    fn card_abstraction(&self, game: &Game) -> NodeAbstraction {
-        let ref observation = NodeObservation::from(game);
+
+    /// abstraction methods
+    ///
+    fn card_abstraction(&self, game: &Game) -> Abstraction {
+        let ref observation = Observation::from(game);
         self.0
             .get(observation)
             .copied()
             .expect("download should have all Node observations")
     }
-    fn path_abstraction(&self, path: &Vec<&Edge>) -> PathAbstraction {
+    fn path_abstraction(&self, path: &Vec<&Edge>) -> Path {
         todo!("pseudoharmonic action mapping for path abstraction")
     }
 }

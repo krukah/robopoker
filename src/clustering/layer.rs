@@ -1,6 +1,6 @@
-use crate::cards::observation::NodeObservation;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::NodeAbstraction;
+use crate::clustering::abstraction::Abstraction;
 use crate::clustering::consumer::Consumer;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
@@ -16,8 +16,8 @@ use std::sync::Arc;
 pub struct Layer {
     street: Street,
     metric: BTreeMap<Pair, f32>, // impl Metric
-    points: BTreeMap<NodeObservation, (Histogram, NodeAbstraction)>, // impl Projection
-    kmeans: BTreeMap<NodeAbstraction, (Histogram, Histogram)>,
+    points: BTreeMap<Observation, (Histogram, Abstraction)>, // impl Projection
+    kmeans: BTreeMap<Abstraction, (Histogram, Histogram)>,
 }
 
 impl Layer {
@@ -101,9 +101,9 @@ impl Layer {
 
     /// find the nearest neighbor for a given observation
     /// returns the node abstraction that is closest to the observation
-    fn neighbor(&self, observation: &NodeObservation) -> NodeAbstraction {
+    fn neighbor(&self, observation: &Observation) -> Abstraction {
         let mut nearests = f32::MAX;
-        let mut neighbor = NodeAbstraction::default();
+        let mut neighbor = Abstraction::default();
         let ref histogram = self.points.get(observation).expect("in continuations").0;
         for (centroid, (target, _)) in self.kmeans.iter() {
             let distance = self.metric.emd(histogram, target);
@@ -118,7 +118,7 @@ impl Layer {
     /// assign the given observation to the specified neighbor
     /// by updating self.distributions mapping
     /// on each iteration, we update the abstraction of the observation
-    fn assign(&mut self, observation: &NodeObservation, neighbor: &NodeAbstraction) {
+    fn assign(&mut self, observation: &Observation, neighbor: &Abstraction) {
         self.points
             .get_mut(observation)
             .expect("in continuations")
@@ -130,7 +130,7 @@ impl Layer {
     /// we only update the .1 Histogram which is NOT used to calculate kmeans
     /// for everyone else on this iteration.
     /// they get swapped and cleared on the next iteration.
-    fn absorb(&mut self, observation: &NodeObservation, neighbor: &NodeAbstraction) {
+    fn absorb(&mut self, observation: &Observation, neighbor: &Abstraction) {
         let ref children = self.points.get(observation).expect("in continuations").0;
         self.kmeans
             .get_mut(neighbor)
@@ -176,24 +176,21 @@ impl Layer {
     /// Generate all possible obersvations of the next innermost layer.
     /// Assign them to arbitrary abstractions. They will be overwritten during kmeans iterations.
     /// Base case is River which comes from equity bucket calculation.
-    fn inner_points(&self) -> BTreeMap<NodeObservation, (Histogram, NodeAbstraction)> {
+    fn inner_points(&self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
         println!("projecting {} >> on >> {}", self.street, self.street.prev(),);
         let mut progress = Progress::new(self.k(), self.k() / 50);
-        NodeObservation::all(self.street.prev())
+        Observation::all(self.street.prev())
             .into_iter()
             .map(|inner| {
                 progress.tick();
-                (
-                    inner,
-                    (self.points.project(inner), NodeAbstraction::default()),
-                )
+                (inner, (self.points.project(inner), Abstraction::default()))
             })
             .collect()
     }
 
     /// K Means++ implementation yields initial histograms
     /// Abstraction labels are random and require uniqueness.
-    fn inner_kmeans(&self) -> BTreeMap<NodeAbstraction, (Histogram, Histogram)> {
+    fn inner_kmeans(&self) -> BTreeMap<Abstraction, (Histogram, Histogram)> {
         println!("cluster {} >> into >> {}", self.street, self.street.prev());
         use rand::distributions::Distribution;
         use rand::distributions::WeightedIndex;
@@ -232,12 +229,12 @@ impl Layer {
                 .cloned()
                 .expect("shared index with lowers");
             centroids.push(sample);
-            progress.tick();
+            progress.tick(); // .8 hr / cycle
         }
         // 3. Collect histograms and label with arbitrary (random) Abstractions
         centroids
             .into_iter()
-            .map(|mean| (NodeAbstraction::random(), (mean, Histogram::default())))
+            .map(|mean| (Abstraction::random(), (mean, Histogram::default())))
             .collect::<BTreeMap<_, _>>()
     }
 
@@ -256,8 +253,8 @@ impl Layer {
     pub fn outer_metric() -> BTreeMap<Pair, f32> {
         // println!("calculating equity bucket metric");
         let mut metric = BTreeMap::new();
-        for i in 1..=NodeAbstraction::N as u64 {
-            for j in i..=NodeAbstraction::N as u64 {
+        for i in 1..=Abstraction::N as u64 {
+            for j in i..=Abstraction::N as u64 {
                 let distance = (j - i) as f32;
                 // it could be interesting to make this quadratic...
                 // kinda like E[ equity^2 ] metric
@@ -266,8 +263,8 @@ impl Layer {
                 // "1% edge over your opponent means
                 // more in the ~99% regime
                 // than in the ~1% regime"
-                let ref i = NodeAbstraction::from(i);
-                let ref j = NodeAbstraction::from(j);
+                let ref i = Abstraction::from(i);
+                let ref j = Abstraction::from(j);
                 let index = Pair::from((i, j));
                 metric.insert(index, distance);
             }
@@ -276,10 +273,10 @@ impl Layer {
     }
 
     // construct observation -> abstraction map via equity calculations
-    async fn outer_points() -> BTreeMap<NodeObservation, (Histogram, NodeAbstraction)> {
+    async fn outer_points() -> BTreeMap<Observation, (Histogram, Abstraction)> {
         println!("calculating equity bucket observations");
-        let ref observations = Arc::new(NodeObservation::all(Street::Rive));
-        let (tx, rx) = tokio::sync::mpsc::channel::<(NodeObservation, NodeAbstraction)>(1024);
+        let ref observations = Arc::new(Observation::all(Street::Rive));
+        let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
         let consumer = Consumer::new(rx);
         let consumer = tokio::spawn(consumer.run());
         let producers = (0..num_cpus::get())
@@ -334,7 +331,7 @@ impl Layer {
     }
 
     /// read centroid data from a file
-    pub fn download_centroid(street: Street) -> BTreeMap<NodeObservation, NodeAbstraction> {
+    pub fn download_centroid(street: Street) -> BTreeMap<Observation, Abstraction> {
         let mut map = BTreeMap::new();
         let file = std::fs::File::open(format!("centroid_{}.bin", street)).expect("file open");
         let ref mut reader = std::io::BufReader::with_capacity(BUFFER, file);
@@ -342,8 +339,8 @@ impl Layer {
         while reader.read_exact(buffer).is_ok() {
             let obs_u64 = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
             let abs_u64 = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
-            let observation = NodeObservation::from(obs_u64 as i64);
-            let abstraction = NodeAbstraction::from(abs_u64 as i64);
+            let observation = Observation::from(obs_u64 as i64);
+            let abstraction = Abstraction::from(abs_u64 as i64);
             map.insert(observation, abstraction);
         }
         map

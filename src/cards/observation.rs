@@ -16,13 +16,13 @@ use std::cmp::Ordering;
 /// This could be more memory efficient by using [Card; 2] for secret Hands,
 /// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-pub struct NodeObservation {
+pub struct Observation {
     secret: Hand,
     public: Hand,
 }
 
-impl NodeObservation {
-    pub fn all(street: Street) -> Vec<NodeObservation> {
+impl Observation {
+    pub fn all(street: Street) -> Vec<Observation> {
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
@@ -34,7 +34,7 @@ impl NodeObservation {
         for hole in holes {
             let boards = HandIterator::from((n, hole));
             for board in boards {
-                observations.push(NodeObservation::from((hole, board)));
+                observations.push(Observation::from((hole, board)));
             }
         }
         observations
@@ -68,7 +68,7 @@ impl NodeObservation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
-    pub fn outnodes(&self) -> Vec<NodeObservation> {
+    pub fn outnodes(&self) -> Vec<Observation> {
         // LOOP over (2 + street)-handed OBSERVATIONS
         // EXPAND the current observation's BOARD CARDS
         // PRESERVE the current observation's HOLE CARDS
@@ -81,7 +81,7 @@ impl NodeObservation {
         };
         HandIterator::from((expanded, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
-            .map(|public| NodeObservation::from((self.secret, public)))
+            .map(|public| Observation::from((self.secret, public)))
             .collect::<Vec<Self>>()
     }
 
@@ -96,17 +96,17 @@ impl NodeObservation {
     }
 }
 
-impl From<(Hand, Hand)> for NodeObservation {
+impl From<(Hand, Hand)> for Observation {
     /// TODO: implement strategic isomorphism
     fn from((secret, public): (Hand, Hand)) -> Self {
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
-        NodeObservation { secret, public }
+        Observation { secret, public }
     }
 }
 
 /// Generate a random observation for a given street
-impl From<Street> for NodeObservation {
+impl From<Street> for Observation {
     fn from(street: Street) -> Self {
         let n = match street {
             Street::Pref => 0,
@@ -125,8 +125,8 @@ impl From<Street> for NodeObservation {
 ///
 /// Packs all the cards in order, starting from LSBs.
 /// Good for database serialization. Interchangable with u64
-impl From<NodeObservation> for i64 {
-    fn from(observation: NodeObservation) -> Self {
+impl From<Observation> for i64 {
+    fn from(observation: Observation) -> Self {
         Vec::<Card>::from(observation.public)
             .iter()
             .chain(Vec::<Card>::from(observation.secret).iter())
@@ -135,7 +135,7 @@ impl From<NodeObservation> for i64 {
             .fold(0u64, |acc, card| acc << 8 | card) as i64
     }
 }
-impl From<i64> for NodeObservation {
+impl From<i64> for Observation {
     fn from(bits: i64) -> Self {
         let mut i = 0;
         let mut bits = bits as u64;
@@ -154,18 +154,18 @@ impl From<i64> for NodeObservation {
         }
         assert!(secret.size() == 2);
         assert!(public.size() <= 5);
-        NodeObservation { secret, public }
+        Observation { secret, public }
     }
 }
 
-impl From<NodeObservation> for Strength {
-    fn from(observation: NodeObservation) -> Self {
+impl From<Observation> for Strength {
+    fn from(observation: Observation) -> Self {
         Strength::from(Hand::add(observation.public, observation.secret))
     }
 }
 
 /// conversion to i64 for SQL storage and impl ToSql directly
-impl tokio_postgres::types::ToSql for NodeObservation {
+impl tokio_postgres::types::ToSql for Observation {
     fn to_sql(
         &self,
         ty: &tokio_postgres::types::Type,
@@ -187,7 +187,7 @@ impl tokio_postgres::types::ToSql for NodeObservation {
     }
 }
 
-impl std::fmt::Display for NodeObservation {
+impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} + {}", self.secret, self.public)
     }
