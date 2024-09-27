@@ -1,5 +1,5 @@
-use crate::cards::observation::NodeObservation;
-use crate::clustering::abstraction::NodeAbstraction;
+use crate::cards::observation::Observation;
+use crate::clustering::abstraction::Abstraction;
 use std::collections::BTreeMap;
 use std::ops::AddAssign;
 
@@ -10,17 +10,17 @@ use std::ops::AddAssign;
 #[derive(Debug, Default, Clone)]
 pub struct Histogram {
     norm: usize,
-    weights: BTreeMap<NodeAbstraction, usize>,
+    weights: BTreeMap<Abstraction, usize>,
 }
 
 impl Histogram {
-    pub fn weight(&self, abstraction: &NodeAbstraction) -> f32 {
+    pub fn weight(&self, abstraction: &Abstraction) -> f32 {
         self.weights.get(abstraction).copied().unwrap_or(0usize) as f32 / self.norm as f32
     }
-    pub fn domain(&self) -> Vec<&NodeAbstraction> {
+    pub fn domain(&self) -> Vec<&Abstraction> {
         self.weights.keys().collect()
     }
-    pub fn witness(self, abstraction: NodeAbstraction) -> Self {
+    pub fn witness(self, abstraction: Abstraction) -> Self {
         let mut this = self;
         this.norm.add_assign(1usize);
         this.weights
@@ -52,19 +52,19 @@ impl Histogram {
         self.weights
             .iter()
             .map(|(key, value)| (u64::from(key.clone()) as f32, value.clone() as f32))
-            .map(|(x, y)| (x / NodeAbstraction::N as f32, y / self.norm as f32))
+            .map(|(x, y)| (x / Abstraction::N as f32, y / self.norm as f32))
             .map(|(x, y)| x * y)
             .sum()
     }
 }
 
-impl From<NodeObservation> for Histogram {
-    fn from(observation: NodeObservation) -> Self {
+impl From<Observation> for Histogram {
+    fn from(observation: Observation) -> Self {
         assert!(observation.street() == crate::cards::street::Street::Turn);
         observation
             .outnodes()
             .into_iter()
-            .map(|obs| NodeAbstraction::from(obs))
+            .map(|obs| Abstraction::from(obs))
             .fold(Histogram::default(), |hist, abs| hist.witness(abs))
     }
 }
@@ -76,7 +76,7 @@ impl std::fmt::Display for Histogram {
             .weights
             .iter()
             .map(|(key, value)| (u64::from(key.clone()) as f32, value.clone() as f32))
-            .map(|(x, y)| (x / NodeAbstraction::N as f32, y / self.norm as f32))
+            .map(|(x, y)| (x / Abstraction::N as f32, y / self.norm as f32))
             .collect::<Vec<(f32, f32)>>();
         // 2. they should already be sorted bc BTreeMap
         // 3. Create 32 bins for the x-axis

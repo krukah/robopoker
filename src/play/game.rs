@@ -11,7 +11,7 @@ use crate::cards::board::Board;
 use crate::cards::card::Card;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
-use crate::cards::observation::NodeObservation;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::play::continuation::Transition;
@@ -502,9 +502,9 @@ impl std::fmt::Display for Game {
     }
 }
 
-impl From<&Game> for NodeObservation {
+impl From<&Game> for Observation {
     fn from(game: &Game) -> Self {
-        NodeObservation::from((
+        Observation::from((
             Hand::from(game.actor().cards()), //
             Hand::from(game.board()),         //
         ))

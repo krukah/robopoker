@@ -1,18 +1,18 @@
-use crate::cards::observation::NodeObservation;
-use crate::clustering::abstraction::NodeAbstraction;
+use crate::cards::observation::Observation;
+use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::progress::Progress;
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;
 
 pub struct Consumer {
-    input: Receiver<(NodeObservation, NodeAbstraction)>,
-    table: BTreeMap<NodeObservation, (Histogram, NodeAbstraction)>,
+    input: Receiver<(Observation, Abstraction)>,
+    table: BTreeMap<Observation, (Histogram, Abstraction)>,
     // database client : Client
 }
 
 impl Consumer {
-    pub fn new(input: Receiver<(NodeObservation, NodeAbstraction)>) -> Self {
+    pub fn new(input: Receiver<(Observation, Abstraction)>) -> Self {
         let table = BTreeMap::new();
         Self { input, table }
     }
@@ -21,7 +21,7 @@ impl Consumer {
     /// it's about 10GB without, 30GB with.
     /// but it's worth it to maintain the same BTreeMap<Observation, (Histogram, Abstraction)> interface.
     /// especially since this is a one-time equity abstraction cost that we keep in database for future use.
-    pub async fn run(mut self) -> BTreeMap<NodeObservation, (Histogram, NodeAbstraction)> {
+    pub async fn run(mut self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
         let mut progress = Progress::new(2_809_475_760, 2_809_475_760 / 20);
         while let Some((observation, abstraction)) = self.input.recv().await {
             let dirac = Histogram::default().witness(abstraction.clone());
