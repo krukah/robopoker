@@ -10,7 +10,7 @@ impl std::fmt::Display for Potential {
         let observation = Observation::from(Street::Turn);
         let distribution = Histogram::from(observation.clone());
         let strength = Strength::from(observation.clone());
-        let equity = distribution.expectation();
+        let equity = distribution.equity();
         // Display the histogram
         writeln!(f, "{}", distribution)?;
         // Mark the point on the x-axis corresponding to the value "ev"

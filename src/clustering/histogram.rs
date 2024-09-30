@@ -1,5 +1,6 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::Probability;
 use std::collections::BTreeMap;
 use std::ops::AddAssign;
 
@@ -48,18 +49,28 @@ impl Histogram {
     }
 
     /// ONLY WORKS FOR STREET::TURN
-    pub fn expectation(&self) -> f32 {
+    pub fn equity(&self) -> Probability {
+        self.distribution().iter().map(|(x, y)| x * y).sum()
+    }
+
+    /// this yields the posterior distribution
+    /// of equity at the turn street
+    /// this is the only time we explicitly can calculate
+    /// the Probability of transitioning into a WinProbability
+    /// hence a distribution over showdown equities.
+    ///
+    /// ONLY WORKS FOR STREET::TURN
+    pub fn distribution(&self) -> Vec<(Probability, Probability)> {
         self.weights
             .iter()
-            .map(|(key, value)| (u64::from(key.clone()) as f32, value.clone() as f32))
-            .map(|(x, y)| (x / Abstraction::N as f32, y / self.norm as f32))
-            .map(|(x, y)| x * y)
-            .sum()
+            .map(|(&key, &value)| (key, value as f32 / self.norm as f32))
+            .map(|(k, v)| (Probability::from(k), Probability::from(v)))
+            .collect()
     }
 }
 
 impl From<Observation> for Histogram {
-    fn from(observation: Observation) -> Self {
+    fn from(ref observation: Observation) -> Self {
         assert!(observation.street() == crate::cards::street::Street::Turn);
         observation
             .outnodes()
@@ -72,13 +83,8 @@ impl From<Observation> for Histogram {
 impl std::fmt::Display for Histogram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // 1. interpret each key of the Histogram as probability
-        let ref distribution = self
-            .weights
-            .iter()
-            .map(|(key, value)| (u64::from(key.clone()) as f32, value.clone() as f32))
-            .map(|(x, y)| (x / Abstraction::N as f32, y / self.norm as f32))
-            .collect::<Vec<(f32, f32)>>();
         // 2. they should already be sorted bc BTreeMap
+        let ref distribution = self.distribution();
         // 3. Create 32 bins for the x-axis
         let n_x_bins = 32;
         let ref mut bins = vec![0.0; n_x_bins];
