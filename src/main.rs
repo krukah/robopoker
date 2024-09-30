@@ -1,8 +1,12 @@
+use env_logger::Builder;
 use robopoker::*;
+use std::io::Write;
+use tokio::time::Instant;
 
-#[allow(unused)]
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
+    logs();
+
     // The k-means earth mover's distance hand-clustering algorithm.
     clustering::explorer::Explorer::upload().await;
 
@@ -11,6 +15,24 @@ async fn main() {
 
     // CLI game with yourself.
     play::game::Game::play();
+}
+
+fn logs() {
+    let start = Instant::now();
+    Builder::new()
+        .filter(None, log::LevelFilter::Info)
+        .format(move |buffer, record| {
+            let elapsed = start.elapsed();
+            writeln!(
+                buffer,
+                "{:02}:{:02}:{:02} - {}",
+                (elapsed.as_secs() / 3600),
+                (elapsed.as_secs() % 3600) / 60,
+                (elapsed.as_secs() % 60),
+                record.args()
+            )
+        })
+        .init();
 }
 
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.

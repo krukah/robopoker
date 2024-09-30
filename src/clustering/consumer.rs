@@ -2,17 +2,18 @@ use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::progress::Progress;
+use log::info;
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;
 
 pub struct Consumer {
-    input: Receiver<(Observation, Abstraction)>,
+    input: Receiver<(Observation, Histogram)>,
     table: BTreeMap<Observation, (Histogram, Abstraction)>,
     // database client : Client
 }
 
 impl Consumer {
-    pub fn new(input: Receiver<(Observation, Abstraction)>) -> Self {
+    pub fn new(input: Receiver<(Observation, Histogram)>) -> Self {
         let table = BTreeMap::new();
         Self { input, table }
     }
@@ -22,10 +23,11 @@ impl Consumer {
     /// but it's worth it to maintain the same BTreeMap<Observation, (Histogram, Abstraction)> interface.
     /// especially since this is a one-time equity abstraction cost that we keep in database for future use.
     pub async fn run(mut self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
-        let mut progress = Progress::new(2_809_475_760, 2_809_475_760 / 20);
-        while let Some((observation, abstraction)) = self.input.recv().await {
-            let dirac = Histogram::default().witness(abstraction.clone());
-            self.table.insert(observation, (dirac, abstraction));
+        info!("consumer running");
+        let ref mut progress = Progress::new(305_377_800, 100);
+        while let Some((observation, histogram)) = self.input.recv().await {
+            self.table
+                .insert(observation, (histogram, Abstraction::random()));
             progress.tick();
         }
         self.table

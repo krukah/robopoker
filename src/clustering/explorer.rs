@@ -38,15 +38,15 @@ impl Explorer {
     }
     pub async fn upload() {
         Layer::outer()
+            .inner()
             .await
-            .upload() // river
+            .upload()
             .inner()
-            .upload() // turn
+            .await
+            .upload()
             .inner()
-            .upload() // flop
-            .inner()
-            .upload() // preflop
-    ;
+            .await
+            .upload();
     }
 
     /// sample children of a Node, according to the distribution defined by Profile.

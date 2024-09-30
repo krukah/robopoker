@@ -8,6 +8,11 @@ use crate::clustering::producer::Producer;
 use crate::clustering::progress::Progress;
 use crate::clustering::projection::Projection;
 use crate::clustering::xor::Pair;
+use log::info;
+use rand::distributions::Distribution;
+use rand::distributions::WeightedIndex;
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::sync::Arc;
@@ -21,67 +26,146 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// Yield the next layer of abstraction by kmeans clustering. The recursive nature of layer methods encapsulates the hiearchy of learned abstractions via kmeans.
-    /// TODO; make this async and persist to database after each layer
-    pub fn inner(&self) -> Self {
-        let inner = Self {
-            street: self.inner_street(),
-            metric: self.inner_metric(),
-            kmeans: self.inner_kmeans(),
-            points: self.inner_points(),
-        };
-        inner.cluster()
-    }
-
     /// async equity calculations to create initial River layer.
-    pub async fn outer() -> Self {
+    pub fn outer() -> Self {
         Self {
             street: Street::Rive,
-            kmeans: BTreeMap::new(),
-            metric: Self::outer_metric(),
-            points: Self::outer_points().await,
+            points: BTreeMap::default(),
+            kmeans: BTreeMap::default(),
+            metric: BTreeMap::default(),
         }
     }
-    /// Write to file. We'll open a new file for each layer, whatever.
-    pub fn upload(self) -> Self {
-        println!("writing layer {}", self.street);
-        self.truncate();
-        self.upload_distance();
-        self.upload_centroid();
+
+    /// Yield the next layer of abstraction by kmeans clustering. The recursive nature of layer methods encapsulates the hiearchy of learned abstractions via kmeans.
+    /// TODO; make this async and persist to database after each layer
+    pub async fn inner(mut self) -> Self {
+        self.street = self.street.prev();
+        self.points = self.projection().await;
+        self.kmeans = self.initialize();
+        self.cluster();
+        self.metric = self.metric();
         self
     }
 
-    /// Number of centroids in k means on inner layer. Loosely speaking, the size of our abstraction space.
-    fn k(&self) -> usize {
-        match self.street.prev() {
-            Street::Turn => 200,
-            Street::Flop => 200,
-            Street::Pref => 169,
-            _ => unreachable!("no other prev"),
+    /// projection is the async task of mapping observations
+    /// to their nearest neighbor abstractions.
+    /// for Street::Turn, we use equity calculations
+    /// of following Street::River observations.
+    /// for other Streets, we use previously calculated
+    /// abstractions for the previous street's observations
+    async fn projection(&self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
+        info!("projection {}", self.street);
+        if self.street == Street::Turn {
+            let ref observations = Arc::new(Observation::all(Street::Turn));
+            let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Histogram)>(1024);
+            let consumer = Consumer::new(rx);
+            let consumer = tokio::spawn(consumer.run());
+            let producers = (0..num_cpus::get())
+                .map(|i| Producer::new(i, tx.clone(), observations.clone()))
+                .map(|p| tokio::spawn(p.run()))
+                .collect::<Vec<_>>();
+            std::mem::drop(tx);
+            futures::future::join_all(producers).await;
+            consumer.await.expect("equity mapping task completes")
+        } else {
+            Observation::all(self.street)
+                .into_iter()
+                .map(|obs| (obs, (self.points.project(obs), Abstraction::random())))
+                .collect()
         }
     }
 
-    /// Number of kmeans iterations to run on current layer.
-    fn t(&self) -> usize {
-        match self.street.prev() {
-            Street::Turn => 1_000,
-            Street::Flop => 1_000,
-            Street::Pref => 10,
-            _ => unreachable!("no other prev"),
+    /// compute the metric of the next innermost layer.
+    /// take outer product of centroid histograms over measure.
+    /// we calculate this matrix only after the kmeans
+    /// clustering abstraction is computed for this layer.
+    /// we persist for use in the next layer.
+    fn metric(&self) -> BTreeMap<Pair, f32> {
+        info!("computing metric {}", self.street);
+        let mut metric = BTreeMap::new();
+        for (i, (x, _)) in self.kmeans.iter().enumerate() {
+            for (j, (y, _)) in self.kmeans.iter().enumerate() {
+                if i > j {
+                    let index = Pair::from((x, y));
+                    let ref x = self.kmeans.get(x).expect("in centroids").0;
+                    let ref y = self.kmeans.get(y).expect("in centroids").0;
+                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
+                    let distance = distance / 2.0;
+                    metric.insert(index, distance);
+                }
+            }
         }
+        metric
+    }
+}
+
+/*
+kmeans initialization
+   1. choose first centroid randomly from the dataset
+   2. choose nth centroid with probability proportional to squared distance of nearest neighbors
+   3. collect histograms and label with arbitrary (random) Abstractions
+
+kmeans clustering
+   1. assign each observation to the nearest centroid
+   2. update each centroid by averaging the observations assigned to it
+   3. repeat for t iterations
+*/
+
+impl Layer {
+    /// K Means++ implementation yields initial histograms
+    /// Abstraction labels are random and require uniqueness.
+    fn initialize(&self) -> BTreeMap<Abstraction, (Histogram, Histogram)> {
+        info!("initializing kmeans {}", self.street);
+        // 1. Choose 1st centroid randomly from the dataset
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
+        let mut kmeans = Vec::<Histogram>::new();
+        let ref histograms = self
+            .points
+            .values()
+            .map(|(hist, _)| hist)
+            .collect::<Vec<&Histogram>>();
+        let first = histograms
+            .choose(rng)
+            .cloned()
+            .cloned()
+            .expect("non-empty lower observations");
+        kmeans.push(first);
+        // 2. Choose nth centroid with probability proportional to squared distance of nearest neighbors
+        let mut progress = Progress::new(self.k(), 10);
+        while kmeans.len() < self.k() {
+            let ref mut kmeans = kmeans;
+            let weights = histograms
+                .iter()
+                .map(|histogram| self.proximity(histogram, kmeans))
+                .map(|min| min * min)
+                .collect::<Vec<f32>>();
+            let choice = WeightedIndex::new(weights)
+                .expect("valid weights array")
+                .sample(rng);
+            let sample = histograms
+                .get(choice)
+                .cloned()
+                .cloned()
+                .expect("shared index with lowers");
+            kmeans.push(sample);
+            progress.tick();
+        }
+        // 3. Collect histograms and label with arbitrary (random) Abstractions
+        kmeans
+            .into_iter()
+            .map(|mean| (Abstraction::random(), (mean, Histogram::default())))
+            .collect()
     }
 
     /// Run kmeans iterations.
     /// Presumably, we have been generated by a previous layer, with the exception of Outer == River.
     /// After the base case, we trust that our observations, abstractions, and metric are correctly populated.
-    fn cluster(self) -> Self {
+    fn cluster(&mut self) {
         assert!(self.kmeans.len() >= self.k());
-        println!("clustering kmeans {} < {}", self.street.prev(), self.street);
-        let t = self.t();
-        let mut layer = self;
-        let ref mut progress = Progress::new(t, 25);
-        for _ in 0..t {
-            for observation in layer
+        info!("kmeans clustering {}", self.street);
+        let ref mut progress = Progress::new(self.t(), 100);
+        for _ in 0..self.t() {
+            for observation in self
                 .points
                 .keys()
                 .copied()
@@ -89,21 +173,31 @@ impl Layer {
                 .collect::<Vec<_>>()
                 .iter()
             {
-                let ref neighbor = layer.neighbor(observation);
-                layer.assign(observation, neighbor);
-                layer.absorb(observation, neighbor);
+                let ref neighbor = self.nearest(observation);
+                self.assign(observation, neighbor);
+                self.absorb(observation, neighbor);
             }
-            layer.recycle();
+            self.recycle();
             progress.tick();
         }
-        layer
+    }
+
+    /// Find the minimum distance between a histogram and
+    /// a list of already existing centroids
+    /// for k means ++ initialization
+    fn proximity(&self, x: &Histogram, centroids: &Vec<Histogram>) -> f32 {
+        centroids
+            .iter()
+            .map(|target| self.metric.emd(x, target))
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .expect("find nearest neighbor")
     }
 
     /// find the nearest neighbor for a given observation
     /// returns the node abstraction that is closest to the observation
-    fn neighbor(&self, observation: &Observation) -> Abstraction {
+    fn nearest(&self, observation: &Observation) -> Abstraction {
         let mut nearests = f32::MAX;
-        let mut neighbor = Abstraction::default();
+        let mut neighbor = Abstraction::random();
         let ref histogram = self.points.get(observation).expect("in continuations").0;
         for (centroid, (target, _)) in self.kmeans.iter() {
             let distance = self.metric.emd(histogram, target);
@@ -149,143 +243,24 @@ impl Layer {
         }
     }
 
-    fn inner_street(&self) -> Street {
-        self.street.prev()
-    }
-
-    /// Compute the metric of the next innermost layer. Take outer product of centroid histograms over measure.
-    fn inner_metric(&self) -> BTreeMap<Pair, f32> {
-        println!("computing metric {} < {}", self.street.prev(), self.street);
-        let ref centroids = self.kmeans;
-        let mut metric = BTreeMap::new();
-        for (i, (x, _)) in centroids.iter().enumerate() {
-            for (j, (y, _)) in centroids.iter().enumerate() {
-                if i > j {
-                    let index = Pair::from((x, y));
-                    let ref x = centroids.get(x).expect("in centroids").0;
-                    let ref y = centroids.get(y).expect("in centroids").0;
-                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
-                    let distance = distance / 2.0;
-                    metric.insert(index, distance);
-                }
-            }
+    /// Number of centroids in k means on inner layer. Loosely speaking, the size of our abstraction space.
+    fn k(&self) -> usize {
+        match self.street.prev() {
+            Street::Turn => 200,
+            Street::Flop => 200,
+            Street::Pref => 169,
+            _ => unreachable!("no other prev"),
         }
-        metric
     }
 
-    /// Generate all possible obersvations of the next innermost layer.
-    /// Assign them to arbitrary abstractions. They will be overwritten during kmeans iterations.
-    /// Base case is River which comes from equity bucket calculation.
-    fn inner_points(&self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
-        println!("projecting {} >> on >> {}", self.street, self.street.prev(),);
-        let mut progress = Progress::new(self.k(), self.k() / 50);
-        Observation::all(self.street.prev())
-            .into_iter()
-            .map(|inner| {
-                progress.tick();
-                (inner, (self.points.project(inner), Abstraction::default()))
-            })
-            .collect()
-    }
-
-    /// K Means++ implementation yields initial histograms
-    /// Abstraction labels are random and require uniqueness.
-    fn inner_kmeans(&self) -> BTreeMap<Abstraction, (Histogram, Histogram)> {
-        println!("cluster {} >> into >> {}", self.street, self.street.prev());
-        use rand::distributions::Distribution;
-        use rand::distributions::WeightedIndex;
-        use rand::seq::SliceRandom;
-        use rand::SeedableRng;
-        // 0. Initialize data structures
-        // 1. Choose 1st centroid randomly from the dataset
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
-        let mut centroids = Vec::new();
-        let histograms = self
-            .points
-            .values()
-            .map(|(hist, _)| hist)
-            .collect::<Vec<&Histogram>>();
-        let initial = histograms
-            .choose(rng)
-            .cloned()
-            .cloned()
-            .expect("non-empty lower observations");
-        centroids.push(initial);
-        // 2. Choose nth centroid with probability proportional to squared distance of nearest neighbors
-        let mut progress = Progress::new(self.k(), self.k());
-        while centroids.len() < self.k() {
-            let ref mut centroids = centroids;
-            let weights = histograms
-                .iter()
-                .map(|histogram| self.proximity(histogram, centroids))
-                .map(|min| min * min)
-                .collect::<Vec<f32>>();
-            let choice = WeightedIndex::new(weights)
-                .expect("valid weights array")
-                .sample(rng);
-            let sample = histograms
-                .get(choice)
-                .cloned()
-                .cloned()
-                .expect("shared index with lowers");
-            centroids.push(sample);
-            progress.tick(); // .8 hr / cycle
+    /// Number of kmeans iterations to run on current layer.
+    fn t(&self) -> usize {
+        match self.street.prev() {
+            Street::Turn => 1_000,
+            Street::Flop => 1_000,
+            Street::Pref => 10,
+            _ => unreachable!("no other prev"),
         }
-        // 3. Collect histograms and label with arbitrary (random) Abstractions
-        centroids
-            .into_iter()
-            .map(|mean| (Abstraction::random(), (mean, Histogram::default())))
-            .collect::<BTreeMap<_, _>>()
-    }
-
-    /// Find the minimum distance between a histogram and
-    /// a list of already existing centroids
-    /// for k means ++ initialization
-    fn proximity(&self, x: &Histogram, centroids: &Vec<Histogram>) -> f32 {
-        centroids
-            .iter()
-            .map(|target| self.metric.emd(x, target))
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .expect("find nearest neighbor")
-    }
-
-    /// Generate the  baseline metric between equity bucket abstractions. Keeping the u64->f32 conversion is fine for distance since it preserves distance
-    pub fn outer_metric() -> BTreeMap<Pair, f32> {
-        // println!("calculating equity bucket metric");
-        let mut metric = BTreeMap::new();
-        for i in 1..=Abstraction::N as u64 {
-            for j in i..=Abstraction::N as u64 {
-                let distance = (j - i) as f32;
-                // it could be interesting to make this quadratic...
-                // kinda like E[ equity^2 ] metric
-                // but only for Turn <: River projections
-                // more interestingly, it may capture the idea of
-                // "1% edge over your opponent means
-                // more in the ~99% regime
-                // than in the ~1% regime"
-                let ref i = Abstraction::from(i);
-                let ref j = Abstraction::from(j);
-                let index = Pair::from((i, j));
-                metric.insert(index, distance);
-            }
-        }
-        metric
-    }
-
-    // construct observation -> abstraction map via equity calculations
-    async fn outer_points() -> BTreeMap<Observation, (Histogram, Abstraction)> {
-        println!("calculating equity bucket observations");
-        let ref observations = Arc::new(Observation::all(Street::Rive));
-        let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Abstraction)>(1024);
-        let consumer = Consumer::new(rx);
-        let consumer = tokio::spawn(consumer.run());
-        let producers = (0..num_cpus::get())
-            .map(|i| Producer::new(i, tx.clone(), observations.clone()))
-            .map(|p| tokio::spawn(p.run()))
-            .collect::<Vec<_>>();
-        std::mem::drop(tx);
-        futures::future::join_all(producers).await;
-        consumer.await.expect("equity mapping task completes")
     }
 }
 
@@ -294,6 +269,14 @@ persistence methods
 */
 const BUFFER: usize = 1024 * 1024 * 1024;
 impl Layer {
+    /// Write to file. We'll open a new file for each layer, whatever.
+    pub fn upload(self) -> Self {
+        self.truncate();
+        self.upload_distance();
+        self.upload_centroid();
+        self
+    }
+
     /// Truncate the files
     fn truncate(&self) {
         std::fs::remove_file(format!("centroid_{}.bin", self.street)).ok();
@@ -302,9 +285,10 @@ impl Layer {
 
     /// Write centroid data to a file
     fn upload_centroid(&self) {
+        info!("uploading centroids {}", self.street);
         let mut file =
             std::fs::File::create(format!("centroid_{}.bin", self.street)).expect("create file");
-        let mut progress = Progress::new(self.points.len(), self.points.len() / 20);
+        let mut progress = Progress::new(self.points.len(), 10);
         for (observation, (_, abstraction)) in self.points.iter() {
             use std::io::Write;
             let obs = i64::from(*observation) as u64;
@@ -317,9 +301,10 @@ impl Layer {
 
     /// Write distance data to a file
     fn upload_distance(&self) {
+        info!("uploading distance {}", self.street);
         let mut file =
             std::fs::File::create(format!("distance_{}.bin", self.street)).expect("create file");
-        let mut progress = Progress::new(self.metric.len(), self.metric.len() / 20);
+        let mut progress = Progress::new(self.metric.len(), 10);
         for (pair, distance) in self.metric.iter() {
             use std::io::Write;
             let pair = i64::from(*pair) as u64;

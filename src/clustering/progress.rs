@@ -1,3 +1,4 @@
+use log::info;
 use tokio::time::Instant;
 
 /// A struct to track and display progress of a long-running operation.
@@ -9,8 +10,8 @@ pub struct Progress {
     delta: Instant,
 }
 impl Progress {
-    pub fn new(total: usize, check: usize) -> Self {
-        println!("progress {:>8} {:>10}", check, total);
+    pub fn new(total: usize, n: usize) -> Self {
+        let check = total / n;
         let now = Instant::now();
         Self {
             total,
@@ -27,7 +28,7 @@ impl Progress {
             let total_t = now.duration_since(self.begin);
             let delta_t = now.duration_since(self.delta);
             self.delta = now;
-            println!(
+            info!(
                 "progress: {:8.0?} {:>10} {:6.2}%   mean {:6.0}   last {:6.0}",
                 total_t,
                 self.ticks,

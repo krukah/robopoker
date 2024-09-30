@@ -50,7 +50,7 @@ impl Metric for BTreeMap<Pair, f32> {
                 let (hole, distance) = y
                     .iter()
                     .map(|sink| (*sink, self.distance(pile, sink)))
-                    .min_by(|(_, ref a), (_, ref b)| a.partial_cmp(b).expect("not NaN"))
+                    .min_by(|(_, a), (_, b)| a.partial_cmp(b).expect("not NaN"))
                     .expect("y domain not empty");
                 // decide if we can remove earth from both distributions
                 let demand = *notmoved.get(pile).expect("in x domain");
@@ -74,12 +74,18 @@ impl Metric for BTreeMap<Pair, f32> {
         energy
     }
 
-    /// generated recursively and hiearchically
+    /// generated recursively and hierarchically
     /// we can calculate the distance between two abstractions
     /// by eagerly finding distance between their centroids
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
-        let ref xor = Pair::from((x, y));
-        self.get(xor).copied().expect("precalculated distance")
+        match (x, y) {
+            (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
+            (Abstraction::Random(_), Abstraction::Random(_)) => {
+                let ref xor = Pair::from((x, y));
+                self.get(xor).copied().expect("precalculated distance")
+            }
+            _ => unreachable!("invalid abstraction pair"),
+        }
     }
 }
 
@@ -90,8 +96,6 @@ mod tests {
     use crate::cards::street::Street;
     use crate::cards::strength::Strength;
     use crate::clustering::histogram::Histogram;
-    use crate::clustering::layer::Layer;
-    use rand::seq::SliceRandom;
 
     #[tokio::test]
     async fn test_random_streets_emd() {
@@ -102,22 +106,7 @@ mod tests {
         println!("{}\n{} {}", h1, Strength::from(obs1.clone()), obs1);
         println!("{}\n{} {}", h2, Strength::from(obs2.clone()), obs2);
         println!();
-        println!("EMD A >> B: {}", Layer::outer_metric().emd(h1, h2));
-        println!("EMD B >> A: {}", Layer::outer_metric().emd(h2, h1));
-    }
-
-    #[tokio::test]
-    async fn test_random_pair_symmetry() {
-        let ref mut rng = rand::thread_rng();
-        let metric = Layer::outer_metric();
-        let histo = Histogram::from(Observation::from(Street::Turn));
-        let ref pair = histo
-            .domain()
-            .choose_multiple(rng, 2)
-            .cloned()
-            .collect::<Vec<_>>();
-        let d1 = metric.distance(pair[0], pair[1]);
-        let d2 = metric.distance(pair[1], pair[0]);
-        assert!(d1 == d2);
+        println!("EMD A >> B: {}", BTreeMap::new().emd(h1, h2)); ////////
+        println!("EMD B >> A: {}", BTreeMap::new().emd(h2, h1)); ////////
     }
 }
