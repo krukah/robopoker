@@ -8,7 +8,6 @@ use crate::clustering::producer::Producer;
 use crate::clustering::progress::Progress;
 use crate::clustering::projection::Projection;
 use crate::clustering::xor::Pair;
-use log::info;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::seq::SliceRandom;
@@ -54,7 +53,7 @@ impl Layer {
     /// for other Streets, we use previously calculated
     /// abstractions for the previous street's observations
     async fn projection(&self) -> BTreeMap<Observation, (Histogram, Abstraction)> {
-        info!("projection {}", self.street);
+        log::info!("projection {}", self.street);
         if self.street == Street::Turn {
             let ref observations = Arc::new(Observation::all(Street::Turn));
             let (tx, rx) = tokio::sync::mpsc::channel::<(Observation, Histogram)>(1024);
@@ -81,7 +80,7 @@ impl Layer {
     /// clustering abstraction is computed for this layer.
     /// we persist for use in the next layer.
     fn metric(&self) -> BTreeMap<Pair, f32> {
-        info!("computing metric {}", self.street);
+        log::info!("computing metric {}", self.street);
         let mut metric = BTreeMap::new();
         for (i, (x, _)) in self.kmeans.iter().enumerate() {
             for (j, (y, _)) in self.kmeans.iter().enumerate() {
@@ -115,7 +114,7 @@ impl Layer {
     /// K Means++ implementation yields initial histograms
     /// Abstraction labels are random and require uniqueness.
     fn initialize(&self) -> BTreeMap<Abstraction, (Histogram, Histogram)> {
-        info!("initializing kmeans {}", self.street);
+        log::info!("initializing kmeans {}", self.street);
         // 1. Choose 1st centroid randomly from the dataset
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
         let mut kmeans = Vec::<Histogram>::new();
@@ -162,7 +161,7 @@ impl Layer {
     /// After the base case, we trust that our observations, abstractions, and metric are correctly populated.
     fn cluster(&mut self) {
         assert!(self.kmeans.len() >= self.k());
-        info!("kmeans clustering {}", self.street);
+        log::info!("kmeans clustering {}", self.street);
         let ref mut progress = Progress::new(self.t(), 100);
         for _ in 0..self.t() {
             for observation in self
@@ -245,21 +244,21 @@ impl Layer {
 
     /// Number of centroids in k means on inner layer. Loosely speaking, the size of our abstraction space.
     fn k(&self) -> usize {
-        match self.street.prev() {
+        match self.street {
             Street::Turn => 200,
             Street::Flop => 200,
             Street::Pref => 169,
-            _ => unreachable!("no other prev"),
+            _ => unreachable!("how did you get here"),
         }
     }
 
     /// Number of kmeans iterations to run on current layer.
     fn t(&self) -> usize {
-        match self.street.prev() {
-            Street::Turn => 1_000,
-            Street::Flop => 1_000,
+        match self.street {
+            Street::Turn => 100,
+            Street::Flop => 100,
             Street::Pref => 10,
-            _ => unreachable!("no other prev"),
+            _ => unreachable!("how did you get here"),
         }
     }
 }
@@ -285,7 +284,7 @@ impl Layer {
 
     /// Write centroid data to a file
     fn upload_centroid(&self) {
-        info!("uploading centroids {}", self.street);
+        log::info!("uploading centroids {}", self.street);
         let mut file =
             std::fs::File::create(format!("centroid_{}.bin", self.street)).expect("create file");
         let mut progress = Progress::new(self.points.len(), 10);
@@ -301,7 +300,7 @@ impl Layer {
 
     /// Write distance data to a file
     fn upload_distance(&self) {
-        info!("uploading distance {}", self.street);
+        log::info!("uploading distance {}", self.street);
         let mut file =
             std::fs::File::create(format!("distance_{}.bin", self.street)).expect("create file");
         let mut progress = Progress::new(self.metric.len(), 10);

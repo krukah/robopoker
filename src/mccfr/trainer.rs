@@ -7,6 +7,7 @@ use super::profile::Profile;
 use super::tree::Tree;
 use crate::clustering::explorer::Explorer;
 use petgraph::graph::NodeIndex;
+
 /// need to add named fields
 /// also need to add Abstractor
 /// so we can lookup Abstractions from Observations from Game

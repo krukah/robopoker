@@ -16,6 +16,13 @@ use rand::distributions::WeightedIndex;
 use rand::Rng;
 use std::collections::BTreeMap;
 use std::hash::Hash;
+
+/// given a Node, we can sample a distribution of children according to the Profile.
+/// we can also map an Observation to its nearest neighbor abstraction.
+/// Explorer determines how we sample the Tree in Full Tree Search.
+/// but combined with Profile, we can implement Monte Carlo Tree Search too.
+pub struct Explorer(BTreeMap<Observation, Abstraction>);
+
 /// the product of
 /// "information abstraction" and
 /// "action absraction" are what we index the (regret, strategy, average, ...) on
@@ -24,7 +31,6 @@ pub struct BucketAbstraction {
     path: Path,
     node: Abstraction,
 }
-pub struct Explorer(BTreeMap<Observation, Abstraction>);
 
 impl Explorer {
     pub fn download() -> Self {
