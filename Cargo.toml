@@ -13,6 +13,7 @@ tokio-postgres  = "0.7.11"
 futures         = "0.3"
 bytes           = "1.0"
 num_cpus        = "1.16.0"
+log             = "0.4.22"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
