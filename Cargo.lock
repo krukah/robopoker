@@ -880,6 +880,7 @@ dependencies = [
  "criterion",
  "dialoguer",
  "futures",
+ "log",
  "num_cpus",
  "petgraph",
  "rand",
