@@ -7,11 +7,6 @@ pub enum Suit {
     Spade = 3,
 }
 
-impl Suit {
-    pub const MAX: Self = Suit::Spade;
-    pub const MIN: Self = Suit::Club;
-}
-
 impl From<u8> for Suit {
     fn from(n: u8) -> Suit {
         match n {
