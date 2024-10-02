@@ -3,10 +3,10 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::consumer::Consumer;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::metric::Metric;
+use crate::clustering::metric::Metric as _;
 use crate::clustering::producer::Producer;
 use crate::clustering::progress::Progress;
-use crate::clustering::projection::Projection;
+use crate::clustering::projection::Projection as _;
 use crate::clustering::xor::Pair;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
@@ -15,6 +15,57 @@ use rand::SeedableRng;
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::sync::Arc;
+
+struct Centroid {
+    prev: Histogram,
+    next: Histogram,
+}
+impl Centroid {
+    fn absorb(&mut self, h: &Histogram) {
+        self.next.absorb(h);
+    }
+    fn histogram(&self) -> &Histogram {
+        &self.prev
+    }
+}
+
+trait Metric {
+    // impl for Map<Pair, f32>
+    fn distance(&self, a: &Abstraction, b: &Abstraction) -> f32;
+    fn wasserstein(&self, a: &Histogram, b: &Histogram) -> f32;
+}
+trait Clustering {
+    // impl for Map<Observation, Abstraction>
+    fn create_histogram(&self, hi: &Observation) -> Histogram;
+    fn lookup_abstraction(&self, lo: &Observation) -> Abstraction;
+}
+trait ObsProjection {
+    // impl for Map<Observation, Histogram>
+    fn lookup_histogram(&self, o: &Observation) -> &Histogram;
+}
+trait AbsProjection {
+    // impl for Map<Abstraction, Centroid>
+    fn lookup_histogram(&self, a: &Abstraction) -> &Histogram;
+    // fn lookup_centroid(&self, a: &Abstraction) -> &Centroid;
+}
+
+// horizontal scaling across threads for k-means initialization and clustering
+// observation_abstraction: BTreeMap<Observation, Abstraction>
+// observation_distributio: BTreeMap<Observation, Histogram>
+// abstraction_distributio: BTreeMap<Abstraction, Histogram>
+//
+// INITIALIZATION:
+// each shard needs:
+// - Arc<Vec<Histogram>>                        a readonly view of all N Histograms
+// - Arc<Vec<Observation>>                      a readonly view of all N Observations
+// - Fn(Observation) -> Histogram               Histogram from readonly Observation
+// - Fn(Histogram, Histogram) -> Abstraction    Abstraction from two Histograms
+//
+// CLUSTERING:
+// each shard needs:
+// - Fn(Observation) -> Histogram               Histogram from Observation; self.projection
+// - Fn(Abstraction) -> &mut Histogram          Histogram from nearest neighbor Abstraction; absorb()
+// - Fn(Observation) -> &mut Abstraction        nearest neighbor Abstraction; assign()
 
 /// KMeans hiearchical clustering. Every Observation is to be clustered with "similar" observations. River cards are the base case, where similarity metric is defined by equity. For each higher layer, we compare distributions of next-layer outcomes. Distances are measured by EMD and unsupervised kmeans clustering is used to cluster similar distributions. Potential-aware imperfect recall!
 pub struct Layer {
@@ -25,6 +76,18 @@ pub struct Layer {
 }
 
 impl Layer {
+    pub async fn hierarchical() -> Self {
+        Self::outer()
+            .inner()
+            .await
+            .upload()
+            .inner()
+            .await
+            .upload()
+            .inner()
+            .await
+            .upload()
+    }
     /// async equity calculations to create initial River layer.
     pub fn outer() -> Self {
         Self {
@@ -86,8 +149,8 @@ impl Layer {
             for (j, (y, _)) in self.kmeans.iter().enumerate() {
                 if i > j {
                     let index = Pair::from((x, y));
-                    let ref x = self.kmeans.get(x).expect("in centroids").0;
-                    let ref y = self.kmeans.get(y).expect("in centroids").0;
+                    let ref x = self.kmeans.get(x).expect("in centroids").0; // Centroid::prev()
+                    let ref y = self.kmeans.get(y).expect("in centroids").0; // Centroid::prev()
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.0;
                     metric.insert(index, distance);
@@ -145,7 +208,7 @@ impl Layer {
                 .get(choice)
                 .cloned()
                 .cloned()
-                .expect("shared index with lowers");
+                .expect("shared index with outer layer");
             kmeans.push(sample);
             progress.tick();
         }
@@ -230,6 +293,7 @@ impl Layer {
             .expect("kabstractions was initialized with neighbor")
             .1
             .absorb(children);
+        // Centroid::absorb
     }
 
     /// forget the old centroids and clear the new ones
@@ -321,8 +385,8 @@ impl Layer {
         let ref mut reader = std::io::BufReader::with_capacity(BUFFER, file);
         let ref mut buffer = [0u8; 16];
         while reader.read_exact(buffer).is_ok() {
-            let obs_u64 = u64::from_le_bytes(buffer[0..8].try_into().unwrap());
-            let abs_u64 = u64::from_le_bytes(buffer[8..16].try_into().unwrap());
+            let obs_u64 = u64::from_le_bytes(buffer[00..08].try_into().unwrap());
+            let abs_u64 = u64::from_le_bytes(buffer[08..16].try_into().unwrap());
             let observation = Observation::from(obs_u64 as i64);
             let abstraction = Abstraction::from(abs_u64 as i64);
             map.insert(observation, abstraction);
@@ -337,8 +401,8 @@ impl Layer {
         let ref mut reader = std::io::BufReader::with_capacity(BUFFER, file);
         let ref mut buffer = [0u8; 12];
         while reader.read_exact(buffer).is_ok() {
-            let pair_u64 = u64::from_le_bytes(buffer[0..08].try_into().unwrap());
-            let dist_f64 = f64::from_le_bytes(buffer[8..16].try_into().unwrap());
+            let pair_u64 = u64::from_le_bytes(buffer[00..08].try_into().unwrap());
+            let dist_f64 = f64::from_le_bytes(buffer[08..16].try_into().unwrap());
             let pair = Pair::from(pair_u64 as i64);
             let distance = dist_f64 as f32;
             map.insert(pair, distance);
