@@ -1,72 +1,81 @@
-use criterion::measurement::WallTime;
-use criterion::Throughput;
+criterion_group! {
+    name = benches;
+    config = Criterion::default()
+        .without_plots()
+        .noise_threshold(3.0)
+        .significance_level(0.001)
+        .sample_size(100)
+        .measurement_time(std::time::Duration::from_secs(1));
+    targets =
+        enumerating_flops,
+        calculating_equity,
+        evaluating_at_flop,
+        evaluating_at_river,
+        building_equity_histogram,
+        calculating_histogram_emd,
+}
+
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use robopoker::cards::deck::Deck;
 use robopoker::cards::evaluator::Evaluator;
 use robopoker::cards::hand::Hand;
 use robopoker::cards::observation::Observation;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
 use robopoker::clustering::histogram::Histogram;
+use robopoker::clustering::metric::Metric;
+use std::collections::BTreeMap;
 
-fn custom_criterion() -> Criterion<WallTime> {
-    Criterion::default()
-        .without_plots()
-        .noise_threshold(0.5)
-        .significance_level(0.01)
-        .sample_size(10)
-        .measurement_time(std::time::Duration::from_secs(1))
-}
-
-fn benchmark_exhaustive_flops(c: &mut Criterion) {
+fn enumerating_flops(c: &mut Criterion) {
     let mut group = c.benchmark_group("Exhaustive Flops");
-    group.throughput(Throughput::Elements(1)); // If you're enumerating one flop at a time
     group.bench_function(BenchmarkId::new("flop enumeration", "flop"), |b| {
         b.iter(|| Observation::all(Street::Flop))
     });
     group.finish();
 }
 
-fn benchmark_exhaustive_equity_calculation(c: &mut Criterion) {
+fn calculating_equity(c: &mut Criterion) {
     let mut group = c.benchmark_group("Equity Calculation");
-    group.throughput(Throughput::Elements(1)); // One equity calculation per iteration
     group.bench_function(BenchmarkId::new("equity calculation", "showdown"), |b| {
-        b.iter(|| {
-            let mut deck = Deck::new();
-            let secret = Hand::from((0..2).map(|_| deck.draw()).collect::<Vec<_>>());
-            let public = Hand::from((0..5).map(|_| deck.draw()).collect::<Vec<_>>());
-            let observation = Observation::from((secret, public));
-            observation.equity()
-        })
+        b.iter(|| Observation::from(Street::Rive).equity())
     });
     group.finish();
 }
 
-fn benchmark_evaluator_7_card(c: &mut Criterion) {
+fn evaluating_at_river(c: &mut Criterion) {
     let mut group = c.benchmark_group("Hand Evaluation");
-    group.throughput(Throughput::Elements(1)); // One hand evaluation per iteration
     group.bench_function(BenchmarkId::new("hand evaluation", "7 cards"), |b| {
-        b.iter(|| {
-            let mut deck = Deck::new();
-            let hand = Hand::from((0..7).map(|_| deck.draw()).collect::<Vec<_>>());
-            let evaluator = Evaluator::from(hand);
-            Strength::from(evaluator)
-        })
+        b.iter(|| Strength::from(Evaluator::from(Hand::from(Observation::from(Street::Rive)))))
     });
     group.finish();
 }
-fn benchmark_histogram_from_turn_observation(c: &mut Criterion) {
+
+fn evaluating_at_flop(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Hand Evaluation");
+    group.bench_function(BenchmarkId::new("hand evaluation", "5 cards"), |b| {
+        b.iter(|| Strength::from(Evaluator::from(Hand::from(Observation::from(Street::Flop)))))
+    });
+    group.finish();
+}
+
+fn building_equity_histogram(c: &mut Criterion) {
     let mut group = c.benchmark_group("Histogram from Observation");
-    group.throughput(Throughput::Elements(1)); // One histogram creation per iteration
     group.bench_function(BenchmarkId::new("histogram creation", "turn"), |b| {
         b.iter(|| Histogram::from(Observation::from(Street::Turn)))
     });
     group.finish();
 }
 
-criterion_group! {
-    name = benches;
-    config = custom_criterion();
-    targets = benchmark_exhaustive_equity_calculation, benchmark_exhaustive_flops, benchmark_evaluator_7_card, benchmark_histogram_from_turn_observation
+fn calculating_histogram_emd(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Histogram EMD Calculation");
+    group.bench_function(BenchmarkId::new("EMD calculation", "histogram pair"), |b| {
+        b.iter(|| {
+            let metric = BTreeMap::default();
+            let ref h1 = Histogram::from(Observation::from(Street::Turn));
+            let ref h2 = Histogram::from(Observation::from(Street::Turn));
+            metric.emd(h1, h2)
+        })
+    });
+    group.finish();
 }
+
 criterion_main!(benches);

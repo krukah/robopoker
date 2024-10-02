@@ -42,18 +42,6 @@ impl Explorer {
         }
         Self(abstractions)
     }
-    pub async fn upload() {
-        Layer::outer()
-            .inner()
-            .await
-            .upload()
-            .inner()
-            .await
-            .upload()
-            .inner()
-            .await
-            .upload();
-    }
 
     /// sample children of a Node, according to the distribution defined by Profile.
     /// we use external chance sampling, AKA explore all children of the traversing Player,
@@ -121,8 +109,8 @@ impl Explorer {
     }
     fn bucket(&self, game: &Game, path: &Vec<&Edge>) -> Bucket {
         let path = self.path_abstraction(path);
-        let card = self.card_abstraction(game);
-        Bucket::from((path, card))
+        let info = self.card_abstraction(game);
+        Bucket::from((path, info))
     }
 
     /// abstraction methods
