@@ -85,12 +85,13 @@ impl From<i64> for Abstraction {
         Self::Random(n as u64)
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_quantize_floatify_inverse() {
+    fn is_quantize_inverse_floatize() {
         for p in (0..=100).map(|x| x as Probability / 100.0) {
             let q = Abstraction::quantize(p);
             let f = Abstraction::floatize(q);
@@ -99,7 +100,7 @@ mod tests {
     }
 
     #[test]
-    fn test_floatify_quantize_inverse() {
+    fn is_floatize_inverse_quantize() {
         for q in 0..=Abstraction::N {
             let p = Abstraction::floatize(q);
             let i = Abstraction::quantize(p);

@@ -160,7 +160,13 @@ impl From<i64> for Observation {
 
 impl From<Observation> for Strength {
     fn from(observation: Observation) -> Self {
-        Strength::from(Hand::add(observation.public, observation.secret))
+        Strength::from(Hand::from(observation))
+    }
+}
+
+impl From<Observation> for Hand {
+    fn from(observation: Observation) -> Self {
+        Hand::add(observation.secret, observation.public)
     }
 }
 

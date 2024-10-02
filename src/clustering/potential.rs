@@ -36,7 +36,7 @@ impl std::fmt::Display for Potential {
 mod tests {
     use super::*;
     #[test]
-    fn test_potential_display() {
+    fn am_i_pretty() {
         println!("{}", Potential);
     }
 }

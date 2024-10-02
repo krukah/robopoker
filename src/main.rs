@@ -1,4 +1,3 @@
-use env_logger::Builder;
 use robopoker::*;
 use std::io::Write;
 use tokio::time::Instant;
@@ -8,31 +7,13 @@ async fn main() {
     logs();
 
     // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::explorer::Explorer::upload().await;
+    clustering::layer::Layer::hierarchical().await;
 
     // The counter-factual regret minimization.
     mccfr::trainer::Solver::empty().train(1e5 as usize);
 
     // CLI game with yourself.
     play::game::Game::play();
-}
-
-fn logs() {
-    let start = Instant::now();
-    Builder::new()
-        .filter(None, log::LevelFilter::Info)
-        .format(move |buffer, record| {
-            let elapsed = start.elapsed();
-            writeln!(
-                buffer,
-                "{:02}:{:02}:{:02} - {}",
-                (elapsed.as_secs() / 3600),
-                (elapsed.as_secs() % 3600) / 60,
-                (elapsed.as_secs() % 60),
-                record.args()
-            )
-        })
-        .init();
 }
 
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
@@ -69,6 +50,7 @@ fn logs() {
 //    2014. Regret Transfer and Parameter Optimization. (http://www.cs.cmu.edu/~sandholm/regret_transfer.aaai14.pdf) In AAAI.
 //  + 2014. Potential-Aware Imperfect-Recall Abstraction with Earth Mover’s Distance in Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/potential-aware_imperfect-recall.aaai14.pdf) In AAAI.
 //  + 2013. Action Translation in Extensive-Form Games with Large Action Spaces: Axioms, Paradoxes, and the Pseudo-Harmonic Mapping. (http://www.cs.cmu.edu/~sandholm/reverse%20mapping.ijcai13.pdf) In IJCAI.
+//  + 2013. A Fast and Optimal Hand Isomorphism Algorithm. In the Second Computer Poker and Imperfect Information Symposium at AAAI. (https://www.cs.cmu.edu/~waugh/publications/isomorphism13.pdf)
 //    2012. Lossy Stochastic Game Abstraction with Bounds. (http://www.cs.cmu.edu/~sandholm/lossyStochasticGameAbstractionWBounds.ec12.pdf) In EC.
 //    2012. First-Order Algorithm with O(ln(1/epsilon)) Convergence for epsilon-Equilibrium in Two-Person Zero-Sum Games. (http://www.cs.cmu.edu/~sandholm/restart.MathProg12.pdf) Mathematical Programming 133(1-2), 279-298. Subsumes our AAAI-08 20paper.
 //    2012. Strategy Purification and Thresholding: Effective Non-Equilibrium Approaches for Playing Large Games. (http://www.cs.cmu.edu/~sandholm/StrategyPurification_AAMAS2012_camera_ready_2.pdf) In AAMAS.
@@ -77,3 +59,21 @@ fn logs() {
 //    2010. Computing Equilibria by Incorporating Qualitative Models (http://www.cs.cmu.edu/~sandholm/qualitative.aamas10.pdf). In AAMAS. Extended version (http://www.cs.cmu.edu/~sandholm/qualitative.TR10.pdf): CMU technical report 20CMU-CS-10-105.
 //    2010. Speeding Up Gradient-Based Algorithms for Sequential Games (Extended Abstract) (http://www.cs.cmu.edu/~sandholm/speedup.aamas10.pdf). In AAMAS.
 //    2009. Computing Equilibria in Multiplayer Stochastic Games of Imperfect Information (http://www.cs.cmu.edu/~sandholm/stochgames.ijcai09.pdf). In IJCAI.
+
+fn logs() {
+    let start = Instant::now();
+    env_logger::Builder::new()
+        .filter(None, log::LevelFilter::Info)
+        .format(move |buffer, record| {
+            let elapsed = start.elapsed();
+            writeln!(
+                buffer,
+                "{:02}:{:02}:{:02} - {}",
+                (elapsed.as_secs() / 3600),
+                (elapsed.as_secs() % 3600) / 60,
+                (elapsed.as_secs() % 60),
+                record.args()
+            )
+        })
+        .init();
+}

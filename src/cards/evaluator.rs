@@ -10,7 +10,6 @@ use super::suit::Suit;
 /// Using a compact representation of the Hand, we search for
 /// the highest Value hand using bitwise operations. I should
 /// benchmark this and compare to a massive HashMap<Hand, Value> lookup implementation.
-/// alias types useful for readability here
 pub struct Evaluator(Hand);
 impl From<Hand> for Evaluator {
     fn from(h: Hand) -> Self {
@@ -171,6 +170,8 @@ impl Evaluator {
     /// suit_masks:
     /// [Masks; 4],
     /// which ranks are in the hand, grouped by suit
+    /// TODO: this could accept Suit as argument
+    /// and return the u16 mask for that suit directly
     fn suit_masks(&self) -> [u16; 4] {
         Vec::<Card>::from(self.0)
             .iter()

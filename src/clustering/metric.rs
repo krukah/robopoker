@@ -65,9 +65,9 @@ impl Metric for BTreeMap<Pair, f32> {
                     *notmoved.get_mut(pile).expect("in x domain") -= vacant;
                     *unfilled.get_mut(hole).expect("in y domain") = 0.0;
                 } else {
-                    *hasmoved.get_mut(pile).expect("in x domain") = true;
-                    *notmoved.get_mut(pile).expect("in x domain") = 0.0;
                     *unfilled.get_mut(hole).expect("in y domain") -= demand;
+                    *notmoved.get_mut(pile).expect("in x domain") = 0.0;
+                    *hasmoved.get_mut(pile).expect("in x domain") = true;
                 }
             }
         }
@@ -80,10 +80,10 @@ impl Metric for BTreeMap<Pair, f32> {
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
         match (x, y) {
             (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
-            (Abstraction::Random(_), Abstraction::Random(_)) => {
-                let ref xor = Pair::from((x, y));
-                self.get(xor).copied().expect("precalculated distance")
-            }
+            (Abstraction::Random(_), Abstraction::Random(_)) => self
+                .get(&Pair::from((x, y)))
+                .copied()
+                .expect("precalculated distance"),
             _ => unreachable!("invalid abstraction pair"),
         }
     }
@@ -94,19 +94,32 @@ mod tests {
     use super::*;
     use crate::cards::observation::Observation;
     use crate::cards::street::Street;
-    use crate::cards::strength::Strength;
     use crate::clustering::histogram::Histogram;
 
-    #[tokio::test]
-    async fn test_random_streets_emd() {
-        let obs1 = Observation::from(Street::Turn);
-        let obs2 = Observation::from(Street::Turn);
-        let ref h1 = Histogram::from(obs1.clone());
-        let ref h2 = Histogram::from(obs2.clone());
-        println!("{}\n{} {}", h1, Strength::from(obs1.clone()), obs1);
-        println!("{}\n{} {}", h2, Strength::from(obs2.clone()), obs2);
-        println!();
-        println!("EMD A >> B: {}", BTreeMap::new().emd(h1, h2)); ////////
-        println!("EMD B >> A: {}", BTreeMap::new().emd(h2, h1)); ////////
+    #[test]
+    fn is_histogram_emd_zero() {
+        let metric = BTreeMap::default();
+        let obs = Observation::from(Street::Turn);
+        let ref h1 = Histogram::from(obs.clone());
+        let ref h2 = Histogram::from(obs.clone());
+        assert!(metric.emd(h1, h2) == 0.);
+        assert!(metric.emd(h2, h1) == 0.);
+    }
+
+    #[test]
+    fn is_histogram_emd_positive() {
+        let metric = BTreeMap::default();
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        assert!(metric.emd(h1, h2) > 0.);
+        assert!(metric.emd(h2, h1) > 0.);
+    }
+
+    #[test]
+    fn is_equity_distance_symmetric() {
+        let metric = BTreeMap::default();
+        let ref abs1 = Abstraction::from(Observation::from(Street::Rive));
+        let ref abs2 = Abstraction::from(Observation::from(Street::Rive));
+        assert!(metric.distance(abs1, abs2) == metric.distance(abs2, abs1));
     }
 }
