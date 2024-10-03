@@ -28,14 +28,6 @@ impl Abstraction {
     }
 }
 
-impl From<Observation> for Abstraction {
-    fn from(observation: Observation) -> Self {
-        use crate::cards::street::Street;
-        assert!(observation.street() == Street::Rive);
-        Self::from(observation.equity())
-    }
-}
-
 /// probability isomorphism
 ///
 /// for river, we use a i8 to represent the equity bucket,
