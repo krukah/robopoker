@@ -16,37 +16,105 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::sync::Arc;
 
+/// Centroid is a wrapper around two histograms.
+/// We use it to swap the current and next histograms
+/// after each iteration of kmeans clustering.
 struct Centroid {
-    prev: Histogram,
+    curr: Histogram,
     next: Histogram,
 }
 impl Centroid {
+    fn switch(&mut self) {
+        self.curr.destroy();
+        std::mem::swap(&mut self.curr, &mut self.next);
+    }
     fn absorb(&mut self, h: &Histogram) {
         self.next.absorb(h);
     }
-    fn histogram(&self) -> &Histogram {
-        &self.prev
+    fn reveal(&self) -> &Histogram {
+        &self.curr
     }
 }
 
-trait Metric {
-    // impl for Map<Pair, f32>
-    fn distance(&self, a: &Abstraction, b: &Abstraction) -> f32;
-    fn wasserstein(&self, a: &Histogram, b: &Histogram) -> f32;
+/// this is an intermediate data structure
+/// used during the clustering process.
+/// we need to hold on to histograms immutable
+/// while computing K means calculations.
+/// using the outer layer's abstraction map,
+/// we project Observation -> [Observation] -> [Abstraction] -> Histogram.
+struct LargeSpace(BTreeMap<Observation, Histogram>);
+impl LargeSpace {
+    fn histogram(&self, o: &Observation) -> &Histogram {
+        self.0.get(o).expect("observation projection")
+    }
 }
-trait Clustering {
-    // impl for Map<Observation, Abstraction>
-    fn create_histogram(&self, hi: &Observation) -> Histogram;
-    fn lookup_abstraction(&self, lo: &Observation) -> Abstraction;
+
+/// this is an intermediate data structure
+/// used during the clustering process.
+/// we need to hold on to histograms immutable
+/// while computing K means calculations.
+/// using the outer layer's abstraction map,
+/// we project Observation -> [Observation] -> [Abstraction] -> Histogram.
+struct SmallSpace(BTreeMap<Abstraction, Centroid>);
+impl SmallSpace {
+    fn histogram(&self, a: &Abstraction) -> &Histogram {
+        self.0.get(a).expect("abstraction projection").reveal()
+    }
 }
-trait ObsProjection {
-    // impl for Map<Observation, Histogram>
-    fn lookup_histogram(&self, o: &Observation) -> &Histogram;
+/// this is the output of the clustering module
+/// it is a massive table of Observation -> Abstraction.
+/// effectively, this is a compressed representation of the
+/// full game tree, learned by kmeans
+/// rooted in showdown equity at the River.
+struct Abstractor(BTreeMap<Observation, Abstraction>);
+impl Abstractor {
+    /// iterating over all Observations for a given Street,
+    /// map each into a Histogram,
+    /// and collect into a LargeSpace.
+    fn generate(&self, street: Street) -> LargeSpace {
+        LargeSpace(
+            Observation::all(street)
+                .into_iter()
+                .map(|inner| (inner, self.assemble(&inner)))
+                .collect::<BTreeMap<Observation, Histogram>>(),
+        )
+    }
+    /// at a given Street,
+    /// decompose the Observation,
+    /// into all of its next-street Observations,
+    /// and map each of them into an Abstraction,
+    /// and collect the results into a Histogram.
+    fn assemble(&self, inner: &Observation) -> Histogram {
+        match inner.street() {
+            Street::Turn => inner.clone().into(),
+            _ => inner
+                .outnodes()
+                .into_iter()
+                .map(|ref outer| self.represent(outer))
+                .collect::<Vec<Abstraction>>()
+                .into(),
+        }
+    }
+    /// lookup the pre-computed abstraction for the outer observation
+    fn represent(&self, outer: &Observation) -> Abstraction {
+        self.0
+            .get(outer)
+            .cloned()
+            .expect("precomputed abstraction mapping")
+    }
 }
-trait AbsProjection {
-    // impl for Map<Abstraction, Centroid>
-    fn lookup_histogram(&self, a: &Abstraction) -> &Histogram;
-    // fn lookup_centroid(&self, a: &Abstraction) -> &Centroid;
+
+/// Distance metric for kmeans clustering.
+/// encapsulates distance between Abstractions of the "previous" hierarchy,
+/// as well as: distance between Histograms of the "current" hierarchy.
+struct Metric(BTreeMap<Pair, f32>);
+impl Metric {
+    fn distance(&self, a: &Abstraction, b: &Abstraction) -> f32 {
+        self.0.distance(a, b)
+    }
+    fn wasserstein(&self, a: &Histogram, b: &Histogram) -> f32 {
+        self.0.emd(a, b)
+    }
 }
 
 // horizontal scaling across threads for k-means initialization and clustering

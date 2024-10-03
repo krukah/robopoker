@@ -25,8 +25,8 @@ impl Metric for BTreeMap<Pair, f32> {
     /// EMD(X,Y) != EMD(Y,X)
     /// Centroid should be the "hole" (sink) in the EMD calculation
     fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
-        let x = source.domain();
-        let y = target.domain();
+        let x = source.support();
+        let y = target.support();
         let mut energy = 0.0;
         let mut hasmoved = x
             .iter()
@@ -118,8 +118,8 @@ mod tests {
     #[test]
     fn is_equity_distance_symmetric() {
         let metric = BTreeMap::default();
-        let ref abs1 = Abstraction::from(Observation::from(Street::Rive));
-        let ref abs2 = Abstraction::from(Observation::from(Street::Rive));
+        let ref abs1 = Abstraction::from(Observation::from(Street::Rive).equity());
+        let ref abs2 = Abstraction::from(Observation::from(Street::Rive).equity());
         assert!(metric.distance(abs1, abs2) == metric.distance(abs2, abs1));
     }
 }
