@@ -123,9 +123,9 @@ impl Hierarchical {
     /// 3. use `self.abstractor` to map each into an `Abstraction`
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> LargeSpace {
+        log::info!("computing projections {}", self.street);
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
-        log::info!("computing projections {}", self.street);
         LargeSpace(
             Observation::all(self.street.prev())
                 .into_par_iter()
@@ -164,10 +164,10 @@ impl Hierarchical {
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
     fn reiterate_kmeans(&mut self) {
-        //::parallelize
         log::info!("reiterating kmeans {}", self.street);
         for _ in 0..self.t() {
             for (o, h) in self.points.0.iter() {
+                log::info!("assigning {}", o);
                 let ref abstraction = self.neighbor(h).clone();
                 self.kmeans.absorb(abstraction, h);
                 self.lookup.assign(abstraction, o);
