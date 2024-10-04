@@ -1,11 +1,10 @@
-use crate::cards::rank::Rank;
-
 use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
 use super::street::Street;
 use super::strength::Strength;
+use crate::cards::rank::Rank;
 use std::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
@@ -120,7 +119,6 @@ impl From<Street> for Observation {
         Self::from((secret, public))
     }
 }
-
 /// i64 isomorphism
 ///
 /// Packs all the cards in order, starting from LSBs.
@@ -173,5 +171,18 @@ impl From<Observation> for Hand {
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} + {}", self.secret, self.public)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn i64_bijection() {
+        let encoded = Observation::from(Street::Flop);
+        let decoded = Observation::from(i64::from(encoded));
+        assert!(encoded.secret == decoded.secret);
+        assert!(encoded.public == decoded.public);
     }
 }
