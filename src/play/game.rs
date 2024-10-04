@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::action::Action;
 use super::payout::Payout;
 use super::seat::Seat;
@@ -66,7 +64,7 @@ impl Game {
             Transition::Awaiting(street) => {
                 let mut child = self.clone();
                 child.show_revealed(street);
-                vec![(child, Action::Draw(Card::MAX))] //? TODO should we return a single draw? or use the street enum to drive this? let's use the street enum. it's inside of Awaiting(_). and we can condition on
+                vec![(child, Action::Draw(Card::draw()))] //? TODO should we return a single draw? or use the street enum to drive this? let's use the street enum. it's inside of Awaiting(_). and we can condition on
             }
             Transition::Decision(_) => self
                 .options()
@@ -196,6 +194,7 @@ impl Game {
             .expect("index should be in bounds bc modulo")
     }
 
+    #[allow(dead_code)]
     fn effective_stack(&self) -> Chips {
         let mut totals = self
             .seats

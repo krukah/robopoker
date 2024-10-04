@@ -179,7 +179,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn i64_bijection() {
+    fn bijective_i64() {
         let encoded = Observation::from(Street::Flop);
         let decoded = Observation::from(i64::from(encoded));
         assert!(encoded.secret == decoded.secret);
