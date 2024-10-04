@@ -1,4 +1,3 @@
-use crate::cards::observation::Observation;
 use crate::Probability;
 use std::hash::Hash;
 use std::u64;

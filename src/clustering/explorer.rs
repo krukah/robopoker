@@ -1,7 +1,7 @@
 use super::abstraction::Abstraction;
-use super::layer::Layer;
+use super::layer::Abstractor;
+use super::layer::HierarchicalLearner;
 use crate::cards::observation::Observation;
-use crate::cards::street::Street;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
 use crate::mccfr::data::Data;
@@ -14,14 +14,13 @@ use crate::Probability;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::Rng;
-use std::collections::BTreeMap;
 use std::hash::Hash;
 
 /// given a Node, we can sample a distribution of children according to the Profile.
 /// we can also map an Observation to its nearest neighbor abstraction.
 /// Explorer determines how we sample the Tree in Full Tree Search.
 /// but combined with Profile, we can implement Monte Carlo Tree Search too.
-pub struct Explorer(BTreeMap<Observation, Abstraction>);
+pub struct Explorer(Abstractor);
 
 /// the product of
 /// "information abstraction" and
@@ -34,13 +33,7 @@ pub struct BucketAbstraction {
 
 impl Explorer {
     pub fn download() -> Self {
-        let mut abstractions = BTreeMap::new();
-        for street in Street::all() {
-            for (o, a) in Layer::download_centroid(street.clone()) {
-                abstractions.insert(o, a);
-            }
-        }
-        Self(abstractions)
+        Self(HierarchicalLearner::retrieve())
     }
 
     /// sample children of a Node, according to the distribution defined by Profile.
@@ -117,10 +110,7 @@ impl Explorer {
     ///
     fn card_abstraction(&self, game: &Game) -> Abstraction {
         let ref observation = Observation::from(game);
-        self.0
-            .get(observation)
-            .copied()
-            .expect("download should have all Node observations")
+        self.0.abstraction(observation)
     }
     fn path_abstraction(&self, path: &Vec<&Edge>) -> Path {
         todo!("pseudoharmonic action mapping for path abstraction")
