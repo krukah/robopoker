@@ -1,6 +1,7 @@
 pub mod abstraction;
 pub mod abstractor;
 pub mod centroid;
+pub mod datasets;
 pub mod explorer;
 pub mod histogram;
 pub mod learner;
