@@ -4,11 +4,6 @@ use crate::mccfr::player::Player;
 use crate::play::continuation::Transition;
 use crate::play::game::Game;
 
-/// pot
-/// n_bets
-/// observation
-/// abstraction
-/// rotation
 pub struct Data {
     game: Game,
     bucket: Bucket,

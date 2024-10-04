@@ -4,7 +4,7 @@ pub mod centroid;
 pub mod consumer;
 pub mod explorer;
 pub mod histogram;
-pub mod layer;
+pub mod learner;
 pub mod metric;
 pub mod potential;
 pub mod producer;

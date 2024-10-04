@@ -21,23 +21,23 @@ impl Blueprint {
     /// i'm making this a static method but in theory we could
     /// download the Profile from disk,
     /// the same way we download the Explorer.
-    pub fn empty() -> Self {
+    fn empty() -> Self {
         Self {
             explorer: Explorer::download(),
             profile: Profile::empty(),
             tree: Tree::empty(),
         }
     }
-    pub fn train(&mut self, epochs: usize) {
-        while self.profile.step() <= epochs {
-            for ref infoset in self.blocks() {
-                if self.profile.walker() == infoset.node().player() {
-                    self.profile.update_regret(infoset);
-                    self.profile.update_policy(infoset);
+    pub fn train(epochs: usize) {
+        let mut this = Self::empty();
+        while this.profile.step() <= epochs {
+            for ref infoset in this.blocks() {
+                if this.profile.walker() == infoset.node().player() {
+                    this.profile.update_regret(infoset);
+                    this.profile.update_policy(infoset);
                 }
             }
         }
-        // put upload here
     }
 
     /// the only thing we really need the tree for is to yield infosets for us to sample.

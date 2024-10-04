@@ -21,10 +21,8 @@ use robopoker::cards::hand::Hand;
 use robopoker::cards::observation::Observation;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
-use robopoker::clustering::abstractor::Abstractor;
 use robopoker::clustering::histogram::Histogram;
 use robopoker::clustering::metric::Metric;
-use std::collections::BTreeMap;
 
 fn enumerating_flops(c: &mut Criterion) {
     let mut group = c.benchmark_group("Exhaustive Flops");

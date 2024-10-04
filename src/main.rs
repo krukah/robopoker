@@ -6,10 +6,10 @@ async fn main() {
     logs();
 
     // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::layer::HierarchicalLearner::learn();
+    clustering::learner::Hierarchical::learn();
 
     // The counter-factual regret minimization.
-    mccfr::trainer::Blueprint::empty().train(1e5 as usize);
+    mccfr::trainer::Blueprint::train(100_000);
 
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
     play::game::Game::play();
