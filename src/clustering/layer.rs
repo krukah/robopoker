@@ -1,8 +1,10 @@
+use super::abstractor::Abstractor;
+use super::centroid::Centroid;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::metric::Metric as _;
+use crate::clustering::metric::Metric;
 use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use rand::distributions::Distribution;
@@ -11,36 +13,6 @@ use rand::seq::IteratorRandom;
 use rand::SeedableRng;
 use std::collections::BTreeMap;
 use std::io::Read;
-
-/// `Centroid` is a wrapper around two histograms.
-/// We use it to swap the current and next histograms
-/// after each iteration of kmeans clustering.
-pub struct Centroid {
-    last: Histogram,
-    next: Histogram,
-}
-
-impl Centroid {
-    fn rotate(&mut self) {
-        self.last.destroy();
-        std::mem::swap(&mut self.last, &mut self.next);
-    }
-    fn absorb(&mut self, h: &Histogram) {
-        self.next.absorb(h);
-    }
-    fn reveal(&self) -> &Histogram {
-        &self.last
-    }
-}
-
-impl From<Histogram> for Centroid {
-    fn from(h: Histogram) -> Self {
-        Self {
-            last: h,
-            next: Histogram::default(),
-        }
-    }
-}
 
 /// intermediate data structure to reference during kmeans
 /// as we compute the Wasserstein distance between
@@ -62,60 +34,6 @@ impl SmallSpace {
     }
     fn extend(&mut self, h: Histogram) {
         self.0.insert(Abstraction::random(), Centroid::from(h));
-    }
-}
-
-/// this is the output of the clustering module
-/// it is a massive table of `Observation` -> `Abstraction`.
-/// effectively, this is a compressed representation of the
-/// full game tree, learned by kmeans
-/// rooted in showdown equity at the River.
-#[derive(Default)]
-pub struct Abstractor(pub BTreeMap<Observation, Abstraction>);
-
-impl Abstractor {
-    /// at a given `Street`,
-    /// 1. decompose the `Observation` into all of its next-street `Observation`s,
-    /// 2. map each of them into an `Abstraction`,
-    /// 3. collect the results into a `Histogram`.
-    pub fn projection(&self, inner: &Observation) -> Histogram {
-        match inner.street() {
-            Street::Turn => inner.clone().into(),
-            _ => inner
-                .outnodes()
-                .into_iter()
-                .map(|ref outer| self.abstraction(outer))
-                .collect::<Vec<Abstraction>>()
-                .into(),
-        }
-    }
-
-    /// lookup the pre-computed abstraction for the outer observation
-    pub fn abstraction(&self, outer: &Observation) -> Abstraction {
-        self.0
-            .get(outer)
-            .cloned()
-            .expect("precomputed abstraction mapping")
-    }
-
-    /// simple insertion.
-    /// can we optimize out this clone though?
-    pub fn assign(&mut self, a: &Abstraction, o: &Observation) {
-        self.0.insert(o.to_owned(), a.to_owned());
-    }
-}
-
-/// Distance metric for kmeans clustering.
-/// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
-/// as well as: distance between `Histogram`s of the "current" hierarchy.
-#[derive(Default)]
-pub struct Metric(pub BTreeMap<Pair, f32>);
-impl Metric {
-    fn distance(&self, a: &Abstraction, b: &Abstraction) -> f32 {
-        self.0.distance(a, b)
-    }
-    fn wasserstein(&self, a: &Histogram, b: &Histogram) -> f32 {
-        self.0.emd(a, b)
     }
 }
 

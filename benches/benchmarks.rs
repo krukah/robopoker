@@ -21,6 +21,7 @@ use robopoker::cards::hand::Hand;
 use robopoker::cards::observation::Observation;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
+use robopoker::clustering::abstractor::Abstractor;
 use robopoker::clustering::histogram::Histogram;
 use robopoker::clustering::metric::Metric;
 use std::collections::BTreeMap;
@@ -69,7 +70,7 @@ fn calculating_histogram_emd(c: &mut Criterion) {
     let mut group = c.benchmark_group("Histogram EMD Calculation");
     group.bench_function(BenchmarkId::new("EMD calculation", "histogram pair"), |b| {
         b.iter(|| {
-            let metric = BTreeMap::default();
+            let metric = Metric::default();
             let ref h1 = Histogram::from(Observation::from(Street::Turn));
             let ref h2 = Histogram::from(Observation::from(Street::Turn));
             metric.emd(h1, h2)

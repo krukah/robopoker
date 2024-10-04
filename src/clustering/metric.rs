@@ -3,17 +3,27 @@ use crate::clustering::histogram::Histogram;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 
-/// Trait for defining distance metrics between abstractions and histograms.
-///
-/// Calculating similarity between abstractions
-/// and Earth Mover's Distance (EMD) between histograms. These metrics are
-/// essential for clustering algorithms and comparing distributions.
-pub trait Metric {
-    fn emd(&self, x: &Histogram, y: &Histogram) -> f32;
-    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32;
-}
+/// Distance metric for kmeans clustering.
+/// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
+/// as well as: distance between `Histogram`s of the "current" hierarchy.
+#[derive(Default)]
+pub struct Metric(pub BTreeMap<Pair, f32>);
+impl Metric {
+    /// generated recursively and hierarchically
+    /// we can calculate the distance between two abstractions
+    /// by eagerly finding distance between their centroids
+    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
+        match (x, y) {
+            (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
+            (Abstraction::Random(_), Abstraction::Random(_)) => self
+                .0
+                .get(&Pair::from((x, y)))
+                .copied()
+                .expect("precalculated distance"),
+            _ => unreachable!("invalid abstraction pair"),
+        }
+    }
 
-impl Metric for BTreeMap<Pair, f32> {
     /// Earth Mover's Distance (EMD) between histograms
     ///
     /// This function approximates the Earth Mover's Distance (EMD) between two histograms.
@@ -24,7 +34,7 @@ impl Metric for BTreeMap<Pair, f32> {
     /// Beware the asymmetry:
     /// EMD(X,Y) != EMD(Y,X)
     /// Centroid should be the "hole" (sink) in the EMD calculation
-    fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
+    pub fn wasserstein(&self, source: &Histogram, target: &Histogram) -> f32 {
         let x = source.support();
         let y = target.support();
         let mut energy = 0.0;
@@ -74,18 +84,8 @@ impl Metric for BTreeMap<Pair, f32> {
         energy
     }
 
-    /// generated recursively and hierarchically
-    /// we can calculate the distance between two abstractions
-    /// by eagerly finding distance between their centroids
-    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
-        match (x, y) {
-            (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
-            (Abstraction::Random(_), Abstraction::Random(_)) => self
-                .get(&Pair::from((x, y)))
-                .copied()
-                .expect("precalculated distance"),
-            _ => unreachable!("invalid abstraction pair"),
-        }
+    pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
+        self.wasserstein(source, target)
     }
 }
 
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn is_histogram_emd_zero() {
-        let metric = BTreeMap::default();
+        let metric = Metric::default();
         let obs = Observation::from(Street::Turn);
         let ref h1 = Histogram::from(obs.clone());
         let ref h2 = Histogram::from(obs.clone());
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn is_histogram_emd_positive() {
-        let metric = BTreeMap::default();
+        let metric = Metric::default();
         let ref h1 = Histogram::from(Observation::from(Street::Turn));
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
         assert!(metric.emd(h1, h2) > 0.);
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn is_equity_distance_symmetric() {
-        let metric = BTreeMap::default();
+        let metric = Metric::default();
         let ref abs1 = Abstraction::from(Observation::from(Street::Rive).equity());
         let ref abs2 = Abstraction::from(Observation::from(Street::Rive).equity());
         assert!(metric.distance(abs1, abs2) == metric.distance(abs2, abs1));

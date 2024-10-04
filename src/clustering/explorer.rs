@@ -1,5 +1,5 @@
 use super::abstraction::Abstraction;
-use super::layer::Abstractor;
+use super::abstractor::Abstractor;
 use super::layer::HierarchicalLearner;
 use crate::cards::observation::Observation;
 use crate::mccfr::bucket::Bucket;
