@@ -1,4 +1,6 @@
 pub mod abstraction;
+pub mod abstractor;
+pub mod centroid;
 pub mod consumer;
 pub mod explorer;
 pub mod histogram;
