@@ -12,16 +12,3 @@ impl Player {
         Self::Chance
     }
 }
-
-#[allow(unused)]
-trait CFRPlayer
-where
-    Self: Sized,
-    Self: Clone,
-    Self: Copy,
-    Self: Hash,
-    Self: Eq,
-{
-}
-
-impl CFRPlayer for Player {}

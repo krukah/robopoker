@@ -1,6 +1,6 @@
 use super::abstraction::Abstraction;
 use super::abstractor::Abstractor;
-use super::layer::HierarchicalLearner;
+use super::learner::Hierarchical;
 use crate::cards::observation::Observation;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
@@ -33,7 +33,7 @@ pub struct BucketAbstraction {
 
 impl Explorer {
     pub fn download() -> Self {
-        Self(HierarchicalLearner::retrieve())
+        Self(Hierarchical::retrieve())
     }
 
     /// sample children of a Node, according to the distribution defined by Profile.

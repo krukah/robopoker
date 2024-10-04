@@ -41,7 +41,7 @@ impl SmallSpace {
 /// this is decomposed into the necessary data structures
 /// for kmeans clustering to occur for a given `Street`.
 /// it should also parallelize well, with kmeans being the only mutable field.
-pub struct HierarchicalLearner {
+pub struct Hierarchical {
     street: Street,
     metric: Metric,
     points: LargeSpace,
@@ -49,13 +49,12 @@ pub struct HierarchicalLearner {
     lookup: Abstractor,
 }
 
-impl HierarchicalLearner {
-    const BUFFER: usize = 1 << 16;
-
+impl Hierarchical {
     /// from scratch, generate and persist the full Abstraction lookup table
     pub fn learn() {
         Self::outer().inner().save().inner().save();
     }
+
     /// if we have this full thing created we can also just retrieve it
     pub fn retrieve() -> Abstractor {
         let mut map = BTreeMap::default();
@@ -63,39 +62,6 @@ impl HierarchicalLearner {
         map.extend(Self::load(Street::Flop).0);
         Abstractor(map)
     }
-
-    /// read the full abstraction lookup table from disk
-    fn load(street: Street) -> Abstractor {
-        let mut map = BTreeMap::new();
-        let file = std::fs::File::open(format!("{}", street)).expect("open file");
-        let ref mut reader = std::io::BufReader::with_capacity(Self::BUFFER, file);
-        let ref mut buffer = [0u8; 16];
-        while reader.read_exact(buffer).is_ok() {
-            let obs_u64 = u64::from_le_bytes(buffer[00..08].try_into().unwrap());
-            let abs_u64 = u64::from_le_bytes(buffer[08..16].try_into().unwrap());
-            let observation = Observation::from(obs_u64 as i64);
-            let abstraction = Abstraction::from(abs_u64 as i64);
-            map.insert(observation, abstraction);
-        }
-        Abstractor(map)
-    }
-
-    /// write the full abstraction lookup table to disk
-    fn save(self) -> Self {
-        log::info!("uploading centroids {}", self.street);
-        let mut file = std::fs::File::create(format!("{}", self.street)).expect("new file");
-        let mut progress = Progress::new(self.lookup.0.len(), 10);
-        for (observation, abstraction) in self.lookup.0.iter() {
-            use std::io::Write;
-            let obs = i64::from(*observation) as u64;
-            let abs = i64::from(*abstraction) as u64;
-            let ref bytes = [obs.to_le_bytes(), abs.to_le_bytes()].concat();
-            file.write_all(bytes).expect("write to file");
-            progress.tick();
-        }
-        self
-    }
-
     /// start with the River layer. everything is empty because we
     /// can generate `Abstractor` and `SmallSpace` from "scratch".
     /// - `lookup`: lazy equity calculation of river observations
@@ -202,6 +168,8 @@ impl HierarchicalLearner {
         }
     }
 
+    /// find the nearest neighbor `Abstraction` to a given `Histogram`
+    /// this might be expensive and worth benchmarking or profiling
     fn neighbor(&self, histogram: &Histogram) -> &Abstraction {
         self.kmeans
             .0
@@ -263,11 +231,44 @@ impl HierarchicalLearner {
         match self.street {
             Street::Turn => 200,
             Street::Flop => 200,
-            Street::Pref => 169,
             _ => unreachable!("how did you get here"),
         }
     }
     fn t(&self) -> usize {
         100
+    }
+
+    const BUFFER: usize = 1 << 16;
+
+    /// read the full abstraction lookup table from disk
+    fn load(street: Street) -> Abstractor {
+        let mut map = BTreeMap::new();
+        let file = std::fs::File::open(format!("{}", street)).expect("open file");
+        let ref mut reader = std::io::BufReader::with_capacity(Self::BUFFER, file);
+        let ref mut buffer = [0u8; 16];
+        while reader.read_exact(buffer).is_ok() {
+            let obs_u64 = u64::from_le_bytes(buffer[00..08].try_into().unwrap());
+            let abs_u64 = u64::from_le_bytes(buffer[08..16].try_into().unwrap());
+            let observation = Observation::from(obs_u64 as i64);
+            let abstraction = Abstraction::from(abs_u64 as i64);
+            map.insert(observation, abstraction);
+        }
+        Abstractor(map)
+    }
+
+    /// write the full abstraction lookup table to disk
+    fn save(self) -> Self {
+        log::info!("uploading centroids {}", self.street);
+        let mut file = std::fs::File::create(format!("{}", self.street)).expect("new file");
+        let mut progress = Progress::new(self.lookup.0.len(), 10);
+        for (observation, abstraction) in self.lookup.0.iter() {
+            use std::io::Write;
+            let obs = i64::from(*observation) as u64;
+            let abs = i64::from(*abstraction) as u64;
+            let ref bytes = [obs.to_le_bytes(), abs.to_le_bytes()].concat();
+            file.write_all(bytes).expect("write to file");
+            progress.tick();
+        }
+        self
     }
 }
