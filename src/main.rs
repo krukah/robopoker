@@ -7,7 +7,7 @@ async fn main() {
     logs();
 
     // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::layer::Layer::hierarchical().await;
+    clustering::layer::Layer::hierarchical();
 
     // The counter-factual regret minimization.
     mccfr::trainer::Solver::empty().train(1e5 as usize);
