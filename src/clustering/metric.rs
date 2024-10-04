@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
 #[derive(Default)]
 pub struct Metric(pub BTreeMap<Pair, f32>);
+
 impl Metric {
     /// generated recursively and hierarchically
     /// we can calculate the distance between two abstractions
