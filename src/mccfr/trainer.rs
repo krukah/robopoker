@@ -8,9 +8,7 @@ use super::tree::Tree;
 use crate::clustering::explorer::Explorer;
 use petgraph::graph::NodeIndex;
 
-/// also need to add Abstractor
-/// so we can lookup Abstractions from Observations from Game
-/// also need some async upload/download methods for Profile
+/// need some async upload/download methods for Profile
 pub struct Blueprint {
     explorer: Explorer,
     profile: Profile,
