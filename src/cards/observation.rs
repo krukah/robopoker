@@ -29,11 +29,11 @@ impl Observation {
             Street::Rive => 5,
             _ => unreachable!("no other transitions"),
         };
-        let mut observations = Vec::new(); // TODO make with_capacity, conditional on street
-        let holes = HandIterator::from((2usize, Hand::from(0u64)));
-        for hole in holes {
-            let boards = HandIterator::from((n, hole));
-            for board in boards {
+        // TODO make with_capacity, conditional on street
+        // create 2 HandIters and multiple combinations
+        let mut observations = Vec::new();
+        for hole in HandIterator::from((2usize, Hand::from(0u64))) {
+            for board in HandIterator::from((n, hole)) {
                 observations.push(Observation::from((hole, board)));
             }
         }

@@ -83,9 +83,9 @@ impl Hierarchical {
         let mut inner = Self {
             lookup: Abstractor::default(), // assigned during clustering
             kmeans: SmallSpace::default(), // assigned during clustering
+            street: self.inner_street(),   // uniquely determined by outer layer
             metric: self.inner_metric(),   // uniquely determined by outer layer
             points: self.inner_points(),   // uniquely determined by outer layer
-            street: self.inner_street(),   // uniquely determined by outer layer
         };
         inner.initalize_kmeans();
         inner.reiterate_kmeans();
@@ -123,12 +123,15 @@ impl Hierarchical {
     /// 3. use `self.abstractor` to map each into an `Abstraction`
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> LargeSpace {
+        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
         log::info!("computing projections {}", self.street);
-        let projections = Observation::all(self.street.prev())
-            .into_iter()
-            .map(|inner| (inner, self.lookup.projection(&inner)))
-            .collect::<BTreeMap<Observation, Histogram>>();
-        LargeSpace(projections)
+        LargeSpace(
+            Observation::all(self.street.prev())
+                .into_par_iter()
+                .map(|inner| (inner, self.lookup.projection(&inner)))
+                .collect::<BTreeMap<Observation, Histogram>>(),
+        )
     }
 
     /// simply go to the previous street
@@ -141,6 +144,9 @@ impl Hierarchical {
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
+    ///
+    /// if this becomes a bottleneck with contention,
+    /// consider partitioning dataset or using lock-free data structures.
     fn initalize_kmeans(&mut self) {
         log::info!("initializing kmeans {}", self.street);
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
@@ -154,7 +160,11 @@ impl Hierarchical {
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
+    ///
+    /// if this becomes a bottleneck with contention,
+    /// consider partitioning dataset or using lock-free data structures.
     fn reiterate_kmeans(&mut self) {
+        //::parallelize
         log::info!("reiterating kmeans {}", self.street);
         for _ in 0..self.t() {
             for (o, h) in self.points.0.iter() {
@@ -222,15 +232,15 @@ impl Hierarchical {
             .values()
             .map(|centroid| centroid.reveal())
             .map(|mean| self.metric.wasserstein(histogram, mean))
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
             .map(|min| min * min)
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
             .expect("find nearest neighbor")
     }
 
     fn k(&self) -> usize {
         match self.street {
-            Street::Turn => 200,
-            Street::Flop => 200,
+            Street::Turn => 2,
+            Street::Flop => 2,
             _ => unreachable!("how did you get here"),
         }
     }

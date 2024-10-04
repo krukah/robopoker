@@ -975,6 +975,7 @@ dependencies = [
  "num_cpus",
  "petgraph",
  "rand",
+ "rayon",
  "tokio",
  "tokio-postgres",
 ]
