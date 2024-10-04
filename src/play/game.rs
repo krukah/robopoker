@@ -461,15 +461,17 @@ impl Game {
     }
 
     //
-    fn strength(&self, seat: &Seat) -> Strength {
+    pub fn settlement(&self) -> Vec<Payout> {
         assert!(self.is_terminal());
-        Strength::from(Hand::add(
-            Hand::from(seat.cards()),
-            Hand::from(self.board()),
-        ))
+        Showdown::from(self.ledger()).settle()
+    }
+    fn ledger(&self) -> Vec<Payout> {
+        self.seats
+            .iter()
+            .map(|seat| self.entry(seat))
+            .collect::<Vec<Payout>>()
     }
     fn entry(&self, seat: &Seat) -> Payout {
-        assert!(self.is_terminal());
         Payout {
             reward: 0,
             risked: seat.spent(),
@@ -477,18 +479,11 @@ impl Game {
             strength: self.strength(seat),
         }
     }
-    fn ledger(&self) -> [Payout; N] {
-        assert!(self.is_terminal());
-        self.seats
-            .iter()
-            .map(|seat| self.entry(seat))
-            .collect::<Vec<Payout>>()
-            .try_into()
-            .expect("const N")
-    }
-    pub fn settlement(&self) -> [Payout; N] {
-        assert!(self.is_terminal());
-        Showdown::from(self.ledger()).settlement()
+    fn strength(&self, seat: &Seat) -> Strength {
+        Strength::from(Hand::add(
+            Hand::from(seat.cards()),
+            Hand::from(self.board()),
+        ))
     }
 }
 

@@ -17,6 +17,17 @@ impl Payout {
     }
 }
 
+impl From<(Chips, State, Strength)> for Payout {
+    fn from((risked, status, strength): (Chips, State, Strength)) -> Self {
+        Self {
+            reward: 0,
+            risked,
+            status,
+            strength,
+        }
+    }
+}
+
 impl std::fmt::Display for Payout {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.reward > 0 {
