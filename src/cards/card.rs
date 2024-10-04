@@ -13,8 +13,11 @@ impl Card {
     pub fn suit(&self) -> Suit {
         Suit::from(self.0 % 4)
     }
-    pub const MIN: Self = Self(0);
-    pub const MAX: Self = Self(51);
+    pub fn draw() -> Card {
+        use rand::Rng;
+        let ref mut rng = rand::thread_rng();
+        Card::from(rng.gen_range(0..52) as u8)
+    }
 }
 
 /// (Rank, Suit) isomorphism
@@ -78,5 +81,36 @@ impl From<Card> for u64 {
 impl std::fmt::Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}{}", self.rank(), self.suit())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bijective_rank_suit() {
+        let card = Card::draw();
+        let suit = card.suit();
+        let rank = card.rank();
+        assert!(card == Card::from((rank, suit)));
+    }
+
+    #[test]
+    fn bijective_u8() {
+        let card = Card::draw();
+        assert!(card == Card::from(u8::from(card)));
+    }
+
+    #[test]
+    fn bijective_u32() {
+        let card = Card::draw();
+        assert!(card == Card::from(u32::from(card)));
+    }
+
+    #[test]
+    fn bijective_u64() {
+        let card = Card::draw();
+        assert!(card == Card::from(u64::from(card)));
     }
 }

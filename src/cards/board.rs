@@ -59,9 +59,3 @@ impl std::fmt::Display for Board {
         )
     }
 }
-
-// impl std::fmt::Display for Board {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         write!(f, "{}", self.0)
-//     }
-// }
