@@ -1,25 +1,24 @@
 use robopoker::*;
-use std::io::Write;
-use tokio::time::Instant;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
+    // Boring stuff
     logs();
 
     // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::layer::Layer::hierarchical();
+    clustering::layer::HierarchicalLearner::learn();
 
     // The counter-factual regret minimization.
-    mccfr::trainer::Solver::empty().train(1e5 as usize);
+    mccfr::trainer::Blueprint::empty().train(1e5 as usize);
 
-    // CLI game with yourself.
+    // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
     play::game::Game::play();
 }
 
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
 //    2019. Regret Circuits: Composability of Regret Minimizers. In Proceedings of the International Conference on Machine Learning (ICML), 2019. arXiv version. (https://arxiv.org/abs/1811.02540)
 //    2019. Stable-Predictive Optimistic Counterfactual Regret Minimization. In ICML. arXiv version. (https://arxiv.org/pdf/1902.04982.pdf)
-//  + 2019. Deep Counterfactual Regret Minimization In ICML. Early version (https://arxiv.org/pdf/1811.00164.pdf) in NeurIPS-18 Deep RL Workshop, 2018.
+//    2019. Deep Counterfactual Regret Minimization In ICML. Early version (https://arxiv.org/pdf/1811.00164.pdf) in NeurIPS-18 Deep RL Workshop, 2018.
 //  + 2019. Solving Imperfect-Information Games via Discounted Regret Minimization (https://arxiv.org/pdf/1809.04040.pdf). In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).
 //    2019. Online Convex Optimization for Sequential Decision Processes and Extensive-Form Games (http://www.cs.cmu.edu/~gfarina/2018/laminar-regret-aaai19/). In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).
 //    2019. Quasi-Perfect Stackelberg Equilibrium (http://www.cs.cmu.edu/~gfarina/2018/qp-stackelberg-aaai19/). In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).
@@ -61,6 +60,8 @@ async fn main() {
 //    2009. Computing Equilibria in Multiplayer Stochastic Games of Imperfect Information (http://www.cs.cmu.edu/~sandholm/stochgames.ijcai09.pdf). In IJCAI.
 
 fn logs() {
+    use std::io::Write;
+    use tokio::time::Instant;
     let start = Instant::now();
     env_logger::Builder::new()
         .filter(None, log::LevelFilter::Info)

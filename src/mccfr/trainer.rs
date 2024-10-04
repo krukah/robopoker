@@ -8,19 +8,19 @@ use super::tree::Tree;
 use crate::clustering::explorer::Explorer;
 use petgraph::graph::NodeIndex;
 
-/// need to add named fields
 /// also need to add Abstractor
 /// so we can lookup Abstractions from Observations from Game
 /// also need some async upload/download methods for Profile
-// need to generate Tree dynamically w MCMC
-pub struct Solver {
+pub struct Blueprint {
     explorer: Explorer,
     profile: Profile,
     tree: Tree,
 }
 
-impl Solver {
+impl Blueprint {
     /// i'm making this a static method but in theory we could
+    /// download the Profile from disk,
+    /// the same way we download the Explorer.
     pub fn empty() -> Self {
         Self {
             explorer: Explorer::download(),
@@ -97,7 +97,7 @@ impl Solver {
     }
 }
 
-impl std::fmt::Display for Solver {
+impl std::fmt::Display for Blueprint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Trainer profile:\n{}", self.profile)
     }
