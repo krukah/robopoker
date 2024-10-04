@@ -5,10 +5,6 @@
 !Cargo.toml
 !Cargo.lock
 !src/
-!tests/
-!benches/
-!examples/
-!build.rs
 
 # Ignore target directory even if it's inside src/
 **/target/
