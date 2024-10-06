@@ -16,7 +16,6 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
-use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -224,9 +223,9 @@ impl Hierarchical {
             .values()
             .nth(index)
             .expect("shared index with outer layer")
-            .to_owned()
+            .clone()
     }
-    /// distance to the nearest neighboring Centroid
+    /// distance^2 to the nearest neighboring Centroid
     fn sample_distance(&self, histogram: &Histogram) -> f32 {
         self.kmeans()
             .read()
@@ -264,42 +263,79 @@ impl Hierarchical {
     }
     /// hyperparameter: how many iterations to run kmeans
     fn t(&self) -> usize {
-        100
+        match self.street {
+            _ => 100,
+        }
     }
 
     /// write the full abstraction lookup table to disk
+    /// 1. Write the PGCOPY header (15 bytes)
+    /// 2. Write the flags (4 bytes)
+    /// 3. Write the extension (4 bytes)
+    /// 4. Write the observation and abstraction pairs
+    /// 5. Write the trailer (2 bytes)
     fn save(self) -> Self {
         log::info!("uploading abstraction lookup table {}", self.street);
-        let mut file = std::fs::File::create(format!("{}", self.street)).expect("new file");
+        use byteorder::BigEndian;
+        use byteorder::WriteBytesExt;
+        use std::fs::File;
+        use std::io::Write;
+        let mut file = File::create(format!("{}.pgcopy", self.street)).expect("new file");
         let locked = self.lookup();
         let ref lookup = locked.read().expect("poison").0;
         let mut progress = Progress::new(lookup.len(), 10);
+        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
+        file.write_u32::<BigEndian>(0).expect("flags");
+        file.write_u32::<BigEndian>(0).expect("extension");
         for (observation, abstraction) in lookup.iter() {
-            use std::io::Write;
-            let obs = i64::from(*observation) as u64;
-            let abs = i64::from(*abstraction) as u64;
-            let ref bytes = [obs.to_le_bytes(), abs.to_le_bytes()].concat();
-            file.write_all(bytes).expect("write to file");
+            let obs = i64::from(*observation);
+            let abs = i64::from(*abstraction);
+            file.write_u16::<BigEndian>(2).expect("field count");
+            file.write_u32::<BigEndian>(8).expect("8-bytes field");
+            file.write_i64::<BigEndian>(obs).expect("observation");
+            file.write_u32::<BigEndian>(8).expect("8-bytes field");
+            file.write_i64::<BigEndian>(abs).expect("abstraction");
             progress.tick();
         }
+        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
         self
     }
     /// read the full abstraction lookup table from disk
+    /// 1. Skip PGCOPY header (15 bytes), flags (4 bytes), and header extension (4 bytes)
+    /// 2. Read field count (should be 2)
+    /// 3. Read observation length (4 bytes)
+    /// 4. Read observation (8 bytes)
+    /// 5. Read abstraction length (4 bytes)
+    /// 6. Read abstraction (8 bytes)
+    /// 7. Insert observation and abstraction into lookup table
+    /// 8. Repeat until end of file
     fn load(street: Street) -> Abstractor {
-        const BUFFER: usize = 1 << 16;
         log::info!("downloading abstraction lookup table {}", street);
-        let mut map = BTreeMap::new();
-        let file = std::fs::File::open(format!("{}", street)).expect("open file");
-        let ref mut reader = std::io::BufReader::with_capacity(BUFFER, file);
-        let ref mut buffer = [0u8; 16];
-        while reader.read_exact(buffer).is_ok() {
-            let obs_u64 = u64::from_le_bytes(buffer[00..08].try_into().unwrap());
-            let abs_u64 = u64::from_le_bytes(buffer[08..16].try_into().unwrap());
-            let observation = Observation::from(obs_u64 as i64);
-            let abstraction = Abstraction::from(abs_u64 as i64);
-            map.insert(observation, abstraction);
+        use byteorder::BigEndian;
+        use byteorder::ReadBytesExt;
+        use std::fs::File;
+        use std::io::BufReader;
+        use std::io::Read;
+        use std::io::Seek;
+        use std::io::SeekFrom;
+        let file = File::open(format!("{}.pgcopy", street)).expect("open file");
+        let mut buffer = [0u8; 2];
+        let mut lookup = BTreeMap::new();
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(23)).expect("seek past header");
+        while reader.read_exact(&mut buffer).is_ok() {
+            if u16::from_be_bytes(buffer) != 2 {
+                break;
+            }
+            reader.read_u32::<BigEndian>().expect("observation length");
+            let obs = reader.read_i64::<BigEndian>().expect("read observation");
+            reader.read_u32::<BigEndian>().expect("abstraction length");
+            let abs = reader.read_i64::<BigEndian>().expect("read abstraction");
+            let observation = Observation::from(obs);
+            let abstraction = Abstraction::from(abs);
+            lookup.insert(observation, abstraction);
         }
-        Abstractor(map)
+        Abstractor(lookup)
     }
 
     /// thread-safe mutability for updating Abstraction table
