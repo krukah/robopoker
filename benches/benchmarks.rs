@@ -27,7 +27,7 @@ use robopoker::clustering::metric::Metric;
 fn enumerating_flops(c: &mut Criterion) {
     let mut group = c.benchmark_group("Exhaustive Flops");
     group.bench_function(BenchmarkId::new("flop enumeration", "flop"), |b| {
-        b.iter(|| Observation::all(Street::Flop))
+        b.iter(|| Observation::enumerate(Street::Flop))
     });
     group.finish();
 }
