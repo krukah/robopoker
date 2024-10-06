@@ -77,6 +77,15 @@ impl From<i64> for Abstraction {
     }
 }
 
+impl std::fmt::Display for Abstraction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Random(n) => write!(f, "{:016x}", n),
+            Self::Equity(_) => unreachable!("don't log me"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -36,6 +36,7 @@ pub struct Hierarchical {
 impl Hierarchical {
     /// from scratch, generate and persist the full Abstraction lookup table
     pub fn upload() {
+        log::info!("uploading abstraction lookup table");
         Self::outer()
             .inner() // turn
             .save()
@@ -44,6 +45,7 @@ impl Hierarchical {
     }
     /// if we have this full thing created we can also just retrieve it
     pub fn retrieve() -> Abstractor {
+        log::info!("retrieving abstraction lookup table");
         let mut map = BTreeMap::default();
         map.extend(Self::load(Street::Turn).0);
         map.extend(Self::load(Street::Flop).0);
@@ -77,15 +79,6 @@ impl Hierarchical {
         inner.initial();
         inner.cluster();
         inner
-    }
-
-    /// thread-safe mutability for updating Abstraction table
-    fn lookup(&self) -> Arc<RwLock<Abstractor>> {
-        self.lookup.clone()
-    }
-    /// thread-safe mutability for kmeans centroids
-    fn kmeans(&self) -> Arc<RwLock<SmallSpace>> {
-        self.kmeans.clone()
     }
 
     /// simply go to the previous street
@@ -181,17 +174,10 @@ impl Hierarchical {
 
     /// mutation achieved by acquiring RwLock write access
     fn update(&self, observation: &Observation, histogram: &Histogram) {
-        let ref abstraction = self.sample_closest(histogram);
+        let ref abstraction = self.sample_neighbor(histogram);
         self.assign(abstraction, observation);
         self.absorb(abstraction, histogram);
-    }
-    /// assign an `Abstraction` to an `Observation`
-    fn assign(&self, abstraction: &Abstraction, observation: &Observation) {
-        self.lookup()
-            .write()
-            .expect("lookup arc")
-            .0
-            .insert(observation.clone(), abstraction.clone());
+        log::info!("{} >> {}", observation, abstraction);
     }
     /// absorb a `Histogram` into an `Abstraction`
     fn absorb(&self, abstraction: &Abstraction, histogram: &Histogram) {
@@ -203,9 +189,16 @@ impl Hierarchical {
             .expect("abstraction::from::neighbor::from::self.kmeans")
             .absorb(histogram);
     }
+    /// assign an `Abstraction` to an `Observation`
+    fn assign(&self, abstraction: &Abstraction, observation: &Observation) {
+        self.lookup()
+            .write()
+            .expect("lookup arc")
+            .0
+            .insert(observation.clone(), abstraction.clone());
+    }
 
-    /// the first point selected for initialization
-    /// is uniformly random across all `Observation` `Histogram`s
+    /// the first Centroid is uniformly random across all `Observation` `Histogram`s
     fn sample_uniform(&self, rng: &mut rand::rngs::StdRng) -> Histogram {
         self.points
             .0
@@ -214,15 +207,15 @@ impl Hierarchical {
             .expect("observation projections have been populated")
             .to_owned()
     }
-    /// each next point is selected with probability proportional to
-    /// the squared distance to the nearest neighboring centroid.
+    /// each next Centroid is selected with probability proportional to
+    /// the squared distance to the nearest neighboring Centroid.
     /// faster convergence, i guess. on the shoulders of giants
     fn sample_outlier(&self, rng: &mut rand::rngs::StdRng) -> Histogram {
         let weights = self
             .points
             .0
             .par_iter()
-            .map(|(_, hist)| self.sample_weights(hist))
+            .map(|(_, hist)| self.sample_distance(hist))
             .collect::<Vec<f32>>();
         let index = WeightedIndex::new(weights)
             .expect("valid weights array")
@@ -234,11 +227,8 @@ impl Hierarchical {
             .expect("shared index with outer layer")
             .to_owned()
     }
-    /// during K-means++ initialization, we sample any of
-    /// the BigN `Observation`s with probability proportional to
-    /// the squared distance to the nearest neighboring centroid.
-    /// faster convergence, i guess. on the shoulders of giants
-    fn sample_weights(&self, histogram: &Histogram) -> f32 {
+    /// distance to the nearest neighboring Centroid
+    fn sample_distance(&self, histogram: &Histogram) -> f32 {
         self.kmeans()
             .read()
             .expect("poison")
@@ -251,8 +241,7 @@ impl Hierarchical {
             .expect("find nearest neighbor")
     }
     /// find the nearest neighbor `Abstraction` to a given `Histogram`
-    /// this might be expensive and worth benchmarking or profiling
-    fn sample_closest(&self, histogram: &Histogram) -> Abstraction {
+    fn sample_neighbor(&self, histogram: &Histogram) -> Abstraction {
         self.kmeans()
             .read()
             .expect("poison")
@@ -312,6 +301,15 @@ impl Hierarchical {
             map.insert(observation, abstraction);
         }
         Abstractor(map)
+    }
+
+    /// thread-safe mutability for updating Abstraction table
+    fn lookup(&self) -> Arc<RwLock<Abstractor>> {
+        self.lookup.clone()
+    }
+    /// thread-safe mutability for kmeans centroids
+    fn kmeans(&self) -> Arc<RwLock<SmallSpace>> {
+        self.kmeans.clone()
     }
 }
 
