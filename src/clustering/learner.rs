@@ -35,7 +35,7 @@ pub struct Hierarchical {
 
 impl Hierarchical {
     /// from scratch, generate and persist the full Abstraction lookup table
-    pub fn cluster() {
+    pub fn upload() {
         Self::outer()
             .inner() // turn
             .save()
@@ -49,8 +49,6 @@ impl Hierarchical {
         map.extend(Self::load(Street::Flop).0);
         Abstractor(map)
     }
-
-    // layer generation
 
     /// start with the River layer. everything is empty because we
     /// can generate `Abstractor` and `SmallSpace` from "scratch".
@@ -76,8 +74,8 @@ impl Hierarchical {
             metric: self.inner_metric(), // uniquely determined by outer layer
             points: self.inner_points(), // uniquely determined by outer layer
         };
-        inner.kmeans_initial();
-        inner.kmeans_iterate();
+        inner.initial();
+        inner.cluster();
         inner
     }
 
@@ -89,8 +87,6 @@ impl Hierarchical {
     fn kmeans(&self) -> Arc<RwLock<SmallSpace>> {
         self.kmeans.clone()
     }
-
-    // non-mutating layer generation
 
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
@@ -142,8 +138,6 @@ impl Hierarchical {
         )
     }
 
-    // k means clustering
-
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
@@ -151,7 +145,7 @@ impl Hierarchical {
     ///
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
-    fn kmeans_initial(&mut self) {
+    fn initial(&mut self) {
         log::info!("initializing kmeans {}", self.street);
         let locked = self.kmeans();
         let ref mut clusters = locked.write().expect("poison");
@@ -169,14 +163,13 @@ impl Hierarchical {
     ///
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
-    fn kmeans_iterate(&mut self) {
-        log::info!("reiterating kmeans {}", self.street);
+    fn cluster(&mut self) {
+        log::info!("clustering kmeans {}", self.street);
         for _ in 0..self.t() {
             self.points
                 .0
                 .par_iter()
-                .map(|(o, h)| self.visit(o, h))
-                .collect::<Vec<()>>();
+                .for_each(|(o, h)| self.update(o, h));
             self.kmeans()
                 .write()
                 .expect("poison")
@@ -186,30 +179,22 @@ impl Hierarchical {
         }
     }
 
-    /// find the nearest neighbor `Abstraction` to a given `Histogram`
-    /// this might be expensive and worth benchmarking or profiling
-    fn nearest(&self, histogram: &Histogram) -> Abstraction {
-        self.kmeans()
-            .read()
-            .expect("poison")
-            .0
-            .iter()
-            .map(|(abs, centroid)| (abs, self.metric.wasserstein(histogram, centroid.reveal())))
-            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
-            .map(|(abs, _)| abs)
-            .expect("find nearest neighbor")
-            .clone()
-    }
-    /// assign an `Observation` to its nearest `Abstraction`
-    /// and update the lookup table
     /// mutation achieved by acquiring RwLock write access
-    fn visit(&self, observation: &Observation, histogram: &Histogram) {
-        let ref abstraction = self.nearest(histogram);
+    fn update(&self, observation: &Observation, histogram: &Histogram) {
+        let ref abstraction = self.sample_closest(histogram);
+        self.assign(abstraction, observation);
+        self.absorb(abstraction, histogram);
+    }
+    /// assign an `Abstraction` to an `Observation`
+    fn assign(&self, abstraction: &Abstraction, observation: &Observation) {
         self.lookup()
             .write()
             .expect("lookup arc")
             .0
             .insert(observation.clone(), abstraction.clone());
+    }
+    /// absorb a `Histogram` into an `Abstraction`
+    fn absorb(&self, abstraction: &Abstraction, histogram: &Histogram) {
         self.kmeans()
             .write()
             .expect("poison")
@@ -218,7 +203,6 @@ impl Hierarchical {
             .expect("abstraction::from::neighbor::from::self.kmeans")
             .absorb(histogram);
     }
-    // k means neighborhood + initialization
 
     /// the first point selected for initialization
     /// is uniformly random across all `Observation` `Histogram`s
@@ -237,8 +221,8 @@ impl Hierarchical {
         let weights = self
             .points
             .0
-            .values()
-            .map(|hist| self.sample_weights(hist))
+            .par_iter()
+            .map(|(_, hist)| self.sample_weights(hist))
             .collect::<Vec<f32>>();
         let index = WeightedIndex::new(weights)
             .expect("valid weights array")
@@ -259,15 +243,28 @@ impl Hierarchical {
             .read()
             .expect("poison")
             .0
-            .values()
-            .map(|centroid| centroid.reveal())
-            .map(|mean| self.metric.wasserstein(histogram, mean))
+            .par_iter()
+            .map(|(_, centroid)| centroid.reveal())
+            .map(|accumulation| self.metric.wasserstein(histogram, accumulation))
             .map(|min| min * min)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .expect("find nearest neighbor")
     }
-
-    // hyperparametrization
+    /// find the nearest neighbor `Abstraction` to a given `Histogram`
+    /// this might be expensive and worth benchmarking or profiling
+    fn sample_closest(&self, histogram: &Histogram) -> Abstraction {
+        self.kmeans()
+            .read()
+            .expect("poison")
+            .0
+            .par_iter()
+            .map(|(abs, centroid)| (abs, centroid.reveal()))
+            .map(|(abs, accumulation)| (abs, self.metric.wasserstein(histogram, accumulation)))
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .map(|(abs, _)| abs)
+            .expect("find nearest neighbor")
+            .clone()
+    }
 
     /// hyperparameter: how many centroids to learn
     fn k(&self) -> usize {
@@ -281,8 +278,6 @@ impl Hierarchical {
     fn t(&self) -> usize {
         100
     }
-
-    // file IO and persistence
 
     /// write the full abstraction lookup table to disk
     fn save(self) -> Self {
