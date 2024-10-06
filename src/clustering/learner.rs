@@ -1,4 +1,5 @@
 use super::abstractor::Abstractor;
+use super::centroid::Centroid;
 use super::datasets::LargeSpace;
 use super::datasets::SmallSpace;
 use crate::cards::observation::Observation;
@@ -68,7 +69,7 @@ impl Hierarchical {
     }
     /// hierarchically, recursively generate the inner layer
     fn inner(&self) -> Self {
-        let mut inner = Self {
+        let inner = Self {
             lookup: Arc::new(RwLock::new(Abstractor::default())), // assigned during clustering
             kmeans: Arc::new(RwLock::new(SmallSpace::default())), // assigned during clustering
             street: self.inner_street(), // uniquely determined by outer layer
@@ -93,8 +94,8 @@ impl Hierarchical {
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
         log::info!("computing metric {}", self.street);
-        let locked = self.kmeans();
-        let ref kmeans = locked.read().expect("poison").0;
+        let lock = self.kmeans();
+        let ref kmeans = lock.read().expect("poison").0;
         let mut metric = BTreeMap::new();
         for i in kmeans.keys() {
             for j in kmeans.keys() {
@@ -120,8 +121,8 @@ impl Hierarchical {
         log::info!("computing projections {}", self.street);
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
-        let locked = self.lookup();
-        let ref lookup = locked.read().expect("poison");
+        let lock = self.lookup();
+        let ref lookup = lock.read().expect("poison");
         LargeSpace(
             Observation::enumerate(self.street.prev())
                 .into_par_iter()
@@ -137,16 +138,13 @@ impl Hierarchical {
     ///
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
-    fn initial(&mut self) {
+    fn initial(&self) {
         log::info!("initializing kmeans {}", self.street);
-        let locked = self.kmeans();
-        let ref mut clusters = locked.write().expect("poison");
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
-        let sample = self.sample_uniform(rng);
-        clusters.extend(sample);
-        while self.k() > clusters.0.len() {
-            let sample = self.sample_outlier(rng);
-            clusters.extend(sample);
+        self.append(self.sample_uniform(rng));
+        while self.k() > self.l() {
+            log::info!("add initial {}", self.l());
+            self.append(self.sample_outlier(rng));
         }
     }
     /// for however many iterations we want,
@@ -155,13 +153,15 @@ impl Hierarchical {
     ///
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
-    fn cluster(&mut self) {
+    fn cluster(&self) {
         log::info!("clustering kmeans {}", self.street);
-        for _ in 0..self.t() {
+        for i in 0..self.t() {
+            log::info!("assign and absorb {} {}", self.street, i);
             self.points
                 .0
                 .par_iter()
                 .for_each(|(o, h)| self.update(o, h));
+            log::info!("rotate centroids {} {}", self.street, i);
             self.kmeans()
                 .write()
                 .expect("poison")
@@ -181,7 +181,7 @@ impl Hierarchical {
     fn absorb(&self, abstraction: &Abstraction, histogram: &Histogram) {
         self.kmeans()
             .write()
-            .expect("poison")
+            .expect("poisoned kmeans lock")
             .0
             .get_mut(abstraction)
             .expect("abstraction::from::neighbor::from::self.kmeans")
@@ -191,9 +191,17 @@ impl Hierarchical {
     fn assign(&self, abstraction: &Abstraction, observation: &Observation) {
         self.lookup()
             .write()
-            .expect("lookup arc")
+            .expect("poisoned lookup lock")
             .0
             .insert(observation.clone(), abstraction.clone());
+    }
+    /// extending self.kmeans during intialization
+    fn append(&self, histogram: Histogram) {
+        self.kmeans()
+            .write()
+            .expect("poisoned kmeans lock")
+            .0
+            .insert(Abstraction::random(), Centroid::from(histogram));
     }
 
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
@@ -203,7 +211,7 @@ impl Hierarchical {
             .values()
             .choose(rng)
             .expect("observation projections have been populated")
-            .to_owned()
+            .clone()
     }
     /// each next Centroid is selected with probability proportional to
     /// the squared distance to the nearest neighboring Centroid.
@@ -229,27 +237,27 @@ impl Hierarchical {
     fn sample_distance(&self, histogram: &Histogram) -> f32 {
         self.kmeans()
             .read()
-            .expect("poison")
+            .expect("poisoned kmeans lock")
             .0
             .par_iter()
             .map(|(_, centroid)| centroid.reveal())
-            .map(|accumulation| self.metric.wasserstein(histogram, accumulation))
+            .map(|centroid| self.metric.wasserstein(histogram, centroid))
             .map(|min| min * min)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|dx, dy| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
     }
     /// find the nearest neighbor `Abstraction` to a given `Histogram`
     fn sample_neighbor(&self, histogram: &Histogram) -> Abstraction {
         self.kmeans()
             .read()
-            .expect("poison")
+            .expect("poisoned kmeans lock")
             .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.reveal()))
-            .map(|(abs, accumulation)| (abs, self.metric.wasserstein(histogram, accumulation)))
+            .map(|(abs, centroid)| (abs, self.metric.wasserstein(histogram, centroid)))
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
-            .map(|(abs, _)| abs)
             .expect("find nearest neighbor")
+            .0
             .clone()
     }
 
@@ -267,6 +275,14 @@ impl Hierarchical {
             _ => 100,
         }
     }
+    /// length of current kmeans centroids
+    fn l(&self) -> usize {
+        self.kmeans() //
+            .read()
+            .expect("poisoned kmeans lock")
+            .0
+            .len()
+    }
 
     /// write the full abstraction lookup table to disk
     /// 1. Write the PGCOPY header (15 bytes)
@@ -281,8 +297,8 @@ impl Hierarchical {
         use std::fs::File;
         use std::io::Write;
         let mut file = File::create(format!("{}.pgcopy", self.street)).expect("new file");
-        let locked = self.lookup();
-        let ref lookup = locked.read().expect("poison").0;
+        let lock = self.lookup();
+        let ref lookup = lock.read().expect("poison").0;
         let mut progress = Progress::new(lookup.len(), 10);
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
