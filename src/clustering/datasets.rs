@@ -24,5 +24,6 @@ impl SmallSpace {
     }
     pub fn extend(&mut self, h: Histogram) {
         self.0.insert(Abstraction::random(), Centroid::from(h));
+        log::info!("+ {:3}", self.0.len());
     }
 }

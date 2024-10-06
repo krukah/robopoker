@@ -12,8 +12,13 @@ use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::seq::IteratorRandom;
 use rand::SeedableRng;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 use std::io::Read;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 /// Hierarchical K Means Learner
 /// this is decomposed into the necessary data structures
@@ -24,8 +29,8 @@ pub struct Hierarchical {
     street: Street,
     metric: Metric,
     points: LargeSpace,
-    kmeans: SmallSpace,
-    lookup: Abstractor,
+    kmeans: Arc<RwLock<SmallSpace>>,
+    lookup: Arc<RwLock<Abstractor>>,
 }
 
 impl Hierarchical {
@@ -55,8 +60,8 @@ impl Hierarchical {
     /// - `points`: not used for inward projection. only used for clustering. and no clustering on River.
     fn outer() -> Self {
         Self {
-            lookup: Abstractor::default(),
-            kmeans: SmallSpace::default(),
+            lookup: Arc::new(RwLock::new(Abstractor::default())),
+            kmeans: Arc::new(RwLock::new(SmallSpace::default())),
             points: LargeSpace::default(),
             metric: Metric::default(),
             street: Street::Rive,
@@ -65,15 +70,24 @@ impl Hierarchical {
     /// hierarchically, recursively generate the inner layer
     fn inner(&self) -> Self {
         let mut inner = Self {
-            lookup: Abstractor::default(), // assigned during clustering
-            kmeans: SmallSpace::default(), // assigned during clustering
-            street: self.inner_street(),   // uniquely determined by outer layer
-            metric: self.inner_metric(),   // uniquely determined by outer layer
-            points: self.inner_points(),   // uniquely determined by outer layer
+            lookup: Arc::new(RwLock::new(Abstractor::default())), // assigned during clustering
+            kmeans: Arc::new(RwLock::new(SmallSpace::default())), // assigned during clustering
+            street: self.inner_street(), // uniquely determined by outer layer
+            metric: self.inner_metric(), // uniquely determined by outer layer
+            points: self.inner_points(), // uniquely determined by outer layer
         };
         inner.kmeans_initial();
         inner.kmeans_iterate();
         inner
+    }
+
+    /// thread-safe mutability for updating Abstraction table
+    fn lookup(&self) -> Arc<RwLock<Abstractor>> {
+        self.lookup.clone()
+    }
+    /// thread-safe mutability for kmeans centroids
+    fn kmeans(&self) -> Arc<RwLock<SmallSpace>> {
+        self.kmeans.clone()
     }
 
     // non-mutating layer generation
@@ -91,13 +105,15 @@ impl Hierarchical {
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
         log::info!("computing metric {}", self.street);
+        let locked = self.kmeans();
+        let ref kmeans = locked.read().expect("poison").0;
         let mut metric = BTreeMap::new();
-        for (i, x) in self.kmeans.0.keys().enumerate() {
-            for (j, y) in self.kmeans.0.keys().enumerate() {
+        for i in kmeans.keys() {
+            for j in kmeans.keys() {
                 if i > j {
-                    let index = Pair::from((x, y));
-                    let x = self.kmeans.0.get(x).expect("pre-computed").reveal();
-                    let y = self.kmeans.0.get(y).expect("pre-computed").reveal();
+                    let index = Pair::from((i, j));
+                    let x = kmeans.get(i).expect("pre-computed").reveal();
+                    let y = kmeans.get(j).expect("pre-computed").reveal();
                     let distance = self.metric.wasserstein(x, y) + self.metric.wasserstein(y, x);
                     let distance = distance / 2.0;
                     metric.insert(index, distance);
@@ -116,10 +132,12 @@ impl Hierarchical {
         log::info!("computing projections {}", self.street);
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
+        let locked = self.lookup();
+        let ref lookup = locked.read().expect("poison");
         LargeSpace(
             Observation::all(self.street.prev())
                 .into_par_iter()
-                .map(|inner| (inner, self.lookup.projection(&inner)))
+                .map(|inner| (inner, lookup.projection(&inner)))
                 .collect::<BTreeMap<Observation, Histogram>>(),
         )
     }
@@ -135,11 +153,14 @@ impl Hierarchical {
     /// consider partitioning dataset or using lock-free data structures.
     fn kmeans_initial(&mut self) {
         log::info!("initializing kmeans {}", self.street);
+        let locked = self.kmeans();
+        let ref mut clusters = locked.write().expect("poison");
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
-        self.kmeans.extend(self.sample_uniform(rng));
-        while self.kmeans.0.len() < self.k() {
-            log::info!("+ {:3} of {:3}", self.kmeans.0.len(), self.k());
-            self.kmeans.extend(self.sample_outlier(rng));
+        let sample = self.sample_uniform(rng);
+        clusters.extend(sample);
+        while self.k() > clusters.0.len() {
+            let sample = self.sample_outlier(rng);
+            clusters.extend(sample);
         }
     }
     /// for however many iterations we want,
@@ -149,31 +170,54 @@ impl Hierarchical {
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
     fn kmeans_iterate(&mut self) {
-        log::info!("iterating kmeans {}", self.street);
+        log::info!("reiterating kmeans {}", self.street);
         for _ in 0..self.t() {
-            for (o, h) in self.points.0.iter() {
-                log::info!("assigning {}", o);
-                let ref abstraction = self.nearest(h).clone(); // read self.metric, self.kmeans
-                self.lookup.assign(abstraction, o); // write self.lookup. Observation won't collide
-                self.kmeans.absorb(abstraction, h); // write self.kmeans. Abstraction could collide
-            }
-            for (_, centroid) in self.kmeans.0.iter_mut() {
-                centroid.rotate();
-            }
+            self.points
+                .0
+                .par_iter()
+                .map(|(o, h)| self.visit(o, h))
+                .collect::<Vec<()>>();
+            self.kmeans()
+                .write()
+                .expect("poison")
+                .0
+                .par_iter_mut()
+                .for_each(|(_, centroid)| centroid.rotate());
         }
     }
+
     /// find the nearest neighbor `Abstraction` to a given `Histogram`
     /// this might be expensive and worth benchmarking or profiling
-    fn nearest(&self, histogram: &Histogram) -> &Abstraction {
-        self.kmeans
+    fn nearest(&self, histogram: &Histogram) -> Abstraction {
+        self.kmeans()
+            .read()
+            .expect("poison")
             .0
             .iter()
             .map(|(abs, centroid)| (abs, self.metric.wasserstein(histogram, centroid.reveal())))
-            .min_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap())
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .map(|(abs, _)| abs)
             .expect("find nearest neighbor")
+            .clone()
     }
-
+    /// assign an `Observation` to its nearest `Abstraction`
+    /// and update the lookup table
+    /// mutation achieved by acquiring RwLock write access
+    fn visit(&self, observation: &Observation, histogram: &Histogram) {
+        let ref abstraction = self.nearest(histogram);
+        self.lookup()
+            .write()
+            .expect("lookup arc")
+            .0
+            .insert(observation.clone(), abstraction.clone());
+        self.kmeans()
+            .write()
+            .expect("poison")
+            .0
+            .get_mut(abstraction)
+            .expect("abstraction::from::neighbor::from::self.kmeans")
+            .absorb(histogram);
+    }
     // k means neighborhood + initialization
 
     /// the first point selected for initialization
@@ -211,7 +255,9 @@ impl Hierarchical {
     /// the squared distance to the nearest neighboring centroid.
     /// faster convergence, i guess. on the shoulders of giants
     fn sample_weights(&self, histogram: &Histogram) -> f32 {
-        self.kmeans
+        self.kmeans()
+            .read()
+            .expect("poison")
             .0
             .values()
             .map(|centroid| centroid.reveal())
@@ -242,8 +288,10 @@ impl Hierarchical {
     fn save(self) -> Self {
         log::info!("uploading abstraction lookup table {}", self.street);
         let mut file = std::fs::File::create(format!("{}", self.street)).expect("new file");
-        let mut progress = Progress::new(self.lookup.0.len(), 10);
-        for (observation, abstraction) in self.lookup.0.iter() {
+        let locked = self.lookup();
+        let ref lookup = locked.read().expect("poison").0;
+        let mut progress = Progress::new(lookup.len(), 10);
+        for (observation, abstraction) in lookup.iter() {
             use std::io::Write;
             let obs = i64::from(*observation) as u64;
             let abs = i64::from(*abstraction) as u64;
@@ -271,3 +319,8 @@ impl Hierarchical {
         Abstractor(map)
     }
 }
+
+//. persist MCCFR profile
+//. optimize MCCFR Tree storage of recursive values
+//. remove unnecssary loggging
+//. draw cute pictures for README
