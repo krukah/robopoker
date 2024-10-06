@@ -7,6 +7,31 @@ use super::strength::Strength;
 use crate::cards::rank::Rank;
 use std::cmp::Ordering;
 
+/// many Observations are strategically equivalent,
+/// so we can canonize to reduce the index space of
+/// learned Abstractions.
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
+pub struct Canonical(Observation);
+
+impl From<Observation> for Canonical {
+    fn from(o: Observation) -> Self {
+        if Self::is_canonical(o) {
+            Self(o)
+        } else {
+            todo!()
+        }
+    }
+}
+
+impl Canonical {
+    pub fn is_canonical(o: Observation) -> bool {
+        todo!()
+    }
+    pub fn enumerate(street: Street) -> Vec<Observation> {
+        Observation::enumerate(street)
+    }
+}
+
 /// Observation represents the memoryless state of the game in between chance actions.
 ///
 /// We store each set of cards as a Hand which does not preserve dealing order. We can
@@ -21,7 +46,8 @@ pub struct Observation {
 }
 
 impl Observation {
-    pub fn all(street: Street) -> Vec<Observation> {
+    /// Generate all possible observations for a given street
+    pub fn enumerate(street: Street) -> Vec<Observation> {
         let n = match street {
             Street::Flop => 3,
             Street::Turn => 4,
@@ -38,7 +64,6 @@ impl Observation {
         }
         observations
     }
-
     /// Calculates the equity of the current observation.
     ///
     /// This calculation integrations across ALL possible opponent hole cards.
@@ -62,7 +87,6 @@ impl Observation {
             / n as f32
             / 2 as f32
     }
-
     /// Generates all possible successors of the current observation.
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
@@ -83,7 +107,7 @@ impl Observation {
             .map(|public| Observation::from((self.secret, public)))
             .collect::<Vec<Self>>()
     }
-
+    /// Use the size of the community card Hand to infer Street
     pub fn street(&self) -> Street {
         match self.public.size() {
             0 => Street::Pref,
@@ -95,30 +119,6 @@ impl Observation {
     }
 }
 
-impl From<(Hand, Hand)> for Observation {
-    /// TODO: implement strategic isomorphism
-    fn from((secret, public): (Hand, Hand)) -> Self {
-        assert!(secret.size() == 2);
-        assert!(public.size() <= 5);
-        Observation { secret, public }
-    }
-}
-
-/// Generate a random observation for a given street
-impl From<Street> for Observation {
-    fn from(street: Street) -> Self {
-        let n = match street {
-            Street::Pref => 0,
-            Street::Flop => 3,
-            Street::Turn => 4,
-            Street::Rive => 5,
-        };
-        let mut deck = Deck::new();
-        let public = Hand::from((0..n).map(|_| deck.draw()).collect::<Vec<Card>>());
-        let secret = Hand::from((0..2).map(|_| deck.draw()).collect::<Vec<Card>>());
-        Self::from((secret, public))
-    }
-}
 /// i64 isomorphism
 ///
 /// Packs all the cards in order, starting from LSBs.
@@ -156,12 +156,33 @@ impl From<i64> for Observation {
     }
 }
 
-impl From<Observation> for Strength {
-    fn from(observation: Observation) -> Self {
-        Strength::from(Hand::from(observation))
+/// assemble Observation from private + public Hands
+impl From<(Hand, Hand)> for Observation {
+    /// TODO: implement strategic isomorphism
+    fn from((secret, public): (Hand, Hand)) -> Self {
+        assert!(secret.size() == 2);
+        assert!(public.size() <= 5);
+        Observation { secret, public }
     }
 }
 
+/// Generate a random observation for a given street
+impl From<Street> for Observation {
+    fn from(street: Street) -> Self {
+        let n = match street {
+            Street::Pref => 0,
+            Street::Flop => 3,
+            Street::Turn => 4,
+            Street::Rive => 5,
+        };
+        let mut deck = Deck::new();
+        let public = Hand::from((0..n).map(|_| deck.draw()).collect::<Vec<Card>>());
+        let secret = Hand::from((0..2).map(|_| deck.draw()).collect::<Vec<Card>>());
+        Self::from((secret, public))
+    }
+}
+
+/// coalesce public + private cards into single Hand
 impl From<Observation> for Hand {
     fn from(observation: Observation) -> Self {
         Hand::add(observation.secret, observation.public)
@@ -185,4 +206,10 @@ mod tests {
         assert!(encoded.secret == decoded.secret);
         assert!(encoded.public == decoded.public);
     }
+
+    #[test]
+    fn bijective_canonical() {}
+
+    #[test]
+    fn injective_canonical() {}
 }

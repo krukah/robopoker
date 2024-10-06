@@ -124,7 +124,7 @@ impl Hierarchical {
         let locked = self.lookup();
         let ref lookup = locked.read().expect("poison");
         LargeSpace(
-            Observation::all(self.street.prev())
+            Observation::enumerate(self.street.prev())
                 .into_par_iter()
                 .map(|inner| (inner, lookup.projection(&inner)))
                 .collect::<BTreeMap<Observation, Histogram>>(),
@@ -177,7 +177,6 @@ impl Hierarchical {
         let ref abstraction = self.sample_neighbor(histogram);
         self.assign(abstraction, observation);
         self.absorb(abstraction, histogram);
-        log::info!("{} >> {}", observation, abstraction);
     }
     /// absorb a `Histogram` into an `Abstraction`
     fn absorb(&self, abstraction: &Abstraction, histogram: &Histogram) {
@@ -312,8 +311,3 @@ impl Hierarchical {
         self.kmeans.clone()
     }
 }
-
-//. persist MCCFR profile
-//. optimize MCCFR Tree storage of recursive values
-//. remove unnecssary loggging
-//. draw cute pictures for README

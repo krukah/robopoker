@@ -1,3 +1,4 @@
+use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
@@ -9,7 +10,7 @@ impl std::fmt::Display for Potential {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let observation = Observation::from(Street::Turn);
         let distribution = Histogram::from(observation.clone());
-        let strength = Strength::from(observation.clone());
+        let strength = Strength::from(Hand::from(observation.clone()));
         let equity = distribution.equity();
         // Display the histogram
         writeln!(f, "{}", distribution)?;
