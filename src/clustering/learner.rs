@@ -7,7 +7,6 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
-use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
@@ -191,8 +190,7 @@ impl Hierarchical {
         self.lookup()
             .write()
             .expect("poisoned lookup lock")
-            .0
-            .insert(observation.clone(), abstraction.clone());
+            .assign(abstraction, observation);
     }
     /// extending self.kmeans during intialization
     fn append(&self, histogram: Histogram) {
@@ -283,74 +281,13 @@ impl Hierarchical {
             .len()
     }
 
-    /// write the full abstraction lookup table to disk
-    /// 1. Write the PGCOPY header (15 bytes)
-    /// 2. Write the flags (4 bytes)
-    /// 3. Write the extension (4 bytes)
-    /// 4. Write the observation and abstraction pairs
-    /// 5. Write the trailer (2 bytes)
     fn save(self) -> Self {
-        log::info!("uploading abstraction lookup table {}", self.street);
-        use byteorder::BigEndian;
-        use byteorder::WriteBytesExt;
-        use std::fs::File;
-        use std::io::Write;
-        let mut file = File::create(format!("{}.pgcopy", self.street)).expect("new file");
-        let lock = self.lookup();
-        let ref lookup = lock.read().expect("poison").0;
-        let mut progress = Progress::new(lookup.len(), 10);
-        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
-        file.write_u32::<BigEndian>(0).expect("flags");
-        file.write_u32::<BigEndian>(0).expect("extension");
-        for (observation, abstraction) in lookup.iter() {
-            let obs = i64::from(*observation);
-            let abs = i64::from(*abstraction);
-            file.write_u16::<BigEndian>(2).expect("field count");
-            file.write_u32::<BigEndian>(8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(obs).expect("observation");
-            file.write_u32::<BigEndian>(8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(abs).expect("abstraction");
-            progress.tick();
-        }
-        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
+        let path = format!("{}", self.street);
+        log::info!("uploading abstraction metric {}", path.clone());
+        self.metric.save(path.clone());
+        log::info!("uploading abstraction lookup table {}", path.clone());
+        self.lookup().read().expect("poison").save(path.clone());
         self
-    }
-    /// read the full abstraction lookup table from disk
-    /// 1. Skip PGCOPY header (15 bytes), flags (4 bytes), and header extension (4 bytes)
-    /// 2. Read field count (should be 2)
-    /// 3. Read observation length (4 bytes)
-    /// 4. Read observation (8 bytes)
-    /// 5. Read abstraction length (4 bytes)
-    /// 6. Read abstraction (8 bytes)
-    /// 7. Insert observation and abstraction into lookup table
-    /// 8. Repeat until end of file
-    pub fn load(street: Street) -> Abstractor {
-        log::info!("downloading abstraction lookup table {}", street);
-        use byteorder::BigEndian;
-        use byteorder::ReadBytesExt;
-        use std::fs::File;
-        use std::io::BufReader;
-        use std::io::Read;
-        use std::io::Seek;
-        use std::io::SeekFrom;
-        let file = File::open(format!("{}.pgcopy", street)).expect("open file");
-        let mut buffer = [0u8; 2];
-        let mut lookup = BTreeMap::new();
-        let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(23)).expect("seek past header");
-        while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) != 2 {
-                break;
-            }
-            reader.read_u32::<BigEndian>().expect("observation length");
-            let obs = reader.read_i64::<BigEndian>().expect("read observation");
-            reader.read_u32::<BigEndian>().expect("abstraction length");
-            let abs = reader.read_i64::<BigEndian>().expect("read abstraction");
-            let observation = Observation::from(obs);
-            let abstraction = Abstraction::from(abs);
-            lookup.insert(observation, abstraction);
-        }
-        Abstractor(lookup)
     }
 
     /// thread-safe mutability for updating Abstraction table

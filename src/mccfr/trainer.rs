@@ -18,9 +18,11 @@ pub struct Blueprint {
 impl Blueprint {
     const EPOCHS: usize = 100_000;
     /// upload the Blueprint to disk.
-    pub fn upload() {
+    pub fn save() {
         let blueprint = Self::empty();
+        log::info!("training blueprint");
         blueprint.train(Self::EPOCHS);
+        log::info!("saving blueprint");
         blueprint.profile.save();
     }
 

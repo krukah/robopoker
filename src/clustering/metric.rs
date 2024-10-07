@@ -1,5 +1,6 @@
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
+use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 
@@ -87,6 +88,27 @@ impl Metric {
 
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
         self.wasserstein(source, target)
+    }
+    pub fn save(&self, path: String) {
+        log::info!("uploading abstraction metric {}", path);
+        use byteorder::BigEndian;
+        use byteorder::WriteBytesExt;
+        use std::fs::File;
+        use std::io::Write;
+        let ref mut file = File::create(format!("{}.metric.pgcopy", path)).expect("new file");
+        let ref mut progress = Progress::new(self.0.len(), 10);
+        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
+        file.write_u32::<BigEndian>(0).expect("flags");
+        file.write_u32::<BigEndian>(0).expect("extension");
+        for (pair, distance) in self.0.iter() {
+            file.write_u16::<BigEndian>(2).expect("field count");
+            file.write_u32::<BigEndian>(8).expect("8-bytes field");
+            file.write_i64::<BigEndian>(i64::from(*pair)).expect("pair");
+            file.write_u32::<BigEndian>(4).expect("4-bytes field");
+            file.write_f32::<BigEndian>(*distance).expect("distance");
+            progress.tick();
+        }
+        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
     }
 }
 

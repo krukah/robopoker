@@ -1,8 +1,6 @@
 use super::abstraction::Abstraction;
 use super::abstractor::Abstractor;
-use super::learner::Hierarchical;
 use crate::cards::observation::Observation;
-use crate::cards::street::Street;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
 use crate::mccfr::data::Data;
@@ -15,7 +13,6 @@ use crate::Probability;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::Rng;
-use std::collections::BTreeMap;
 
 /// given a Node, we can sample a distribution of children according to the Profile.
 /// we can also map an Observation to its nearest neighbor abstraction.
@@ -29,10 +26,7 @@ impl Explorer {
     /// while assembling tree in SmallSpace (map to smaller & denser game tree)
     pub fn download() -> Self {
         log::info!("downloading abstraction lookup table for Explorer");
-        let mut map = BTreeMap::default();
-        map.extend(Hierarchical::load(Street::Turn).0);
-        map.extend(Hierarchical::load(Street::Flop).0);
-        Self(Abstractor(map))
+        Self(Abstractor::assemble())
     }
 
     /// sample children of a Node, according to the distribution defined by Profile.
