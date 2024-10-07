@@ -395,20 +395,15 @@ impl Profile {
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
         file.write_u32::<BigEndian>(0).expect("extension");
-        for (Bucket(path, abstraction), edge_map) in self.0.iter() {
-            for (edge, memory) in edge_map.iter() {
-                file.write_u16::<BigEndian>(6).expect("field count");
+        for (Bucket(path, abs), policy) in self.0.iter() {
+            for (edge, memory) in policy.iter() {
+                file.write_u16::<BigEndian>(5).expect("field count");
                 file.write_u32::<BigEndian>(8).expect("8-bytes field");
-                file.write_i64::<BigEndian>(u64::from(*path) as i64)
-                    .expect("path");
+                file.write_u64::<BigEndian>(u64::from(*path)).expect("path");
                 file.write_u32::<BigEndian>(8).expect("8-bytes field");
-                file.write_i64::<BigEndian>(i64::from(*abstraction))
-                    .expect("abstraction");
-                file.write_u32::<BigEndian>(8).expect("8-bytes field");
-                file.write_i64::<BigEndian>(u32::from(*edge) as i64)
-                    .expect("edge");
+                file.write_u64::<BigEndian>(u64::from(*abs)).expect("abs");
                 file.write_u32::<BigEndian>(4).expect("4-bytes field");
-                file.write_f32::<BigEndian>(memory.policy).expect("policy");
+                file.write_u32::<BigEndian>(u32::from(*edge)).expect("edge");
                 file.write_u32::<BigEndian>(4).expect("4-bytes field");
                 file.write_f32::<BigEndian>(memory.regret).expect("regret");
                 file.write_u32::<BigEndian>(4).expect("4-bytes field");
