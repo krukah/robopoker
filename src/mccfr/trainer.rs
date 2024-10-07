@@ -16,6 +16,14 @@ pub struct Blueprint {
 }
 
 impl Blueprint {
+    const EPOCHS: usize = 100_000;
+    /// upload the Blueprint to disk.
+    pub fn upload() {
+        let blueprint = Self::empty();
+        blueprint.train(Self::EPOCHS);
+        blueprint.profile.save();
+    }
+
     /// i'm making this a static method but in theory we could
     /// download the Profile from disk,
     /// the same way we download the Explorer.
@@ -26,7 +34,13 @@ impl Blueprint {
             tree: Tree::empty(),
         }
     }
-    pub fn train(epochs: usize) {
+
+    /// here's the training loop. infosets might be generated
+    /// in parallel later. infosets might also come pre-filtered
+    /// for the traverser. regret and policy updates are
+    /// encapsulated by Profile, but we are yet to impose
+    /// a learning schedule for regret or policy.
+    fn train(&self, epochs: usize) {
         let mut this = Self::empty();
         while this.profile.step() <= epochs {
             for ref infoset in this.blocks() {
@@ -108,11 +122,5 @@ impl Blueprint {
         let abstraction = self.explorer.card_abstraction(&node);
         let bucket = Bucket::from((path, abstraction));
         Data::from((node, bucket))
-    }
-}
-
-impl std::fmt::Display for Blueprint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Trainer profile:\n{}", self.profile)
     }
 }

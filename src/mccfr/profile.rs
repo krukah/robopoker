@@ -11,9 +11,11 @@ use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
+use std::hash::Hasher;
 
 pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
+
 impl Profile {
     pub fn empty() -> Self {
         Self(BTreeMap::new(), 0)
@@ -58,6 +60,9 @@ impl Profile {
     /// new_regret = (old_regret + now_regret) . max(0)
     pub fn update_regret(&mut self, infoset: &Info) {
         assert!(infoset.node().player() == self.walker());
+        // TODO
+        // TODO
+        // condition on update scheduling. be cognizant of parallelization
         let bucket = infoset.node().bucket();
         for (ref action, ref regret) in self.regret_vector(infoset) {
             let update = self.update(bucket, action);
@@ -72,6 +77,9 @@ impl Profile {
     /// "CFR+ discounts prior iterations' contribution to the average strategy, but not the regrets."
     pub fn update_policy(&mut self, infoset: &Info) {
         assert!(infoset.node().player() == self.walker());
+        // TODO
+        // TODO
+        // condition on update scheduling. be cognizant of parallelization
         let epochs = self.epochs();
         let bucket = infoset.node().bucket();
         // self.normalize(bucket);
@@ -377,15 +385,10 @@ impl Profile {
             }
         }
     }
-}
 
-impl std::fmt::Display for Profile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (bucket, edges) in &self.0 {
-            for (edge, memory) in edges {
-                writeln!(f, "{:?} {:?}: {:.4}", bucket, edge, memory)?;
-            }
-        }
-        Ok(())
+    /// persist the Profile to disk
+    pub fn save(&self) {
+        let save_profile = 0;
+        todo!("write big BTreeMap to disk in PGCOPY format")
     }
 }
