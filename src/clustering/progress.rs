@@ -1,4 +1,4 @@
-use tokio::time::Instant;
+use std::time::Instant;
 
 /// A struct to track and display progress of a long-running operation.
 pub struct Progress {

@@ -1,7 +1,6 @@
 use robopoker::*;
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() {
+fn main() {
     // Boring stuff
     logs();
     // The k-means earth mover's distance hand-clustering algorithm.
@@ -58,7 +57,7 @@ async fn main() {
 
 fn logs() {
     use std::io::Write;
-    use tokio::time::Instant;
+    use std::time::Instant;
     let start = Instant::now();
     env_logger::Builder::new()
         .filter(None, log::LevelFilter::Info)
