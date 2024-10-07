@@ -14,18 +14,28 @@ pub enum Abstraction {
 }
 
 impl Abstraction {
-    const N: i8 = 50;
+    pub const fn range() -> &'static [Self] {
+        &Self::BUCKETS
+    }
     pub fn random() -> Self {
         Self::Random(rand::random::<u64>())
-    }
-    pub fn buckets() -> Vec<Abstraction> {
-        (0..=Self::N).map(Abstraction::Equity).collect()
     }
     fn quantize(p: Probability) -> i8 {
         (p * Probability::from(Self::N)).round() as i8
     }
     fn floatize(q: i8) -> Probability {
         Probability::from(q) / Probability::from(Self::N)
+    }
+    const N: i8 = 50;
+    const BUCKETS: [Self; Self::N as usize + 1] = Self::buckets();
+    const fn buckets() -> [Self; Self::N as usize + 1] {
+        let mut buckets = [Self::Equity(0); Self::N as usize + 1];
+        let mut i = 0;
+        while i <= Self::N {
+            buckets[i as usize] = Self::Equity(i as i8);
+            i += 1;
+        }
+        buckets
     }
 }
 

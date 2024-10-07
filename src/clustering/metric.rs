@@ -49,15 +49,15 @@ impl Metric {
     /// over 1-dimensional support of Abstraction::Equity
     /// so we just integrate the absolute difference between CDFs
     pub fn difference(x: &Histogram, y: &Histogram) -> f32 {
-        let mut delta = 0.;
+        let mut total = 0.;
         let mut cdf_x = 0.;
         let mut cdf_y = 0.;
-        for ref abstraction in Abstraction::buckets() {
+        for abstraction in Abstraction::range() {
             cdf_x += x.weight(abstraction);
             cdf_y += y.weight(abstraction);
-            delta += (cdf_x - cdf_y).abs();
+            total += (cdf_x - cdf_y).abs();
         }
-        delta
+        total
     }
 
     /// Beware the asymmetry:
