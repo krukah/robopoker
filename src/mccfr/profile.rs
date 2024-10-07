@@ -325,10 +325,7 @@ impl Profile {
     /// - we've visited this Infoset at least once, while sampling the Tree
     fn reach(&self, head: &Node, edge: &Edge) -> Probability {
         if head.player() == Player::chance() {
-            //. RPS specific
-            todo!("reach calculations");
-            assert!(head.children().len() == 0);
-            unreachable!("early return 1. rather than entering recursive branch")
+            1.
         } else {
             self.0
                 .get(head.bucket())

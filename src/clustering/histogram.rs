@@ -17,6 +17,8 @@ pub struct Histogram {
 }
 
 impl Histogram {
+    /// the weight of a given Abstraction.
+    /// returns 0 if the Abstraction was never witnessed.
     pub fn weight(&self, abstraction: &Abstraction) -> f32 {
         self.weights.get(abstraction).copied().unwrap_or(0usize) as f32 / self.norm as f32
     }
@@ -61,6 +63,17 @@ impl Histogram {
                 .or_insert(0usize)
                 .add_assign(count.to_owned());
         }
+    }
+
+    /// it is useful in EMD calculation
+    /// to know if we're dealing with ::Equity or ::Random
+    /// Abstraction variants, so we expose this method to
+    /// infer the type of Abstraction contained by this Histogram.
+    pub fn peek(&self) -> &Abstraction {
+        self.weights
+            .keys()
+            .next()
+            .expect("non empty histogram, consistent abstraction variant")
     }
 
     /// exhaustive calculation of all

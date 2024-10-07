@@ -26,17 +26,44 @@ impl Metric {
         }
     }
 
-    /// Earth Mover's Distance (EMD) between histograms
-    ///
-    /// This function approximates the Earth Mover's Distance (EMD) between two histograms.
+    /// This function *approximates* the Earth Mover's Distance (EMD) between two histograms.
     /// EMD is a measure of the distance between two probability distributions.
     /// It is calculated by finding the minimum amount of "work" required to transform
     /// one distribution into the other.
     ///
+    /// for Histogram<T> where T: Ord, we can efficiently and accurately calculate EMD
+    /// 1. sort elements of the support (already done for free because BTreeMap)
+    /// 2. produce CDF of source and target distributions
+    /// 3. integrate difference between CDFs over support
+    ///
+    /// we only have the luxury of this efficient O(N) calculation on Street::Turn,
+    /// where the support is over the Abstraction::Equity(i8) variant.
+    pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
+        match target.peek() {
+            Abstraction::Equity(_) => Self::difference(source, target),
+            Abstraction::Random(_) => self.wasserstein(source, target),
+        }
+    }
+
+    /// here we have the luxury of calculating EMD
+    /// over 1-dimensional support of Abstraction::Equity
+    /// so we just integrate the absolute difference between CDFs
+    pub fn difference(x: &Histogram, y: &Histogram) -> f32 {
+        let mut delta = 0.;
+        let mut cdf_x = 0.;
+        let mut cdf_y = 0.;
+        for ref abstraction in Abstraction::buckets() {
+            cdf_x += x.weight(abstraction);
+            cdf_y += y.weight(abstraction);
+            delta += (cdf_x - cdf_y).abs();
+        }
+        delta
+    }
+
     /// Beware the asymmetry:
     /// EMD(X,Y) != EMD(Y,X)
     /// Centroid should be the "hole" (sink) in the EMD calculation
-    pub fn wasserstein(&self, source: &Histogram, target: &Histogram) -> f32 {
+    fn wasserstein(&self, source: &Histogram, target: &Histogram) -> f32 {
         let x = source.support();
         let y = target.support();
         let mut energy = 0.0;
@@ -86,9 +113,7 @@ impl Metric {
         energy
     }
 
-    pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
-        self.wasserstein(source, target)
-    }
+    /// save profile to disk in a PGCOPY compatible format
     pub fn save(&self, path: String) {
         log::info!("uploading abstraction metric {}", path);
         use byteorder::BigEndian;
@@ -139,10 +164,10 @@ mod tests {
     }
 
     #[test]
-    fn is_equity_distance_symmetric() {
+    fn is_histogram_emd_symmetric() {
         let metric = Metric::default();
-        let ref abs1 = Abstraction::from(Observation::from(Street::Rive).equity());
-        let ref abs2 = Abstraction::from(Observation::from(Street::Rive).equity());
-        assert!(metric.distance(abs1, abs2) == metric.distance(abs2, abs1));
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        assert!(metric.emd(h1, h2) == metric.emd(h2, h1));
     }
 }

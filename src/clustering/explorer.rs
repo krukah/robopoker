@@ -104,7 +104,7 @@ impl Explorer {
         let ref observation = Observation::from(game);
         self.0.abstraction(observation)
     }
-    pub fn path_abstraction(&self, path: &Vec<&Edge>) -> Path {
+    pub fn path_abstraction(&self, _: &Vec<&Edge>) -> Path {
         todo!("pseudoharmonic action mapping for path abstraction")
     }
 }

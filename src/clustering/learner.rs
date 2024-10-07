@@ -101,7 +101,7 @@ impl Hierarchical {
                     let index = Pair::from((i, j));
                     let x = kmeans.get(i).expect("pre-computed").reveal();
                     let y = kmeans.get(j).expect("pre-computed").reveal();
-                    let distance = self.metric.wasserstein(x, y) + self.metric.wasserstein(y, x);
+                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.0;
                     metric.insert(index, distance);
                 }
@@ -238,7 +238,7 @@ impl Hierarchical {
             .0
             .par_iter()
             .map(|(_, centroid)| centroid.reveal())
-            .map(|centroid| self.metric.wasserstein(histogram, centroid))
+            .map(|centroid| self.metric.emd(histogram, centroid))
             .map(|min| min * min)
             .min_by(|dx, dy| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
@@ -251,7 +251,7 @@ impl Hierarchical {
             .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.reveal()))
-            .map(|(abs, centroid)| (abs, self.metric.wasserstein(histogram, centroid)))
+            .map(|(abs, centroid)| (abs, self.metric.emd(histogram, centroid)))
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
             .0
