@@ -11,21 +11,6 @@ use std::collections::BTreeMap;
 pub struct Metric(pub BTreeMap<Pair, f32>);
 
 impl Metric {
-    /// generated recursively and hierarchically
-    /// we can calculate the distance between two abstractions
-    /// by eagerly finding distance between their centroids
-    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
-        match (x, y) {
-            (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
-            (Abstraction::Random(_), Abstraction::Random(_)) => self
-                .0
-                .get(&Pair::from((x, y)))
-                .copied()
-                .expect("precalculated distance"),
-            _ => unreachable!("invalid abstraction pair"),
-        }
-    }
-
     /// This function *approximates* the Earth Mover's Distance (EMD) between two histograms.
     /// EMD is a measure of the distance between two probability distributions.
     /// It is calculated by finding the minimum amount of "work" required to transform
@@ -45,10 +30,25 @@ impl Metric {
         }
     }
 
+    /// generated recursively and hierarchically
+    /// we can calculate the distance between two abstractions
+    /// by eagerly finding distance between their centroids
+    fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
+        match (x, y) {
+            (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
+            (Abstraction::Random(_), Abstraction::Random(_)) => self
+                .0
+                .get(&Pair::from((x, y)))
+                .copied()
+                .expect("precalculated distance"),
+            _ => unreachable!("invalid abstraction pair"),
+        }
+    }
+
     /// here we have the luxury of calculating EMD
     /// over 1-dimensional support of Abstraction::Equity
     /// so we just integrate the absolute difference between CDFs
-    pub fn difference(x: &Histogram, y: &Histogram) -> f32 {
+    fn difference(x: &Histogram, y: &Histogram) -> f32 {
         let mut total = 0.;
         let mut cdf_x = 0.;
         let mut cdf_y = 0.;
