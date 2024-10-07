@@ -106,11 +106,11 @@ impl Explorer {
 
     /// abstraction methods
     ///
-    fn card_abstraction(&self, game: &Game) -> Abstraction {
+    pub fn card_abstraction(&self, game: &Game) -> Abstraction {
         let ref observation = Observation::from(game);
         self.0.abstraction(observation)
     }
-    fn path_abstraction(&self, path: &Vec<&Edge>) -> Path {
+    pub fn path_abstraction(&self, path: &Vec<&Edge>) -> Path {
         todo!("pseudoharmonic action mapping for path abstraction")
     }
 }
