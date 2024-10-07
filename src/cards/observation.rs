@@ -24,7 +24,7 @@ impl From<Observation> for Canonical {
 }
 
 impl Canonical {
-    pub fn is_canonical(o: Observation) -> bool {
+    pub fn is_canonical(_: Observation) -> bool {
         todo!()
     }
     pub fn enumerate(street: Street) -> Vec<Observation> {

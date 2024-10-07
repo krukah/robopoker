@@ -18,7 +18,9 @@ impl Abstraction {
     pub fn random() -> Self {
         Self::Random(rand::random::<u64>())
     }
-
+    pub fn buckets() -> Vec<Abstraction> {
+        (0..=Self::N).map(Abstraction::Equity).collect()
+    }
     fn quantize(p: Probability) -> i8 {
         (p * Probability::from(Self::N)).round() as i8
     }

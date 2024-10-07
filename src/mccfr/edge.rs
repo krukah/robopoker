@@ -17,13 +17,13 @@ impl From<Action> for Edge {
 }
 
 impl From<u32> for Edge {
-    fn from(value: u32) -> Self {
+    fn from(_: u32) -> Self {
         todo!()
     }
 }
 
 impl From<Edge> for u32 {
-    fn from(edge: Edge) -> Self {
+    fn from(_: Edge) -> Self {
         todo!()
     }
 }
