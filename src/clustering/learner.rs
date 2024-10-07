@@ -37,11 +37,18 @@ impl Hierarchical {
     /// from scratch, generate and persist the full Abstraction lookup table
     pub fn upload() {
         log::info!("uploading abstraction lookup table");
+        // TODO
+        // check if file already exists
+        // no op if it does, don't need to waste 10k CPU-hr
         Self::outer()
             .inner() // turn
             .save()
             .inner() // flop
             .save();
+        // TODO
+        // add the abstraction-less PreFlop Observations
+        // or include a Abstraction::PreFlop(Hole) variant
+        // to make sure we cover the full set of Observations
     }
 
     /// start with the River layer. everything is empty because we

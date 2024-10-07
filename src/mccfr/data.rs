@@ -16,12 +16,6 @@ impl From<(Game, Bucket)> for Data {
 }
 
 impl Data {
-    pub fn root() -> Self {
-        Self {
-            game: Game::root(),
-            bucket: Bucket::root(),
-        }
-    }
     pub fn game(&self) -> &Game {
         &self.game
     }

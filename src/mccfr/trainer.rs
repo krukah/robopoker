@@ -52,7 +52,7 @@ impl Blueprint {
     /// this is just a base case to handle the root node, presumably a Fn () -> Data.
     /// real-time search implementations may have root nodes provided by the caller.
     fn dfs(&mut self) {
-        let root = Data::root();
+        let root = self.root();
         let head = self.attach(root);
         let head = self.tree.graph_mut().add_node(head);
         let ref node = self.tree.node(head);
@@ -92,6 +92,22 @@ impl Blueprint {
             self.tree.witness(&node);
         }
         node
+    }
+
+    /// so i guess we need to generate the root node here in Trainer
+    /// somehow. i'll move ownership around to make it more natural later.
+    /// we need the Explorer(Abstractor) to complete the transformation of:
+    /// Game::root() -> Observation -> Abstraction
+    ///
+    /// NOT deterministic, hole cards are thread_rng
+    fn root(&self) -> Data {
+        use crate::mccfr::bucket::Bucket;
+        use crate::play::game::Game;
+        let node = Game::root();
+        let path = self.explorer.path_abstraction(&Vec::new());
+        let abstraction = self.explorer.card_abstraction(&node);
+        let bucket = Bucket::from((path, abstraction));
+        Data::from((node, bucket))
     }
 }
 

@@ -20,6 +20,10 @@ impl Tree {
         Self { infos, graph }
     }
     pub fn infosets(&self) -> Vec<Info> {
+        // a little smelly to clone all these guys
+        // feels like Tree shouldn't be the one necessarily to
+        // yield Infosets. feels like it should be consumed by some
+        // other struct.
         self.infos.values().cloned().collect()
     }
     pub fn witness(&mut self, node: &Node) {
