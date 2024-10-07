@@ -1,10 +1,10 @@
 [package]
 name        = "robopoker"
-version     = "0.1.0"
+version     = "0.1.1"
 authors     = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 description = "Implementations of Meta's Pluribus No-Limit Texas Hold-Em solution."
-homepage    = "https://github.com/krukah/ropbopoker"
-repository  = "https://github.com/krukah/ropbopoker"
+homepage    = "https://github.com/krukah/robopoker"
+repository  = "https://github.com/krukah/robopoker"
 readme      = "README.md"
 keywords    = ["poker", "cards", "cfr", "mcts", "holdem"]
 license     = "MIT"
