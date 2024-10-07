@@ -11,8 +11,8 @@ criterion_group! {
         calculating_equity,
         evaluating_at_flop,
         evaluating_at_river,
-        building_equity_histogram,
-        calculating_histogram_emd,
+        equity_histogram_construction,
+        equity_histogram_differencing,
 }
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -56,7 +56,7 @@ fn evaluating_at_flop(c: &mut Criterion) {
     group.finish();
 }
 
-fn building_equity_histogram(c: &mut Criterion) {
+fn equity_histogram_construction(c: &mut Criterion) {
     let mut group = c.benchmark_group("Histogram from Observation");
     group.bench_function(BenchmarkId::new("histogram creation", "turn"), |b| {
         b.iter(|| Histogram::from(Observation::from(Street::Turn)))
@@ -64,15 +64,13 @@ fn building_equity_histogram(c: &mut Criterion) {
     group.finish();
 }
 
-fn calculating_histogram_emd(c: &mut Criterion) {
+fn equity_histogram_differencing(c: &mut Criterion) {
     let mut group = c.benchmark_group("Histogram EMD Calculation");
     group.bench_function(BenchmarkId::new("EMD calculation", "histogram pair"), |b| {
-        b.iter(|| {
-            let metric = Metric::default();
-            let ref h1 = Histogram::from(Observation::from(Street::Turn));
-            let ref h2 = Histogram::from(Observation::from(Street::Turn));
-            metric.emd(h1, h2)
-        })
+        let metric = Metric::default();
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        b.iter(|| metric.emd(h1, h2))
     });
     group.finish();
 }
