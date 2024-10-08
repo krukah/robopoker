@@ -22,7 +22,7 @@ impl Profile {
     }
     /// increment Epoch counter
     /// and return current count
-    pub fn step(&mut self) -> usize {
+    pub fn next(&mut self) -> usize {
         self.1 += 1;
         self.1
     }
