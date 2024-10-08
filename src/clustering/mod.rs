@@ -4,7 +4,7 @@ pub mod centroid;
 pub mod datasets;
 pub mod explorer;
 pub mod histogram;
-pub mod learner;
+pub mod learning;
 pub mod metric;
 pub mod potential;
 pub mod progress;

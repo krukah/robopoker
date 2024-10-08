@@ -24,7 +24,7 @@ use std::sync::RwLock;
 /// for kmeans clustering to occur for a given `Street`.
 /// it should also parallelize well, with kmeans and lookup
 /// being the only mutable fields.
-pub struct Hierarchical {
+pub struct Layer {
     street: Street,
     metric: Metric,
     points: LargeSpace,
@@ -32,22 +32,28 @@ pub struct Hierarchical {
     lookup: Arc<RwLock<Abstractor>>,
 }
 
-impl Hierarchical {
+impl Layer {
     /// from scratch, generate and persist the full Abstraction lookup table
-    pub fn upload() {
-        log::info!("uploading abstraction lookup table");
-        // TODO
-        // check if file already exists
-        // no op if it does, don't need to waste 10k CPU-hr
-        Self::outer()
-            .inner() // turn
-            .save()
-            .inner() // flop
-            .save();
-        // TODO
-        // add the abstraction-less PreFlop Observations
-        // or include a Abstraction::PreFlop(Hole) variant
-        // to make sure we cover the full set of Observations
+    pub fn learn() {
+        let ref path = format!(
+            "{}/{}.abstraction.pgcopy",
+            env!("CARGO_MANIFEST_DIR"),
+            Street::Flop
+        );
+        if std::path::Path::new(path).exists() {
+            log::info!("abstraction lookup table already exists on file. skipping");
+        } else {
+            log::info!("uploading abstraction lookup table");
+            Self::outer()
+                .inner() // turn
+                .save()
+                .inner() // flop
+                .save();
+            todo!("add the abstraction-less PreFlop Observations"); // TODO
+                                                                    // add the abstraction-less PreFlop Observations
+                                                                    // or include a Abstraction::PreFlop(Hole) variant
+                                                                    // to make sure we cover the full set of Observations
+        }
     }
 
     /// start with the River layer. everything is empty because we
@@ -281,8 +287,9 @@ impl Hierarchical {
             .len()
     }
 
+    /// save the current layer's `Metric` and `Abstractor` to disk
     fn save(self) -> Self {
-        let path = format!("{}", self.street);
+        let path = format!("{}.abstraction.pgcopy", self.street);
         log::info!("uploading abstraction metric {}", path.clone());
         self.metric.save(path.clone());
         log::info!("uploading abstraction lookup table {}", path.clone());

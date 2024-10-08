@@ -58,13 +58,13 @@ impl Abstractor {
     /// 3. Write the extension (4 bytes)
     /// 4. Write the observation and abstraction pairs
     /// 5. Write the trailer (2 bytes)
-    pub fn save(&self, path: String) {
-        log::info!("uploading abstraction lookup table {}", path);
+    pub fn save(&self, name: String) {
+        log::info!("uploading abstraction lookup table {}", name);
         use byteorder::BigEndian;
         use byteorder::WriteBytesExt;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}.pgcopy", path)).expect("new file");
+        let ref mut file = File::create(format!("{}.abstraction.pgcopy", name)).expect("new file");
         let ref mut progress = Progress::new(self.0.len(), 10);
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
@@ -99,7 +99,7 @@ impl Abstractor {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let file = File::open(format!("{}.pgcopy", street)).expect("open file");
+        let file = File::open(format!("{}.abstraction.pgcopy", street)).expect("open file");
         let mut buffer = [0u8; 2];
         let mut lookup = BTreeMap::new();
         let mut reader = BufReader::new(file);
