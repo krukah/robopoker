@@ -1,7 +1,7 @@
 use super::card::Card;
 use super::hand::Hand;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Hole(Hand);
 
 impl Hole {

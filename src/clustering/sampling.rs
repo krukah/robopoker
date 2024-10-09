@@ -28,7 +28,6 @@ impl Sampler {
         log::info!("downloading abstraction lookup table for Sampler");
         Self(Abstractor::assemble())
     }
-
     /// sample children of a Node, according to the distribution defined by Profile.
     /// we use external chance sampling, AKA explore all children of the traversing Player,
     /// while only probing a single child for non-traverser Nodes.
