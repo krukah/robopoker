@@ -7,7 +7,6 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
-use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
@@ -25,7 +24,7 @@ use std::sync::RwLock;
 /// for kmeans clustering to occur for a given `Street`.
 /// it should also parallelize well, with kmeans and lookup
 /// being the only mutable fields.
-pub struct Hierarchical {
+pub struct Layer {
     street: Street,
     metric: Metric,
     points: LargeSpace,
@@ -33,23 +32,28 @@ pub struct Hierarchical {
     lookup: Arc<RwLock<Abstractor>>,
 }
 
-impl Hierarchical {
+impl Layer {
     /// from scratch, generate and persist the full Abstraction lookup table
-    pub fn upload() {
-        log::info!("uploading abstraction lookup table");
-        Self::outer()
-            .inner() // turn
-            .save()
-            .inner() // flop
-            .save();
-    }
-    /// if we have this full thing created we can also just retrieve it
-    pub fn retrieve() -> Abstractor {
-        log::info!("retrieving abstraction lookup table");
-        let mut map = BTreeMap::default();
-        map.extend(Self::load(Street::Turn).0);
-        map.extend(Self::load(Street::Flop).0);
-        Abstractor(map)
+    pub fn learn() {
+        let ref path = format!(
+            "{}/{}.abstraction.pgcopy",
+            env!("CARGO_MANIFEST_DIR"),
+            Street::Flop
+        );
+        if std::path::Path::new(path).exists() {
+            log::info!("abstraction lookup table already exists on file. skipping");
+        } else {
+            log::info!("uploading abstraction lookup table");
+            Self::outer()
+                .inner() // turn
+                .save()
+                .inner() // flop
+                .save();
+            todo!("add the abstraction-less PreFlop Observations"); // TODO
+                                                                    // add the abstraction-less PreFlop Observations
+                                                                    // or include a Abstraction::PreFlop(Hole) variant
+                                                                    // to make sure we cover the full set of Observations
+        }
     }
 
     /// start with the River layer. everything is empty because we
@@ -103,7 +107,7 @@ impl Hierarchical {
                     let index = Pair::from((i, j));
                     let x = kmeans.get(i).expect("pre-computed").reveal();
                     let y = kmeans.get(j).expect("pre-computed").reveal();
-                    let distance = self.metric.wasserstein(x, y) + self.metric.wasserstein(y, x);
+                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.0;
                     metric.insert(index, distance);
                 }
@@ -192,8 +196,7 @@ impl Hierarchical {
         self.lookup()
             .write()
             .expect("poisoned lookup lock")
-            .0
-            .insert(observation.clone(), abstraction.clone());
+            .assign(abstraction, observation);
     }
     /// extending self.kmeans during intialization
     fn append(&self, histogram: Histogram) {
@@ -241,7 +244,7 @@ impl Hierarchical {
             .0
             .par_iter()
             .map(|(_, centroid)| centroid.reveal())
-            .map(|centroid| self.metric.wasserstein(histogram, centroid))
+            .map(|centroid| self.metric.emd(histogram, centroid))
             .map(|min| min * min)
             .min_by(|dx, dy| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
@@ -254,7 +257,7 @@ impl Hierarchical {
             .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.reveal()))
-            .map(|(abs, centroid)| (abs, self.metric.wasserstein(histogram, centroid)))
+            .map(|(abs, centroid)| (abs, self.metric.emd(histogram, centroid)))
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
             .0
@@ -284,74 +287,14 @@ impl Hierarchical {
             .len()
     }
 
-    /// write the full abstraction lookup table to disk
-    /// 1. Write the PGCOPY header (15 bytes)
-    /// 2. Write the flags (4 bytes)
-    /// 3. Write the extension (4 bytes)
-    /// 4. Write the observation and abstraction pairs
-    /// 5. Write the trailer (2 bytes)
+    /// save the current layer's `Metric` and `Abstractor` to disk
     fn save(self) -> Self {
-        log::info!("uploading abstraction lookup table {}", self.street);
-        use byteorder::BigEndian;
-        use byteorder::WriteBytesExt;
-        use std::fs::File;
-        use std::io::Write;
-        let mut file = File::create(format!("{}.pgcopy", self.street)).expect("new file");
-        let lock = self.lookup();
-        let ref lookup = lock.read().expect("poison").0;
-        let mut progress = Progress::new(lookup.len(), 10);
-        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
-        file.write_u32::<BigEndian>(0).expect("flags");
-        file.write_u32::<BigEndian>(0).expect("extension");
-        for (observation, abstraction) in lookup.iter() {
-            let obs = i64::from(*observation);
-            let abs = i64::from(*abstraction);
-            file.write_u16::<BigEndian>(2).expect("field count");
-            file.write_u32::<BigEndian>(8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(obs).expect("observation");
-            file.write_u32::<BigEndian>(8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(abs).expect("abstraction");
-            progress.tick();
-        }
-        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
+        let path = format!("{}.abstraction.pgcopy", self.street);
+        log::info!("uploading abstraction metric {}", path.clone());
+        self.metric.save(path.clone());
+        log::info!("uploading abstraction lookup table {}", path.clone());
+        self.lookup().read().expect("poison").save(path.clone());
         self
-    }
-    /// read the full abstraction lookup table from disk
-    /// 1. Skip PGCOPY header (15 bytes), flags (4 bytes), and header extension (4 bytes)
-    /// 2. Read field count (should be 2)
-    /// 3. Read observation length (4 bytes)
-    /// 4. Read observation (8 bytes)
-    /// 5. Read abstraction length (4 bytes)
-    /// 6. Read abstraction (8 bytes)
-    /// 7. Insert observation and abstraction into lookup table
-    /// 8. Repeat until end of file
-    fn load(street: Street) -> Abstractor {
-        log::info!("downloading abstraction lookup table {}", street);
-        use byteorder::BigEndian;
-        use byteorder::ReadBytesExt;
-        use std::fs::File;
-        use std::io::BufReader;
-        use std::io::Read;
-        use std::io::Seek;
-        use std::io::SeekFrom;
-        let file = File::open(format!("{}.pgcopy", street)).expect("open file");
-        let mut buffer = [0u8; 2];
-        let mut lookup = BTreeMap::new();
-        let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(23)).expect("seek past header");
-        while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) != 2 {
-                break;
-            }
-            reader.read_u32::<BigEndian>().expect("observation length");
-            let obs = reader.read_i64::<BigEndian>().expect("read observation");
-            reader.read_u32::<BigEndian>().expect("abstraction length");
-            let abs = reader.read_i64::<BigEndian>().expect("read abstraction");
-            let observation = Observation::from(obs);
-            let abstraction = Abstraction::from(abs);
-            lookup.insert(observation, abstraction);
-        }
-        Abstractor(lookup)
     }
 
     /// thread-safe mutability for updating Abstraction table

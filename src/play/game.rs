@@ -33,14 +33,18 @@ pub struct Game {
 }
 
 impl Game {
+    /// this will start the game at the first decision
+    /// NOT the first action, which are blinds and hole cards dealt.
+    /// stack size is always 100 and P1 is always dealer.
+    /// these should not matter too much in the MCCFR algorithm,
+    /// as long as we alternate the traverser/paths explored
     pub fn root() -> Self {
-        println!("root");
         let mut root = Self {
-            chips: 0,
-            seats: [Seat::new(STACK); N],
-            board: Board::empty(),
+            chips: 0u16,
             dealer: 0usize,
             player: 0usize,
+            board: Board::empty(),
+            seats: [Seat::new(STACK); N],
         };
         root.rotate();
         root.deal_cards();
@@ -145,23 +149,17 @@ impl Game {
             options.push(Action::Fold);
         }
         options
-        //? TODO
-        // nothing in here about Action::Blind() being possible,
-        // it's only accessible from Game::root()
-        // presumably we won't care about this
-        // when we construct our MCCFR tree
     }
     pub fn chooser(&self) -> Transition {
         if self.is_terminal() {
-            return Transition::Terminal;
+            Transition::Terminal
+        } else if self.is_sampling() {
+            Transition::Awaiting(self.board.street().next())
+        } else if self.is_decision() {
+            Transition::Decision(self.actor_relative_idx())
+        } else {
+            unreachable!("game rules violated")
         }
-        if self.is_sampling() {
-            return Transition::Awaiting(self.board.street().next());
-        }
-        if self.is_decision() {
-            return Transition::Decision(self.actor_relative_idx());
-        }
-        unreachable!("game rules violated")
     }
 
     fn deck(&self) -> Deck {
