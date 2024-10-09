@@ -97,12 +97,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn five_u64() {
-        assert!(u64::from(Rank::Five) == 0b1111000000000000);
+    fn bijective_u8() {
+        let rank = Rank::Five;
+        assert!(rank == Rank::from(u8::from(rank)));
     }
 
     #[test]
-    fn five_u16() {
-        assert!(u16::from(Rank::Five) == 0b0000000001000);
+    fn bijective_u16() {
+        let rank = Rank::Five;
+        assert!(rank == Rank::from(u16::from(rank)));
+    }
+
+    #[test]
+    fn injective_u64() {
+        assert!(u64::from(Rank::Five) == 0b1111000000000000);
     }
 }

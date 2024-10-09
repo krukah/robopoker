@@ -52,6 +52,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bijective_u8() {
+        let suit = Suit::C;
+        assert!(suit == Suit::from(u8::from(suit)));
+    }
+
+    #[test]
     fn injective_u64() {
         assert!(u64::from(Suit::C) == 0b0001000100010001000100010001000100010001000100010001);
         assert!(u64::from(Suit::D) == 0b0010001000100010001000100010001000100010001000100010);
