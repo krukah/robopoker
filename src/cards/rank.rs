@@ -62,6 +62,12 @@ impl From<Rank> for u16 {
     }
 }
 
+/// u64 injection
+impl From<Rank> for u64 {
+    fn from(r: Rank) -> u64 {
+        0xF << (u8::from(r) * 4)
+    }
+}
 impl std::fmt::Display for Rank {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -83,5 +89,20 @@ impl std::fmt::Display for Rank {
                 Rank::Ace => "A",
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn five_u64() {
+        assert!(u64::from(Rank::Five) == 0b1111000000000000);
+    }
+
+    #[test]
+    fn five_u16() {
+        assert!(u16::from(Rank::Five) == 0b0000000001000);
     }
 }
