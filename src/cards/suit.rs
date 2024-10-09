@@ -1,19 +1,20 @@
 #[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Suit {
     #[default]
-    Club = 0,
-    Diamond = 1,
-    Heart = 2,
-    Spade = 3,
+    C = 0,
+    D = 1,
+    H = 2,
+    S = 3,
 }
 
+/// u8 isomorphism
 impl From<u8> for Suit {
     fn from(n: u8) -> Suit {
         match n {
-            0 => Suit::Club,
-            1 => Suit::Diamond,
-            2 => Suit::Heart,
-            3 => Suit::Spade,
+            0 => Suit::C,
+            1 => Suit::D,
+            2 => Suit::H,
+            3 => Suit::S,
             _ => panic!("Invalid suit"),
         }
     }
@@ -24,17 +25,37 @@ impl From<Suit> for u8 {
     }
 }
 
+/// u64 injection
+impl From<Suit> for u64 {
+    fn from(s: Suit) -> u64 {
+        (0..13).fold(0, |acc, _| (acc << 4) | (1 << s as u64))
+    }
+}
+
 impl std::fmt::Display for Suit {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Suit::Club => "c",
-                Suit::Diamond => "d",
-                Suit::Heart => "h",
-                Suit::Spade => "s",
+                Suit::C => "c",
+                Suit::D => "d",
+                Suit::H => "h",
+                Suit::S => "s",
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn injective_u64() {
+        assert!(u64::from(Suit::C) == 0b0001000100010001000100010001000100010001000100010001);
+        assert!(u64::from(Suit::D) == 0b0010001000100010001000100010001000100010001000100010);
+        assert!(u64::from(Suit::H) == 0b0100010001000100010001000100010001000100010001000100);
+        assert!(u64::from(Suit::S) == 0b1000100010001000100010001000100010001000100010001000);
     }
 }
