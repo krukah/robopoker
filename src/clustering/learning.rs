@@ -185,7 +185,7 @@ impl Layer {
     fn absorb(&self, abstraction: &Abstraction, histogram: &Histogram) {
         self.kmeans()
             .write()
-            .expect("poisoned kmeans lock")
+            .expect("absorb poisoned kmeans lock")
             .0
             .get_mut(abstraction)
             .expect("abstraction::from::neighbor::from::self.kmeans")
@@ -195,14 +195,14 @@ impl Layer {
     fn assign(&self, abstraction: &Abstraction, observation: &Observation) {
         self.lookup()
             .write()
-            .expect("poisoned lookup lock")
+            .expect("assign poisoned lookup lock")
             .assign(abstraction, observation);
     }
     /// extending self.kmeans during intialization
     fn append(&self, histogram: Histogram) {
         self.kmeans()
             .write()
-            .expect("poisoned kmeans lock")
+            .expect("append poisoned kmeans lock")
             .0
             .insert(Abstraction::random(), Centroid::from(histogram));
     }
@@ -240,7 +240,7 @@ impl Layer {
     fn sample_distance(&self, histogram: &Histogram) -> f32 {
         self.kmeans()
             .read()
-            .expect("poisoned kmeans lock")
+            .expect("sample_distance poisoned kmeans lock")
             .0
             .par_iter()
             .map(|(_, centroid)| centroid.reveal())
@@ -253,7 +253,7 @@ impl Layer {
     fn sample_neighbor(&self, histogram: &Histogram) -> Abstraction {
         self.kmeans()
             .read()
-            .expect("poisoned kmeans lock")
+            .expect("sample_neighbor poisoned kmeans lock")
             .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.reveal()))
@@ -282,7 +282,7 @@ impl Layer {
     fn l(&self) -> usize {
         self.kmeans() //
             .read()
-            .expect("poisoned kmeans lock")
+            .expect("length poisoned kmeans lock")
             .0
             .len()
     }
