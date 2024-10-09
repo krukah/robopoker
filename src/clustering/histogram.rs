@@ -1,10 +1,9 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
 use std::ops::AddAssign;
-
-type Equity = Probability;
 
 /// A distribution over arbitrary Abstractions.
 ///
@@ -101,10 +100,7 @@ impl Histogram {
     /// ONLY WORKS FOR STREET::TURN
     /// ONLY WORKS FOR STREET::TURN
     pub fn posterior(&self) -> Vec<(Equity, Probability)> {
-        assert!(matches!(
-            self.weights.keys().next(),
-            Some(Abstraction::Equity(_))
-        ));
+        assert!(matches!(self.peek(), Abstraction::Equity(_)));
         self.weights
             .iter()
             .map(|(&key, &value)| (key, value as f32 / self.norm as f32))
