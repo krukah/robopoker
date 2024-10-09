@@ -14,3 +14,20 @@ pub struct LargeSpace(pub BTreeMap<Observation, Histogram>);
 /// as `Observation`s become assigned to `Abstraction`s.
 #[derive(Default)]
 pub struct SmallSpace(pub BTreeMap<Abstraction, Centroid>);
+
+impl SmallSpace {
+    /// during initialization, add a distance-weighted
+    /// Histogram to the kmeans clusters
+    pub fn extend(&mut self, histogram: Histogram) {
+        self.0
+            .insert(Abstraction::random(), Centroid::from(histogram));
+    }
+
+    /// absorb a `Histogram` into an `Abstraction`
+    pub fn absorb(&mut self, abstraction: &Abstraction, histogram: &Histogram) {
+        self.0
+            .get_mut(abstraction)
+            .expect("abstraction generated during initialization")
+            .absorb(histogram);
+    }
+}

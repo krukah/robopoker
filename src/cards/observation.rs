@@ -31,10 +31,14 @@ impl Observation {
         };
         // TODO make with_capacity, conditional on street
         // create 2 HandIters and multiple combinations
-        let mut observations = Vec::new();
-        for hole in HandIterator::from((2usize, Hand::from(0u64))) {
+        const N: usize = 10000;
+        let mut observations = Vec::with_capacity(N);
+        'outer: for hole in HandIterator::from((2usize, Hand::from(0u64))) {
             for board in HandIterator::from((n, hole)) {
                 observations.push(Observation::from((hole, board)));
+                if observations.len() == N {
+                    break 'outer;
+                }
             }
         }
         observations

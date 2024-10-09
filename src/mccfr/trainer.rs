@@ -13,7 +13,7 @@ use petgraph::graph::NodeIndex;
 pub struct Explorer {
     tree: Tree,
     profile: Profile,
-    sampler: Sampler,
+    sampler: Sampler, // mapping: Abstractor
 }
 
 /// impl Iterator<Item = Tree> for Explorer

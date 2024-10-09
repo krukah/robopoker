@@ -1,5 +1,4 @@
 use super::abstractor::Abstractor;
-use super::centroid::Centroid;
 use super::datasets::LargeSpace;
 use super::datasets::SmallSpace;
 use crate::cards::observation::Observation;
@@ -145,10 +144,18 @@ impl Layer {
     fn initial(&self) {
         log::info!("initializing kmeans {}", self.street);
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
-        self.append(self.sample_uniform(rng));
+        let histogram = self.sample_uniform(rng);
+        self.kmeans()
+            .write()
+            .expect("append poisoned kmeans lock")
+            .extend(histogram);
         while self.k() > self.l() {
             log::info!("add initial {}", self.l());
-            self.append(self.sample_outlier(rng));
+            let histogram = self.sample_outlier(rng);
+            self.kmeans()
+                .write()
+                .expect("append poisoned kmeans lock")
+                .extend(histogram);
         }
     }
     /// for however many iterations we want,
@@ -177,34 +184,15 @@ impl Layer {
 
     /// mutation achieved by acquiring RwLock write access
     fn update(&self, observation: &Observation, histogram: &Histogram) {
-        let ref abstraction = self.sample_neighbor(histogram);
-        self.assign(abstraction, observation);
-        self.absorb(abstraction, histogram);
-    }
-    /// absorb a `Histogram` into an `Abstraction`
-    fn absorb(&self, abstraction: &Abstraction, histogram: &Histogram) {
-        self.kmeans()
-            .write()
-            .expect("absorb poisoned kmeans lock")
-            .0
-            .get_mut(abstraction)
-            .expect("abstraction::from::neighbor::from::self.kmeans")
-            .absorb(histogram);
-    }
-    /// assign an `Abstraction` to an `Observation`
-    fn assign(&self, abstraction: &Abstraction, observation: &Observation) {
-        self.lookup()
-            .write()
-            .expect("assign poisoned lookup lock")
-            .assign(abstraction, observation);
-    }
-    /// extending self.kmeans during intialization
-    fn append(&self, histogram: Histogram) {
-        self.kmeans()
-            .write()
-            .expect("append poisoned kmeans lock")
-            .0
-            .insert(Abstraction::random(), Centroid::from(histogram));
+        let ref abstraction = self.sample_neighbor(histogram); // kmeans read
+        let lookup_binding = self.lookup();
+        let kmeans_binding = self.kmeans();
+        let mut lookup = lookup_binding.write().expect("poison");
+        let mut kmeans = kmeans_binding.write().expect("poison");
+        {
+            lookup.assign(abstraction, observation);
+            kmeans.absorb(abstraction, histogram);
+        }
     }
 
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
@@ -267,8 +255,8 @@ impl Layer {
     /// hyperparameter: how many centroids to learn
     fn k(&self) -> usize {
         match self.street {
-            Street::Turn => 200,
-            Street::Flop => 200,
+            Street::Turn => 20,
+            Street::Flop => 20,
             _ => unreachable!("how did you get here"),
         }
     }

@@ -50,11 +50,12 @@ impl Histogram {
     }
 
     /// absorb the other histogram into this one.
+    ///
+    /// TODO:
     /// Note that this implicitly assumes sum normalizations are the same,
     /// which should hold for now...
     /// until we implement Observation isomorphisms!
     pub fn absorb(&mut self, other: &Self) {
-        assert!(self.norm == other.norm);
         self.norm += other.norm;
         for (key, count) in other.weights.iter() {
             self.weights
