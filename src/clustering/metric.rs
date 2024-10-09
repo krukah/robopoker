@@ -68,7 +68,7 @@ impl Metric {
     fn wasserstein(&self, source: &Histogram, target: &Histogram) -> f32 {
         let x = source.support();
         let y = target.support();
-        let mut energy = 0.0;
+        let mut energy = 0.;
         let mut hasmoved = x
             .iter()
             .map(|&a| (a, false))
@@ -96,7 +96,7 @@ impl Metric {
                 // decide if we can remove earth from both distributions
                 let demand = *notmoved.get(pile).expect("in x domain");
                 let vacant = *unfilled.get(hole).expect("in y domain");
-                if vacant > 0.0 {
+                if vacant > 0. {
                     energy += distance * demand.min(vacant);
                 } else {
                     continue;
@@ -104,10 +104,10 @@ impl Metric {
                 // remove earth from both distributions
                 if demand > vacant {
                     *notmoved.get_mut(pile).expect("in x domain") -= vacant;
-                    *unfilled.get_mut(hole).expect("in y domain") = 0.0;
+                    *unfilled.get_mut(hole).expect("in y domain") = 0.;
                 } else {
                     *unfilled.get_mut(hole).expect("in y domain") -= demand;
-                    *notmoved.get_mut(pile).expect("in x domain") = 0.0;
+                    *notmoved.get_mut(pile).expect("in x domain") = 0.;
                     *hasmoved.get_mut(pile).expect("in x domain") = true;
                 }
             }
@@ -145,6 +145,7 @@ mod tests {
     use crate::cards::observation::Observation;
     use crate::cards::street::Street;
     use crate::clustering::histogram::Histogram;
+    use crate::clustering::metric::integral::Integral;
 
     #[test]
     fn is_histogram_emd_zero() {
@@ -172,17 +173,37 @@ mod tests {
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
         assert!(metric.emd(h1, h2) == metric.emd(h2, h1));
     }
+
+    #[test]
+    fn compare_integral_to_metric_difference() {
+        let obs1 = Observation::from(Street::Turn);
+        let obs2 = Observation::from(Street::Turn);
+        let h1 = Histogram::from(obs1);
+        let h2 = Histogram::from(obs2);
+
+        let integral_result = Integral::from((&h1.posterior(), &h2.posterior())).compute();
+        let metric_result = Metric::difference(&h1, &h2);
+
+        assert!(
+            (integral_result - metric_result).abs() < 1e-6,
+            "Integral result ({}) and metric difference ({}) should be approximately equal",
+            integral_result,
+            metric_result
+        );
+    }
 }
 
 #[allow(unused)]
 mod integral {
-    use std::collections::btree_map::Iter;
+    use crate::Equity;
+    use crate::Probability;
     use std::collections::BTreeMap;
     use std::iter::Peekable;
+    use std::slice::Iter;
 
-    struct Integral<'a> {
-        iter1: Peekable<Iter<'a, f32, f32>>,
-        iter2: Peekable<Iter<'a, f32, f32>>,
+    pub struct Integral<'a> {
+        iter1: Peekable<Iter<'a, (f32, f32)>>,
+        iter2: Peekable<Iter<'a, (f32, f32)>>,
         k: Option<f32>,
         x: f32,
         y: f32,
@@ -190,10 +211,22 @@ mod integral {
     }
 
     impl<'a> Integral<'a> {
+        /// Computes the total area between the two CDFs.
+        pub fn compute(mut self) -> f32 {
+            while let Some(k) = self.key() {
+                let (x, y) = self.values(k);
+                if let Some(previous) = self.k {
+                    self.area += self.area(previous, k, x, y);
+                }
+                self.tick(k, x, y);
+            }
+            self.area
+        }
+
         /// peek both of the iterators at current position
         fn peek(&mut self) -> (Option<f32>, Option<f32>) {
-            let kx = self.iter1.peek().map(|(&k, _)| k);
-            let ky = self.iter2.peek().map(|(&k, _)| k);
+            let kx = self.iter1.peek().map(|&&(k, _)| k);
+            let ky = self.iter2.peek().map(|&&(k, _)| k);
             (kx, ky)
         }
 
@@ -209,36 +242,15 @@ mod integral {
 
         /// Retrieves the current values for both CDFs at the given key.
         fn values(&mut self, k: f32) -> (f32, f32) {
-            let (kx, ky) = self.peek();
-            let v1 = if Some(k) == kx {
-                self.iter1.next().unwrap().1
-            } else {
-                &self.x
-            };
-            let v2 = if Some(k) == ky {
-                self.iter2.next().unwrap().1
-            } else {
-                &self.y
-            };
-            (*v1, *v2)
-        }
-
-        /// Computes the area between the two CDFs over the interval [k_prev, k_curr].
-        fn area(&self, k_prev: f32, k_curr: f32, x: f32, y: f32) -> f32 {
-            let d_k = k_curr - k_prev;
-            let d_prev = self.x - self.y;
-            let d_curr = x - y;
-            if (d_prev >= 0.0 && d_curr >= 0.0) || (d_prev <= 0.0 && d_curr <= 0.0) {
-                // No sign change in the difference
-                d_k * (d_prev.abs() + d_curr.abs()) / 2.0
-            } else {
-                // Difference crosses zero; find the crossing point
-                let t = d_prev.abs() / (d_prev.abs() + d_curr.abs());
-                let k_star = k_prev + t * d_k;
-                let area1 = (k_star - k_prev) * d_prev.abs() / 2.0;
-                let area2 = (k_curr - k_star) * d_curr.abs() / 2.0;
-                area1 + area2
-            }
+            let x = self
+                .iter1
+                .next_if(|&&(key, _)| key == k)
+                .map_or(self.x, |&(_, v)| v);
+            let y = self
+                .iter2
+                .next_if(|&&(key, _)| key == k)
+                .map_or(self.y, |&(_, v)| v);
+            (x, y)
         }
 
         /// Updates the state variables for the next iteration.
@@ -248,28 +260,44 @@ mod integral {
             self.y = v2_curr;
         }
 
-        /// Computes the total area between the two CDFs.
-        fn compute(mut self) -> f32 {
-            while let Some(k) = self.key() {
-                let (x, y) = self.values(k);
-                if let Some(k_prev) = self.k {
-                    self.area += self.area(k_prev, k, x, y);
-                }
-                self.tick(k, x, y);
+        /// Computes the area between the two CDFs over the interval [k_prev, k_curr].
+        fn area(&self, k_prev: f32, k_curr: f32, x: f32, y: f32) -> f32 {
+            let d_k = k_curr - k_prev;
+            let d_prev = self.x - self.y;
+            let d_curr = x - y;
+            if (d_prev >= 0. && d_curr >= 0.) || (d_prev <= 0. && d_curr <= 0.) {
+                // No sign change in the difference
+                d_k * (d_prev.abs() + d_curr.abs()) / 2.
+            } else {
+                // Difference crosses zero; find the crossing point
+                let t = d_prev.abs() / (d_prev.abs() + d_curr.abs());
+                let k_star = k_prev + t * d_k;
+                let area1 = (k_star - k_prev) * d_prev.abs() / 2.;
+                let area2 = (k_curr - k_star) * d_curr.abs() / 2.;
+                area1 + area2
             }
-            self.area
         }
     }
 
-    impl<'a> From<(&'a BTreeMap<f32, f32>, &'a BTreeMap<f32, f32>)> for Integral<'a> {
-        fn from(args: (&'a BTreeMap<f32, f32>, &'a BTreeMap<f32, f32>)) -> Self {
+    impl<'a>
+        From<(
+            &'a Vec<(Equity, Probability)>,
+            &'a Vec<(Equity, Probability)>,
+        )> for Integral<'a>
+    {
+        fn from(
+            args: (
+                &'a Vec<(Equity, Probability)>,
+                &'a Vec<(Equity, Probability)>,
+            ),
+        ) -> Self {
             Integral {
                 iter1: args.0.iter().peekable(),
                 iter2: args.1.iter().peekable(),
                 k: None,
-                x: 0.0,
-                y: 0.0,
-                area: 0.0,
+                x: 0.,
+                y: 0.,
+                area: 0.,
             }
         }
     }

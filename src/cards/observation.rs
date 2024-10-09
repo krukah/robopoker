@@ -14,7 +14,7 @@ use std::cmp::Ordering;
 pub struct Isomorphism(Observation);
 
 impl Isomorphism {
-    fn canonize(o: Observation) -> Self {
+    fn canonize(_: Observation) -> Self {
         todo!()
     }
 }
