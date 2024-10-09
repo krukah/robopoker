@@ -205,11 +205,11 @@ mod tests {
     #[test]
     fn high_card() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::King, Suit::Heart),
-            (Rank::Queen, Suit::Diamond),
-            (Rank::Jack, Suit::Club),
-            (Rank::Nine, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::King, Suit::H),
+            (Rank::Queen, Suit::D),
+            (Rank::Jack, Suit::C),
+            (Rank::Nine, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::HighCard(Rank::Ace));
     }
@@ -217,11 +217,11 @@ mod tests {
     #[test]
     fn one_pair() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::King, Suit::Diamond),
-            (Rank::Queen, Suit::Club),
-            (Rank::Jack, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::King, Suit::D),
+            (Rank::Queen, Suit::C),
+            (Rank::Jack, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::OnePair(Rank::Ace));
     }
@@ -229,11 +229,11 @@ mod tests {
     #[test]
     fn two_pair() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::King, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::Queen, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::King, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::Queen, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
     }
@@ -241,11 +241,11 @@ mod tests {
     #[test]
     fn three_oak() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::Queen, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::Queen, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::ThreeOAK(Rank::Ace));
     }
@@ -253,11 +253,11 @@ mod tests {
     #[test]
     fn straight() {
         let hand = vec![
-            (Rank::Ten, Suit::Spade),
-            (Rank::Jack, Suit::Heart),
-            (Rank::Queen, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::Ace, Suit::Spade),
+            (Rank::Ten, Suit::S),
+            (Rank::Jack, Suit::H),
+            (Rank::Queen, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::Ace, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::Straight(Rank::Ace));
     }
@@ -265,11 +265,11 @@ mod tests {
     #[test]
     fn flush() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::King, Suit::Spade),
-            (Rank::Queen, Suit::Spade),
-            (Rank::Jack, Suit::Spade),
-            (Rank::Nine, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::King, Suit::S),
+            (Rank::Queen, Suit::S),
+            (Rank::Jack, Suit::S),
+            (Rank::Nine, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::Flush(Rank::Ace));
     }
@@ -277,11 +277,11 @@ mod tests {
     #[test]
     fn full_house() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::King, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::King, Suit::S),
         ];
         assert_eq!(
             evaluate_hand(hand),
@@ -292,11 +292,11 @@ mod tests {
     #[test]
     fn four_oak() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
-            (Rank::Ace, Suit::Club),
-            (Rank::King, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
+            (Rank::Ace, Suit::C),
+            (Rank::King, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::FourOAK(Rank::Ace));
     }
@@ -304,11 +304,11 @@ mod tests {
     #[test]
     fn straight_flush() {
         let hand = vec![
-            (Rank::Ten, Suit::Spade),
-            (Rank::Jack, Suit::Spade),
-            (Rank::Queen, Suit::Spade),
-            (Rank::King, Suit::Spade),
-            (Rank::Ace, Suit::Spade),
+            (Rank::Ten, Suit::S),
+            (Rank::Jack, Suit::S),
+            (Rank::Queen, Suit::S),
+            (Rank::King, Suit::S),
+            (Rank::Ace, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::StraightFlush(Rank::Ace));
     }
@@ -316,11 +316,11 @@ mod tests {
     #[test]
     fn wheel_straight() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Two, Suit::Heart),
-            (Rank::Three, Suit::Diamond),
-            (Rank::Four, Suit::Club),
-            (Rank::Five, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Two, Suit::H),
+            (Rank::Three, Suit::D),
+            (Rank::Four, Suit::C),
+            (Rank::Five, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::Straight(Rank::Five));
     }
@@ -328,11 +328,11 @@ mod tests {
     #[test]
     fn wheel_straight_flush() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Two, Suit::Spade),
-            (Rank::Three, Suit::Spade),
-            (Rank::Four, Suit::Spade),
-            (Rank::Five, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Two, Suit::S),
+            (Rank::Three, Suit::S),
+            (Rank::Four, Suit::S),
+            (Rank::Five, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::StraightFlush(Rank::Five));
     }
@@ -340,13 +340,13 @@ mod tests {
     #[test]
     fn seven_card_hand() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::King, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::Queen, Suit::Spade),
-            (Rank::Jack, Suit::Heart),
-            (Rank::Nine, Suit::Diamond),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::King, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::Queen, Suit::S),
+            (Rank::Jack, Suit::H),
+            (Rank::Nine, Suit::D),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
     }
@@ -354,12 +354,12 @@ mod tests {
     #[test]
     fn flush_vs_straight() {
         let hand = vec![
-            (Rank::Four, Suit::Heart),
-            (Rank::Six, Suit::Heart),
-            (Rank::Seven, Suit::Heart),
-            (Rank::Eight, Suit::Heart),
-            (Rank::Nine, Suit::Heart),
-            (Rank::Ten, Suit::Spade),
+            (Rank::Four, Suit::H),
+            (Rank::Six, Suit::H),
+            (Rank::Seven, Suit::H),
+            (Rank::Eight, Suit::H),
+            (Rank::Nine, Suit::H),
+            (Rank::Ten, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::Flush(Rank::Nine));
     }
@@ -367,13 +367,13 @@ mod tests {
     #[test]
     fn full_house_vs_flush() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
-            (Rank::King, Suit::Spade),
-            (Rank::King, Suit::Heart),
-            (Rank::Queen, Suit::Spade),
-            (Rank::Jack, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
+            (Rank::King, Suit::S),
+            (Rank::King, Suit::H),
+            (Rank::Queen, Suit::S),
+            (Rank::Jack, Suit::S),
         ];
         assert_eq!(
             evaluate_hand(hand),
@@ -384,13 +384,13 @@ mod tests {
     #[test]
     fn two_three_oak() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::King, Suit::Spade),
-            (Rank::King, Suit::Heart),
-            (Rank::Queen, Suit::Diamond),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::King, Suit::S),
+            (Rank::King, Suit::H),
+            (Rank::Queen, Suit::D),
         ];
         assert_eq!(
             evaluate_hand(hand),
@@ -401,13 +401,13 @@ mod tests {
     #[test]
     fn four_oak_vs_full_house() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
-            (Rank::Ace, Suit::Club),
-            (Rank::King, Suit::Spade),
-            (Rank::King, Suit::Heart),
-            (Rank::Queen, Suit::Diamond),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
+            (Rank::Ace, Suit::C),
+            (Rank::King, Suit::S),
+            (Rank::King, Suit::H),
+            (Rank::Queen, Suit::D),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::FourOAK(Rank::Ace));
     }
@@ -415,13 +415,13 @@ mod tests {
     #[test]
     fn straight_flush_vs_four_oak() {
         let hand = vec![
-            (Rank::Ten, Suit::Spade),
-            (Rank::Jack, Suit::Spade),
-            (Rank::Queen, Suit::Spade),
-            (Rank::King, Suit::Spade),
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::Ace, Suit::Diamond),
+            (Rank::Ten, Suit::S),
+            (Rank::Jack, Suit::S),
+            (Rank::Queen, Suit::S),
+            (Rank::King, Suit::S),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::Ace, Suit::D),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::StraightFlush(Rank::Ace));
     }
@@ -429,12 +429,12 @@ mod tests {
     #[test]
     fn low_straight() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Two, Suit::Spade),
-            (Rank::Three, Suit::Heart),
-            (Rank::Four, Suit::Diamond),
-            (Rank::Five, Suit::Club),
-            (Rank::Six, Suit::Spade),
+            (Rank::Ace, Suit::S),
+            (Rank::Two, Suit::S),
+            (Rank::Three, Suit::H),
+            (Rank::Four, Suit::D),
+            (Rank::Five, Suit::C),
+            (Rank::Six, Suit::S),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::Straight(Rank::Six));
     }
@@ -442,13 +442,13 @@ mod tests {
     #[test]
     fn three_pair() {
         let hand = vec![
-            (Rank::Ace, Suit::Spade),
-            (Rank::Ace, Suit::Heart),
-            (Rank::King, Suit::Diamond),
-            (Rank::King, Suit::Club),
-            (Rank::Queen, Suit::Spade),
-            (Rank::Queen, Suit::Heart),
-            (Rank::Jack, Suit::Diamond),
+            (Rank::Ace, Suit::S),
+            (Rank::Ace, Suit::H),
+            (Rank::King, Suit::D),
+            (Rank::King, Suit::C),
+            (Rank::Queen, Suit::S),
+            (Rank::Queen, Suit::H),
+            (Rank::Jack, Suit::D),
         ];
         assert_eq!(evaluate_hand(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
     }
