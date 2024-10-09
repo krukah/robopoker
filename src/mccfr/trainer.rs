@@ -4,19 +4,21 @@ use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
-use crate::clustering::explorer::Explorer;
+use crate::clustering::sampling::Sampler;
 use petgraph::graph::NodeIndex;
 
 /// need some async upload/download methods for Profile
 /// thesee are totally Tree functions
 /// i should hoist INfoSet one level up into this struct
-pub struct Blueprint {
+pub struct Explorer {
     tree: Tree,
     profile: Profile,
-    explorer: Explorer,
+    sampler: Sampler,
 }
 
-impl Blueprint {
+/// impl Iterator<Item = Tree> for Explorer
+
+impl Explorer {
     const EPOCHS: usize = 100_000;
     /// here's the training loop. infosets might be generated
     /// in parallel later. infosets might also come pre-filtered
@@ -25,18 +27,18 @@ impl Blueprint {
     /// a learning schedule for regret or policy.
     pub fn train() {
         log::info!("training blueprint");
-        let ref mut solution = Self::empty();
-        while solution.profile.next() <= Self::EPOCHS {
-            solution.sample();
-            for ref infoset in solution.tree.infosets() {
-                if solution.profile.walker() == infoset.node().player() {
-                    solution.profile.update_regret(infoset);
-                    solution.profile.update_policy(infoset);
+        let ref mut explorer = Self::empty();
+        while explorer.profile.next() <= Self::EPOCHS {
+            explorer.mcts();
+            for ref infoset in explorer.tree.infosets() {
+                if explorer.profile.walker() == infoset.node().player() {
+                    explorer.profile.update_regret(infoset);
+                    explorer.profile.update_policy(infoset);
                 }
             }
         }
         log::info!("saving blueprint");
-        solution.profile.save();
+        explorer.profile.save();
     }
 
     /// i'm making this a static method but in theory we could
@@ -46,7 +48,7 @@ impl Blueprint {
         Self {
             tree: Tree::empty(),
             profile: Profile::empty(),
-            explorer: Explorer::download(),
+            sampler: Sampler::download(),
         }
     }
 
@@ -54,7 +56,7 @@ impl Blueprint {
     /// in this sense, Data defines the tree implicitly in its spawn() implementation.
     /// this is just a base case to handle the root node, presumably a Fn () -> Data.
     /// real-time search implementations may have root nodes provided by the caller.
-    fn sample(&mut self) {
+    fn mcts(&mut self) {
         self.tree = Tree::empty();
         let root = self.root();
         let head = self.witness(root);
@@ -62,7 +64,7 @@ impl Blueprint {
         assert!(head.index() == 0);
         let ref node = self.tree.node(head);
         let ref profile = self.profile;
-        for (tail, from) in self.explorer.sample(node, profile) {
+        for (tail, from) in self.sampler.sample(node, profile) {
             self.dfs(tail, from, head);
         }
     }
@@ -77,7 +79,7 @@ impl Blueprint {
         assert!(head.index() == edge.index() + 1);
         let ref node = self.tree.node(head);
         let ref profile = self.profile;
-        for (tail, from) in self.explorer.sample(node, profile) {
+        for (tail, from) in self.sampler.sample(node, profile) {
             self.dfs(tail, from, head);
         }
     }
@@ -108,8 +110,8 @@ impl Blueprint {
         use crate::mccfr::bucket::Bucket;
         use crate::play::game::Game;
         let node = Game::root();
-        let path = self.explorer.path_abstraction(&Vec::new());
-        let abstraction = self.explorer.card_abstraction(&node);
+        let path = self.sampler.path_abstraction(&Vec::new());
+        let abstraction = self.sampler.card_abstraction(&node);
         let bucket = Bucket::from((path, abstraction));
         Data::from((node, bucket))
     }

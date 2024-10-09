@@ -60,6 +60,8 @@ impl Metric {
         total
     }
 
+    /// let's try to use this Integration and se if it works
+
     /// Beware the asymmetry:
     /// EMD(X,Y) != EMD(Y,X)
     /// Centroid should be the "hole" (sink) in the EMD calculation
@@ -169,5 +171,106 @@ mod tests {
         let ref h1 = Histogram::from(Observation::from(Street::Turn));
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
         assert!(metric.emd(h1, h2) == metric.emd(h2, h1));
+    }
+}
+
+#[allow(unused)]
+mod integral {
+    use std::collections::btree_map::Iter;
+    use std::collections::BTreeMap;
+    use std::iter::Peekable;
+
+    struct Integral<'a> {
+        iter1: Peekable<Iter<'a, f32, f32>>,
+        iter2: Peekable<Iter<'a, f32, f32>>,
+        k: Option<f32>,
+        x: f32,
+        y: f32,
+        area: f32,
+    }
+
+    impl<'a> Integral<'a> {
+        /// peek both of the iterators at current position
+        fn peek(&mut self) -> (Option<f32>, Option<f32>) {
+            let kx = self.iter1.peek().map(|(&k, _)| k);
+            let ky = self.iter2.peek().map(|(&k, _)| k);
+            (kx, ky)
+        }
+
+        /// Determines the next key to process from both iterators.
+        fn key(&mut self) -> Option<f32> {
+            match self.peek() {
+                (Some(kx), Some(ky)) => Some(kx.min(ky)),
+                (Some(kx), None) => Some(kx),
+                (None, Some(ky)) => Some(ky),
+                (None, None) => None, // Both iterators are exhausted
+            }
+        }
+
+        /// Retrieves the current values for both CDFs at the given key.
+        fn values(&mut self, k: f32) -> (f32, f32) {
+            let (kx, ky) = self.peek();
+            let v1 = if Some(k) == kx {
+                self.iter1.next().unwrap().1
+            } else {
+                &self.x
+            };
+            let v2 = if Some(k) == ky {
+                self.iter2.next().unwrap().1
+            } else {
+                &self.y
+            };
+            (*v1, *v2)
+        }
+
+        /// Computes the area between the two CDFs over the interval [k_prev, k_curr].
+        fn area(&self, k_prev: f32, k_curr: f32, x: f32, y: f32) -> f32 {
+            let d_k = k_curr - k_prev;
+            let d_prev = self.x - self.y;
+            let d_curr = x - y;
+            if (d_prev >= 0.0 && d_curr >= 0.0) || (d_prev <= 0.0 && d_curr <= 0.0) {
+                // No sign change in the difference
+                d_k * (d_prev.abs() + d_curr.abs()) / 2.0
+            } else {
+                // Difference crosses zero; find the crossing point
+                let t = d_prev.abs() / (d_prev.abs() + d_curr.abs());
+                let k_star = k_prev + t * d_k;
+                let area1 = (k_star - k_prev) * d_prev.abs() / 2.0;
+                let area2 = (k_curr - k_star) * d_curr.abs() / 2.0;
+                area1 + area2
+            }
+        }
+
+        /// Updates the state variables for the next iteration.
+        fn tick(&mut self, k_curr: f32, v1_curr: f32, v2_curr: f32) {
+            self.k = Some(k_curr);
+            self.x = v1_curr;
+            self.y = v2_curr;
+        }
+
+        /// Computes the total area between the two CDFs.
+        fn compute(mut self) -> f32 {
+            while let Some(k) = self.key() {
+                let (x, y) = self.values(k);
+                if let Some(k_prev) = self.k {
+                    self.area += self.area(k_prev, k, x, y);
+                }
+                self.tick(k, x, y);
+            }
+            self.area
+        }
+    }
+
+    impl<'a> From<(&'a BTreeMap<f32, f32>, &'a BTreeMap<f32, f32>)> for Integral<'a> {
+        fn from(args: (&'a BTreeMap<f32, f32>, &'a BTreeMap<f32, f32>)) -> Self {
+            Integral {
+                iter1: args.0.iter().peekable(),
+                iter2: args.1.iter().peekable(),
+                k: None,
+                x: 0.0,
+                y: 0.0,
+                area: 0.0,
+            }
+        }
     }
 }

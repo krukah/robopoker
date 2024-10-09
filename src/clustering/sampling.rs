@@ -16,16 +16,16 @@ use rand::Rng;
 
 /// given a Node, we can sample a distribution of children according to the Profile.
 /// we can also map an Observation to its nearest neighbor abstraction.
-/// Explorer determines how we sample the Tree in Full Tree Search.
+/// Sampler determines how we sample the Tree in Full Tree Search.
 /// but combined with Profile, we can implement Monte Carlo Tree Search too.
-pub struct Explorer(Abstractor);
+pub struct Sampler(Abstractor);
 
-impl Explorer {
-    /// download the Abstraction lookup table for the Explorer
+impl Sampler {
+    /// download the Abstraction lookup table for the Sampler
     /// so that we can traverse  LargeSpace (play in unabstracted representation)
     /// while assembling tree in SmallSpace (map to smaller & denser game tree)
     pub fn download() -> Self {
-        log::info!("downloading abstraction lookup table for Explorer");
+        log::info!("downloading abstraction lookup table for Sampler");
         Self(Abstractor::assemble())
     }
 

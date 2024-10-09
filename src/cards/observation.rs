@@ -11,19 +11,25 @@ use std::cmp::Ordering;
 /// so we can canonize to reduce the index space of
 /// learned Abstractions.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-pub struct Canonical(Observation);
+pub struct Isomorphism(Observation);
 
-impl From<Observation> for Canonical {
+impl Isomorphism {
+    fn canonize(o: Observation) -> Self {
+        todo!()
+    }
+}
+
+impl From<Observation> for Isomorphism {
     fn from(o: Observation) -> Self {
         if Self::is_canonical(o) {
             Self(o)
         } else {
-            todo!()
+            Self::canonize(o)
         }
     }
 }
 
-impl Canonical {
+impl Isomorphism {
     pub fn is_canonical(_: Observation) -> bool {
         todo!()
     }
