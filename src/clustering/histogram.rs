@@ -1,10 +1,9 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
 use std::ops::AddAssign;
-
-type Equity = Probability;
 
 /// A distribution over arbitrary Abstractions.
 ///
@@ -17,6 +16,8 @@ pub struct Histogram {
 }
 
 impl Histogram {
+    /// the weight of a given Abstraction.
+    /// returns 0 if the Abstraction was never witnessed.
     pub fn weight(&self, abstraction: &Abstraction) -> f32 {
         self.weights.get(abstraction).copied().unwrap_or(0usize) as f32 / self.norm as f32
     }
@@ -63,6 +64,17 @@ impl Histogram {
         }
     }
 
+    /// it is useful in EMD calculation
+    /// to know if we're dealing with ::Equity or ::Random
+    /// Abstraction variants, so we expose this method to
+    /// infer the type of Abstraction contained by this Histogram.
+    pub fn peek(&self) -> &Abstraction {
+        self.weights
+            .keys()
+            .next()
+            .expect("non empty histogram, consistent abstraction variant")
+    }
+
     /// exhaustive calculation of all
     /// possible Rivers and Showdowns,
     /// naive to strategy of course.
@@ -88,10 +100,7 @@ impl Histogram {
     /// ONLY WORKS FOR STREET::TURN
     /// ONLY WORKS FOR STREET::TURN
     pub fn posterior(&self) -> Vec<(Equity, Probability)> {
-        assert!(matches!(
-            self.weights.keys().next(),
-            Some(Abstraction::Equity(_))
-        ));
+        assert!(matches!(self.peek(), Abstraction::Equity(_)));
         self.weights
             .iter()
             .map(|(&key, &value)| (key, value as f32 / self.norm as f32))

@@ -11,16 +11,18 @@ use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
+use std::hash::Hasher;
 
 pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
+
 impl Profile {
     pub fn empty() -> Self {
         Self(BTreeMap::new(), 0)
     }
     /// increment Epoch counter
     /// and return current count
-    pub fn step(&mut self) -> usize {
+    pub fn next(&mut self) -> usize {
         self.1 += 1;
         self.1
     }
@@ -58,6 +60,9 @@ impl Profile {
     /// new_regret = (old_regret + now_regret) . max(0)
     pub fn update_regret(&mut self, infoset: &Info) {
         assert!(infoset.node().player() == self.walker());
+        // TODO
+        // TODO
+        // condition on update scheduling. be cognizant of parallelization
         let bucket = infoset.node().bucket();
         for (ref action, ref regret) in self.regret_vector(infoset) {
             let update = self.update(bucket, action);
@@ -72,6 +77,9 @@ impl Profile {
     /// "CFR+ discounts prior iterations' contribution to the average strategy, but not the regrets."
     pub fn update_policy(&mut self, infoset: &Info) {
         assert!(infoset.node().player() == self.walker());
+        // TODO
+        // TODO
+        // condition on update scheduling. be cognizant of parallelization
         let epochs = self.epochs();
         let bucket = infoset.node().bucket();
         // self.normalize(bucket);
@@ -132,6 +140,7 @@ impl Profile {
     /// are tightly coupled.
     /// we use this in Self::update_*
     /// to replace any of the three values
+    /// with the new value
     fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
         self.0
             .get_mut(bucket)
@@ -316,9 +325,7 @@ impl Profile {
     /// - we've visited this Infoset at least once, while sampling the Tree
     fn reach(&self, head: &Node, edge: &Edge) -> Probability {
         if head.player() == Player::chance() {
-            //. RPS specific
-            assert!(head.children().len() == 0);
-            unreachable!("early return 1. rather than entering recursive branch")
+            1.
         } else {
             self.0
                 .get(head.bucket())
@@ -377,15 +384,32 @@ impl Profile {
             }
         }
     }
-}
 
-impl std::fmt::Display for Profile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (bucket, edges) in &self.0 {
-            for (edge, memory) in edges {
-                writeln!(f, "{:?} {:?}: {:.4}", bucket, edge, memory)?;
+    /// persist the Profile to disk
+    pub fn save(&self) {
+        use byteorder::BigEndian;
+        use byteorder::WriteBytesExt;
+        use std::fs::File;
+        use std::io::Write;
+        let ref mut file = File::create("blueprint.pgcopy").expect("new file");
+        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
+        file.write_u32::<BigEndian>(0).expect("flags");
+        file.write_u32::<BigEndian>(0).expect("extension");
+        for (Bucket(path, abs), policy) in self.0.iter() {
+            for (edge, memory) in policy.iter() {
+                file.write_u16::<BigEndian>(5).expect("field count");
+                file.write_u32::<BigEndian>(8).expect("8-bytes field");
+                file.write_u64::<BigEndian>(u64::from(*path)).expect("path");
+                file.write_u32::<BigEndian>(8).expect("8-bytes field");
+                file.write_u64::<BigEndian>(u64::from(*abs)).expect("abs");
+                file.write_u32::<BigEndian>(4).expect("4-bytes field");
+                file.write_u32::<BigEndian>(u32::from(*edge)).expect("edge");
+                file.write_u32::<BigEndian>(4).expect("4-bytes field");
+                file.write_f32::<BigEndian>(memory.regret).expect("regret");
+                file.write_u32::<BigEndian>(4).expect("4-bytes field");
+                file.write_f32::<BigEndian>(memory.advice).expect("advice");
             }
         }
-        Ok(())
+        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
     }
 }

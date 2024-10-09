@@ -7,31 +7,6 @@ use super::strength::Strength;
 use crate::cards::rank::Rank;
 use std::cmp::Ordering;
 
-/// many Observations are strategically equivalent,
-/// so we can canonize to reduce the index space of
-/// learned Abstractions.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-pub struct Canonical(Observation);
-
-impl From<Observation> for Canonical {
-    fn from(o: Observation) -> Self {
-        if Self::is_canonical(o) {
-            Self(o)
-        } else {
-            todo!()
-        }
-    }
-}
-
-impl Canonical {
-    pub fn is_canonical(o: Observation) -> bool {
-        todo!()
-    }
-    pub fn enumerate(street: Street) -> Vec<Observation> {
-        Observation::enumerate(street)
-    }
-}
-
 /// Observation represents the memoryless state of the game in between chance actions.
 ///
 /// We store each set of cards as a Hand which does not preserve dealing order. We can
@@ -189,6 +164,7 @@ impl From<Observation> for Hand {
     }
 }
 
+/// display Observation as secret + public
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} + {}", self.secret, self.public)

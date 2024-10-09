@@ -15,3 +15,15 @@ impl From<Action> for Edge {
         }
     }
 }
+
+impl From<u32> for Edge {
+    fn from(_: u32) -> Self {
+        todo!("serialization mechanism")
+    }
+}
+
+impl From<Edge> for u32 {
+    fn from(_: Edge) -> Self {
+        todo!("serialization mechanism")
+    }
+}

@@ -1,11 +1,7 @@
 # Ignore everything
 *
-
 # Allow only Rust-related files and folders
 !Cargo.toml
 !Cargo.lock
 !benches/
 !src/
-
-# Ignore target directory even if it's inside src/
-**/target/
