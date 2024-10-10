@@ -96,6 +96,13 @@ impl Observation {
             _ => unreachable!("no other sizes"),
         }
     }
+
+    pub fn secret(&self) -> &Hand {
+        &self.secret
+    }
+    pub fn public(&self) -> &Hand {
+        &self.public
+    }
 }
 
 /// i64 isomorphism

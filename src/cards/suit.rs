@@ -7,6 +7,12 @@ pub enum Suit {
     S = 3,
 }
 
+impl Suit {
+    pub const fn all() -> [Suit; 4] {
+        [Suit::C, Suit::D, Suit::H, Suit::S]
+    }
+}
+
 /// u8 isomorphism
 impl From<u8> for Suit {
     fn from(n: u8) -> Suit {
