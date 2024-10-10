@@ -1,6 +1,6 @@
 use super::abstractor::Abstractor;
-use super::datasets::LargeSpace;
-use super::datasets::SmallSpace;
+use super::datasets::AbstractionSpace;
+use super::datasets::ObservationSpace;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
@@ -9,14 +9,13 @@ use crate::clustering::metric::Metric;
 use crate::clustering::xor::Pair;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
+use rand::rngs::StdRng;
 use rand::seq::IteratorRandom;
 use rand::SeedableRng;
+use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 /// Hierarchical K Means Learner
 /// this is decomposed into the necessary data structures
@@ -26,33 +25,23 @@ use std::sync::RwLock;
 pub struct Layer {
     street: Street,
     metric: Metric,
-    points: LargeSpace,
-    kmeans: Arc<RwLock<SmallSpace>>,
-    lookup: Arc<RwLock<Abstractor>>,
+    lookup: Abstractor,
+    kmeans: AbstractionSpace,
+    points: ObservationSpace,
 }
 
 impl Layer {
     /// from scratch, generate and persist the full Abstraction lookup table
     pub fn learn() {
-        let ref path = format!(
-            "{}/{}.abstraction.pgcopy",
-            env!("CARGO_MANIFEST_DIR"),
-            Street::Flop
-        );
-        if std::path::Path::new(path).exists() {
-            log::info!("abstraction lookup table already exists on file. skipping");
-        } else {
-            log::info!("uploading abstraction lookup table");
-            Self::outer()
-                .inner() // turn
-                .save()
-                .inner() // flop
-                .save();
-            todo!("add the abstraction-less PreFlop Observations"); // TODO
-                                                                    // add the abstraction-less PreFlop Observations
-                                                                    // or include a Abstraction::PreFlop(Hole) variant
-                                                                    // to make sure we cover the full set of Observations
-        }
+        Self::outer()
+            .inner() // turn
+            .save()
+            .inner() // flop
+            .save();
+        todo!("add the abstraction-less PreFlop Observations"); // TODO
+                                                                // add the abstraction-less PreFlop Observations
+                                                                // or include a Abstraction::PreFlop(Hole) variant
+                                                                // to make sure we cover the full set of Observations
     }
 
     /// start with the River layer. everything is empty because we
@@ -63,25 +52,25 @@ impl Layer {
     /// - `points`: not used for inward projection. only used for clustering. and no clustering on River.
     fn outer() -> Self {
         Self {
-            lookup: Arc::new(RwLock::new(Abstractor::default())),
-            kmeans: Arc::new(RwLock::new(SmallSpace::default())),
-            points: LargeSpace::default(),
+            lookup: Abstractor::default(),
+            kmeans: AbstractionSpace::default(),
+            points: ObservationSpace::default(),
             metric: Metric::default(),
             street: Street::Rive,
         }
     }
     /// hierarchically, recursively generate the inner layer
     fn inner(&self) -> Self {
-        let inner = Self {
-            lookup: Arc::new(RwLock::new(Abstractor::default())), // assigned during clustering
-            kmeans: Arc::new(RwLock::new(SmallSpace::default())), // assigned during clustering
-            street: self.inner_street(), // uniquely determined by outer layer
-            metric: self.inner_metric(), // uniquely determined by outer layer
-            points: self.inner_points(), // uniquely determined by outer layer
+        let mut layer = Self {
+            lookup: Abstractor::default(),       // assigned during clustering
+            kmeans: AbstractionSpace::default(), // assigned during clustering
+            street: self.inner_street(),         // uniquely determined by outer layer
+            metric: self.inner_metric(),         // uniquely determined by outer layer
+            points: self.inner_points(),         // uniquely determined by outer layer
         };
-        inner.initial();
-        inner.cluster();
-        inner
+        layer.initial();
+        layer.cluster();
+        layer
     }
 
     /// simply go to the previous street
@@ -97,15 +86,13 @@ impl Layer {
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
         log::info!("computing metric {}", self.street);
-        let lock = self.kmeans();
-        let ref kmeans = lock.read().expect("poison").0;
         let mut metric = BTreeMap::new();
-        for i in kmeans.keys() {
-            for j in kmeans.keys() {
-                if i > j {
-                    let index = Pair::from((i, j));
-                    let x = kmeans.get(i).expect("pre-computed").reveal();
-                    let y = kmeans.get(j).expect("pre-computed").reveal();
+        for a in self.kmeans.0.keys() {
+            for b in self.kmeans.0.keys() {
+                if a > b {
+                    let index = Pair::from((a, b));
+                    let x = self.kmeans.0.get(a).expect("pre-computed").reveal();
+                    let y = self.kmeans.0.get(b).expect("pre-computed").reveal();
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.0;
                     metric.insert(index, distance);
@@ -120,16 +107,12 @@ impl Layer {
     /// 2. map each to possible `self.street` `Observation`s
     /// 3. use `self.abstractor` to map each into an `Abstraction`
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
-    fn inner_points(&self) -> LargeSpace {
+    fn inner_points(&self) -> ObservationSpace {
         log::info!("computing projections {}", self.street);
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
-        let lock = self.lookup();
-        let ref lookup = lock.read().expect("poison");
-        LargeSpace(
+        ObservationSpace(
             Observation::enumerate(self.street.prev())
                 .into_par_iter()
-                .map(|inner| (inner, lookup.projection(&inner)))
+                .map(|inner| (inner, self.lookup.projection(&inner)))
                 .collect::<BTreeMap<Observation, Histogram>>(),
         )
     }
@@ -141,21 +124,15 @@ impl Layer {
     ///
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
-    fn initial(&self) {
+    fn initial(&mut self) {
         log::info!("initializing kmeans {}", self.street);
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
         let histogram = self.sample_uniform(rng);
-        self.kmeans()
-            .write()
-            .expect("append poisoned kmeans lock")
-            .extend(histogram);
+        self.kmeans.expand(histogram);
         while self.k() > self.l() {
             log::info!("add initial {}", self.l());
             let histogram = self.sample_outlier(rng);
-            self.kmeans()
-                .write()
-                .expect("append poisoned kmeans lock")
-                .extend(histogram);
+            self.kmeans.expand(histogram);
         }
     }
     /// for however many iterations we want,
@@ -164,39 +141,30 @@ impl Layer {
     ///
     /// if this becomes a bottleneck with contention,
     /// consider partitioning dataset or using lock-free data structures.
-    fn cluster(&self) {
+    fn cluster(&mut self) {
         log::info!("clustering kmeans {}", self.street);
         for i in 0..self.t() {
-            log::info!("assign and absorb {} {}", self.street, i);
-            self.points
+            log::info!("computing abstractions {} {}", self.street, i);
+            let abstractions = self
+                .points
                 .0
                 .par_iter()
-                .for_each(|(o, h)| self.update(o, h));
-            log::info!("rotate centroids {} {}", self.street, i);
-            self.kmeans()
-                .write()
-                .expect("poison")
-                .0
-                .par_iter_mut()
-                .for_each(|(_, centroid)| centroid.rotate());
-        }
-    }
-
-    /// mutation achieved by acquiring RwLock write access
-    fn update(&self, observation: &Observation, histogram: &Histogram) {
-        let ref abstraction = self.sample_neighbor(histogram); // kmeans read
-        let lookup_binding = self.lookup();
-        let kmeans_binding = self.kmeans();
-        let mut lookup = lookup_binding.write().expect("poison");
-        let mut kmeans = kmeans_binding.write().expect("poison");
-        {
-            lookup.assign(abstraction, observation);
-            kmeans.absorb(abstraction, histogram);
+                .map(|(_, h)| self.nearest_neighbor(h))
+                .collect::<Vec<Abstraction>>();
+            log::info!("assigning abstractions {} {}", self.street, i);
+            for ((o, h), a) in self.points.0.iter_mut().zip(abstractions.iter()) {
+                self.lookup.assign(a, o);
+                self.kmeans.absorb(a, h);
+            }
+            log::info!("resetting abstractions {} {}", self.street, i);
+            for (_, centroid) in self.kmeans.0.iter_mut() {
+                centroid.rotate();
+            }
         }
     }
 
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
-    fn sample_uniform(&self, rng: &mut rand::rngs::StdRng) -> Histogram {
+    fn sample_uniform(&self, rng: &mut StdRng) -> Histogram {
         self.points
             .0
             .values()
@@ -207,12 +175,12 @@ impl Layer {
     /// each next Centroid is selected with probability proportional to
     /// the squared distance to the nearest neighboring Centroid.
     /// faster convergence, i guess. on the shoulders of giants
-    fn sample_outlier(&self, rng: &mut rand::rngs::StdRng) -> Histogram {
+    fn sample_outlier(&self, rng: &mut StdRng) -> Histogram {
         let weights = self
             .points
             .0
             .par_iter()
-            .map(|(_, hist)| self.sample_distance(hist))
+            .map(|(_, hist)| self.nearest_distance(hist))
             .collect::<Vec<f32>>();
         let index = WeightedIndex::new(weights)
             .expect("valid weights array")
@@ -224,11 +192,10 @@ impl Layer {
             .expect("shared index with outer layer")
             .clone()
     }
-    /// distance^2 to the nearest neighboring Centroid
-    fn sample_distance(&self, histogram: &Histogram) -> f32 {
-        self.kmeans()
-            .read()
-            .expect("sample_distance poisoned kmeans lock")
+
+    /// distance^2 to the nearest neighboring Centroid, for kmeans++ sampling
+    fn nearest_distance(&self, histogram: &Histogram) -> f32 {
+        self.kmeans
             .0
             .par_iter()
             .map(|(_, centroid)| centroid.reveal())
@@ -237,11 +204,9 @@ impl Layer {
             .min_by(|dx, dy| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
     }
-    /// find the nearest neighbor `Abstraction` to a given `Histogram`
-    fn sample_neighbor(&self, histogram: &Histogram) -> Abstraction {
-        self.kmeans()
-            .read()
-            .expect("sample_neighbor poisoned kmeans lock")
+    /// find the nearest neighbor `Abstraction` to a given `Histogram` for kmeans clustering
+    fn nearest_neighbor(&self, histogram: &Histogram) -> Abstraction {
+        self.kmeans
             .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.reveal()))
@@ -268,29 +233,14 @@ impl Layer {
     }
     /// length of current kmeans centroids
     fn l(&self) -> usize {
-        self.kmeans() //
-            .read()
-            .expect("length poisoned kmeans lock")
-            .0
-            .len()
+        self.kmeans.0.len()
     }
 
     /// save the current layer's `Metric` and `Abstractor` to disk
     fn save(self) -> Self {
         let path = format!("{}.abstraction.pgcopy", self.street);
-        log::info!("uploading abstraction metric {}", path.clone());
         self.metric.save(path.clone());
-        log::info!("uploading abstraction lookup table {}", path.clone());
-        self.lookup().read().expect("poison").save(path.clone());
+        self.lookup.save(path.clone());
         self
-    }
-
-    /// thread-safe mutability for updating Abstraction table
-    fn lookup(&self) -> Arc<RwLock<Abstractor>> {
-        self.lookup.clone()
-    }
-    /// thread-safe mutability for kmeans centroids
-    fn kmeans(&self) -> Arc<RwLock<SmallSpace>> {
-        self.kmeans.clone()
     }
 }

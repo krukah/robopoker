@@ -8,17 +8,17 @@ use std::collections::BTreeMap;
 /// as we compute the Wasserstein distance between
 /// `Observation`s and the available `Abstraction`s > `Centroid`s > `Histogram`s
 #[derive(Default)]
-pub struct LargeSpace(pub BTreeMap<Observation, Histogram>);
+pub struct ObservationSpace(pub BTreeMap<Observation, Histogram>);
 
 /// intermediate data structure to mutate during kmeans
 /// as `Observation`s become assigned to `Abstraction`s.
 #[derive(Default)]
-pub struct SmallSpace(pub BTreeMap<Abstraction, Centroid>);
+pub struct AbstractionSpace(pub BTreeMap<Abstraction, Centroid>);
 
-impl SmallSpace {
+impl AbstractionSpace {
     /// during initialization, add a distance-weighted
     /// Histogram to the kmeans clusters
-    pub fn extend(&mut self, histogram: Histogram) {
+    pub fn expand(&mut self, histogram: Histogram) {
         self.0
             .insert(Abstraction::random(), Centroid::from(histogram));
     }
