@@ -14,6 +14,14 @@ use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::hash::Hasher;
 
+/// this is the meat of our solution.
+/// we keep a (Regret, AveragePolicy, CurrentPolicy)
+/// for each distinct Bucket(Path, Abstraction) that we visit.
+/// we also count how many training epochs we've run so far.
+/// i feel like this can be broken up into
+/// - Minimizer: handles policy and regret updates by implementing some regret-minimzation subroutine
+/// - Profile: stores policy & regret values. used by reference for a lot of calculations,
+/// such as Reach, Utility, MinimizerRegretVector, MinimizerPolicyVector, SampleTree, etc.
 pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
 
 impl Profile {
