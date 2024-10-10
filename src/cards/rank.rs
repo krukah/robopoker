@@ -68,6 +68,7 @@ impl From<Rank> for u64 {
         0xF << (u8::from(r) * 4)
     }
 }
+
 impl std::fmt::Display for Rank {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
