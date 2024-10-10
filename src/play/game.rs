@@ -53,34 +53,18 @@ impl Game {
         root
     }
 
-    /// HACK
     /// for chance transitions, only bc of Preflop,
     /// we use an arbitrary (MIN) draw card
     /// it will be "coerced" into an Edge::Chance
     /// variant in the end anyway, in MCCFR
     ///
-    /// it should actually just be a fix to the
-    /// Player Terminal Continuation complex
-    /// information gets lost and reintorudced at different layers of abstraction
+    /// actually we should not have chance transitions at preflop. Explorer::root will
+    /// "spawn" us at a node where blinds are posted and hands are dealt!
     pub fn children(&self) -> Vec<(Game, Action)> {
         match self.chooser() {
-            Transition::Terminal => vec![],
-            Transition::Awaiting(street) => {
-                let mut child = self.clone();
-                child.show_revealed(street);
-                vec![(child, Action::Draw(Card::draw()))] //? TODO should we return a single draw? or use the street enum to drive this? let's use the street enum. it's inside of Awaiting(_). and we can condition on
-            }
-            Transition::Decision(_) => self
-                .options()
-                .into_iter()
-                .map(|decision| {
-                    assert!(!matches!(decision, Action::Draw(_)),);
-                    assert!(!matches!(decision, Action::Blind(_)),);
-                    let mut child = self.clone();
-                    child.apply(decision);
-                    (child, decision)
-                })
-                .collect(),
+            Transition::Terminal => self.terminal_actions(),
+            Transition::Awaiting(_) => self.awaited_actions(),
+            Transition::Decision(_) => self.decided_actions(),
         }
     }
 
@@ -105,13 +89,37 @@ impl Game {
         }
     }
 
+    fn terminal_actions(&self) -> Vec<(Game, Action)> {
+        // just for symmetry, sorry, had to do it to 'em
+        vec![]
+    }
+    fn awaited_actions(&self) -> Vec<(Game, Action)> {
+        let action = Action::Draw(Card::draw());
+        let street = self.board().street().next();
+        let mut child = self.clone();
+        child.show_revealed(street);
+        vec![(child, action)]
+    }
+    fn decided_actions(&self) -> Vec<(Game, Action)> {
+        self.options()
+            .into_iter()
+            .inspect(|action| assert!(!matches!(action, Action::Draw(_) | Action::Blind(_))))
+            .map(|action| (self.spawn(action), action))
+            .collect()
+    }
+
     fn apply(&mut self, ref action: Action) {
         // assert!(self.options().contains(action));
         self.update_stdout(action);
         self.update_stacks(action);
         self.update_states(action);
         self.update_boards(action);
-        self.update_nseats(action);
+        self.update_player(action);
+    }
+    fn spawn(&self, action: Action) -> Self {
+        let mut child = self.clone();
+        child.apply(action);
+        child
     }
 
     pub fn actor(&self) -> &Seat {
@@ -240,7 +248,7 @@ impl Game {
             _ => {}
         }
     }
-    fn update_nseats(&mut self, action: &Action) {
+    fn update_player(&mut self, action: &Action) {
         match action {
             Action::Draw(_) => {}
             _ => self.rotate(),
