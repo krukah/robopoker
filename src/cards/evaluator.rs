@@ -158,14 +158,7 @@ impl Evaluator {
     /// [Count; 4],
     /// how many suits (i) are in the hand. neglect rank
     fn suit_count(&self) -> [u8; 4] {
-        Vec::<Card>::from(self.0)
-            .iter()
-            .map(|c| c.suit())
-            .map(|s| u8::from(s))
-            .fold([0; 4], |mut counts, s| {
-                counts[s as usize] += 1;
-                counts
-            })
+        self.0.suit_count()
     }
     /// suit_masks:
     /// [Masks; 4],

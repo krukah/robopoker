@@ -18,6 +18,18 @@ impl Hand {
     pub fn complement(&self) -> Self {
         Self(self.0 ^ ((1 << 52) - 1))
     }
+    pub fn random() -> Self {
+        let ref mut rng = rand::thread_rng();
+        let cards = rand::Rng::gen::<u64>(rng);
+        let cards = cards & 0xFFF0000000000000;
+        Self(cards)
+    }
+    pub fn suit_count(&self) -> [u8; 4] {
+        crate::cards::suit::Suit::all()
+            .map(|s| u64::from(s))
+            .map(|u| (u & u64::from(self.0)))
+            .map(|n| n.count_ones() as u8)
+    }
 }
 
 /// u64 isomorphism
