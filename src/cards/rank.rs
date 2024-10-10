@@ -37,7 +37,7 @@ impl From<u8> for Rank {
             10 => Rank::Queen,
             11 => Rank::King,
             12 => Rank::Ace,
-            _ => panic!("Invalid rank"),
+            _ => panic!("Invalid rank {}", n),
         }
     }
 }
