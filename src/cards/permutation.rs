@@ -17,17 +17,17 @@ impl Permutation {
         Hand::from(
             Suit::all()
                 .iter()
-                .map(|suit| self.shifted(hand, suit))
+                .map(|suit| self.suited(hand, suit))
                 .fold(0u64, |acc, x| acc | x),
         )
     }
-    fn shifted(&self, hand: &Hand, suit: &Suit) -> u64 {
+    fn suited(&self, hand: &Hand, suit: &Suit) -> u64 {
         let cards = u64::from(*suit) & u64::from(*hand);
         let shift = self.shift(suit);
-        if shift < 0 {
-            cards << (shift.abs() as u8)
+        if shift >= 0 {
+            cards >> (shift as u64)
         } else {
-            cards >> (shift as u8)
+            cards << (shift.abs() as u64)
         }
     }
     fn shift(&self, suit: &Suit) -> i8 {
@@ -49,7 +49,7 @@ impl From<&Observation> for Permutation {
             .enumerate()
             .map(|(i, suit)| (secret[i], public[i], suit))
             .collect::<Vec<(u8, u8, Suit)>>();
-        suits.sort_by(|a, b| b.cmp(a)); // reverse sort
+        suits.sort_by(|a, b| b.cmp(a));
         let permutation = suits
             .into_iter()
             .map(|(_, _, suit)| suit)
