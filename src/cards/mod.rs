@@ -8,6 +8,7 @@ pub mod hole;
 pub mod isomorphism;
 pub mod kicks;
 pub mod observation;
+pub mod permutation;
 pub mod rank;
 pub mod ranking;
 pub mod street;
