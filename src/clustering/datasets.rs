@@ -1,17 +1,17 @@
 use super::centroid::Centroid;
-use crate::cards::observation::Observation;
+use crate::cards::observation::Observation as Isomorphism;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use std::collections::BTreeMap;
 
 /// intermediate data structure to reference during kmeans
 /// as we compute the Wasserstein distance between
-/// `Observation`s and the available `Abstraction`s > `Centroid`s > `Histogram`s
+/// `Isomorphism`s and the available `Abstraction`s > `Centroid`s > `Histogram`s
 #[derive(Default)]
-pub struct ObservationSpace(pub BTreeMap<Observation, Histogram>);
+pub struct ObservationSpace(pub BTreeMap<Isomorphism, Histogram>);
 
 /// intermediate data structure to mutate during kmeans
-/// as `Observation`s become assigned to `Abstraction`s.
+/// as `Isomorphism`s become assigned to `Abstraction`s.
 #[derive(Default)]
 pub struct AbstractionSpace(pub BTreeMap<Abstraction, Centroid>);
 
