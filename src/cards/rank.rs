@@ -37,7 +37,7 @@ impl From<u8> for Rank {
             10 => Rank::Queen,
             11 => Rank::King,
             12 => Rank::Ace,
-            _ => panic!("Invalid rank {}", n),
+            _ => panic!("Invalid rank u8: {}", n),
         }
     }
 }
@@ -66,6 +66,28 @@ impl From<Rank> for u16 {
 impl From<Rank> for u64 {
     fn from(r: Rank) -> u64 {
         0xF << (u8::from(r) * 4)
+    }
+}
+
+/// str isomorphism
+impl From<&str> for Rank {
+    fn from(s: &str) -> Self {
+        match s.to_uppercase().as_str() {
+            "2" => Rank::Two,
+            "3" => Rank::Three,
+            "4" => Rank::Four,
+            "5" => Rank::Five,
+            "6" => Rank::Six,
+            "7" => Rank::Seven,
+            "8" => Rank::Eight,
+            "9" => Rank::Nine,
+            "T" => Rank::Ten,
+            "J" => Rank::Jack,
+            "Q" => Rank::Queen,
+            "K" => Rank::King,
+            "A" => Rank::Ace,
+            _ => panic!("Invalid rank str: {}", s),
+        }
     }
 }
 

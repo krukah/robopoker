@@ -84,6 +84,16 @@ impl std::fmt::Display for Card {
     }
 }
 
+/// str isomorphism
+impl From<&str> for Card {
+    fn from(s: &str) -> Self {
+        assert!(s.len() == 2);
+        let rank = Rank::from(&s[0..1]);
+        let suit = Suit::from(&s[1..2]);
+        Card::from((rank, suit))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

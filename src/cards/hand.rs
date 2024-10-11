@@ -16,12 +16,13 @@ impl Hand {
         Self(lhs.0 | rhs.0)
     }
     pub fn complement(&self) -> Self {
-        Self(self.0 ^ ((1 << 52) - 1))
+        Self(self.0 ^ Self::mask())
     }
     pub fn random() -> Self {
         let ref mut rng = rand::thread_rng();
         let cards = rand::Rng::gen::<u64>(rng);
-        let cards = cards & 0xFFF0000000000000;
+        let cards = cards & Self::mask();
+
         Self(cards)
     }
     pub fn suit_count(&self) -> [u8; 4] {
@@ -29,6 +30,9 @@ impl Hand {
             .map(|s| u64::from(s))
             .map(|u| (u & u64::from(self.0)))
             .map(|n| n.count_ones() as u8)
+    }
+    const fn mask() -> u64 {
+        0x000FFFFFFFFFFFFF
     }
 }
 
@@ -38,6 +42,7 @@ impl Hand {
 /// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
 impl From<u64> for Hand {
     fn from(n: u64) -> Self {
+        assert!(n == n & Self::mask());
         Self(n)
     }
 }
@@ -73,6 +78,18 @@ impl From<Vec<Card>> for Hand {
                 .into_iter()
                 .map(|c| u64::from(c))
                 .fold(0u64, |a, b| a | b),
+        )
+    }
+}
+
+/// str isomorphism
+/// this follows from Vec<Card> isomorphism
+impl From<&str> for Hand {
+    fn from(s: &str) -> Self {
+        Self::from(
+            s.split_whitespace()
+                .map(|s| Card::from(s))
+                .collect::<Vec<Card>>(),
         )
     }
 }
