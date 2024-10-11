@@ -34,7 +34,13 @@ impl From<Suit> for u8 {
 /// u64 injection
 impl From<Suit> for u64 {
     fn from(s: Suit) -> u64 {
-        (0..13).fold(0, |acc, _| (acc << 4) | (1 << s as u64))
+        // (0..13).fold(0, |acc, _| (acc << 4) | (1 << s as u64))
+        match s {
+            Suit::C => 0x0001111111111111,
+            Suit::D => 0x0002222222222222,
+            Suit::H => 0x0004444444444444,
+            Suit::S => 0x0008888888888888,
+        }
     }
 }
 

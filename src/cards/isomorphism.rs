@@ -31,6 +31,7 @@ impl std::fmt::Display for Isomorphism {
         write!(f, "{}", self.0)
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

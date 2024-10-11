@@ -1,4 +1,3 @@
-use super::card::Card;
 use super::hand::Hand;
 use super::kicks::Kickers;
 use super::rank::Rank;
@@ -45,7 +44,7 @@ impl Evaluator {
             | Ranking::FourOAK(hi) => u16::from(hi),
             _ => unreachable!(),
         };
-        let mut bits = mask & self.rank_masks();
+        let mut bits = u16::from(self.0) & mask;
         while bits.count_ones() > n {
             bits &= !(1 << bits.trailing_zeros());
         }
@@ -80,7 +79,7 @@ impl Evaluator {
         })
     }
     fn find_straight(&self) -> Option<Ranking> {
-        self.find_rank_of_straight(self.rank_masks())
+        self.find_rank_of_straight(u16::from(self.0))
             .map(Ranking::Straight)
     }
     fn find_flush(&self) -> Option<Ranking> {
@@ -88,8 +87,7 @@ impl Evaluator {
             self.find_rank_of_straight_flush(suit)
                 .map(Ranking::StraightFlush)
                 .or_else(|| {
-                    let bits = self.suit_masks();
-                    let bits = bits[suit as usize];
+                    let bits = self.0.suited(&suit);
                     let rank = Rank::from(bits);
                     Some(Ranking::Flush(rank))
                 })
@@ -114,12 +112,12 @@ impl Evaluator {
         }
     }
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
-        let bits = self.suit_masks();
-        let bits = bits[suit as usize];
+        let bits = self.0.suited(&suit);
         self.find_rank_of_straight(bits)
     }
     fn find_suit_of_flush(&self) -> Option<Suit> {
-        self.suit_count()
+        self.0
+            .suit_count()
             .iter()
             .position(|&n| n >= 5)
             .map(|i| Suit::from(i as u8))
@@ -141,39 +139,6 @@ impl Evaluator {
     }
     fn find_rank_of_n_oak(&self, n: usize) -> Option<Rank> {
         self.find_rank_of_n_oak_under(n, None)
-    }
-    ///
-
-    /// rank_masks:
-    /// Masks,
-    /// which ranks are in the hand, neglecting suit
-    fn rank_masks(&self) -> u16 {
-        Vec::<Card>::from(self.0)
-            .iter()
-            .map(|c| c.rank())
-            .map(|r| u16::from(r))
-            .fold(0, |acc, r| acc | r)
-    }
-    /// suit_count:
-    /// [Count; 4],
-    /// how many suits (i) are in the hand. neglect rank
-    fn suit_count(&self) -> [u8; 4] {
-        self.0.suit_count()
-    }
-    /// suit_masks:
-    /// [Masks; 4],
-    /// which ranks are in the hand, grouped by suit
-    /// TODO: this could accept Suit as argument
-    /// and return the u16 mask for that suit directly
-    fn suit_masks(&self) -> [u16; 4] {
-        Vec::<Card>::from(self.0)
-            .iter()
-            .map(|c| (c.suit(), c.rank()))
-            .map(|(s, r)| (u8::from(s), u16::from(r)))
-            .fold([0; 4], |mut suits, (s, r)| {
-                suits[s as usize] |= r;
-                suits
-            })
     }
 }
 

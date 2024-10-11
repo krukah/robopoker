@@ -71,10 +71,11 @@ impl Observation {
     ///
     /// This calculation depends on current street, which is proxied by Hand::size().
     /// We mask over cards that can't be observed, then union with the public cards
+    ///
+    /// LOOP over (2 + street)-handed OBSERVATIONS
+    /// EXPAND the current observation's BOARD CARDS
+    /// PRESERVE the current observation's HOLE CARDS
     pub fn outnodes(&self) -> Vec<Observation> {
-        // LOOP over (2 + street)-handed OBSERVATIONS
-        // EXPAND the current observation's BOARD CARDS
-        // PRESERVE the current observation's HOLE CARDS
         let excluded = Hand::add(self.public, self.secret);
         let expanded = match self.street() {
             Street::Pref => 3,
@@ -87,7 +88,7 @@ impl Observation {
             .map(|public| Observation::from((self.secret, public)))
             .collect::<Vec<Self>>()
     }
-    /// Use the size of the community card Hand to infer Street
+
     pub fn street(&self) -> Street {
         match self.public.size() {
             0 => Street::Pref,
@@ -97,7 +98,6 @@ impl Observation {
             _ => unreachable!("no other sizes"),
         }
     }
-
     pub fn secret(&self) -> &Hand {
         &self.secret
     }
