@@ -184,7 +184,7 @@ mod tests {
     use crate::cards::rank::Rank;
     use crate::cards::suit::Suit;
 
-    fn evaluate_hand(cards: Vec<(Rank, Suit)>) -> Ranking {
+    fn eval(cards: Vec<(Rank, Suit)>) -> Ranking {
         let hand = Hand::from(
             cards
                 .into_iter()
@@ -204,7 +204,7 @@ mod tests {
             (Rank::Jack, Suit::C),
             (Rank::Nine, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::HighCard(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::HighCard(Rank::Ace));
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
             (Rank::Queen, Suit::C),
             (Rank::Jack, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::OnePair(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::OnePair(Rank::Ace));
     }
 
     #[test]
@@ -228,7 +228,7 @@ mod tests {
             (Rank::King, Suit::C),
             (Rank::Queen, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
+        assert_eq!(eval(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
     }
 
     #[test]
@@ -240,7 +240,7 @@ mod tests {
             (Rank::King, Suit::C),
             (Rank::Queen, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::ThreeOAK(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::ThreeOAK(Rank::Ace));
     }
 
     #[test]
@@ -252,7 +252,7 @@ mod tests {
             (Rank::King, Suit::C),
             (Rank::Ace, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::Straight(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::Straight(Rank::Ace));
     }
 
     #[test]
@@ -264,7 +264,7 @@ mod tests {
             (Rank::Jack, Suit::S),
             (Rank::Nine, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::Flush(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::Flush(Rank::Ace));
     }
 
     #[test]
@@ -276,10 +276,7 @@ mod tests {
             (Rank::King, Suit::C),
             (Rank::King, Suit::S),
         ];
-        assert_eq!(
-            evaluate_hand(hand),
-            Ranking::FullHouse(Rank::Ace, Rank::King)
-        );
+        assert_eq!(eval(hand), Ranking::FullHouse(Rank::Ace, Rank::King));
     }
 
     #[test]
@@ -291,7 +288,7 @@ mod tests {
             (Rank::Ace, Suit::C),
             (Rank::King, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::FourOAK(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::FourOAK(Rank::Ace));
     }
 
     #[test]
@@ -303,7 +300,7 @@ mod tests {
             (Rank::King, Suit::S),
             (Rank::Ace, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::StraightFlush(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::StraightFlush(Rank::Ace));
     }
 
     #[test]
@@ -315,7 +312,7 @@ mod tests {
             (Rank::Four, Suit::C),
             (Rank::Five, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::Straight(Rank::Five));
+        assert_eq!(eval(hand), Ranking::Straight(Rank::Five));
     }
 
     #[test]
@@ -327,7 +324,7 @@ mod tests {
             (Rank::Four, Suit::S),
             (Rank::Five, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::StraightFlush(Rank::Five));
+        assert_eq!(eval(hand), Ranking::StraightFlush(Rank::Five));
     }
 
     #[test]
@@ -341,7 +338,7 @@ mod tests {
             (Rank::Jack, Suit::H),
             (Rank::Nine, Suit::D),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
+        assert_eq!(eval(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
     }
 
     #[test]
@@ -354,7 +351,7 @@ mod tests {
             (Rank::Nine, Suit::H),
             (Rank::Ten, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::Flush(Rank::Nine));
+        assert_eq!(eval(hand), Ranking::Flush(Rank::Nine));
     }
 
     #[test]
@@ -368,10 +365,7 @@ mod tests {
             (Rank::Queen, Suit::S),
             (Rank::Jack, Suit::S),
         ];
-        assert_eq!(
-            evaluate_hand(hand),
-            Ranking::FullHouse(Rank::Ace, Rank::King)
-        );
+        assert_eq!(eval(hand), Ranking::FullHouse(Rank::Ace, Rank::King));
     }
 
     #[test]
@@ -385,10 +379,7 @@ mod tests {
             (Rank::King, Suit::H),
             (Rank::Queen, Suit::D),
         ];
-        assert_eq!(
-            evaluate_hand(hand),
-            Ranking::FullHouse(Rank::Ace, Rank::King)
-        );
+        assert_eq!(eval(hand), Ranking::FullHouse(Rank::Ace, Rank::King));
     }
 
     #[test]
@@ -402,7 +393,7 @@ mod tests {
             (Rank::King, Suit::H),
             (Rank::Queen, Suit::D),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::FourOAK(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::FourOAK(Rank::Ace));
     }
 
     #[test]
@@ -416,7 +407,7 @@ mod tests {
             (Rank::Ace, Suit::H),
             (Rank::Ace, Suit::D),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::StraightFlush(Rank::Ace));
+        assert_eq!(eval(hand), Ranking::StraightFlush(Rank::Ace));
     }
 
     #[test]
@@ -429,7 +420,7 @@ mod tests {
             (Rank::Five, Suit::C),
             (Rank::Six, Suit::S),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::Straight(Rank::Six));
+        assert_eq!(eval(hand), Ranking::Straight(Rank::Six));
     }
 
     #[test]
@@ -443,6 +434,6 @@ mod tests {
             (Rank::Queen, Suit::H),
             (Rank::Jack, Suit::D),
         ];
-        assert_eq!(evaluate_hand(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
+        assert_eq!(eval(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
     }
 }
