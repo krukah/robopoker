@@ -2,7 +2,7 @@ use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
-use super::isomorphism::Isomorphism;
+// use super::isomorphism::Isomorphism;
 use super::rank::Rank;
 use super::street::Street;
 use super::strength::Strength;
@@ -32,9 +32,9 @@ impl Observation {
         let mut observations = Vec::with_capacity(space);
         for hole in HandIterator::from((2, Hand::from(0b00))) {
             for board in HandIterator::from((n, hole)) {
-                if Isomorphism::is_canonical(&Self::from((hole, board))) {
-                    observations.push(Self::from((hole, board)));
-                }
+                // if Isomorphism::is_canonical(&Self::from((hole, board))) {
+                observations.push(Self::from((hole, board)));
+                // }
             }
         }
         observations
@@ -50,7 +50,7 @@ impl Observation {
         HandIterator::from((n, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Observation::from((self.secret, public)))
-            .filter(|obs| Isomorphism::is_canonical(obs))
+            // .filter(|obs| Isomorphism::is_canonical(obs))
             .collect::<Vec<Self>>()
     }
 
