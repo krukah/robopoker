@@ -15,6 +15,12 @@ impl Permutation {
     pub const fn identity() -> Self {
         Self(Suit::all())
     }
+    pub fn transform(&self, ref observation: Observation) -> Observation {
+        Observation::from((
+            self.permute(&observation.secret()),
+            self.permute(&observation.public()),
+        ))
+    }
     pub fn permute(&self, hand: &Hand) -> Hand {
         Suit::all()
             .iter()
@@ -40,7 +46,7 @@ impl Permutation {
     fn suited(&self, hand: &Hand, suit: &Suit) -> Hand {
         let cards = u64::from(*suit) & u64::from(*hand);
         let old = *suit;
-        let new = self.map(suit);
+        let new = self.get(suit);
         let shift = new as i8 - old as i8;
         if shift >= 0 {
             Hand::from(cards << shift as u64)
@@ -48,29 +54,27 @@ impl Permutation {
             Hand::from(cards >> shift.abs() as u64)
         }
     }
-    fn map(&self, suit: &Suit) -> Suit {
+    fn get(&self, suit: &Suit) -> Suit {
         self.0[*suit as usize]
+    }
+    fn set(&mut self, old: &Suit, new: &Suit) {
+        self.0[*old as usize] = *new;
     }
 }
 
-impl From<&Observation> for Permutation {
-    fn from(observation: &Observation) -> Self {
-        let mut natural: [Suit; 4] = Suit::all();
-        let mut ordered: [((u8, u8), Suit); 4] = std::iter::zip(
-            observation.secret().suit_count(),
-            observation.public().suit_count(),
-        )
-        .zip(Suit::all())
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-        ordered.sort_by(|a, b| b.cmp(a));
-        ordered
+/// this yields a (sorta) unique Permutation
+/// that will map an Observation to its canonical form.
+/// uniqueness only applies to Suits that are present in the Observation.
+/// i.e. an Observation with only 2 Suits represented
+/// leaves 2 additional degrees of freedom.
+impl From<Observation> for Permutation {
+    fn from(observation: Observation) -> Self {
+        let mut permutation = Self::identity();
+        observation
             .into_iter()
-            .enumerate()
-            .map(|(i, (_, old))| (old as usize, Suit::from(i as u8)))
-            .for_each(|(i, new)| natural[i] = new);
-        Self(natural)
+            .zip(Suit::all())
+            .for_each(|(old, new)| permutation.set(&old, &new));
+        permutation
     }
 }
 
@@ -82,19 +86,19 @@ mod tests {
     #[test]
     fn map_identity() {
         let identity = Permutation::identity();
-        assert!(identity.map(&Suit::C) == Suit::C);
-        assert!(identity.map(&Suit::D) == Suit::D);
-        assert!(identity.map(&Suit::H) == Suit::H);
-        assert!(identity.map(&Suit::S) == Suit::S);
+        assert!(identity.get(&Suit::C) == Suit::C);
+        assert!(identity.get(&Suit::D) == Suit::D);
+        assert!(identity.get(&Suit::H) == Suit::H);
+        assert!(identity.get(&Suit::S) == Suit::S);
     }
 
     #[test]
     fn map_arbitrary() {
         let permutation = Permutation([Suit::H, Suit::S, Suit::C, Suit::D]);
-        assert!(permutation.map(&Suit::C) == Suit::H);
-        assert!(permutation.map(&Suit::D) == Suit::S);
-        assert!(permutation.map(&Suit::H) == Suit::C);
-        assert!(permutation.map(&Suit::S) == Suit::D);
+        assert!(permutation.get(&Suit::C) == Suit::H);
+        assert!(permutation.get(&Suit::D) == Suit::S);
+        assert!(permutation.get(&Suit::H) == Suit::C);
+        assert!(permutation.get(&Suit::S) == Suit::D);
     }
 
     #[test]
