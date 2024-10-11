@@ -106,6 +106,17 @@ mod tests {
     }
 
     #[test]
+    fn permute_unique() {
+        let ref hand = Hand::from("Ac Kd Qh Js");
+        Permutation::enumerate()
+            .into_iter()
+            .filter(|p| p != &Permutation::identity())
+            .map(|p| p.permute(hand))
+            .inspect(|p| assert!(p != hand))
+            .count();
+    }
+
+    #[test]
     fn permute_complex() {
         let permutation = Permutation([Suit::D, Suit::H, Suit::C, Suit::S]);
         let original = Hand::from(0b_1010_1010_1010_1010__0100_0100_0100_0100_u64);
