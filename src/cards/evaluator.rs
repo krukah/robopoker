@@ -180,260 +180,157 @@ impl Evaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::card::Card;
-    use crate::cards::rank::Rank;
-    use crate::cards::suit::Suit;
-
-    fn eval(cards: Vec<(Rank, Suit)>) -> Ranking {
-        let hand = Hand::from(
-            cards
-                .into_iter()
-                .map(|(r, s)| Card::from((r, s)))
-                .collect::<Vec<Card>>(),
-        );
-        let evaluator = Evaluator::from(hand);
-        evaluator.find_ranking()
-    }
+    use crate::cards::hand::Hand;
 
     #[test]
     fn high_card() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::King, Suit::H),
-            (Rank::Queen, Suit::D),
-            (Rank::Jack, Suit::C),
-            (Rank::Nine, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::HighCard(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("As Kh Qd Jc 9s")).find_ranking()
+                == Ranking::HighCard(Rank::Ace)
+        );
     }
 
     #[test]
     fn one_pair() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::King, Suit::D),
-            (Rank::Queen, Suit::C),
-            (Rank::Jack, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::OnePair(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Kd Qc Js")).find_ranking()
+                == Ranking::OnePair(Rank::Ace)
+        );
     }
 
     #[test]
     fn two_pair() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::King, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::Queen, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Kd Kc Qs")).find_ranking()
+                == Ranking::TwoPair(Rank::Ace, Rank::King)
+        );
     }
 
     #[test]
     fn three_oak() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::Queen, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::ThreeOAK(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Kc Qs")).find_ranking()
+                == Ranking::ThreeOAK(Rank::Ace)
+        );
     }
 
     #[test]
     fn straight() {
-        let hand = vec![
-            (Rank::Ten, Suit::S),
-            (Rank::Jack, Suit::H),
-            (Rank::Queen, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::Ace, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::Straight(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("Ts Jh Qd Kc As")).find_ranking()
+                == Ranking::Straight(Rank::Ace)
+        );
     }
 
     #[test]
     fn flush() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::King, Suit::S),
-            (Rank::Queen, Suit::S),
-            (Rank::Jack, Suit::S),
-            (Rank::Nine, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::Flush(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("As Ks Qs Js 9s")).find_ranking()
+                == Ranking::Flush(Rank::Ace)
+        );
     }
 
     #[test]
     fn full_house() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::King, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::FullHouse(Rank::Ace, Rank::King));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Kc Ks")).find_ranking()
+                == Ranking::FullHouse(Rank::Ace, Rank::King)
+        );
     }
 
     #[test]
     fn four_oak() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-            (Rank::Ace, Suit::C),
-            (Rank::King, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::FourOAK(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Ac Ks")).find_ranking()
+                == Ranking::FourOAK(Rank::Ace)
+        );
     }
 
     #[test]
     fn straight_flush() {
-        let hand = vec![
-            (Rank::Ten, Suit::S),
-            (Rank::Jack, Suit::S),
-            (Rank::Queen, Suit::S),
-            (Rank::King, Suit::S),
-            (Rank::Ace, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::StraightFlush(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("Ts Js Qs Ks As")).find_ranking()
+                == Ranking::StraightFlush(Rank::Ace)
+        );
     }
 
     #[test]
     fn wheel_straight() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Two, Suit::H),
-            (Rank::Three, Suit::D),
-            (Rank::Four, Suit::C),
-            (Rank::Five, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::Straight(Rank::Five));
+        assert!(
+            Evaluator::from(Hand::from("As 2h 3d 4c 5s")).find_ranking()
+                == Ranking::Straight(Rank::Five)
+        );
     }
 
     #[test]
     fn wheel_straight_flush() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Two, Suit::S),
-            (Rank::Three, Suit::S),
-            (Rank::Four, Suit::S),
-            (Rank::Five, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::StraightFlush(Rank::Five));
+        assert!(
+            Evaluator::from(Hand::from("As 2s 3s 4s 5s")).find_ranking()
+                == Ranking::StraightFlush(Rank::Five)
+        );
     }
 
     #[test]
     fn seven_card_hand() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::King, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::Queen, Suit::S),
-            (Rank::Jack, Suit::H),
-            (Rank::Nine, Suit::D),
-        ];
-        assert_eq!(eval(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Kd Kc Qs Jh 9d")).find_ranking()
+                == Ranking::TwoPair(Rank::Ace, Rank::King)
+        );
     }
 
     #[test]
     fn flush_vs_straight() {
-        let hand = vec![
-            (Rank::Four, Suit::H),
-            (Rank::Six, Suit::H),
-            (Rank::Seven, Suit::H),
-            (Rank::Eight, Suit::H),
-            (Rank::Nine, Suit::H),
-            (Rank::Ten, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::Flush(Rank::Nine));
+        assert!(
+            Evaluator::from(Hand::from("4h 6h 7h 8h 9h Ts")).find_ranking()
+                == Ranking::Flush(Rank::Nine)
+        );
     }
 
     #[test]
     fn full_house_vs_flush() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-            (Rank::King, Suit::S),
-            (Rank::King, Suit::H),
-            (Rank::Queen, Suit::S),
-            (Rank::Jack, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::FullHouse(Rank::Ace, Rank::King));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Ks Kh Qs Js")).find_ranking()
+                == Ranking::FullHouse(Rank::Ace, Rank::King)
+        );
     }
 
     #[test]
     fn two_three_oak() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::King, Suit::S),
-            (Rank::King, Suit::H),
-            (Rank::Queen, Suit::D),
-        ];
-        assert_eq!(eval(hand), Ranking::FullHouse(Rank::Ace, Rank::King));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Kc Ks Kh Qd")).find_ranking()
+                == Ranking::FullHouse(Rank::Ace, Rank::King)
+        );
     }
 
     #[test]
     fn four_oak_vs_full_house() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-            (Rank::Ace, Suit::C),
-            (Rank::King, Suit::S),
-            (Rank::King, Suit::H),
-            (Rank::Queen, Suit::D),
-        ];
-        assert_eq!(eval(hand), Ranking::FourOAK(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Ac Ks Kh Qd")).find_ranking()
+                == Ranking::FourOAK(Rank::Ace)
+        );
     }
 
     #[test]
     fn straight_flush_vs_four_oak() {
-        let hand = vec![
-            (Rank::Ten, Suit::S),
-            (Rank::Jack, Suit::S),
-            (Rank::Queen, Suit::S),
-            (Rank::King, Suit::S),
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::Ace, Suit::D),
-        ];
-        assert_eq!(eval(hand), Ranking::StraightFlush(Rank::Ace));
+        assert!(
+            Evaluator::from(Hand::from("Ts Js Qs Ks As Ah Ad")).find_ranking()
+                == Ranking::StraightFlush(Rank::Ace)
+        );
     }
 
     #[test]
     fn low_straight() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Two, Suit::S),
-            (Rank::Three, Suit::H),
-            (Rank::Four, Suit::D),
-            (Rank::Five, Suit::C),
-            (Rank::Six, Suit::S),
-        ];
-        assert_eq!(eval(hand), Ranking::Straight(Rank::Six));
+        assert!(
+            Evaluator::from(Hand::from("As 2s 3h 4d 5c 6s")).find_ranking()
+                == Ranking::Straight(Rank::Six)
+        );
     }
 
     #[test]
     fn three_pair() {
-        let hand = vec![
-            (Rank::Ace, Suit::S),
-            (Rank::Ace, Suit::H),
-            (Rank::King, Suit::D),
-            (Rank::King, Suit::C),
-            (Rank::Queen, Suit::S),
-            (Rank::Queen, Suit::H),
-            (Rank::Jack, Suit::D),
-        ];
-        assert_eq!(eval(hand), Ranking::TwoPair(Rank::Ace, Rank::King));
+        assert!(
+            Evaluator::from(Hand::from("As Ah Kd Kc Qs Qh Jd")).find_ranking()
+                == Ranking::TwoPair(Rank::Ace, Rank::King)
+        );
     }
 }
