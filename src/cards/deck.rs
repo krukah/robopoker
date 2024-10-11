@@ -6,43 +6,14 @@ use rand::Rng;
 /// Deck extends much of Hand functionality, with ability to remove cards from itself. Random selection via ::draw(), or sequential via ::flip().
 #[derive(Debug, Clone, Copy)]
 pub struct Deck(Hand);
-
-impl From<Deck> for Hand {
-    fn from(deck: Deck) -> Self {
-        deck.0
-    }
-}
-impl From<Hand> for Deck {
-    fn from(hand: Hand) -> Self {
-        Self(hand)
-    }
-}
-
-impl Iterator for Deck {
-    type Item = Card;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.0.size() > 0 {
-            Some(self.draw())
-        } else {
-            None
-        }
-    }
-}
-
 impl Deck {
     pub fn new() -> Self {
-        Self(Hand::from((1 << 52) - 1))
+        Self(Hand::empty().complement())
     }
 
-    /// remove a specific card from the deck
-    pub fn remove(&mut self, card: Card) {
-        let this = u64::from(self.0);
-        let card = u8::from(card);
-        let mask = !(1 << card);
-        self.0 = Hand::from(this & mask);
-    }
-
-    /// remove a random card from the deck
+    /// remove a random card from the deck.
+    /// different from Hand::draw() since that removes
+    /// highest card deterministically
     pub fn draw(&mut self) -> Card {
         assert!(self.0.size() > 0);
         let n = self.0.size();
@@ -56,7 +27,7 @@ impl Deck {
             ones = ones + 1;
         }
         let card = Card::from(card);
-        self.remove(card);
+        self.0.remove(card);
         card
     }
 
@@ -66,5 +37,27 @@ impl Deck {
         let a = self.draw();
         let b = self.draw();
         Hole::from((a, b))
+    }
+}
+
+impl Iterator for Deck {
+    type Item = Card;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0.size() == 0 {
+            None
+        } else {
+            Some(self.draw())
+        }
+    }
+}
+
+impl From<Deck> for Hand {
+    fn from(deck: Deck) -> Self {
+        deck.0
+    }
+}
+impl From<Hand> for Deck {
+    fn from(hand: Hand) -> Self {
+        Self(hand)
     }
 }
