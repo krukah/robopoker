@@ -38,6 +38,19 @@ impl From<Suit> for u64 {
     }
 }
 
+/// str isomorphism
+impl From<&str> for Suit {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "c" | "♣" => Suit::C,
+            "d" | "♦" => Suit::D,
+            "h" | "♥" => Suit::H,
+            "s" | "♠" => Suit::S,
+            _ => panic!("Invalid suit string: {}", s),
+        }
+    }
+}
+
 impl std::fmt::Display for Suit {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
