@@ -2,9 +2,10 @@ use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
+use super::rank::Rank;
 use super::street::Street;
 use super::strength::Strength;
-use crate::cards::rank::Rank;
+use super::suit::Suit;
 use std::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
@@ -175,6 +176,23 @@ impl From<Observation> for Hand {
     }
 }
 
+/// a bit of a reach to impl Iterator<Suit> for Observation
+/// but i want a way to lazily get the Suit
+/// of the next highest card, from hands in Obs
+impl Iterator for Observation {
+    type Item = Suit;
+    fn next(&mut self) -> Option<Self::Item> {
+        None.or_else(|| self.secret.next())
+            .or_else(|| self.public.next())
+            .map(|card| card.suit())
+            .map(|suit| {
+                self.secret = Hand::from(u64::from(self.secret) & !u64::from(suit));
+                self.public = Hand::from(u64::from(self.public) & !u64::from(suit));
+                suit
+            })
+    }
+}
+
 /// display Observation as secret + public
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -187,11 +205,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn suit_iterator() {
+        let mut iter = Observation::from((Hand::from("6c Td"), Hand::from("Jc 7h Ks"))).into_iter();
+        assert!(iter.next() == Some(Suit::D));
+        assert!(iter.next() == Some(Suit::C));
+        assert!(iter.next() == Some(Suit::S));
+        assert!(iter.next() == Some(Suit::H));
+        assert!(iter.next() == None);
+    }
+
+    #[test]
     fn bijective_i64() {
-        let encoded = Observation::from(Street::Flop);
-        let decoded = Observation::from(i64::from(encoded));
-        assert!(encoded.secret == decoded.secret);
-        assert!(encoded.public == decoded.public);
+        let random = Observation::from(Street::Flop);
+        assert!(random == Observation::from(i64::from(random)));
     }
 
     #[test]
