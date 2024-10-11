@@ -22,7 +22,6 @@ impl Hand {
         let ref mut rng = rand::thread_rng();
         let cards = rand::Rng::gen::<u64>(rng);
         let cards = cards & Self::mask();
-
         Self(cards)
     }
     pub fn suit_count(&self) -> [u8; 4] {
@@ -31,8 +30,31 @@ impl Hand {
             .map(|u| (u & u64::from(self.0)))
             .map(|n| n.count_ones() as u8)
     }
+    pub fn draw(&mut self) -> Card {
+        let card = Card::from(self.0);
+        self.remove(card);
+        card
+    }
+    pub fn remove(&mut self, card: Card) {
+        let card = u8::from(card);
+        let mask = !(1 << card);
+        self.0 = self.0 & mask;
+    }
     const fn mask() -> u64 {
         0x000FFFFFFFFFFFFF
+    }
+}
+
+/// we can empty a hand from high to low
+/// by removing the highest card until the hand is empty
+impl Iterator for Hand {
+    type Item = Card;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.size() == 0 {
+            None
+        } else {
+            Some(self.draw())
+        }
     }
 }
 
@@ -42,8 +64,7 @@ impl Hand {
 /// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
 impl From<u64> for Hand {
     fn from(n: u64) -> Self {
-        assert!(n == n & Self::mask());
-        Self(n)
+        Self(n & Self::mask())
     }
 }
 impl From<Hand> for u64 {
@@ -100,5 +121,32 @@ impl std::fmt::Display for Hand {
             write!(f, "{}", card)?;
         }
         Ok(())
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bijective_u64() {
+        let hand = Hand::random();
+        assert_eq!(hand, Hand::from(u64::from(hand)));
+    }
+
+    #[test]
+    fn draw_iterator() {
+        let mut iter = Hand::from("2c Ts Jc Js").into_iter();
+        assert_eq!(iter.next(), Some(Card::from("Js")));
+        assert_eq!(iter.next(), Some(Card::from("Jc")));
+        assert_eq!(iter.next(), Some(Card::from("Ts")));
+        assert_eq!(iter.next(), Some(Card::from("2c")));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn draw_singular() {
+        let mut hand = Hand::from("2c");
+        assert_eq!(hand.draw(), Card::from("2c"));
+        assert_eq!(hand.size(), 0);
     }
 }
