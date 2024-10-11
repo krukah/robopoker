@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn isomorphic_exhaustion() {
-        let observation = Observation::from(Street::Flop);
+        let observation = Observation::from(Street::Rive);
         let isomorphism = Isomorphism::from(observation);
         Permutation::enumerate()
             .iter()
