@@ -1,12 +1,14 @@
 use super::hand::Hand;
 use super::observation::Observation;
 use super::suit::Suit;
+use itertools::Itertools;
+use rand::seq::SliceRandom;
 
 /// an array of 4 unique Suits represents
 /// any of the 4! = 24 possible permutations.
 /// by assuming a "canonical" order of suits (C < D < H < S),
 /// we map C -> P[0], D -> P[1], H -> P[2], S -> P[3].
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Permutation([Suit; 4]);
 
 impl Permutation {
@@ -14,26 +16,37 @@ impl Permutation {
         Self(Suit::all())
     }
     pub fn permute(&self, hand: &Hand) -> Hand {
-        Hand::from(
-            Suit::all()
-                .iter()
-                .map(|suit| self.suited(hand, suit))
-                .fold(0u64, |acc, x| acc | x),
-        )
+        Suit::all()
+            .iter()
+            .map(|suit| self.suited(hand, suit))
+            .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
-    fn suited(&self, hand: &Hand, suit: &Suit) -> u64 {
+    pub fn enumerate() -> [Self; 24] {
+        Suit::all()
+            .into_iter()
+            .permutations(4)
+            .map(|p| p.try_into().unwrap())
+            .map(|p| Self(p))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
+    }
+    pub fn random() -> Self {
+        let ref mut rng = rand::thread_rng();
+        let mut suits = Suit::all();
+        suits.shuffle(rng);
+        Self(suits)
+    }
+    fn suited(&self, hand: &Hand, suit: &Suit) -> Hand {
         let cards = u64::from(*suit) & u64::from(*hand);
-        let shift = self.shift(suit);
-        if shift >= 0 {
-            cards >> (shift as u64)
-        } else {
-            cards << (shift.abs() as u64)
-        }
-    }
-    fn shift(&self, suit: &Suit) -> i8 {
         let old = *suit;
         let new = self.map(suit);
-        new as i8 - old as i8
+        let shift = new as i8 - old as i8;
+        if shift >= 0 {
+            Hand::from(cards << shift as u64)
+        } else {
+            Hand::from(cards >> shift.abs() as u64)
+        }
     }
     fn map(&self, suit: &Suit) -> Suit {
         self.0[*suit as usize]
@@ -42,32 +55,32 @@ impl Permutation {
 
 impl From<&Observation> for Permutation {
     fn from(observation: &Observation) -> Self {
-        let secret = observation.secret().suit_count();
-        let public = observation.public().suit_count();
-        let mut suits = Suit::all()
+        let mut natural: [Suit; 4] = Suit::all();
+        let mut ordered: [((u8, u8), Suit); 4] = std::iter::zip(
+            observation.secret().suit_count(),
+            observation.public().suit_count(),
+        )
+        .zip(Suit::all())
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+        ordered.sort_by(|a, b| b.cmp(a));
+        ordered
             .into_iter()
             .enumerate()
-            .map(|(i, suit)| (secret[i], public[i], suit))
-            .collect::<Vec<(u8, u8, Suit)>>();
-        suits.sort_by(|a, b| b.cmp(a));
-        let permutation = suits
-            .into_iter()
-            .map(|(_, _, suit)| suit)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-        Self(permutation)
+            .map(|(i, (_, old))| (old as usize, Suit::from(i as u8)))
+            .for_each(|(i, new)| natural[i] = new);
+        Self(natural)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::cards::suit::Suit;
 
-    use super::*;
-
     #[test]
-    fn identity_map() {
+    fn map_identity() {
         let identity = Permutation::identity();
         assert!(identity.map(&Suit::C) == Suit::C);
         assert!(identity.map(&Suit::D) == Suit::D);
@@ -76,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn arbitrary_map() {
+    fn map_arbitrary() {
         let permutation = Permutation([Suit::H, Suit::S, Suit::C, Suit::D]);
         assert!(permutation.map(&Suit::C) == Suit::H);
         assert!(permutation.map(&Suit::D) == Suit::S);
@@ -85,14 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn identity_transform() {
-        let identity = Permutation::identity();
-        let hand = Hand::random();
-        assert!(identity.permute(&hand) == hand);
-    }
-
-    #[test]
-    fn simple_transform() {
+    fn permute_simple() {
         let permutation = Permutation([Suit::H, Suit::C, Suit::S, Suit::D]);
         let hearts = Hand::from(0b_0100_0100_0100_0100_0100_0100_0100_0100_u64);
         let spades = Hand::from(0b_1000_1000_1000_1000_1000_1000_1000_1000_u64);
@@ -100,10 +106,33 @@ mod tests {
     }
 
     #[test]
-    fn arbitrary_transform() {
+    fn permute_complex() {
         let permutation = Permutation([Suit::D, Suit::H, Suit::C, Suit::S]);
         let original = Hand::from(0b_1010_1010_1010_1010__0100_0100_0100_0100_u64);
         let permuted = Hand::from(0b_1100_1100_1100_1100__0001_0001_0001_0001_u64);
         assert!(permutation.permute(&original) == permuted);
+    }
+
+    #[test]
+    fn permute_rotation() {
+        let permutation = Permutation([Suit::S, Suit::C, Suit::D, Suit::H]);
+        let original = Hand::from("Ac Kd Qh Js");
+        let permuted = Hand::from("As Kc Qd Jh");
+        assert!(permutation.permute(&original) == permuted);
+    }
+
+    #[test]
+    fn permute_interior() {
+        let permutation = Permutation([Suit::C, Suit::H, Suit::D, Suit::S]);
+        let original = Hand::from("2c 3d 4h 5s");
+        let permuted = Hand::from("2c 3h 4d 5s");
+        assert!(permutation.permute(&original) == permuted);
+    }
+
+    #[test]
+    fn permute_identity() {
+        let permutation = Permutation::identity();
+        let hand = Hand::random();
+        assert!(permutation.permute(&hand) == hand);
     }
 }
