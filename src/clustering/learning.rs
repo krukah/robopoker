@@ -220,8 +220,8 @@ impl Layer {
     /// hyperparameter: how many centroids to learn
     fn k(&self) -> usize {
         match self.street {
-            Street::Turn => 20,
-            Street::Flop => 20,
+            Street::Turn => 128,
+            Street::Flop => 128,
             _ => unreachable!("how did you get here"),
         }
     }

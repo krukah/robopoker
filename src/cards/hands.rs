@@ -128,17 +128,17 @@ mod tests {
 
     #[test]
     fn five_choose_three_with_mask() {
-        let mask = Hand::from(0b000000000000000000000110);
+        let mask = Hand::from(0b______________________11_0);
         let mut iter = HandIterator::from((3, mask));
-        assert!(iter.next() == Some(Hand::from(0b0011001)));
-        assert!(iter.next() == Some(Hand::from(0b0101001)));
-        assert!(iter.next() == Some(Hand::from(0b0110001)));
-        assert!(iter.next() == Some(Hand::from(0b0111000)));
-        assert!(iter.next() == Some(Hand::from(0b1001001)));
-        assert!(iter.next() == Some(Hand::from(0b1010001)));
-        assert!(iter.next() == Some(Hand::from(0b1011000)));
-        assert!(iter.next() == Some(Hand::from(0b1100001)));
-        assert!(iter.next() == Some(Hand::from(0b1101000)));
-        assert!(iter.next() == Some(Hand::from(0b1110000)));
+        assert!(iter.next() == Some(Hand::from(0b0011_00_1)));
+        assert!(iter.next() == Some(Hand::from(0b0101_00_1)));
+        assert!(iter.next() == Some(Hand::from(0b0110_00_1)));
+        assert!(iter.next() == Some(Hand::from(0b0111_00_0)));
+        assert!(iter.next() == Some(Hand::from(0b1001_00_1)));
+        assert!(iter.next() == Some(Hand::from(0b1010_00_1)));
+        assert!(iter.next() == Some(Hand::from(0b1011_00_0)));
+        assert!(iter.next() == Some(Hand::from(0b1100_00_1)));
+        assert!(iter.next() == Some(Hand::from(0b1101_00_0)));
+        assert!(iter.next() == Some(Hand::from(0b1110_00_0)));
     }
 }

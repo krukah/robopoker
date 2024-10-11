@@ -111,8 +111,8 @@ mod tests {
             Hand::from("Qd Js Ts"),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("Ac Qd"),
-            Hand::from("Ks Js Ts"),
+            Hand::from("Ac Ks"),
+            Hand::from("Qd Jc Tc"),
         )));
         assert!(a != b);
     }
