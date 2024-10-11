@@ -69,7 +69,7 @@ impl From<u32> for Card {
 /// xxxxxxxxxxxx 0000000000001000000000000000000000000000000000000000
 impl From<u64> for Card {
     fn from(n: u64) -> Self {
-        Self(n.trailing_zeros() as u8)
+        Self::from(63 - n.leading_zeros() as u8)
     }
 }
 impl From<Card> for u64 {
