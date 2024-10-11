@@ -2,6 +2,7 @@ use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
+use super::isomorphism::Isomorphism;
 use super::rank::Rank;
 use super::street::Street;
 use super::strength::Strength;
@@ -23,27 +24,36 @@ pub struct Observation {
 
 impl Observation {
     /// Generate all possible observations for a given street
-    pub fn enumerate(street: Street) -> Vec<Observation> {
-        let n = match street {
-            Street::Flop => 3,
-            Street::Turn => 4,
-            Street::Rive => 5,
-            _ => unreachable!("no other transitions"),
-        };
-        // TODO make with_capacity, conditional on street
-        // create 2 HandIters and multiple combinations
-        const N: usize = 10000;
-        let mut observations = Vec::with_capacity(N);
-        'outer: for hole in HandIterator::from((2usize, Hand::from(0u64))) {
+    pub fn enumerate(street: Street) -> Vec<Self> {
+        let n = Self::observable(street);
+        let inner = HandIterator::from((n, Hand::from(0b11))).combinations();
+        let outer = HandIterator::from((2, Hand::from(0b00))).combinations();
+        let space = outer * inner;
+        let mut observations = Vec::with_capacity(space);
+        for hole in HandIterator::from((2, Hand::from(0b00))) {
             for board in HandIterator::from((n, hole)) {
-                observations.push(Observation::from((hole, board)));
-                if observations.len() == N {
-                    break 'outer;
+                if Isomorphism::is_canonical(&Self::from((hole, board))) {
+                    observations.push(Self::from((hole, board)));
                 }
             }
         }
         observations
     }
+
+    /// Generates all possible successors of the current observation.
+    /// LOOP over (2 + street)-handed OBSERVATIONS
+    /// EXPAND the current observation's BOARD CARDS
+    /// PRESERVE the current observation's HOLE CARDS
+    pub fn outnodes(&self) -> Vec<Self> {
+        let n = self.revealable();
+        let excluded = Hand::add(self.public, self.secret);
+        HandIterator::from((n, excluded))
+            .map(|reveal| Hand::add(self.public, reveal))
+            .map(|public| Observation::from((self.secret, public)))
+            .filter(|obs| Isomorphism::is_canonical(obs))
+            .collect::<Vec<Self>>()
+    }
+
     /// Calculates the equity of the current observation.
     ///
     /// This calculation integrations across ALL possible opponent hole cards.
@@ -67,27 +77,6 @@ impl Observation {
             / n as f32
             / 2 as f32
     }
-    /// Generates all possible successors of the current observation.
-    ///
-    /// This calculation depends on current street, which is proxied by Hand::size().
-    /// We mask over cards that can't be observed, then union with the public cards
-    ///
-    /// LOOP over (2 + street)-handed OBSERVATIONS
-    /// EXPAND the current observation's BOARD CARDS
-    /// PRESERVE the current observation's HOLE CARDS
-    pub fn outnodes(&self) -> Vec<Observation> {
-        let excluded = Hand::add(self.public, self.secret);
-        let expanded = match self.street() {
-            Street::Pref => 3,
-            Street::Flop => 1,
-            Street::Turn => 1,
-            _ => unreachable!("no children for river"),
-        };
-        HandIterator::from((expanded, excluded))
-            .map(|reveal| Hand::add(self.public, reveal))
-            .map(|public| Observation::from((self.secret, public)))
-            .collect::<Vec<Self>>()
-    }
 
     pub fn street(&self) -> Street {
         match self.public.size() {
@@ -103,6 +92,24 @@ impl Observation {
     }
     pub fn public(&self) -> &Hand {
         &self.public
+    }
+
+    fn observable(street: Street) -> usize {
+        match street {
+            Street::Flop => 3,
+            Street::Turn => 4,
+            Street::Rive => 5,
+            _ => unreachable!("no other transitions"),
+        }
+    }
+
+    fn revealable(&self) -> usize {
+        match self.street() {
+            Street::Pref => 3,
+            Street::Flop => 1,
+            Street::Turn => 1,
+            _ => unreachable!("no children for river"),
+        }
     }
 }
 
