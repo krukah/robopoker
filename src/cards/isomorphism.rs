@@ -10,7 +10,7 @@ pub struct Isomorphism(Observation);
 
 impl Isomorphism {
     pub fn is_canonical(observation: &Observation) -> bool {
-        Permutation::identity() == Permutation::from(observation)
+        Permutation::from(*observation) == Permutation::identity()
     }
     pub fn enumerate(street: Street) -> Vec<Observation> {
         Observation::enumerate(street)
@@ -21,64 +21,98 @@ impl Isomorphism {
 }
 
 impl From<Observation> for Isomorphism {
-    fn from(ref observation: Observation) -> Self {
-        let canonical = Permutation::from(observation);
-        let secret = canonical.permute(observation.secret());
-        let public = canonical.permute(observation.public());
-        Self(Observation::from((secret, public)))
+    fn from(observation: Observation) -> Self {
+        Self(Permutation::from(observation).transform(observation))
     }
 }
 
 impl std::fmt::Display for Isomorphism {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "o")
+        write!(f, "{}", self.0)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::card::Card;
     use crate::cards::hand::Hand;
-    use crate::cards::rank::Rank;
-    use crate::cards::suit::Suit;
+    use crate::cards::permutation::Permutation;
 
-    /// TODO
-    /// implement from &str or From<IntoStr> or something
-    /// to make testing easier to work with
-    fn into(hand: Vec<(Rank, Suit)>) -> Observation {
-        assert!(hand.len() == 5);
-        let secret = Hand::from(
-            hand.iter()
-                .take(2)
-                .map(|(r, s)| Card::from((*r, *s)))
-                .collect::<Vec<Card>>(),
-        );
-        let public = Hand::from(
-            hand.iter()
-                .skip(2)
-                .map(|(r, s)| Card::from((*r, *s)))
-                .collect::<Vec<Card>>(),
-        );
-        Observation::from((secret, public))
+    #[test]
+    fn isomorphic_exhaustion() {
+        let observation = Observation::from(Street::Flop);
+        let isomorphism = Isomorphism::from(observation);
+        Permutation::enumerate()
+            .iter()
+            .map(|p| p.transform(observation))
+            .map(|o| Isomorphism::from(o))
+            .inspect(|&i| assert!(isomorphism == i))
+            .count();
     }
 
     #[test]
-    fn test_isomorphic_observations() {
-        let iso1 = Isomorphism::from(into(vec![
-            (Rank::Ace, Suit::C),
-            (Rank::King, Suit::D),
-            (Rank::Queen, Suit::H),
-            (Rank::Jack, Suit::S),
-            (Rank::Nine, Suit::S),
-        ]));
-        let iso2 = Isomorphism::from(into(vec![
-            (Rank::Ace, Suit::H),
-            (Rank::King, Suit::C),
-            (Rank::Queen, Suit::S),
-            (Rank::Jack, Suit::D),
-            (Rank::Nine, Suit::D),
-        ]));
-        assert!(iso1 == iso2, "{} != {}", iso1, iso2);
+    fn isomorphic_monochrome() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("Ad Kd"),
+            Hand::from("Qd Jd Td"),
+        )));
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("As Ks"),
+            Hand::from("Qs Js Ts"),
+        )));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn isomorphic_semichrome() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("Ac Kc"),
+            Hand::from("Qs Js Ts"),
+        )));
+
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("As Ks"),
+            Hand::from("Qh Jh Th"),
+        )));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn isomorphic_demichrome() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("Ac Ks"),
+            Hand::from("Qc Js Ts"),
+        )));
+
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("Ad Kh"),
+            Hand::from("Qd Jh Th"),
+        )));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn isomorphic_polychrome() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("Ac Kd"),
+            Hand::from("Qh Js 9c"),
+        )));
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("Ah Kc"),
+            Hand::from("Qs Jd 9h"),
+        )));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn isomorphic_difference() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("Ac Ks"),
+            Hand::from("Qd Js Ts"),
+        )));
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("Ac Qd"),
+            Hand::from("Ks Js Ts"),
+        )));
+        assert!(a != b);
     }
 }
