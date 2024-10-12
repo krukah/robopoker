@@ -3,7 +3,7 @@ pub mod abstractor;
 pub mod centroid;
 pub mod datasets;
 pub mod histogram;
-pub mod learning;
+pub mod layer;
 pub mod metric;
 pub mod potential;
 pub mod progress;

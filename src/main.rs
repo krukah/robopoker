@@ -4,7 +4,7 @@ fn main() {
     // Boring stuff
     logging();
     // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::learning::Layer::learn();
+    clustering::layer::Layer::learn();
     // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     mccfr::trainer::Explorer::train();
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.

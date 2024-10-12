@@ -20,7 +20,7 @@ criterion::criterion_group! {
 
 fn enumerating_flops(c: &mut criterion::Criterion) {
     c.bench_function("enumerate all Flops", |b| {
-        b.iter(|| Observation::enumerate(Street::Flop))
+        b.iter(|| Observation::exhaust(Street::Flop))
     });
 }
 

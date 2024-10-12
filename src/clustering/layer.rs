@@ -110,7 +110,7 @@ impl Layer {
     fn inner_points(&self) -> ObservationSpace {
         log::info!("computing projections {}", self.street);
         ObservationSpace(
-            Observation::enumerate(self.street.prev())
+            Observation::exhaust(self.street.prev())
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
                 .collect::<BTreeMap<Observation, Histogram>>(),

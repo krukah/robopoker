@@ -12,17 +12,21 @@ impl Isomorphism {
     pub fn is_canonical(observation: &Observation) -> bool {
         Permutation::from(*observation) == Permutation::identity()
     }
-    pub fn enumerate(street: Street) -> Vec<Observation> {
-        Observation::enumerate(street)
+    pub fn exhaust(street: Street) -> Vec<Self> {
+        Observation::exhaust(street)
             .into_iter()
             .filter(|o| Self::is_canonical(o))
+            .map(|o| Self(o))
             .collect()
     }
 }
 
 impl From<Observation> for Isomorphism {
     fn from(observation: Observation) -> Self {
-        Self(Permutation::from(observation).transform(observation))
+        let permutation = Permutation::from(observation);
+        let observation = permutation.transform(observation);
+        print!("{permutation}");
+        Self(observation)
     }
 }
 
@@ -42,13 +46,52 @@ mod tests {
     fn isomorphic_exhaustion() {
         let observation = Observation::from(Street::Rive);
         let isomorphism = Isomorphism::from(observation);
-        Permutation::enumerate()
+        println!("{observation}");
+        println!("{isomorphism}");
+        Permutation::exhaust()
             .iter()
             .map(|p| p.transform(observation))
             .map(|o| Isomorphism::from(o))
             .inspect(|&i| assert!(isomorphism == i))
             .count();
+
+        // the following cases fail this test
+        // something about Observation as Iterator<Suit> not properly handling pairs.
+
+        // 2c2d + 3s4c5sJsKs
+        // 2c2d + 3h4d5hJhKh
+
+        // 6dTc + 4c6c7h8h8s
+        // 6dTc + 4c6c7s8h8s
+
+        // 7c7h + 5h6c9hJhJs
+        // 7c7d + 5c6d9cJcJd
+
+        // 3d7d + 4c7h9dAcAh
+        // 3c7c + 4h7d9cAdAh
+
+        // 2h2s + 6c6dJhQhKh
+        // 2c2d + 6h6sJdQdKd
     }
+
+    // #[test]
+    // fn tricky_1() {
+    //     let observation = Observation::from((Hand::from("2c 2d"), Hand::from("3c 4s 5s")));
+    //     let isomorphism = Isomorphism::from(observation);
+    //     println!("OBS {observation}");
+    //     println!("ISO {isomorphism}");
+    //     println!();
+    //     Permutation::exhaust()
+    //         .iter()
+    //         .inspect(|_| println!("{observation} ORIGINAL"))
+    //         .inspect(|p| print!("{p}"))
+    //         .map(|p| p.transform(observation))
+    //         .inspect(|o| println!("{o} TRANSFORMED"))
+    //         .map(|o| Isomorphism::from(o))
+    //         .inspect(|&i| println!("{i} CANONICAL\n"))
+    //         .inspect(|&i| assert!(isomorphism == i))
+    //         .count();
+    // }
 
     #[test]
     fn isomorphic_monochrome() {
