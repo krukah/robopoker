@@ -5,9 +5,9 @@ use itertools::Itertools;
 use rand::seq::SliceRandom;
 
 /// an array of 4 unique Suits represents
-/// any of the 4! = 24 possible permutations.
+/// any of the 4! = 24 elements in the Suit permutation group.
 /// by assuming a "canonical" order of suits (C < D < H < S),
-/// we map C -> P[0], D -> P[1], H -> P[2], S -> P[3].
+/// we use [Suit; 4] to map C -> P[0], D -> P[1], H -> P[2], S -> P[3].
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Permutation([Suit; 4]);
 
@@ -27,7 +27,7 @@ impl Permutation {
             .map(|suit| self.suited(hand, suit))
             .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
-    pub fn enumerate() -> [Self; 24] {
+    pub fn exhaust() -> [Self; 24] {
         Suit::all()
             .into_iter()
             .permutations(4)
@@ -78,6 +78,16 @@ impl From<Observation> for Permutation {
     }
 }
 
+impl std::fmt::Display for Permutation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Suit::all()
+            .into_iter()
+            .inspect(|s| write!(f, "{} -> {}\n", s, self.get(s)).unwrap())
+            .count();
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -112,12 +122,13 @@ mod tests {
     #[test]
     fn permute_unique() {
         let ref hand = Hand::from("Ac Kd Qh Js");
-        Permutation::enumerate()
+        let mut unique = std::collections::HashSet::new();
+        let n = Permutation::exhaust()
             .into_iter()
-            .filter(|p| p != &Permutation::identity())
             .map(|p| p.permute(hand))
-            .inspect(|p| assert!(p != hand))
+            .inspect(|h| assert!(unique.insert(*h)))
             .count();
+        assert!(n == 24);
     }
 
     #[test]

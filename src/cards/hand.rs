@@ -1,4 +1,5 @@
-use super::{card::Card, suit::Suit};
+use super::card::Card;
+use super::suit::Suit;
 
 /// Hand represents an unordered set of Cards. only in the limit, it is more memory efficient than Vec<Card>, ... but also, an advantage even for small N is that we avoid heap allocation. nice to use a single word for the full Hand independent of size stored as a u64, but only needs LSB bitstring of 52 bits. Each bit represents a unique card in the (unordered) set.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -116,24 +117,24 @@ impl From<Vec<Card>> for Hand {
 impl From<Hand> for u16 {
     fn from(h: Hand) -> Self {
         let mut x = u64::from(h);
-        let mut y = u16::default();
         x |= x >> 1;
         x |= x >> 2;
         x &= 0x1111111111111;
-        y |= ((x >> 00) & 0001) as u16;
-        y |= ((x >> 03) & 0002) as u16;
-        y |= ((x >> 06) & 0004) as u16;
-        y |= ((x >> 09) & 0008) as u16;
-        y |= ((x >> 12) & 0016) as u16;
-        y |= ((x >> 15) & 0032) as u16;
-        y |= ((x >> 18) & 0064) as u16;
-        y |= ((x >> 21) & 0128) as u16;
-        y |= ((x >> 24) & 0256) as u16;
-        y |= ((x >> 27) & 0512) as u16;
-        y |= ((x >> 30) & 1024) as u16;
-        y |= ((x >> 33) & 2048) as u16;
-        y |= ((x >> 36) & 4096) as u16;
-        y
+        let mut y = u64::default();
+        y |= (x >> 00) & 0x0001;
+        y |= (x >> 03) & 0x0002;
+        y |= (x >> 06) & 0x0004;
+        y |= (x >> 09) & 0x0008;
+        y |= (x >> 12) & 0x0010;
+        y |= (x >> 15) & 0x0020;
+        y |= (x >> 18) & 0x0040;
+        y |= (x >> 21) & 0x0080;
+        y |= (x >> 24) & 0x0100;
+        y |= (x >> 27) & 0x0200;
+        y |= (x >> 30) & 0x0400;
+        y |= (x >> 33) & 0x0800;
+        y |= (x >> 36) & 0x1000;
+        y as u16
     }
 }
 

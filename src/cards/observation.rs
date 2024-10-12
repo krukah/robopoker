@@ -2,7 +2,7 @@ use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
-use super::isomorphism::Isomorphism;
+// use super::isomorphism::Isomorphism;
 use super::rank::Rank;
 use super::street::Street;
 use super::strength::Strength;
@@ -18,13 +18,13 @@ use std::cmp::Ordering;
 /// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Observation {
-    secret: Hand,
-    public: Hand,
+    secret: Hand, // if memory-bound: could be Hole/u16
+    public: Hand, // if memory-bound: could be Board/[Option<Card>; 5]
 }
 
 impl Observation {
     /// Generate all possible observations for a given street
-    pub fn enumerate(street: Street) -> Vec<Self> {
+    pub fn exhaust(street: Street) -> Vec<Self> {
         let n = Self::observable(street);
         let inner = HandIterator::from((n, Hand::from(0b11))).combinations();
         let outer = HandIterator::from((2, Hand::from(0b00))).combinations();
@@ -33,9 +33,9 @@ impl Observation {
         for hole in HandIterator::from((2, Hand::from(0b00))) {
             for board in HandIterator::from((n, hole)) {
                 let obs = Self::from((hole, board));
-                if Isomorphism::is_canonical(&obs) {
-                    observations.push(obs);
-                }
+                // if Isomorphism::is_canonical(&obs) {
+                observations.push(obs);
+                // }
             }
         }
         observations
@@ -51,7 +51,7 @@ impl Observation {
         HandIterator::from((n, excluded))
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Observation::from((self.secret, public)))
-            .filter(|obs| Isomorphism::is_canonical(obs))
+            // .filter(|obs| Isomorphism::is_canonical(obs))
             .collect::<Vec<Self>>()
     }
 
