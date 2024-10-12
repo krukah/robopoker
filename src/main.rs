@@ -6,9 +6,9 @@ fn main() {
     // The k-means earth mover's distance hand-clustering algorithm.
     clustering::learning::Layer::learn();
     // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    mccfr::trainer::Explorer::train();
+    // mccfr::trainer::Explorer::train();
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
-    play::game::Game::play();
+    // play::game::Game::play();
 }
 
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.

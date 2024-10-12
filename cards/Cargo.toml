@@ -1,0 +1,20 @@
+[package]
+name = "cards"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = { version = "0.8.5", default-features = false }
+itertools = { version = "0.13.0", default-features = false }
+
+[target.'cfg(target_arch = "spirv")'.dependencies]
+spirv-std = { git = "https://github.com/EmbarkStudios/rust-gpu.git" }
+
+[features]
+default = ["no_std"]
+std = ["rand/std", "rand/std_rng", "rand/small_rng", "itertools/use_std"]
+no_std = []
+
+[lib]
+name = "cards"
+path = "src/lib.rs"

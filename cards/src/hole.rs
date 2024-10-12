@@ -10,6 +10,7 @@ impl Hole {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Hole {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)

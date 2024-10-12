@@ -13,6 +13,7 @@ impl Card {
     pub fn suit(&self) -> Suit {
         Suit::from(self.0 % 4)
     }
+    #[cfg(feature = "std")]
     pub fn draw() -> Card {
         use rand::Rng;
         let ref mut rng = rand::thread_rng();
@@ -78,6 +79,7 @@ impl From<Card> for u64 {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}{}", self.rank(), self.suit())
@@ -85,6 +87,7 @@ impl std::fmt::Display for Card {
 }
 
 /// str isomorphism
+    #[cfg(feature = "std")]
 impl From<&str> for Card {
     fn from(s: &str) -> Self {
         assert!(s.len() == 2);

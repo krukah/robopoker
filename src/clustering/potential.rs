@@ -1,7 +1,7 @@
-use crate::cards::hand::Hand;
-use crate::cards::observation::Observation;
-use crate::cards::street::Street;
-use crate::cards::strength::Strength;
+use cards::hand::Hand;
+use cards::observation::Observation;
+use cards::street::Street;
+use cards::strength::Strength;
 use crate::clustering::histogram::Histogram;
 
 #[allow(dead_code)]

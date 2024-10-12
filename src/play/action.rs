@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::Chips;
-use crate::cards::card::Card;
+use cards::card::Card;
 use colored::*;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]

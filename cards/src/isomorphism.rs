@@ -26,6 +26,7 @@ impl From<Observation> for Isomorphism {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Isomorphism {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -35,8 +36,8 @@ impl std::fmt::Display for Isomorphism {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::hand::Hand;
-    use crate::cards::permutation::Permutation;
+    use crate::hand::Hand;
+    use crate::permutation::Permutation;
 
     #[test]
     fn isomorphic_exhaustion() {

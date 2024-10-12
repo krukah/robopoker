@@ -1,5 +1,5 @@
-use crate::cards::observation::Observation as Isomorphism;
-use crate::cards::street::Street;
+use cards::observation::Observation as Isomorphism;
+use cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::progress::Progress;
@@ -117,5 +117,22 @@ impl Abstractor {
             lookup.insert(observation, abstraction);
         }
         Self(lookup)
+    }
+}
+
+// Test generate projection
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cards::hand::Hand;
+    use cards::observation::Observation;
+
+    #[test]
+    fn generate_projection() {
+        let abstractor = Abstractor::default();
+        let inner = Observation::from((Hand::from("As Ad"), Hand::from("Jc 7h Ks Qc")));
+        let projection = abstractor.projection(&inner);
+        let equity = projection.equity();
+        assert!(equity > 0.0);
     }
 }

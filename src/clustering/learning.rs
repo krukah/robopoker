@@ -1,8 +1,8 @@
 use super::abstractor::Abstractor;
 use super::datasets::AbstractionSpace;
 use super::datasets::ObservationSpace;
-use crate::cards::observation::Observation;
-use crate::cards::street::Street;
+use cards::observation::Observation;
+use cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;

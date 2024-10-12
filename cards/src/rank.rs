@@ -70,6 +70,7 @@ impl From<Rank> for u64 {
 }
 
 /// str isomorphism
+#[cfg(feature = "std")]
 impl From<&str> for Rank {
     fn from(s: &str) -> Self {
         match s.to_uppercase().as_str() {
@@ -91,6 +92,7 @@ impl From<&str> for Rank {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Rank {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(

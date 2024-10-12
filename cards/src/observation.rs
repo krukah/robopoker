@@ -1,3 +1,5 @@
+
+
 use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
@@ -7,7 +9,7 @@ use super::rank::Rank;
 use super::street::Street;
 use super::strength::Strength;
 use super::suit::Suit;
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
 ///
@@ -161,6 +163,7 @@ impl From<(Hand, Hand)> for Observation {
 }
 
 /// Generate a random observation for a given street
+#[cfg(feature = "std")]
 impl From<Street> for Observation {
     fn from(street: Street) -> Self {
         let n = match street {
@@ -201,6 +204,7 @@ impl Iterator for Observation {
 }
 
 /// display Observation as secret + public
+#[cfg(feature = "std")]
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} + {}", self.secret, self.public)
@@ -232,4 +236,5 @@ mod tests {
 
     #[test]
     fn injective_canonical() {}
+
 }

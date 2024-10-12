@@ -145,7 +145,7 @@ impl Evaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::hand::Hand;
+    use crate::hand::Hand;
 
     #[test]
     fn high_card() {

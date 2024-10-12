@@ -14,6 +14,7 @@ impl Deck {
     /// remove a random card from the deck.
     /// different from Hand::draw() since that removes
     /// highest card deterministically
+    #[cfg(feature = "std")]
     pub fn draw(&mut self) -> Card {
         assert!(self.0.size() > 0);
         let n = self.0.size();
@@ -33,6 +34,7 @@ impl Deck {
 
     /// remove two cards from the deck
     /// to deal as a Hole
+    #[cfg(feature = "std")]
     pub fn hole(&mut self) -> Hole {
         let a = self.draw();
         let b = self.draw();
@@ -40,6 +42,7 @@ impl Deck {
     }
 }
 
+#[cfg(feature = "std")]
 impl Iterator for Deck {
     type Item = Card;
     fn next(&mut self) -> Option<Self::Item> {

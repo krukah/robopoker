@@ -2,7 +2,6 @@ use super::hand::Hand;
 use super::observation::Observation;
 use super::suit::Suit;
 use itertools::Itertools;
-use rand::seq::SliceRandom;
 
 /// an array of 4 unique Suits represents
 /// any of the 4! = 24 possible permutations.
@@ -37,7 +36,10 @@ impl Permutation {
             .try_into()
             .unwrap()
     }
+    #[cfg(feature = "std")]
     pub fn random() -> Self {
+        use rand::seq::SliceRandom;
+        
         let ref mut rng = rand::thread_rng();
         let mut suits = Suit::all();
         suits.shuffle(rng);
@@ -81,7 +83,7 @@ impl From<Observation> for Permutation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::suit::Suit;
+    use crate::suit::Suit;
 
     #[test]
     fn map_identity() {

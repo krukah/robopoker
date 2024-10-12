@@ -1,5 +1,5 @@
 use super::centroid::Centroid;
-use crate::cards::observation::Observation as Isomorphism;
+use cards::observation::Observation as Isomorphism;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use std::collections::BTreeMap;

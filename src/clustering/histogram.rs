@@ -1,4 +1,4 @@
-use crate::cards::observation::Observation;
+use cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
 use crate::Equity;
 use crate::Probability;
@@ -112,7 +112,7 @@ impl Histogram {
 
 impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
-        assert!(turn.street() == crate::cards::street::Street::Turn);
+        assert!(turn.street() == cards::street::Street::Turn);
         turn.outnodes()
             .into_iter()
             .map(|river| Abstraction::from(river.equity()))

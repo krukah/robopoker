@@ -8,6 +8,7 @@ impl Hand {
     pub fn empty() -> Self {
         Self(0)
     }
+    #[cfg(feature = "std")]
     pub fn random() -> Self {
         let ref mut rng = rand::thread_rng();
         let cards = rand::Rng::gen::<u64>(rng);
@@ -85,6 +86,7 @@ impl From<Hand> for u64 {
 /// we SUM/OR the cards to get the bitstring
 /// [2c, Ts, Jc, Js]
 /// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
+#[cfg(feature = "std")]
 impl From<Hand> for Vec<Card> {
     fn from(h: Hand) -> Self {
         let mut value = h.0;
@@ -100,6 +102,8 @@ impl From<Hand> for Vec<Card> {
         cards
     }
 }
+
+#[cfg(feature = "std")]
 impl From<Vec<Card>> for Hand {
     fn from(cards: Vec<Card>) -> Self {
         Self(
@@ -139,6 +143,7 @@ impl From<Hand> for u16 {
 
 /// str isomorphism
 /// this follows from Vec<Card> isomorphism
+#[cfg(feature = "std")]
 impl From<&str> for Hand {
     fn from(s: &str) -> Self {
         Self::from(
@@ -149,6 +154,7 @@ impl From<&str> for Hand {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for card in Vec::<Card>::from(*self) {

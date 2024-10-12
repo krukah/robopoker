@@ -1,5 +1,5 @@
 use super::Chips;
-use crate::cards::hole::Hole;
+use cards::hole::Hole;
 use colored::Colorize;
 
 #[derive(Debug, Clone, Copy)]

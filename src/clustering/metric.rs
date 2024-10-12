@@ -142,8 +142,8 @@ impl Metric {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::Observation;
-    use crate::cards::street::Street;
+    use cards::observation::Observation;
+    use cards::street::Street;
     use crate::clustering::histogram::Histogram;
 
     #[test]

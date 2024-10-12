@@ -1,6 +1,6 @@
 use super::seat::State;
 use super::Chips;
-use crate::cards::strength::Strength;
+use cards::strength::Strength;
 use colored::Colorize;
 
 #[derive(Debug, Clone)]

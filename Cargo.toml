@@ -11,6 +11,7 @@ license = "MIT"
 edition = "2021"
 
 [dependencies]
+cards = {path = "./cards", features = ["std"]}
 colored = "2.0"
 petgraph = "0.6.5"
 dialoguer = "0.11.0"

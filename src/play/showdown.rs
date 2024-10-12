@@ -1,7 +1,7 @@
 use super::Chips;
-use crate::cards::kicks::Kickers;
-use crate::cards::ranking::Ranking;
-use crate::cards::strength::Strength;
+use cards::kicks::Kickers;
+use cards::ranking::Ranking;
+use cards::strength::Strength;
 use crate::play::payout::Payout;
 use crate::play::seat::State;
 
@@ -94,7 +94,7 @@ impl Showdown {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::rank::Rank;
+    use cards::rank::Rank;
     // Define functions for hand strengths
     fn six_high() -> Strength {
         Strength::from((Ranking::HighCard(Rank::Ace), Kickers::default()))

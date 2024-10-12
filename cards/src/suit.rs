@@ -45,6 +45,7 @@ impl From<Suit> for u64 {
 }
 
 /// str isomorphism
+#[cfg(feature = "std")]
 impl From<&str> for Suit {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
@@ -57,6 +58,7 @@ impl From<&str> for Suit {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Suit {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(

@@ -1,6 +1,6 @@
 use super::abstraction::Abstraction;
 use super::abstractor::Abstractor;
-use crate::cards::observation::Observation as Isomorphism;
+use cards::observation::Observation as Isomorphism;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
 use crate::mccfr::data::Data;

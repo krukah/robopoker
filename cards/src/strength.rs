@@ -34,6 +34,7 @@ impl From<(Ranking, Kickers)> for Strength {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Strength {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:<18}", self.value)

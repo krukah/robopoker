@@ -46,6 +46,7 @@ impl From<Board> for Hand {
         board.0
     }
 }
+#[cfg(feature = "std")]
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(

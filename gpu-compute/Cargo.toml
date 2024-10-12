@@ -1,0 +1,12 @@
+[package]
+name = "gpu-compute"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+krnl = "0.1.1"
+krnlc = "0.1.1"
+cards = { path = "../cards" }
+
+[package.metadata.krnlc.dependencies]
+cards = { path = "../cards" }
