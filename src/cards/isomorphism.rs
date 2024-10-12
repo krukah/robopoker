@@ -25,7 +25,7 @@ impl From<Observation> for Isomorphism {
     fn from(observation: Observation) -> Self {
         let permutation = Permutation::from(observation);
         let observation = permutation.transform(observation);
-        print!("{permutation}");
+        // print!("{permutation}");
         Self(observation)
     }
 }
@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn isomorphic_exhaustion() {
-        let observation = Observation::from(Street::Rive);
+        let observation = Observation::from(Street::Turn);
         let isomorphism = Isomorphism::from(observation);
         println!("{observation}");
         println!("{isomorphism}");
