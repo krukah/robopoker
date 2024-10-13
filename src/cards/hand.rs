@@ -21,32 +21,35 @@ impl Hand {
         Self(lhs.0 | rhs.0)
     }
 
-    pub fn size(&self) -> usize {
-        self.0.count_ones() as usize
-    }
     pub fn complement(&self) -> Self {
         Self(self.0 ^ Self::mask())
     }
+    pub fn size(&self) -> usize {
+        self.0.count_ones() as usize
+    }
+    pub fn of(&self, suit: &Suit) -> Hand {
+        let ranks = u64::from(*self) & u64::from(*suit);
+        Self::from(ranks)
+    }
 
-    pub fn draw(&mut self) -> Card {
-        let card = Card::from(self.0);
-        self.remove(card);
-        card
+    pub fn take_min(&self) -> Option<Card> {
+        if self.size() == 0 {
+            None
+        } else {
+            Some(Card::from(self.0.trailing_zeros() as u8))
+        }
+    }
+    pub fn take_max(&self) -> Option<Card> {
+        if self.size() == 0 {
+            None
+        } else {
+            Some(Card::from(64 - 1 - self.0.leading_zeros() as u8))
+        }
     }
     pub fn remove(&mut self, card: Card) {
         let card = u8::from(card);
         let mask = !(1 << card);
-        self.0 = self.0 & mask;
-    }
-
-    pub fn suit_count(&self) -> [u8; 4] {
-        Suit::all()
-            .map(|s| u64::from(s))
-            .map(|u| (u & u64::from(self.0)))
-            .map(|n| n.count_ones() as u8)
-    }
-    pub fn suited(&self, suit: &Suit) -> u16 {
-        u16::from(Self::from(u64::from(*self) & u64::from(*suit)))
+        self.0 &= mask;
     }
 
     const fn mask() -> u64 {
@@ -62,7 +65,10 @@ impl Iterator for Hand {
         if self.size() == 0 {
             None
         } else {
-            Some(self.draw())
+            let card = self.0.trailing_zeros() as u8;
+            let card = Card::from(card);
+            self.remove(card);
+            Some(card)
         }
     }
 }
@@ -170,21 +176,21 @@ mod tests {
     }
 
     #[test]
-    fn draw_iterator() {
+    fn card_iteration() {
         let mut iter = Hand::from("Jc Ts 2c Js").into_iter();
-        assert_eq!(iter.next(), Some(Card::from("Js")));
-        assert_eq!(iter.next(), Some(Card::from("Jc")));
-        assert_eq!(iter.next(), Some(Card::from("Ts")));
         assert_eq!(iter.next(), Some(Card::from("2c")));
+        assert_eq!(iter.next(), Some(Card::from("Ts")));
+        assert_eq!(iter.next(), Some(Card::from("Jc")));
+        assert_eq!(iter.next(), Some(Card::from("Js")));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
-    fn suit_masks() {
+    fn ranks_in_suit() {
         let hand = Hand::from("2c 3d 4h 5s 6c 7d 8h 9s Tc Jd Qh Ks Ac");
-        assert_eq!(hand.suited(&Suit::C), 0b_1000100010001); // C (2c, 6c, Tc, Ac)
-        assert_eq!(hand.suited(&Suit::D), 0b_0001000100010); // D (3d, 7d, Jd)
-        assert_eq!(hand.suited(&Suit::H), 0b_0010001000100); // H (4h, 8h, Qh)
-        assert_eq!(hand.suited(&Suit::S), 0b_0100010001000); // S (5s, 9s, Ks)
+        assert_eq!(u16::from(hand.of(&Suit::C)), 0b_1000100010001); // C (2c, 6c, Tc, Ac)
+        assert_eq!(u16::from(hand.of(&Suit::D)), 0b_0001000100010); // D (3d, 7d, Jd)
+        assert_eq!(u16::from(hand.of(&Suit::H)), 0b_0010001000100); // H (4h, 8h, Qh)
+        assert_eq!(u16::from(hand.of(&Suit::S)), 0b_0100010001000); // S (5s, 9s, Ks)
     }
 }

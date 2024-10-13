@@ -15,7 +15,6 @@ impl Deck {
     /// different from Hand::draw() since that removes
     /// highest card deterministically
     pub fn draw(&mut self) -> Card {
-        assert!(self.0.size() > 0);
         let n = self.0.size();
         let i = rand::thread_rng().gen_range(0..n as u8);
         let mut ones = 0u8;
@@ -37,17 +36,6 @@ impl Deck {
         let a = self.draw();
         let b = self.draw();
         Hole::from((a, b))
-    }
-}
-
-impl Iterator for Deck {
-    type Item = Card;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.0.size() == 0 {
-            None
-        } else {
-            Some(self.draw())
-        }
     }
 }
 

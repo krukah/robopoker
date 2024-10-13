@@ -115,8 +115,8 @@ impl Profile {
     /// used extensively in assertions and utility calculations
     pub fn walker(&self) -> Player {
         match self.1 % 2 {
-            0 => Player::Choice(Transition::Decision(0)),
-            _ => Player::Choice(Transition::Decision(1)),
+            0 => Player::Choice(Transition::Choice(0)),
+            _ => Player::Choice(Transition::Choice(1)),
         }
     }
     /// only used for Tree sampling in Monte Carlo Trainer.

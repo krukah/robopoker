@@ -62,9 +62,9 @@ impl Game {
     /// "spawn" us at a node where blinds are posted and hands are dealt!
     pub fn children(&self) -> Vec<(Game, Action)> {
         match self.chooser() {
-            Transition::Terminal => self.terminal_actions(),
-            Transition::Awaiting(_) => self.awaited_actions(),
-            Transition::Decision(_) => self.decided_actions(),
+            Transition::Terminal => self.ending_actions(),
+            Transition::Chance(_) => self.chance_actions(),
+            Transition::Choice(_) => self.choice_actions(),
         }
     }
 
@@ -79,28 +79,27 @@ impl Game {
                 Transition::Terminal => {
                     node.into_terminal(); // node.clone(); node...(&mut self) ; node = node
                 }
-                Transition::Awaiting(street) => {
-                    node.show_revealed(street); // node.clone(); node...(&mut self) ; node = node
+                Transition::Chance(_) => {
+                    node.show_revealed(); // node.clone(); node...(&mut self) ; node = node
                 }
-                Transition::Decision(_) => {
+                Transition::Choice(_) => {
                     node.make_decision(); // node.clone(); node...(&mut self) ; node = node
                 }
             }
         }
     }
 
-    fn terminal_actions(&self) -> Vec<(Game, Action)> {
+    fn ending_actions(&self) -> Vec<(Game, Action)> {
         // just for symmetry, sorry, had to do it to 'em
         vec![]
     }
-    fn awaited_actions(&self) -> Vec<(Game, Action)> {
+    fn chance_actions(&self) -> Vec<(Game, Action)> {
         let action = Action::Draw(Card::draw());
-        let street = self.board().street().next();
         let mut child = self.clone();
-        child.show_revealed(street);
+        child.show_revealed();
         vec![(child, action)]
     }
-    fn decided_actions(&self) -> Vec<(Game, Action)> {
+    fn choice_actions(&self) -> Vec<(Game, Action)> {
         self.options()
             .into_iter()
             .inspect(|action| assert!(!matches!(action, Action::Draw(_) | Action::Blind(_))))
@@ -162,9 +161,9 @@ impl Game {
         if self.is_terminal() {
             Transition::Terminal
         } else if self.is_sampling() {
-            Transition::Awaiting(self.board.street().next())
+            Transition::Chance(self.board.street().next())
         } else if self.is_decision() {
-            Transition::Decision(self.actor_relative_idx())
+            Transition::Choice(self.actor_relative_idx())
         } else {
             unreachable!("game rules violated")
         }
@@ -335,9 +334,8 @@ impl Game {
     }
 
     //
-    fn show_revealed(&mut self, street: Street) {
-        assert!(self.board.street().next() == street);
-        println!("{}", street);
+    fn show_revealed(&mut self) {
+        println!("{}", self.board.street().next());
         self.player = 0;
         self.rotate();
         self.next_street_public();
