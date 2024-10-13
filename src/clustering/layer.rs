@@ -16,6 +16,9 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
+use std::time::Duration;
+
+use indicatif::{ProgressBar, ProgressStyle};
 
 /// Hierarchical K Means Learner
 /// this is decomposed into the necessary data structures
@@ -101,6 +104,7 @@ impl Layer {
         }
         Metric(metric)
     }
+
     /// using the current layer's `Abstractor`,
     /// we generate the `LargeSpace` of `Observation` -> `Histogram`.
     /// 1. take all `Observation`s for `self.street.prev()`
@@ -109,10 +113,22 @@ impl Layer {
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
         log::info!("computing projections {}", self.street);
+        let exhausted = Observation::exhaust(self.street.prev());
+
+        let pb = ProgressBar::new(exhausted.len() as u64);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "[{elapsed_precise}] {spinner:.green} {wide_bar} ETA {eta_precise}",
+            )
+            .unwrap(),
+        );
+        pb.enable_steady_tick(Duration::from_millis(10));
+
         ObservationSpace(
-            Observation::exhaust(self.street.prev())
+            exhausted
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
+                .inspect(|_| pb.inc(1))
                 .collect::<BTreeMap<Observation, Histogram>>(),
         )
     }
