@@ -63,15 +63,10 @@ impl From<u32> for Card {
     }
 }
 
-/// u64 isomorphism
-/// each card is just one bit turned on
+/// u64 representation
+/// each card is just one bit turned on. this is a one-way morphism
 /// Ts
 /// xxxxxxxxxxxx 0000000000001000000000000000000000000000000000000000
-impl From<u64> for Card {
-    fn from(n: u64) -> Self {
-        Self::from(63 - n.leading_zeros() as u8)
-    }
-}
 impl From<Card> for u64 {
     fn from(c: Card) -> u64 {
         1 << u8::from(c)
@@ -116,11 +111,5 @@ mod tests {
     fn bijective_u32() {
         let card = Card::draw();
         assert!(card == Card::from(u32::from(card)));
-    }
-
-    #[test]
-    fn bijective_u64() {
-        let card = Card::draw();
-        assert!(card == Card::from(u64::from(card)));
     }
 }

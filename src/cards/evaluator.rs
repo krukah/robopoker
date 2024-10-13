@@ -79,15 +79,14 @@ impl Evaluator {
         })
     }
     fn find_straight(&self) -> Option<Ranking> {
-        self.find_rank_of_straight(u16::from(self.0))
-            .map(Ranking::Straight)
+        self.find_rank_of_straight(self.0).map(Ranking::Straight)
     }
     fn find_flush(&self) -> Option<Ranking> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
                 .map(Ranking::StraightFlush)
                 .or_else(|| {
-                    let bits = self.0.suited(&suit);
+                    let bits = u16::from(self.0.of(&suit));
                     let rank = Rank::from(bits);
                     Some(Ranking::Flush(rank))
                 })
@@ -96,28 +95,31 @@ impl Evaluator {
 
     ///
 
-    fn find_rank_of_straight(&self, hand: u16) -> Option<Rank> {
-        const WHEEL: u16 = 0b_1000000001111;
-        let mut bits = hand;
+    fn find_rank_of_straight(&self, hand: Hand) -> Option<Rank> {
+        let wheel = 0b_1000000001111u16;
+        let ranks = u16::from(hand);
+        let mut bits = ranks;
         bits &= bits << 1;
         bits &= bits << 1;
         bits &= bits << 1;
         bits &= bits << 1;
         if bits > 0 {
             Some(Rank::from(bits))
-        } else if WHEEL == (WHEEL & hand) {
+        } else if wheel == (wheel & ranks) {
             Some(Rank::Five)
         } else {
             None
         }
     }
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
-        let bits = self.0.suited(&suit);
-        self.find_rank_of_straight(bits)
+        let hand = self.0.of(&suit);
+        self.find_rank_of_straight(hand)
     }
     fn find_suit_of_flush(&self) -> Option<Suit> {
-        self.0
-            .suit_count()
+        Suit::all()
+            .map(|s| u64::from(s))
+            .map(|u| u64::from(self.0) & u)
+            .map(|n| n.count_ones() as u8)
             .iter()
             .position(|&n| n >= 5)
             .map(|i| Suit::from(i as u8))
@@ -244,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn flush_vs_straight() {
+    fn flush_over_straight() {
         assert!(
             Evaluator::from(Hand::from("4h 6h 7h 8h 9h Ts")).find_ranking()
                 == Ranking::Flush(Rank::Nine)
@@ -252,23 +254,15 @@ mod tests {
     }
 
     #[test]
-    fn full_house_vs_flush() {
+    fn full_house_over_flush() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Ad Ks Kh Qs Js")).find_ranking()
+            Evaluator::from(Hand::from("Kh Ah Ad As Ks Qs Js")).find_ranking()
                 == Ranking::FullHouse(Rank::Ace, Rank::King)
         );
     }
 
     #[test]
-    fn two_three_oak() {
-        assert!(
-            Evaluator::from(Hand::from("As Ah Ad Kc Ks Kh Qd")).find_ranking()
-                == Ranking::FullHouse(Rank::Ace, Rank::King)
-        );
-    }
-
-    #[test]
-    fn four_oak_vs_full_house() {
+    fn four_oak_over_full_house() {
         assert!(
             Evaluator::from(Hand::from("As Ah Ad Ac Ks Kh Qd")).find_ranking()
                 == Ranking::FourOAK(Rank::Ace)
@@ -276,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn straight_flush_vs_four_oak() {
+    fn straight_flush_over_four_oak() {
         assert!(
             Evaluator::from(Hand::from("Ts Js Qs Ks As Ah Ad")).find_ranking()
                 == Ranking::StraightFlush(Rank::Ace)
@@ -296,6 +290,14 @@ mod tests {
         assert!(
             Evaluator::from(Hand::from("As Ah Kd Kc Qs Qh Jd")).find_ranking()
                 == Ranking::TwoPair(Rank::Ace, Rank::King)
+        );
+    }
+
+    #[test]
+    fn two_three_oak() {
+        assert!(
+            Evaluator::from(Hand::from("As Ah Ad Kc Ks Kh Qd")).find_ranking()
+                == Ranking::FullHouse(Rank::Ace, Rank::King)
         );
     }
 }

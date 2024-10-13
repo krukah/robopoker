@@ -43,7 +43,7 @@ impl Node {
     }
     pub fn payoff(&self, player: &Player) -> Utility {
         let position = match player {
-            Player::Choice(Transition::Decision(x)) => x.to_owned(),
+            Player::Choice(Transition::Choice(x)) => x.to_owned(),
             _ => unreachable!("payoffs defined relative to decider"),
         };
         match player {

@@ -31,10 +31,9 @@ impl From<Suit> for u8 {
     }
 }
 
-/// u64 injection
+/// u64 representation
 impl From<Suit> for u64 {
     fn from(s: Suit) -> u64 {
-        // (0..13).fold(0, |acc, _| (acc << 4) | (1 << s as u64))
         match s {
             Suit::C => 0x0001111111111111,
             Suit::D => 0x0002222222222222,
@@ -47,7 +46,7 @@ impl From<Suit> for u64 {
 /// str isomorphism
 impl From<&str> for Suit {
     fn from(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+        match s {
             "c" | "♣" => Suit::C,
             "d" | "♦" => Suit::D,
             "h" | "♥" => Suit::H,

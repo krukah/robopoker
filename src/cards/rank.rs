@@ -72,7 +72,7 @@ impl From<Rank> for u64 {
 /// str isomorphism
 impl From<&str> for Rank {
     fn from(s: &str) -> Self {
-        match s.to_uppercase().as_str() {
+        match s {
             "2" => Rank::Two,
             "3" => Rank::Three,
             "4" => Rank::Four,

@@ -1,5 +1,6 @@
 use super::hand::Hand;
 use super::observation::Observation;
+use super::rank::Rank;
 use super::suit::Suit;
 use itertools::Itertools;
 use rand::seq::SliceRandom;
@@ -11,13 +12,33 @@ use rand::seq::SliceRandom;
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Permutation([Suit; 4]);
 
+/// this yields consistent, though, possibly non-unique,
+/// Permutation that will map an Observation to its canonical form.
+/// suits are sorted co-lexicographically by the number of cards
+/// that they are represented by in hole cards and on the board.
+/// ties are broken by the arbitrary enum impl Ord for Suit !
+impl From<Observation> for Permutation {
+    fn from(observation: Observation) -> Self {
+        let mut permutation = Suit::all();
+        let mut lexicograph = Suit::all().map(|suit| Self::colex(&observation, &suit));
+        lexicograph.sort();
+        for (i, (c, suit)) in lexicograph.into_iter().enumerate() {
+            let index = suit as usize;
+            let value = Suit::from(i as u8);
+            permutation[index] = value;
+            println!("{}  >>  {:48}  >>  {}", suit, format!("{:?}", c), value);
+        }
+        Self(permutation)
+    }
+}
+
 impl Permutation {
     pub const fn identity() -> Self {
         Self(Suit::all())
     }
     pub fn transform(&self, ref observation: Observation) -> Observation {
         Observation::from((
-            self.permute(&observation.secret()),
+            self.permute(&observation.pocket()),
             self.permute(&observation.public()),
         ))
     }
@@ -57,24 +78,21 @@ impl Permutation {
     fn get(&self, suit: &Suit) -> Suit {
         self.0[*suit as usize]
     }
-    fn set(&mut self, old: &Suit, new: &Suit) {
-        self.0[*old as usize] = *new;
-    }
-}
 
-/// this yields a (sorta) unique Permutation
-/// that will map an Observation to its canonical form.
-/// uniqueness only applies to Suits that are present in the Observation.
-/// i.e. an Observation with only 2 Suits represented
-/// leaves 2 additional degrees of freedom.
-impl From<Observation> for Permutation {
-    fn from(observation: Observation) -> Self {
-        let mut permutation = Self::identity();
-        observation
-            .into_iter()
-            .zip(Suit::all())
-            .for_each(|(old, new)| permutation.set(&old, &new));
-        permutation
+    ///
+    /// now that i think about it, these could be min or max, they can be
+    /// 0 - size or + size. break symmetry however you please.
+    /// kinda giving axiom of choice.
+    fn colex(observation: &Observation, suit: &Suit) -> (Colex, Suit) {
+        let pocket = observation.pocket().of(&suit);
+        let public = observation.public().of(&suit);
+        let order = Colex(
+            0 - (pocket.size() as isize),        // representation in pocket.
+            pocket.take_min().map(|c| c.rank()), // highest rank in pocket.
+            0 - (public.size() as isize),        // representation in public.
+            public.take_min().map(|c| c.rank()), // highest rank in public
+        );
+        (order, *suit)
     }
 }
 
@@ -87,6 +105,13 @@ impl std::fmt::Display for Permutation {
         Ok(())
     }
 }
+
+/// there's this thing called co-lexicographic order
+/// which is a total ordering on some sub sets of cards
+/// in our case Observation. it implements Order at different
+/// scopes to break symmetries of strategically identical Observations.
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
+struct Colex(isize, Option<Rank>, isize, Option<Rank>);
 
 #[cfg(test)]
 mod tests {
