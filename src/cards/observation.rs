@@ -23,13 +23,11 @@ impl Observation {
     /// Generate all possible observations for a given street
     pub fn exhaust(street: Street) -> Vec<Self> {
         let n = Self::observable(street);
-        let inner = HandIterator::from((n, Hand::from(0b11))).combinations();
-        let outer = HandIterator::from((2, Hand::from(0b00))).combinations();
-        let space = outer * inner;
+        let space = Self::enumerable(street);
         let mut observations = Vec::with_capacity(space);
-        for hole in HandIterator::from((2, Hand::from(0b00))) {
-            for board in HandIterator::from((n, hole)) {
-                observations.push(Self::from((hole, board)));
+        for pocket in HandIterator::from((2, Hand::empty())) {
+            for public in HandIterator::from((n, pocket)) {
+                observations.push(Self::from((pocket, public)));
             }
         }
         observations
@@ -87,7 +85,7 @@ impl Observation {
         &self.public
     }
 
-    fn observable(street: Street) -> usize {
+    pub fn observable(street: Street) -> usize {
         match street {
             Street::Flop => 3,
             Street::Turn => 4,
@@ -95,8 +93,14 @@ impl Observation {
             _ => unreachable!("no other transitions"),
         }
     }
-
-    fn revealable(&self) -> usize {
+    pub fn enumerable(street: Street) -> usize {
+        let n = Self::observable(street);
+        let inner = HandIterator::from((n, Hand::from(0b11))).combinations();
+        let outer = HandIterator::from((2, Hand::empty())).combinations();
+        let space = outer * inner;
+        space
+    }
+    pub fn revealable(&self) -> usize {
         match self.street() {
             Street::Pref => 3,
             Street::Flop => 1,
@@ -184,25 +188,6 @@ impl From<Observation> for Hand {
     }
 }
 
-/// it's a bit of a reach to impl Iterator<Suit> for Observation,
-/// but i want a way to lazily get the Suit
-/// of the next lowest card from either hand in Observation.
-/// i'm using this exclusively to help generate the
-/// canonical Permutation::from(Observation), where i need some
-/// notion of "order" in Suits in the context of a given Observation.
-///
-/// it's important that this is ONLY called on copies of Observation,
-/// since it will otherwise violate invariants of private fields, i.e.
-/// pocket.size() == 2 and public.size() in (0, 3, 4, 5).
-///
-// impl Iterator for Observation {
-//     type Item = Card;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         None.or_else(|| self.pocket.next())
-//             .or_else(|| self.public.next())
-//     }
-// }
-
 /// display Observation as pocket + public
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -216,7 +201,7 @@ mod tests {
 
     #[test]
     fn bijective_i64() {
-        let random = Observation::from(Street::Flop);
+        let random = Observation::from(Street::Rive);
         assert!(random == Observation::from(i64::from(random)));
     }
 }

@@ -1,3 +1,5 @@
+use super::hand::Hand;
+use super::hands::HandIterator;
 use super::observation::Observation;
 use super::permutation::Permutation;
 use super::street::Street;
@@ -11,27 +13,37 @@ use super::street::Street;
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Isomorphism(Observation);
 
+impl From<Observation> for Isomorphism {
+    fn from(observation: Observation) -> Self {
+        let permutation = Permutation::from(observation);
+        let transformed = permutation.transform(observation);
+        Self(transformed)
+    }
+}
+
 impl Isomorphism {
     pub fn is_canonical(observation: &Observation) -> bool {
         Permutation::from(*observation) == Permutation::identity()
     }
     pub fn exhaust(street: Street) -> Vec<Self> {
-        Observation::exhaust(street)
-            .into_iter()
+        let n = Observation::observable(street);
+        let mut equivalences = Vec::new();
+        for pocket in HandIterator::from((2, Hand::empty())) {
+            for public in HandIterator::from((n, pocket)) {
+                let observation = Observation::from((pocket, public));
+                if Self::is_canonical(&observation) {
+                    let isomorphism = Self(observation);
+                    equivalences.push(isomorphism);
+                }
+            }
+        }
+        equivalences
+    }
+    pub fn outnodes(&self) -> impl Iterator<Item = Self> + '_ {
+        self.0
+            .outnodes()
             .filter(|o| Self::is_canonical(o))
             .map(|o| Self(o))
-            .collect()
-    }
-}
-
-impl From<Observation> for Isomorphism {
-    fn from(observation: Observation) -> Self {
-        println!("{}", observation);
-        let permutation = Permutation::from(observation);
-        let transformed = permutation.transform(observation);
-        println!("{}", transformed);
-        println!();
-        Self(transformed)
     }
 }
 
