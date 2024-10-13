@@ -122,7 +122,7 @@ impl Layer {
             )
             .unwrap(),
         );
-        pb.enable_steady_tick(Duration::from_millis(10));
+        pb.enable_steady_tick(Duration::from_millis(100));
 
         ObservationSpace(
             exhausted
