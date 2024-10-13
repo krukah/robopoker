@@ -3,7 +3,6 @@ use super::observation::Observation;
 use super::rank::Rank;
 use super::suit::Suit;
 use itertools::Itertools;
-use rand::seq::SliceRandom;
 
 /// an array of 4 unique Suits represents
 /// any of the 4! = 24 elements in the Suit permutation group.
@@ -22,11 +21,10 @@ impl From<Observation> for Permutation {
         let mut permutation = Suit::all();
         let mut lexicograph = Suit::all().map(|suit| Self::colex(&observation, &suit));
         lexicograph.sort();
-        for (i, (c, suit)) in lexicograph.into_iter().enumerate() {
+        for (i, (_, suit)) in lexicograph.into_iter().enumerate() {
             let index = suit as usize;
             let value = Suit::from(i as u8);
             permutation[index] = value;
-            println!("{}  >>  {:48}  >>  {}", suit, format!("{:?}", c), value);
         }
         Self(permutation)
     }
@@ -45,26 +43,20 @@ impl Permutation {
     pub fn permute(&self, hand: &Hand) -> Hand {
         Suit::all()
             .iter()
-            .map(|suit| self.suited(hand, suit))
+            .map(|suit| self.swap(suit, hand))
             .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
     pub fn exhaust() -> [Self; 24] {
         Suit::all()
             .into_iter()
             .permutations(4)
-            .map(|p| p.try_into().unwrap())
-            .map(|p| Self(p))
+            .map(|p| Self(p.try_into().unwrap()))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap()
     }
-    pub fn random() -> Self {
-        let ref mut rng = rand::thread_rng();
-        let mut suits = Suit::all();
-        suits.shuffle(rng);
-        Self(suits)
-    }
-    fn suited(&self, hand: &Hand, suit: &Suit) -> Hand {
+
+    fn swap(&self, suit: &Suit, hand: &Hand) -> Hand {
         let cards = u64::from(*suit) & u64::from(*hand);
         let old = *suit;
         let new = self.get(suit);
@@ -84,6 +76,7 @@ impl Permutation {
     /// 0 - size or + size. break symmetry however you please.
     /// kinda giving axiom of choice.
     fn colex(observation: &Observation, suit: &Suit) -> (Colex, Suit) {
+        // could make this lazy
         let pocket = observation.pocket().of(&suit);
         let public = observation.public().of(&suit);
         let order = Colex(
