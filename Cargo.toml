@@ -22,6 +22,7 @@ env_logger = "0.11.5"
 rayon = "1.10.0"
 byteorder = "1.5.0"
 itertools = "0.13.0"
+indicatif = "0.17.8"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
