@@ -28,7 +28,7 @@ impl Street {
     }
     pub fn n_observed(&self) -> usize {
         match self {
-            Street::Pref => unreachable!("maybe 0?"),
+            Street::Pref => 0,
             Street::Flop => 3,
             Street::Turn => 4,
             Street::Rive => 5,

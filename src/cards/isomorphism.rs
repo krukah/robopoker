@@ -15,8 +15,8 @@ pub struct Isomorphism(Observation);
 impl From<Observation> for Isomorphism {
     fn from(observation: Observation) -> Self {
         let permutation = Permutation::from(observation);
-        let transformed = permutation.permute(observation);
-        Self(transformed)
+        let isomorphism = permutation.permute(observation);
+        Self(isomorphism)
     }
 }
 
@@ -56,38 +56,33 @@ mod tests {
     use super::*;
     use crate::cards::hand::Hand;
     use crate::cards::permutation::Permutation;
+
     #[test]
     fn exhaustive_permutations() {
-        let mut count = 0;
-        loop {
-            let observation = Observation::from(Street::Turn);
-            let isomorphism = Isomorphism::from(observation);
-            let mut result = Ok(());
-            let mut error_permutation = None;
-            for permutation in Permutation::exhaust() {
-                let transformed = Isomorphism::from(permutation.permute(observation));
-                if isomorphism != transformed {
-                    result = Err((transformed, observation));
-                    error_permutation = Some(permutation);
-                    break;
-                }
-            }
-            count += 1;
-            if let Err((i, obs)) = result {
-                println!("assertion failed at {}!", count);
-                println!("observation: {}", obs);
-                println!("isomorphism: {}", isomorphism);
-                println!("transformed: {}", i);
-                if let Some(p) = error_permutation {
-                    println!("{}", p);
-                }
-                panic!("");
-            }
+        let outer_obs = Observation::from(Street::Rive);
+        let outer_iso = Isomorphism::from(outer_obs);
+        for symmetric in Permutation::exhaust() {
+            let inner_obs = symmetric.permute(outer_obs);
+            let inner_iso = Isomorphism::from(inner_obs);
+            assert!(outer_iso == inner_iso);
         }
     }
 
     #[test]
-    fn symmetric_pocket_pair() {
+    fn super_symmetry() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("2s Ks"),
+            Hand::from("2d 5h 8c Tc Th"),
+        )));
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("2s Ks"),
+            Hand::from("2h 5c 8d Tc Td"),
+        )));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn pocket_rank_symmetry() {
         let a = Isomorphism::from(Observation::from((
             Hand::from("Ac Ad"),
             Hand::from("Jc Ts 5s"),
@@ -100,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn symmetric_public_pair() {
+    fn public_rank_symmetry() {
         let a = Isomorphism::from(Observation::from((
             Hand::from("Td As"),
             Hand::from("Ts Ks Kh"),
@@ -191,21 +186,27 @@ mod tests {
     }
 
     // #[test]
+    // fn n_pref() {
+    //     let count = Isomorphism::exhaust(Street::Pref).count();
+    //     println!("Number of Pref isomorphisms: {}", count);
+    //     assert_eq!(count, Isomorphism::size(Street::Pref));
+    // }
+    // #[test]
     // fn n_flop() {
-    //     let count = Isomorphism::exhaust(Street::Flop).len();
+    //     let count = Isomorphism::exhaust(Street::Flop).count();
     //     println!("Number of Flop isomorphisms: {}", count);
-    //     assert_eq!(count, 1_286_792);
+    //     assert_eq!(count, Isomorphism::size(Street::Flop));
     // }
     // #[test]
     // fn n_turn() {
-    //     let count = Isomorphism::exhaust(Street::Turn).len();
+    //     let count = Isomorphism::exhaust(Street::Turn).count();
     //     println!("Number of Turn isomorphisms: {}", count);
-    //     assert_eq!(count, 55_190_538);
+    //     assert_eq!(count, Isomorphism::size(Street::Turn));
     // }
     // #[test]
     // fn n_river() {
-    //     let count = Isomorphism::exhaust(Street::Rive).len();
-    //     println!("Number of River isomorphisms: {}", count);
-    //     assert_eq!(count, 2_428_287_420);
+    //     let count = Isomorphism::exhaust(Street::Rive).count();
+    //     println!("Number of Rive isomorphisms: {}", count);
+    //     assert_eq!(count, Isomorphism::size(Street::Rive));
     // }
 }

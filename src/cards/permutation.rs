@@ -18,7 +18,7 @@ impl From<Observation> for Permutation {
     fn from(observation: Observation) -> Self {
         let mut permutation = Suit::all();
         let mut colex = Suit::all().map(|suit| Self::colex(&observation, &suit));
-        colex.sort_by(|a, b| Self::order(a, b));
+        colex.sort_by(Self::order);
         for (i, (suit, _, _)) in colex.into_iter().enumerate() {
             let index = suit as usize;
             let value = Suit::from(i as u8);
@@ -67,25 +67,20 @@ impl Permutation {
         result
     }
 
-    /// 1. choose preferred pocket v public
-    /// 2. choose preferred Ord Rank
-    /// 3. choose preferred pocket v public
-    /// 4. choose preferred Ord Rank
-    /// 5. All else equal, use the arbitrary Suit ordering for tiebreaking
-    fn order(a: &(Suit, Hand, Hand), b: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
+    fn order(hearts: &(Suit, Hand, Hand), spades: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal
-            .then_with(|| a.1.size().cmp(&b.1.size()))
-            .then_with(|| a.2.size().cmp(&b.2.size()))
-            .then_with(|| a.1.min_rank().cmp(&b.1.min_rank()))
-            .then_with(|| a.2.min_rank().cmp(&b.2.min_rank()))
-            .then_with(|| b.0.cmp(&a.0))
+            .then_with(|| hearts.1.size().cmp(&spades.1.size()))
+            .then_with(|| hearts.1.max_rank().cmp(&spades.1.max_rank()))
+            .then_with(|| hearts.1.min_rank().cmp(&spades.1.min_rank()))
+            .then_with(|| hearts.2.size().cmp(&spades.2.size()))
+            .then_with(|| hearts.2.max_rank().cmp(&spades.2.max_rank()))
+            .then_with(|| hearts.2.min_rank().cmp(&spades.2.min_rank()))
+            .then_with(|| hearts.0.cmp(&spades.0)) // tiebreaker
     }
-
     /// there's this thing called co-lexicographic order
     /// which is a total ordering on some sub sets of cards
     /// in our case Observation. it implements Order at different
     /// scopes to break symmetries of strategically identical Observations.
-    ///
     fn colex(observation: &Observation, suit: &Suit) -> (Suit, Hand, Hand) {
         let pocket = observation.pocket().of(suit);
         let public = observation.public().of(suit);

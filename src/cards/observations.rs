@@ -9,6 +9,7 @@ use super::street::Street;
 /// lazily generating Isomorphisms from Observations, or
 /// want to do other FP tricks or sharding.
 pub struct ObservationIterator {
+    last: Hand,
     pocket: HandIterator,
     public: HandIterator,
     street: Street,
@@ -20,6 +21,7 @@ impl From<Street> for ObservationIterator {
             street,
             pocket: HandIterator::from((2, Hand::empty())),
             public: HandIterator::from((street.n_observed(), Hand::from(0b11))),
+            last: Hand::from(0b11),
         }
     }
 }
@@ -30,16 +32,20 @@ impl ObservationIterator {
         let inner = self.public.combinations();
         outer * inner
     }
-    fn public(&mut self, public: Hand) -> Option<Observation> {
-        let pocket = self.pocket.look();
-        Some(Observation::from((pocket, public)))
+    fn public(&mut self, next: Hand) -> Option<Observation> {
+        Some(Observation::from((self.last, next)))
     }
-    fn pocket(&mut self, pocket: Hand) -> Option<Observation> {
-        let n = self.street.n_observed();
-        self.public = HandIterator::from((n, pocket));
-        self.public
-            .next()
-            .map(|public| Observation::from((pocket, public)))
+    fn pocket(&mut self, next: Hand) -> Option<Observation> {
+        self.last = next;
+        match self.street {
+            Street::Pref => Some(Observation::from((next, Hand::empty()))),
+            street @ _ => {
+                self.public = HandIterator::from((street.n_observed(), next));
+                self.public
+                    .next()
+                    .map(|public| Observation::from((next, public)))
+            }
+        }
     }
 }
 
