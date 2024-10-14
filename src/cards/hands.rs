@@ -107,13 +107,23 @@ impl From<(usize, Hand)> for HandIterator {
     }
 }
 
+/// we can also "start" from a given Hand, and a mask.
+impl From<(Hand, Hand)> for HandIterator {
+    fn from((hand, mask): (Hand, Hand)) -> Self {
+        let next = u64::from(hand);
+        let mask = u64::from(mask);
+        assert!(next & mask == 0);
+        Self { next, mask }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn five_choose_three() {
-        let mut iter = HandIterator::from((3, Hand::from(0)));
+        let mut iter = HandIterator::from((3, Hand::empty()));
         assert!(iter.next() == Some(Hand::from(0b00111)));
         assert!(iter.next() == Some(Hand::from(0b01011)));
         assert!(iter.next() == Some(Hand::from(0b01101)));
