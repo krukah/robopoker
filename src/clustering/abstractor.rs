@@ -31,7 +31,7 @@ impl Abstractor {
         match inner.street() {
             Street::Turn => inner.clone().into(),
             _ => inner
-                .outnodes()
+                .outnodes() //? iso
                 .map(|ref outer| self.abstraction(outer))
                 .collect::<Vec<Abstraction>>()
                 .into(),
@@ -47,7 +47,7 @@ impl Abstractor {
     /// simple insertion.
     /// can we optimize out this clone though? maybe for key but not for value
     pub fn assign(&mut self, abs: &Abstraction, obs: &Isomorphism) {
-        self.0.insert(obs.to_owned(), abs.to_owned());
+        self.0.insert(obs.clone(), abs.clone());
     }
 
     /// persist the abstraction mapping to disk

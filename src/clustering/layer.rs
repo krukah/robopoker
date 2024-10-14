@@ -1,7 +1,7 @@
 use super::abstractor::Abstractor;
 use super::datasets::AbstractionSpace;
 use super::datasets::ObservationSpace;
-use crate::cards::observation::Observation;
+use crate::cards::observation::Observation as Isomorphism;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
@@ -110,10 +110,10 @@ impl Layer {
     fn inner_points(&self) -> ObservationSpace {
         log::info!("computing projections {}", self.street);
         ObservationSpace(
-            Observation::exhaust(self.street.prev())
+            Isomorphism::exhaust(self.street.prev()) //? iso
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
-                .collect::<BTreeMap<Observation, Histogram>>(),
+                .collect::<BTreeMap<Isomorphism, Histogram>>(),
         )
     }
 
