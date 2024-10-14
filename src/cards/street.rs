@@ -7,7 +7,9 @@ pub enum Street {
 }
 
 impl Street {
-    #[allow(unused)]
+    pub fn all() -> &'static [Street] {
+        &[Street::Pref, Street::Flop, Street::Turn, Street::Rive]
+    }
     pub fn next(&self) -> Street {
         match self {
             Street::Pref => Street::Flop,
@@ -16,7 +18,6 @@ impl Street {
             Street::Rive => unreachable!("terminal"),
         }
     }
-
     pub fn prev(&self) -> Street {
         match self {
             Street::Pref => unreachable!("initial"),
@@ -25,16 +26,28 @@ impl Street {
             Street::Rive => Street::Turn,
         }
     }
-
-    pub fn all() -> &'static [Street] {
-        &[Street::Pref, Street::Flop, Street::Turn, Street::Rive]
+    pub fn n_observed(&self) -> usize {
+        match self {
+            Street::Pref => unreachable!("maybe 0?"),
+            Street::Flop => 3,
+            Street::Turn => 4,
+            Street::Rive => 5,
+        }
+    }
+    pub fn n_revealed(&self) -> usize {
+        match self {
+            Street::Pref => 3,
+            Street::Flop => 1,
+            Street::Turn => 1,
+            Street::Rive => unreachable!("terminal"),
+        }
     }
 }
 
 impl std::fmt::Display for Street {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Street::Pref => write!(f, "Pre Flop"),
+            Street::Pref => write!(f, "Preflop"),
             Street::Flop => write!(f, "Flop"),
             Street::Turn => write!(f, "Turn"),
             Street::Rive => write!(f, "River"),

@@ -45,7 +45,7 @@ impl HandIterator {
         h
     }
 
-    fn current(&self) -> Hand {
+    pub fn look(&self) -> Hand {
         // // ALTERNATE IMPL: mask at return, iterate as-is
         // let mut returned_bits = 0;
         // let mut shifting_bits = self.next;
@@ -82,7 +82,7 @@ impl Iterator for HandIterator {
         if self.exhausted() {
             None
         } else {
-            let hand = self.current();
+            let hand = self.look();
             self.advance();
             Some(hand)
         }
