@@ -42,6 +42,22 @@ impl Street {
             Street::Rive => unreachable!("terminal"),
         }
     }
+    pub fn n_observations(&self) -> usize {
+        match self {
+            Street::Pref => 0_______1_326,
+            Street::Flop => 0__25_989_600,
+            Street::Turn => 0_305_377_800,
+            Street::Rive => 2_809_475_760,
+        }
+    }
+    pub fn n_isomorphisms(&self) -> usize {
+        match self {
+            Street::Pref => 0_________169,
+            Street::Flop => 0___1_286_792,
+            Street::Turn => 0__55_190_538,
+            Street::Rive => 2_428_287_420,
+        }
+    }
 }
 
 impl std::fmt::Display for Street {
