@@ -16,7 +16,7 @@ pub struct Isomorphism(Observation);
 impl From<Observation> for Isomorphism {
     fn from(observation: Observation) -> Self {
         let permutation = Permutation::from(observation);
-        let transformed = permutation.transform(observation);
+        let transformed = permutation.permute(observation);
         Self(transformed)
     }
 }
@@ -59,16 +59,51 @@ mod tests {
     use crate::cards::hand::Hand;
     use crate::cards::permutation::Permutation;
 
+    // #[test]
+    // fn n_flop() {
+    //     let count = Isomorphism::exhaust(Street::Flop).len();
+    //     println!("Number of Flop isomorphisms: {}", count);
+    //     assert_eq!(count, 1_286_792);
+    // }
+
+    // #[test]
+    // fn n_turn() {
+    //     let count = Isomorphism::exhaust(Street::Turn).len();
+    //     println!("Number of Turn isomorphisms: {}", count);
+    //     assert_eq!(count, 55_190_538);
+    // }
+
+    // #[test]
+    // fn n_river() {
+    //     let count = Isomorphism::exhaust(Street::Rive).len();
+    //     println!("Number of River isomorphisms: {}", count);
+    //     assert_eq!(count, 2_428_287_420);
+    // }
+
     #[test]
     fn exhaustive_permutations() {
-        let observation = Observation::from(Street::Rive);
-        let isomorphism = Isomorphism::from(observation);
-        Permutation::exhaust()
-            .iter()
-            .map(|p| p.transform(observation))
-            .map(|o| Isomorphism::from(o))
-            .inspect(|&i| assert!(isomorphism == i))
-            .count();
+        loop {
+            let observation = Observation::from(Street::Rive);
+            let isomorphism = Isomorphism::from(observation);
+            let result = Permutation::exhaust()
+                .iter()
+                .map(|p| p.permute(observation))
+                .map(|o| Isomorphism::from(o))
+                .try_for_each(|i| {
+                    if isomorphism == i {
+                        Ok(())
+                    } else {
+                        Err((i, observation))
+                    }
+                });
+
+            if let Err((i, obs)) = result {
+                println!("observation: {}", obs);
+                println!("isomorphism: {}", isomorphism);
+                println!("transformed: {}", i);
+                panic!("assertion failed");
+            }
+        }
     }
 
     #[test]
