@@ -34,14 +34,14 @@ impl Permutation {
     }
     pub fn permute(&self, ref observation: Observation) -> Observation {
         Observation::from((
-            self.replace(observation.pocket()),
-            self.replace(observation.public()),
+            self.image(observation.pocket()),
+            self.image(observation.public()),
         ))
     }
-    pub fn replace(&self, hand: &Hand) -> Hand {
+    pub fn image(&self, hand: &Hand) -> Hand {
         Suit::all()
             .iter()
-            .map(|suit| self.image(suit, hand))
+            .map(|suit| self.shift(suit, hand))
             .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
     pub fn exhaust() -> [Self; 24] {
@@ -70,11 +70,11 @@ impl Permutation {
     fn order(hearts: &(Suit, Hand, Hand), spades: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal
             .then_with(|| hearts.1.size().cmp(&spades.1.size()))
-            .then_with(|| hearts.1.max_rank().cmp(&spades.1.max_rank()))
-            .then_with(|| hearts.1.min_rank().cmp(&spades.1.min_rank()))
             .then_with(|| hearts.2.size().cmp(&spades.2.size()))
-            .then_with(|| hearts.2.max_rank().cmp(&spades.2.max_rank()))
+            .then_with(|| hearts.1.min_rank().cmp(&spades.1.min_rank()))
             .then_with(|| hearts.2.min_rank().cmp(&spades.2.min_rank()))
+            .then_with(|| hearts.1.max_rank().cmp(&spades.1.max_rank()))
+            .then_with(|| hearts.2.max_rank().cmp(&spades.2.max_rank()))
             .then_with(|| hearts.0.cmp(&spades.0)) // tiebreaker
     }
     /// there's this thing called co-lexicographic order
@@ -88,7 +88,7 @@ impl Permutation {
     }
 
     /// get the image of a Hand under a Permutation
-    fn image(&self, suit: &Suit, hand: &Hand) -> Hand {
+    fn shift(&self, suit: &Suit, hand: &Hand) -> Hand {
         let old = *suit;
         let new = self.get(suit);
         let shift = new as i8 - old as i8;
@@ -103,7 +103,7 @@ impl Permutation {
     fn get(&self, suit: &Suit) -> Suit {
         self.0[*suit as usize]
     }
-    /// get the preimage of a Suit under the Permutation without allocating
+    /// get the preimage of a Suit under the Permutation
     #[allow(dead_code)]
     fn pre(&self, suit: &Suit) -> Suit {
         self.0
@@ -152,7 +152,7 @@ mod tests {
         let permutation = Permutation([Suit::H, Suit::C, Suit::S, Suit::D]);
         let hearts = Hand::from(0b_0100_0100_0100_0100_0100_0100_0100_0100_u64);
         let spades = Hand::from(0b_1000_1000_1000_1000_1000_1000_1000_1000_u64);
-        assert!(permutation.replace(&hearts) == spades);
+        assert!(permutation.image(&hearts) == spades);
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         let mut unique = std::collections::HashSet::new();
         let n = Permutation::exhaust()
             .into_iter()
-            .map(|p| p.replace(hand))
+            .map(|p| p.image(hand))
             .inspect(|h| assert!(unique.insert(*h)))
             .count();
         assert!(n == 24);
@@ -172,7 +172,7 @@ mod tests {
         let permutation = Permutation([Suit::D, Suit::H, Suit::C, Suit::S]);
         let original = Hand::from(0b_1010_1010_1010_1010__0100_0100_0100_0100_u64);
         let permuted = Hand::from(0b_1100_1100_1100_1100__0001_0001_0001_0001_u64);
-        assert!(permutation.replace(&original) == permuted);
+        assert!(permutation.image(&original) == permuted);
     }
 
     #[test]
@@ -180,7 +180,7 @@ mod tests {
         let permutation = Permutation([Suit::S, Suit::C, Suit::D, Suit::H]);
         let original = Hand::from("Ac Kd Qh Js");
         let permuted = Hand::from("As Kc Qd Jh");
-        assert!(permutation.replace(&original) == permuted);
+        assert!(permutation.image(&original) == permuted);
     }
 
     #[test]
@@ -188,13 +188,13 @@ mod tests {
         let permutation = Permutation([Suit::C, Suit::H, Suit::D, Suit::S]);
         let original = Hand::from("2c 3d 4h 5s");
         let permuted = Hand::from("2c 3h 4d 5s");
-        assert!(permutation.replace(&original) == permuted);
+        assert!(permutation.image(&original) == permuted);
     }
 
     #[test]
     fn permute_identity() {
         let permutation = Permutation::identity();
         let hand = Hand::random();
-        assert!(permutation.replace(&hand) == hand);
+        assert!(permutation.image(&hand) == hand);
     }
 }

@@ -40,20 +40,20 @@ fn sampling_river_equity(c: &mut criterion::Criterion) {
 
 fn exhausting_flop_observations(c: &mut criterion::Criterion) {
     c.bench_function("exhaust all Flop Observations", |b| {
-        b.iter(|| Observation::exhaust(Street::Turn))
+        b.iter(|| Observation::exhaust(Street::Flop).count())
     });
 }
 
 fn exhausting_flop_isomorphisms(c: &mut criterion::Criterion) {
     c.bench_function("exhaust all Flop Isomorphisms", |b| {
-        b.iter(|| Isomorphism::exhaust(Street::Turn))
+        b.iter(|| Equivalence::exhaust(Street::Flop).count())
     });
 }
 
 fn sampling_turn_isomorphism(c: &mut criterion::Criterion) {
     c.bench_function("compute Isomorphism from a Turn Observation", |b| {
         let observation = Observation::from(Street::Turn);
-        b.iter(|| Isomorphism::from(observation))
+        b.iter(|| Equivalence::from(observation))
     });
 }
 
@@ -75,7 +75,7 @@ fn sampling_turn_histogram_emd(c: &mut criterion::Criterion) {
 
 use robopoker::cards::evaluator::Evaluator;
 use robopoker::cards::hand::Hand;
-use robopoker::cards::isomorphism::Isomorphism;
+use robopoker::cards::isomorphism::Equivalence;
 use robopoker::cards::observation::Observation;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;

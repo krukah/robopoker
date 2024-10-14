@@ -9,42 +9,28 @@ use super::street::Street;
 /// lazily generating Isomorphisms from Observations, or
 /// want to do other FP tricks or sharding.
 pub struct ObservationIterator {
-    last: Hand,
-    pocket: HandIterator,
-    public: HandIterator,
     street: Street,
+    pocket: Hand,
+    outer: HandIterator,
+    inner: HandIterator,
 }
 
 impl From<Street> for ObservationIterator {
     fn from(street: Street) -> Self {
+        // weird handling of Street::Pref edge. could be coupled with
+        // weird handling of HandIterator to be more elegant.
+        let pocket = Hand::from(0b11);
+        let inner = HandIterator::from((street.n_observed(), pocket));
+        let mut outer = HandIterator::from((2, Hand::empty()));
+        match street {
+            Street::Pref => None,
+            _ => outer.next(),
+        };
         Self {
             street,
-            pocket: HandIterator::from((2, Hand::empty())),
-            public: HandIterator::from((street.n_observed(), Hand::from(0b11))),
-            last: Hand::from(0b11),
-        }
-    }
-}
-
-impl ObservationIterator {
-    pub fn size(&self) -> usize {
-        let outer = self.pocket.combinations();
-        let inner = self.public.combinations();
-        outer * inner
-    }
-    fn public(&mut self, next: Hand) -> Option<Observation> {
-        Some(Observation::from((self.last, next)))
-    }
-    fn pocket(&mut self, next: Hand) -> Option<Observation> {
-        self.last = next;
-        match self.street {
-            Street::Pref => Some(Observation::from((next, Hand::empty()))),
-            street @ _ => {
-                self.public = HandIterator::from((street.n_observed(), next));
-                self.public
-                    .next()
-                    .map(|public| Observation::from((next, public)))
-            }
+            pocket,
+            outer,
+            inner,
         }
     }
 }
@@ -52,16 +38,75 @@ impl ObservationIterator {
 impl Iterator for ObservationIterator {
     type Item = Observation;
     fn next(&mut self) -> Option<Self::Item> {
-        match self.public.next() {
-            Some(next) => self.public(next),
-            None => match self.pocket.next() {
-                Some(next) => self.pocket(next),
+        match self.inner.next() {
+            Some(next) => self.inner(next),
+            None => match self.outer.next() {
+                Some(next) => self.outer(next),
                 None => None,
             },
         }
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.size();
+        let n = self.combinations();
         (n, Some(n))
+    }
+}
+
+impl ObservationIterator {
+    pub fn combinations(&self) -> usize {
+        self.outer.combinations() * self.inner.combinations()
+    }
+    pub fn street(&self) -> Street {
+        self.street
+    }
+    fn inner(&mut self, public: Hand) -> Option<Observation> {
+        Some(Observation::from((self.pocket, public)))
+    }
+    fn outer(&mut self, pocket: Hand) -> Option<Observation> {
+        self.pocket = pocket;
+        match self.street {
+            Street::Pref => Some(Observation::from((self.pocket, Hand::empty()))),
+            street => {
+                self.inner = HandIterator::from((street.n_observed(), self.pocket));
+                self.inner
+                    .next()
+                    .map(|public| Observation::from((self.pocket, public)))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn n_pref() {
+        let street = Street::Pref;
+        let iter = ObservationIterator::from(street);
+        assert!(iter.combinations() == street.n_observations());
+        assert!(iter.combinations() == iter.count());
+    }
+    #[test]
+    fn n_flop() {
+        let street = Street::Flop;
+        let iter = ObservationIterator::from(street);
+        assert!(iter.combinations() == street.n_observations());
+        assert!(iter.combinations() == iter.count());
+    }
+    #[test]
+    fn n_turn() {
+        let street = Street::Turn;
+        let iter = ObservationIterator::from(street);
+        assert!(iter.combinations() == street.n_observations());
+        assert!(iter.combinations() == iter.count());
+    }
+    #[test]
+    fn n_rive() {
+        let street = Street::Rive;
+        let iter = ObservationIterator::from(street);
+        assert!(iter.combinations() == street.n_observations());
+        assert!(iter.combinations() == iter.count());
     }
 }
