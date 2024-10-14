@@ -1,6 +1,5 @@
 use super::hand::Hand;
 use super::observation::Observation;
-use super::rank::Rank;
 use super::suit::Suit;
 use itertools::Itertools;
 
@@ -19,9 +18,15 @@ pub struct Permutation([Suit; 4]);
 impl From<Observation> for Permutation {
     fn from(observation: Observation) -> Self {
         let mut permutation = Suit::all();
-        let mut lexicograph = Suit::all().map(|suit| Self::colex(&observation, &suit));
-        lexicograph.sort();
-        for (i, (_, suit)) in lexicograph.into_iter().enumerate() {
+        let mut colex = Suit::all().map(|suit| {
+            (
+                suit,
+                observation.pocket().of(&suit),
+                observation.public().of(&suit),
+            )
+        });
+        colex.sort_by(|a, b| Self::colex(a, b));
+        for (i, (suit, _, _)) in colex.into_iter().enumerate() {
             let index = suit as usize;
             let value = Suit::from(i as u8);
             permutation[index] = value;
@@ -71,21 +76,31 @@ impl Permutation {
         self.0[*suit as usize]
     }
 
+    /// there's this thing called co-lexicographic order
+    /// which is a total ordering on some sub sets of cards
+    /// in our case Observation. it implements Order at different
+    /// scopes to break symmetries of strategically identical Observations.
     ///
-    /// now that i think about it, these could be min or max, they can be
-    /// 0 - size or + size. break symmetry however you please.
-    /// kinda giving axiom of choice.
-    fn colex(observation: &Observation, suit: &Suit) -> (Colex, Suit) {
-        // could make this lazy
-        let pocket = observation.pocket().of(&suit);
-        let public = observation.public().of(&suit);
-        let order = Colex(
-            0 - (pocket.size() as isize),        // representation in pocket.
-            pocket.take_min().map(|c| c.rank()), // highest rank in pocket.
-            0 - (public.size() as isize),        // representation in public.
-            public.take_min().map(|c| c.rank()), // highest rank in public
-        );
-        (order, *suit)
+    /// 1. Compare pocket representation
+    /// 2. Compare pocket highest rank
+    /// 3. Compare public representation
+    /// 4. Compare public highest rank
+    /// 5. All else equal, use the arbitrary Suit ordering for tiebreaking
+    fn colex(a: &(Suit, Hand, Hand), b: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
+        std::cmp::Ordering::Equal
+            .then_with(|| b.1.size().cmp(&a.1.size()))
+            .then_with(|| {
+                b.1.take_min()
+                    .map(|c| c.rank())
+                    .cmp(&a.1.take_min().map(|c| c.rank()))
+            })
+            .then_with(|| b.2.size().cmp(&a.2.size()))
+            .then_with(|| {
+                b.2.take_min()
+                    .map(|c| c.rank())
+                    .cmp(&a.2.take_min().map(|c| c.rank()))
+            })
+            .then_with(|| a.0.cmp(&b.0))
     }
 }
 
@@ -98,13 +113,6 @@ impl std::fmt::Display for Permutation {
         Ok(())
     }
 }
-
-/// there's this thing called co-lexicographic order
-/// which is a total ordering on some sub sets of cards
-/// in our case Observation. it implements Order at different
-/// scopes to break symmetries of strategically identical Observations.
-#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
-struct Colex(isize, Option<Rank>, isize, Option<Rank>);
 
 #[cfg(test)]
 mod tests {
