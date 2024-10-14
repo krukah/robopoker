@@ -45,7 +45,7 @@ impl HandIterator {
         h
     }
 
-    pub fn look(&self) -> Hand {
+    fn look(&self) -> Hand {
         // // ALTERNATE IMPL: mask at return, iterate as-is
         // let mut returned_bits = 0;
         // let mut shifting_bits = self.next;
@@ -82,9 +82,9 @@ impl Iterator for HandIterator {
         if self.exhausted() {
             None
         } else {
-            let hand = self.look();
+            let last = self.look();
             self.advance();
-            Some(hand)
+            Some(last)
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -104,16 +104,6 @@ impl From<(usize, Hand)> for HandIterator {
             this.next = this.permute();
         }
         this
-    }
-}
-
-/// we can also "start" from a given Hand, and a mask.
-impl From<(Hand, Hand)> for HandIterator {
-    fn from((hand, mask): (Hand, Hand)) -> Self {
-        let next = u64::from(hand);
-        let mask = u64::from(mask);
-        assert!(next & mask == 0);
-        Self { next, mask }
     }
 }
 
