@@ -14,8 +14,8 @@ pub struct Permutation([Suit; 4]);
 /// suits are sorted co-lexicographically by the number of cards
 /// that they are represented by in hole cards and on the board.
 /// ties are broken by the arbitrary enum impl Ord for Suit !
-impl From<Observation> for Permutation {
-    fn from(observation: Observation) -> Self {
+impl From<&Observation> for Permutation {
+    fn from(observation: &Observation) -> Self {
         let mut permutation = Suit::all();
         let mut colex = Suit::all().map(|suit| Self::colex(&observation, &suit));
         colex.sort_by(Self::order);
@@ -29,44 +29,33 @@ impl From<Observation> for Permutation {
 }
 
 impl Permutation {
-    pub const fn identity() -> Self {
-        Self(Suit::all())
-    }
-    pub fn permute(&self, ref observation: Observation) -> Observation {
+    /// the image of an Observation under a Permutation
+    /// is computed from applying the Permutation to
+    /// its constituent Hands, pocket and public
+    pub fn permute(&self, observation: &Observation) -> Observation {
         Observation::from((
             self.image(observation.pocket()),
             self.image(observation.public()),
         ))
     }
+
+    /// the image of a hand under a permutation
+    /// is the union of its shifted sub-Hands
     pub fn image(&self, hand: &Hand) -> Hand {
         Suit::all()
             .iter()
             .map(|suit| self.shift(suit, hand))
             .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
-    pub fn exhaust() -> [Self; 24] {
-        let mut index = 0;
-        let mut result = [Self::identity(); 24];
-        for a in 0..4 {
-            for b in 0..4 {
-                for c in 0..4 {
-                    let d = 6 - a - b - c;
-                    if a == b || b == c || c == a || d > 3 {
-                        continue;
-                    }
-                    result[index] = Self([
-                        Suit::from(a as u8),
-                        Suit::from(b as u8),
-                        Suit::from(c as u8),
-                        Suit::from(d as u8),
-                    ]);
-                    index += 1;
-                }
-            }
-        }
-        result
-    }
 
+    /// impose order by breaking symmetries
+    /// 1. who has fewer cards in pocket?
+    /// 2. who has fewer cards on public?
+    /// 3. who has weaker pocket cards?
+    /// 4. who has weaker public cards?
+    /// 5. who has stronger pocket cards?
+    /// 6. who has stronger public cards?
+    /// 7. tie delegates to Suit order
     fn order(hearts: &(Suit, Hand, Hand), spades: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal
             .then_with(|| hearts.1.size().cmp(&spades.1.size()))
@@ -77,6 +66,7 @@ impl Permutation {
             .then_with(|| hearts.2.max_rank().cmp(&spades.2.max_rank()))
             .then_with(|| hearts.0.cmp(&spades.0)) // tiebreaker
     }
+
     /// there's this thing called co-lexicographic order
     /// which is a total ordering on some sub sets of cards
     /// in our case Observation. it implements Order at different
@@ -87,10 +77,12 @@ impl Permutation {
         (*suit, pocket, public)
     }
 
-    /// get the image of a Hand under a Permutation
+    /// the hand here gets filtered by the "old" suit
+    /// and then we bitshift so that it is in its "new" suit
+    /// e.g. Full Hand -> Hearts Hand -> Spades Hand
     fn shift(&self, suit: &Suit, hand: &Hand) -> Hand {
         let old = *suit;
-        let new = self.get(suit);
+        let new = self.map(suit);
         let shift = new as i8 - old as i8;
         let cards = u64::from(*suit) & u64::from(*hand);
         if shift >= 0 {
@@ -100,17 +92,40 @@ impl Permutation {
         }
     }
     /// get the image of a Suit under a Permutation
-    fn get(&self, suit: &Suit) -> Suit {
+    fn map(&self, suit: &Suit) -> Suit {
         self.0[*suit as usize]
     }
-    /// get the preimage of a Suit under the Permutation
-    #[allow(dead_code)]
-    fn pre(&self, suit: &Suit) -> Suit {
-        self.0
-            .iter()
-            .position(|s| s == suit)
-            .map(|i| Suit::from(i as u8))
-            .expect("suit in permutation")
+
+    pub const fn identity() -> Self {
+        Self(Suit::all())
+    }
+    pub const fn exhaust() -> [Self; 24] {
+        [
+            Self([Suit::C, Suit::D, Suit::H, Suit::S]),
+            Self([Suit::C, Suit::D, Suit::S, Suit::H]),
+            Self([Suit::C, Suit::H, Suit::D, Suit::S]),
+            Self([Suit::C, Suit::H, Suit::S, Suit::D]),
+            Self([Suit::C, Suit::S, Suit::D, Suit::H]),
+            Self([Suit::C, Suit::S, Suit::H, Suit::D]),
+            Self([Suit::D, Suit::C, Suit::H, Suit::S]),
+            Self([Suit::D, Suit::C, Suit::S, Suit::H]),
+            Self([Suit::D, Suit::H, Suit::C, Suit::S]),
+            Self([Suit::D, Suit::H, Suit::S, Suit::C]),
+            Self([Suit::D, Suit::S, Suit::C, Suit::H]),
+            Self([Suit::D, Suit::S, Suit::H, Suit::C]),
+            Self([Suit::H, Suit::C, Suit::D, Suit::S]),
+            Self([Suit::H, Suit::C, Suit::S, Suit::D]),
+            Self([Suit::H, Suit::D, Suit::C, Suit::S]),
+            Self([Suit::H, Suit::D, Suit::S, Suit::C]),
+            Self([Suit::H, Suit::S, Suit::C, Suit::D]),
+            Self([Suit::H, Suit::S, Suit::D, Suit::C]),
+            Self([Suit::S, Suit::C, Suit::D, Suit::H]),
+            Self([Suit::S, Suit::C, Suit::H, Suit::D]),
+            Self([Suit::S, Suit::D, Suit::C, Suit::H]),
+            Self([Suit::S, Suit::D, Suit::H, Suit::C]),
+            Self([Suit::S, Suit::H, Suit::C, Suit::D]),
+            Self([Suit::S, Suit::H, Suit::D, Suit::C]),
+        ]
     }
 }
 
@@ -118,7 +133,7 @@ impl std::fmt::Display for Permutation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Suit::all()
             .iter()
-            .map(|s| writeln!(f, "{} -> {}", s, self.get(s)))
+            .map(|s| writeln!(f, "{} -> {}", s, self.map(s)))
             .last()
             .unwrap()
     }
@@ -132,19 +147,19 @@ mod tests {
     #[test]
     fn map_identity() {
         let identity = Permutation::identity();
-        assert!(identity.get(&Suit::C) == Suit::C);
-        assert!(identity.get(&Suit::D) == Suit::D);
-        assert!(identity.get(&Suit::H) == Suit::H);
-        assert!(identity.get(&Suit::S) == Suit::S);
+        assert!(identity.map(&Suit::C) == Suit::C);
+        assert!(identity.map(&Suit::D) == Suit::D);
+        assert!(identity.map(&Suit::H) == Suit::H);
+        assert!(identity.map(&Suit::S) == Suit::S);
     }
 
     #[test]
     fn map_arbitrary() {
         let permutation = Permutation([Suit::H, Suit::S, Suit::C, Suit::D]);
-        assert!(permutation.get(&Suit::C) == Suit::H);
-        assert!(permutation.get(&Suit::D) == Suit::S);
-        assert!(permutation.get(&Suit::H) == Suit::C);
-        assert!(permutation.get(&Suit::S) == Suit::D);
+        assert!(permutation.map(&Suit::C) == Suit::H);
+        assert!(permutation.map(&Suit::D) == Suit::S);
+        assert!(permutation.map(&Suit::H) == Suit::C);
+        assert!(permutation.map(&Suit::S) == Suit::D);
     }
 
     #[test]
