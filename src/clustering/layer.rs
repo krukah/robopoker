@@ -111,6 +111,7 @@ impl Layer {
         log::info!("computing projections {}", self.street);
         ObservationSpace(
             Isomorphism::exhaust(self.street.prev()) //? iso
+                .collect::<Vec<Isomorphism>>()
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
                 .collect::<BTreeMap<Isomorphism, Histogram>>(),

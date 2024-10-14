@@ -41,7 +41,7 @@ impl Permutation {
     pub fn replace(&self, hand: &Hand) -> Hand {
         Suit::all()
             .iter()
-            .map(|suit| self.map(suit, hand))
+            .map(|suit| self.image(suit, hand))
             .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
     pub fn exhaust() -> [Self; 24] {
@@ -67,16 +67,16 @@ impl Permutation {
         result
     }
 
-    /// 1. Compare pocket representation
-    /// 2. Compare pocket highest rank
-    /// 3. Compare public representation
-    /// 4. Compare public highest rank
+    /// 1. choose preferred pocket v public
+    /// 2. choose preferred Ord Rank
+    /// 3. choose preferred pocket v public
+    /// 4. choose preferred Ord Rank
     /// 5. All else equal, use the arbitrary Suit ordering for tiebreaking
     fn order(a: &(Suit, Hand, Hand), b: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal
             .then_with(|| a.1.size().cmp(&b.1.size()))
-            .then_with(|| a.1.min_rank().cmp(&b.1.min_rank()))
             .then_with(|| a.2.size().cmp(&b.2.size()))
+            .then_with(|| a.1.min_rank().cmp(&b.1.min_rank()))
             .then_with(|| a.2.min_rank().cmp(&b.2.min_rank()))
             .then_with(|| b.0.cmp(&a.0))
     }
@@ -93,21 +93,29 @@ impl Permutation {
     }
 
     /// get the image of a Hand under a Permutation
-    fn map(&self, suit: &Suit, hand: &Hand) -> Hand {
-        let cards = u64::from(*suit) & u64::from(*hand);
+    fn image(&self, suit: &Suit, hand: &Hand) -> Hand {
         let old = *suit;
         let new = self.get(suit);
         let shift = new as i8 - old as i8;
+        let cards = u64::from(*suit) & u64::from(*hand);
         if shift >= 0 {
             Hand::from(cards << shift as u64)
         } else {
             Hand::from(cards >> shift.abs() as u64)
         }
     }
-
     /// get the image of a Suit under a Permutation
     fn get(&self, suit: &Suit) -> Suit {
         self.0[*suit as usize]
+    }
+    /// get the preimage of a Suit under the Permutation without allocating
+    #[allow(dead_code)]
+    fn pre(&self, suit: &Suit) -> Suit {
+        self.0
+            .iter()
+            .position(|s| s == suit)
+            .map(|i| Suit::from(i as u8))
+            .expect("suit in permutation")
     }
 }
 

@@ -32,19 +32,16 @@ impl Hand {
         let ranks = u64::from(*self) & u64::from(*suit);
         Self::from(ranks)
     }
-
     pub fn min_rank(&self) -> Option<Rank> {
-        if self.size() == 0 {
-            None
-        } else {
-            Some(Rank::from(self.0.trailing_zeros() as u8 / 4))
+        match self.size() {
+            0 => None,
+            _ => Some(Rank::from(self.0.trailing_zeros() as u8 / 4)),
         }
     }
     pub fn max_rank(&self) -> Option<Rank> {
-        if self.size() == 0 {
-            None
-        } else {
-            Some(Rank::from((64 - 1 - self.0.leading_zeros()) as u8 / 4))
+        match self.size() {
+            0 => None,
+            _ => Some(Rank::from((64 - 1 - self.0.leading_zeros()) as u8 / 4)),
         }
     }
     pub fn remove(&mut self, card: Card) {
@@ -142,6 +139,13 @@ impl From<Hand> for u16 {
         y |= (x >> 33) & 0x0800;
         y |= (x >> 36) & 0x1000;
         y as u16
+    }
+}
+
+/// one-way conversion from Card
+impl From<Card> for Hand {
+    fn from(card: Card) -> Self {
+        Self(1 << u8::from(card))
     }
 }
 

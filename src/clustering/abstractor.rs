@@ -31,7 +31,7 @@ impl Abstractor {
         match inner.street() {
             Street::Turn => inner.clone().into(),
             _ => inner
-                .outnodes() //? iso
+                .children() //? iso
                 .map(|ref outer| self.abstraction(outer))
                 .collect::<Vec<Abstraction>>()
                 .into(),

@@ -1,6 +1,5 @@
-use super::hand::Hand;
-use super::hands::HandIterator;
 use super::observation::Observation;
+use super::observations::ObservationIterator;
 use super::permutation::Permutation;
 use super::street::Street;
 
@@ -25,25 +24,24 @@ impl Isomorphism {
     pub fn is_canonical(observation: &Observation) -> bool {
         Permutation::from(*observation) == Permutation::identity()
     }
-    pub fn exhaust(street: Street) -> Vec<Self> {
-        let n = Observation::observable(street);
-        let mut equivalences = Vec::new();
-        for pocket in HandIterator::from((2, Hand::empty())) {
-            for public in HandIterator::from((n, pocket)) {
-                let observation = Observation::from((pocket, public));
-                if Self::is_canonical(&observation) {
-                    let isomorphism = Self(observation);
-                    equivalences.push(isomorphism);
-                }
-            }
-        }
-        equivalences
+    pub fn exhaust<'a>(street: Street) -> impl Iterator<Item = Self> + 'a {
+        ObservationIterator::from(street)
+            .filter(Self::is_canonical)
+            .map(Self)
     }
-    pub fn outnodes(&self) -> impl Iterator<Item = Self> + '_ {
+    pub fn children<'a>(&'a self) -> impl Iterator<Item = Self> + 'a {
         self.0
-            .outnodes()
+            .children()
             .filter(|o| Self::is_canonical(o))
             .map(|o| Self(o))
+    }
+    pub fn size(street: Street) -> usize {
+        match street {
+            Street::Pref => 0_________169,
+            Street::Flop => 0___1_286_792,
+            Street::Turn => 0__55_190_538,
+            Street::Rive => 2_428_287_420,
+        }
     }
 }
 
@@ -58,50 +56,32 @@ mod tests {
     use super::*;
     use crate::cards::hand::Hand;
     use crate::cards::permutation::Permutation;
-
-    // #[test]
-    // fn n_flop() {
-    //     let count = Isomorphism::exhaust(Street::Flop).len();
-    //     println!("Number of Flop isomorphisms: {}", count);
-    //     assert_eq!(count, 1_286_792);
-    // }
-
-    // #[test]
-    // fn n_turn() {
-    //     let count = Isomorphism::exhaust(Street::Turn).len();
-    //     println!("Number of Turn isomorphisms: {}", count);
-    //     assert_eq!(count, 55_190_538);
-    // }
-
-    // #[test]
-    // fn n_river() {
-    //     let count = Isomorphism::exhaust(Street::Rive).len();
-    //     println!("Number of River isomorphisms: {}", count);
-    //     assert_eq!(count, 2_428_287_420);
-    // }
-
     #[test]
     fn exhaustive_permutations() {
+        let mut count = 0;
         loop {
-            let observation = Observation::from(Street::Rive);
+            let observation = Observation::from(Street::Turn);
             let isomorphism = Isomorphism::from(observation);
-            let result = Permutation::exhaust()
-                .iter()
-                .map(|p| p.permute(observation))
-                .map(|o| Isomorphism::from(o))
-                .try_for_each(|i| {
-                    if isomorphism == i {
-                        Ok(())
-                    } else {
-                        Err((i, observation))
-                    }
-                });
-
+            let mut result = Ok(());
+            let mut error_permutation = None;
+            for permutation in Permutation::exhaust() {
+                let transformed = Isomorphism::from(permutation.permute(observation));
+                if isomorphism != transformed {
+                    result = Err((transformed, observation));
+                    error_permutation = Some(permutation);
+                    break;
+                }
+            }
+            count += 1;
             if let Err((i, obs)) = result {
+                println!("assertion failed at {}!", count);
                 println!("observation: {}", obs);
                 println!("isomorphism: {}", isomorphism);
                 println!("transformed: {}", i);
-                panic!("assertion failed");
+                if let Some(p) = error_permutation {
+                    println!("{}", p);
+                }
+                panic!("");
             }
         }
     }
@@ -209,4 +189,23 @@ mod tests {
         )));
         assert!(a == b);
     }
+
+    // #[test]
+    // fn n_flop() {
+    //     let count = Isomorphism::exhaust(Street::Flop).len();
+    //     println!("Number of Flop isomorphisms: {}", count);
+    //     assert_eq!(count, 1_286_792);
+    // }
+    // #[test]
+    // fn n_turn() {
+    //     let count = Isomorphism::exhaust(Street::Turn).len();
+    //     println!("Number of Turn isomorphisms: {}", count);
+    //     assert_eq!(count, 55_190_538);
+    // }
+    // #[test]
+    // fn n_river() {
+    //     let count = Isomorphism::exhaust(Street::Rive).len();
+    //     println!("Number of River isomorphisms: {}", count);
+    //     assert_eq!(count, 2_428_287_420);
+    // }
 }
