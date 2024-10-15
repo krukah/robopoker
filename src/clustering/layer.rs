@@ -8,6 +8,8 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
 use crate::clustering::xor::Pair;
+use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::rngs::StdRng;
@@ -77,7 +79,7 @@ impl Layer {
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
         log::info!(
-            "advancing street from {} to {}",
+            "advancing street from {} -> {}",
             self.street,
             self.street.prev()
         );
@@ -91,7 +93,7 @@ impl Layer {
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
         log::info!(
-            "computing metric from {} to {}",
+            "computing metric from {} -> {}",
             self.street,
             self.street.prev()
         );
@@ -119,10 +121,19 @@ impl Layer {
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
         log::info!(
-            "computing projections from {} to {}",
+            "computing projections from {} -> {}",
             self.street,
             self.street.prev()
         );
+        // pretty progress bar
+        let n = self.street.prev().n_isomorphisms() as u64;
+        let tick = std::time::Duration::from_secs(5);
+        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
+        let style = ProgressStyle::with_template(style).unwrap();
+        let progress = ProgressBar::new(n);
+        progress.set_style(style);
+        progress.enable_steady_tick(tick);
+        //
         ObservationSpace(
             Observation::exhaust(self.street.prev())
                 .filter(|o| Isomorphism::is_canonical(o))
@@ -130,6 +141,7 @@ impl Layer {
                 .collect::<Vec<Isomorphism>>() // isomorphism translation
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
+                .inspect(|_| progress.inc(1))
                 .collect::<BTreeMap<Isomorphism, Histogram>>(),
         )
     }
