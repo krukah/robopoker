@@ -1,6 +1,6 @@
 use super::abstraction::Abstraction;
 use super::abstractor::Abstractor;
-use crate::cards::observation::Observation as Isomorphism;
+use crate::cards::isomorphism::Isomorphism;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
 use crate::mccfr::data::Data;
@@ -15,7 +15,7 @@ use rand::distributions::WeightedIndex;
 use rand::Rng;
 
 /// given a Node, we can sample a distribution of children according to the Profile.
-/// we can also map an Isomorphism to its nearest neighbor abstraction.
+/// we can also map an Equivalence to its nearest neighbor abstraction.
 /// Sampler determines how we sample the Tree in Full Tree Search.
 /// but combined with Profile, we can implement Monte Carlo Tree Search too.
 pub struct Sampler(Abstractor);
@@ -100,8 +100,8 @@ impl Sampler {
     /// abstraction methods
     ///
     pub fn card_abstraction(&self, game: &Game) -> Abstraction {
-        let ref observation = Isomorphism::from(game);
-        self.0.abstraction(observation)
+        let ref equivalence = Isomorphism::from(game); // isomorphism translation
+        self.0.abstraction(equivalence)
     }
     pub fn path_abstraction(&self, _: &Vec<&Edge>) -> Path {
         todo!("pseudoharmonic action mapping for path abstraction")
