@@ -8,6 +8,8 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
 use crate::clustering::xor::Pair;
+use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::rngs::StdRng;
@@ -17,9 +19,6 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
-use std::time::Duration;
-use indicatif::ProgressStyle;
-use indicatif::ProgressBar;
 
 /// Hierarchical K Means Learner
 /// this is decomposed into the necessary data structures
@@ -79,7 +78,11 @@ impl Layer {
 
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
-        log::info!("advancing from {} to {}", self.street, self.street.prev());
+        log::info!(
+            "advancing street from {} -> {}",
+            self.street,
+            self.street.prev()
+        );
         self.street.prev()
     }
     /// compute the outer product of the `Abstraction -> Histogram`s at the current layer,
@@ -89,7 +92,11 @@ impl Layer {
     /// we symmetrize the distance by averaging the EMDs in both directions.
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
-        log::info!("computing metric {}", self.street);
+        log::info!(
+            "computing metric from {} -> {}",
+            self.street,
+            self.street.prev()
+        );
         let mut metric = BTreeMap::new();
         for a in self.kmeans.0.keys() {
             for b in self.kmeans.0.keys() {
@@ -106,7 +113,6 @@ impl Layer {
         metric.insert(Pair::default(), 0.); // matrix diagonal is zero
         Metric(metric)
     }
-
     /// using the current layer's `Abstractor`,
     /// we generate the `LargeSpace` of `Observation` -> `Histogram`.
     /// 1. take all `Observation`s for `self.street.prev()`
@@ -114,13 +120,20 @@ impl Layer {
     /// 3. use `self.abstractor` to map each into an `Abstraction`
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
-        log::info!("computing projections {}", self.street);
-        let pb = ProgressBar::new(self.street.prev().n_isomorphisms() as u64);
-        pb.set_style(
-            ProgressStyle::with_template("[{elapsed}] {spinner} {wide_bar} ETA {eta_precise}")
-                .unwrap(),
+        log::info!(
+            "computing projections from {} -> {}",
+            self.street,
+            self.street.prev()
         );
-        pb.enable_steady_tick(Duration::from_millis(100));
+        // pretty progress bar
+        let n = self.street.prev().n_isomorphisms() as u64;
+        let tick = std::time::Duration::from_secs(5);
+        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
+        let style = ProgressStyle::with_template(style).unwrap();
+        let progress = ProgressBar::new(n);
+        progress.set_style(style);
+        progress.enable_steady_tick(tick);
+        //
         ObservationSpace(
             Observation::exhaust(self.street.prev())
                 .filter(|o| Isomorphism::is_canonical(o))
@@ -128,8 +141,8 @@ impl Layer {
                 .collect::<Vec<Isomorphism>>() // isomorphism translation
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
-                .inspect(|_| pb.inc(1))
-                .collect::<BTreeMap<Isomorphism, Histogram>>()
+                .inspect(|_| progress.inc(1))
+                .collect::<BTreeMap<Isomorphism, Histogram>>(),
         )
     }
 
