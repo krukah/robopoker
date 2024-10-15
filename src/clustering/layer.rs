@@ -76,7 +76,11 @@ impl Layer {
 
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
-        log::info!("advancing from {} to {}", self.street, self.street.prev());
+        log::info!(
+            "advancing street from {} to {}",
+            self.street,
+            self.street.prev()
+        );
         self.street.prev()
     }
     /// compute the outer product of the `Abstraction -> Histogram`s at the current layer,
@@ -86,7 +90,11 @@ impl Layer {
     /// we symmetrize the distance by averaging the EMDs in both directions.
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
-        log::info!("computing metric {}", self.street);
+        log::info!(
+            "computing metric from {} to {}",
+            self.street,
+            self.street.prev()
+        );
         let mut metric = BTreeMap::new();
         for a in self.kmeans.0.keys() {
             for b in self.kmeans.0.keys() {
@@ -110,7 +118,11 @@ impl Layer {
     /// 3. use `self.abstractor` to map each into an `Abstraction`
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
-        log::info!("computing projections {}", self.street);
+        log::info!(
+            "computing projections from {} to {}",
+            self.street,
+            self.street.prev()
+        );
         ObservationSpace(
             Observation::exhaust(self.street.prev())
                 .filter(|o| Isomorphism::is_canonical(o))
