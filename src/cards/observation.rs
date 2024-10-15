@@ -1,3 +1,5 @@
+use crate::cards::cactus_fast::cactus_fast_7_rank_hand;
+
 use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
@@ -45,12 +47,12 @@ impl Observation {
     pub fn equity(&self) -> f32 {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
-        let hero = Strength::from(hand);
+        let hero = cactus_fast_7_rank_hand(hand.into());
         let opponents = HandIterator::from((2, hand));
         let n = opponents.combinations();
         opponents
             .map(|opponent| Hand::add(self.public, opponent))
-            .map(|opponent| Strength::from(opponent))
+            .map(|opponent| cactus_fast_7_rank_hand(opponent.into()))
             .map(|opponent| match &hero.cmp(&opponent) {
                 Ordering::Greater => 2,
                 Ordering::Equal => 1,

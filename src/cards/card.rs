@@ -73,6 +73,30 @@ impl From<Card> for u64 {
     }
 }
 
+/// Card represents a playing card for Cactus Fast hand evaluator
+#[derive(Default, Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CardCactus(pub u32);
+
+impl From<CardCactus> for Card {
+    fn from(c: CardCactus) -> Self {
+        let value = c.0;
+        
+        let rank = (value >> 8) & 0xF;
+        let suit = (value >> 12) & 0xF;
+        
+        Card((rank * 4 + suit) as u8)
+    }
+}
+impl From<Card> for CardCactus {
+    fn from(n: Card) -> Self {
+        const PRIMES: [u32; 13] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
+        let rank = n.rank() as u32;
+        let suit = n.suit() as u32;
+        let cactus_suit = 1u32 << (3 - suit);
+        CardCactus((1u32 << rank) << 16 | cactus_suit << 12 | rank << 8 | PRIMES[rank as usize])
+    }
+}
+
 impl std::fmt::Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}{}", self.rank(), self.suit())
@@ -111,5 +135,13 @@ mod tests {
     fn bijective_u32() {
         let card = Card::draw();
         assert!(card == Card::from(u32::from(card)));
+    }
+
+    #[test]
+    fn test_card_to_cardcactus_to_card() {
+        assert_eq!(CardCactus::from(Card::from("Ah")).0, 0x10002c29);
+        assert_eq!(CardCactus::from(Card::from("Ks")).0, 0x08001b25);
+        assert_eq!(CardCactus::from(Card::from("2h")).0, 0x00012002);
+        assert_eq!(Card::from("Ah"), Card::from(CardCactus::from(Card::from("Ah"))));
     }
 }

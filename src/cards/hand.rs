@@ -1,4 +1,4 @@
-use super::card::Card;
+use super::card::{Card, CardCactus};
 use super::rank::Rank;
 use super::suit::Suit;
 
@@ -83,6 +83,19 @@ impl From<u64> for Hand {
 impl From<Hand> for u64 {
     fn from(h: Hand) -> Self {
         h.0
+    }
+}
+
+
+impl From<Hand> for [CardCactus; 7] {
+    fn from(h: Hand) -> Self {
+        let a = h.into_iter().take(7).map(CardCactus::from);
+        let mut cards = [CardCactus::default(); 7];
+        for (i, c) in a.enumerate() {
+            cards[i] = c;
+        }
+        cards
+
     }
 }
 
