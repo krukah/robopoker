@@ -99,6 +99,7 @@ impl Layer {
                 }
             }
         }
+        metric.insert(Pair::default(), 0.); // matrix diagonal is zero
         Metric(metric)
     }
     /// using the current layer's `Abstractor`,
