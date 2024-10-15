@@ -60,8 +60,6 @@ impl Metric {
         total
     }
 
-    /// let's try to use this Integration and se if it works
-
     /// Beware the asymmetry:
     /// EMD(X,Y) != EMD(Y,X)
     /// Centroid should be the "hole" (sink) in the EMD calculation

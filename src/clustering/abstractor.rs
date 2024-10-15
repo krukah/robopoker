@@ -1,4 +1,6 @@
-use crate::cards::observation::Observation as Isomorphism;
+use crate::cards::isomorphism::Isomorphism;
+use crate::cards::observation::Observation;
+// use crate::cards::observation::Observation as Equivalence;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
@@ -6,7 +8,7 @@ use crate::clustering::progress::Progress;
 use std::collections::BTreeMap;
 
 /// this is the output of the clustering module
-/// it is a massive table of `Isomorphism` -> `Abstraction`.
+/// it is a massive table of `Equivalence` -> `Abstraction`.
 /// effectively, this is a compressed representation of the
 /// full game tree, learned by kmeans
 /// rooted in showdown equity at the River.
@@ -24,14 +26,16 @@ impl Abstractor {
     }
 
     /// at a given `Street`,
-    /// 1. decompose the `Isomorphism` into all of its next-street `Isomorphism`s,
+    /// 1. decompose the `Equivalence` into all of its next-street `Equivalence`s,
     /// 2. map each of them into an `Abstraction`,
     /// 3. collect the results into a `Histogram`.
     pub fn projection(&self, inner: &Isomorphism) -> Histogram {
+        let inner = Observation::from(*inner); // isomorphism translation
         match inner.street() {
             Street::Turn => inner.clone().into(),
             _ => inner
-                .children() //? iso
+                .children()
+                .map(|outer| Isomorphism::from(outer)) // isomorphism translation
                 .map(|ref outer| self.abstraction(outer))
                 .collect::<Vec<Abstraction>>()
                 .into(),
@@ -68,9 +72,10 @@ impl Abstractor {
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
         file.write_u32::<BigEndian>(0).expect("extension");
-        for (observation, abstraction) in self.0.iter() {
-            let obs = i64::from(*observation);
-            let abs = i64::from(*abstraction);
+        for (obs, abs) in self.0.iter() {
+            let ref obs = Observation::from(*obs); // isomorphism translation
+            let obs = i64::from(*obs);
+            let abs = i64::from(*abs);
             file.write_u16::<BigEndian>(2).expect("field count");
             file.write_u32::<BigEndian>(8).expect("8-bytes field");
             file.write_i64::<BigEndian>(obs).expect("observation");
@@ -111,7 +116,7 @@ impl Abstractor {
             let obs = reader.read_i64::<BigEndian>().expect("read observation");
             reader.read_u32::<BigEndian>().expect("abstraction length");
             let abs = reader.read_i64::<BigEndian>().expect("read abstraction");
-            let observation = Isomorphism::from(obs);
+            let observation = Isomorphism::from(obs); // isomorphism translation translation
             let abstraction = Abstraction::from(abs);
             lookup.insert(observation, abstraction);
         }

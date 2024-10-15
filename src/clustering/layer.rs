@@ -1,7 +1,8 @@
 use super::abstractor::Abstractor;
 use super::datasets::AbstractionSpace;
 use super::datasets::ObservationSpace;
-use crate::cards::observation::Observation as Isomorphism;
+use crate::cards::isomorphism::Isomorphism;
+use crate::cards::observation::Observation;
 use crate::cards::observations::ObservationIterator;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
@@ -69,8 +70,8 @@ impl Layer {
             lookup: Abstractor::default(),       // assigned during clustering
             kmeans: AbstractionSpace::default(), // assigned during clustering
             street: self.inner_street(),         // uniquely determined by outer layer
-            points: self.inner_points(),         // uniquely determined by outer layer
             metric: self.inner_metric(),         // uniquely determined by outer layer
+            points: self.inner_points(),         // uniquely determined by outer layer
         };
         layer.initial();
         layer.cluster();
@@ -103,6 +104,7 @@ impl Layer {
                 }
             }
         }
+        metric.insert(Pair::default(), 0.); // matrix diagonal is zero
         Metric(metric)
     }
 
@@ -114,9 +116,12 @@ impl Layer {
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
         log::info!("computing projections {}", self.street);
-        let exhausted_size = ObservationIterator::from(self.street.prev()).combinations();
+        let isomorphisms = Observation::exhaust(self.street.prev())
+            .filter(|o| Isomorphism::is_canonical(o))
+            .map(|o| Isomorphism::from(o)) // isomorphism translation
+            .collect::<Vec<Isomorphism>>();
 
-        let pb = ProgressBar::new(exhausted_size as u64);
+        let pb = ProgressBar::new(isomorphisms.len() as u64);
         pb.set_style(
             ProgressStyle::with_template(
                 "[{elapsed_precise}] {spinner:.green} {wide_bar} ETA {eta_precise}",
@@ -126,8 +131,7 @@ impl Layer {
         pb.enable_steady_tick(Duration::from_millis(100));
 
         ObservationSpace(
-            Isomorphism::exhaust(self.street.prev()) //? iso
-                .collect::<Vec<Isomorphism>>()
+            isomorphisms
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
                 .inspect(|_| pb.inc(1))
@@ -238,8 +242,8 @@ impl Layer {
     /// hyperparameter: how many centroids to learn
     fn k(&self) -> usize {
         match self.street {
-            Street::Turn => 20,
-            Street::Flop => 20,
+            Street::Turn => 128,
+            Street::Flop => 128,
             _ => unreachable!("how did you get here"),
         }
     }

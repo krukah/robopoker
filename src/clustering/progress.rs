@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{cmp::max, time::Instant};
 
 /// A struct to track and display progress of a long-running operation.
 pub struct Progress {
@@ -10,7 +10,7 @@ pub struct Progress {
 }
 impl Progress {
     pub fn new(total: usize, n: usize) -> Self {
-        let check = total / n;
+        let check = max(1, total / n);
         let now = Instant::now();
         Self {
             total,
