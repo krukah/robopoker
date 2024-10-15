@@ -57,7 +57,7 @@ fn exhausting_flop_isomorphisms(c: &mut criterion::Criterion) {
 fn sampling_turn_isomorphism(c: &mut criterion::Criterion) {
     c.bench_function("compute Isomorphism from a Turn Observation", |b| {
         let observation = Observation::from(Street::Turn);
-        b.iter(|| Equivalence::from(&observation))
+        b.iter(|| Equivalence::from(observation))
     });
 }
 
