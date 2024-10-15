@@ -53,7 +53,7 @@ impl Permutation {
     /// 2. who has fewer cards on public?
     /// 3. who has weaker pocket cards?
     /// 4. who has weaker public cards?
-    /// 5. who has stronger pocket cards?
+    /// 5. who has stronger pocket cards? redundant, tbh. due to 3.
     /// 6. who has stronger public cards?
     /// 7. tie delegates to Suit order
     fn order(hearts: &(Suit, Hand, Hand), spades: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
