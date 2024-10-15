@@ -1,4 +1,5 @@
 use super::card::Card;
+use super::rank::Rank;
 use super::suit::Suit;
 
 /// Hand represents an unordered set of Cards. only in the limit, it is more memory efficient than Vec<Card>, ... but also, an advantage even for small N is that we avoid heap allocation. nice to use a single word for the full Hand independent of size stored as a u64, but only needs LSB bitstring of 52 bits. Each bit represents a unique card in the (unordered) set.
@@ -31,19 +32,16 @@ impl Hand {
         let ranks = u64::from(*self) & u64::from(*suit);
         Self::from(ranks)
     }
-
-    pub fn take_min(&self) -> Option<Card> {
-        if self.size() == 0 {
-            None
-        } else {
-            Some(Card::from(self.0.trailing_zeros() as u8))
+    pub fn min_rank(&self) -> Option<Rank> {
+        match self.size() {
+            0 => None,
+            _ => Some(Rank::from(self.0.trailing_zeros() as u8 / 4)),
         }
     }
-    pub fn take_max(&self) -> Option<Card> {
-        if self.size() == 0 {
-            None
-        } else {
-            Some(Card::from(64 - 1 - self.0.leading_zeros() as u8))
+    pub fn max_rank(&self) -> Option<Rank> {
+        match self.size() {
+            0 => None,
+            _ => Some(Rank::from((64 - 1 - self.0.leading_zeros()) as u8 / 4)),
         }
     }
     pub fn remove(&mut self, card: Card) {
@@ -141,6 +139,13 @@ impl From<Hand> for u16 {
         y |= (x >> 33) & 0x0800;
         y |= (x >> 36) & 0x1000;
         y as u16
+    }
+}
+
+/// one-way conversion from Card
+impl From<Card> for Hand {
+    fn from(card: Card) -> Self {
+        Self(1 << u8::from(card))
     }
 }
 

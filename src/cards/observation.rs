@@ -2,6 +2,7 @@ use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
+use super::observations::ObservationIterator;
 use super::street::Street;
 use super::strength::Strength;
 use std::cmp::Ordering;
@@ -21,24 +22,15 @@ pub struct Observation {
 
 impl Observation {
     /// Generate all possible observations for a given street
-    pub fn exhaust(street: Street) -> Vec<Self> {
-        let n = Self::observable(street);
-        let space = Self::enumerable(street);
-        let mut observations = Vec::with_capacity(space);
-        for pocket in HandIterator::from((2, Hand::empty())) {
-            for public in HandIterator::from((n, pocket)) {
-                observations.push(Self::from((pocket, public)));
-            }
-        }
-        observations
+    pub fn exhaust<'a>(street: Street) -> impl Iterator<Item = Self> + 'a {
+        ObservationIterator::from(street)
     }
-
     /// Generates all possible successors of the current observation.
     /// LOOP over (2 + street)-handed OBSERVATIONS
     /// EXPAND the current observation's BOARD CARDS
     /// PRESERVE the current observation's HOLE CARDS
-    pub fn outnodes(&self) -> impl Iterator<Item = Self> + '_ {
-        let n = self.revealable();
+    pub fn children<'a>(&'a self) -> impl Iterator<Item = Self> + 'a {
+        let n = self.street().n_revealed();
         let removed = Hand::from(*self);
         HandIterator::from((n, removed))
             .map(|reveal| Hand::add(self.public, reveal))
@@ -54,7 +46,7 @@ impl Observation {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
         let hero = Strength::from(hand);
-        let opponents = HandIterator::from((2usize, hand));
+        let opponents = HandIterator::from((2, hand));
         let n = opponents.combinations();
         opponents
             .map(|opponent| Hand::add(self.public, opponent))
@@ -68,7 +60,6 @@ impl Observation {
             / n as f32
             / 2 as f32
     }
-
     pub fn street(&self) -> Street {
         match self.public.size() {
             0 => Street::Pref,
@@ -84,30 +75,6 @@ impl Observation {
     pub fn public(&self) -> &Hand {
         &self.public
     }
-
-    pub fn observable(street: Street) -> usize {
-        match street {
-            Street::Flop => 3,
-            Street::Turn => 4,
-            Street::Rive => 5,
-            _ => unreachable!("no other transitions"),
-        }
-    }
-    pub fn enumerable(street: Street) -> usize {
-        let n = Self::observable(street);
-        let inner = HandIterator::from((n, Hand::from(0b11))).combinations();
-        let outer = HandIterator::from((2, Hand::empty())).combinations();
-        let space = outer * inner;
-        space
-    }
-    pub fn revealable(&self) -> usize {
-        match self.street() {
-            Street::Pref => 3,
-            Street::Flop => 1,
-            Street::Turn => 1,
-            _ => unreachable!("no children for river"),
-        }
-    }
 }
 
 /// i64 isomorphism
@@ -117,8 +84,8 @@ impl Observation {
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
         std::iter::empty::<Card>()
-            .chain(observation.public)
-            .chain(observation.pocket)
+            .chain(observation.public.into_iter())
+            .chain(observation.pocket.into_iter())
             .map(|card| 1 + u8::from(card) as u64) // distinguish 0x00 and 2c
             .fold(0u64, |acc, card| acc << 8 | card) as i64 // next card
     }
@@ -132,7 +99,7 @@ impl From<i64> for Observation {
         while bits > 0 {
             let card = bits as u8 - 1; // distinguish 0x00 and 2c
             let card = Card::from(card);
-            let hand = Hand::from(u64::from(card));
+            let hand = Hand::from(card);
             if i < 2 {
                 pocket = Hand::add(pocket, hand);
             } else {

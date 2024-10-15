@@ -1,8 +1,7 @@
-use super::hand::Hand;
-use super::hands::HandIterator;
+use crate::play::game::Game;
+
 use super::observation::Observation;
 use super::permutation::Permutation;
-use super::street::Street;
 
 /// because of the equivalence of Suit,
 /// many Observations are strategically equivalent !
@@ -10,40 +9,51 @@ use super::street::Street;
 /// Abstractions by de-symmetrizing over the
 /// 4! = 24 Suit Permutation group elements. in other words,
 /// canonicalization.
+///
+/// we do something a bit different from ~the literature~ here.
+/// truly lossless isomorphism would distinguish between
+/// pocket: Hand(Ac As) , board: Hand( Flop(2c 3c 4c) , Turn(5c) )
+/// i.e. strategically consider _which cards came on which streets_.
+/// but it's memory/compute/efficient to lump all the board cards together,
+/// in a kind of lossy imprefect recall kinda way. so we only care
+/// about CardsInYourHand vs CardsOnTheBoard without considering street order.
+///
+/// but we're able to save quite a bit of space along the way.
+/// see [`crate::cards::street::Street::n_isomorphisms`] for a sense of how much.
+/// but it's approx 4 (* 5) times smaller, as youd expect for without-replacement
+/// sampling on the last two Streets.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Isomorphism(Observation);
 
 impl From<Observation> for Isomorphism {
-    fn from(observation: Observation) -> Self {
-        let permutation = Permutation::from(observation);
-        let transformed = permutation.transform(observation);
+    fn from(ref observation: Observation) -> Self {
+        let isomorphism = Permutation::from(observation);
+        let transformed = isomorphism.permute(observation);
         Self(transformed)
+    }
+}
+
+impl From<Isomorphism> for Observation {
+    fn from(equivalence: Isomorphism) -> Self {
+        equivalence.0
+    }
+}
+
+impl From<i64> for Isomorphism {
+    fn from(i: i64) -> Self {
+        Self(Observation::from(i))
+    }
+}
+
+impl From<&Game> for Isomorphism {
+    fn from(game: &Game) -> Self {
+        Self(Observation::from(game))
     }
 }
 
 impl Isomorphism {
     pub fn is_canonical(observation: &Observation) -> bool {
-        Permutation::from(*observation) == Permutation::identity()
-    }
-    pub fn exhaust(street: Street) -> Vec<Self> {
-        let n = Observation::observable(street);
-        let mut equivalences = Vec::new();
-        for pocket in HandIterator::from((2, Hand::empty())) {
-            for public in HandIterator::from((n, pocket)) {
-                let observation = Observation::from((pocket, public));
-                if Self::is_canonical(&observation) {
-                    let isomorphism = Self(observation);
-                    equivalences.push(isomorphism);
-                }
-            }
-        }
-        equivalences
-    }
-    pub fn outnodes(&self) -> impl Iterator<Item = Self> + '_ {
-        self.0
-            .outnodes()
-            .filter(|o| Self::is_canonical(o))
-            .map(|o| Self(o))
+        Permutation::from(observation) == Permutation::identity()
     }
 }
 
@@ -58,21 +68,45 @@ mod tests {
     use super::*;
     use crate::cards::hand::Hand;
     use crate::cards::permutation::Permutation;
+    use crate::cards::street::Street;
 
     #[test]
-    fn exhaustive_permutations() {
+    fn false_positives() {
         let observation = Observation::from(Street::Rive);
         let isomorphism = Isomorphism::from(observation);
-        Permutation::exhaust()
+        assert!(Permutation::exhaust()
             .iter()
-            .map(|p| p.transform(observation))
+            .map(|p| p.permute(&observation))
             .map(|o| Isomorphism::from(o))
-            .inspect(|&i| assert!(isomorphism == i))
-            .count();
+            .all(|i| i == isomorphism));
     }
 
     #[test]
-    fn symmetric_pocket_pair() {
+    fn false_negatives() {
+        let observation = Observation::from(Street::Rive);
+        let isomorphism = Isomorphism::from(observation);
+        let transformed = Observation::from(isomorphism);
+        assert!(Permutation::exhaust()
+            .iter()
+            .map(|p| p.permute(&transformed))
+            .any(|o| o == observation));
+    }
+
+    #[test]
+    fn super_symmetry() {
+        let a = Isomorphism::from(Observation::from((
+            Hand::from("2s Ks"),
+            Hand::from("2d 5h 8c Tc Th"),
+        )));
+        let b = Isomorphism::from(Observation::from((
+            Hand::from("2s Ks"),
+            Hand::from("2h 5c 8d Tc Td"),
+        )));
+        assert!(a == b);
+    }
+
+    #[test]
+    fn pocket_rank_symmetry() {
         let a = Isomorphism::from(Observation::from((
             Hand::from("Ac Ad"),
             Hand::from("Jc Ts 5s"),
@@ -85,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn symmetric_public_pair() {
+    fn public_rank_symmetry() {
         let a = Isomorphism::from(Observation::from((
             Hand::from("Td As"),
             Hand::from("Ts Ks Kh"),
