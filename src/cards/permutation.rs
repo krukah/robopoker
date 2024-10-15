@@ -19,11 +19,11 @@ impl From<&Observation> for Permutation {
         let mut permutation = Suit::all();
         let mut colex = Suit::all().map(|suit| Self::colex(&observation, &suit));
         colex.sort_by(Self::order);
-        for (i, (suit, _, _)) in colex.into_iter().enumerate() {
-            let index = suit as usize;
-            let value = Suit::from(i as u8);
-            permutation[index] = value;
-        }
+        colex
+            .into_iter()
+            .enumerate()
+            .map(|(i, (suit, _, _))| (suit as usize, Suit::from(i as u8)))
+            .for_each(|(index, value)| permutation[index] = value);
         Self(permutation)
     }
 }
