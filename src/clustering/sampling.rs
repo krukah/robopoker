@@ -1,9 +1,9 @@
 use super::abstraction::Abstraction;
 use super::abstractor::Abstractor;
-use crate::cards::observation::Observation as Isomorphism;
+use crate::cards::isomorphism::Isomorphism;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
-use crate::mccfr::data::Data;
+use crate::mccfr::data::Vertex;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
@@ -15,7 +15,7 @@ use rand::distributions::WeightedIndex;
 use rand::Rng;
 
 /// given a Node, we can sample a distribution of children according to the Profile.
-/// we can also map an Isomorphism to its nearest neighbor abstraction.
+/// we can also map an Equivalence to its nearest neighbor abstraction.
 /// Sampler determines how we sample the Tree in Full Tree Search.
 /// but combined with Profile, we can implement Monte Carlo Tree Search too.
 pub struct Sampler(Abstractor);
@@ -35,7 +35,7 @@ impl Sampler {
     /// compared to chance sampling, internal sampling, or full tree sampling.
     ///
     /// i think this could also be modified into a recursive CFR calcuation
-    pub fn sample(&self, node: &Node, profile: &Profile) -> Vec<(Data, Edge)> {
+    pub fn sample(&self, node: &Node, profile: &Profile) -> Vec<(Vertex, Edge)> {
         let mut children = self.children(node);
         // terminal nodes have no children and we sample all possible actions for the traverser
         if node.player() == profile.walker() || children.is_empty() {
@@ -68,7 +68,7 @@ impl Sampler {
 
     /// produce the children of a Node.
     /// we may need some Trainer-level references to produce children
-    fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+    fn children(&self, node: &Node) -> Vec<(Vertex, Edge)> {
         let ref game = node.datum().game();
         let ref past = node.history().into_iter().collect::<Vec<&Edge>>();
         game.children()
@@ -79,16 +79,16 @@ impl Sampler {
     }
     /// extend a path with an Edge
     /// wrap the (Game, Bucket) in a Data
-    fn explore(&self, game: Game, edge: Edge, history: &Vec<&Edge>) -> (Data, Edge) {
+    fn explore(&self, game: Game, edge: Edge, history: &Vec<&Edge>) -> (Vertex, Edge) {
         let mut history = history.clone();
         history.push(&edge);
         (self.data(game, history), edge)
     }
     /// generate a Bucket from Game
     /// wrap the (Game, Bucket) in a Data
-    fn data(&self, game: Game, path: Vec<&Edge>) -> Data {
+    fn data(&self, game: Game, path: Vec<&Edge>) -> Vertex {
         let bucket = self.bucket(&game, &path);
-        Data::from((game, bucket))
+        Vertex::from((game, bucket))
     }
     /// inddd
     fn bucket(&self, game: &Game, path: &Vec<&Edge>) -> Bucket {
@@ -100,8 +100,8 @@ impl Sampler {
     /// abstraction methods
     ///
     pub fn card_abstraction(&self, game: &Game) -> Abstraction {
-        let ref observation = Isomorphism::from(game);
-        self.0.abstraction(observation)
+        let ref equivalence = Isomorphism::from(game); // isomorphism translation
+        self.0.abstraction(equivalence)
     }
     pub fn path_abstraction(&self, _: &Vec<&Edge>) -> Path {
         todo!("pseudoharmonic action mapping for path abstraction")

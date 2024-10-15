@@ -15,23 +15,27 @@ pub struct HandIterator {
 }
 
 impl HandIterator {
+    /// returns the size of the iterator
+    /// by some cheap combinatorial calculations
     pub fn combinations(&self) -> usize {
         let n = 52 - Hand::from(self.mask).size(); // count_ones()
         let k = Hand::from(self.next).size(); // count_ones()
         (0..k).fold(1, |x, i| x * (n - i) / (i + 1))
     }
-
+    /// an empty Hand cannot be advanced
+    /// also a Hand that overlaps into the Hand::mask() cannot be advanced
     fn exhausted(&self) -> bool {
         if self.next == 0 {
             true
         } else {
+            (64 - 52) > self.next.leading_zeros()
             // // ALTERNATE IMPL: mask at return, iterate as-is
             // (64 - 52) > self.next.leading_zeros() - self.mask.count_ones()
             // // CURRENT IMPL: mask at iteration, return as-is
-            (64 - 52) > self.next.leading_zeros()
         }
     }
-
+    /// little bit of bit twiddling to get the next permutation
+    /// https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation
     fn permute(&self) -> u64 {
         let  x = /* 000_100                       */ self.next;
         let  a = /* 000_111 <- 000_100 || 000_110 */ x | (x - 1);
@@ -45,7 +49,8 @@ impl HandIterator {
         h
     }
 
-    fn current(&self) -> Hand {
+    fn look(&self) -> Hand {
+        Hand::from(self.next)
         // // ALTERNATE IMPL: mask at return, iterate as-is
         // let mut returned_bits = 0;
         // let mut shifting_bits = self.next;
@@ -60,19 +65,18 @@ impl HandIterator {
         // }
         // Hand::from(returned_bits | shifting_bits)
         // // CURRENT IMPL: mask at iteration, return as-is
-        Hand::from(self.next)
     }
 
     fn advance(&mut self) {
-        // // ALTERNATE IMPL: mask at return, iterate as-is
-        // self.next = self.permute();
-        // // CURRENT IMPL: mask at iteration, return as-is
         loop {
             self.next = self.permute();
             if self.next & self.mask == 0 {
                 break;
             }
         }
+        // // ALTERNATE IMPL: mask at return, iterate as-is
+        // self.next = self.permute();
+        // // CURRENT IMPL: mask at iteration, return as-is
     }
 }
 
@@ -82,9 +86,9 @@ impl Iterator for HandIterator {
         if self.exhausted() {
             None
         } else {
-            let hand = self.current();
+            let last = self.look();
             self.advance();
-            Some(hand)
+            Some(last)
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -100,7 +104,7 @@ impl From<(usize, Hand)> for HandIterator {
             next: (1 << n) - 1,
             mask: u64::from(mask),
         };
-        while this.next & this.mask > 0 {
+        while this.next & this.mask > 0 && !this.exhausted() {
             this.next = this.permute();
         }
         this
@@ -112,8 +116,43 @@ mod tests {
     use super::*;
 
     #[test]
-    fn five_choose_three() {
-        let mut iter = HandIterator::from((3, Hand::from(0)));
+    fn n_choose_0() {
+        let iter = HandIterator::from((0, Hand::empty()));
+        assert_eq!(iter.count(), 0);
+    }
+    #[test]
+    fn n_choose_1() {
+        let iter = HandIterator::from((1, Hand::empty()));
+        assert_eq!(iter.count(), 52);
+    }
+    #[test]
+    fn n_choose_2() {
+        let iter = HandIterator::from((2, Hand::empty()));
+        assert_eq!(iter.count(), 1326);
+    }
+
+    #[test]
+    fn n_choose_0_mask_4() {
+        let mask = Hand::from(0b1111);
+        let iter = HandIterator::from((0, mask));
+        assert_eq!(iter.count(), 0);
+    }
+    #[test]
+    fn n_choose_1_mask_4() {
+        let mask = Hand::from(0b1111);
+        let iter = HandIterator::from((1, mask));
+        assert_eq!(iter.count(), 48);
+    }
+    #[test]
+    fn n_choose_2_mask_4() {
+        let mask = Hand::from(0b1111);
+        let iter = HandIterator::from((2, mask));
+        assert_eq!(iter.count(), 1128);
+    }
+
+    #[test]
+    fn choose_3() {
+        let mut iter = HandIterator::from((3, Hand::empty()));
         assert!(iter.next() == Some(Hand::from(0b00111)));
         assert!(iter.next() == Some(Hand::from(0b01011)));
         assert!(iter.next() == Some(Hand::from(0b01101)));
@@ -127,8 +166,8 @@ mod tests {
     }
 
     #[test]
-    fn five_choose_three_with_mask() {
-        let mask = Hand::from(0b______________________11_0);
+    fn choose_3_from_5() {
+        let mask = Hand::from(0b_________________1111_00_1).complement();
         let mut iter = HandIterator::from((3, mask));
         assert!(iter.next() == Some(Hand::from(0b0011_00_1)));
         assert!(iter.next() == Some(Hand::from(0b0101_00_1)));
@@ -140,5 +179,6 @@ mod tests {
         assert!(iter.next() == Some(Hand::from(0b1100_00_1)));
         assert!(iter.next() == Some(Hand::from(0b1101_00_0)));
         assert!(iter.next() == Some(Hand::from(0b1110_00_0)));
+        assert!(iter.next() == None);
     }
 }

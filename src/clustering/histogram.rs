@@ -114,7 +114,7 @@ impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
         assert!(turn.street() == crate::cards::street::Street::Turn);
         Self::from(
-            turn.outnodes()
+            turn.children() //? iso
                 .map(|river| Abstraction::from(river.equity()))
                 .collect::<Vec<Abstraction>>(),
         )

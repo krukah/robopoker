@@ -4,18 +4,18 @@ use crate::mccfr::player::Player;
 use crate::play::continuation::Transition;
 use crate::play::game::Game;
 
-pub struct Data {
+pub struct Vertex {
     game: Game,
     bucket: Bucket,
 }
 
-impl From<(Game, Bucket)> for Data {
+impl From<(Game, Bucket)> for Vertex {
     fn from((game, bucket): (Game, Bucket)) -> Self {
         Self { game, bucket }
     }
 }
 
-impl Data {
+impl Vertex {
     pub fn game(&self) -> &Game {
         &self.game
     }
