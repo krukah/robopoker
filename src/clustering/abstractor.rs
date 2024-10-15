@@ -4,7 +4,7 @@ use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::progress::Progress;
+// use crate::clustering::progress::Progress;
 use std::collections::BTreeMap;
 
 /// this is the output of the clustering module
@@ -68,7 +68,7 @@ impl Abstractor {
         use std::fs::File;
         use std::io::Write;
         let ref mut file = File::create(format!("{}.abstraction.pgcopy", name)).expect("new file");
-        let ref mut progress = Progress::new(self.0.len(), 10);
+        // let ref mut progress = Progress::new(self.0.len(), 10);
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
         file.write_u32::<BigEndian>(0).expect("extension");
@@ -81,7 +81,7 @@ impl Abstractor {
             file.write_i64::<BigEndian>(obs).expect("observation");
             file.write_u32::<BigEndian>(8).expect("8-bytes field");
             file.write_i64::<BigEndian>(abs).expect("abstraction");
-            progress.tick();
+            // progress.tick();
         }
         file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
     }
