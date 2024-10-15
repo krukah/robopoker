@@ -1,8 +1,9 @@
 use crate::clustering::abstraction::Abstraction;
 
 /// A unique identifier for a pair of abstractions.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Debug)]
+#[derive(Default, Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Debug)]
 pub struct Pair(u64);
+
 impl From<(&Abstraction, &Abstraction)> for Pair {
     fn from((a, b): (&Abstraction, &Abstraction)) -> Self {
         Self(u64::from(*a) ^ u64::from(*b))
