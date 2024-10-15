@@ -648,7 +648,6 @@ dependencies = [
  "dialoguer",
  "env_logger",
  "indicatif",
- "itertools 0.13.0",
  "log",
  "num_cpus",
  "petgraph",
