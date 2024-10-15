@@ -7,6 +7,19 @@ use super::permutation::Permutation;
 /// Abstractions by de-symmetrizing over the
 /// 4! = 24 Suit Permutation group elements. in other words,
 /// canonicalization.
+///
+/// we do something a bit different from ~the literature~ here.
+/// truly lossless isomorphism would distinguish between
+/// pocket: Hand(Ac As) , board: Hand( Flop(2c 3c 4c) , Turn(5c) )
+/// i.e. strategically consider _which cards came on which streets_.
+/// but it's memory/compute/efficient to lump all the board cards together,
+/// in a kind of lossy imprefect recall kinda way. so we only care
+/// about CardsInYourHand vs CardsOnTheBoard without considering street order.
+///
+/// but we're able to save quite a bit of space along the way.
+/// see [`crate::cards::street::Street::n_isomorphisms`] for a sense of how much.
+/// but it's approx 4 (* 5) times smaller, as youd expect for without-replacement
+/// sampling on the last two Streets.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Equivalence(Observation);
 
