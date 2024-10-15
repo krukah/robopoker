@@ -3,21 +3,13 @@ on:
   push:
     branches: ["main"]
 jobs:
-  build:
+  BuildTestBenchmark:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - name: Test
-        run: cargo test
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+        run: cargo test --quiet --lib
       - name: Benchmark
         run: cargo bench --quiet --message-format short
