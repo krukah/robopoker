@@ -48,7 +48,7 @@ fn exhausting_flop_isomorphisms(c: &mut criterion::Criterion) {
     c.bench_function("exhaust all Flop Isomorphisms", |b| {
         b.iter(|| {
             ObservationIterator::from(Street::Flop)
-                .filter(|o| Equivalence::is_canonical(o))
+                .filter(|o| Isomorphism::is_canonical(o))
                 .count()
         })
     });
@@ -57,7 +57,7 @@ fn exhausting_flop_isomorphisms(c: &mut criterion::Criterion) {
 fn sampling_turn_isomorphism(c: &mut criterion::Criterion) {
     c.bench_function("compute Isomorphism from a Turn Observation", |b| {
         let observation = Observation::from(Street::Turn);
-        b.iter(|| Equivalence::from(observation))
+        b.iter(|| Isomorphism::from(observation))
     });
 }
 
@@ -79,7 +79,7 @@ fn sampling_turn_histogram_emd(c: &mut criterion::Criterion) {
 
 use robopoker::cards::evaluator::Evaluator;
 use robopoker::cards::hand::Hand;
-use robopoker::cards::isomorphism::Equivalence;
+use robopoker::cards::isomorphism::Isomorphism;
 use robopoker::cards::observation::Observation;
 use robopoker::cards::observations::ObservationIterator;
 use robopoker::cards::street::Street;

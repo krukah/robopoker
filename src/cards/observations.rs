@@ -19,6 +19,10 @@ impl From<Street> for ObservationIterator {
     fn from(street: Street) -> Self {
         // weird handling of Street::Pref edge. could be coupled with
         // weird handling of HandIterator to be more elegant.
+        // think i need Option<Hand> in HandIterator rather than store last.
+        // need to make it work with Street::Pref (Hand::empty())
+        // and it should compose well with a separate HandIterator, so
+        // ObsIterator can reap the benefit
         let pocket = Hand::from(0b11);
         let inner = HandIterator::from((street.n_observed(), pocket));
         let mut outer = HandIterator::from((2, Hand::empty()));

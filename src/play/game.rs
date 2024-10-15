@@ -170,8 +170,7 @@ impl Game {
     }
 
     fn deck(&self) -> Deck {
-        let board = Hand::from(self.board);
-        let mut removed = Hand::add(Hand::empty(), board);
+        let mut removed = Hand::from(self.board);
         for seat in self.seats.iter() {
             let hole = Hand::from(seat.cards());
             removed = Hand::add(removed, hole);
