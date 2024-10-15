@@ -2,6 +2,7 @@ use super::abstractor::Abstractor;
 use super::datasets::AbstractionSpace;
 use super::datasets::ObservationSpace;
 use crate::cards::observation::Observation as Isomorphism;
+use crate::cards::observations::ObservationIterator;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
@@ -16,6 +17,9 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
+use std::time::Duration;
+
+use indicatif::{ProgressBar, ProgressStyle};
 
 /// Hierarchical K Means Learner
 /// this is decomposed into the necessary data structures
@@ -65,8 +69,8 @@ impl Layer {
             lookup: Abstractor::default(),       // assigned during clustering
             kmeans: AbstractionSpace::default(), // assigned during clustering
             street: self.inner_street(),         // uniquely determined by outer layer
-            metric: self.inner_metric(),         // uniquely determined by outer layer
             points: self.inner_points(),         // uniquely determined by outer layer
+            metric: self.inner_metric(),         // uniquely determined by outer layer
         };
         layer.initial();
         layer.cluster();
@@ -101,6 +105,7 @@ impl Layer {
         }
         Metric(metric)
     }
+
     /// using the current layer's `Abstractor`,
     /// we generate the `LargeSpace` of `Observation` -> `Histogram`.
     /// 1. take all `Observation`s for `self.street.prev()`
@@ -109,11 +114,23 @@ impl Layer {
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
         log::info!("computing projections {}", self.street);
+        let exhausted_size = ObservationIterator::from(self.street.prev()).combinations();
+
+        let pb = ProgressBar::new(exhausted_size as u64);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "[{elapsed_precise}] {spinner:.green} {wide_bar} ETA {eta_precise}",
+            )
+            .unwrap(),
+        );
+        pb.enable_steady_tick(Duration::from_millis(100));
+
         ObservationSpace(
             Isomorphism::exhaust(self.street.prev()) //? iso
                 .collect::<Vec<Isomorphism>>()
                 .into_par_iter()
                 .map(|inner| (inner, self.lookup.projection(&inner)))
+                .inspect(|_| pb.inc(1))
                 .collect::<BTreeMap<Isomorphism, Histogram>>(),
         )
     }
@@ -221,15 +238,15 @@ impl Layer {
     /// hyperparameter: how many centroids to learn
     fn k(&self) -> usize {
         match self.street {
-            Street::Turn => 128,
-            Street::Flop => 128,
+            Street::Turn => 20,
+            Street::Flop => 20,
             _ => unreachable!("how did you get here"),
         }
     }
     /// hyperparameter: how many iterations to run kmeans
     fn t(&self) -> usize {
         match self.street {
-            _ => 100,
+            _ => 10,
         }
     }
     /// length of current kmeans centroids
