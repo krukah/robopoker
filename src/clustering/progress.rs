@@ -1,3 +1,4 @@
+#[deprecated]
 use std::time::Instant;
 
 /// A struct to track and display progress of a long-running operation.
@@ -10,7 +11,7 @@ pub struct Progress {
 }
 impl Progress {
     pub fn new(total: usize, n: usize) -> Self {
-        let check = total / n;
+        let check = (total / n).min(1);
         let now = Instant::now();
         Self {
             total,

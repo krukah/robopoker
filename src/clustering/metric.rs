@@ -1,6 +1,6 @@
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::progress::Progress;
+// use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 
@@ -121,7 +121,7 @@ impl Metric {
         use std::fs::File;
         use std::io::Write;
         let ref mut file = File::create(format!("{}.metric.pgcopy", path)).expect("new file");
-        let ref mut progress = Progress::new(self.0.len(), 10);
+        // let ref mut progress = Progress::new(self.0.len(), 10);
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
         file.write_u32::<BigEndian>(0).expect("extension");
@@ -131,7 +131,7 @@ impl Metric {
             file.write_i64::<BigEndian>(i64::from(*pair)).expect("pair");
             file.write_u32::<BigEndian>(4).expect("4-bytes field");
             file.write_f32::<BigEndian>(*distance).expect("distance");
-            progress.tick();
+            // progress.tick();
         }
         file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
     }
