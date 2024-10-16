@@ -23,7 +23,12 @@ impl From<Street> for ObservationIterator {
         // need to make it work with Street::Pref (Hand::empty())
         // and it should compose well with a separate HandIterator, so
         // ObsIterator can reap the benefit
+
+        // start with first card
+        #[cfg(not(feature = "shortdeck"))]
         let pocket = Hand::from(0b11);
+        #[cfg(feature = "shortdeck")]
+        let pocket = Hand::from(0b11_0000_0000_0000_0000);
         let inner = HandIterator::from((street.n_observed(), pocket));
         let mut outer = HandIterator::from((2, Hand::empty()));
         match street {
