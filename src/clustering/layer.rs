@@ -25,13 +25,13 @@ use std::collections::BTreeMap;
 /// - CPU: O(N)   for kmeans clustering
 /// - RAM: O(N^2) for learned metric
 /// - RAM: O(N)   for learned centroids
-const N_KMEANS_CENTROIDS: usize = 64;
+const N_KMEANS_CENTROIDS: usize = 8;
 
 /// number of kmeans iterations.
 /// this controls the precision of the abstraction space.
 ///
 /// - CPU: O(N) for kmeans clustering
-const N_KMEANS_ITERATION: usize = 10;
+const N_KMEANS_ITERATION: usize = 8;
 
 /// Hierarchical K Means Learner.
 /// this is decomposed into the necessary data structures
@@ -87,14 +87,18 @@ impl Layer {
     /// - `points`: not used for inward projection. only used for clustering. and no clustering on River.
     fn outer() -> Self {
         Self {
+            street: Street::Rive,
+            metric: Metric::default(),
             lookup: Abstractor::default(),
             kmeans: AbstractionSpace::default(),
             points: ObservationSpace::default(),
-            metric: Metric::default(),
-            street: Street::Rive,
         }
     }
     /// hierarchically, recursively generate the inner layer
+    /// 0. initialize empty lookup table and kmeans centroids
+    /// 1. generate Street, Metric, and Points as a pure function of the outer Layer
+    /// 2. initialize kmeans centroids with weighted random Observation sampling (kmeans++ for faster convergence)
+    /// 3. cluster kmeans centroids
     fn inner(&self) -> Self {
         let mut layer = Self {
             lookup: Abstractor::default(),       // assigned during clustering
@@ -134,8 +138,8 @@ impl Layer {
             for b in self.kmeans.0.keys() {
                 if a > b {
                     let index = Pair::from((a, b));
-                    let x = self.kmeans.0.get(a).expect("pre-computed").reveal();
-                    let y = self.kmeans.0.get(b).expect("pre-computed").reveal();
+                    let x = self.kmeans.0.get(a).expect("pre-computed").histogram();
+                    let y = self.kmeans.0.get(b).expect("pre-computed").histogram();
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.0;
                     metric.insert(index, distance);
@@ -167,6 +171,7 @@ impl Layer {
             .inspect(|_| progress.inc(1))
             .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
+        log::info!("completed point projections {}", projection.len());
         ObservationSpace(projection)
     }
 
@@ -177,41 +182,53 @@ impl Layer {
     fn initial_kmeans(&mut self) {
         log::info!("initializing kmeans {}", self.street);
         let progress = Self::progress(N_KMEANS_CENTROIDS - 1);
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
-        let histogram = self.sample_uniform(rng);
-        self.kmeans.expand(histogram);
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xBAD);
+        let sample = self.sample_uniform(rng);
+        self.kmeans.expand(sample);
         while self.kmeans.0.len() < N_KMEANS_CENTROIDS {
-            let histogram = self.sample_outlier(rng);
-            self.kmeans.expand(histogram);
+            let sample = self.sample_outlier(rng);
+            self.kmeans.expand(sample);
             progress.inc(1);
         }
         progress.finish();
+        log::info!("completed kmeans initialization {}", self.kmeans.0.len());
     }
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
     fn cluster_kmeans(&mut self) {
         log::info!("clustering kmeans {}", self.street);
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xADD);
         let progress = Self::progress(N_KMEANS_ITERATION * self.points.0.len());
         for _ in 0..N_KMEANS_ITERATION {
-            let abstractions = self
+            // calculate nearest neighbor Abstractions for each Observation
+            // each nearest neighbor calculation is O(k^2)
+            // there are k of them for each N observations
+            let neighbors = self
                 .points
                 .0
                 .par_iter()
                 .map(|(_, h)| self.nearest_neighbor(h))
                 .inspect(|_| progress.inc(1))
                 .collect::<Vec<Abstraction>>();
-            for ((observation, histogram), abstraction) in
-                self.points.0.iter_mut().zip(abstractions.iter())
-            {
-                self.lookup.assign(abstraction, observation);
-                self.kmeans.absorb(abstraction, histogram);
+            // clear centroids before absorbtion
+            // assign new neighbor Abstractions to each Observation
+            // absorb Histograms into each Centroid
+            self.kmeans.clear();
+            for ((o, h), a) in std::iter::zip(self.points.0.iter_mut(), neighbors.iter()) {
+                self.lookup.assign(a, o);
+                self.kmeans.absorb(a, h);
             }
-            for (_, centroid) in self.kmeans.0.iter_mut() {
-                centroid.reset();
+            // centroid drift may make it such that some centroids are empty
+            // reinitialize empty centroids with random Observations if necessary
+            for ref a in self.kmeans.orphans() {
+                log::info!("reassinging drifting empty centroid {}", a);
+                let ref sample = self.sample_uniform(rng);
+                self.kmeans.absorb(a, sample);
             }
         }
         progress.finish();
+        log::info!("completed kmeans clustering {}", self.kmeans.0.len());
     }
 
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
@@ -249,7 +266,7 @@ impl Layer {
         self.kmeans
             .0
             .par_iter()
-            .map(|(_, centroid)| centroid.reveal())
+            .map(|(_, centroid)| centroid.histogram())
             .map(|centroid| self.metric.emd(histogram, centroid))
             .map(|min| min * min)
             .min_by(|dx, dy| dx.partial_cmp(dy).unwrap())
@@ -260,7 +277,7 @@ impl Layer {
         self.kmeans
             .0
             .par_iter()
-            .map(|(abs, centroid)| (abs, centroid.reveal()))
+            .map(|(abs, centroid)| (abs, centroid.histogram()))
             .map(|(abs, centroid)| (abs, self.metric.emd(histogram, centroid)))
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
@@ -277,7 +294,7 @@ impl Layer {
 
     fn progress(n: usize) -> indicatif::ProgressBar {
         let tick = std::time::Duration::from_secs(1);
-        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
+        let style = "[{elapsed}] {spinner} {wide_bar} ETA {eta}";
         let style = indicatif::ProgressStyle::with_template(style).unwrap();
         let progress = indicatif::ProgressBar::new(n as u64);
         progress.set_style(style);

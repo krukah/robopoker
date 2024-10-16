@@ -27,6 +27,7 @@ impl Metric {
         match target.peek() {
             Abstraction::Equity(_) => Self::difference(source, target),
             Abstraction::Random(_) => self.wasserstein(source, target),
+            Abstraction::Pocket(_) => unreachable!("no preflop emd"),
         }
     }
 

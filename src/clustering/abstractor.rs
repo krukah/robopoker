@@ -32,13 +32,13 @@ impl Abstractor {
     pub fn projection(&self, inner: &Isomorphism) -> Histogram {
         let inner = Observation::from(*inner); // isomorphism translation
         match inner.street() {
-            Street::Turn => inner.clone().into(),
+            Street::Turn => inner.clone().into(), // Histogram::from<Observation>
             _ => inner
                 .children()
                 .map(|outer| Isomorphism::from(outer)) // isomorphism translation
-                .map(|ref outer| self.abstraction(outer))
+                .map(|outer| self.abstraction(&outer))
                 .collect::<Vec<Abstraction>>()
-                .into(),
+                .into(), // Histogram::from<Vec<Abstraction>>
         }
     }
     /// lookup the pre-computed abstraction for the outer observation
