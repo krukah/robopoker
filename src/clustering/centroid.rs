@@ -9,7 +9,7 @@ pub struct Centroid {
 }
 
 impl Centroid {
-    pub fn rotate(&mut self) {
+    pub fn reset(&mut self) {
         self.last.destroy();
         std::mem::swap(&mut self.last, &mut self.next);
     }
