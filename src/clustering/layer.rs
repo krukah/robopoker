@@ -169,7 +169,7 @@ impl Layer {
             .collect::<Vec<Isomorphism>>();
 
         let progress = Self::progress(isomorphisms.len());
-        let projection =  isomorphisms// isomorphism translation
+        let projection =  isomorphisms
             .into_par_iter()
             .map(|inner| (inner, self.lookup.projection(&inner)))
             .inspect(|_| progress.inc(1))
