@@ -1,6 +1,5 @@
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-// use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 
@@ -24,7 +23,7 @@ impl Metric {
     /// we only have the luxury of this efficient O(N) calculation on Street::Turn,
     /// where the support is over the Abstraction::Equity(i8) variant.
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
-        match target.peek() {
+        match source.peek() {
             Abstraction::Equity(_) => Self::difference(source, target),
             Abstraction::Random(_) => self.wasserstein(source, target),
             Abstraction::Pocket(_) => unreachable!("no preflop emd"),
