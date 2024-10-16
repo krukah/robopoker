@@ -1,6 +1,5 @@
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-// use crate::clustering::progress::Progress;
 use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 

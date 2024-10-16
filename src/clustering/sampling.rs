@@ -3,11 +3,11 @@ use super::abstractor::Abstractor;
 use crate::cards::isomorphism::Isomorphism;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::bucket::Path;
-use crate::mccfr::data::Vertex;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
 use crate::mccfr::profile::Profile;
+use crate::mccfr::spot::Spot;
 use crate::play::game::Game;
 use crate::Probability;
 use rand::distributions::Distribution;
@@ -35,7 +35,7 @@ impl Sampler {
     /// compared to chance sampling, internal sampling, or full tree sampling.
     ///
     /// i think this could also be modified into a recursive CFR calcuation
-    pub fn sample(&self, node: &Node, profile: &Profile) -> Vec<(Vertex, Edge)> {
+    pub fn sample(&self, node: &Node, profile: &Profile) -> Vec<(Spot, Edge)> {
         let mut children = self.children(node);
         // terminal nodes have no children and we sample all possible actions for the traverser
         if node.player() == profile.walker() || children.is_empty() {
@@ -68,7 +68,7 @@ impl Sampler {
 
     /// produce the children of a Node.
     /// we may need some Trainer-level references to produce children
-    fn children(&self, node: &Node) -> Vec<(Vertex, Edge)> {
+    fn children(&self, node: &Node) -> Vec<(Spot, Edge)> {
         let ref game = node.datum().game();
         let ref past = node.history().into_iter().collect::<Vec<&Edge>>();
         game.children()
@@ -79,16 +79,16 @@ impl Sampler {
     }
     /// extend a path with an Edge
     /// wrap the (Game, Bucket) in a Data
-    fn explore(&self, game: Game, edge: Edge, history: &Vec<&Edge>) -> (Vertex, Edge) {
+    fn explore(&self, game: Game, edge: Edge, history: &Vec<&Edge>) -> (Spot, Edge) {
         let mut history = history.clone();
         history.push(&edge);
         (self.data(game, history), edge)
     }
     /// generate a Bucket from Game
     /// wrap the (Game, Bucket) in a Data
-    fn data(&self, game: Game, path: Vec<&Edge>) -> Vertex {
+    fn data(&self, game: Game, path: Vec<&Edge>) -> Spot {
         let bucket = self.bucket(&game, &path);
-        Vertex::from((game, bucket))
+        Spot::from((game, bucket))
     }
     /// inddd
     fn bucket(&self, game: &Game, path: &Vec<&Edge>) -> Bucket {
