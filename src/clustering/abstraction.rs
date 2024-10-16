@@ -1,3 +1,4 @@
+use crate::cards::hole::Hole;
 use crate::Probability;
 use std::hash::Hash;
 use std::u64;
@@ -9,8 +10,9 @@ use std::u64;
 /// - Other Streets: we use a u64 to represent the hash signature of the centroid Histogram over lower layers of abstraction.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub enum Abstraction {
-    Random(u64),
-    Equity(i8),
+    Equity(i8),   // river
+    Random(u64),  // flop, turn
+    Pocket(Hole), // preflop
 }
 
 impl Abstraction {
@@ -54,6 +56,7 @@ impl From<Abstraction> for Probability {
         match abstraction {
             Abstraction::Equity(n) => Abstraction::floatize(n),
             Abstraction::Random(_) => unreachable!("no cluster into probability"),
+            Abstraction::Pocket(_) => unreachable!("no preflop into probability"),
         }
     }
 }
@@ -66,6 +69,7 @@ impl From<Abstraction> for u64 {
         match a {
             Abstraction::Random(n) => n,
             Abstraction::Equity(_) => unreachable!("no equity into u64"),
+            Abstraction::Pocket(_) => unreachable!("no preflop into u64"),
         }
     }
 }
@@ -93,7 +97,8 @@ impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Random(n) => write!(f, "{:016x}", n),
-            Self::Equity(_) => unreachable!("don't log me"),
+            Self::Equity(n) => write!(f, "unreachable ? Equity({})", n),
+            Self::Pocket(h) => write!(f, "unreachable ? Pocket({})", h),
         }
     }
 }
