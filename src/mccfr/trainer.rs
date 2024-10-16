@@ -1,8 +1,8 @@
-use super::data::Vertex;
 use super::edge::Edge;
 use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
+use super::spot::Spot;
 use super::tree::Tree;
 use crate::clustering::sampling::Sampler;
 use petgraph::graph::NodeIndex;
@@ -72,7 +72,7 @@ impl Explorer {
     /// recursively build the Tree from the given Node, according to the distribution defined by Profile.
     /// we assert the Tree property of every non-root Node having exactly one parent Edge
     /// we construct the appropriate references in self.attach() to ensure safety.
-    fn dfs(&mut self, head: Vertex, edge: Edge, root: NodeIndex) {
+    fn dfs(&mut self, head: Spot, edge: Edge, root: NodeIndex) {
         let head = self.witness(head);
         let head = self.tree.graph_mut().add_node(head);
         let edge = self.tree.graph_mut().add_edge(root, head, edge);
@@ -87,7 +87,7 @@ impl Explorer {
     /// attach a Node to the Tree,
     /// update the Profile to witness the new Node
     /// update the InfoPartition to witness the new Node.
-    fn witness(&mut self, data: Vertex) -> Node {
+    fn witness(&mut self, data: Spot) -> Node {
         let player = data.player().clone();
         let graph = self.tree.graph_ptr();
         let count = self.tree.graph_ref().node_count();
@@ -106,13 +106,13 @@ impl Explorer {
     /// Game::root() -> Observation -> Abstraction
     ///
     /// NOT deterministic, hole cards are thread_rng
-    fn root(&self) -> Vertex {
+    fn root(&self) -> Spot {
         use crate::mccfr::bucket::Bucket;
         use crate::play::game::Game;
         let node = Game::root();
         let path = self.sampler.path_abstraction(&Vec::new());
         let abstraction = self.sampler.card_abstraction(&node);
         let bucket = Bucket::from((path, abstraction));
-        Vertex::from((node, bucket))
+        Spot::from((node, bucket))
     }
 }
