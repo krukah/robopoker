@@ -187,7 +187,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn choose_3_from_5() {
-        let mask = Hand::from(0b______________________11_0);
+        let mask = Hand::from(0b_________________1111_00_1).complement();
         let mut iter = HandIterator::from((3, mask));
         assert!(iter.next() == Some(Hand::from(0b0011_00_1)));
         assert!(iter.next() == Some(Hand::from(0b0101_00_1)));
