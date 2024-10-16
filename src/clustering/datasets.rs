@@ -30,4 +30,19 @@ impl AbstractionSpace {
             .expect("abstraction generated during initialization")
             .absorb(histogram);
     }
+
+    pub fn orphans(&self) -> Vec<Abstraction> {
+        self.0
+            .iter()
+            .filter(|(_, c)| c.is_empty())
+            .map(|(a, _)| a)
+            .cloned()
+            .collect::<Vec<Abstraction>>()
+    }
+
+    pub fn clear(&mut self) {
+        for (_, centroid) in self.0.iter_mut() {
+            centroid.reset();
+        }
+    }
 }
