@@ -89,28 +89,28 @@ mod tests {
     fn n_pref() {
         let street = Street::Pref;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
     fn n_flop() {
         let street = Street::Flop;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
     fn n_turn() {
         let street = Street::Turn;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
     fn n_rive() {
         let street = Street::Rive;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
 }

@@ -9,6 +9,7 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
 use crate::clustering::xor::Pair;
+use petgraph::algo::isomorphism;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::rngs::StdRng;
@@ -162,11 +163,13 @@ impl Layer {
             self.street,
             self.street.prev()
         );
-        let progress = Self::progress(self.street.prev().n_isomorphisms());
-        let projection = Observation::exhaust(self.street.prev())
-            .filter(|o| Isomorphism::is_canonical(o))
-            .map(|o| Isomorphism::from(o)) // isomorphism translation
-            .collect::<Vec<Isomorphism>>() // isomorphism translation
+        let isomorphisms = Observation::exhaust(self.street.prev())
+            .filter(Isomorphism::is_canonical)
+            .map(Isomorphism::from) // isomorphism translation
+            .collect::<Vec<Isomorphism>>();
+
+        let progress = Self::progress(isomorphisms.len());
+        let projection =  isomorphisms// isomorphism translation
             .into_par_iter()
             .map(|inner| (inner, self.lookup.projection(&inner)))
             .inspect(|_| progress.inc(1))

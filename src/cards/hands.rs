@@ -14,6 +14,12 @@ pub struct HandIterator {
     mask: u64,
 }
 
+#[cfg(not(feature = "shortdeck"))]
+const CARD_COUNT_IN_DECK: usize = 52;
+
+#[cfg(feature = "shortdeck")]
+const CARD_COUNT_IN_DECK: usize = 36;
+
 impl HandIterator {
     /// returns the size of the iterator
     /// by some cheap combinatorial calculations
@@ -28,9 +34,9 @@ impl HandIterator {
         if self.next == 0 {
             true
         } else {
-            (64 - 52) > self.next.leading_zeros()
+            (64 - 52) as u32 > self.next.leading_zeros()
             // // ALTERNATE IMPL: mask at return, iterate as-is
-            // (64 - 52) > self.next.leading_zeros() - self.mask.count_ones()
+            // (64 - CARD_COUNT_IN_DECK) > self.next.leading_zeros() - self.mask.count_ones()
             // // CURRENT IMPL: mask at iteration, return as-is
         }
     }
@@ -126,9 +132,10 @@ mod tests {
     #[test]
     fn n_choose_1() {
         let iter = HandIterator::from((1, Hand::empty()));
-        assert_eq!(iter.count(), 52);
+        assert_eq!(iter.count(), CARD_COUNT_IN_DECK);
     }
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn n_choose_2() {
         let iter = HandIterator::from((2, Hand::empty()));
         assert_eq!(iter.count(), 1326);
@@ -141,12 +148,14 @@ mod tests {
         assert_eq!(iter.count(), 0);
     }
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn n_choose_1_mask_4() {
         let mask = Hand::from(0b1111);
         let iter = HandIterator::from((1, mask));
         assert_eq!(iter.count(), 48);
     }
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn n_choose_2_mask_4() {
         let mask = Hand::from(0b1111);
         let iter = HandIterator::from((2, mask));
