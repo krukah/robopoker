@@ -42,6 +42,8 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
+    
+    #[cfg(not(feature = "shortdeck"))]
     pub const fn n_observations(&self) -> usize {
         match self {
             Self::Pref => 0_______1_326,
@@ -50,6 +52,17 @@ impl Street {
             Self::Rive => 2_809_475_760,
         }
     }
+    
+    #[cfg(feature = "shortdeck")]
+    pub const fn n_observations(&self) -> usize {
+        match self {
+            Self::Pref => 0_________630,
+            Self::Flop => 0___4498200,
+            Self::Turn => 0__37110150,
+            Self::Rive => 0_237_504_960,
+        }
+    }
+
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
             Self::Pref => 0_________169,
