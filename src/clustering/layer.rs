@@ -8,8 +8,6 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
 use crate::clustering::xor::Pair;
-use indicatif::ProgressBar;
-use indicatif::ProgressStyle;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::rngs::StdRng;
@@ -80,8 +78,8 @@ impl Layer {
             metric: self.inner_metric(),         // uniquely determined by outer layer
             points: self.inner_points(),         // uniquely determined by outer layer
         };
-        layer.initial();
-        layer.cluster();
+        layer.initial_kmeans();
+        layer.cluster_kmeans();
         layer
     }
 
@@ -134,45 +132,26 @@ impl Layer {
             self.street,
             self.street.prev()
         );
-        // pretty progress
-        let n = self.street.prev().n_isomorphisms();
-        let tick = std::time::Duration::from_secs(1);
-        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
-        let style = ProgressStyle::with_template(style).unwrap();
-        let progress = ProgressBar::new(n as u64);
-        progress.set_style(style);
-        progress.enable_steady_tick(tick);
-        //
-        let points = ObservationSpace(
-            Observation::exhaust(self.street.prev())
-                .filter(|o| Isomorphism::is_canonical(o))
-                .map(|o| Isomorphism::from(o)) // isomorphism translation
-                .collect::<Vec<Isomorphism>>() // isomorphism translation
-                .into_par_iter()
-                .map(|inner| (inner, self.lookup.projection(&inner)))
-                .inspect(|_| progress.inc(1))
-                .collect::<BTreeMap<Isomorphism, Histogram>>(),
-        );
-        //
+        let progress = Self::progress(self.street.prev().n_isomorphisms());
+        let projection = Observation::exhaust(self.street.prev())
+            .filter(|o| Isomorphism::is_canonical(o))
+            .map(|o| Isomorphism::from(o)) // isomorphism translation
+            .collect::<Vec<Isomorphism>>() // isomorphism translation
+            .into_par_iter()
+            .map(|inner| (inner, self.lookup.projection(&inner)))
+            .inspect(|_| progress.inc(1))
+            .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
-        points
+        ObservationSpace(projection)
     }
 
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    fn initial(&mut self) {
+    fn initial_kmeans(&mut self) {
         log::info!("initializing kmeans {}", self.street);
-        // pretty progress
-        let n = N_KMEANS_CENTROIDS - 1;
-        let tick = std::time::Duration::from_secs(1);
-        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
-        let style = ProgressStyle::with_template(style).unwrap();
-        let progress = ProgressBar::new(n as u64);
-        progress.set_style(style);
-        progress.enable_steady_tick(tick);
-        //
+        let progress = Self::progress(N_KMEANS_CENTROIDS - 1);
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
         let histogram = self.sample_uniform(rng);
         self.kmeans.expand(histogram);
@@ -181,24 +160,14 @@ impl Layer {
             self.kmeans.expand(histogram);
             progress.inc(1);
         }
-        //
         progress.finish();
     }
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
-    fn cluster(&mut self) {
+    fn cluster_kmeans(&mut self) {
         log::info!("clustering kmeans {}", self.street);
-        // pretty progress
-        assert!(self.points.0.len() == self.street.n_isomorphisms());
-        let n = N_KMEANS_ITERATION * self.points.0.len();
-        let tick = std::time::Duration::from_secs(1);
-        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
-        let style = ProgressStyle::with_template(style).unwrap();
-        let progress = ProgressBar::new(n as u64);
-        progress.set_style(style);
-        progress.enable_steady_tick(tick);
-        //
+        let progress = Self::progress(N_KMEANS_ITERATION * self.points.0.len());
         for _ in 0..N_KMEANS_ITERATION {
             let abstractions = self
                 .points
@@ -217,7 +186,6 @@ impl Layer {
                 centroid.reset();
             }
         }
-        //
         progress.finish();
     }
 
@@ -280,5 +248,15 @@ impl Layer {
         self.metric.save(format!("{}", self.street));
         self.lookup.save(format!("{}", self.street));
         self
+    }
+
+    fn progress(n: usize) -> indicatif::ProgressBar {
+        let tick = std::time::Duration::from_secs(1);
+        let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
+        let style = indicatif::ProgressStyle::with_template(style).unwrap();
+        let progress = indicatif::ProgressBar::new(n as u64);
+        progress.set_style(style);
+        progress.enable_steady_tick(tick);
+        progress
     }
 }
