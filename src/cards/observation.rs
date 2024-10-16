@@ -133,7 +133,6 @@ impl From<Street> for Observation {
             .map(u64::from)
             .map(Hand::from)
             .fold(Hand::empty(), Hand::add);
-
         let pocket = (0..2)
             .map(|_| deck.draw())
             .map(u64::from)

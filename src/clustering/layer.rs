@@ -20,6 +20,11 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
+/// number of kmeans centroids. this determines the granularity of the abstraction space
+const N_KMEANS_CENTROIDS: usize = 64;
+/// number of kmeans iterations. this controls the precision of the abstraction space
+const N_KMEANS_ITERATION: usize = 10;
+
 /// Hierarchical K Means Learner
 /// this is decomposed into the necessary data structures
 /// for kmeans clustering to occur for a given `Street`.
@@ -160,7 +165,7 @@ impl Layer {
     fn initial(&mut self) {
         log::info!("initializing kmeans {}", self.street);
         // pretty progress
-        let n = self.k() - 1;
+        let n = N_KMEANS_CENTROIDS - 1;
         let tick = std::time::Duration::from_secs(1);
         let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
         let style = ProgressStyle::with_template(style).unwrap();
@@ -171,7 +176,7 @@ impl Layer {
         let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64);
         let histogram = self.sample_uniform(rng);
         self.kmeans.expand(histogram);
-        while self.k() > self.l() {
+        while self.kmeans.0.len() < N_KMEANS_CENTROIDS {
             let histogram = self.sample_outlier(rng);
             self.kmeans.expand(histogram);
             progress.inc(1);
@@ -186,7 +191,7 @@ impl Layer {
         log::info!("clustering kmeans {}", self.street);
         // pretty progress
         assert!(self.points.0.len() == self.street.n_isomorphisms());
-        let n = self.t() * self.points.0.len();
+        let n = N_KMEANS_ITERATION * self.points.0.len();
         let tick = std::time::Duration::from_secs(1);
         let style = "[{elapsed}] {spinner:.green} {wide_bar:.green} ETA {eta}";
         let style = ProgressStyle::with_template(style).unwrap();
@@ -194,7 +199,7 @@ impl Layer {
         progress.set_style(style);
         progress.enable_steady_tick(tick);
         //
-        for _ in 0..self.t() {
+        for _ in 0..N_KMEANS_ITERATION {
             let abstractions = self
                 .points
                 .0
@@ -268,25 +273,6 @@ impl Layer {
             .expect("find nearest neighbor")
             .0
             .clone()
-    }
-
-    /// hyperparameter: how many centroids to learn
-    fn k(&self) -> usize {
-        match self.street {
-            Street::Turn => 64,
-            Street::Flop => 64,
-            _ => unreachable!("no other abstractable streets"),
-        }
-    }
-    /// hyperparameter: how many iterations to run kmeans
-    fn t(&self) -> usize {
-        match self.street {
-            _ => 10,
-        }
-    }
-    /// length of current kmeans centroids
-    fn l(&self) -> usize {
-        self.kmeans.0.len()
     }
 
     /// save the current layer's `Metric` and `Abstractor` to disk
