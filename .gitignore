@@ -6,3 +6,4 @@
 .env
 .swp
 profile.json
+*.pgcopy
