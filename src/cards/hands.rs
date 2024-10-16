@@ -34,9 +34,9 @@ impl HandIterator {
         if self.next == 0 {
             true
         } else {
-            (64 - 52) as u32 > self.next.leading_zeros()
+            (64 - 52) > self.next.leading_zeros()
             // // ALTERNATE IMPL: mask at return, iterate as-is
-            // (64 - CARD_COUNT_IN_DECK) > self.next.leading_zeros() - self.mask.count_ones()
+            // (64 - 52) > self.next.leading_zeros() - self.mask.count_ones()
             // // CURRENT IMPL: mask at iteration, return as-is
         }
     }
@@ -162,9 +162,10 @@ mod tests {
         assert_eq!(iter.count(), 1128);
     }
 
+    #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn choose_3() {
-        let mut iter = HandIterator::from((3, Hand::from(0)));
+        let mut iter = HandIterator::from((3, Hand::empty()));
         assert!(iter.next() == Some(Hand::from(0b00111)));
         assert!(iter.next() == Some(Hand::from(0b01011)));
         assert!(iter.next() == Some(Hand::from(0b01101)));

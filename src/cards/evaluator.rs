@@ -103,7 +103,6 @@ impl Evaluator {
         })
     }
 
-    // different
     fn find_rank_of_straight(&self, hand: Hand) -> Option<Rank> {
         let wheel = WHEEL;
         let ranks = u16::from(hand);
