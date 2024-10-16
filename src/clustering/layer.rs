@@ -18,16 +18,41 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
-/// number of kmeans centroids. this determines the granularity of the abstraction space
+/// number of kmeans centroids.
+/// this determines the granularity of the abstraction space.
+///
+/// - CPU: O(N^2) for kmeans initialization
+/// - CPU: O(N)   for kmeans clustering
+/// - RAM: O(N^2) for learned metric
+/// - RAM: O(N)   for learned centroids
 const N_KMEANS_CENTROIDS: usize = 64;
-/// number of kmeans iterations. this controls the precision of the abstraction space
+
+/// number of kmeans iterations.
+/// this controls the precision of the abstraction space.
+///
+/// - CPU: O(N) for kmeans clustering
 const N_KMEANS_ITERATION: usize = 10;
 
-/// Hierarchical K Means Learner
+/// Hierarchical K Means Learner.
 /// this is decomposed into the necessary data structures
 /// for kmeans clustering to occur for a given `Street`.
 /// it should also parallelize well, with kmeans and lookup
 /// being the only mutable fields.
+/// EMD dominates compute, by introducing a k^2 dependence
+/// for every distance calculation.
+///
+/// ## kmeans initialization:
+/// - CPU := (# centroids)^2 *   (# isomorphisms)
+/// - RAM := (# centroids)   +   (# isomorphisms)
+///
+/// ## kmeans clustering:
+/// - CPU := (# centroids)^3 *   (# isomorphisms)   *    (# iterations)
+/// - RAM := (# centroids)   +   (# isomorphisms)
+///
+/// ## metric calculation:
+/// - CPU := O(# centroids)^2
+/// - RAM := O(# centroids)^2
+///
 pub struct Layer {
     street: Street,
     metric: Metric,
