@@ -127,12 +127,7 @@ impl From<(Hand, Hand)> for Observation {
 impl From<Street> for Observation {
     fn from(street: Street) -> Self {
         let mut deck = Deck::new();
-        let n = match street {
-            Street::Pref => 0,
-            Street::Flop => 3,
-            Street::Turn => 4,
-            Street::Rive => 5,
-        };
+        let n = street.n_observed();
         let public = (0..n)
             .map(|_| deck.draw())
             .map(u64::from)
