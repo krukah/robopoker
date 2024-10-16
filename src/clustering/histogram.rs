@@ -29,6 +29,12 @@ impl Histogram {
         self.weights.keys().collect()
     }
 
+    /// useful only for k-means edge case of centroid drift
+    pub fn is_empty(&self) -> bool {
+        self.weights.is_empty()
+        // self.norm == 0
+    }
+
     /// insert the Abstraction into our support,
     /// incrementing its local weight,
     /// incrementing our global norm.
@@ -70,10 +76,7 @@ impl Histogram {
     /// Abstraction variants, so we expose this method to
     /// infer the type of Abstraction contained by this Histogram.
     pub fn peek(&self) -> &Abstraction {
-        self.weights
-            .keys()
-            .next()
-            .expect("non empty histogram, consistent abstraction variant")
+        self.weights.keys().next().expect("non empty histogram")
     }
 
     /// exhaustive calculation of all
@@ -83,11 +86,8 @@ impl Histogram {
     /// ONLY WORKS FOR STREET::TURN
     /// ONLY WORKS FOR STREET::TURN
     pub fn equity(&self) -> Equity {
-        assert!(matches!(
-            self.weights.keys().next(),
-            Some(Abstraction::Equity(_))
-        ));
-        self.posterior().iter().map(|(x, y)| x * y).sum()
+        assert!(matches!(self.peek(), Abstraction::Equity(_)));
+        self.distribution().iter().map(|(x, y)| x * y).sum()
     }
 
     /// this yields the posterior equity distribution
@@ -100,7 +100,7 @@ impl Histogram {
     ///
     /// ONLY WORKS FOR STREET::TURN
     /// ONLY WORKS FOR STREET::TURN
-    pub fn posterior(&self) -> Vec<(Equity, Probability)> {
+    pub fn distribution(&self) -> Vec<(Equity, Probability)> {
         assert!(matches!(self.peek(), Abstraction::Equity(_)));
         self.weights
             .iter()
@@ -114,7 +114,7 @@ impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
         assert!(turn.street() == crate::cards::street::Street::Turn);
         Self::from(
-            turn.children() //? iso
+            turn.children()
                 .map(|river| Abstraction::from(river.equity()))
                 .collect::<Vec<Abstraction>>(),
         )
@@ -132,7 +132,7 @@ impl std::fmt::Display for Histogram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // 1. interpret each key of the Histogram as probability
         // 2. they should already be sorted bc BTreeMap
-        let ref distribution = self.posterior();
+        let ref distribution = self.distribution();
         // 3. Create 32 bins for the x-axis
         let n_x_bins = 32;
         let ref mut bins = vec![0.0; n_x_bins];
