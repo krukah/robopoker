@@ -1,10 +1,8 @@
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
-// use crate::cards::observation::Observation as Equivalence;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-// use crate::clustering::progress::Progress;
 use std::collections::BTreeMap;
 
 /// this is the output of the clustering module
@@ -22,6 +20,9 @@ impl Abstractor {
         let mut map = BTreeMap::default();
         map.extend(Self::load(Street::Turn).0);
         map.extend(Self::load(Street::Flop).0);
+        // TODO
+        // extend map with preflop
+        // alternatively, handle lossless preflop abstractions in Self::abstraction
         Self(map)
     }
 
@@ -43,6 +44,15 @@ impl Abstractor {
     }
     /// lookup the pre-computed abstraction for the outer observation
     pub fn abstraction(&self, outer: &Isomorphism) -> Abstraction {
+        // TODO
+        // match on street
+        // river => compute equity on the fly**
+        // turn | flop => lookup
+        // preflop => isomorphism into Hole
+        //
+        // ** this is expensive ?
+        // ** could implement mc_equity to not iterate over villain cards exhaustively ?
+        // ** should check benchmarks to see how much this matters
         self.0
             .get(outer)
             .cloned()

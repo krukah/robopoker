@@ -1,7 +1,7 @@
 use super::bucket::Bucket;
 use super::player::Player;
-use crate::mccfr::data::Vertex;
 use crate::mccfr::edge::Edge;
+use crate::mccfr::spot::Spot;
 use crate::play::continuation::Transition;
 use crate::Utility;
 use petgraph::graph::DiGraph;
@@ -13,11 +13,11 @@ use std::ptr::NonNull;
 pub struct Node {
     graph: NonNull<DiGraph<Self, Edge>>,
     index: NodeIndex,
-    datum: Vertex,
+    datum: Spot,
 }
 
-impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Vertex)> for Node {
-    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Vertex)) -> Self {
+impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Spot)> for Node {
+    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Spot)) -> Self {
         Self {
             index,
             graph,
@@ -28,7 +28,7 @@ impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Vertex)> for Node {
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl Node {
-    pub fn datum(&self) -> &Vertex {
+    pub fn datum(&self) -> &Spot {
         &self.datum
     }
     pub fn index(&self) -> NodeIndex {
