@@ -1,7 +1,6 @@
-use crate::play::game::Game;
-
 use super::observation::Observation;
 use super::permutation::Permutation;
+use crate::play::game::Game;
 
 /// because of the equivalence of Suit,
 /// many Observations are strategically equivalent !
