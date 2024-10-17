@@ -2,10 +2,10 @@ use super::rank::Rank;
 use super::suit::Suit;
 
 #[cfg(not(feature = "shortdeck"))]
-const CARD_COUNT_IN_DECK: usize = 52;
+pub const CARD_COUNT_IN_DECK: usize = 52;
 
 #[cfg(feature = "shortdeck")]
-const CARD_COUNT_IN_DECK: usize = 36;
+pub const CARD_COUNT_IN_DECK: usize = 36;
 
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit
@@ -21,8 +21,13 @@ impl Card {
     }
     pub fn draw() -> Card {
         use rand::Rng;
-        let ref mut rng = rand::thread_rng();
-        Card::from(rng.gen_range(0..CARD_COUNT_IN_DECK) as u8)
+        let rng = &mut rand::thread_rng();
+        let suit = rng.gen_range(0..4) as u8;
+        #[cfg(not(feature = "shortdeck"))]
+        let rank = rng.gen_range(0..13) as u8;
+        #[cfg(feature = "shortdeck")]
+        let rank = rng.gen_range(4..13) as u8;
+        Card::from((Rank::from(rank), Suit::from(suit)))
     }
 }
 

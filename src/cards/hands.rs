@@ -14,12 +14,6 @@ pub struct HandIterator {
     mask: u64,
 }
 
-#[cfg(not(feature = "shortdeck"))]
-const CARD_COUNT_IN_DECK: usize = 52;
-
-#[cfg(feature = "shortdeck")]
-const CARD_COUNT_IN_DECK: usize = 36;
-
 impl HandIterator {
     /// returns the size of the iterator
     /// by some cheap combinatorial calculations
@@ -122,6 +116,8 @@ impl From<(usize, Hand)> for HandIterator {
 
 #[cfg(test)]
 mod tests {
+    use crate::cards::card::CARD_COUNT_IN_DECK;
+
     use super::*;
 
     #[test]
