@@ -64,9 +64,9 @@ impl std::fmt::Display for Street {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Pref => write!(f, "Preflop"),
-            Self::Flop => write!(f, "Flop"),
-            Self::Turn => write!(f, "Turn"),
-            Self::Rive => write!(f, "River"),
+            Self::Flop => write!(f, "Flop   "),
+            Self::Turn => write!(f, "Turn   "),
+            Self::Rive => write!(f, "River  "),
         }
     }
 }

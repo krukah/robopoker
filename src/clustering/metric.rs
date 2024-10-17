@@ -34,14 +34,19 @@ impl Metric {
     /// we can calculate the distance between two abstractions
     /// by eagerly finding distance between their centroids
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
-        match (x, y) {
-            (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
-            (Abstraction::Random(_), Abstraction::Random(_)) => self
-                .0
-                .get(&Pair::from((x, y)))
-                .copied()
-                .expect("precalculated distance"),
-            _ => unreachable!("invalid abstraction pair"),
+        // return 0 iff x == y
+        if x == y {
+            0.
+        } else {
+            match (x, y) {
+                (Abstraction::Equity(a), Abstraction::Equity(b)) => (a - b).abs() as f32,
+                (Abstraction::Random(_), Abstraction::Random(_)) => self
+                    .0
+                    .get(&Pair::from((x, y)))
+                    .copied()
+                    .expect("precalculated distance"),
+                _ => unreachable!("invalid abstraction pair"),
+            }
         }
     }
 

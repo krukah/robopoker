@@ -10,15 +10,13 @@ use petgraph::graph::NodeIndex;
 /// need some async upload/download methods for Profile
 /// thesee are totally Tree functions
 /// i should hoist INfoSet one level up into this struct
-pub struct Explorer {
+pub struct Blueprint {
     tree: Tree,
     profile: Profile,
     sampler: Sampler, // mapping: Abstractor
 }
 
-/// impl Iterator<Item = Tree> for Explorer
-
-impl Explorer {
+impl Blueprint {
     const EPOCHS: usize = 100_000;
     /// here's the training loop. infosets might be generated
     /// in parallel later. infosets might also come pre-filtered
