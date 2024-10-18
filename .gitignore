@@ -7,3 +7,4 @@
 .swp
 profile.json
 *.pgcopy
+analysis/*.png
