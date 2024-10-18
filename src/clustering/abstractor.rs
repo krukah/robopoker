@@ -117,7 +117,7 @@ impl Abstractor {
         let mut buffer = [0u8; 2];
         let mut lookup = BTreeMap::new();
         let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(23)).expect("seek past header");
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) != 2 {
                 break;
