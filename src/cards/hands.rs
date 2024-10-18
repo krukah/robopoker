@@ -102,6 +102,9 @@ impl From<(usize, Hand)> for HandIterator {
     fn from((n, mask): (usize, Hand)) -> Self {
         let mut this = Self {
             next: (1 << n) - 1,
+            #[cfg(feature = "shortdeck")]
+            mask: u64::from(mask) | 0b1111111111111111, // remove 2-5 cards
+            #[cfg(not(feature = "shortdeck"))]
             mask: u64::from(mask),
         };
         while this.next & this.mask > 0 && !this.exhausted() {
@@ -113,6 +116,8 @@ impl From<(usize, Hand)> for HandIterator {
 
 #[cfg(test)]
 mod tests {
+    use crate::cards::card::CARD_COUNT_IN_DECK;
+
     use super::*;
 
     #[test]
@@ -123,9 +128,10 @@ mod tests {
     #[test]
     fn n_choose_1() {
         let iter = HandIterator::from((1, Hand::empty()));
-        assert_eq!(iter.count(), 52);
+        assert_eq!(iter.count(), CARD_COUNT_IN_DECK);
     }
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn n_choose_2() {
         let iter = HandIterator::from((2, Hand::empty()));
         assert_eq!(iter.count(), 1326);
@@ -138,12 +144,14 @@ mod tests {
         assert_eq!(iter.count(), 0);
     }
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn n_choose_1_mask_4() {
         let mask = Hand::from(0b1111);
         let iter = HandIterator::from((1, mask));
         assert_eq!(iter.count(), 48);
     }
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn n_choose_2_mask_4() {
         let mask = Hand::from(0b1111);
         let iter = HandIterator::from((2, mask));
@@ -151,6 +159,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn choose_3() {
         let mut iter = HandIterator::from((3, Hand::empty()));
         assert!(iter.next() == Some(Hand::from(0b00111)));
@@ -166,6 +175,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "shortdeck")]
+    fn choose_2_shortdeck() {
+        let mut iter = HandIterator::from((2, Hand::from(0)));
+        assert_eq!(iter.next(), Some(Hand::from(0b110000000000000000)));
+    }
+
+    #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn choose_3_from_5() {
         let mask = Hand::from(0b_________________1111_00_1).complement();
         let mut iter = HandIterator::from((3, mask));

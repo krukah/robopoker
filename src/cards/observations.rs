@@ -23,7 +23,12 @@ impl From<Street> for ObservationIterator {
         // need to make it work with Street::Pref (Hand::empty())
         // and it should compose well with a separate HandIterator, so
         // ObsIterator can reap the benefit
+
+        // start with first card
+        #[cfg(not(feature = "shortdeck"))]
         let pocket = Hand::from(0b11);
+        #[cfg(feature = "shortdeck")]
+        let pocket = Hand::from(0b11_0000_0000_0000_0000);
         let inner = HandIterator::from((street.n_observed(), pocket));
         let mut outer = HandIterator::from((2, Hand::empty()));
         match street {
@@ -89,28 +94,28 @@ mod tests {
     fn n_pref() {
         let street = Street::Pref;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
     fn n_flop() {
         let street = Street::Flop;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
     fn n_turn() {
         let street = Street::Turn;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
     fn n_rive() {
         let street = Street::Rive;
         let iter = ObservationIterator::from(street);
-        assert!(iter.combinations() == street.n_observations());
-        assert!(iter.combinations() == iter.count());
+        assert_eq!(iter.combinations(), street.n_observations());
+        assert_eq!(iter.combinations(), iter.count());
     }
 }
