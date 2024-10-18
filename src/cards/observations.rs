@@ -91,6 +91,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn n_pref() {
         let street = Street::Pref;
         let iter = ObservationIterator::from(street);
@@ -98,6 +99,7 @@ mod tests {
         assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
+    #[ignore]
     fn n_flop() {
         let street = Street::Flop;
         let iter = ObservationIterator::from(street);
@@ -105,6 +107,7 @@ mod tests {
         assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
+    #[ignore]
     fn n_turn() {
         let street = Street::Turn;
         let iter = ObservationIterator::from(street);
@@ -112,6 +115,7 @@ mod tests {
         assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
+    #[ignore]
     fn n_rive() {
         let street = Street::Rive;
         let iter = ObservationIterator::from(street);

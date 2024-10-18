@@ -1,5 +1,6 @@
 use super::card::Card;
 use super::hand::Hand;
+use super::observation::Observation;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Hole(Hand);
@@ -25,6 +26,12 @@ impl From<Hand> for Hole {
 impl From<Hole> for Hand {
     fn from(hole: Hole) -> Self {
         hole.0
+    }
+}
+
+impl From<Observation> for Hole {
+    fn from(obs: Observation) -> Self {
+        Self(Hand::from(obs.pocket().clone()))
     }
 }
 
