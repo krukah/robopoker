@@ -5,7 +5,7 @@ ALTER TABLE turn_abs
 SET UNLOGGED;
 DROP INDEX IF EXISTS idx_turn_abs_observation;
 COPY turn_abs (obs, abs)
-FROM '/Users/krukah/Code/robopoker/turn.abstraction.pgcopy' WITH (FORMAT BINARY);
+FROM 'turn.abstraction.pgcopy' WITH (FORMAT BINARY);
 ALTER TABLE turn_abs
 SET LOGGED;
 CREATE INDEX IF NOT EXISTS idx_turn_abs_observation ON turn_abs (obs);
@@ -16,7 +16,7 @@ ALTER TABLE turn_met
 SET UNLOGGED;
 DROP INDEX IF EXISTS idx_turn_xab_abstraction;
 COPY turn_met (xab, dst)
-FROM '/Users/krukah/Code/robopoker/preflop.metric.pgcopy' WITH (FORMAT BINARY);
+FROM 'turn.metric.pgcopy' WITH (FORMAT BINARY);
 ALTER TABLE turn_met
 SET LOGGED;
 CREATE INDEX IF NOT EXISTS idx_turn_xab_abstraction ON turn_met (xab);
