@@ -148,14 +148,43 @@ use std::io::Write;
  * Turn and Flop layers, with the River and Preflop being
  * straightforward to compute on the fly, for different reasons
  */
+
+impl From<Street> for Abstractor {
+    fn from(street: Street) -> Self {
+        let file = File::open(format!("{}.abstraction.pgcopy", street)).expect("open file");
+        let mut buffer = [0u8; 2];
+        let mut lookup = BTreeMap::new();
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
+        while reader.read_exact(&mut buffer).is_ok() {
+            if u16::from_be_bytes(buffer) == 2 {
+                reader.read_u32::<BigEndian>().expect("observation length");
+                let obs_i64 = reader.read_i64::<BigEndian>().expect("read observation");
+                reader.read_u32::<BigEndian>().expect("abstraction length");
+                let abs_i64 = reader.read_i64::<BigEndian>().expect("read abstraction");
+                let observation = Isomorphism::from(obs_i64);
+                let abstraction = Abstraction::from(abs_i64);
+                lookup.insert(observation, abstraction);
+                continue;
+            } else {
+                break;
+            }
+        }
+        Self(lookup)
+    }
+}
+
 impl Abstractor {
     /// indicates whether the abstraction table is already on disk
     pub fn done() -> bool {
-        true && true
-            && std::path::Path::new("turn.abstraction.pgcopy").exists()
-            && std::path::Path::new("flop.abstraction.pgcopy").exists()
-            && std::path::Path::new("turn.metric.pgcopy").exists()
-            && std::path::Path::new("flop.metric.pgcopy").exists()
+        [
+            "turn.abstraction.pgcopy",
+            "flop.abstraction.pgcopy",
+            "turn.metric.pgcopy",
+            "flop.metric.pgcopy",
+        ]
+        .iter()
+        .any(|file| std::path::Path::new(file).exists())
     }
     /// pulls the entire pre-computed abstraction table
     /// into memory. ~10GB.

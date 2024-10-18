@@ -10,6 +10,9 @@ use crate::clustering::abstractor::Abstractor;
 use crate::play::game::Game;
 use crate::Probability;
 use petgraph::graph::NodeIndex;
+use rand::distributions::WeightedIndex;
+use rand::prelude::Distribution;
+use rand::prelude::Rng;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
@@ -24,7 +27,7 @@ struct Delta(Bucket, BTreeMap<Edge, f32>, BTreeMap<Edge, f32>);
 /// i should hoist INfoSet one level up into this struct
 pub struct Optimizer {
     profile: Profile,
-    lookups: Abstractor, // mapping: Abstractor
+    abstractor: Abstractor, // mapping: Abstractor
 }
 
 impl Optimizer {
@@ -34,7 +37,7 @@ impl Optimizer {
     pub fn load() -> Self {
         Self {
             profile: Profile::load(),
-            lookups: Abstractor::load(),
+            abstractor: Abstractor::load(),
         }
     }
 
@@ -85,8 +88,8 @@ impl Optimizer {
     /// NOT deterministic, hole cards (from Game) are thread_rng
     fn root(&self) -> Spot {
         let node = Game::root();
-        let path = self.lookups.path_abstraction(&vec![]);
-        let info = self.lookups.card_abstraction(&node);
+        let path = self.abstractor.path_abstraction(&vec![]);
+        let info = self.abstractor.card_abstraction(&node);
         let bucket = Bucket::from((path, info));
         Spot::from((node, bucket))
     }
@@ -103,8 +106,7 @@ impl Optimizer {
         let node = tree.node(head);
         assert!(head.index() == 0);
         for (tail, from) in self.sample(node) {
-            let ref mut tree = tree;
-            self.dfs(tree, tail, from, head);
+            self.dfs(&mut tree, tail, from, head);
         }
         tree
     }
@@ -139,6 +141,10 @@ impl Optimizer {
         node
     }
 
+    /// External Sampling:
+    /// choose child according to reach probabilities in strategy profile.
+    /// on first iteration, this is equivalent to sampling uniformly.
+    ///
     /// Walker Sampling:
     /// follow all possible paths toward terminal nodes
     /// when it's the traverser's turn to move
@@ -147,16 +153,10 @@ impl Optimizer {
     /// choose random child uniformly. this is specific to the game of poker,
     /// where each action at chance node/info/buckets is uniformly likely.
     ///
-    /// External Sampling:
-    /// choose child according to reach probabilities in strategy profile.
-    /// on first iteration, this is equivalent to sampling uniformly.
     fn sample(&self, node: &Node) -> Vec<(Spot, Edge)> {
         let player = node.player();
-        let mut children = self.lookups.children(node);
+        let mut children = self.abstractor.children(node);
         let ref mut rng = self.profile.rng(node);
-        use rand::distributions::WeightedIndex;
-        use rand::prelude::Distribution;
-        use rand::prelude::Rng;
         if children.is_empty() {
             vec![]
         } else if player == self.profile.walker() {
