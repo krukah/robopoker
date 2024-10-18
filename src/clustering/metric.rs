@@ -34,7 +34,6 @@ impl Metric {
     /// we can calculate the distance between two abstractions
     /// by eagerly finding distance between their centroids
     fn distance(&self, x: &Abstraction, y: &Abstraction) -> f32 {
-        // return 0 iff x == y
         if x == y {
             0.
         } else {

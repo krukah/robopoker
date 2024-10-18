@@ -25,13 +25,13 @@ use std::collections::BTreeMap;
 /// - CPU: O(N)   for kmeans clustering
 /// - RAM: O(N^2) for learned metric
 /// - RAM: O(N)   for learned centroids
-const N_KMEANS_CENTROIDS: usize = 64;
+const N_KMEANS_CENTROIDS: usize = 16;
 
 /// number of kmeans iterations.
 /// this controls the precision of the abstraction space.
 ///
 /// - CPU: O(N) for kmeans clustering
-const N_KMEANS_ITERATION: usize = 256;
+const N_KMEANS_ITERATION: usize = 32;
 
 /// Hierarchical K Means Learner.
 /// this is decomposed into the necessary data structures
@@ -96,8 +96,8 @@ impl Layer {
     }
     /// save the current layer's `Metric` and `Abstractor` to disk
     pub fn save(self) -> Self {
-        self.metric.save(format!("{}", self.street));
-        self.lookup.save(format!("{}", self.street));
+        self.metric.save(format!("{}", self.street.next())); // outer layer generates this purely (metric over projections)
+        self.lookup.save(format!("{}", self.street)); // while inner layer generates this (clusters)
         self
     }
 
@@ -106,7 +106,7 @@ impl Layer {
         log::info!(
             "{:<32}{:<32}",
             "advancing street",
-            format!("{} -> {}", self.street, self.street.prev())
+            format!("{} <- {}", self.street.prev(), self.street)
         );
         self.street.prev()
     }
@@ -120,7 +120,7 @@ impl Layer {
         log::info!(
             "{:<32}{:<32}",
             "computing metric",
-            format!("{} -> {}", self.street, self.street.prev())
+            format!("{} <- {}", self.street.prev(), self.street)
         );
         let mut metric = BTreeMap::new();
         for a in self.kmeans.0.keys() {
@@ -147,15 +147,14 @@ impl Layer {
         log::info!(
             "{:<32}{:<32}",
             "computing projections",
-            format!("{} -> {}", self.street, self.street.prev())
+            format!("{} <- {}", self.street.prev(), self.street)
         );
         let isomorphisms = Observation::exhaust(self.street.prev())
             .filter(Isomorphism::is_canonical)
             .map(Isomorphism::from) // isomorphism translation
             .collect::<Vec<Isomorphism>>();
-
         let progress = Self::progress(isomorphisms.len());
-        let projection =  isomorphisms
+        let projection = isomorphisms
             .into_par_iter()
             .map(|inner| (inner, self.lookup.projection(&inner)))
             .inspect(|_| progress.inc(1))
@@ -171,11 +170,11 @@ impl Layer {
     fn initial_kmeans(&mut self) {
         log::info!(
             "{:<32}{:<32}",
-            "initializing abstractions",
+            "declaring abstractions",
             format!("{}    {} clusters", self.street, N_KMEANS_CENTROIDS)
         );
         let progress = Self::progress(N_KMEANS_CENTROIDS - 1);
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xBAD);
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xADD);
         let sample = self.sample_uniform(rng);
         self.kmeans.expand(sample);
         while self.kmeans.0.len() < N_KMEANS_CENTROIDS {
@@ -194,7 +193,7 @@ impl Layer {
             "clustering observations",
             format!("{}    {} iterations", self.street, N_KMEANS_ITERATION)
         );
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xADD);
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xDAB);
         let progress = Self::progress(N_KMEANS_ITERATION * self.points.0.len());
         for t in 0..N_KMEANS_ITERATION {
             // calculate nearest neighbor Abstractions for each Observation
@@ -219,7 +218,7 @@ impl Layer {
                 self.kmeans.absorb(a, h);
             }
             let inertia = inertia / self.points.0.len() as f32;
-            log::info!("{:<5}{:8.4}", t, inertia);
+            log::trace!("{:<5}{:8.4}", t, inertia);
 
             // centroid drift may make it such that some centroids are empty
             // reinitialize empty centroids with random Observations if necessary
