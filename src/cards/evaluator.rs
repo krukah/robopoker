@@ -16,6 +16,16 @@ impl From<Hand> for Evaluator {
     }
 }
 
+#[cfg(not(feature = "shortdeck"))]
+const WHEEL: u16 = 0b_1000000001111;
+#[cfg(feature = "shortdeck")]
+const WHEEL: u16 = 0b_1000011110000;
+
+#[cfg(not(feature = "shortdeck"))]
+const LOWEST_STRAIGHT_RANK: Rank = Rank::Five;
+#[cfg(feature = "shortdeck")]
+const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
+
 impl Evaluator {
     pub fn find_ranking(&self) -> Ranking {
         None.or_else(|| self.find_flush())
@@ -93,10 +103,8 @@ impl Evaluator {
         })
     }
 
-    ///
-
     fn find_rank_of_straight(&self, hand: Hand) -> Option<Rank> {
-        let wheel = 0b_1000000001111u16;
+        let wheel = WHEEL;
         let ranks = u16::from(hand);
         let mut bits = ranks;
         bits &= bits << 1;
@@ -106,7 +114,7 @@ impl Evaluator {
         if bits > 0 {
             Some(Rank::from(bits))
         } else if wheel == (wheel & ranks) {
-            Some(Rank::Five)
+            Some(LOWEST_STRAIGHT_RANK)
         } else {
             None
         }
@@ -222,6 +230,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn wheel_straight() {
         assert!(
             Evaluator::from(Hand::from("As 2h 3d 4c 5s")).find_ranking()
@@ -230,10 +239,29 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "shortdeck")]
+    fn shortdeck_wheel_straight() {
+        assert_eq!(
+            Evaluator::from(Hand::from("6s 7h 8d 9c As")).find_ranking(),
+            Ranking::Straight(Rank::Nine)
+        );
+    }
+
+    #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn wheel_straight_flush() {
         assert!(
             Evaluator::from(Hand::from("As 2s 3s 4s 5s")).find_ranking()
                 == Ranking::StraightFlush(Rank::Five)
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "shortdeck")]
+    fn wheel_straight_flush() {
+        assert!(
+            Evaluator::from(Hand::from("As 6s 7s 8s 9s")).find_ranking()
+                == Ranking::StraightFlush(Rank::Nine)
         );
     }
 
