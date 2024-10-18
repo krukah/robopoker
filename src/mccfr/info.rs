@@ -2,16 +2,16 @@ use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
-use std::ptr::NonNull;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Info {
     roots: Vec<NodeIndex>,
-    graph: NonNull<DiGraph<Node, Edge>>,
+    graph: Arc<DiGraph<Node, Edge>>,
 }
 
-impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>)> for Info {
-    fn from((index, graph): (NodeIndex, NonNull<DiGraph<Node, Edge>>)) -> Self {
+impl From<(NodeIndex, Arc<DiGraph<Node, Edge>>)> for Info {
+    fn from((index, graph): (NodeIndex, Arc<DiGraph<Node, Edge>>)) -> Self {
         let roots = vec![index];
         Self { roots, graph }
     }
@@ -43,6 +43,6 @@ impl Info {
     /// Node is created from a Tree
     /// Tree owns its Graph
     fn graph_ref(&self) -> &DiGraph<Node, Edge> {
-        unsafe { self.graph.as_ref() }
+        self.graph.as_ref()
     }
 }

@@ -22,7 +22,7 @@ use crate::play::game::Game;
 /// but it's approx 4 (* 5) times smaller, as youd expect for without-replacement
 /// sampling on the last two Streets.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-pub struct Isomorphism(Observation);
+pub struct Isomorphism(pub Observation);
 
 impl From<Observation> for Isomorphism {
     fn from(ref observation: Observation) -> Self {
