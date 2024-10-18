@@ -25,13 +25,13 @@ use std::collections::BTreeMap;
 /// - CPU: O(N)   for kmeans clustering
 /// - RAM: O(N^2) for learned metric
 /// - RAM: O(N)   for learned centroids
-const N_KMEANS_CENTROIDS: usize = 8;
+const N_KMEANS_CENTROIDS: usize = 16;
 
 /// number of kmeans iterations.
 /// this controls the precision of the abstraction space.
 ///
 /// - CPU: O(N) for kmeans clustering
-const N_KMEANS_ITERATION: usize = 8;
+const N_KMEANS_ITERATION: usize = 32;
 
 /// Hierarchical K Means Learner.
 /// this is decomposed into the necessary data structures
@@ -62,30 +62,13 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// from scratch, generate and persist the full Abstraction lookup table
-    pub fn learn() {
-        Self::outer()
-            .inner() // turn
-            .save()
-            .inner() // flop
-            .save();
-        todo!("add the abstraction-less PreFlop Observations"); // TODO
-                                                                // add the abstraction-less PreFlop Observations
-                                                                // or include a Abstraction::PreFlop(Hole) variant
-                                                                // to make sure we cover the full set of Observations
-                                                                // this might be better off to do in Explorer::load() perhaps
-                                                                // or we could add one more .inner().save() call with
-                                                                // special Preflop logic to not actually do any clustering
-                                                                // i.e. k = 169, t = 0
-    }
-
     /// start with the River layer. everything is empty because we
     /// can generate `Abstractor` and `SmallSpace` from "scratch".
     /// - `lookup`: lazy equity calculation of river observations
     /// - `kmeans`: equity percentile buckets of equivalent river observations
     /// - `metric`: absolute value of `Abstraction::Equity` difference
     /// - `points`: not used for inward projection. only used for clustering. and no clustering on River.
-    fn outer() -> Self {
+    pub fn outer() -> Self {
         Self {
             street: Street::Rive,
             metric: Metric::default(),
@@ -99,7 +82,7 @@ impl Layer {
     /// 1. generate Street, Metric, and Points as a pure function of the outer Layer
     /// 2. initialize kmeans centroids with weighted random Observation sampling (kmeans++ for faster convergence)
     /// 3. cluster kmeans centroids
-    fn inner(&self) -> Self {
+    pub fn inner(&self) -> Self {
         let mut layer = Self {
             lookup: Abstractor::default(),       // assigned during clustering
             kmeans: AbstractionSpace::default(), // assigned during clustering
@@ -111,13 +94,19 @@ impl Layer {
         layer.cluster_kmeans();
         layer
     }
+    /// save the current layer's `Metric` and `Abstractor` to disk
+    pub fn save(self) -> Self {
+        self.metric.save(format!("{}", self.street.next())); // outer layer generates this purely (metric over projections)
+        self.lookup.save(format!("{}", self.street)); // while inner layer generates this (clusters)
+        self
+    }
 
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
         log::info!(
-            "advancing street from {} -> {}",
-            self.street,
-            self.street.prev()
+            "{:<32}{:<32}",
+            "advancing street",
+            format!("{} <- {}", self.street.prev(), self.street)
         );
         self.street.prev()
     }
@@ -129,9 +118,9 @@ impl Layer {
     /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
     fn inner_metric(&self) -> Metric {
         log::info!(
-            "computing metric from {} -> {}",
-            self.street,
-            self.street.prev()
+            "{:<32}{:<32}",
+            "computing metric",
+            format!("{} <- {}", self.street.prev(), self.street)
         );
         let mut metric = BTreeMap::new();
         for a in self.kmeans.0.keys() {
@@ -146,7 +135,6 @@ impl Layer {
                 }
             }
         }
-        metric.insert(Pair::default(), 0.); // matrix diagonal is zero
         Metric(metric)
     }
     /// using the current layer's `Abstractor`,
@@ -157,23 +145,21 @@ impl Layer {
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
     fn inner_points(&self) -> ObservationSpace {
         log::info!(
-            "computing projections from {} -> {}",
-            self.street,
-            self.street.prev()
+            "{:<32}{:<32}",
+            "computing projections",
+            format!("{} <- {}", self.street.prev(), self.street)
         );
         let isomorphisms = Observation::exhaust(self.street.prev())
             .filter(Isomorphism::is_canonical)
             .map(Isomorphism::from) // isomorphism translation
             .collect::<Vec<Isomorphism>>();
-
         let progress = Self::progress(isomorphisms.len());
-        let projection =  isomorphisms
+        let projection = isomorphisms
             .into_par_iter()
             .map(|inner| (inner, self.lookup.projection(&inner)))
             .inspect(|_| progress.inc(1))
             .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
-        log::info!("completed point projections {}", projection.len());
         ObservationSpace(projection)
     }
 
@@ -182,9 +168,13 @@ impl Layer {
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn initial_kmeans(&mut self) {
-        log::info!("initializing kmeans {}", self.street);
+        log::info!(
+            "{:<32}{:<32}",
+            "declaring abstractions",
+            format!("{}    {} clusters", self.street, N_KMEANS_CENTROIDS)
+        );
         let progress = Self::progress(N_KMEANS_CENTROIDS - 1);
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xBAD);
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xADD);
         let sample = self.sample_uniform(rng);
         self.kmeans.expand(sample);
         while self.kmeans.0.len() < N_KMEANS_CENTROIDS {
@@ -193,16 +183,19 @@ impl Layer {
             progress.inc(1);
         }
         progress.finish();
-        log::info!("completed kmeans initialization {}", self.kmeans.0.len());
     }
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
     fn cluster_kmeans(&mut self) {
-        log::info!("clustering kmeans {}", self.street);
-        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xADD);
+        log::info!(
+            "{:<32}{:<32}",
+            "clustering observations",
+            format!("{}    {} iterations", self.street, N_KMEANS_ITERATION)
+        );
+        let ref mut rng = rand::rngs::StdRng::seed_from_u64(self.street as u64 + 0xDAB);
         let progress = Self::progress(N_KMEANS_ITERATION * self.points.0.len());
-        for _ in 0..N_KMEANS_ITERATION {
+        for t in 0..N_KMEANS_ITERATION {
             // calculate nearest neighbor Abstractions for each Observation
             // each nearest neighbor calculation is O(k^2)
             // there are k of them for each N observations
@@ -212,25 +205,34 @@ impl Layer {
                 .par_iter()
                 .map(|(_, h)| self.nearest_neighbor(h))
                 .inspect(|_| progress.inc(1))
-                .collect::<Vec<Abstraction>>();
+                .collect::<Vec<(Abstraction, f32)>>();
+
             // clear centroids before absorbtion
             // assign new neighbor Abstractions to each Observation
             // absorb Histograms into each Centroid
+            let mut inertia = 0.;
             self.kmeans.clear();
-            for ((o, h), a) in std::iter::zip(self.points.0.iter_mut(), neighbors.iter()) {
+            for ((o, h), (a, d)) in std::iter::zip(self.points.0.iter_mut(), neighbors.iter()) {
+                inertia += d * d;
                 self.lookup.assign(a, o);
                 self.kmeans.absorb(a, h);
             }
+            let inertia = inertia / self.points.0.len() as f32;
+            log::trace!("{:<5}{:8.4}", t, inertia);
+
             // centroid drift may make it such that some centroids are empty
             // reinitialize empty centroids with random Observations if necessary
             for ref a in self.kmeans.orphans() {
-                log::info!("reassinging drifting empty centroid {}", a);
+                log::warn!(
+                    "{:<32}{:<32}",
+                    "reassigning empty centroid",
+                    format!("0x{}", a)
+                );
                 let ref sample = self.sample_uniform(rng);
                 self.kmeans.absorb(a, sample);
             }
         }
         progress.finish();
-        log::info!("completed kmeans clustering {}", self.kmeans.0.len());
     }
 
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
@@ -250,7 +252,8 @@ impl Layer {
             .points
             .0
             .par_iter()
-            .map(|(_, hist)| self.nearest_distance(hist))
+            .map(|(_obs, hist)| self.nearest_neighbor(hist))
+            .map(|(_abs, dist)| dist * dist)
             .collect::<Vec<f32>>();
         let index = WeightedIndex::new(weights)
             .expect("valid weights array")
@@ -259,39 +262,20 @@ impl Layer {
             .0
             .values()
             .nth(index)
+            .cloned()
             .expect("shared index with outer layer")
-            .clone()
     }
 
-    /// distance^2 to the nearest neighboring Centroid, for kmeans++ sampling
-    fn nearest_distance(&self, histogram: &Histogram) -> f32 {
-        self.kmeans
-            .0
-            .par_iter()
-            .map(|(_, centroid)| centroid.histogram())
-            .map(|centroid| self.metric.emd(histogram, centroid))
-            .map(|min| min * min)
-            .min_by(|dx, dy| dx.partial_cmp(dy).unwrap())
-            .expect("find nearest neighbor")
-    }
     /// find the nearest neighbor `Abstraction` to a given `Histogram` for kmeans clustering
-    fn nearest_neighbor(&self, histogram: &Histogram) -> Abstraction {
+    fn nearest_neighbor(&self, histogram: &Histogram) -> (Abstraction, f32) {
         self.kmeans
             .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.histogram()))
             .map(|(abs, centroid)| (abs, self.metric.emd(histogram, centroid)))
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .map(|(abs, distance)| (abs.clone(), distance))
             .expect("find nearest neighbor")
-            .0
-            .clone()
-    }
-
-    /// save the current layer's `Metric` and `Abstractor` to disk
-    fn save(self) -> Self {
-        self.metric.save(format!("{}", self.street));
-        self.lookup.save(format!("{}", self.street));
-        self
     }
 
     fn progress(n: usize) -> indicatif::ProgressBar {

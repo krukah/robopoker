@@ -8,16 +8,17 @@ use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
-use std::ptr::NonNull;
+use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct Node {
-    graph: NonNull<DiGraph<Self, Edge>>,
-    index: NodeIndex,
     datum: Spot,
+    index: NodeIndex,
+    graph: Arc<DiGraph<Self, Edge>>,
 }
 
-impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Spot)> for Node {
-    fn from((index, graph, datum): (NodeIndex, NonNull<DiGraph<Node, Edge>>, Spot)) -> Self {
+impl From<(NodeIndex, Arc<DiGraph<Self, Edge>>, Spot)> for Node {
+    fn from((index, graph, datum): (NodeIndex, Arc<DiGraph<Self, Edge>>, Spot)) -> Self {
         Self {
             index,
             graph,
@@ -28,15 +29,14 @@ impl From<(NodeIndex, NonNull<DiGraph<Node, Edge>>, Spot)> for Node {
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl Node {
-    pub fn datum(&self) -> &Spot {
+    pub fn spot(&self) -> &Spot {
         &self.datum
+    }
+    pub fn bucket(&self) -> &Bucket {
+        self.datum.bucket()
     }
     pub fn index(&self) -> NodeIndex {
         self.index
-    }
-
-    pub fn bucket(&self) -> &Bucket {
-        self.datum.bucket()
     }
     pub fn player(&self) -> Player {
         self.datum.player()
@@ -49,11 +49,10 @@ impl Node {
         match player {
             Player::Choice(_) => unreachable!("payoffs defined relative to decider"),
             Player::Chance => self
-                .datum()
+                .spot()
                 .game()
                 .settlement()
                 .get(position)
-                .clone()
                 .map(|settlement| settlement.pnl() as f32)
                 .expect("player index in bounds"),
         }
@@ -128,6 +127,6 @@ impl Node {
     /// Node is created from a Tree
     /// Tree owns its Graph
     fn graph_ref(&self) -> &DiGraph<Self, Edge> {
-        unsafe { self.graph.as_ref() }
+        self.graph.as_ref()
     }
 }

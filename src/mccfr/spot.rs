@@ -4,6 +4,7 @@ use crate::mccfr::player::Player;
 use crate::play::continuation::Transition;
 use crate::play::game::Game;
 
+#[derive(Debug)]
 pub struct Spot {
     game: Game,
     bucket: Bucket,
