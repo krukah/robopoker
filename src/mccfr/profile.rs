@@ -1,7 +1,7 @@
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
-use crate::mccfr::memory::Memory;
+use crate::mccfr::memory::Strategy;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
 use crate::play::continuation::Transition;
@@ -22,10 +22,11 @@ use std::hash::Hasher;
 /// - Minimizer: handles policy and regret updates by implementing some regret-minimzation subroutine
 /// - Profile: stores policy & regret values. used by reference for a lot of calculations,
 /// such as Reach, Utility, MinimizerRegretVector, MinimizerPolicyVector, SampleTree, etc.
-pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Memory>>, usize);
+pub struct Profile(BTreeMap<Bucket, BTreeMap<Edge, Strategy>>, usize);
 
 impl Profile {
-    pub fn empty() -> Self {
+    pub fn load() -> Self {
+        log::info!("loading profile from disk");
         Self(BTreeMap::new(), 0)
     }
     /// increment Epoch counter
@@ -49,14 +50,14 @@ impl Profile {
         if self.0.contains_key(bucket) {
             return;
         } else {
-            let edges = node.datum().edges();
+            let edges = node.spot().edges();
             let uniform = 1. / edges.len() as Probability;
             for edge in edges {
                 self.0
                     .entry(bucket.clone())
                     .or_insert_with(BTreeMap::new)
                     .entry(edge)
-                    .or_insert_with(Memory::default)
+                    .or_insert_with(Strategy::default)
                     .policy = uniform;
             }
         }
@@ -66,15 +67,10 @@ impl Profile {
     /// we calculated positive regrets for every Edge
     /// and replace our old regret with the new
     /// new_regret = (old_regret + now_regret) . max(0)
-    pub fn update_regret(&mut self, infoset: &Info) {
-        assert!(infoset.node().player() == self.walker());
-        // TODO
-        // TODO
-        // condition on update scheduling. be cognizant of parallelization
-        let bucket = infoset.node().bucket();
-        for (ref action, ref regret) in self.regret_vector(infoset) {
-            let update = self.update(bucket, action);
-            update.regret = *regret;
+    pub fn update_regret(&mut self, bucket: &Bucket, vector: &BTreeMap<Edge, Utility>) {
+        for (action, regret) in vector {
+            let strategy = self.decision(bucket, action);
+            strategy.regret = *regret;
         }
     }
     /// update strategy vector
@@ -83,20 +79,14 @@ impl Profile {
     /// p ( action ) = action_regret / sum_actions if sum > 0 ;
     ///              =             1 / num_actions if sum = 0 .
     /// "CFR+ discounts prior iterations' contribution to the average strategy, but not the regrets."
-    pub fn update_policy(&mut self, infoset: &Info) {
-        assert!(infoset.node().player() == self.walker());
-        // TODO
-        // TODO
-        // condition on update scheduling. be cognizant of parallelization
+    pub fn update_policy(&mut self, bucket: &Bucket, vector: &BTreeMap<Edge, Probability>) {
         let epochs = self.epochs();
-        let bucket = infoset.node().bucket();
-        // self.normalize(bucket);
-        for (ref action, ref policy) in self.policy_vector(infoset) {
-            let update = self.update(bucket, action);
-            update.policy = *policy;
-            update.advice *= epochs as Probability;
-            update.advice += policy;
-            update.advice /= epochs as Probability + 1.;
+        for (action, policy) in vector {
+            let strategy = self.decision(bucket, action);
+            strategy.policy = *policy;
+            strategy.advice *= epochs as Probability;
+            strategy.advice += policy;
+            strategy.advice /= epochs as Probability + 1.;
         }
     }
 
@@ -149,7 +139,7 @@ impl Profile {
     /// we use this in Self::update_*
     /// to replace any of the three values
     /// with the new value
-    fn update(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Memory {
+    fn decision(&mut self, bucket: &Bucket, edge: &Edge) -> &mut Strategy {
         self.0
             .get_mut(bucket)
             .expect("conditional on update, bucket should be visited")
@@ -188,7 +178,7 @@ impl Profile {
     /// by calculating the marginal Utitlity
     /// missed out on for not having followed
     /// every walkable Edge at this Infoset/Node/Bucket
-    fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
+    pub fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
         assert!(infoset.node().player() == self.walker());
         infoset
             .node()
@@ -203,7 +193,7 @@ impl Profile {
     /// by following a given Edge
     /// proportionally to how much regret we felt
     /// for not having followed that Edge in the past.
-    fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
+    pub fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
         assert!(infoset.node().player() == self.walker());
         let regrets = infoset
             .node()
