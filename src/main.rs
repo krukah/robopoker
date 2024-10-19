@@ -58,21 +58,26 @@ fn main() {
 //    2003. Using the Triangle Inequality to Accelerate-Means (https://cdn.aaai.org/ICML/2003/ICML03-022.pdf) In ICML.
 
 fn logging() {
-    use std::io::Write;
-    use std::time::Instant;
-    let start = Instant::now();
-    env_logger::Builder::new()
-        .filter(None, log::LevelFilter::Info)
-        .format(move |buffer, record| {
-            let elapsed = start.elapsed();
-            writeln!(
-                buffer,
-                "{:02}:{:02}:{:02} - {}",
-                (elapsed.as_secs() / 3600),
-                (elapsed.as_secs() % 3600) / 60,
-                (elapsed.as_secs() % 60),
-                record.args()
-            )
-        })
-        .init();
+    std::fs::create_dir_all("logs").expect("create logs directory");
+    let config = simplelog::ConfigBuilder::new()
+        .set_location_level(log::LevelFilter::Off)
+        .set_target_level(log::LevelFilter::Off)
+        .set_thread_level(log::LevelFilter::Off)
+        .build();
+    let time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("time moves slow")
+        .as_secs();
+    let file = simplelog::WriteLogger::new(
+        log::LevelFilter::Debug,
+        config.clone(),
+        std::fs::File::create(format!("logs/{}.log", time)).expect("create log file"),
+    );
+    let term = simplelog::TermLogger::new(
+        log::LevelFilter::Info,
+        config.clone(),
+        simplelog::TerminalMode::Mixed,
+        simplelog::ColorChoice::Auto,
+    );
+    simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
 }

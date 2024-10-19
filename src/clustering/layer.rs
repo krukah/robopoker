@@ -24,7 +24,7 @@ use std::collections::BTreeMap;
 /// - CPU: O(N)   for kmeans clustering
 /// - RAM: O(N^2) for learned metric
 /// - RAM: O(N)   for learned centroids
-const N_KMEANS_CENTROIDS: usize = 128;
+const N_KMEANS_CENTROIDS: usize = 256;
 
 /// number of kmeans iterations.
 /// this controls the precision of the abstraction space.
@@ -219,7 +219,7 @@ impl Layer {
             self.lookup.assign(abstraction, observation);
             self.kmeans.absorb(abstraction, histogram);
         }
-        log::info!("{:>12.8}", loss / self.points.0.len() as f32);
+        log::debug!("LOSS {:>12.8}", loss / self.points.0.len() as f32);
     }
     /// centroid drift may make it such that some centroids are empty
     /// so we reinitialize empty centroids with random Observations if necessary

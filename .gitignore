@@ -1,10 +1,10 @@
 /target
-.DS_Store
-.vscode/*
 /data
+.vscode/*
+.DS_Store
 .todo
 .env
 .swp
-profile.json
 *.pgcopy
-analysis/*.png
+*.log
+*.png

@@ -18,10 +18,10 @@ rand = { version = "0.8.5", features = ["small_rng"] }
 bytes = "1.0"
 num_cpus = "1.16.0"
 log = "0.4.22"
-env_logger = "0.11.5"
 rayon = "1.10.0"
 byteorder = "1.5.0"
 indicatif = "0.17.8"
+simplelog = "0.12.2"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
