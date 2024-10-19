@@ -9,11 +9,11 @@ struct Potential;
 impl std::fmt::Display for Potential {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let observation = Observation::from(Street::Turn);
-        let distribution = Histogram::from(observation.clone());
+        let histogram = Histogram::from(observation.clone());
         let strength = Strength::from(Hand::from(observation.clone()));
-        let equity = distribution.equity();
+        let equity = histogram.equity();
         // Display the histogram
-        writeln!(f, "{}", distribution)?;
+        writeln!(f, "{}", histogram)?;
         // Mark the point on the x-axis corresponding to the value "ev"
         let n_x_bins = 32;
         let x = (equity * n_x_bins as f32).floor() as usize;
