@@ -9,6 +9,16 @@ pub trait Coupling {
     type P: Density<X = Self::X>;
     type Q: Density<X = Self::Y>;
     fn flow(&self, x: &Self::X, y: &Self::Y) -> f32;
+    /// default ::cost() implemenation assumes that we have flow(x, y
+    /// available cheaply enough that we can doubly-integrate
+    /// over the support of joint distribution.
+    ///
+    /// in practice, our optimal cost implmentations (both Metric and
+    /// Equity) calculate flow(x, y) lazily and in a way that doesn't
+    /// make sense to integrate over the support of the joint distribution.
+    ///
+    /// Equity uses simple O(N) integration of total variation
+    /// Metric uses greedy approximation of EMD.
     fn cost(&self, p: &Self::P, q: &Self::Q, m: &Self::M) -> f32 {
         let mut cost = 0.;
         for x in p.support() {

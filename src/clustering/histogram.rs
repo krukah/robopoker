@@ -22,7 +22,7 @@ impl Density for Histogram {
         self.weight(x)
     }
     fn support(&self) -> impl Iterator<Item = &Self::X> {
-        self.support().into_iter()
+        self.support()
     }
 }
 

@@ -18,8 +18,8 @@ impl Measure for Metric {
     type Y = Abstraction;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
         match (x, y) {
-            (Self::X::Equity(a), Self::Y::Equity(b)) => Equity.distance(a, b),
             (Self::X::Random(_), Self::Y::Random(_)) => self.lookup(x, y),
+            (Self::X::Equity(a), Self::Y::Equity(b)) => Equity.distance(a, b),
             _ => unreachable!("only equity distance for river abstractions"),
         }
     }
@@ -42,9 +42,9 @@ impl Coupling for Metric {
 impl Metric {
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
         match source.peek() {
-            Abstraction::Equity(_) => Equity::variation(source, target),
             Abstraction::Random(_) => self.greedy(source, target),
-            Abstraction::Pocket(_) => 1., //  unreachable!("no preflop emd"),
+            Abstraction::Equity(_) => Equity::variation(source, target),
+            Abstraction::Pocket(_) => unreachable!("no preflop emd"),
         }
     }
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> f32 {
@@ -54,16 +54,10 @@ impl Metric {
             *self.0.get(&Pair::from((x, y))).unwrap()
         }
     }
-    fn image(&self, x: &Histogram) -> BTreeMap<Abstraction, f32> {
-        x.support().map(|&a| (a, 1. / x.size() as f32)).collect()
-    }
-    fn range(&self, y: &Histogram) -> BTreeMap<Abstraction, f32> {
-        y.support().map(|&a| (a, y.weight(&a))).collect()
-    }
     fn greedy(&self, x: &Histogram, y: &Histogram) -> f32 {
         let mut cost = 0.;
-        let mut sources = self.image(x);
-        let mut targets = self.range(y);
+        let mut sources = x.normalized();
+        let mut targets = y.normalized();
         'cost: while sources.values().any(|&v| v > 0.) {
             'flow: for (x, pile) in sources
                 .iter()
