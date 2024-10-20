@@ -1,4 +1,5 @@
 use crate::cards::hole::Hole;
+use crate::transport::support::Support;
 use crate::Probability;
 use std::hash::Hash;
 use std::u64;
@@ -14,6 +15,8 @@ pub enum Abstraction {
     Random(u64),  // flop, turn
     Pocket(Hole), // preflop
 }
+
+impl Support for Abstraction {}
 
 impl Abstraction {
     pub const fn range() -> &'static [Self] {
