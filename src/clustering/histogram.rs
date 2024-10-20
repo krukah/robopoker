@@ -29,14 +29,25 @@ impl Histogram {
     /// all witnessed Abstractions.
     /// treat this like an unordered array
     /// even though we use BTreeMap for struct.
-    pub fn support(&self) -> Vec<&Abstraction> {
-        self.contribution.keys().collect()
+    pub fn support(&self) -> impl Iterator<Item = &Abstraction> {
+        self.contribution.keys()
+    }
+    pub fn normalized(&self) -> BTreeMap<Abstraction, f32> {
+        self.contribution
+            .iter()
+            .map(|(&a, &count)| (a, count as f32 / self.mass as f32))
+            .collect()
     }
 
     /// useful only for k-means edge case of centroid drift
     pub fn is_empty(&self) -> bool {
         assert!(self.contribution.is_empty() == (self.mass == 0));
         self.contribution.is_empty()
+    }
+
+    /// size of the support
+    pub fn size(&self) -> usize {
+        self.contribution.len()
     }
 
     /// insert the Abstraction into our support,

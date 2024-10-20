@@ -69,7 +69,7 @@ fn logging() {
         .expect("time moves slow")
         .as_secs();
     let file = simplelog::WriteLogger::new(
-        log::LevelFilter::Debug,
+        log::LevelFilter::Trace,
         config.clone(),
         std::fs::File::create(format!("logs/{}.log", time)).expect("create log file"),
     );
