@@ -1,5 +1,6 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::transport::density::Density;
 use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
@@ -13,6 +14,16 @@ use std::ops::AddAssign;
 pub struct Histogram {
     mass: usize,
     contribution: BTreeMap<Abstraction, usize>,
+}
+
+impl Density for Histogram {
+    type X = Abstraction;
+    fn density(&self, x: &Self::X) -> f32 {
+        self.weight(x)
+    }
+    fn support(&self) -> impl Iterator<Item = &Self::X> {
+        self.support().into_iter()
+    }
 }
 
 impl Histogram {
