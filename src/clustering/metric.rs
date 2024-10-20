@@ -7,7 +7,7 @@ use crate::clustering::xor::Pair;
 use std::collections::BTreeMap;
 
 struct River;
-impl Transport for River {
+impl Coupling for River {
     type M = Metric;
     type X = Abstraction; // ::Equity(i8)
     type Y = Abstraction; // ::Equity(i8)
@@ -90,17 +90,11 @@ impl Metric {
     }
 
     fn image(&self, x: &Histogram) -> BTreeMap<Abstraction, f32> {
-        x.support()
-            .into_iter()
-            .map(|&a| (a, 1. / x.size() as f32))
-            .collect()
+        x.support().map(|&a| (a, 1. / x.size() as f32)).collect()
     }
 
     fn range(&self, y: &Histogram) -> BTreeMap<Abstraction, f32> {
-        y.support()
-            .into_iter()
-            .map(|&a| (a, y.weight(&a)))
-            .collect()
+        y.support().map(|&a| (a, y.weight(&a))).collect()
     }
 
     fn greedy(&self, x: &Histogram, y: &Histogram) -> f32 {
@@ -175,12 +169,12 @@ trait Measure {
     type Y: Support;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32;
 }
-trait Transport {
+trait Coupling {
     type X: Support;
     type Y: Support;
+    type M: Measure<X = Self::X, Y = Self::Y>;
     type P: Density<X = Self::X>;
     type Q: Density<X = Self::Y>;
-    type M: Measure<X = Self::X, Y = Self::Y>;
     fn flow(&self, x: &Self::X, y: &Self::Y) -> f32;
     fn cost(&self, p: &Self::P, q: &Self::Q, m: &Self::M) -> f32 {
         let mut cost = 0.;
@@ -220,7 +214,7 @@ impl Measure for Metric {
     }
 }
 
-impl Transport for Metric {
+impl Coupling for Metric {
     type M = Self;
     type X = Abstraction;
     type Y = Abstraction;
