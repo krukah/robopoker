@@ -38,6 +38,8 @@ impl Abstractor {
                 .inner() // cluster turn
                 .save()
                 .inner() // cluster flop
+                .save()
+                .inner() // cluster preflop (but really just save flop.metric)
                 .save();
         }
     }
@@ -236,9 +238,10 @@ impl Abstractor {
     /// 3. Write the extension (4 bytes)
     /// 4. Write the observation and abstraction pairs
     /// 5. Write the trailer (2 bytes)
-    pub fn save(&self, name: String) {
-        log::info!("saving abstraction lookup {}", name);
-        let ref mut file = File::create(format!("{}.abstraction.pgcopy", name)).expect("new file");
+    pub fn save(&self, street: Street) {
+        log::info!("{:<32}{:<32}", "saving abstraction lookup", street);
+        let ref mut file =
+            File::create(format!("{}.abstraction.pgcopy", street)).expect("new file");
         file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
         file.write_u32::<BigEndian>(0).expect("flags");
         file.write_u32::<BigEndian>(0).expect("extension");
@@ -272,7 +275,7 @@ mod tests {
                 .map(|o| (o, Abstraction::random()))
                 .collect(),
         );
-        save.save(street.to_string());
+        save.save(street);
         // Load from disk
         let load = Abstractor::load_street(street);
         std::iter::empty()
