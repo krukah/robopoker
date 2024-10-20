@@ -2,7 +2,7 @@ use super::density::Density;
 use super::measure::Measure;
 use super::support::Support;
 
-trait Coupling {
+pub trait Coupling {
     type X: Support;
     type Y: Support;
     type M: Measure<X = Self::X, Y = Self::Y>;
