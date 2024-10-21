@@ -1,6 +1,7 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use crate::transport::coupling::Coupling;
+use crate::transport::density::Density;
 use crate::transport::measure::Measure;
 
 /// useful struct for methods that help in calculating
@@ -50,34 +51,40 @@ impl Coupling for Equity {
 #[allow(dead_code)]
 impl Equity {
     pub fn variation(x: &Histogram, y: &Histogram) -> f32 {
-        let mut total = 0.;
-        let mut cdf_x = 0.;
-        let mut cdf_y = 0.;
-        for abstraction in Abstraction::range() {
-            cdf_x += x.weight(abstraction);
-            cdf_y += y.weight(abstraction);
-            total += (cdf_x - cdf_y).abs();
-        }
-        total / 2.
+        Abstraction::range()
+            .iter()
+            .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
+            .scan((0., 0.), |cdf, (px, py)| {
+                Some({
+                    cdf.0 += px;
+                    cdf.1 += py;
+                    *cdf
+                })
+            })
+            .map(|(x, y)| (x - y).abs())
+            .sum::<f32>()
+            / 2.
     }
     pub fn euclidean(x: &Histogram, y: &Histogram) -> f32 {
-        let mut total = 0.;
-        for abstraction in Abstraction::range() {
-            let x_density = x.weight(abstraction);
-            let y_density = y.weight(abstraction);
-            let delta = x_density - y_density;
-            total += delta * delta;
-        }
-        total.sqrt()
+        Abstraction::range()
+            .iter()
+            .map(|abstraction| x.density(abstraction) - y.density(abstraction))
+            .map(|delta| delta * delta)
+            .sum::<f32>()
+            .sqrt()
     }
-    pub fn chisq(x: &Histogram, y: &Histogram) -> f32 {
-        let mut total = 0.;
-        for abstraction in Abstraction::range() {
-            let x_density = x.weight(abstraction);
-            let y_density = y.weight(abstraction);
-            let delta = x_density - y_density;
-            total += delta * delta / (x_density + y_density);
-        }
-        total
+    pub fn chisquare(x: &Histogram, y: &Histogram) -> f32 {
+        Abstraction::range()
+            .iter()
+            .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
+            .map(|(x, y)| (x - y).powi(2) / (x + y))
+            .sum::<f32>()
+    }
+    pub fn divergent(x: &Histogram, y: &Histogram) -> f32 {
+        Abstraction::range()
+            .iter()
+            .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
+            .map(|(x, y)| (x - y).abs())
+            .sum::<f32>()
     }
 }
