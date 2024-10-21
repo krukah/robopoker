@@ -43,7 +43,7 @@ impl Histogram {
     pub fn support(&self) -> impl Iterator<Item = &Abstraction> {
         self.contribution.keys()
     }
-    pub fn normalized(&self) -> BTreeMap<Abstraction, f32> {
+    pub fn normalize(&self) -> BTreeMap<Abstraction, f32> {
         self.contribution
             .iter()
             .map(|(&a, &count)| (a, count as f32 / self.mass as f32))

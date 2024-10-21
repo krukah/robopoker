@@ -209,36 +209,39 @@ impl Layer {
         );
         let progress = Self::progress(Self::t(self.street));
         for _ in 0..Self::t(self.street) {
-            let neighbors = self
-                .points
-                .0
-                .par_iter()
-                .map(|(_, h)| self.nearest_neighbor(h))
-                .collect::<Vec<(Abstraction, f32)>>();
-            self.assign_nearest_neighbor(neighbors);
-            self.assign_orphans_randomly();
+            let neighbors = self.get_neighbor();
+            self.set_neighbor(neighbors);
+            self.set_orphaned();
             progress.inc(1);
         }
         progress.finish();
     }
 
+    /// find the nearest neighbor `Abstraction` to each `Observation`.
+    /// work in parallel and collect results before mutating kmeans state.
+    fn get_neighbor(&self) -> Vec<(Abstraction, f32)> {
+        self.points
+            .0
+            .par_iter()
+            .map(|(_, h)| self.nearest_neighbor(h))
+            .collect::<Vec<(Abstraction, f32)>>()
+    }
     /// assign each `Observation` to the nearest `Centroid`
     /// by computing the EMD distance between the `Observation`'s `Histogram` and each `Centroid`'s `Histogram`
     /// and returning the `Abstraction` of the nearest `Centroid`
-    fn assign_nearest_neighbor(&mut self, neighbors: Vec<(Abstraction, f32)>) {
+    fn set_neighbor(&mut self, neighbors: Vec<(Abstraction, f32)>) {
         self.kmeans.clear();
         let mut loss = 0.;
         for ((obs, hist), (abs, dist)) in self.points.0.iter_mut().zip(neighbors.iter()) {
-            loss += dist * dist;
             self.lookup.assign(abs, obs);
             self.kmeans.absorb(abs, hist);
+            loss += dist * dist;
         }
-        let loss = loss / self.points.0.len() as f32;
-        log::trace!("LOSS {:>12.8}", loss);
+        log::trace!("LOSS {:>12.8}", loss / self.points.0.len() as f32);
     }
     /// centroid drift may make it such that some centroids are empty
     /// so we reinitialize empty centroids with random Observations if necessary
-    fn assign_orphans_randomly(&mut self) {
+    fn set_orphaned(&mut self) {
         for ref a in self.kmeans.orphans() {
             let ref mut rng = rand::thread_rng();
             let ref sample = self.sample_uniform(rng);

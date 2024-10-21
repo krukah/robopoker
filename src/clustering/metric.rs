@@ -36,7 +36,7 @@ impl Coupling for Metric {
         todo!("implementation would require us to eagerly calculate and store P_ij in Metric constructor(s). e.g. if we use a LP solver to get an exact solution, then Metric would store matrix elements of the optimal P_ij transport plan.")
     }
     fn cost(&self, x: &Self::P, y: &Self::Q, _: &Self::M) -> f32 {
-        self.greedy(x, y)
+        self.emd(x, y)
     }
 }
 
@@ -73,10 +73,10 @@ impl Metric {
     /// probably worth optimizing into a 0-alloc implementation.
     fn greedy(&self, x: &Histogram, y: &Histogram) -> f32 {
         let mut cost = 0.;
-        let mut pile = x.normalized();
-        let mut sink = y.normalized();
+        let mut pile = x.normalize();
+        let mut sink = y.normalize();
         'cost: while pile.values().any(|&dx| dx > 0.) {
-            'flow: for (x, dx) in pile
+            'pile: for (x, dx) in pile
                 .iter()
                 .filter(|(_, &dx)| dx > 0.)
                 .map(|(&x, &dx)| (x, dx))
@@ -95,13 +95,13 @@ impl Metric {
                             cost += distance * earth;
                             *pile.get_mut(&x).unwrap() -= earth;
                             *sink.get_mut(&y).unwrap() = 0.;
-                            continue 'flow;
+                            continue 'pile;
                         } else {
                             let earth = dx;
                             cost += distance * earth;
                             *pile.get_mut(&x).unwrap() = 0.;
                             *sink.get_mut(&y).unwrap() -= earth;
-                            continue 'flow;
+                            continue 'pile;
                         }
                     }
                 }

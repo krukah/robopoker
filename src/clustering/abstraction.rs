@@ -31,7 +31,7 @@ impl Abstraction {
     fn floatize(q: i8) -> Probability {
         Probability::from(q) / Probability::from(Self::N)
     }
-    const N: i8 = 50;
+    const N: i8 = 63;
     const BUCKETS: [Self; Self::N as usize + 1] = Self::buckets();
     const fn buckets() -> [Self; Self::N as usize + 1] {
         let mut buckets = [Self::Equity(0); Self::N as usize + 1];
