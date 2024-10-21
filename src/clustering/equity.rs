@@ -1,9 +1,7 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
-use super::metric::Metric;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
-use crate::transport::support::Support;
 
 /// useful struct for methods that help in calculating
 /// optimal transport between two Equity Histograms.
@@ -16,18 +14,19 @@ use crate::transport::support::Support;
 /// over the product of support spaces, i.e. [0, 1] x [0, 1].
 pub struct Equity;
 
-impl Support for i8 {}
-
 impl Measure for Equity {
-    type X = i8; // Abstraction::Equity(i8) variant
-    type Y = i8; // Abstraction::Equity(i8) variant
+    type X = Abstraction; //::Equity(i8) variant
+    type Y = Abstraction; //::Equity(i8) variant
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
-        (x - y).abs() as f32
+        match (x, y) {
+            (Self::X::Equity(x), Self::Y::Equity(y)) => (x - y).abs() as f32,
+            _ => unreachable!("only equity distance for equity abstractions. perhaps Self::X should be f32 to avoid this pattern match"),
+        }
     }
 }
 
 impl Coupling for Equity {
-    type M = Metric;
+    type M = Self;
     type X = Abstraction; //::Equity(i8) variant
     type Y = Abstraction; //::Equity(i8) variant
     type P = Histogram;
@@ -48,10 +47,9 @@ impl Coupling for Equity {
 
 /// different distance metrics over Equity Histograms
 /// conveniently have properties of distributions over the [0, 1] interval.
+#[allow(dead_code)]
 impl Equity {
     pub fn variation(x: &Histogram, y: &Histogram) -> f32 {
-        // assert!(matches!(x.peek(), Abstraction::Equity(_)));
-        // assert!(matches!(y.peek(), Abstraction::Equity(_)));
         let mut total = 0.;
         let mut cdf_x = 0.;
         let mut cdf_y = 0.;
@@ -62,11 +60,7 @@ impl Equity {
         }
         total / 2.
     }
-
-    #[allow(dead_code)]
     pub fn euclidean(x: &Histogram, y: &Histogram) -> f32 {
-        // assert!(matches!(x.peek(), Abstraction::Equity(_)));
-        // assert!(matches!(y.peek(), Abstraction::Equity(_)));
         let mut total = 0.;
         for abstraction in Abstraction::range() {
             let x_density = x.weight(abstraction);
@@ -76,11 +70,7 @@ impl Equity {
         }
         total.sqrt()
     }
-
-    #[allow(dead_code)]
     pub fn chisq(x: &Histogram, y: &Histogram) -> f32 {
-        // assert!(matches!(x.peek(), Abstraction::Equity(_)));
-        // assert!(matches!(y.peek(), Abstraction::Equity(_)));
         let mut total = 0.;
         for abstraction in Abstraction::range() {
             let x_density = x.weight(abstraction);
