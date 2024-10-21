@@ -1,8 +1,8 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import sqlalchemy as sql
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
+import matplotlib.pyplot as plt # type: ignore
+import seaborn as sns  # type: ignore
+import sqlalchemy as sql  # type: ignore
 
 # Create a database connection
 engine = sql.create_engine('postgresql://localhost:5432/robopoker')
