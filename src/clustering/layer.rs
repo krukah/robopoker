@@ -69,7 +69,7 @@ impl Layer {
     const fn t(street: Street) -> usize {
         match street {
             Street::Pref => 0,
-            Street::Flop => 128,
+            Street::Flop => 64,
             Street::Turn => 32,
             Street::Rive => unreachable!(),
         }

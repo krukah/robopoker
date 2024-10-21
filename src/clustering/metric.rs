@@ -19,7 +19,7 @@ impl Measure for Metric {
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
         match (x, y) {
             (Self::X::Random(_), Self::Y::Random(_)) => self.lookup(x, y),
-            (Self::X::Equity(a), Self::Y::Equity(b)) => Equity.distance(a, b),
+            (Self::X::Equity(_), Self::Y::Equity(_)) => Equity.distance(x, y),
             _ => unreachable!("only equity distance for river abstractions"),
         }
     }
@@ -66,37 +66,40 @@ impl Metric {
     ///
     /// this is O(N * M) in (sources, targets) size. for us these are both
     /// the K number of clusters at different layers of the hierarchy.
+    ///
+    /// if anything, the most expensive part about this is the double BTreeMap
+    /// allocation. considering that we do this a few billion times it is
+    /// probably worth optimizing into a 0-alloc implementation.
     fn greedy(&self, x: &Histogram, y: &Histogram) -> f32 {
         let mut cost = 0.;
-        let mut sources = x.normalized();
-        let mut targets = y.normalized();
-        'cost: while sources.values().any(|&v| v > 0.) {
-            'flow: for (x, pile) in sources
+        let mut pile = x.normalized();
+        let mut sink = y.normalized();
+        'cost: while pile.values().any(|&dx| dx > 0.) {
+            'flow: for (x, dx) in pile
                 .iter()
-                // .cycle()
-                .filter(|(_, &pile)| pile > 0.)
-                .map(|(&x, &pile)| (x, pile))
+                .filter(|(_, &dx)| dx > 0.)
+                .map(|(&x, &dx)| (x, dx))
                 .collect::<Vec<_>>()
             {
-                let nearest = targets
+                match sink
                     .iter()
-                    .filter(|(_, &hole)| hole > 0.)
-                    .map(|(&y, &hole)| ((y, hole), self.distance(&x, &y)))
-                    .min_by(|(_, y1), (_, y2)| y1.partial_cmp(y2).unwrap());
-                match nearest {
+                    .filter(|(_, &dy)| dy > 0.)
+                    .map(|(&y, &dy)| ((y, dy), self.distance(&x, &y)))
+                    .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
+                {
                     None => break 'cost,
-                    Some(((y, hole), distance)) => {
-                        if pile > hole {
-                            let earth = hole;
+                    Some(((y, dy), distance)) => {
+                        if dx > dy {
+                            let earth = dy;
                             cost += distance * earth;
-                            *sources.get_mut(&x).unwrap() -= earth;
-                            *targets.get_mut(&y).unwrap() = 0.;
+                            *pile.get_mut(&x).unwrap() -= earth;
+                            *sink.get_mut(&y).unwrap() = 0.;
                             continue 'flow;
                         } else {
-                            let earth = pile;
+                            let earth = dx;
                             cost += distance * earth;
-                            *sources.get_mut(&x).unwrap() = 0.;
-                            *targets.get_mut(&y).unwrap() -= earth;
+                            *pile.get_mut(&x).unwrap() = 0.;
+                            *sink.get_mut(&y).unwrap() -= earth;
                             continue 'flow;
                         }
                     }

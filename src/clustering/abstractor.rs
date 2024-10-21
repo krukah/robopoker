@@ -38,8 +38,6 @@ impl Abstractor {
                 .inner() // cluster turn
                 .save()
                 .inner() // cluster flop
-                .save()
-                .inner() // cluster preflop (but really just save flop.metric)
                 .save();
         }
     }
