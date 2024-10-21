@@ -54,6 +54,18 @@ impl Metric {
             *self.0.get(&Pair::from((x, y))).unwrap()
         }
     }
+
+    /// greedy algorithm for optimimal transport.
+    /// my favorite interpretation of this is in the formalization
+    /// of bipartite matching. we have a Left set of sources and a
+    /// Right set of targets. we want to find a way to pair each source
+    /// to a target under the constraint of conserving probability mass.
+    ///
+    /// for each step of the algorithm, we pair the next source to its nearest target.
+    /// we move as much mass as we can. we then continue to an arbitrary next source, and repeat.
+    ///
+    /// this is O(N * M) in (sources, targets) size. for us these are both
+    /// the K number of clusters at different layers of the hierarchy.
     fn greedy(&self, x: &Histogram, y: &Histogram) -> f32 {
         let mut cost = 0.;
         let mut sources = x.normalized();
@@ -61,7 +73,8 @@ impl Metric {
         'cost: while sources.values().any(|&v| v > 0.) {
             'flow: for (x, pile) in sources
                 .iter()
-                .cycle()
+                // .cycle()
+                .filter(|(_, &pile)| pile > 0.)
                 .map(|(&x, &pile)| (x, pile))
                 .collect::<Vec<_>>()
             {
