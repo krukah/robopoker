@@ -188,10 +188,12 @@ impl Layer {
         );
         let ref mut rng = rand::thread_rng();
         let progress = Self::progress(Self::k(self.street));
-        self.kmeans.expand(self.sample_uniform(rng));
+        let sample = self.sample_uniform(rng);
+        self.kmeans.expand(sample);
         progress.inc(1);
         while self.kmeans.0.len() < Self::k(self.street) {
-            self.kmeans.expand(self.sample_outlier(rng));
+            let sample = self.sample_outlier(rng);
+            self.kmeans.expand(sample);
             progress.inc(1);
         }
         progress.finish();

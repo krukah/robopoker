@@ -20,7 +20,8 @@ impl Measure for Metric {
         match (x, y) {
             (Self::X::Random(_), Self::Y::Random(_)) => self.lookup(x, y),
             (Self::X::Equity(_), Self::Y::Equity(_)) => Equity.distance(x, y),
-            _ => unreachable!("only equity distance for river abstractions"),
+            (Self::X::Pocket(_), Self::Y::Pocket(_)) => unreachable!("no preflop distance"),
+            _ => unreachable!(),
         }
     }
 }
