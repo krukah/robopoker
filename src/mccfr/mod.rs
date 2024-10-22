@@ -1,10 +1,11 @@
 pub mod bucket;
+pub mod data;
 pub mod edge;
 pub mod info;
-pub mod memory;
 pub mod node;
+pub mod path;
 pub mod player;
 pub mod profile;
-pub mod spot;
+pub mod strategy;
 pub mod trainer;
 pub mod tree;

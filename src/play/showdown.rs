@@ -106,7 +106,7 @@ mod tests {
         Strength::from((Ranking::TwoPair(Rank::Ace, Rank::King), Kickers::default()))
     }
     fn triplets() -> Strength {
-        Strength::from((Ranking::ThreeOAK(Rank::Ace), Kickers::default())) // CORRECT
+        Strength::from((Ranking::ThreeOAK(Rank::Ace), Kickers::default()))
     }
     fn the_nuts() -> Strength {
         Strength::from((Ranking::Straight(Rank::Ace), Kickers::default()))

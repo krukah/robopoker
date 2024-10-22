@@ -6,10 +6,11 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::mccfr::bucket::Bucket;
-use crate::mccfr::bucket::Path;
+use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
-use crate::mccfr::spot::Spot;
+use crate::mccfr::path::Path;
+use crate::play::action::Action;
 use crate::play::game::Game;
 use std::collections::BTreeMap;
 
@@ -89,50 +90,45 @@ impl Abstractor {
  * methods for unraveling the Tree
  */
 impl Abstractor {
+    /// abstraction methods
+    pub fn chance_abstraction(&self, game: &Game) -> Abstraction {
+        self.abstraction(&Isomorphism::from(Observation::from(game)))
+    }
+    pub fn action_abstraction(&self, _: &Vec<&Edge>) -> Path {
+        // TODO
+        // decide how to handle action abstraction
+        Path::from(0)
+    }
     /// produce the children of a Node.
     /// we may need some Trainer-level references to produce children
-    pub fn children(&self, node: &Node) -> Vec<(Spot, Edge)> {
+    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+        let ref past = node.history();
         let ref game = node.spot().game();
-        let ref past = node.history().into_iter().collect::<Vec<&Edge>>();
         game.children()
             .into_iter()
-            .map(|(g, a)| (g, Edge::from(a)))
-            .map(|(g, e)| self.explore(g, e, past))
+            .map(|(g, a)| self.convert(g, a, past))
             .collect()
     }
-    /// extend a path with an Edge
+    /// convert gameplay types into CFR types
+    /// Game -> Spot
+    /// Action -> Edge
+    /// Vec<Edge> -> Path
     /// wrap the (Game, Bucket) in a Data
-    fn explore(&self, game: Game, edge: Edge, history: &Vec<&Edge>) -> (Spot, Edge) {
-        let mut history = history.clone();
-        history.push(&edge);
-        (self.data(game, history), edge)
-    }
-    /// generate a Bucket from Game
-    /// wrap the (Game, Bucket) in a Data
-    fn data(&self, game: Game, path: Vec<&Edge>) -> Spot {
-        let bucket = self.bucket(&game, &path);
-        Spot::from((game, bucket))
-    }
-    /// use the product of past actions (Path) and chance information (Abstraction)
-    /// to label a given Node/Infoset under a Bucket.
-    fn bucket(&self, game: &Game, path: &Vec<&Edge>) -> Bucket {
-        let path = self.path_abstraction(path);
-        let info = self.card_abstraction(game);
-        Bucket::from((path, info))
-    }
-    /// abstraction methods
-    pub fn card_abstraction(&self, game: &Game) -> Abstraction {
-        let ref equivalence = Isomorphism::from(game); // isomorphism translation
-        self.abstraction(equivalence)
-    }
-    pub fn path_abstraction(&self, _: &Vec<&Edge>) -> Path {
-        Path::from(0)
+    fn convert(&self, game: Game, action: Action, past: &Vec<&Edge>) -> (Data, Edge) {
+        let edge = Edge::from(action);
+        let ref mut path = past.clone();
+        path.push(&edge);
+        let action = self.action_abstraction(&path);
+        let chance = self.chance_abstraction(&game);
+        let bucket = Bucket::from((action, chance));
+        let choice = Data::from((game, bucket));
+        (choice, edge)
     }
 }
 
-use byteorder::BigEndian;
 use byteorder::ReadBytesExt;
 use byteorder::WriteBytesExt;
+use byteorder::BE;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -158,11 +154,11 @@ impl From<Street> for Abstractor {
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) == 2 {
-                reader.read_u32::<BigEndian>().expect("observation length");
-                let obs_i64 = reader.read_i64::<BigEndian>().expect("read observation");
-                reader.read_u32::<BigEndian>().expect("abstraction length");
-                let abs_i64 = reader.read_i64::<BigEndian>().expect("read abstraction");
-                let observation = Isomorphism::from(obs_i64);
+                reader.read_u32::<BE>().expect("observation length");
+                let iso_i64 = reader.read_i64::<BE>().expect("read observation");
+                reader.read_u32::<BE>().expect("abstraction length");
+                let abs_i64 = reader.read_i64::<BE>().expect("read abstraction");
+                let observation = Isomorphism::from(iso_i64);
                 let abstraction = Abstraction::from(abs_i64);
                 lookup.insert(observation, abstraction);
                 continue;
@@ -189,44 +185,11 @@ impl Abstractor {
     /// pulls the entire pre-computed abstraction table
     /// into memory. ~10GB.
     pub fn load() -> Self {
-        log::info!("loading abstraction from disk");
+        log::info!("loading encoder");
         let mut map = BTreeMap::default();
-        map.extend(Self::load_street(Street::Flop).0);
-        map.extend(Self::load_street(Street::Turn).0);
+        map.extend(Self::from(Street::Flop).0);
+        map.extend(Self::from(Street::Turn).0);
         Self(map)
-    }
-
-    /// read the full abstraction lookup from disk
-    /// 1. Skip PGCOPY header (15 bytes), flags (4 bytes), and header extension (4 bytes)
-    /// 2. Read field count (should be 2)
-    /// 3. Read observation length (4 bytes)
-    /// 4. Read observation (8 bytes)
-    /// 5. Read abstraction length (4 bytes)
-    /// 6. Read abstraction (8 bytes)
-    /// 7. Insert observation and abstraction into lookup
-    /// 8. Repeat until end of file
-    fn load_street(street: Street) -> Self {
-        let file = File::open(format!("{}.abstraction.pgcopy", street)).expect("open file");
-        let mut buffer = [0u8; 2];
-        let mut lookup = BTreeMap::new();
-        let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(19)).expect("seek past header");
-        while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) == 2 {
-                reader.read_u32::<BigEndian>().expect("observation length");
-                let obs_i64 = reader.read_i64::<BigEndian>().expect("read observation");
-                reader.read_u32::<BigEndian>().expect("abstraction length");
-                let abs_i64 = reader.read_i64::<BigEndian>().expect("read abstraction");
-                let observation = Isomorphism::from(obs_i64);
-                let abstraction = Abstraction::from(abs_i64);
-                lookup.insert(observation, abstraction);
-                continue;
-            } else {
-                break;
-            }
-        }
-        log::info!("downloaded abstraction lookup {} {}", street, lookup.len());
-        Self(lookup)
     }
 
     /// persist the abstraction mapping to disk
@@ -237,23 +200,22 @@ impl Abstractor {
     /// 4. Write the observation and abstraction pairs
     /// 5. Write the trailer (2 bytes)
     pub fn save(&self, street: Street) {
-        log::info!("{:<32}{:<32}", "saving abstraction lookup", street);
-        let ref mut file =
-            File::create(format!("{}.abstraction.pgcopy", street)).expect("new file");
-        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
-        file.write_u32::<BigEndian>(0).expect("flags");
-        file.write_u32::<BigEndian>(0).expect("extension");
+        log::info!("{:<32}{:<32}", "saving lookup", street);
+        let ref mut file = File::create(format!("{}.abstraction.pgcopy", street)).expect("touch");
+        file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
+        file.write_u32::<BE>(0).expect("flags");
+        file.write_u32::<BE>(0).expect("extension");
         for (obs, abs) in self.0.iter() {
             let ref obs = Observation::from(*obs); // isomorphism translation
             let obs = i64::from(*obs);
             let abs = i64::from(*abs);
-            file.write_u16::<BigEndian>(0x2).expect("field count");
-            file.write_u32::<BigEndian>(0x8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(obs).expect("observation");
-            file.write_u32::<BigEndian>(0x8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(abs).expect("abstraction");
+            file.write_u16::<BE>(0x2).expect("field count");
+            file.write_u32::<BE>(0x8).expect("8-bytes field");
+            file.write_i64::<BE>(obs).expect("observation");
+            file.write_u32::<BE>(0x8).expect("8-bytes field");
+            file.write_i64::<BE>(abs).expect("abstraction");
         }
-        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
+        file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
 }
 
@@ -261,9 +223,11 @@ impl Abstractor {
 mod tests {
     use super::*;
 
+    /// Generate sample data on a street we don't touch
+    /// Load from disk
+    /// Clean up
     #[test]
     fn persistence() {
-        // Generate sample data on a street we don't touch
         let street = Street::Rive;
         let file = format!("{}.abstraction.pgcopy", street);
         let save = Abstractor(
@@ -274,13 +238,11 @@ mod tests {
                 .collect(),
         );
         save.save(street);
-        // Load from disk
-        let load = Abstractor::load_street(street);
+        let load = Abstractor::from(street);
         std::iter::empty()
             .chain(save.0.iter().zip(load.0.iter()))
             .chain(load.0.iter().zip(save.0.iter()))
             .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2);
-        // Clean up
         std::fs::remove_file(format!("{}", file)).unwrap();
     }
 }

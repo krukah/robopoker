@@ -1,22 +1,22 @@
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::player::Player;
-use crate::play::continuation::Transition;
 use crate::play::game::Game;
+use crate::play::transition::Transition;
 
 #[derive(Debug)]
-pub struct Spot {
+pub struct Data {
     game: Game,
     bucket: Bucket,
 }
 
-impl From<(Game, Bucket)> for Spot {
+impl From<(Game, Bucket)> for Data {
     fn from((game, bucket): (Game, Bucket)) -> Self {
         Self { game, bucket }
     }
 }
 
-impl Spot {
+impl Data {
     pub fn game(&self) -> &Game {
         &self.game
     }

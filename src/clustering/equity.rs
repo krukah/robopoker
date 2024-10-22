@@ -63,6 +63,7 @@ impl Equity {
             })
             .map(|(x, y)| (x - y).abs())
             .sum::<f32>()
+            / Abstraction::range().len() as f32
             / 2.
     }
     pub fn euclidean(x: &Histogram, y: &Histogram) -> f32 {

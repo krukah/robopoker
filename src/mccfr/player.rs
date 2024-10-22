@@ -1,4 +1,4 @@
-use crate::play::continuation::Transition;
+use crate::play::transition::Transition;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
