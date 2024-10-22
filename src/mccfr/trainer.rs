@@ -1,144 +1,105 @@
 use super::bucket::Bucket;
+use super::data::Data;
 use super::edge::Edge;
 use super::info::Info;
 use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
-use super::spot::Spot;
 use super::tree::Tree;
 use crate::clustering::abstractor::Abstractor;
 use crate::play::game::Game;
 use crate::Probability;
-use petgraph::graph::NodeIndex;
+use crate::Utility;
 use rand::distributions::WeightedIndex;
 use rand::prelude::Distribution;
 use rand::prelude::Rng;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
-const PARALLEL_ITERATIONS: usize = 10;
-const TRAINING_ITERATIONS: usize = 100_000;
+const T: usize = 100_000;
 
-struct Delta(Bucket, BTreeMap<Edge, f32>, BTreeMap<Edge, f32>);
+type Regret = BTreeMap<Edge, Utility>;
+type Policy = BTreeMap<Edge, Probability>;
 
-/// need some async upload/download methods for Profile
-/// thesee are totally Tree functions
-/// i should hoist INfoSet one level up into this struct
-pub struct Optimizer {
+struct Update(Bucket, Regret, Policy);
+struct Sample(Tree, Partition);
+
+pub struct Blueprint {
     profile: Profile,
-    abstractor: Abstractor, // mapping: Abstractor
+    encoder: Abstractor,
 }
 
-impl Optimizer {
-    /// i'm making this a static method but in theory we could
-    /// download the Profile from disk,
-    /// the same way we download the Explorer.
+impl Blueprint {
     pub fn load() -> Self {
         Self {
             profile: Profile::load(),
-            abstractor: Abstractor::load(),
+            encoder: Abstractor::load(),
         }
     }
 
     /// here's the training loop. infosets might be generated
-    /// in parallel later. infosets might also come pre-filtered
+    /// in parallel later. infosets come pre-filtered
     /// for the traverser. regret and policy updates are
     /// encapsulated by Profile, but we are yet to impose
     /// a learning schedule for regret or policy.
     pub fn train(&mut self) {
         log::info!("training blueprint");
-        while self.profile.next() <= TRAINING_ITERATIONS {
-            for Delta(bucket, regret, policy) in (0..PARALLEL_ITERATIONS)
-                .map(|_| self.mcts())
-                .collect::<Vec<Tree>>()
-                .into_par_iter()
-                .map(|tree| tree.infosets())
-                .flatten()
-                .filter(|infoset| infoset.node().player() == self.profile.walker())
-                .map(|infoset| self.delta(&infoset))
-                .inspect(|_| ())
-                .collect::<Vec<Delta>>()
-            {
-                self.profile.update_regret(&bucket, &regret);
-                self.profile.update_policy(&bucket, &policy);
+        while self.profile.next() <= T {
+            let Sample(ref tree, ref partition) = self.sample();
+            for Update(bucket, regret, policy) in self.update(tree, partition) {
+                self.update_regret(&bucket, &regret);
+                self.update_policy(&bucket, &policy);
             }
         }
-        log::info!("saving blueprint");
         self.profile.save();
     }
-
-    /// returns the bucket, and the regret and policy vectors for the given infoset.
-    /// this is the & ref step of the parallel update.
-    /// we generate all of these in parallel and then aggregate updates in the
-    /// "main thread", aka the outer iteration loop.
-    /// parallel reads, serial writes! is the way to go imo
-    fn delta(&self, infoset: &Info) -> Delta {
-        let bucket = infoset.node().bucket().clone();
-        let regret_vector = self.profile.regret_vector(infoset);
-        let policy_vector = self.profile.policy_vector(infoset);
-        Delta(bucket, regret_vector, policy_vector)
+    fn update(&self, tree: &Tree, partition: &Partition) -> Vec<Update> {
+        partition
+            .0
+            .iter()
+            .map(|(bucket, info)| self.evaluate(tree, info, bucket))
+            .collect()
+    }
+    fn evaluate(&self, tree: &Tree, info: &Info, bucket: &Bucket) -> Update {
+        let regret_vector = self.profile.regret_vector(tree, info);
+        let policy_vector = self.profile.policy_vector(tree, info);
+        Update(bucket.clone(), regret_vector, policy_vector)
+    }
+    fn update_regret(&mut self, b: &Bucket, r: &Regret) {
+        self.profile.update_regret(b, r);
+    }
+    fn update_policy(&mut self, b: &Bucket, p: &Policy) {
+        self.profile.update_policy(b, p);
     }
 
-    /// so i guess we need to generate the root node here in Trainer
-    /// somehow. i'll move ownership around to make it more natural later.
-    /// we need the Explorer(Abstractor) to complete the transformation of:
-    /// Game::root() -> Observation -> Abstraction
-    ///
-    /// NOT deterministic, hole cards (from Game) are thread_rng
-    fn root(&self) -> Spot {
-        let node = Game::root();
-        let path = self.abstractor.path_abstraction(&vec![]);
-        let info = self.abstractor.card_abstraction(&node);
-        let bucket = Bucket::from((path, info));
-        Spot::from((node, bucket))
-    }
-
-    /// start from root node and allow data.spawn() to recursively, declaratively build the Tree.
-    /// in this sense, Data defines the tree implicitly in its spawn() implementation.
-    /// this is just a base case to handle the root node, presumably a Fn () -> Data.
-    /// real-time search implementations may have root nodes provided by the caller.
-    fn mcts(&mut self) -> Tree {
+    /// Build the Tree iteratively starting from the root node.
+    /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
+    fn sample(&mut self) -> Sample {
+        let mut partition = Partition::new();
+        let mut children = Vec::new();
         let mut tree = Tree::empty();
         let root = self.root();
-        let head = self.witness(&mut tree, root);
-        let head = tree.add_node(head);
-        let node = tree.node(head);
-        assert!(head.index() == 0);
-        for (tail, from) in self.sample(node) {
-            self.dfs(&mut tree, tail, from, head);
+        let root = tree.insert(root);
+        let root = tree.at(root);
+        assert!(0 == root.index().index());
+        if self.profile.walker() == root.player() {
+            partition.witness(root);
         }
-        tree
-    }
-
-    /// recursively build the Tree from the given Node, according to the distribution defined by Profile.
-    /// we assert the Tree property of every non-root Node having exactly one parent Edge
-    /// we construct the appropriate references in self.attach() to ensure safety.
-    fn dfs(&mut self, tree: &mut Tree, head: Spot, edge: Edge, root: NodeIndex) {
-        let head = self.witness(tree, head);
-        let head = tree.add_node(head);
-        let edge = tree.add_edge(root, head, edge);
-        let node = tree.node(head);
-        assert!(head.index() == edge.index() + 1);
-        for (tail, from) in self.sample(node) {
-            self.dfs(tree, tail, from, head);
+        for (tail, from) in self.explore(&root) {
+            children.push((tail, from, root.index()));
         }
-    }
-
-    /// attach a Node to the Tree,
-    /// update the Profile to witness the new Node
-    /// update the InfoPartition to witness the new Node.
-    fn witness(&mut self, tree: &mut Tree, data: Spot) -> Node {
-        let player = data.player().clone();
-        let graph = tree.graph_arc();
-        let count = tree.graph_ref().node_count();
-        let index = NodeIndex::new(count);
-        let node = Node::from((index, graph, data));
-        if player != Player::Chance {
-            tree.witness(&node);
-            self.profile.witness(&node);
+        while let Some((tail, from, root)) = children.pop() {
+            let tail = tree.insert(tail);
+            let from = tree.attach(from, tail, root);
+            let root = tree.at(tail);
+            assert!(1 == root.index().index() - from.index());
+            if self.profile.walker() == root.player() {
+                partition.witness(root);
+            }
+            for (tail, from) in self.explore(&root) {
+                children.push((tail, from, root.index()));
+            }
         }
-        node
+        Sample(tree, partition)
     }
 
     /// External Sampling:
@@ -153,15 +114,24 @@ impl Optimizer {
     /// choose random child uniformly. this is specific to the game of poker,
     /// where each action at chance node/info/buckets is uniformly likely.
     ///
-    fn sample(&self, node: &Node) -> Vec<(Spot, Edge)> {
-        let player = node.player();
-        let mut children = self.abstractor.children(node);
+    fn root(&self) -> Data {
+        let node = Game::root();
+        let path = self.encoder.action_abstraction(&vec![]);
+        let info = self.encoder.chance_abstraction(&node);
+        let bucket = Bucket::from((path, info));
+        Data::from((node, bucket))
+    }
+    fn explore(&self, node: &Node) -> Vec<(Data, Edge)> {
         let ref mut rng = self.profile.rng(node);
+        let mut children = self.encoder.children(node);
+        let walker = self.profile.walker();
+        let chance = Player::chance();
+        let player = node.player();
         if children.is_empty() {
-            vec![]
-        } else if player == self.profile.walker() {
             children
-        } else if player == Player::chance() {
+        } else if player == walker {
+            children
+        } else if player == chance {
             let n = children.len();
             let choice = rng.gen_range(0..n);
             let chosen = children.remove(choice);
@@ -177,5 +147,18 @@ impl Optimizer {
             let chosen = children.remove(choice);
             vec![chosen]
         }
+    }
+}
+
+pub struct Partition(BTreeMap<Bucket, Info>);
+impl Partition {
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+    pub fn witness(&mut self, node: Node) {
+        self.0
+            .entry(node.bucket().clone())
+            .or_insert_with(Info::new)
+            .add(node.index());
     }
 }

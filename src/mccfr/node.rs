@@ -1,49 +1,46 @@
 use super::bucket::Bucket;
 use super::player::Player;
+use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
-use crate::mccfr::spot::Spot;
-use crate::play::continuation::Transition;
+use crate::play::transition::Transition;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
-use std::sync::Arc;
 
-#[derive(Debug)]
-pub struct Node {
-    datum: Spot,
+#[derive(Debug, Clone, Copy)]
+pub struct Node<'tree> {
     index: NodeIndex,
-    graph: Arc<DiGraph<Self, Edge>>,
+    graph: &'tree DiGraph<Data, Edge>,
 }
 
-impl From<(NodeIndex, Arc<DiGraph<Self, Edge>>, Spot)> for Node {
-    fn from((index, graph, datum): (NodeIndex, Arc<DiGraph<Self, Edge>>, Spot)) -> Self {
-        Self {
-            index,
-            graph,
-            datum,
-        }
+impl<'tree> From<(NodeIndex, &'tree DiGraph<Data, Edge>)> for Node<'tree> {
+    fn from((index, graph): (NodeIndex, &'tree DiGraph<Data, Edge>)) -> Self {
+        Self { index, graph }
     }
 }
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
-impl Node {
-    pub fn spot(&self) -> &Spot {
-        &self.datum
-    }
-    pub fn bucket(&self) -> &Bucket {
-        self.datum.bucket()
+impl<'tree> Node<'tree> {
+    pub fn spot(&self) -> &Data {
+        &self
+            .graph
+            .node_weight(self.index())
+            .expect("valid node index")
     }
     pub fn index(&self) -> NodeIndex {
         self.index
     }
+    pub fn bucket(&self) -> &Bucket {
+        self.spot().bucket()
+    }
     pub fn player(&self) -> Player {
-        self.datum.player()
+        self.spot().player()
     }
     pub fn payoff(&self, player: &Player) -> Utility {
         let position = match player {
-            Player::Choice(Transition::Choice(x)) => x.to_owned(),
+            Player::Choice(Transition::Choice(x)) => x.clone(),
             _ => unreachable!("payoffs defined relative to decider"),
         };
         match player {
@@ -62,7 +59,7 @@ impl Node {
     ///
     /// maybe make these methods private and implement Walkable for Node?
     /// or add &Node as argument and impl Walkable for Tree?
-    pub fn history(&self) -> Vec<&Edge> {
+    pub fn history(&self) -> Vec<&'tree Edge> {
         if let (Some(edge), Some(head)) = (self.incoming(), self.parent()) {
             let mut history = head.history();
             history.push(edge);
@@ -71,48 +68,40 @@ impl Node {
             vec![]
         }
     }
-    pub fn outgoing(&self) -> Vec<&Edge> {
-        self.graph_ref()
-            .edges_directed(self.index, Outgoing)
-            .map(|e| e.weight())
+    pub fn outgoing(&self) -> Vec<&'tree Edge> {
+        self.graph()
+            .edges_directed(self.index(), Outgoing)
+            .map(|edge| edge.weight())
             .collect()
     }
-    pub fn incoming(&self) -> Option<&Edge> {
-        self.graph_ref()
-            .edges_directed(self.index, Incoming)
+    pub fn incoming(&self) -> Option<&'tree Edge> {
+        self.graph()
+            .edges_directed(self.index(), Incoming)
             .next()
-            .map(|e| e.weight())
+            .map(|edge| edge.weight())
     }
-    pub fn parent(&self) -> Option<&Self> {
-        self.graph_ref()
-            .neighbors_directed(self.index, Incoming)
+    pub fn parent(&self) -> Option<Node<'tree>> {
+        self.graph()
+            .neighbors_directed(self.index(), Incoming)
             .next()
-            .map(|p| {
-                self.graph_ref()
-                    .node_weight(p)
-                    .expect("if incoming edge, then parent")
-            })
+            .map(|index| self.spawn(index))
     }
-    pub fn children(&self) -> Vec<&Self> {
-        self.graph_ref()
-            .neighbors_directed(self.index, Outgoing)
-            .map(|c| {
-                self.graph_ref()
-                    .node_weight(c)
-                    .expect("if outgoing edge, then child")
-            })
+    pub fn children(&self) -> Vec<Node<'tree>> {
+        self.graph()
+            .neighbors_directed(self.index(), Outgoing)
+            .map(|index| self.spawn(index))
             .collect()
     }
-    pub fn follow(&self, edge: &Edge) -> &Self {
+    pub fn follow(&self, edge: &Edge) -> Node<'tree> {
         self.children()
             .iter()
             .find(|child| edge == child.incoming().unwrap())
+            .map(|child| self.spawn(child.index()))
             .expect("valid edge to follow")
-        //? TODO O(A) performance
     }
-    pub fn leaves(&self) -> Vec<&Self> {
+    pub fn leaves(&self) -> Vec<Node<'tree>> {
         if self.children().is_empty() {
-            vec![self]
+            vec![self.clone()]
         } else {
             self.children()
                 .iter()
@@ -120,13 +109,16 @@ impl Node {
                 .collect()
         }
     }
+    fn spawn(&self, index: NodeIndex) -> Node<'tree> {
+        Self::from((index, self.graph()))
+    }
     /// SAFETY:
     /// we have logical assurance that lifetimes work out effectively:
     /// 'info: 'node: 'tree
     /// Info is created from a Node
     /// Node is created from a Tree
     /// Tree owns its Graph
-    fn graph_ref(&self) -> &DiGraph<Self, Edge> {
-        self.graph.as_ref()
+    pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
+        self.graph
     }
 }

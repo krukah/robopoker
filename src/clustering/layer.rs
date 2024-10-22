@@ -1,13 +1,13 @@
+use super::abstraction::Abstraction;
 use super::abstractor::Abstractor;
 use super::datasets::AbstractionSpace;
 use super::datasets::ObservationSpace;
+use super::histogram::Histogram;
+use super::metric::Metric;
+use super::xor::Pair;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
-use crate::clustering::histogram::Histogram;
-use crate::clustering::metric::Metric;
-use crate::clustering::xor::Pair;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use rand::seq::IteratorRandom;
@@ -69,8 +69,8 @@ impl Layer {
     const fn t(street: Street) -> usize {
         match street {
             Street::Pref => 0,
-            Street::Flop => 64,
-            Street::Turn => 32,
+            Street::Flop => 16,
+            Street::Turn => 16,
             Street::Rive => unreachable!(),
         }
     }
@@ -159,7 +159,7 @@ impl Layer {
     fn inner_points(&self) -> ObservationSpace {
         log::info!(
             "{:<32}{:<32}",
-            "computing projections",
+            "collecting histograms",
             format!("{} <- {}", self.street.prev(), self.street)
         );
         let isomorphisms = Observation::exhaust(self.street.prev())
@@ -237,13 +237,13 @@ impl Layer {
             self.kmeans.absorb(abs, hist);
             loss += dist * dist;
         }
-        log::trace!("LOSS {:>12.8}", loss / self.points.0.len() as f32);
+        log::trace!("LOSS {:>1.12}", loss / self.points.0.len() as f32);
     }
     /// centroid drift may make it such that some centroids are empty
     /// so we reinitialize empty centroids with random Observations if necessary
     fn set_orphaned(&mut self) {
+        let ref mut rng = rand::thread_rng();
         for ref a in self.kmeans.orphans() {
-            let ref mut rng = rand::thread_rng();
             let ref sample = self.sample_uniform(rng);
             self.kmeans.absorb(a, sample);
             log::debug!(
@@ -260,8 +260,8 @@ impl Layer {
             .0
             .values()
             .choose(rng)
+            .cloned()
             .expect("observation projections have been populated")
-            .clone()
     }
     /// each next Centroid is selected with probability proportional to
     /// the squared distance to the nearest neighboring Centroid.

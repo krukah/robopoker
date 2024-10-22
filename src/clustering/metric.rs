@@ -77,32 +77,24 @@ impl Metric {
         let mut sink = y.normalize();
         'cost: while pile.values().any(|&dx| dx > 0.) {
             'pile: for (x, dx) in pile
-                .iter()
-                .filter(|(_, &dx)| dx > 0.)
-                .map(|(&x, &dx)| (x, dx))
+                .iter_mut()
+                .filter(|(_, dx)| **dx > 0.)
+                .map(|(&x, dx)| (x, dx))
                 .collect::<Vec<_>>()
             {
                 match sink
-                    .iter()
-                    .filter(|(_, &dy)| dy > 0.)
-                    .map(|(&y, &dy)| ((y, dy), self.distance(&x, &y)))
+                    .iter_mut()
+                    .filter(|(_, dy)| **dy > 0.)
+                    .map(|(&y, dy)| ((y, dy), self.distance(&x, &y)))
                     .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
                 {
                     None => break 'cost,
-                    Some(((y, dy), distance)) => {
-                        if dx > dy {
-                            let earth = dy;
-                            cost += distance * earth;
-                            *pile.get_mut(&x).unwrap() -= earth;
-                            *sink.get_mut(&y).unwrap() = 0.;
-                            continue 'pile;
-                        } else {
-                            let earth = dx;
-                            cost += distance * earth;
-                            *pile.get_mut(&x).unwrap() = 0.;
-                            *sink.get_mut(&y).unwrap() -= earth;
-                            continue 'pile;
-                        }
+                    Some(((_, dy), distance)) => {
+                        let flow = f32::min(*dx, *dy);
+                        *dx -= flow;
+                        *dy -= flow;
+                        cost += flow * distance;
+                        continue 'pile;
                     }
                 }
             }
@@ -151,22 +143,22 @@ mod tests {
 impl Metric {
     /// save profile to disk in a PGCOPY compatible format
     pub fn save(&self, street: Street) {
-        log::info!("{:<32}{:<32}", "uploading abstraction metric", street);
-        use byteorder::BigEndian;
+        log::info!("{:<32}{:<32}", "saving metric", street);
         use byteorder::WriteBytesExt;
+        use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
         let ref mut file = File::create(format!("{}.metric.pgcopy", street)).expect("new file");
-        file.write_all(b"PGCOPY\n\xff\r\n\0").expect("header");
-        file.write_u32::<BigEndian>(0).expect("flags");
-        file.write_u32::<BigEndian>(0).expect("extension");
+        file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
+        file.write_u32::<BE>(0).expect("flags");
+        file.write_u32::<BE>(0).expect("extension");
         for (pair, distance) in self.0.iter() {
-            file.write_u16::<BigEndian>(2).expect("field count");
-            file.write_u32::<BigEndian>(8).expect("8-bytes field");
-            file.write_i64::<BigEndian>(i64::from(*pair)).expect("pair");
-            file.write_u32::<BigEndian>(4).expect("4-bytes field");
-            file.write_f32::<BigEndian>(*distance).expect("distance");
+            file.write_u16::<BE>(2).expect("field count");
+            file.write_u32::<BE>(8).expect("8-bytes field");
+            file.write_i64::<BE>(i64::from(*pair)).expect("pair");
+            file.write_u32::<BE>(4).expect("4-bytes field");
+            file.write_f32::<BE>(*distance).expect("distance");
         }
-        file.write_u16::<BigEndian>(0xFFFF).expect("trailer");
+        file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
 }

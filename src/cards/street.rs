@@ -42,7 +42,15 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
-    
+    #[cfg(not(feature = "shortdeck"))]
+    pub const fn n_isomorphisms(&self) -> usize {
+        match self {
+            Self::Pref => 0_________169,
+            Self::Flop => 0___1_286_792,
+            Self::Turn => 0__13_960_050, // loses reveal order information; ~4x smaller
+            Self::Rive => 0_123_156_254, // loses reveal order information; ~20x smaller
+        }
+    }
     #[cfg(not(feature = "shortdeck"))]
     pub const fn n_observations(&self) -> usize {
         match self {
@@ -52,7 +60,6 @@ impl Street {
             Self::Rive => 2_809_475_760,
         }
     }
-    
     #[cfg(feature = "shortdeck")]
     pub const fn n_observations(&self) -> usize {
         match self {
@@ -60,16 +67,6 @@ impl Street {
             Self::Flop => 0___3_769_920,
             Self::Turn => 0__29_216_880,
             Self::Rive => 0_175_301_280,
-        }
-    }
-
-    #[cfg(not(feature = "shortdeck"))]
-    pub const fn n_isomorphisms(&self) -> usize {
-        match self {
-            Self::Pref => 0_________169,
-            Self::Flop => 0___1_286_792,
-            Self::Turn => 0__13_960_050, // loses reveal order information; ~4x smaller
-            Self::Rive => 0_123_156_254, // loses reveal order information; ~20x smaller
         }
     }
 }

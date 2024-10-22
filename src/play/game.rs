@@ -12,8 +12,8 @@ use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
-use crate::play::continuation::Transition;
 use crate::play::showdown::Showdown;
+use crate::play::transition::Transition;
 use crate::players::human::Human;
 
 type Position = usize;
@@ -136,7 +136,6 @@ impl Game {
             return options;
         }
         if self.is_sampling() {
-            // for card in self.deck() {}
             options.push(Action::Draw(self.deck().draw()));
             return options;
         }
