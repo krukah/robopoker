@@ -6,7 +6,7 @@ use super::node::Node;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
-use crate::clustering::abstractor::Abstractor;
+use crate::clustering::encoding::Encoder;
 use crate::play::game::Game;
 use crate::Probability;
 use crate::Utility;
@@ -25,14 +25,14 @@ struct Sample(Tree, Partition);
 
 pub struct Blueprint {
     profile: Profile,
-    encoder: Abstractor,
+    encoder: Encoder,
 }
 
 impl Blueprint {
     pub fn load() -> Self {
         Self {
             profile: Profile::load(),
-            encoder: Abstractor::load(),
+            encoder: Encoder::load(),
         }
     }
 
@@ -81,6 +81,7 @@ impl Blueprint {
         let root = tree.insert(root);
         let root = tree.at(root);
         assert!(0 == root.index().index());
+        self.profile.witness(root);
         if self.profile.walker() == root.player() {
             partition.witness(root);
         }
@@ -92,6 +93,7 @@ impl Blueprint {
             let from = tree.attach(from, tail, root);
             let root = tree.at(tail);
             assert!(1 == root.index().index() - from.index());
+            self.profile.witness(root);
             if self.profile.walker() == root.player() {
                 partition.witness(root);
             }
