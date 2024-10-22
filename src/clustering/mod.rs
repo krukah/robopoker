@@ -1,7 +1,7 @@
 pub mod abstraction;
-pub mod abstractor;
 pub mod centroid;
 pub mod datasets;
+pub mod encoding;
 pub mod equity;
 pub mod histogram;
 pub mod layer;

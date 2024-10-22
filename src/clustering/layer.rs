@@ -1,7 +1,7 @@
 use super::abstraction::Abstraction;
-use super::abstractor::Abstractor;
 use super::datasets::AbstractionSpace;
 use super::datasets::ObservationSpace;
+use super::encoding::Encoder;
 use super::histogram::Histogram;
 use super::metric::Metric;
 use super::xor::Pair;
@@ -40,7 +40,7 @@ use std::collections::BTreeMap;
 pub struct Layer {
     street: Street,
     metric: Metric,
-    lookup: Abstractor,
+    lookup: Encoder,
     kmeans: AbstractionSpace,
     points: ObservationSpace,
 }
@@ -56,8 +56,8 @@ impl Layer {
     const fn k(street: Street) -> usize {
         match street {
             Street::Pref => 169,
-            Street::Flop => 8,
-            Street::Turn => 8,
+            Street::Flop => 32,
+            Street::Turn => 32,
             Street::Rive => unreachable!(),
         }
     }
@@ -69,8 +69,8 @@ impl Layer {
     const fn t(street: Street) -> usize {
         match street {
             Street::Pref => 0,
-            Street::Flop => 16,
-            Street::Turn => 16,
+            Street::Flop => 32,
+            Street::Turn => 32,
             Street::Rive => unreachable!(),
         }
     }
@@ -85,7 +85,7 @@ impl Layer {
         Self {
             street: Street::Rive,
             metric: Metric::default(),
-            lookup: Abstractor::default(),
+            lookup: Encoder::default(),
             kmeans: AbstractionSpace::default(),
             points: ObservationSpace::default(),
         }
@@ -97,7 +97,7 @@ impl Layer {
     /// 3. cluster kmeans centroids
     pub fn inner(&self) -> Self {
         let mut layer = Self {
-            lookup: Abstractor::default(),       // assigned during clustering
+            lookup: Encoder::default(),          // assigned during clustering
             kmeans: AbstractionSpace::default(), // assigned during clustering
             street: self.inner_street(),         // uniquely determined by outer layer
             metric: self.inner_metric(),         // uniquely determined by outer layer
@@ -143,7 +143,7 @@ impl Layer {
                     let x = self.kmeans.0.get(a).expect("pre-computed").histogram();
                     let y = self.kmeans.0.get(b).expect("pre-computed").histogram();
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
-                    let distance = distance / 2.0;
+                    let distance = distance / 2.;
                     metric.insert(index, distance);
                 }
             }

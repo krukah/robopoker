@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 /// full game tree, learned by kmeans
 /// rooted in showdown equity at the River.
 #[derive(Default)]
-pub struct Abstractor(BTreeMap<Isomorphism, Abstraction>);
+pub struct Encoder(BTreeMap<Isomorphism, Abstraction>);
 
 /* learning methods
  *
@@ -28,7 +28,7 @@ pub struct Abstractor(BTreeMap<Isomorphism, Abstraction>);
  * the abstraction mapping. needs to help project layers
  * hierarchically, while also
  */
-impl Abstractor {
+impl Encoder {
     /// only run this once.
     pub fn learn() {
         if Self::done() {
@@ -39,6 +39,8 @@ impl Abstractor {
                 .inner() // cluster turn
                 .save()
                 .inner() // cluster flop
+                .save()
+                .inner() // cluster preflop
                 .save();
         }
     }
@@ -89,7 +91,7 @@ impl Abstractor {
  * by sampling according to a given Profile. here we provide
  * methods for unraveling the Tree
  */
-impl Abstractor {
+impl Encoder {
     /// abstraction methods
     pub fn chance_abstraction(&self, game: &Game) -> Abstraction {
         self.abstraction(&Isomorphism::from(Observation::from(game)))
@@ -145,7 +147,7 @@ use std::io::Write;
  * straightforward to compute on the fly, for different reasons
  */
 
-impl From<Street> for Abstractor {
+impl From<Street> for Encoder {
     fn from(street: Street) -> Self {
         let file = File::open(format!("{}.abstraction.pgcopy", street)).expect("open file");
         let mut buffer = [0u8; 2];
@@ -170,7 +172,7 @@ impl From<Street> for Abstractor {
     }
 }
 
-impl Abstractor {
+impl Encoder {
     /// indicates whether the abstraction table is already on disk
     pub fn done() -> bool {
         [
@@ -230,7 +232,7 @@ mod tests {
     fn persistence() {
         let street = Street::Rive;
         let file = format!("{}.abstraction.pgcopy", street);
-        let save = Abstractor(
+        let save = Encoder(
             (0..100)
                 .map(|_| Observation::from(street))
                 .map(|o| Isomorphism::from(o))
@@ -238,7 +240,7 @@ mod tests {
                 .collect(),
         );
         save.save(street);
-        let load = Abstractor::from(street);
+        let load = Encoder::from(street);
         std::iter::empty()
             .chain(save.0.iter().zip(load.0.iter()))
             .chain(load.0.iter().zip(save.0.iter()))
