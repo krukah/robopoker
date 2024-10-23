@@ -54,7 +54,6 @@ impl Profile {
     /// over its spawned support:
     /// Data -> Vec<(Data, Edge)>.
     pub fn witness(&mut self, node: Node) {
-        assert!(node.player() != Player::Chance);
         if self.strategies.contains_key(node.bucket()) {
             return;
         } else {
@@ -63,7 +62,7 @@ impl Profile {
             for edge in options {
                 self.strategies
                     .entry(node.bucket().clone())
-                    .or_insert_with(BTreeMap::new)
+                    .or_insert_with(BTreeMap::default)
                     .entry(edge)
                     .or_insert_with(Strategy::default)
                     .policy = uniform;
@@ -127,18 +126,16 @@ impl Profile {
         assert!(node.player() != self.walker());
         self.strategies
             .get(node.bucket())
-            .expect("policy bucket/edge has been visited before")
-            .get(edge)
-            .expect("policy bucket/edge has been visited before")
-            .policy
-            .to_owned()
+            .and_then(|bucket| bucket.get(edge))
+            .map(|strategy| strategy.policy)
+            .unwrap_or(Probability::MIN_POSITIVE)
     }
     /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
     /// for our Monte Carlo sampling.
     pub fn rng(&self, node: &Node) -> SmallRng {
         let ref mut hasher = DefaultHasher::new();
-        node.bucket().hash(hasher);
         self.epochs().hash(hasher);
+        node.bucket().hash(hasher);
         SmallRng::seed_from_u64(hasher.finish())
     }
 

@@ -20,7 +20,7 @@ impl Street {
     }
     pub const fn prev(&self) -> Self {
         match self {
-            Self::Pref => panic!("initial"),
+            Self::Pref => Self::Pref, // format!("{} <- {}", self.street.prev(), self.street)
             Self::Flop => Self::Pref,
             Self::Turn => Self::Flop,
             Self::Rive => Self::Turn,
