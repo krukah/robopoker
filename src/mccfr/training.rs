@@ -23,6 +23,7 @@ type Policy = BTreeMap<Edge, Probability>;
 struct Update(Bucket, Regret, Policy);
 struct Sample(Tree, Partition);
 
+#[derive(Default)]
 pub struct Blueprint {
     profile: Profile,
     encoder: Encoder,
@@ -162,5 +163,98 @@ impl Partition {
             .entry(node.bucket().clone())
             .or_insert_with(Info::new)
             .add(node.index());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clustering::encoding::Encoder;
+    use crate::mccfr::profile::Profile;
+    use crate::mccfr::training::Blueprint;
+
+    #[test]
+    fn test_tree_generation() {
+        let Sample(tree, _) = Blueprint::default().sample();
+        // 1. tree is not empty
+        assert!(0 < tree.graph().node_count());
+        // 2. there's exactly one root (node without parents)
+        assert!(
+            1 == tree
+                .graph()
+                .node_indices()
+                .filter(|&n| {
+                    tree.graph()
+                        .neighbors_directed(n, petgraph::Direction::Incoming)
+                        .count()
+                        == 0
+                })
+                .count()
+        );
+
+        // 3. all non-root nodes have exactly one parent
+        assert!(
+            1 == tree
+                .graph()
+                .node_indices()
+                .filter(|&n| {
+                    tree.graph()
+                        .neighbors_directed(n, petgraph::Direction::Incoming)
+                        .count()
+                        != 1
+                })
+                .count()
+        );
+
+        // 4. leaf nodes exist (nodes with no children)
+        let leaves: Vec<_> = tree
+            .graph()
+            .node_indices()
+            .filter(|&n| tree.graph().neighbors(n).count() == 0)
+            .collect();
+        assert!(
+            !leaves.is_empty(),
+            "Tree should have at least one leaf node"
+        );
+
+        // 5. Check that all edges have valid data
+        for edge in graph.edge_indices() {
+            let (source, target) = graph.edge_endpoints(edge).unwrap();
+            assert!(source != target, "Self-loops should not exist in the tree");
+
+            let edge_data = graph.edge_weight(edge).unwrap();
+            assert!(
+                edge_data.action() >= 0,
+                "Edge action should be non-negative"
+            );
+        }
+
+        // 6. Check that all nodes have valid data
+        for node in graph.node_indices() {
+            let node_data = graph.node_weight(node).unwrap();
+            assert!(
+                node_data.player().is_valid(),
+                "Node should have a valid player"
+            );
+            // Add more specific checks based on your Data structure
+        }
+
+        // 7. Check tree connectivity
+        use petgraph::algo::is_cyclic_directed;
+        assert!(!is_cyclic_directed(graph), "Tree should not contain cycles");
+
+        // 8. Check tree depth (optional, adjust max_depth as needed)
+        let max_depth = 10; // Adjust this based on your expected tree depth
+        fn depth(graph: &DiGraph<Data, Edge>, node: NodeIndex) -> usize {
+            graph
+                .neighbors(node)
+                .map(|n| 1 + depth(graph, n))
+                .max()
+                .unwrap_or(0)
+        }
+        assert!(
+            depth(graph, roots[0]) <= max_depth,
+            "Tree depth should not exceed maximum expected depth"
+        );
     }
 }

@@ -7,5 +7,5 @@ pub mod path;
 pub mod player;
 pub mod profile;
 pub mod strategy;
-pub mod trainer;
+pub mod training;
 pub mod tree;
