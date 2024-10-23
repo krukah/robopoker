@@ -25,11 +25,12 @@ use std::hash::Hasher;
 /// such as Reach, Utility, MinimizerRegretVector, MinimizerPolicyVector, SampleTree, etc.
 #[derive(Default)]
 pub struct Profile {
-    strategies: BTreeMap<Bucket, BTreeMap<Edge, Strategy>>,
     iterations: usize,
+    strategies: BTreeMap<Bucket, BTreeMap<Edge, Strategy>>,
 }
 
 impl Profile {
+    /// TODO: load existing profile from disk
     pub fn load() -> Self {
         log::info!("NOT YET !!! loading profile from disk");
         Self {
@@ -96,6 +97,53 @@ impl Profile {
             strategy.advice /= epochs as Probability + 1.;
         }
     }
+
+    /// strategy vector update calculations
+
+    /// using our current strategy Profile,
+    /// compute the regret vector
+    /// by calculating the marginal Utitlity
+    /// missed out on for not having followed
+    /// every walkable Edge at this Infoset/Node/Bucket
+    pub fn regret_vector(&self, tree: &Tree, infoset: &Info) -> BTreeMap<Edge, Utility> {
+        assert!(infoset.node(tree).player() == self.walker());
+        infoset
+            .node(tree)
+            .outgoing()
+            .into_iter()
+            .map(|action| {
+                (
+                    action.to_owned(),
+                    self.accrued_regret(tree, infoset, action),
+                )
+            })
+            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
+            .collect()
+    }
+    /// using our current regret Profile,
+    /// compute a new strategy vector
+    /// by following a given Edge
+    /// proportionally to how much regret we felt
+    /// for not having followed that Edge in the past.
+    pub fn policy_vector(&self, tree: &Tree, infoset: &Info) -> BTreeMap<Edge, Probability> {
+        assert!(infoset.node(tree).player() == self.walker());
+        let regrets = infoset
+            .node(tree)
+            .outgoing()
+            .into_iter()
+            .map(|action| {
+                (
+                    action.to_owned(),
+                    self.running_regret(tree, infoset, action),
+                )
+            })
+            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
+            .collect::<BTreeMap<Edge, Utility>>();
+        let sum = regrets.values().sum::<Utility>();
+        regrets.into_iter().map(|(a, r)| (a, r / sum)).collect()
+    }
+
+    /// public metadata
 
     /// how many Epochs have we traversed the Tree so far?
     ///
@@ -174,55 +222,6 @@ impl Profile {
         }
     }
 
-    /// memory update calculations
-    /// memory update calculations
-    /// memory update calculations
-
-    /// using our current strategy Profile,
-    /// compute the regret vector
-    /// by calculating the marginal Utitlity
-    /// missed out on for not having followed
-    /// every walkable Edge at this Infoset/Node/Bucket
-    pub fn regret_vector(&self, tree: &Tree, infoset: &Info) -> BTreeMap<Edge, Utility> {
-        assert!(infoset.node(tree).player() == self.walker());
-        infoset
-            .node(tree)
-            .outgoing()
-            .into_iter()
-            .map(|action| {
-                (
-                    action.to_owned(),
-                    self.accrued_regret(tree, infoset, action),
-                )
-            })
-            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
-            .collect()
-    }
-    /// using our current regret Profile,
-    /// compute a new strategy vector
-    /// by following a given Edge
-    /// proportionally to how much regret we felt
-    /// for not having followed that Edge in the past.
-    pub fn policy_vector(&self, tree: &Tree, infoset: &Info) -> BTreeMap<Edge, Probability> {
-        assert!(infoset.node(tree).player() == self.walker());
-        let regrets = infoset
-            .node(tree)
-            .outgoing()
-            .into_iter()
-            .map(|action| {
-                (
-                    action.to_owned(),
-                    self.running_regret(tree, infoset, action),
-                )
-            })
-            .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
-            .collect::<BTreeMap<Edge, Utility>>();
-        let sum = regrets.values().sum::<Utility>();
-        regrets.into_iter().map(|(a, r)| (a, r / sum)).collect()
-    }
-
-    /// regret calculations
-    /// regret calculations
     /// regret calculations
 
     /// on this Profile iteration,
@@ -397,7 +396,9 @@ impl Profile {
             }
         }
     }
+}
 
+impl Profile {
     /// persist the Profile to disk
     pub fn save(&self) {
         log::info!("saving blueprint");
@@ -405,23 +406,24 @@ impl Profile {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create("blueprint.pgcopy").expect("new file");
+        let ref mut file = File::create("blueprint.pgcopy").expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
         for (Bucket(path, abs), policy) in self.strategies.iter() {
             for (edge, memory) in policy.iter() {
-                file.write_u16::<BE>(5).expect("field count");
-                file.write_u32::<BE>(8).expect("8-bytes field");
-                file.write_u64::<BE>(u64::from(*path)).expect("path");
-                file.write_u32::<BE>(8).expect("8-bytes field");
-                file.write_u64::<BE>(u64::from(*abs)).expect("abs");
-                file.write_u32::<BE>(4).expect("4-bytes field");
-                file.write_u32::<BE>(u32::from(*edge)).expect("edge");
-                file.write_u32::<BE>(4).expect("4-bytes field");
-                file.write_f32::<BE>(memory.regret).expect("regret");
-                file.write_u32::<BE>(4).expect("4-bytes field");
-                file.write_f32::<BE>(memory.advice).expect("advice");
+                const N_FIELDS: u16 = 5;
+                file.write_u16::<BE>(N_FIELDS).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(*path)).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(*abs)).unwrap();
+                file.write_u32::<BE>(size_of::<u32>() as u32).unwrap();
+                file.write_u32::<BE>(u32::from(*edge)).unwrap();
+                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
+                file.write_f32::<BE>(memory.regret).unwrap();
+                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
+                file.write_f32::<BE>(memory.advice).unwrap();
             }
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");

@@ -125,16 +125,6 @@ impl Encoder {
     }
 }
 
-use byteorder::ReadBytesExt;
-use byteorder::WriteBytesExt;
-use byteorder::BE;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::Read;
-use std::io::Seek;
-use std::io::SeekFrom;
-use std::io::Write;
-
 /* persistence methods
  *
  * write to disk. if you want to, on your own time,
@@ -146,6 +136,13 @@ use std::io::Write;
 
 impl From<Street> for Encoder {
     fn from(street: Street) -> Self {
+        use byteorder::ReadBytesExt;
+        use byteorder::BE;
+        use std::fs::File;
+        use std::io::BufReader;
+        use std::io::Read;
+        use std::io::Seek;
+        use std::io::SeekFrom;
         let file = File::open(format!("{}.abstraction.pgcopy", street)).expect("open file");
         let mut buffer = [0u8; 2];
         let mut lookup = BTreeMap::new();
@@ -173,14 +170,17 @@ impl Encoder {
     /// indicates whether the abstraction table is already on disk
     pub fn done() -> bool {
         [
-            "turn.abstraction.pgcopy",
             "flop.abstraction.pgcopy",
-            "turn.metric.pgcopy",
+            "turn.abstraction.pgcopy",
+            "preflop.metric.pgcopy",
             "flop.metric.pgcopy",
+            "turn.metric.pgcopy",
+            "river.metric.pgcopy",
         ]
         .iter()
         .any(|file| std::path::Path::new(file).exists())
     }
+
     /// pulls the entire pre-computed abstraction table
     /// into memory. ~10GB.
     pub fn load() -> Self {
@@ -199,20 +199,22 @@ impl Encoder {
     /// 4. Write the observation and abstraction pairs
     /// 5. Write the trailer (2 bytes)
     pub fn save(&self, street: Street) {
-        log::info!("{:<32}{:<32}", "saving lookup", street);
+        log::info!("{:<32}{:<32}", "saving encoding", street);
+        use byteorder::WriteBytesExt;
+        use byteorder::BE;
+        use std::fs::File;
+        use std::io::Write;
         let ref mut file = File::create(format!("{}.abstraction.pgcopy", street)).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
-        for (obs, abs) in self.0.iter() {
-            let ref obs = Observation::from(*obs); // isomorphism translation
-            let obs = i64::from(*obs);
-            let abs = i64::from(*abs);
-            file.write_u16::<BE>(0x2).expect("field count");
-            file.write_u32::<BE>(0x8).expect("8-bytes field");
-            file.write_i64::<BE>(obs).expect("observation");
-            file.write_u32::<BE>(0x8).expect("8-bytes field");
-            file.write_i64::<BE>(abs).expect("abstraction");
+        for (Isomorphism(obs), abs) in self.0.iter() {
+            const N_FIELDS: u16 = 2;
+            file.write_u16::<BE>(N_FIELDS).unwrap();
+            file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
+            file.write_i64::<BE>(i64::from(*obs)).unwrap();
+            file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
+            file.write_i64::<BE>(i64::from(*abs)).unwrap();
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
