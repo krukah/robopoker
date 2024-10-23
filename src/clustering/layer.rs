@@ -55,7 +55,7 @@ impl Layer {
     /// - RAM: O(N)   for learned centroids
     const fn k(street: Street) -> usize {
         match street {
-            Street::Pref => 169,
+            Street::Pref => 0,
             Street::Flop => 8,
             Street::Turn => 8,
             Street::Rive => unreachable!(),
@@ -106,14 +106,18 @@ impl Layer {
         layer.cluster();
         layer
     }
+
+    /// edge case for Preflop where we want to calculate the raised metric
+    /// without saving it to disk under self.street.next() (i.e. its 1st)
     fn cluster(&mut self) {
         self.metric.save(self.street.next());
         self.initial_kmeans();
         self.cluster_kmeans();
-        self.lookup.save(self.street);
         if self.street == Street::Pref {
             self.metric = self.inner_metric();
-            self.metric.save(Street::Flop);
+            self.metric.save(self.street);
+        } else {
+            self.lookup.save(self.street);
         }
     }
     /// simply go to the previous street
@@ -239,7 +243,7 @@ impl Layer {
             self.kmeans.absorb(abs, hist);
             loss += dist * dist;
         }
-        log::trace!("LOSS {:>1.12}", loss / self.points.0.len() as f32);
+        log::trace!("LOSS {:.6e}", loss / self.points.0.len() as f32);
     }
     /// centroid drift may make it such that some centroids are empty
     /// so we reinitialize empty centroids with random Observations if necessary

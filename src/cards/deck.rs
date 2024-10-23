@@ -8,7 +8,7 @@ use rand::Rng;
 pub struct Deck(Hand);
 impl Deck {
     pub fn new() -> Self {
-        Self(Hand::empty().complement())
+        Self(Hand::from(Hand::mask()))
     }
 
     /// remove a random card from the deck.

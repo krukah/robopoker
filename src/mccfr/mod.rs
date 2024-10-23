@@ -3,6 +3,7 @@ pub mod data;
 pub mod edge;
 pub mod info;
 pub mod node;
+pub mod partition;
 pub mod path;
 pub mod player;
 pub mod profile;

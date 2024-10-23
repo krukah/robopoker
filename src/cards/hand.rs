@@ -50,8 +50,13 @@ impl Hand {
         self.0 &= mask;
     }
 
-    const fn mask() -> u64 {
+    #[cfg(not(feature = "shortdeck"))]
+    pub const fn mask() -> u64 {
         0x000FFFFFFFFFFFFF
+    }
+    #[cfg(feature = "shortdeck")]
+    pub const fn mask() -> u64 {
+        0x000FFFFFF0000000
     }
 }
 

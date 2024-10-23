@@ -254,10 +254,10 @@ impl Game {
     fn update_stdout(&self, action: &Action) {
         match action {
             Action::Draw(_) => {
-                println!("  {}", action);
+                log::trace!("  {}", action);
             }
             _ => {
-                println!("{} {}", self.actor_absolute_idx(), action);
+                log::trace!("{} {}", self.actor_absolute_idx(), action);
             }
         }
     }
@@ -285,18 +285,17 @@ impl Game {
         self.post_blinds(Self::bblind());
     }
     fn give_chips(&mut self) {
-        println!("::::::::::::::");
-        println!("{}", self.board());
+        log::trace!("::::::::::::::");
+        log::trace!("{}", self.board());
         for (i, (settlement, seat)) in self
             .settlement()
             .iter()
             .zip(self.seats.iter_mut())
             .enumerate()
         {
-            println!("{} {} {:>7} {}", i, seat.cards(), seat.stack(), settlement);
+            log::trace!("{} {} {:>7} {}", i, seat.cards(), seat.stack(), settlement);
             seat.win(settlement.reward);
         }
-        println!();
     }
     fn wipe_board(&mut self) {
         self.chips = 0;
@@ -333,7 +332,7 @@ impl Game {
 
     //
     fn show_revealed(&mut self) {
-        println!("{}", self.board.street().next());
+        log::trace!("{}", self.board.street().next());
         self.player = 0;
         self.rotate();
         self.next_street_public();

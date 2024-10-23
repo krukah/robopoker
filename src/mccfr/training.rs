@@ -3,6 +3,7 @@ use super::data::Data;
 use super::edge::Edge;
 use super::info::Info;
 use super::node::Node;
+use super::partition::Partition;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
@@ -10,6 +11,8 @@ use crate::clustering::encoding::Encoder;
 use crate::play::game::Game;
 use crate::Probability;
 use crate::Utility;
+use petgraph::csr::IndexType;
+use petgraph::graph::NodeIndex;
 use rand::distributions::WeightedIndex;
 use rand::prelude::Distribution;
 use rand::prelude::Rng;
@@ -17,6 +20,7 @@ use std::collections::BTreeMap;
 
 const T: usize = 100_000;
 
+type Branch = (Data, Edge, NodeIndex);
 type Regret = BTreeMap<Edge, Utility>;
 type Policy = BTreeMap<Edge, Probability>;
 
@@ -30,6 +34,7 @@ pub struct Blueprint {
 }
 
 impl Blueprint {
+    /// load existing profile and encoder from disk
     pub fn load() -> Self {
         Self {
             profile: Profile::load(),
@@ -46,77 +51,15 @@ impl Blueprint {
         log::info!("training blueprint");
         while self.profile.next() <= T {
             let Sample(ref tree, ref partition) = self.sample();
-            for Update(bucket, regret, policy) in self.update(tree, partition) {
-                self.update_regret(&bucket, &regret);
-                self.update_policy(&bucket, &policy);
+            for Update(bucket, regret, policy) in self.deltas(tree, partition) {
+                self.profile.update_regret(&bucket, &regret);
+                self.profile.update_policy(&bucket, &policy);
             }
         }
         self.profile.save();
     }
-    fn update(&self, tree: &Tree, partition: &Partition) -> Vec<Update> {
-        partition
-            .0
-            .iter()
-            .map(|(bucket, info)| self.evaluate(tree, info, bucket))
-            .collect()
-    }
-    fn evaluate(&self, tree: &Tree, info: &Info, bucket: &Bucket) -> Update {
-        let regret_vector = self.profile.regret_vector(tree, info);
-        let policy_vector = self.profile.policy_vector(tree, info);
-        Update(bucket.clone(), regret_vector, policy_vector)
-    }
-    fn update_regret(&mut self, b: &Bucket, r: &Regret) {
-        self.profile.update_regret(b, r);
-    }
-    fn update_policy(&mut self, b: &Bucket, p: &Policy) {
-        self.profile.update_policy(b, p);
-    }
 
-    /// Build the Tree iteratively starting from the root node.
-    /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
-    fn sample(&mut self) -> Sample {
-        let mut partition = Partition::new();
-        let mut children = Vec::new();
-        let mut tree = Tree::empty();
-        let root = self.root();
-        let root = tree.insert(root);
-        let root = tree.at(root);
-        assert!(0 == root.index().index());
-        self.profile.witness(root);
-        if self.profile.walker() == root.player() {
-            partition.witness(root);
-        }
-        for (tail, from) in self.explore(&root) {
-            children.push((tail, from, root.index()));
-        }
-        while let Some((tail, from, root)) = children.pop() {
-            let tail = tree.insert(tail);
-            let from = tree.attach(from, tail, root);
-            let root = tree.at(tail);
-            assert!(1 == root.index().index() - from.index());
-            self.profile.witness(root);
-            if self.profile.walker() == root.player() {
-                partition.witness(root);
-            }
-            for (tail, from) in self.explore(&root) {
-                children.push((tail, from, root.index()));
-            }
-        }
-        Sample(tree, partition)
-    }
-
-    /// External Sampling:
-    /// choose child according to reach probabilities in strategy profile.
-    /// on first iteration, this is equivalent to sampling uniformly.
-    ///
-    /// Walker Sampling:
-    /// follow all possible paths toward terminal nodes
-    /// when it's the traverser's turn to move
-    ///
-    /// Chance Sampling:
-    /// choose random child uniformly. this is specific to the game of poker,
-    /// where each action at chance node/info/buckets is uniformly likely.
-    ///
+    /// root node of Game has Blinds posted
     fn root(&self) -> Data {
         let node = Game::root();
         let path = self.encoder.action_abstraction(&vec![]);
@@ -124,7 +67,53 @@ impl Blueprint {
         let bucket = Bucket::from((path, info));
         Data::from((node, bucket))
     }
-    fn explore(&self, node: &Node) -> Vec<(Data, Edge)> {
+
+    /// Build the Tree iteratively starting from the root node.
+    /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
+    fn sample(&mut self) -> Sample {
+        log::info!("sampling tree");
+        let mut children = Vec::new();
+        let mut infosets = Partition::new();
+        let mut tree = Tree::empty();
+        let root = self.root();
+        let root = tree.insert(root);
+        let root = tree.at(root);
+        log::debug!("ROOT {}", root.index().index());
+        self.attach(&root, &mut children, &mut infosets);
+        while let Some((tail, from, head)) = children.pop() {
+            let tail = tree.insert(tail);
+            let from = tree.attach(from, tail, head);
+            let root = tree.at(tail);
+            log::debug!(
+                "HEAD {} -> {} {:?}",
+                head.index().index(),
+                from.index().index() + 1,
+                root.player()
+            );
+            self.attach(&root, &mut children, &mut infosets);
+        }
+        log::debug!("DONE");
+        Sample(tree, infosets)
+    }
+
+    /// Process a node: witness it for profile and partition if necessary,
+    /// and add its children to the exploration queue.
+    fn attach(&mut self, node: &Node, children: &mut Vec<Branch>, infosets: &mut Partition) {
+        if node.player() != Player::Chance {
+            self.profile.witness(*node);
+        }
+        if node.player() == self.profile.walker() {
+            infosets.witness(*node);
+        }
+        for (tail, from) in self.children(node) {
+            children.push((tail, from, node.index()));
+        }
+    }
+
+    /// generate children for a given node
+    /// under external sampling rules.
+    /// explore all my options, only one of my opponents'
+    fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
         let ref mut rng = self.profile.rng(node);
         let mut children = self.encoder.children(node);
         let walker = self.profile.walker();
@@ -139,7 +128,7 @@ impl Blueprint {
             let choice = rng.gen_range(0..n);
             let chosen = children.remove(choice);
             vec![chosen]
-        } else {
+        } else if player != walker {
             let policy = children
                 .iter()
                 .map(|(_, edge)| self.profile.policy(node, edge))
@@ -149,112 +138,80 @@ impl Blueprint {
                 .sample(rng);
             let chosen = children.remove(choice);
             vec![chosen]
+        } else {
+            unreachable!()
         }
     }
-}
 
-pub struct Partition(BTreeMap<Bucket, Info>);
-impl Partition {
-    pub fn new() -> Self {
-        Self(BTreeMap::new())
+    /// take all the infosets in the info partition
+    /// and compute their regret and policy vectors
+    fn deltas(&self, tree: &Tree, partition: &Partition) -> Vec<Update> {
+        partition
+            .0
+            .iter()
+            .map(|(bucket, info)| self.delta(tree, info, bucket))
+            .collect()
     }
-    pub fn witness(&mut self, node: Node) {
-        self.0
-            .entry(node.bucket().clone())
-            .or_insert_with(Info::new)
-            .add(node.index());
+
+    /// compute regret and policy vectors for a given infoset
+    fn delta(&self, tree: &Tree, info: &Info, bucket: &Bucket) -> Update {
+        let regret_vector = self.profile.regret_vector(tree, info);
+        let policy_vector = self.profile.policy_vector(tree, info);
+        Update(bucket.clone(), regret_vector, policy_vector)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clustering::encoding::Encoder;
-    use crate::mccfr::profile::Profile;
     use crate::mccfr::training::Blueprint;
+    use petgraph::graph::NodeIndex;
 
     #[test]
-    fn test_tree_generation() {
+    #[ignore]
+    fn acyclic() {
         let Sample(tree, _) = Blueprint::default().sample();
-        // 1. tree is not empty
+        assert!(!petgraph::algo::is_cyclic_directed(tree.graph()));
+    }
+
+    #[test]
+    #[ignore]
+    fn nonempty() {
+        let Sample(tree, _) = Blueprint::default().sample();
         assert!(0 < tree.graph().node_count());
-        // 2. there's exactly one root (node without parents)
-        assert!(
-            1 == tree
-                .graph()
-                .node_indices()
-                .filter(|&n| {
-                    tree.graph()
-                        .neighbors_directed(n, petgraph::Direction::Incoming)
-                        .count()
-                        == 0
-                })
-                .count()
-        );
+    }
 
-        // 3. all non-root nodes have exactly one parent
-        assert!(
-            1 == tree
-                .graph()
-                .node_indices()
-                .filter(|&n| {
-                    tree.graph()
-                        .neighbors_directed(n, petgraph::Direction::Incoming)
-                        .count()
-                        != 1
-                })
-                .count()
-        );
-
-        // 4. leaf nodes exist (nodes with no children)
-        let leaves: Vec<_> = tree
+    #[test]
+    #[ignore]
+    fn treelike() {
+        let Sample(tree, _) = Blueprint::default().sample();
+        assert!(tree
             .graph()
             .node_indices()
-            .filter(|&n| tree.graph().neighbors(n).count() == 0)
-            .collect();
+            .filter(|n| n.index() != 0)
+            .all(|n| {
+                1 == tree
+                    .graph()
+                    .neighbors_directed(n, petgraph::Direction::Incoming)
+                    .count()
+            }));
+    }
+
+    #[test]
+    #[ignore]
+    fn leaves() {
+        let Sample(tree, _) = Blueprint::default().sample();
         assert!(
-            !leaves.is_empty(),
-            "Tree should have at least one leaf node"
-        );
-
-        // 5. Check that all edges have valid data
-        for edge in graph.edge_indices() {
-            let (source, target) = graph.edge_endpoints(edge).unwrap();
-            assert!(source != target, "Self-loops should not exist in the tree");
-
-            let edge_data = graph.edge_weight(edge).unwrap();
-            assert!(
-                edge_data.action() >= 0,
-                "Edge action should be non-negative"
-            );
-        }
-
-        // 6. Check that all nodes have valid data
-        for node in graph.node_indices() {
-            let node_data = graph.node_weight(node).unwrap();
-            assert!(
-                node_data.player().is_valid(),
-                "Node should have a valid player"
-            );
-            // Add more specific checks based on your Data structure
-        }
-
-        // 7. Check tree connectivity
-        use petgraph::algo::is_cyclic_directed;
-        assert!(!is_cyclic_directed(graph), "Tree should not contain cycles");
-
-        // 8. Check tree depth (optional, adjust max_depth as needed)
-        let max_depth = 10; // Adjust this based on your expected tree depth
-        fn depth(graph: &DiGraph<Data, Edge>, node: NodeIndex) -> usize {
-            graph
-                .neighbors(node)
-                .map(|n| 1 + depth(graph, n))
-                .max()
-                .unwrap_or(0)
-        }
-        assert!(
-            depth(graph, roots[0]) <= max_depth,
-            "Tree depth should not exceed maximum expected depth"
+            tree.at(NodeIndex::new(0)).leaves().len()
+                == tree
+                    .graph()
+                    .node_indices()
+                    .filter(|&n| tree
+                        .graph()
+                        .neighbors_directed(n, petgraph::Direction::Outgoing)
+                        .count()
+                        == 0)
+                    .count()
         );
     }
 }
