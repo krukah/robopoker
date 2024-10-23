@@ -61,7 +61,6 @@ impl Layer {
             Street::Rive => unreachable!(),
         }
     }
-
     /// number of kmeans iterations.
     /// this controls the precision of the abstraction space.
     ///
@@ -111,8 +110,8 @@ impl Layer {
     /// without saving it to disk under self.street.next() (i.e. its 1st)
     fn cluster(&mut self) {
         self.metric.save(self.street.next());
-        self.initial_kmeans();
-        self.cluster_kmeans();
+        self.kmeans_initial();
+        self.kmeans_cluster();
         if self.street == Street::Pref {
             self.metric = self.inner_metric();
             self.metric.save(self.street);
@@ -120,6 +119,7 @@ impl Layer {
             self.lookup.save(self.street);
         }
     }
+
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
         log::info!(
@@ -186,7 +186,7 @@ impl Layer {
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    fn initial_kmeans(&mut self) {
+    fn kmeans_initial(&mut self) {
         log::info!(
             "{:<32}{:<32}",
             "declaring abstractions",
@@ -207,7 +207,7 @@ impl Layer {
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
-    fn cluster_kmeans(&mut self) {
+    fn kmeans_cluster(&mut self) {
         log::info!(
             "{:<32}{:<32}",
             "clustering observations",
@@ -229,7 +229,7 @@ impl Layer {
         self.points
             .0
             .par_iter()
-            .map(|(_, h)| self.nearest_neighbor(h))
+            .map(|(_, h)| self.nearest(h))
             .collect::<Vec<(Abstraction, f32)>>()
     }
     /// assign each `Observation` to the nearest `Centroid`
@@ -277,7 +277,7 @@ impl Layer {
             .points
             .0
             .par_iter()
-            .map(|(_obs, hist)| self.nearest_neighbor(hist))
+            .map(|(_obs, hist)| self.nearest(hist))
             .map(|(_abs, dist)| dist * dist)
             .collect::<Vec<f32>>();
         let index = WeightedIndex::new(weights)
@@ -292,7 +292,7 @@ impl Layer {
     }
 
     /// find the nearest neighbor `Abstraction` to a given `Histogram` for kmeans clustering
-    fn nearest_neighbor(&self, histogram: &Histogram) -> (Abstraction, f32) {
+    fn nearest(&self, histogram: &Histogram) -> (Abstraction, f32) {
         self.kmeans
             .0
             .par_iter()
@@ -303,13 +303,14 @@ impl Layer {
             .expect("find nearest neighbor")
     }
 
+    /// create a progress bar for kmeans clustering
     fn progress(n: usize) -> indicatif::ProgressBar {
-        // let tick = std::time::Duration::from_secs(1);
+        let tick = std::time::Duration::from_secs(5);
         let style = "[{elapsed}] {spinner} {wide_bar} ETA {eta}";
         let style = indicatif::ProgressStyle::with_template(style).unwrap();
         let progress = indicatif::ProgressBar::new(n as u64);
         progress.set_style(style);
-        // progress.enable_steady_tick(tick);
+        progress.enable_steady_tick(tick);
         progress
     }
 }

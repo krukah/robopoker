@@ -148,16 +148,17 @@ impl Metric {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}.metric.pgcopy", street)).expect("new file");
+        let ref mut file = File::create(format!("{}.metric.pgcopy", street)).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
         for (pair, distance) in self.0.iter() {
-            file.write_u16::<BE>(2).expect("field count");
-            file.write_u32::<BE>(8).expect("8-bytes field");
-            file.write_i64::<BE>(i64::from(*pair)).expect("pair");
-            file.write_u32::<BE>(4).expect("4-bytes field");
-            file.write_f32::<BE>(*distance).expect("distance");
+            const N_FIELDS: u16 = 2;
+            file.write_u16::<BE>(N_FIELDS).unwrap();
+            file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
+            file.write_i64::<BE>(i64::from(*pair)).unwrap();
+            file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
+            file.write_f32::<BE>(*distance).unwrap();
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
