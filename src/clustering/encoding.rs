@@ -36,12 +36,9 @@ impl Encoder {
         } else {
             log::info!("learning abstraction");
             Layer::outer()
-                .inner() // cluster turn
-                .save()
-                .inner() // cluster flop
-                .save()
-                .inner() // cluster preflop
-                .save();
+                .inner() // turn
+                .inner() // flop
+                .inner(); // preflop
         }
     }
     /// simple insertion.
@@ -54,11 +51,11 @@ impl Encoder {
     /// for river, we compute the equity on the fly. could use MC sampling to speed up
     /// for turn and flop, we lookup the pre-computed abstraction that we woked so hard for in ::clustering
     pub fn abstraction(&self, outer: &Isomorphism) -> Abstraction {
-        let observation = Observation::from(*outer);
+        let observation = outer.0;
         match observation.street() {
             Street::Pref => Abstraction::from(Hole::from(observation)),
             Street::Rive => Abstraction::from(observation.equity()),
-            Street::Turn | Street::Flop => self
+            Street::Flop | Street::Turn => self
                 .0
                 .get(outer)
                 .cloned()
@@ -66,21 +63,21 @@ impl Encoder {
         }
     }
     /// at a given `Street`,
-    /// 1. decompose the `Equivalence` into all of its next-street `Equivalence`s,
+    /// 1. decompose the `Isomorphism` into all of its next-street `Isomorphism`s,
     /// 2. map each of them into an `Abstraction`,
     /// 3. collect the results into a `Histogram`.
     pub fn projection(&self, inner: &Isomorphism) -> Histogram {
-        let inner = Observation::from(*inner); // isomorphism translation
-        match inner.street() {
-            Street::Turn => Histogram::from(inner),
-            Street::Flop => Histogram::from(
-                inner
+        let observation = inner.0;
+        match observation.street() {
+            Street::Pref | Street::Flop => Histogram::from(
+                observation
                     .children()
                     .map(|outer| Isomorphism::from(outer)) // isomorphism translation
-                    .map(|outer| self.abstraction(&outer))
-                    .collect::<Vec<Abstraction>>(),
+                    .map(|outer| self.abstraction(&outer)) // abstraction lookup
+                    .collect::<Vec<Abstraction>>(), // histogram collection
             ),
-            _ => unreachable!("invalid street for projection"),
+            Street::Turn => Histogram::from(observation),
+            Street::Rive => unreachable!("never project outermost abstraction layer"),
         }
     }
 }
@@ -105,7 +102,7 @@ impl Encoder {
     /// we may need some Trainer-level references to produce children
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
         let ref past = node.history();
-        let ref game = node.spot().game();
+        let ref game = node.data().game();
         game.children()
             .into_iter()
             .map(|(g, a)| self.convert(g, a, past))

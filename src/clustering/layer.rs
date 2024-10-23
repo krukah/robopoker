@@ -56,8 +56,8 @@ impl Layer {
     const fn k(street: Street) -> usize {
         match street {
             Street::Pref => 169,
-            Street::Flop => 32,
-            Street::Turn => 32,
+            Street::Flop => 8,
+            Street::Turn => 8,
             Street::Rive => unreachable!(),
         }
     }
@@ -69,8 +69,8 @@ impl Layer {
     const fn t(street: Street) -> usize {
         match street {
             Street::Pref => 0,
-            Street::Flop => 32,
-            Street::Turn => 32,
+            Street::Flop => 16,
+            Street::Turn => 16,
             Street::Rive => unreachable!(),
         }
     }
@@ -97,23 +97,25 @@ impl Layer {
     /// 3. cluster kmeans centroids
     pub fn inner(&self) -> Self {
         let mut layer = Self {
-            lookup: Encoder::default(),          // assigned during clustering
-            kmeans: AbstractionSpace::default(), // assigned during clustering
             street: self.inner_street(),         // uniquely determined by outer layer
             metric: self.inner_metric(),         // uniquely determined by outer layer
             points: self.inner_points(),         // uniquely determined by outer layer
+            kmeans: AbstractionSpace::default(), // assigned during clustering
+            lookup: Encoder::default(),          // assigned during clustering
         };
-        layer.initial_kmeans();
-        layer.cluster_kmeans();
+        layer.cluster();
         layer
     }
-    /// save the current layer's `Metric` and `Abstractor` to disk
-    pub fn save(self) -> Self {
-        self.metric.save(self.street.next()); // outer layer generates this purely (metric over projections)
-        self.lookup.save(self.street); // while inner layer generates this (clusters)
-        self
+    fn cluster(&mut self) {
+        self.metric.save(self.street.next());
+        self.initial_kmeans();
+        self.cluster_kmeans();
+        self.lookup.save(self.street);
+        if self.street == Street::Pref {
+            self.metric = self.inner_metric();
+            self.metric.save(Street::Flop);
+        }
     }
-
     /// simply go to the previous street
     fn inner_street(&self) -> Street {
         log::info!(
@@ -128,7 +130,8 @@ impl Layer {
     /// - by using the _outer layer_ `Metric` between `Histogram`s via EMD calcluations.
     ///
     /// we symmetrize the distance by averaging the EMDs in both directions.
-    /// the distnace isn't symmetric in the first place only because our heuristic algo is not fully accurate
+    /// the distnace isn't symmetric in the first place only because our greedy heuristic algo
+    /// will find different optimal Coupling/Transport plans depending on which direction we consider.
     fn inner_metric(&self) -> Metric {
         log::info!(
             "{:<32}{:<32}",
@@ -162,12 +165,11 @@ impl Layer {
             "collecting histograms",
             format!("{} <- {}", self.street.prev(), self.street)
         );
-        let isomorphisms = Observation::exhaust(self.street.prev())
+        let progress = Self::progress(self.street.n_isomorphisms());
+        let projection = Observation::exhaust(self.street.prev())
             .filter(Isomorphism::is_canonical)
-            .map(Isomorphism::from) // isomorphism translation
-            .collect::<Vec<Isomorphism>>();
-        let progress = Self::progress(isomorphisms.len());
-        let projection = isomorphisms
+            .map(Isomorphism::from)
+            .collect::<Vec<Isomorphism>>()
             .into_par_iter()
             .map(|inner| (inner, self.lookup.projection(&inner)))
             .inspect(|_| progress.inc(1))

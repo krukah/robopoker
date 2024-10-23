@@ -23,7 +23,10 @@ impl<'tree> From<(NodeIndex, &'tree DiGraph<Data, Edge>)> for Node<'tree> {
 
 /// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl<'tree> Node<'tree> {
-    pub fn spot(&self) -> &Data {
+    pub fn spawn(&self, index: NodeIndex) -> Node<'tree> {
+        Self::from((index, self.graph()))
+    }
+    pub fn data(&self) -> &Data {
         &self
             .graph
             .node_weight(self.index())
@@ -33,25 +36,21 @@ impl<'tree> Node<'tree> {
         self.index
     }
     pub fn bucket(&self) -> &Bucket {
-        self.spot().bucket()
+        self.data().bucket()
     }
     pub fn player(&self) -> Player {
-        self.spot().player()
+        self.data().player()
     }
     pub fn payoff(&self, player: &Player) -> Utility {
-        let position = match player {
-            Player::Choice(Transition::Choice(x)) => x.clone(),
-            _ => unreachable!("payoffs defined relative to decider"),
-        };
         match player {
-            Player::Choice(_) => unreachable!("payoffs defined relative to decider"),
-            Player::Chance => self
-                .spot()
+            Player::Choice(Transition::Choice(x)) => self
+                .data()
                 .game()
                 .settlement()
-                .get(position)
+                .get(*x)
                 .map(|settlement| settlement.pnl() as f32)
                 .expect("player index in bounds"),
+            _ => unreachable!("payoffs defined relative to decider"),
         }
     }
 
@@ -108,9 +107,6 @@ impl<'tree> Node<'tree> {
                 .flat_map(|child| child.leaves())
                 .collect()
         }
-    }
-    fn spawn(&self, index: NodeIndex) -> Node<'tree> {
-        Self::from((index, self.graph()))
     }
     /// SAFETY:
     /// we have logical assurance that lifetimes work out effectively:
