@@ -6,7 +6,6 @@ use super::Chips;
 use super::N;
 use super::STACK;
 use crate::cards::board::Board;
-use crate::cards::card::Card;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
@@ -94,7 +93,7 @@ impl Game {
         vec![]
     }
     fn chance_actions(&self) -> Vec<(Game, Action)> {
-        let action = Action::Draw(Card::draw());
+        let action = Action::Draw(self.deck().draw());
         let mut child = self.clone();
         child.show_revealed();
         vec![(child, action)]

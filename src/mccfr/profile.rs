@@ -125,12 +125,7 @@ impl Profile {
             .node(tree)
             .outgoing()
             .into_iter()
-            .map(|action| {
-                (
-                    action.to_owned(),
-                    self.running_regret(tree, infoset, action),
-                )
-            })
+            .map(|action| (action.clone(), self.running_regret(tree, infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect::<BTreeMap<Edge, Utility>>();
         let sum = regrets.values().sum::<Utility>();
@@ -224,6 +219,11 @@ impl Profile {
     /// across our strategy vector?
     fn accrued_regret(&self, tree: &Tree, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node(tree).player() == self.walker());
+        log::info!(
+            "accrued regret {:?} {}",
+            infoset.node(tree).player(),
+            infoset.node(tree).data().bucket()
+        );
         let running = self.running_regret(tree, infoset, edge);
         let instant = self.instant_regret(tree, infoset, edge);
         running + instant

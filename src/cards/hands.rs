@@ -117,7 +117,6 @@ impl From<(usize, Hand)> for HandIterator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::card::DECK_SIZE;
 
     #[test]
     fn n_choose_0() {
@@ -127,7 +126,7 @@ mod tests {
     #[test]
     fn n_choose_1() {
         let iter = HandIterator::from((1, Hand::empty()));
-        assert_eq!(iter.count(), DECK_SIZE);
+        assert_eq!(iter.count(), Hand::from(Hand::mask()).size());
     }
     #[test]
     #[cfg(not(feature = "shortdeck"))]
@@ -137,21 +136,21 @@ mod tests {
     }
     #[test]
     fn n_choose_0_mask_4() {
-        let mask = Hand::from(0b1111);
+        let mask = Hand::from(0xF);
         let iter = HandIterator::from((0, mask));
         assert_eq!(iter.count(), 0);
     }
     #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn n_choose_1_mask_4() {
-        let mask = Hand::from(0b1111);
+        let mask = Hand::from(0xF);
         let iter = HandIterator::from((1, mask));
         assert_eq!(iter.count(), 48);
     }
     #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn n_choose_2_mask_4() {
-        let mask = Hand::from(0b1111);
+        let mask = Hand::from(0xF);
         let iter = HandIterator::from((2, mask));
         assert_eq!(iter.count(), 1128);
     }
