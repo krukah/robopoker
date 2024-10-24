@@ -1,12 +1,6 @@
 use super::rank::Rank;
 use super::suit::Suit;
 
-#[cfg(not(feature = "shortdeck"))]
-pub const DECK_SIZE: usize = 52;
-
-#[cfg(feature = "shortdeck")]
-pub const DECK_SIZE: usize = 36;
-
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -18,16 +12,6 @@ impl Card {
     }
     pub fn suit(&self) -> Suit {
         Suit::from(self.0 % 4)
-    }
-    pub fn draw() -> Card {
-        use rand::Rng;
-        let rng = &mut rand::thread_rng();
-        let suit = rng.gen_range(0..4) as u8;
-        #[cfg(not(feature = "shortdeck"))]
-        let rank = rng.gen_range(0..13) as u8;
-        #[cfg(feature = "shortdeck")]
-        let rank = rng.gen_range(4..13) as u8;
-        Card::from((Rank::from(rank), Suit::from(suit)))
     }
 }
 
@@ -103,10 +87,11 @@ impl From<&str> for Card {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cards::deck::Deck;
 
     #[test]
     fn bijective_rank_suit() {
-        let card = Card::draw();
+        let card = Deck::new().draw();
         let suit = card.suit();
         let rank = card.rank();
         assert!(card == Card::from((rank, suit)));
@@ -114,13 +99,13 @@ mod tests {
 
     #[test]
     fn bijective_u8() {
-        let card = Card::draw();
+        let card = Deck::new().draw();
         assert!(card == Card::from(u8::from(card)));
     }
 
     #[test]
     fn bijective_u32() {
-        let card = Card::draw();
+        let card = Deck::new().draw();
         assert!(card == Card::from(u32::from(card)));
     }
 }
