@@ -114,7 +114,7 @@ impl Blueprint {
     /// under external sampling rules.
     /// explore all my options, only one of my opponents'
     fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let ref mut rng = self.profile.rng(node);
+        let ref mut rng = rand::thread_rng(); // self.profile.rng(node);
         let mut children = self.encoder.children(node);
         let walker = self.profile.walker();
         let chance = Player::chance();
