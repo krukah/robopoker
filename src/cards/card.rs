@@ -2,10 +2,10 @@ use super::rank::Rank;
 use super::suit::Suit;
 
 #[cfg(not(feature = "shortdeck"))]
-pub const CARD_COUNT_IN_DECK: usize = 52;
+pub const DECK_SIZE: usize = 52;
 
 #[cfg(feature = "shortdeck")]
-pub const CARD_COUNT_IN_DECK: usize = 36;
+pub const DECK_SIZE: usize = 36;
 
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit

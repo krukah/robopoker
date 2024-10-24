@@ -25,10 +25,7 @@ impl From<Street> for ObservationIterator {
         // ObsIterator can reap the benefit
 
         // start with first card
-        #[cfg(not(feature = "shortdeck"))]
-        let pocket = Hand::from(0b11);
-        #[cfg(feature = "shortdeck")]
-        let pocket = Hand::from(0b11_0000_0000_0000_0000);
+        let pocket = Self::start();
         let inner = HandIterator::from((street.n_observed(), pocket));
         let mut outer = HandIterator::from((2, Hand::empty()));
         match street {
@@ -68,6 +65,15 @@ impl ObservationIterator {
     }
     pub fn street(&self) -> Street {
         self.street
+    }
+    fn start() -> Hand {
+        // 2c 2d
+        #[cfg(not(feature = "shortdeck"))]
+        let pocket = Hand::from(0x3);
+        // 6c 6d
+        #[cfg(feature = "shortdeck")]
+        let pocket = Hand::from(0x30000);
+        pocket
     }
     fn inner(&mut self, public: Hand) -> Option<Observation> {
         Some(Observation::from((self.pocket, public)))

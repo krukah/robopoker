@@ -56,7 +56,7 @@ impl Hand {
     }
     #[cfg(feature = "shortdeck")]
     pub const fn mask() -> u64 {
-        0x000FFFFFF0000000
+        0x000FFFFFFFFF0000
     }
 }
 

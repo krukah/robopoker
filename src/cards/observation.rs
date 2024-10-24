@@ -21,14 +21,9 @@ pub struct Observation {
 }
 
 impl Observation {
-    /// Generate all possible observations for a given street
     pub fn exhaust<'a>(street: Street) -> impl Iterator<Item = Self> + 'a {
         ObservationIterator::from(street)
     }
-    /// Generates all possible successors of the current observation.
-    /// LOOP over (2 + street)-handed OBSERVATIONS
-    /// EXPAND the current observation's BOARD CARDS
-    /// PRESERVE the current observation's HOLE CARDS
     pub fn children<'a>(&'a self) -> impl Iterator<Item = Self> + 'a {
         let n = self.street().n_revealed();
         let removed = Hand::from(*self);
@@ -36,19 +31,12 @@ impl Observation {
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Self::from((self.pocket, public)))
     }
-
-    /// Calculates the equity of the current observation.
-    ///
-    /// This calculation integrations across ALL possible opponent hole cards.
-    /// I'm not sure this is feasible across ALL 2.8B rivers * ALL 990 opponents.
-    /// But it's a one-time calculation so we can afford to be slow
     pub fn equity(&self) -> f32 {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
         let hero = Strength::from(hand);
-        let opponents = HandIterator::from((2, hand));
-        let n = opponents.combinations();
-        opponents
+        let n = HandIterator::from((2, hand)).combinations();
+        HandIterator::from((2, hand))
             .map(|opponent| Hand::add(self.public, opponent))
             .map(|opponent| Strength::from(opponent))
             .map(|opponent| match &hero.cmp(&opponent) {
@@ -57,8 +45,8 @@ impl Observation {
                 Ordering::Less => 0,
             })
             .sum::<u32>() as f32
-            / n as f32
             / 2 as f32
+            / n as f32
     }
     pub fn street(&self) -> Street {
         match self.public.size() {
