@@ -103,7 +103,7 @@ impl From<(usize, Hand)> for HandIterator {
         let mut this = Self {
             next: (1 << n) - 1,
             #[cfg(feature = "shortdeck")]
-            mask: u64::from(mask) | 0b1111111111111111, // remove 2-5 cards
+            mask: u64::from(mask) | 0xFFFF, // remove 2-5 cards
             #[cfg(not(feature = "shortdeck"))]
             mask: u64::from(mask),
         };
@@ -116,9 +116,8 @@ impl From<(usize, Hand)> for HandIterator {
 
 #[cfg(test)]
 mod tests {
-    use crate::cards::card::CARD_COUNT_IN_DECK;
-
     use super::*;
+    use crate::cards::card::DECK_SIZE;
 
     #[test]
     fn n_choose_0() {
@@ -128,7 +127,7 @@ mod tests {
     #[test]
     fn n_choose_1() {
         let iter = HandIterator::from((1, Hand::empty()));
-        assert_eq!(iter.count(), CARD_COUNT_IN_DECK);
+        assert_eq!(iter.count(), DECK_SIZE);
     }
     #[test]
     #[cfg(not(feature = "shortdeck"))]
@@ -136,7 +135,6 @@ mod tests {
         let iter = HandIterator::from((2, Hand::empty()));
         assert_eq!(iter.count(), 1326);
     }
-
     #[test]
     fn n_choose_0_mask_4() {
         let mask = Hand::from(0b1111);
@@ -157,7 +155,6 @@ mod tests {
         let iter = HandIterator::from((2, mask));
         assert_eq!(iter.count(), 1128);
     }
-
     #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn choose_3() {
@@ -173,14 +170,12 @@ mod tests {
         assert!(iter.next() == Some(Hand::from(0b11010)));
         assert!(iter.next() == Some(Hand::from(0b11100)));
     }
-
     #[test]
     #[cfg(feature = "shortdeck")]
     fn choose_2_shortdeck() {
         let mut iter = HandIterator::from((2, Hand::from(0)));
         assert_eq!(iter.next(), Some(Hand::from(0b110000000000000000)));
     }
-
     #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn choose_3_from_5() {

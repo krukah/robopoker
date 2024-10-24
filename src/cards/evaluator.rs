@@ -18,13 +18,13 @@ impl From<Hand> for Evaluator {
 
 #[cfg(not(feature = "shortdeck"))]
 const WHEEL: u16 = 0b_1000000001111;
-#[cfg(feature = "shortdeck")]
-const WHEEL: u16 = 0b_1000011110000;
-
 #[cfg(not(feature = "shortdeck"))]
 const LOWEST_STRAIGHT_RANK: Rank = Rank::Five;
+
 #[cfg(feature = "shortdeck")]
 const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
+#[cfg(feature = "shortdeck")]
+const WHEEL: u16 = 0b_1000011110000;
 
 impl Evaluator {
     pub fn find_ranking(&self) -> Ranking {
