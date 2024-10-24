@@ -51,6 +51,8 @@ impl Abstraction {
 /// and Equity(N) is the 100% equity bucket.
 impl From<Probability> for Abstraction {
     fn from(p: Probability) -> Self {
+        assert!(p >= 0.);
+        assert!(p <= 1.);
         Self::Equity(Abstraction::quantize(p))
     }
 }
@@ -106,9 +108,9 @@ impl From<Hole> for Abstraction {
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Random(n) => write!(f, "{:016x}", n),
-            Self::Equity(n) => write!(f, "unreachable ? Equity({})", n),
-            Self::Pocket(h) => write!(f, "unreachable ? Pocket({})", h),
+            Self::Random(n) => write!(f, "Random({:016x})", n),
+            Self::Equity(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
+            Self::Pocket(h) => write!(f, "Pocket({})", h),
         }
     }
 }
@@ -119,10 +121,10 @@ mod tests {
 
     #[test]
     fn is_quantize_inverse_floatize() {
-        for p in (0..=100).map(|x| x as Probability / 100.0) {
+        for p in (0..=100).map(|x| x as Probability / 100.) {
             let q = Abstraction::quantize(p);
             let f = Abstraction::floatize(q);
-            assert!((p - f).abs() < 1.0 / Abstraction::N as Probability);
+            assert!((p - f).abs() < 1. / Abstraction::N as Probability);
         }
     }
 

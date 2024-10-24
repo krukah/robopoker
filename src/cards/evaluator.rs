@@ -136,7 +136,7 @@ impl Evaluator {
         let rank = rank.map(|c| u8::from(c)).unwrap_or(13) as u64;
         let mask = (1u64 << (4 * rank)) - 1;
         let hand = u64::from(self.0) & mask;
-        let mut mask = 0b_1111_u64 << (4 * (rank)) >> 4;
+        let mut mask = 0xF << (4 * (rank)) >> 4;
         while mask > 0 {
             if oak <= (hand & mask).count_ones() as usize {
                 let rank = mask.trailing_zeros() / 4;
