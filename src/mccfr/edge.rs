@@ -33,10 +33,20 @@ impl From<Edge> for u32 {
         }
     }
 }
-
 impl std::fmt::Display for Edge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Edge::Random => write!(f, "? ? ? ? "),
+            Edge::Choice(action) => match action {
+                Action::Fold => write!(f, "FOLD    "),
+                Action::Check => write!(f, "CHECK   "),
+                Action::Call(x) => write!(f, "CALL  {:<2}", x),
+                Action::Raise(x) => write!(f, "RAISE {:<2}", x),
+                Action::Shove(x) => write!(f, "SHOVE {:<2}", x),
+                Action::Blind(x) => write!(f, "BLIND {:<2}", x),
+                Action::Draw(_) => unreachable!(),
+            },
+        }
     }
 }
 
