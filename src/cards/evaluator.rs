@@ -4,6 +4,16 @@ use super::rank::Rank;
 use super::ranking::Ranking;
 use super::suit::Suit;
 
+#[cfg(not(feature = "shortdeck"))]
+const WHEEL: u16 = 0b_1000000001111;
+#[cfg(not(feature = "shortdeck"))]
+const LOWEST_STRAIGHT_RANK: Rank = Rank::Five;
+
+#[cfg(feature = "shortdeck")]
+const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
+#[cfg(feature = "shortdeck")]
+const WHEEL: u16 = 0b_1000011110000;
+
 /// A lazy evaluator for a hand's strength.
 ///
 /// Using a compact representation of the Hand, we search for
@@ -15,16 +25,6 @@ impl From<Hand> for Evaluator {
         Self(h)
     }
 }
-
-#[cfg(not(feature = "shortdeck"))]
-const WHEEL: u16 = 0b_1000000001111;
-#[cfg(not(feature = "shortdeck"))]
-const LOWEST_STRAIGHT_RANK: Rank = Rank::Five;
-
-#[cfg(feature = "shortdeck")]
-const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
-#[cfg(feature = "shortdeck")]
-const WHEEL: u16 = 0b_1000011110000;
 
 impl Evaluator {
     pub fn find_ranking(&self) -> Ranking {

@@ -9,6 +9,10 @@ use petgraph::graph::NodeIndex;
 use petgraph::Direction::Incoming;
 use petgraph::Direction::Outgoing;
 
+/// A Node is a wrapper around a NodeIndex and a &Graph.
+/// because they are thin wrappers around an index, they're
+/// cheap to Copy. holding reference to Graph is useful
+/// for navigational methods.
 #[derive(Debug, Clone, Copy)]
 pub struct Node<'tree> {
     index: NodeIndex,
@@ -116,5 +120,11 @@ impl<'tree> Node<'tree> {
     /// Tree owns its Graph
     pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
         self.graph
+    }
+}
+
+impl std::fmt::Display for Node<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "N{}", self.index().index())
     }
 }

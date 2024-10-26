@@ -15,6 +15,6 @@ impl From<Path> for u64 {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:016x}", self.0)
+        write!(f, "d{:02}", self.0)
     }
 }

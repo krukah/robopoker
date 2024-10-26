@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn bijective_u8() {
-        let suit = Suit::C;
+        let suit = Suit::D;
         assert!(suit == Suit::from(u8::from(suit)));
     }
 
