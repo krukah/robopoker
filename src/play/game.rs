@@ -11,8 +11,8 @@ use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
+use crate::play::ply::Ply;
 use crate::play::showdown::Showdown;
-use crate::play::transition::Transition;
 use crate::players::human::Human;
 
 type Position = usize;
@@ -60,11 +60,14 @@ impl Game {
     /// actually we should not have chance transitions at preflop. Explorer::root will
     /// "spawn" us at a node where blinds are posted and hands are dealt!
     pub fn children(&self) -> Vec<(Game, Action)> {
-        match self.chooser() {
-            Transition::Terminal => self.ending_actions(),
-            Transition::Chance(_) => self.chance_actions(),
-            Transition::Choice(_) => self.choice_actions(),
+        match self.ply() {
+            Ply::Choice(_) => self.choice_actions(),
+            Ply::Chance => self.chance_actions(),
+            Ply::Terminal => self.ending_actions(),
         }
+    }
+    pub fn n(&self) -> usize {
+        self.seats.len()
     }
 
     /// play against yourself in an infinite loop
@@ -74,16 +77,10 @@ impl Game {
     pub fn play() -> ! {
         let mut node = Self::root();
         loop {
-            match node.chooser() {
-                Transition::Terminal => {
-                    node.into_terminal(); // node.clone(); node...(&mut self) ; node = node
-                }
-                Transition::Chance(_) => {
-                    node.show_revealed(); // node.clone(); node...(&mut self) ; node = node
-                }
-                Transition::Choice(_) => {
-                    node.make_decision(); // node.clone(); node...(&mut self) ; node = node
-                }
+            match node.ply() {
+                Ply::Choice(_) => node.make_decision(),
+                Ply::Chance => node.show_revealed(),
+                Ply::Terminal => node.into_terminal(),
             }
         }
     }
@@ -93,9 +90,9 @@ impl Game {
         vec![]
     }
     fn chance_actions(&self) -> Vec<(Game, Action)> {
-        let action = Action::Draw(self.deck().draw());
         let mut child = self.clone();
         child.show_revealed();
+        let action = Action::Draw(self.deck().draw());
         vec![(child, action)]
     }
     fn choice_actions(&self) -> Vec<(Game, Action)> {
@@ -155,13 +152,13 @@ impl Game {
         }
         options
     }
-    pub fn chooser(&self) -> Transition {
+    pub fn ply(&self) -> Ply {
         if self.is_terminal() {
-            Transition::Terminal
+            Ply::Terminal
         } else if self.is_sampling() {
-            Transition::Chance(self.board.street().next())
+            Ply::Chance
         } else if self.is_decision() {
-            Transition::Choice(self.actor_relative_idx())
+            Ply::Choice(self.actor_relative_idx())
         } else {
             unreachable!("game rules violated")
         }
@@ -252,12 +249,8 @@ impl Game {
     }
     fn update_stdout(&self, action: &Action) {
         match action {
-            Action::Draw(_) => {
-                log::trace!("  {}", action);
-            }
-            _ => {
-                log::trace!("{} {}", self.actor_absolute_idx(), action);
-            }
+            Action::Draw(_) => log::trace!("  {}", action),
+            _ => log::trace!("{} {}", self.actor_absolute_idx(), action),
         }
     }
     fn rotate(&mut self) {

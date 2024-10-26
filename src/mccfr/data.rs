@@ -2,7 +2,6 @@ use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::player::Player;
 use crate::play::game::Game;
-use crate::play::transition::Transition;
 
 #[derive(Debug)]
 pub struct Data {
@@ -24,10 +23,7 @@ impl Data {
         &self.bucket
     }
     pub fn player(&self) -> Player {
-        match self.game.chooser() {
-            x @ Transition::Choice(_) => Player::Choice(x),
-            _ => Player::Chance,
-        }
+        Player(self.game.ply())
     }
     pub fn edges(&self) -> Vec<Edge> {
         self.game

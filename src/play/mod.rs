@@ -1,9 +1,9 @@
 pub mod action;
 pub mod game;
 pub mod payout;
+pub mod ply;
 pub mod seat;
 pub mod showdown;
-pub mod transition;
 
 pub type Chips = u16;
 pub const N: usize = 2;
