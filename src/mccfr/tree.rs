@@ -6,6 +6,7 @@ use petgraph::graph::DiGraph;
 use petgraph::graph::EdgeIndex;
 use petgraph::graph::NodeIndex;
 use std::fmt::Formatter;
+use std::fmt::Result;
 
 /// Represents the game tree structure used in Monte Carlo Counterfactual Regret Minimization (MCCFR).
 ///
@@ -30,9 +31,9 @@ impl Tree {
     pub fn extend(&mut self, tail: NodeIndex, from: Edge, head: NodeIndex) -> EdgeIndex {
         self.0.add_edge(head, tail, from)
     }
-    pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> std::fmt::Result {
+    pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {
-            writeln!(f, "{}", self.0[index].bucket())?;
+            writeln!(f, "ROOT   {}", self.0[index].bucket())?;
         }
         let mut children = self
             .0
@@ -41,14 +42,14 @@ impl Tree {
         children.sort();
         for (i, child) in children.iter().enumerate() {
             let last = i == children.len() - 1;
-            let head = &self.0[*child].bucket();
+            let stem = if last { "└" } else { "├" };
+            let gaps = if last { "    " } else { "│   " };
+            let head = self.0[*child].bucket();
             let edge = self
                 .0
                 .edge_weight(self.0.find_edge(index, *child).unwrap())
                 .unwrap();
-            let stem = if last { "└" } else { "├" };
-            let gaps = if last { "    " } else { "│   " };
-            writeln!(f, "{}{}── {} ->   {}", prefix, stem, edge, head)?;
+            writeln!(f, "{}{}──{} ->   {}", prefix, stem, edge, head)?;
             self.draw(f, *child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())

@@ -2,7 +2,7 @@ use super::bucket::Bucket;
 use super::player::Player;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
-use crate::play::transition::Transition;
+use crate::play::ply::Ply;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
@@ -25,7 +25,6 @@ impl<'tree> From<(NodeIndex, &'tree DiGraph<Data, Edge>)> for Node<'tree> {
     }
 }
 
-/// collection of these three is what you would get in a Node, which may be too restrictive for a lot of the use so we'll se
 impl<'tree> Node<'tree> {
     pub fn spawn(&self, index: NodeIndex) -> Node<'tree> {
         Self::from((index, self.graph()))
@@ -47,21 +46,20 @@ impl<'tree> Node<'tree> {
     }
     pub fn payoff(&self, player: &Player) -> Utility {
         match player {
-            Player::Choice(Transition::Choice(x)) => self
+            Player(Ply::Terminal) => unreachable!(),
+            Player(Ply::Chance) => unreachable!(),
+            Player(Ply::Choice(x)) => self
                 .data()
                 .game()
                 .settlement()
                 .get(*x)
                 .map(|settlement| settlement.pnl() as f32)
                 .expect("player index in bounds"),
-            _ => unreachable!("payoffs defined relative to decider"),
         }
     }
 
     /// Navigational methods
-    ///
-    /// maybe make these methods private and implement Walkable for Node?
-    /// or add &Node as argument and impl Walkable for Tree?
+
     pub fn history(&self) -> Vec<&'tree Edge> {
         if let (Some(edge), Some(head)) = (self.incoming(), self.parent()) {
             let mut history = head.history();
