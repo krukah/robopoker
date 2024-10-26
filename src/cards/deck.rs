@@ -15,8 +15,9 @@ impl Deck {
     /// different from Hand::draw() since that removes
     /// highest card deterministically
     pub fn draw(&mut self) -> Card {
+        let ref mut rng = rand::thread_rng();
         let n = self.0.size();
-        let i = rand::thread_rng().gen_range(0..n as u8);
+        let i = rng.gen_range(0..n as u8);
         let mut ones = 0u8;
         let mut deck = u64::from(self.0);
         let mut card = u64::from(self.0).trailing_zeros() as u8;

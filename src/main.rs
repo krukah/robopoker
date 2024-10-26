@@ -11,6 +11,14 @@ fn main() {
     play::game::Game::play();
 }
 
+// someday i'll consolidate all these constants. config file or env vars
+// const SEED: u64 = 0xDEADBEEF;
+// const MAX_N_RAISE: usize = 2;
+// const MCCFR_BATCH_SIZE: u32 = 100;
+// const MCCFR_TRAINING_ITERATIONS: u32 = 100;
+// const KMEANS_TRAINING_ITERATIONS: u32 = 100;
+// const KMEANS_CLUSTER_COUNT: u32 = 100;
+
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
 //    2019. Regret Circuits: Composability of Regret Minimizers. In Proceedings of the International Conference on Machine Learning (ICML), 2019. arXiv version. (https://arxiv.org/abs/1811.02540)
 //    2019. Stable-Predictive Optimistic Counterfactual Regret Minimization. In ICML. arXiv version. (https://arxiv.org/pdf/1902.04982.pdf)

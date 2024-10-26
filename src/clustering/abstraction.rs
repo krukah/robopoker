@@ -108,7 +108,7 @@ impl From<Hole> for Abstraction {
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Random(n) => write!(f, "Random({:016x})", n),
+            Self::Random(n) => write!(f, "{:016x}", n),
             Self::Equity(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
             Self::Pocket(h) => write!(f, "Pocket({})", h),
         }

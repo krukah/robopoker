@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::Chips;
 use crate::cards::card::Card;
 use colored::*;
@@ -7,12 +5,12 @@ use colored::*;
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub enum Action {
     Draw(Card),
-    Blind(Chips),
-    Shove(Chips),
-    Raise(Chips),
+    Fold,
     Call(Chips),
     Check,
-    Fold,
+    Raise(Chips),
+    Shove(Chips),
+    Blind(Chips),
 }
 
 impl From<u32> for Action {
@@ -68,10 +66,10 @@ mod tests {
     #[test]
     fn bijective_u32() {
         assert!([
-            Action::Raise(1u16),
-            Action::Blind(2u16),
-            Action::Call(64000u16),
-            Action::Shove(1738u16),
+            Action::Raise(1),
+            Action::Blind(2),
+            Action::Call(64000),
+            Action::Shove(1738),
             Action::Draw(Card::from(51u8)),
         ]
         .into_iter()
