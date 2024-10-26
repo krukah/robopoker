@@ -1,3 +1,4 @@
+use super::data::Data;
 use super::tree::Tree;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
@@ -5,7 +6,7 @@ use crate::mccfr::info::Info;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
 use crate::mccfr::strategy::Strategy;
-use crate::play::transition::Transition;
+use crate::play::ply::Ply;
 use crate::Probability;
 use crate::Utility;
 use rand::rngs::SmallRng;
@@ -54,19 +55,17 @@ impl Profile {
     /// at this Node with uniform distribution
     /// over its spawned support:
     /// Data -> Vec<(Data, Edge)>.
-    pub fn witness(&mut self, node: Node) {
-        if !self.strategies.contains_key(node.bucket()) {
-            let infoset = node.bucket().clone();
-            let options = node.data().edges();
-            let uniform = 1. / options.len() as Probability;
-            for edge in options {
-                self.strategies
-                    .entry(infoset)
-                    .or_insert_with(BTreeMap::default)
-                    .entry(edge)
-                    .or_insert_with(Strategy::default)
-                    .policy = uniform;
-            }
+    pub fn witness(&mut self, node: &Node, children: &Vec<(Data, Edge)>) {
+        let n = children.len();
+        let uniform = 1. / n as Probability;
+        let bucket = node.bucket();
+        for (_, edge) in children {
+            self.strategies
+                .entry(bucket.clone())
+                .or_insert_with(BTreeMap::default)
+                .entry(edge.clone())
+                .or_insert_with(Strategy::default)
+                .policy = uniform;
         }
     }
 
@@ -143,14 +142,14 @@ impl Profile {
     /// division by 2 is used to allow each player
     /// one iteration to walk the Tree in a single Epoch
     pub fn epochs(&self) -> usize {
-        self.iterations / 2
+        self.iterations
     }
     /// which player is traversing the Tree on this Epoch?
     /// used extensively in assertions and utility calculations
     pub fn walker(&self) -> Player {
         match self.iterations % 2 {
-            0 => Player::Choice(Transition::Choice(0)),
-            _ => Player::Choice(Transition::Choice(1)),
+            0 => Player(Ply::Choice(0)),
+            _ => Player(Ply::Choice(1)),
         }
     }
     /// only used for Tree sampling in Monte Carlo Trainer.
@@ -218,12 +217,6 @@ impl Profile {
     /// how much regret do we feel
     /// across our strategy vector?
     fn accrued_regret(&self, tree: &Tree, infoset: &Info, edge: &Edge) -> Utility {
-        assert!(infoset.node(tree).player() == self.walker());
-        log::info!(
-            "accrued regret {:?} {}",
-            infoset.node(tree).player(),
-            infoset.node(tree).data().bucket()
-        );
         let running = self.running_regret(tree, infoset, edge);
         let instant = self.instant_regret(tree, infoset, edge);
         running + instant
@@ -236,11 +229,10 @@ impl Profile {
         assert!(infoset.node(tree).player() == self.walker());
         self.strategies
             .get(infoset.node(tree).bucket())
-            .expect("regret bucket/edge has been visited before")
+            .expect("bucket has been witnessed")
             .get(edge)
-            .expect("regret bucket/edge has been visited before")
+            .expect("action has been witnessed")
             .regret
-            .to_owned()
     }
     /// conditional on being in this Infoset,
     /// distributed across all its head Nodes,
@@ -250,7 +242,7 @@ impl Profile {
     fn instant_regret(&self, tree: &Tree, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node(tree).player() == self.walker());
         infoset
-            .heads(tree)
+            .nodes(tree)
             .iter()
             .map(|head| self.gain(head, edge))
             .sum::<Utility>()
@@ -314,9 +306,9 @@ impl Profile {
         assert!(head.player() == self.walker());
         assert!(leaf.children().len() == 0);
         let ref player = self.walker();
-        leaf.payoff(player)  // Terminal Utility
-        / self.external_reach(leaf) // Importance Sampling
-        * self.relative_reach(head, leaf) // Path Probability
+        leaf.payoff(player) // Terminal Utility
+            / self.external_reach(leaf) // Importance Sampling
+            * self.relative_reach(head, leaf) // Path Probability
     }
 
     /// reach calculations
@@ -330,16 +322,15 @@ impl Profile {
     /// - Tree is sampled according to external sampling rules
     /// - we've visited this Infoset at least once, while sampling the Tree
     fn reach(&self, head: &Node, edge: &Edge) -> Probability {
-        if head.player() == Player::chance() {
+        if Player::chance() == head.player() {
             1.
         } else {
             self.strategies
                 .get(head.bucket())
-                .expect("policy bucket/edge has been visited before")
+                .expect("bucket has been visited")
                 .get(edge)
-                .expect("policy bucket/edge has been visited before")
+                .expect("action has been visited")
                 .policy
-                .to_owned()
         }
     }
     /// if,
@@ -355,11 +346,11 @@ impl Profile {
     /// regret calculation to account for the under- and over-sampling
     /// of regret across different Infosets.
     fn external_reach(&self, node: &Node) -> Probability {
-        if let (Some(head), Some(edge)) = (node.parent(), node.incoming()) {
-            if head.player() == self.walker() {
-                self.external_reach(&head)
+        if let (Some(parent), Some(incoming)) = (node.parent(), node.incoming()) {
+            if parent.player() == self.walker() {
+                self.external_reach(&parent)
             } else {
-                self.external_reach(&head) * self.reach(&head, edge)
+                self.external_reach(&parent) * self.reach(&parent, incoming)
             }
         } else {
             1.
@@ -368,9 +359,9 @@ impl Profile {
     /// if we were to play by the Profile,
     /// up to this Node in the Tree,
     /// then what is the probability of visiting this Node?
-    fn profiled_reach(&self, head: &Node) -> Probability {
-        if let (Some(head), Some(edge)) = (head.parent(), head.incoming()) {
-            self.profiled_reach(&head) * self.reach(&head, edge)
+    fn profiled_reach(&self, node: &Node) -> Probability {
+        if let (Some(parent), Some(incoming)) = (node.parent(), node.incoming()) {
+            self.profiled_reach(&parent) * self.reach(&parent, incoming)
         } else {
             1.
         }
@@ -382,12 +373,10 @@ impl Profile {
     fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
         if root.bucket() == leaf.bucket() {
             1.
+        } else if let (Some(parent), Some(incoming)) = (leaf.parent(), leaf.incoming()) {
+            self.relative_reach(root, &parent) * self.reach(&parent, incoming)
         } else {
-            if let (Some(head), Some(edge)) = (leaf.parent(), leaf.incoming()) {
-                self.relative_reach(root, &head) * self.reach(&head, edge)
-            } else {
-                unreachable!("tail must have parent")
-            }
+            unreachable!("tail must have parent")
         }
     }
 }
@@ -421,5 +410,28 @@ impl Profile {
             }
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
+    }
+}
+impl std::fmt::Display for Profile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.strategies
+                .iter()
+                .map(|(bucket, strategies)| {
+                    format!(
+                        "{}\n{}",
+                        bucket,
+                        strategies
+                            .iter()
+                            .map(|(edge, strategy)| format!("├──{}: {:.2}", edge, strategy.policy))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
     }
 }

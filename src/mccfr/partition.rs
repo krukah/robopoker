@@ -8,7 +8,7 @@ impl Partition {
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
-    pub fn witness(&mut self, node: Node) {
+    pub fn witness(&mut self, node: &Node) {
         self.0
             .entry(node.bucket().clone())
             .or_insert_with(Info::new)
