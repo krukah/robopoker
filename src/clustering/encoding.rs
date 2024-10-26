@@ -8,7 +8,6 @@ use crate::clustering::histogram::Histogram;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
-use crate::mccfr::node::Node;
 use crate::mccfr::path::Path;
 use crate::play::action::Action;
 use crate::play::game::Game;
@@ -69,6 +68,8 @@ impl Encoder {
     pub fn projection(&self, inner: &Isomorphism) -> Histogram {
         let observation = inner.0;
         match observation.street() {
+            Street::Rive => unreachable!("never project outermost abstraction layer"),
+            Street::Turn => Histogram::from(observation),
             Street::Pref | Street::Flop => Histogram::from(
                 observation
                     .children()
@@ -76,8 +77,6 @@ impl Encoder {
                     .map(|outer| self.abstraction(&outer)) // abstraction lookup
                     .collect::<Vec<Abstraction>>(), // histogram collection
             ),
-            Street::Turn => Histogram::from(observation),
-            Street::Rive => unreachable!("never project outermost abstraction layer"),
         }
     }
 }
@@ -89,39 +88,62 @@ impl Encoder {
  * methods for unraveling the Tree
  */
 impl Encoder {
-    /// abstraction methods
-    pub fn chance_abstraction(&self, game: &Game) -> Abstraction {
-        self.abstraction(&Isomorphism::from(Observation::from(game)))
+    pub fn root(&self) -> Data {
+        let game = Game::root();
+        let info = self.chance_abstraction(&game);
+        let path = Path::from(0);
+        let sign = Bucket::from((path, info));
+        let data = Data::from((game, sign));
+        data
     }
-    pub fn action_abstraction(&self, _: &Vec<&Edge>) -> Path {
-        // TODO
-        // decide how to handle action abstraction
-        Path::from(0)
-    }
-    /// produce the children of a Node.
-    /// we may need some Trainer-level references to produce children
-    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let ref past = node.history();
-        let ref game = node.data().game();
-        game.children()
-            .into_iter()
-            .map(|(g, a)| self.convert(g, a, past))
-            .collect()
-    }
+
     /// convert gameplay types into CFR types
     /// Game -> Spot
     /// Action -> Edge
     /// Vec<Edge> -> Path
     /// wrap the (Game, Bucket) in a Data
-    fn convert(&self, game: Game, action: Action, past: &Vec<&Edge>) -> (Data, Edge) {
+    pub fn encode(&self, game: Game, action: Action, past: &Vec<&Edge>) -> (Data, Edge) {
         let edge = Edge::from(action);
-        let ref mut path = past.clone();
-        path.push(&edge);
-        let action = self.action_abstraction(&path);
         let chance = self.chance_abstraction(&game);
-        let bucket = Bucket::from((action, chance));
+        let choice = self.action_abstraction(&past, &edge);
+        let bucket = Bucket::from((choice, chance));
         let choice = Data::from((game, bucket));
         (choice, edge)
+    }
+
+    /// i like to think of this as "positional encoding"
+    /// later in the same round where the stakes are higher
+    /// we should "learn" things i.e. when to n-bet.
+    /// it also helps the recall be a bit "less imperfect"
+    /// the cards we see at a Node are memoryless, but the
+    /// Path represents "how we got here"
+    ///
+    /// for 2-players, depth works okay but there are definitely tradeoffs:
+    /// - the same Card info at the same depth doesn't necessarily
+    /// allow for the same available actions. which is actually a breaking problem
+    /// since we assume all Nodes in the same Infoset have the same avaialble actions...
+    ///
+    /// we need to assert that: any Nodes in the same Infoset have the
+    /// same available actions. in addition to depth, we should consider
+    /// whether we can Check, Raise, Fold, Call
+    fn action_abstraction(&self, past: &Vec<&Edge>, edge: &Edge) -> Path {
+        match edge {
+            Edge::Random => Path::from(0),
+            Edge::Choice(_) => Path::from(
+                past.iter()
+                    .rev()
+                    .take_while(|edge| matches!(edge, Edge::Choice(_)))
+                    .count() as u64
+                    + 1,
+            ),
+        }
+    }
+
+    /// the compressed card information for an observation
+    /// this is defined up to unique Observation > Isomorphism
+    /// so pocket vs public is the only distinction made. forget reveal order.
+    fn chance_abstraction(&self, game: &Game) -> Abstraction {
+        self.abstraction(&Isomorphism::from(Observation::from(game)))
     }
 }
 
