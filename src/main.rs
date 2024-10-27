@@ -6,7 +6,7 @@ fn main() {
     // The k-means earth mover's distance hand-clustering algorithm.
     clustering::encoding::Encoder::learn();
     // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    mccfr::training::Blueprint::load().train();
+    mccfr::minimizer::Blueprint::load().train();
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
     play::game::Game::play();
 }

@@ -7,6 +7,19 @@ pub enum Edge {
     Random,
 }
 
+impl Edge {
+    pub fn is_raise(&self) -> bool {
+        if let Edge::Choice(action) = self {
+            matches!(action, Action::Raise(_) | Action::Shove(_))
+        } else {
+            false
+        }
+    }
+    pub fn is_choice(&self) -> bool {
+        matches!(self, Edge::Choice(_))
+    }
+}
+
 impl From<Action> for Edge {
     fn from(action: Action) -> Self {
         match action {
@@ -33,6 +46,7 @@ impl From<Edge> for u32 {
         }
     }
 }
+
 impl std::fmt::Display for Edge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
