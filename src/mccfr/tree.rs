@@ -49,7 +49,7 @@ impl Tree {
                 .0
                 .edge_weight(self.0.find_edge(index, *child).unwrap())
                 .unwrap();
-            writeln!(f, "{}{}──{} ->   {}", prefix, stem, edge, head)?;
+            writeln!(f, "{}{}──{} → {}", prefix, stem, edge, head)?;
             self.draw(f, *child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())

@@ -88,7 +88,6 @@ impl Blueprint {
     /// Build the Tree iteratively starting from the root node.
     /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
     fn sample(&mut self) -> Sample {
-        log::info!("sampling tree");
         let mut tree = Tree::empty();
         let mut partition = Partition::new();
         let ref mut queue = Vec::new();
@@ -104,47 +103,39 @@ impl Blueprint {
             let head = tree.at(tail);
             self.visit(&head, queue, infos);
         }
-        println!("\n{}\n", self.profile);
-        println!("\n{}\n", tree);
         Sample(tree, partition)
     }
 
     /// Process a node: witness it for profile and partition if necessary,
     /// and add its children to the exploration queue.
+    /// under external sampling rules:
+    /// - explore ALL my options
+    /// - explore 1 of Chance
+    /// - explore 1 of Villain
     fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, infosets: &mut Partition) {
-        let explored = self.explore(head);
-        if head.player() == self.profile.walker() {
+        let chance = Player::chance();
+        let player = head.player();
+        let walker = self.profile.walker();
+        let children = self.children(head);
+        let sample = if children.is_empty() {
+            vec![]
+        } else if player == chance {
+            self.sample_any(children, head)
+        } else if player != walker {
+            self.profile.witness(head, &children);
+            self.sample_one(children, head)
+        } else if player == walker {
             infosets.witness(head);
-        }
-        if head.player() != Player::chance() {
-            self.profile.witness(head, &explored);
-        }
-        for (tail, from) in explored {
+            self.profile.witness(head, &children);
+            self.sample_all(children, head)
+        } else {
+            panic!("at the disco")
+        };
+        for (tail, from) in sample {
             queue.push((tail, from, head.index()));
         }
     }
 
-    /// generate children for a given node
-    /// under external sampling rules.
-    /// explore all MY options
-    /// but only 1 of Chance, 1 of Villain
-    fn explore(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let children = self.children(node);
-        let walker = self.profile.walker();
-        let chance = Player::chance();
-        let player = node.player();
-        if children.is_empty() {
-            vec![]
-        } else if player == chance {
-            self.take_any(children, node)
-        } else if player == walker {
-            self.take_all(children, node)
-        } else if player != walker {
-            self.take_one(children, node)
-        } else {
-            panic!("at the disco")
-        }
-    }
     fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
         const MAX_N_RAISE: usize = 2;
         let ref past = node.history();
@@ -173,14 +164,14 @@ impl Blueprint {
     // external sampling
 
     /// full exploration of my decision space Edges
-    fn take_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
+    fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
         assert!(choices
             .iter()
             .all(|(_, edge)| matches!(edge, Edge::Choice(_))));
         choices
     }
     /// uniform sampling of chance Edge
-    fn take_any(&self, mut choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+    fn sample_any(&self, mut choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
         let ref mut rng = self.profile.rng(head);
         let n = choices.len();
         let choice = rng.gen_range(0..n);
@@ -189,7 +180,7 @@ impl Blueprint {
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
-    fn take_one(&self, mut choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+    fn sample_one(&self, mut choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
         let ref mut rng = self.profile.rng(head);
         let policy = choices
             .iter()
@@ -207,7 +198,7 @@ impl Blueprint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mccfr::training::Blueprint;
+    use crate::mccfr::minimizer::Blueprint;
     use petgraph::graph::NodeIndex;
 
     #[test]

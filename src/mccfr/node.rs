@@ -110,12 +110,6 @@ impl<'tree> Node<'tree> {
                 .collect()
         }
     }
-    /// SAFETY:
-    /// we have logical assurance that lifetimes work out effectively:
-    /// 'info: 'node: 'tree
-    /// Info is created from a Node
-    /// Node is created from a Tree
-    /// Tree owns its Graph
     pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
         self.graph
     }

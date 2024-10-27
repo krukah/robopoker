@@ -13,6 +13,7 @@ use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::hash::Hash;
 use std::hash::Hasher;
 
@@ -42,30 +43,42 @@ impl Profile {
     /// increment Epoch counter
     /// and return current count
     pub fn next(&mut self) -> usize {
+        log::info!("{:>10}", self.iterations);
         self.iterations += 1;
         self.iterations
     }
     /// idempotent initialization of Profile
     /// at a given Node.
     ///
-    /// if we've already visited this Infoset,
-    /// then we can skip over it.
+    /// if we've already visited this Bucket,
+    /// then we just want to make sure that
+    /// the available outgoing Edges are consistent.
     ///
     /// otherwise, we initialize the strategy
     /// at this Node with uniform distribution
-    /// over its spawned support:
-    /// Data -> Vec<(Data, Edge)>.
+    /// over its outgoing Edges .
+    ///
+    /// @assertion
     pub fn witness(&mut self, node: &Node, children: &Vec<(Data, Edge)>) {
-        let n = children.len();
-        let uniform = 1. / n as Probability;
         let bucket = node.bucket();
-        for (_, edge) in children {
-            self.strategies
-                .entry(bucket.clone())
-                .or_insert_with(BTreeMap::default)
-                .entry(edge.clone())
-                .or_insert_with(Strategy::default)
-                .policy = uniform;
+        match self.strategies.get(bucket) {
+            Some(strategy) => {
+                let expected = children.iter().map(|(_, e)| e).collect::<HashSet<_>>();
+                let observed = strategy.keys().collect::<HashSet<_>>();
+                assert!(observed == expected);
+            }
+            None => {
+                let n = children.len();
+                let uniform = 1. / n as Probability;
+                for (_, edge) in children {
+                    self.strategies
+                        .entry(bucket.clone())
+                        .or_insert_with(BTreeMap::default)
+                        .entry(edge.clone())
+                        .or_insert_with(Strategy::default)
+                        .policy = uniform;
+                }
+            }
         }
     }
 
@@ -89,10 +102,10 @@ impl Profile {
         let epochs = self.epochs();
         for (action, policy) in vector {
             let strategy = self.strategy(bucket, action);
-            strategy.policy = *policy;
             strategy.advice *= epochs as Probability;
             strategy.advice += policy;
             strategy.advice /= epochs as Probability + 1.;
+            strategy.policy = *policy;
         }
     }
 
@@ -142,7 +155,7 @@ impl Profile {
     /// division by 2 is used to allow each player
     /// one iteration to walk the Tree in a single Epoch
     pub fn epochs(&self) -> usize {
-        self.iterations
+        self.iterations / 2
     }
     /// which player is traversing the Tree on this Epoch?
     /// used extensively in assertions and utility calculations
@@ -158,7 +171,7 @@ impl Profile {
     /// emulate the "opponent" strategy. the opponent is just whoever is not
     /// the traverser
     pub fn policy(&self, node: &Node, edge: &Edge) -> Probability {
-        assert!(node.player() != Player::chance().to_owned());
+        assert!(node.player() != Player::chance());
         assert!(node.player() != self.walker());
         self.strategies
             .get(node.bucket())
@@ -413,7 +426,7 @@ impl Profile {
     }
 }
 impl std::fmt::Display for Profile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "{}",

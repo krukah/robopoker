@@ -104,11 +104,11 @@ impl Encoder {
     /// wrap the (Game, Bucket) in a Data
     pub fn encode(&self, game: Game, action: Action, past: &Vec<&Edge>) -> (Data, Edge) {
         let edge = Edge::from(action);
-        let chance = self.chance_abstraction(&game);
         let choice = self.action_abstraction(&past, &edge);
+        let chance = self.chance_abstraction(&game);
         let bucket = Bucket::from((choice, chance));
-        let choice = Data::from((game, bucket));
-        (choice, edge)
+        let data = Data::from((game, bucket));
+        (data, edge)
     }
 
     /// i like to think of this as "positional encoding"
@@ -118,25 +118,18 @@ impl Encoder {
     /// the cards we see at a Node are memoryless, but the
     /// Path represents "how we got here"
     ///
-    /// for 2-players, depth works okay but there are definitely tradeoffs:
-    /// - the same Card info at the same depth doesn't necessarily
-    /// allow for the same available actions. which is actually a breaking problem
-    /// since we assume all Nodes in the same Infoset have the same avaialble actions...
-    ///
     /// we need to assert that: any Nodes in the same Infoset have the
-    /// same available actions. in addition to depth, we should consider
-    /// whether we can Check, Raise, Fold, Call
+    /// same available actions. in addition to depth, we consider
+    /// whether or not we are in a Checkable or Foldable state.
     fn action_abstraction(&self, past: &Vec<&Edge>, edge: &Edge) -> Path {
-        match edge {
-            Edge::Random => Path::from(0),
-            Edge::Choice(_) => Path::from(
-                past.iter()
-                    .rev()
-                    .take_while(|edge| matches!(edge, Edge::Choice(_)))
-                    .count() as u64
-                    + 1,
-            ),
-        }
+        let mut round = past
+            .iter()
+            .chain(std::iter::once(&edge))
+            .rev()
+            .take_while(|e| e.is_choice());
+        let depth = round.clone().count();
+        let raise = round.any(|e| e.is_raise());
+        Path::from((depth, raise))
     }
 
     /// the compressed card information for an observation
@@ -191,16 +184,9 @@ impl From<Street> for Encoder {
 impl Encoder {
     /// indicates whether the abstraction table is already on disk
     pub fn done() -> bool {
-        [
-            "flop.abstraction.pgcopy",
-            "turn.abstraction.pgcopy",
-            "preflop.metric.pgcopy",
-            "flop.metric.pgcopy",
-            "turn.metric.pgcopy",
-            "river.metric.pgcopy",
-        ]
-        .iter()
-        .any(|file| std::path::Path::new(file).exists())
+        ["flop.abstraction.pgcopy", "turn.abstraction.pgcopy"]
+            .iter()
+            .any(|file| std::path::Path::new(file).exists())
     }
 
     /// pulls the entire pre-computed abstraction table
