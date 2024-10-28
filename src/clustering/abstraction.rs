@@ -1,3 +1,4 @@
+use crate::cards::hand::Hand;
 use crate::cards::hole::Hole;
 use crate::transport::support::Support;
 use crate::Probability;
@@ -6,47 +7,57 @@ use std::u64;
 
 /// Abstraction represents a lookup value for a given set of Observations.
 ///
-/// - River: we use a i8 to represent the equity bucket, i.e. Equity(0) is the worst bucket, and Equity(50) is the best bucket.
+/// - River: we use a u8 to represent the equity bucket, i.e. Equity(0) is the worst bucket, and Equity(50) is the best bucket.
 /// - Pre-Flop: we do not use any abstraction, rather store the 169 strategically-unique hands as u64.
 /// - Other Streets: we use a u64 to represent the hash signature of the centroid Histogram over lower layers of abstraction.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub enum Abstraction {
-    Equity(i8),   // river
-    Random(u64),  // flop, turn
+    Equity(u8),   // river
+    Unique(u64),  // flop, turn
     Pocket(Hole), // preflop
 }
 
 impl Support for Abstraction {}
 
 impl Abstraction {
-    pub const fn range() -> &'static [Self] {
-        &Self::BUCKETS
-    }
     pub fn random() -> Self {
-        Self::Random(rand::random::<u64>())
+        Self::Unique(loop {
+            let x = rand::random::<u64>();
+            if x & EQUITY_TAG == EQUITY_TAG {
+                continue;
+            }
+            if x & POCKET_TAG == POCKET_TAG {
+                continue;
+            }
+            break x;
+        })
     }
-    fn quantize(p: Probability) -> i8 {
-        (p * Probability::from(Self::N)).round() as i8
+    fn quantize(p: Probability) -> u8 {
+        (p * Probability::from(Self::N)).round() as u8
     }
-    fn floatize(q: i8) -> Probability {
+    fn floatize(q: u8) -> Probability {
         Probability::from(q) / Probability::from(Self::N)
     }
-    const N: i8 = 63;
+
+    const N: u8 = 63;
     const BUCKETS: [Self; Self::N as usize + 1] = Self::buckets();
     const fn buckets() -> [Self; Self::N as usize + 1] {
         let mut buckets = [Self::Equity(0); Self::N as usize + 1];
         let mut i = 0;
         while i <= Self::N {
-            buckets[i as usize] = Self::Equity(i as i8);
+            buckets[i as usize] = Self::Equity(i as u8);
             i += 1;
         }
         buckets
+    }
+    pub const fn range() -> &'static [Self] {
+        &Self::BUCKETS
     }
 }
 
 /// probability isomorphism
 ///
-/// for river, we use a i8 to represent the equity bucket,
+/// for river, we use a u8 to represent the equity bucket,
 /// i.e. Equity(0) is the 0% equity bucket,
 /// and Equity(N) is the 100% equity bucket.
 impl From<Probability> for Abstraction {
@@ -60,27 +71,33 @@ impl From<Abstraction> for Probability {
     fn from(abstraction: Abstraction) -> Self {
         match abstraction {
             Abstraction::Equity(n) => Abstraction::floatize(n),
-            Abstraction::Random(_) => unreachable!("no cluster into probability"),
+            Abstraction::Unique(_) => unreachable!("no cluster into probability"),
             Abstraction::Pocket(_) => unreachable!("no preflop into probability"),
         }
     }
 }
 
+const EQUITY_TAG: u64 = 0xEEE;
+const POCKET_TAG: u64 = 0xFFF;
 /// u64 isomorphism
 ///
 /// conversion to u64 for SQL storage.
 impl From<Abstraction> for u64 {
     fn from(a: Abstraction) -> Self {
         match a {
-            Abstraction::Random(n) => n,
-            Abstraction::Equity(_) => unreachable!("no equity into u64"),
-            Abstraction::Pocket(_) => unreachable!("no preflop into u64"),
+            Abstraction::Unique(n) => n,
+            Abstraction::Equity(e) => (EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
+            Abstraction::Pocket(h) => (POCKET_TAG << 52) | u64::from(Hand::from(h)),
         }
     }
 }
 impl From<u64> for Abstraction {
     fn from(n: u64) -> Self {
-        Self::Random(n)
+        match n >> 52 {
+            EQUITY_TAG => Self::Equity(((n >> 44) & 0xFF) as u8),
+            POCKET_TAG => Self::Pocket(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
+            _ => Self::Unique(n),
+        }
     }
 }
 
@@ -94,7 +111,7 @@ impl From<Abstraction> for i64 {
 }
 impl From<i64> for Abstraction {
     fn from(n: i64) -> Self {
-        Self::Random(n as u64)
+        Self::Unique(n as u64)
     }
 }
 
@@ -108,7 +125,7 @@ impl From<Hole> for Abstraction {
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Random(n) => write!(f, "{:016x}", n),
+            Self::Unique(n) => write!(f, "{:016x}", n),
             Self::Equity(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
             Self::Pocket(h) => write!(f, "Pocket({})", h),
         }
@@ -118,6 +135,8 @@ impl std::fmt::Display for Abstraction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cards::observation::Observation;
+    use crate::cards::street::Street;
 
     #[test]
     fn is_quantize_inverse_floatize() {
@@ -135,5 +154,23 @@ mod tests {
             let i = Abstraction::quantize(p);
             assert!(q == i);
         }
+    }
+
+    #[test]
+    fn bijective_u64_random() {
+        let random = Abstraction::random();
+        assert_eq!(random, Abstraction::from(u64::from(random)));
+    }
+
+    #[test]
+    fn bijective_u64_equity() {
+        let equity = Abstraction::Equity(Abstraction::N / 2);
+        assert_eq!(equity, Abstraction::from(u64::from(equity)));
+    }
+
+    #[test]
+    fn bijective_u64_pocket() {
+        let pocket = Abstraction::Pocket(Hole::from(Observation::from(Street::Pref)));
+        assert_eq!(pocket, Abstraction::from(u64::from(pocket)));
     }
 }

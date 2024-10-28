@@ -18,7 +18,7 @@ impl Measure for Metric {
     type Y = Abstraction;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
         match (x, y) {
-            (Self::X::Random(_), Self::Y::Random(_)) => self.lookup(x, y),
+            (Self::X::Unique(_), Self::Y::Unique(_)) => self.lookup(x, y),
             (Self::X::Equity(_), Self::Y::Equity(_)) => Equity.distance(x, y),
             (Self::X::Pocket(_), Self::Y::Pocket(_)) => unreachable!("no preflop distance"),
             _ => unreachable!(),
@@ -43,7 +43,7 @@ impl Coupling for Metric {
 impl Metric {
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> f32 {
         match source.peek() {
-            Abstraction::Random(_) => self.greedy(source, target),
+            Abstraction::Unique(_) => self.greedy(source, target),
             Abstraction::Equity(_) => Equity::variation(source, target),
             Abstraction::Pocket(_) => unreachable!("no preflop emd"),
         }

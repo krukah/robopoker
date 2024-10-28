@@ -15,3 +15,14 @@ impl Partition {
             .add(node.index());
     }
 }
+
+// impl<'tree> Partition<'tree> {
+//     fn graph(&self) -> &'tree DiGraph<Data, Edge> {
+//         todo!("once Info comes with lifetime this can be implemented trivially")
+//     }
+// }
+// impl From<&Tree> for Partition {
+//     fn from(tree: &Tree) -> Self {
+
+//     }
+// }
