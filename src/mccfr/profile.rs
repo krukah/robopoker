@@ -43,7 +43,6 @@ impl Profile {
     /// increment Epoch counter
     /// and return current count
     pub fn next(&mut self) -> usize {
-        log::info!("{:>10}", self.iterations);
         self.iterations += 1;
         self.iterations
     }
@@ -438,7 +437,7 @@ impl std::fmt::Display for Profile {
                         bucket,
                         strategies
                             .iter()
-                            .map(|(edge, strategy)| format!("├──{}: {:.2}", edge, strategy.policy))
+                            .map(|(edge, strategy)| format!(" ├─{}: {:.2}", edge, strategy.policy))
                             .collect::<Vec<_>>()
                             .join("\n")
                     )

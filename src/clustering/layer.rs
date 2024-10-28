@@ -304,7 +304,7 @@ impl Layer {
     }
 
     /// create a progress bar for kmeans clustering
-    fn progress(n: usize) -> indicatif::ProgressBar {
+    pub fn progress(n: usize) -> indicatif::ProgressBar {
         let tick = std::time::Duration::from_secs(5);
         let style = "[{elapsed}] {spinner} {wide_bar} ETA {eta}";
         let style = indicatif::ProgressStyle::with_template(style).unwrap();

@@ -8,22 +8,24 @@ use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
 use crate::clustering::encoding::Encoder;
+use crate::clustering::layer::Layer;
 use crate::play::action::Action;
 use crate::Probability;
 use crate::Utility;
+use indicatif::ProgressBar;
 use petgraph::graph::NodeIndex;
 use rand::distributions::WeightedIndex;
 use rand::prelude::Distribution;
 use rand::prelude::Rng;
 use std::collections::BTreeMap;
 
-const T: usize = 100_000;
+const T: usize = 10_000_000;
 
 type Branch = (Data, Edge, NodeIndex);
 type Regret = BTreeMap<Edge, Utility>;
 type Policy = BTreeMap<Edge, Probability>;
 
-struct Update(Bucket, Regret, Policy);
+struct Update_Rm_Bucket(Bucket, Regret, Policy); // don't need Bucket. derive from Info
 struct Sample(Tree, Partition);
 
 /// this is how we learn the optimal strategy of
@@ -39,12 +41,12 @@ struct Sample(Tree, Partition);
 /// - Regret & Policy vector evaluations are pure.
 /// - Profile updates mutates Profile for obvious reasons.
 #[derive(Default)]
-pub struct Blueprint {
+pub struct Trainer {
     profile: Profile,
     encoder: Encoder,
 }
 
-impl Blueprint {
+impl Trainer {
     /// load existing profile and encoder from disk
     pub fn load() -> Self {
         Self {
@@ -60,34 +62,43 @@ impl Blueprint {
     /// a learning schedule for regret or policy.
     pub fn train(&mut self) {
         log::info!("training blueprint");
+        let progress = Layer::progress(T);
         while self.profile.next() <= T {
-            let Sample(ref tree, ref partition) = self.sample();
-            for Update(bucket, regret, policy) in self.deltas(tree, partition) {
+            // TODO
+            // let samples = (0..N)
+            // .map(|_| self.sample_fn_of_encoder_ref()) // may need collection for Tree lifetime
+            // .map(|(_, info_iter)| info_iter.collect())
+            // .flatten() // Vec<Info>
+            // .map(|info| self.vectors(info))
+            // .collect() : Vec<Update__RegretPolicyVectors>
+            let Sample(ref tree, ref info_iter) = self.sample_fn_of_encoder_ref(); // self.profile.sample(encoder) : FnMut(&Profile, &Encoder) -> (Tree, Partition)
+            for Update_Rm_Bucket(bucket, regret, policy) in self.deltas(tree, info_iter) {
                 self.profile.update_regret(&bucket, &regret);
                 self.profile.update_policy(&bucket, &policy);
             }
+            progress.inc(1);
         }
         self.profile.save();
     }
 
     /// take all the infosets in the info partition
     /// and compute their regret and policy vectors
-    fn deltas(&self, tree: &Tree, partition: &Partition) -> Vec<Update> {
-        partition
+    fn deltas(&self, _tree: &Tree, info_iter: &Partition) -> Vec<Update_Rm_Bucket> {
+        info_iter
             .0
             .iter()
-            .map(|(bucket, info)| self.delta(tree, info, bucket))
+            .map(|(_bucket, info)| self.vectors(_tree, info, _bucket))
             .collect()
     }
     /// compute regret and policy vectors for a given infoset
-    fn delta(&self, tree: &Tree, info: &Info, bucket: &Bucket) -> Update {
+    fn vectors(&self, tree: &Tree, info: &Info, bucket: &Bucket) -> Update_Rm_Bucket {
         let regret_vector = self.profile.regret_vector(tree, info);
         let policy_vector = self.profile.policy_vector(tree, info);
-        Update(bucket.clone(), regret_vector, policy_vector)
+        Update_Rm_Bucket(bucket.clone(), regret_vector, policy_vector)
     }
     /// Build the Tree iteratively starting from the root node.
     /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
-    fn sample(&mut self) -> Sample {
+    fn sample_fn_of_encoder_ref(&mut self) -> Sample {
         let mut tree = Tree::empty();
         let mut partition = Partition::new();
         let ref mut queue = Vec::new();
@@ -113,12 +124,12 @@ impl Blueprint {
     /// - explore 1 of Chance
     /// - explore 1 of Villain
     fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, infosets: &mut Partition) {
+        let children = self.children_fn_of_encoder_ref(head);
+        let walker = self.profile.walker();
         let chance = Player::chance();
         let player = head.player();
-        let walker = self.profile.walker();
-        let children = self.children(head);
         let sample = if children.is_empty() {
-            vec![]
+            children
         } else if player == chance {
             self.sample_any(children, head)
         } else if player != walker {
@@ -136,7 +147,7 @@ impl Blueprint {
         }
     }
 
-    fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+    fn children_fn_of_encoder_ref(&self, node: &Node) -> Vec<(Data, Edge)> {
         const MAX_N_RAISE: usize = 2;
         let ref past = node.history();
         let ref game = node.data().game();
@@ -171,8 +182,9 @@ impl Blueprint {
         choices
     }
     /// uniform sampling of chance Edge
-    fn sample_any(&self, mut choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+    fn sample_any(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
         let ref mut rng = self.profile.rng(head);
+        let mut choices = choices;
         let n = choices.len();
         let choice = rng.gen_range(0..n);
         let chosen = choices.remove(choice);
@@ -180,8 +192,9 @@ impl Blueprint {
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
-    fn sample_one(&self, mut choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+    fn sample_one(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
         let ref mut rng = self.profile.rng(head);
+        let mut choices = choices;
         let policy = choices
             .iter()
             .map(|(_, edge)| self.profile.policy(head, edge))
@@ -198,27 +211,27 @@ impl Blueprint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mccfr::minimizer::Blueprint;
+    use crate::mccfr::minimizer::Trainer;
     use petgraph::graph::NodeIndex;
 
     #[test]
     #[ignore]
     fn acyclic() {
-        let Sample(tree, _) = Blueprint::default().sample();
+        let Sample(tree, _) = Trainer::default().sample_fn_of_encoder_ref();
         assert!(!petgraph::algo::is_cyclic_directed(tree.graph()));
     }
 
     #[test]
     #[ignore]
     fn nonempty() {
-        let Sample(tree, _) = Blueprint::default().sample();
+        let Sample(tree, _) = Trainer::default().sample_fn_of_encoder_ref();
         assert!(0 < tree.graph().node_count());
     }
 
     #[test]
     #[ignore]
     fn treelike() {
-        let Sample(tree, _) = Blueprint::default().sample();
+        let Sample(tree, _) = Trainer::default().sample_fn_of_encoder_ref();
         assert!(tree
             .graph()
             .node_indices()
@@ -234,7 +247,7 @@ mod tests {
     #[test]
     #[ignore]
     fn leaves() {
-        let Sample(tree, _) = Blueprint::default().sample();
+        let Sample(tree, _) = Trainer::default().sample_fn_of_encoder_ref();
         assert!(
             tree.at(NodeIndex::new(0)).leaves().len()
                 == tree
