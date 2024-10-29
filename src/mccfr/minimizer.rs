@@ -20,10 +20,10 @@ const BATCH_SIZE: usize = 8;
 const NODE_COUNT: usize = 1_048_576;
 const T: usize = NODE_COUNT / BATCH_SIZE;
 
-struct Counterfactual(Info, Regret, Policy);
 struct Branch(Data, Edge, NodeIndex);
 struct Regret(BTreeMap<Edge, Utility>);
 struct Policy(BTreeMap<Edge, Probability>);
+struct Counterfactual(Info, Regret, Policy);
 
 /// this is how we learn the optimal strategy of
 /// the abstracted game. with the learned Encoder

@@ -32,6 +32,27 @@ pub struct Profile {
     strategies: BTreeMap<Bucket, BTreeMap<Edge, Strategy>>,
 }
 
+/// Discount parameters for DCFR
+#[derive(Debug)]
+pub struct Discount {
+    alpha: f32, // α parameter. controls recency bias.
+    omega: f32, // ω parameter. controls recency bias.
+    gamma: f32, // γ parameter. controls recency bias.
+}
+
+impl Discount {
+    pub fn positive_recall(&self, t: f32) -> f32 {
+        let x = t.powf(self.alpha);
+        x / (x + 1.)
+    }
+    pub fn negative_recall(&self, t: f32) -> f32 {
+        let x = t.powf(self.omega);
+        x / (x + 1.)
+    }
+    pub fn strategy_recall(&self, t: f32) -> f32 {
+        t.powf(self.gamma)
+    }
+}
 impl Profile {
     /// TODO: load existing profile from disk
     pub fn load() -> Self {
@@ -41,43 +62,6 @@ impl Profile {
             iterations: 0,
         }
     }
-
-    /// full exploration of my decision space Edges
-    pub fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
-        assert!(choices
-            .iter()
-            .all(|(_, edge)| matches!(edge, Edge::Choice(_))));
-        choices
-    }
-
-    /// uniform sampling of chance Edge
-    pub fn sample_any(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
-        let ref mut rng = self.rng(head);
-        let mut choices = choices;
-        let n = choices.len();
-        let choice = rng.gen_range(0..n);
-        let chosen = choices.remove(choice);
-        assert!(matches!(chosen, (_, Edge::Random)));
-        vec![chosen]
-    }
-
-    /// Profile-weighted sampling of opponent Edge
-    pub fn sample_one(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
-        use rand::distributions::WeightedIndex;
-        let ref mut rng = self.rng(head);
-        let mut choices = choices;
-        let policy = choices
-            .iter()
-            .map(|(_, edge)| self.policy(head, edge))
-            .collect::<Vec<Probability>>();
-        let choice = WeightedIndex::new(policy)
-            .expect("at least one policy > 0")
-            .sample(rng);
-        let chosen = choices.remove(choice);
-        assert!(matches!(chosen, (_, Edge::Choice(_))));
-        vec![chosen]
-    }
-
     /// increment Epoch counter
     /// and return current count
     pub fn next(&mut self) -> usize {
@@ -119,14 +103,28 @@ impl Profile {
         }
     }
 
+    pub const fn discount() -> &'static Discount {
+        &Discount {
+            alpha: 1.5,
+            omega: 0.5,
+            gamma: 2.0,
+        }
+    }
+
     /// update regret memory
     /// we calculated positive regrets for every Edge
     /// and replace our old regret with the new
     /// new_regret = (old_regret + now_regret) . max(0)
     pub fn update_regret(&mut self, bucket: &Bucket, vector: &BTreeMap<Edge, Utility>) {
-        for (action, regret) in vector {
+        let t = self.epochs() as f32;
+        for (action, &regret) in vector {
             let strategy = self.strategy(bucket, action);
-            strategy.regret = *regret;
+            if regret > 0.0 {
+                strategy.regret *= Self::discount().positive_recall(t);
+            } else {
+                strategy.regret *= Self::discount().negative_recall(t);
+            }
+            strategy.regret += regret;
         }
     }
     /// update strategy vector
@@ -136,13 +134,12 @@ impl Profile {
     ///              =             1 / num_actions if sum = 0 .
     /// "CFR+ discounts prior iterations' contribution to the average strategy, but not the regrets."
     pub fn update_policy(&mut self, bucket: &Bucket, vector: &BTreeMap<Edge, Probability>) {
-        let epochs = self.epochs();
-        for (action, policy) in vector {
+        let t = self.epochs() as f32;
+        for (action, &policy) in vector {
             let strategy = self.strategy(bucket, action);
-            strategy.advice *= epochs as Probability;
+            strategy.advice *= Self::discount().strategy_recall(t);
             strategy.advice += policy;
-            strategy.advice /= epochs as Probability + 1.;
-            strategy.policy = *policy;
+            strategy.policy = policy;
         }
     }
 
@@ -192,7 +189,7 @@ impl Profile {
     /// division by 2 is used to allow each player
     /// one iteration to walk the Tree in a single Epoch
     pub fn epochs(&self) -> usize {
-        self.iterations / 2
+        self.iterations
     }
     /// which player is traversing the Tree on this Epoch?
     /// used extensively in assertions and utility calculations
@@ -223,6 +220,42 @@ impl Profile {
         self.epochs().hash(hasher);
         node.bucket().hash(hasher);
         SmallRng::seed_from_u64(hasher.finish())
+    }
+
+    /// full exploration of my decision space Edges
+    pub fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
+        assert!(choices
+            .iter()
+            .all(|(_, edge)| matches!(edge, Edge::Choice(_))));
+        choices
+    }
+
+    /// uniform sampling of chance Edge
+    pub fn sample_any(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+        let ref mut rng = self.rng(head);
+        let mut choices = choices;
+        let n = choices.len();
+        let choice = rng.gen_range(0..n);
+        let chosen = choices.remove(choice);
+        assert!(matches!(chosen, (_, Edge::Random)));
+        vec![chosen]
+    }
+
+    /// Profile-weighted sampling of opponent Edge
+    pub fn sample_one(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+        use rand::distributions::WeightedIndex;
+        let ref mut rng = self.rng(head);
+        let mut choices = choices;
+        let policy = choices
+            .iter()
+            .map(|(_, edge)| self.policy(head, edge))
+            .collect::<Vec<Probability>>();
+        let choice = WeightedIndex::new(policy)
+            .expect("at least one policy > 0")
+            .sample(rng);
+        let chosen = choices.remove(choice);
+        assert!(matches!(chosen, (_, Edge::Choice(_))));
+        vec![chosen]
     }
 
     /// access to regrets, policy, and averaged policy
@@ -439,7 +472,7 @@ impl Profile {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create("blueprint.pgcopy").expect("touch");
+        let ref mut file = File::create("blueprint.profile.pgcopy").expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
@@ -462,6 +495,7 @@ impl Profile {
         file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
 }
+
 impl std::fmt::Display for Profile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
