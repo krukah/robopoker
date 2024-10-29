@@ -35,18 +35,20 @@ impl Observation {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
         let hero = Strength::from(hand);
-        let n = HandIterator::from((2, hand)).combinations();
-        HandIterator::from((2, hand))
+        let (won, sum) = HandIterator::from((2, hand))
             .map(|opponent| Hand::add(self.public, opponent))
             .map(|opponent| Strength::from(opponent))
-            .map(|opponent| match &hero.cmp(&opponent) {
-                Ordering::Greater => 2,
-                Ordering::Equal => 1,
-                Ordering::Less => 0,
-            })
-            .sum::<u32>() as f32
-            / 2 as f32
-            / n as f32
+            .map(|opponent| hero.cmp(&opponent))
+            .filter(|&ord| ord != Ordering::Equal)
+            .fold((0u32, 0u32), |(wins, total), ord| match ord {
+                Ordering::Greater => (wins + 1, total + 1),
+                Ordering::Less => (wins, total + 1),
+                Ordering::Equal => unreachable!(),
+            });
+        match sum {
+            0 => 0.5, // all draw edge case
+            _ => won as f32 / sum as f32,
+        }
     }
     pub fn street(&self) -> Street {
         match self.public.size() {

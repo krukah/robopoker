@@ -1,5 +1,4 @@
 use super::data::Data;
-use super::tree::Tree;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
@@ -9,7 +8,9 @@ use crate::mccfr::strategy::Strategy;
 use crate::play::ply::Ply;
 use crate::Probability;
 use crate::Utility;
+use rand::prelude::Distribution;
 use rand::rngs::SmallRng;
+use rand::Rng;
 use rand::SeedableRng;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
@@ -40,6 +41,43 @@ impl Profile {
             iterations: 0,
         }
     }
+
+    /// full exploration of my decision space Edges
+    pub fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
+        assert!(choices
+            .iter()
+            .all(|(_, edge)| matches!(edge, Edge::Choice(_))));
+        choices
+    }
+
+    /// uniform sampling of chance Edge
+    pub fn sample_any(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+        let ref mut rng = self.rng(head);
+        let mut choices = choices;
+        let n = choices.len();
+        let choice = rng.gen_range(0..n);
+        let chosen = choices.remove(choice);
+        assert!(matches!(chosen, (_, Edge::Random)));
+        vec![chosen]
+    }
+
+    /// Profile-weighted sampling of opponent Edge
+    pub fn sample_one(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+        use rand::distributions::WeightedIndex;
+        let ref mut rng = self.rng(head);
+        let mut choices = choices;
+        let policy = choices
+            .iter()
+            .map(|(_, edge)| self.policy(head, edge))
+            .collect::<Vec<Probability>>();
+        let choice = WeightedIndex::new(policy)
+            .expect("at least one policy > 0")
+            .sample(rng);
+        let chosen = choices.remove(choice);
+        assert!(matches!(chosen, (_, Edge::Choice(_))));
+        vec![chosen]
+    }
+
     /// increment Epoch counter
     /// and return current count
     pub fn next(&mut self) -> usize {
@@ -115,13 +153,13 @@ impl Profile {
     /// by calculating the marginal Utitlity
     /// missed out on for not having followed
     /// every walkable Edge at this Infoset/Node/Bucket
-    pub fn regret_vector(&self, tree: &Tree, infoset: &Info) -> BTreeMap<Edge, Utility> {
-        assert!(infoset.node(tree).player() == self.walker());
+    pub fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
+        assert!(infoset.node().player() == self.walker());
         infoset
-            .node(tree)
+            .node()
             .outgoing()
             .into_iter()
-            .map(|action| (action.clone(), self.accrued_regret(tree, infoset, action)))
+            .map(|action| (action.clone(), self.accrued_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect()
     }
@@ -130,13 +168,13 @@ impl Profile {
     /// by following a given Edge
     /// proportionally to how much regret we felt
     /// for not having followed that Edge in the past.
-    pub fn policy_vector(&self, tree: &Tree, infoset: &Info) -> BTreeMap<Edge, Probability> {
-        assert!(infoset.node(tree).player() == self.walker());
+    pub fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
+        assert!(infoset.node().player() == self.walker());
         let regrets = infoset
-            .node(tree)
+            .node()
             .outgoing()
             .into_iter()
-            .map(|action| (action.clone(), self.running_regret(tree, infoset, action)))
+            .map(|action| (action.clone(), self.running_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(Utility::MIN_POSITIVE)))
             .collect::<BTreeMap<Edge, Utility>>();
         let sum = regrets.values().sum::<Utility>();
@@ -228,19 +266,19 @@ impl Profile {
     /// upon visiting this Infoset,
     /// how much regret do we feel
     /// across our strategy vector?
-    fn accrued_regret(&self, tree: &Tree, infoset: &Info, edge: &Edge) -> Utility {
-        let running = self.running_regret(tree, infoset, edge);
-        let instant = self.instant_regret(tree, infoset, edge);
+    fn accrued_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+        let running = self.running_regret(infoset, edge);
+        let instant = self.instant_regret(infoset, edge);
         running + instant
     }
     /// historically,
     /// upon visiting any Node inthis Infoset,
     /// how much cumulative Utility have we missed out on
     /// for not having followed this Edge?
-    fn running_regret(&self, tree: &Tree, infoset: &Info, edge: &Edge) -> Utility {
-        assert!(infoset.node(tree).player() == self.walker());
+    fn running_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+        assert!(infoset.node().player() == self.walker());
         self.strategies
-            .get(infoset.node(tree).bucket())
+            .get(infoset.node().bucket())
             .expect("bucket has been witnessed")
             .get(edge)
             .expect("action has been witnessed")
@@ -251,10 +289,10 @@ impl Profile {
     /// with paths weighted according to our Profile:
     /// if we follow this Edge 100% of the time,
     /// what is the expected marginal increase in Utility?
-    fn instant_regret(&self, tree: &Tree, infoset: &Info, edge: &Edge) -> Utility {
-        assert!(infoset.node(tree).player() == self.walker());
+    fn instant_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+        assert!(infoset.node().player() == self.walker());
         infoset
-            .nodes(tree)
+            .nodes()
             .iter()
             .map(|head| self.gain(head, edge))
             .sum::<Utility>()
