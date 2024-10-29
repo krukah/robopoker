@@ -8,6 +8,7 @@ use crate::clustering::histogram::Histogram;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
+use crate::mccfr::node::Node;
 use crate::mccfr::path::Path;
 use crate::play::action::Action;
 use crate::play::game::Game;
@@ -111,6 +112,31 @@ impl Encoder {
         (data, edge)
     }
 
+    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+        const MAX_N_RAISE: usize = 3;
+        // cut off N-betting
+        let ref past = node.history();
+        let ref game = node.data().game();
+        let children = game
+            .children()
+            .into_iter()
+            .map(|(g, a)| self.encode(g, a, past))
+            .collect::<Vec<(Data, Edge)>>();
+        if MAX_N_RAISE
+            > past
+                .iter()
+                .rev()
+                .filter(|&&e| !matches!(e, Edge::Choice(_)))
+                .count()
+        {
+            children
+        } else {
+            children
+                .into_iter()
+                .filter(|&(_, e)| !matches!(e, Edge::Choice(Action::Raise(_))))
+                .collect()
+        }
+    }
     /// i like to think of this as "positional encoding"
     /// later in the same round where the stakes are higher
     /// we should "learn" things i.e. when to n-bet.

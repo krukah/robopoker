@@ -13,6 +13,7 @@ use std::fmt::Result;
 /// The `Tree` struct contains two main components:
 /// 1. A directed graph (`DiGraph`) representing the game tree, where nodes are game states and edges are actions.
 /// 2. A mapping from `Bucket`s to `Info`sets, which groups similar game states together.
+#[derive(Debug)]
 pub struct Tree(DiGraph<Data, Edge>);
 
 impl Tree {

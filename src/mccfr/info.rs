@@ -3,30 +3,44 @@ use super::edge::Edge;
 use super::tree::Tree;
 use crate::mccfr::node::Node;
 use petgraph::graph::{DiGraph, NodeIndex};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-pub struct Info(pub Vec<NodeIndex>);
+pub struct Info {
+    roots: Vec<NodeIndex>,
+    nodes: Arc<Tree>,
+}
+
+impl From<(Arc<Tree>, Vec<NodeIndex>)> for Info {
+    fn from((tree, indices): (Arc<Tree>, Vec<NodeIndex>)) -> Self {
+        Self {
+            roots: indices,
+            nodes: tree,
+        }
+    }
+}
 
 impl Info {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
     pub fn add(&mut self, index: NodeIndex) {
-        self.0.push(index)
+        self.roots.push(index);
     }
-    pub fn nodes<'tree>(&self, tree: &'tree Tree) -> Vec<Node<'tree>> {
-        self.0.iter().copied().map(|i| tree.at(i)).collect()
+    pub fn nodes(&self) -> Vec<Node> {
+        self.roots
+            .iter()
+            .copied()
+            .map(|i| self.nodes.at(i))
+            .collect()
     }
-    pub fn node<'tree>(&self, tree: &'tree Tree) -> Node<'tree> {
-        self.0
+    pub fn node(&self) -> Node {
+        self.roots
             .iter()
             .next()
             .copied()
-            .map(|i| tree.at(i))
+            .map(|i| self.nodes.at(i))
             .expect("non-empty infoset")
     }
     #[allow(dead_code)]
-    fn graph<'tree>(&self) -> &'tree DiGraph<Data, Edge> {
-        todo!("once Info comes with lifetime this can be implemented trivially")
+    fn graph(&self) -> &DiGraph<Data, Edge> {
+        self.nodes.graph()
     }
 }
