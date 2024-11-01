@@ -62,8 +62,8 @@ impl Game {
     pub fn children(&self) -> Vec<(Game, Action)> {
         match self.ply() {
             Ply::Choice(_) => self.choice_actions(),
-            Ply::Chance => self.chance_actions(),
             Ply::Terminal => self.ending_actions(),
+            Ply::Chance => self.chance_actions(),
         }
     }
     pub fn n(&self) -> usize {
@@ -337,7 +337,7 @@ impl Game {
                 self.apply(Action::Draw(deck.draw()));
                 self.apply(Action::Draw(deck.draw()));
                 self.apply(Action::Draw(deck.draw()));
-            },
+            }
             Street::Turn => self.apply(Action::Draw(deck.draw())),
             Street::Flop => self.apply(Action::Draw(deck.draw())),
             Street::Rive => unreachable!("terminal"),
