@@ -89,6 +89,29 @@ impl Encoder {
  * methods for unraveling the Tree
  */
 impl Encoder {
+    /// laying groundwork for pseudo-harmonic support
+    /// using the n-bet-filtered set of actions that we can take
+    /// we generalize using the raise granularity abstraction algorithm
+    /// of pseudo-harmonic mapping. then we spawn the children as if
+    /// these were the only actions available to us.
+    /// Self::spawn may be pub on Game
+    /// Self::unfold only takes River -> [River]
+    fn futures(&self, node: &Node) -> Vec<(Data, Edge)> {
+        let edges = self.children(node).into_iter().map(|(_, e)| e).collect();
+        let edges = Self::unfold(node, edges);
+        let datum = node.data();
+        edges
+            .into_iter()
+            .map(|action| Self::spawn(datum, action))
+            .collect()
+    }
+    fn unfold(node: &Node, edges: Vec<Edge>) -> Vec<Edge> {
+        todo!()
+    }
+    fn spawn(data: &Data, edge: Edge) -> (Data, Edge) {
+        todo!()
+    }
+
     pub fn root(&self) -> Data {
         let game = Game::root();
         let info = self.chance_abstraction(&game);
@@ -136,29 +159,6 @@ impl Encoder {
                 .filter(|&(_, e)| !e.is_raise())
                 .collect()
         }
-    }
-
-    /// laying groundwork for pseudo-harmonic support
-    /// using the n-bet-filtered set of actions that we can take
-    /// we generalize using the raise granularity abstraction algorithm
-    /// of pseudo-harmonic mapping. then we spawn the children as if
-    /// these were the only actions available to us.
-    /// Self::spawn may be pub on Game
-    /// Self::unfold only takes River -> [River]
-    fn futures(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let edges = self.children(node).into_iter().map(|(_, e)| e).collect();
-        let edges = Self::unfold(edges);
-        let datum = node.data();
-        edges
-            .into_iter()
-            .map(|action| Self::spawn(datum, action))
-            .collect()
-    }
-    fn unfold(edges: Vec<Edge>) -> Vec<Edge> {
-        todo!()
-    }
-    fn spawn(data: &Data, edge: Edge) -> (Data, Edge) {
-        todo!()
     }
 
     /// i like to think of this as "positional encoding"

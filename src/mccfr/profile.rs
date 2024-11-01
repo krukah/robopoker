@@ -248,15 +248,15 @@ impl Profile {
             .get_mut(bucket)
             .expect("bucket been witnessed");
         for (action, &regret) in regrets {
-            let strategy = strategy.get_mut(action).expect("action been witnessed");
+            let decision = strategy.get_mut(action).expect("action been witnessed");
             let discount = match phase {
                 Phase::Discount => discount.regret(t, regret),
                 Phase::Explore => 1.,
                 Phase::Prune => 1.,
             };
-            strategy.regret *= discount;
-            strategy.regret += regret;
-            log::trace!("{} : {}", action, strategy.regret);
+            decision.regret *= discount;
+            decision.regret += regret;
+            log::trace!("{} : {}", action, decision.regret);
         }
     }
     pub fn update_policy(&mut self, bucket: &Bucket, policys: &BTreeMap<Edge, Probability>) {
@@ -269,10 +269,10 @@ impl Profile {
             .expect("bucket been witnessed");
         for (action, &policy) in policys {
             let discount = discount.policy(t);
-            let strategy = strategy.get_mut(action).expect("action been witnessed");
-            strategy.policy *= discount;
-            strategy.policy += policy;
-            log::trace!("{} : {}", action, strategy.policy);
+            let decision = strategy.get_mut(action).expect("action been witnessed");
+            decision.policy *= discount;
+            decision.policy += policy;
+            log::trace!("{} : {}", action, decision.policy);
         }
     }
 
