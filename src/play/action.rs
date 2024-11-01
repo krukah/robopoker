@@ -16,7 +16,7 @@ pub enum Action {
 impl From<u32> for Action {
     fn from(value: u32) -> Self {
         let action_type = value & 0xFFFF;
-        let data = (value >> 16) as u16;
+        let data = (value >> 16) as Chips;
         match action_type {
             0 => Action::Fold,
             1 => Action::Check,
@@ -68,7 +68,7 @@ mod tests {
         assert!([
             Action::Raise(1),
             Action::Blind(2),
-            Action::Call(64000),
+            Action::Call(32767),
             Action::Shove(1738),
             Action::Draw(Card::from(51u8)),
         ]

@@ -17,8 +17,8 @@ impl From<Vec<Payout>> for Showdown {
     fn from(payouts: Vec<Payout>) -> Self {
         Self {
             payouts,
-            distributing: Chips::MIN,
-            distributed: Chips::MIN,
+            distributing: 0 as Chips,
+            distributed: 0 as Chips,
             best: Strength::from((Ranking::MAX, Kickers::default())),
         }
     }
@@ -63,7 +63,7 @@ impl Showdown {
             .iter()
             .map(|p| p.risked)
             .map(|s| std::cmp::min(s, self.distributing))
-            .map(|s| s.saturating_sub(self.distributed))
+            .map(|s| (s - self.distributed).max(0))
             .sum()
     }
     fn distribute(&mut self) {
@@ -75,12 +75,13 @@ impl Showdown {
             .filter(|p| p.strength == self.best)
             .filter(|p| p.risked > self.distributed)
             .collect::<Vec<&mut Payout>>();
-        let share = chips / winners.len() as Chips;
-        let bonus = chips as usize % winners.len();
+        let n = winners.len();
+        let share = chips / n as Chips;
+        let bonus = chips % n as Chips;
         for winner in winners.iter_mut() {
             winner.reward += share;
         }
-        for winner in winners.iter_mut().take(bonus) {
+        for winner in winners.iter_mut().take(bonus as usize) {
             winner.reward += 1;
         }
     }

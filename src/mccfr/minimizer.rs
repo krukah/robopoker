@@ -16,9 +16,9 @@ use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const BATCH_SIZE: usize = 8;
-const NODE_COUNT: usize = 1_048_576;
-const T: usize = NODE_COUNT / BATCH_SIZE;
+const T: usize = TREE_COUNT / BATCH_SIZE;
+const TREE_COUNT: usize = 1_230_980;
+const BATCH_SIZE: usize = 64; // think i have to make this small enough to avoid infoset bucket collisions in the same epoch?
 
 struct Branch(Data, Edge, NodeIndex);
 struct Regret(BTreeMap<Edge, Utility>);
@@ -101,6 +101,7 @@ impl Trainer {
             let tail = tree.insert(tail);
             let from = tree.extend(tail, from, head);
             let head = tree.at(tail);
+            // log::info!("{}", tree);
             self.visit(&head, queue, infos);
         }
         (tree, partition)

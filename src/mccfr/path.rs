@@ -1,9 +1,9 @@
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path(u64);
 
-impl From<(usize, bool)> for Path {
-    fn from((depth, raise): (usize, bool)) -> Self {
-        Path((depth as u64) << 1 | raise as u64)
+impl From<(usize, usize)> for Path {
+    fn from((depth, raise): (usize, usize)) -> Self {
+        Path((depth | raise << 32) as u64)
     }
 }
 
@@ -21,6 +21,8 @@ impl From<Path> for u64 {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "H{:02}", self.0)
+        let depth = (self.0 & 0xFFFFFFFF) as usize;
+        let raise = (self.0 >> 32) as usize;
+        write!(f, "H{:02}", depth * 10 + raise)
     }
 }

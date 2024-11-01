@@ -116,24 +116,25 @@ impl Encoder {
         const MAX_N_RAISE: usize = 3;
         // cut off N-betting
         let ref past = node.history();
-        let ref game = node.data().game();
-        let children = game
+        let ref head = node.data().game();
+        let children = head
             .children()
             .into_iter()
             .map(|(g, a)| self.encode(g, a, past))
             .collect::<Vec<(Data, Edge)>>();
-        if MAX_N_RAISE
-            > past
-                .iter()
-                .rev()
-                .filter(|&&e| !matches!(e, Edge::Choice(_)))
-                .count()
+        if past
+            .iter()
+            .rev()
+            .take_while(|e| e.is_choice())
+            .filter(|e| e.is_raise())
+            .count()
+            < MAX_N_RAISE
         {
             children
         } else {
             children
                 .into_iter()
-                .filter(|&(_, e)| !matches!(e, Edge::Choice(Action::Raise(_))))
+                .filter(|&(_, e)| !e.is_raise())
                 .collect()
         }
     }
@@ -148,13 +149,20 @@ impl Encoder {
     /// same available actions. in addition to depth, we consider
     /// whether or not we are in a Checkable or Foldable state.
     fn action_abstraction(&self, past: &Vec<&Edge>, edge: &Edge) -> Path {
-        let mut round = past
+        // cut off N-betting
+        let depth = past
             .iter()
             .chain(std::iter::once(&edge))
             .rev()
-            .take_while(|e| e.is_choice());
-        let depth = round.clone().count();
-        let raise = round.any(|e| e.is_raise());
+            .take_while(|e| e.is_choice())
+            .count();
+        let raise = past
+            .iter()
+            .chain(std::iter::once(&edge))
+            .rev()
+            .take_while(|e| e.is_choice())
+            .filter(|e| e.is_raise())
+            .count();
         Path::from((depth, raise))
     }
 

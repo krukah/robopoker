@@ -39,7 +39,7 @@ impl Game {
     /// as long as we alternate the traverser/paths explored
     pub fn root() -> Self {
         let mut root = Self {
-            chips: 0u16,
+            chips: 0 as Chips,
             dealer: 0usize,
             player: 0usize,
             board: Board::empty(),
