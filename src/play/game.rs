@@ -1,7 +1,7 @@
 use super::action::Action;
-use super::payout::Payout;
 use super::seat::Seat;
 use super::seat::State;
+use super::settlement::Settlement;
 use super::Chips;
 use super::N;
 use super::STACK;
@@ -280,7 +280,7 @@ impl Game {
         log::trace!("::::::::::::::");
         log::trace!("{}", self.board());
         for (i, (settlement, seat)) in self
-            .settlement()
+            .settlements()
             .iter()
             .zip(self.seats.iter_mut())
             .enumerate()
@@ -333,14 +333,14 @@ impl Game {
     fn next_street_public(&mut self) {
         let mut deck = self.deck();
         match self.board.street() {
-            Street::Rive => unreachable!("terminal"),
-            Street::Flop => self.apply(Action::Draw(deck.draw())),
-            Street::Turn => self.apply(Action::Draw(deck.draw())),
             Street::Pref => {
                 self.apply(Action::Draw(deck.draw()));
                 self.apply(Action::Draw(deck.draw()));
                 self.apply(Action::Draw(deck.draw()));
-            }
+            },
+            Street::Turn => self.apply(Action::Draw(deck.draw())),
+            Street::Flop => self.apply(Action::Draw(deck.draw())),
+            Street::Rive => unreachable!("terminal"),
         }
     }
     fn next_street_stacks(&mut self) {
@@ -453,18 +453,18 @@ impl Game {
     }
 
     //
-    pub fn settlement(&self) -> Vec<Payout> {
+    pub fn settlements(&self) -> Vec<Settlement> {
         assert!(self.is_terminal());
         Showdown::from(self.ledger()).settle()
     }
-    fn ledger(&self) -> Vec<Payout> {
+    fn ledger(&self) -> Vec<Settlement> {
         self.seats
             .iter()
             .map(|seat| self.entry(seat))
-            .collect::<Vec<Payout>>()
+            .collect::<Vec<Settlement>>()
     }
-    fn entry(&self, seat: &Seat) -> Payout {
-        Payout {
+    fn entry(&self, seat: &Seat) -> Settlement {
+        Settlement {
             reward: 0,
             risked: seat.spent(),
             status: seat.state(),

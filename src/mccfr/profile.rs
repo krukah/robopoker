@@ -1,10 +1,10 @@
 use super::data::Data;
 use crate::mccfr::bucket::Bucket;
+use crate::mccfr::decision::Decision;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
-use crate::mccfr::strategy::Strategy;
 use crate::play::ply::Ply;
 use crate::Probability;
 use crate::Utility;
@@ -78,7 +78,7 @@ impl From<Phase> for Expansion {
 #[derive(Default)]
 pub struct Profile {
     iterations: usize,
-    strategies: BTreeMap<Bucket, BTreeMap<Edge, Strategy>>,
+    strategies: BTreeMap<Bucket, BTreeMap<Edge, Decision>>,
 }
 
 /// Discount parameters for DCFR
@@ -166,11 +166,18 @@ impl Profile {
         let bucket = node.bucket();
         match self.strategies.get(bucket) {
             Some(strategy) => {
+                log::trace!("revisit infoset @ {}", bucket);
                 let expected = children.iter().map(|(_, e)| e).collect::<HashSet<_>>();
                 let observed = strategy.keys().collect::<HashSet<_>>();
                 assert!(observed == expected);
+                // asssertion needs to relax once i reintroduce pruning\
+                // some (incoming, children) branches will be permanently
+                // pruned, both in the Profile and when sampling children
+                // in this case we have to reasses "who" is expected to
+                // have "what" edges
             }
             None => {
+                log::trace!("observe infoset @ {}", bucket);
                 let n = children.len();
                 let uniform = 1. / n as Probability;
                 for (_, edge) in children {
@@ -178,15 +185,61 @@ impl Profile {
                         .entry(bucket.clone())
                         .or_insert_with(BTreeMap::default)
                         .entry(edge.clone())
-                        .or_insert_with(Strategy::default)
+                        .or_insert_with(Decision::default)
                         .policy = uniform;
                 }
             }
         }
     }
+    /// using our current strategy Profile,
+    /// compute the regret vector
+    /// by calculating the marginal Utitlity
+    /// missed out on for not having followed
+    /// every walkable Edge at this Infoset/Node/Bucket
+    pub fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
+        assert!(infoset.node().player() == self.walker());
+        log::trace!("regret vector @ {}", infoset.node().bucket());
+        infoset
+            .node()
+            .outgoing()
+            .into_iter()
+            // .filter(|action| self.prune(infoset.node().bucket(), action))
+            .map(|a| (a.clone(), self.instant_regret(infoset, a)))
+            .map(|(a, r)| (a, r.max(REGRET_MIN)))
+            .map(|(a, r)| (a, r.min(REGRET_MAX)))
+            .inspect(|(a, r)| log::trace!("{:16} ! {:>10 }", format!("{:?}", a), r))
+            .inspect(|(_, r)| assert!(!r.is_nan()))
+            .inspect(|(_, r)| assert!(!r.is_infinite()))
+            .collect::<BTreeMap<Edge, Utility>>()
+    }
+    /// using our current regret Profile,
+    /// compute a new strategy vector
+    /// by following a given Edge
+    /// proportionally to how much regret we felt
+    /// for not having followed that Edge in the past.
+    pub fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
+        assert!(infoset.node().player() == self.walker());
+        log::trace!("policy vector @ {}", infoset.node().bucket());
+        let regrets = infoset
+            .node()
+            .outgoing()
+            .into_iter()
+            .map(|action| (action.clone(), self.current_regret(infoset, action)))
+            .map(|(a, r)| (a, r.max(POLICY_MIN)))
+            .collect::<BTreeMap<Edge, Utility>>();
+        let sum = regrets.values().sum::<Utility>();
+        let policy = regrets
+            .into_iter()
+            .map(|(a, r)| (a, r / sum))
+            .inspect(|(a, p)| log::trace!("{:16} ~ {:>5.03}", format!("{:?}", a), p))
+            .inspect(|(_, p)| assert!(*p >= 0.))
+            .inspect(|(_, p)| assert!(*p <= 1.))
+            .collect::<BTreeMap<Edge, Probability>>();
+        policy
+    }
 
     pub fn update_regret(&mut self, bucket: &Bucket, regrets: &BTreeMap<Edge, Utility>) {
-        // log::info!("regrets @ {}", bucket);
+        log::trace!("update regret @ {}", bucket);
         let t = self.epochs();
         let phase = self.phase();
         let discount = Discount::default();
@@ -203,11 +256,11 @@ impl Profile {
             };
             strategy.regret *= discount;
             strategy.regret += regret;
-            // log::info!("r edge {} :: {}", action, strategy.regret);
+            log::trace!("{} : {}", action, strategy.regret);
         }
     }
     pub fn update_policy(&mut self, bucket: &Bucket, policys: &BTreeMap<Edge, Probability>) {
-        // log::info!("policys @ {}", bucket);
+        log::trace!("update policy @ {}", bucket);
         let t = self.epochs();
         let discount = Discount::default();
         let strategy = self
@@ -219,52 +272,8 @@ impl Profile {
             let strategy = strategy.get_mut(action).expect("action been witnessed");
             strategy.policy *= discount;
             strategy.policy += policy;
-            // log::info!("p edge {} :: {}", action, strategy.policy);
+            log::trace!("{} : {}", action, strategy.policy);
         }
-    }
-    /// using our current strategy Profile,
-    /// compute the regret vector
-    /// by calculating the marginal Utitlity
-    /// missed out on for not having followed
-    /// every walkable Edge at this Infoset/Node/Bucket
-    pub fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
-        assert!(infoset.node().player() == self.walker());
-        infoset
-            .node()
-            .outgoing()
-            .into_iter()
-            // .filter(|action| self.keep(infoset.node().bucket(), action)) // prune
-            .map(|a| (a.clone(), self.instant_regret(infoset, a)))
-            .map(|(a, r)| (a, r.max(REGRET_MIN)))
-            .map(|(a, r)| (a, r.min(REGRET_MAX)))
-            // .inspect(|(a, r)| println!("{:16} :: {:>18.06}", format!("{:?}", a), r))
-            .inspect(|(_, r)| assert!(!r.is_nan()))
-            .inspect(|(_, r)| assert!(!r.is_infinite()))
-            .collect::<BTreeMap<Edge, Utility>>()
-    }
-    /// using our current regret Profile,
-    /// compute a new strategy vector
-    /// by following a given Edge
-    /// proportionally to how much regret we felt
-    /// for not having followed that Edge in the past.
-    pub fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
-        assert!(infoset.node().player() == self.walker());
-        let regrets = infoset
-            .node()
-            .outgoing()
-            .into_iter()
-            .map(|action| (action.clone(), self.current_regret(infoset, action)))
-            .map(|(a, r)| (a, r.max(POLICY_MIN)))
-            .collect::<BTreeMap<Edge, Utility>>();
-        let sum = regrets.values().sum::<Utility>();
-        let policy = regrets
-            .into_iter()
-            .map(|(a, r)| (a, r / sum))
-            .inspect(|(_, p)| assert!(*p >= 0.))
-            .inspect(|(_, p)| assert!(*p <= 1.))
-            // .inspect(|(a, p)| println!("{:16} :: {:>18.06}", format!("{:?}", a), p))
-            .collect::<BTreeMap<Edge, Probability>>();
-        policy
     }
 
     /// public metadata
@@ -318,7 +327,7 @@ impl Profile {
     pub fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
         choices
             .into_iter()
-            // .filter(|(_, edge)| self.keep(node.bucket(), edge))
+            // .filter(|(_, edge)| self.prune(node.bucket(), edge))
             .inspect(|(_, edge)| assert!(matches!(edge, Edge::Choice(_))))
             .collect()
     }
@@ -437,11 +446,11 @@ impl Profile {
         assert!(head.player() == self.walker());
         assert!(leaf.children().len() == 0);
         let probability = self.relative_reach(head, leaf);
-        let importance = self.external_reach(leaf);
-        let player = self.walker();
-        let reward = leaf.payoff(&player);
-        // log::info!("r: {:>10} i: {:>10} p: {:>10}", reward, importance, probability);
-        reward / importance * probability
+        let conditional = self.external_reach(leaf);
+        let walker = self.walker();
+        let reward = leaf.payoff(&walker);
+        log::trace!("R{:<9} I{:<9} P{:<9}", reward, conditional, probability);
+        reward * probability / conditional
     }
 
     /// reach calculations

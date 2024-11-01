@@ -2,19 +2,19 @@ use super::Chips;
 use crate::cards::kicks::Kickers;
 use crate::cards::ranking::Ranking;
 use crate::cards::strength::Strength;
-use crate::play::payout::Payout;
 use crate::play::seat::State;
+use crate::play::settlement::Settlement;
 
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
 pub struct Showdown {
-    payouts: Vec<Payout>,
+    payouts: Vec<Settlement>,
     distributing: Chips,
     distributed: Chips,
     best: Strength,
 }
 
-impl From<Vec<Payout>> for Showdown {
-    fn from(payouts: Vec<Payout>) -> Self {
+impl From<Vec<Settlement>> for Showdown {
+    fn from(payouts: Vec<Settlement>) -> Self {
         Self {
             payouts,
             distributing: 0 as Chips,
@@ -25,16 +25,16 @@ impl From<Vec<Payout>> for Showdown {
 }
 
 impl Showdown {
-    pub fn settle(mut self) -> Vec<Payout> {
+    pub fn settle(mut self) -> Vec<Settlement> {
         'winners: while let Some(strength) = self.strongest() {
             self.best = strength;
-            'winnings: while let Some(amount) = self.rewarded() {
+            'pots: while let Some(amount) = self.remaining() {
                 self.distributing = amount;
                 self.distribute();
                 if self.is_complete() {
                     break 'winners;
                 } else {
-                    continue 'winnings;
+                    continue 'pots;
                 }
             }
         }
@@ -48,7 +48,7 @@ impl Showdown {
             .map(|p| p.strength)
             .max()
     }
-    fn rewarded(&mut self) -> Option<Chips> {
+    fn remaining(&mut self) -> Option<Chips> {
         self.distributed = self.distributing;
         self.payouts
             .iter()
@@ -74,7 +74,7 @@ impl Showdown {
             .filter(|p| p.status != State::Folding)
             .filter(|p| p.strength == self.best)
             .filter(|p| p.risked > self.distributed)
-            .collect::<Vec<&mut Payout>>();
+            .collect::<Vec<&mut Settlement>>();
         let n = winners.len();
         let share = chips / n as Chips;
         let bonus = chips % n as Chips;
@@ -97,7 +97,7 @@ mod tests {
     use super::*;
     use crate::cards::rank::Rank;
     // Define functions for hand strengths
-    fn six_high() -> Strength {
+    fn ace_high() -> Strength {
         Strength::from((Ranking::HighCard(Rank::Ace), Kickers::default()))
     }
     fn one_pair() -> Strength {
@@ -116,8 +116,8 @@ mod tests {
     #[test]
     fn heads_up_showdown() {
         let settlement = Showdown::from(vec![
-            Payout::from((100, State::Playing, six_high())),
-            Payout::from((100, State::Playing, one_pair())),
+            Settlement::from((100, State::Playing, ace_high())),
+            Settlement::from((100, State::Playing, one_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 0);
@@ -127,10 +127,10 @@ mod tests {
     #[test]
     fn winners_folded() {
         let settlement = Showdown::from(vec![
-            Payout::from((050, State::Folding, the_nuts())),
-            Payout::from((100, State::Playing, two_pair())),
-            Payout::from((075, State::Folding, the_nuts())),
-            Payout::from((100, State::Playing, one_pair())),
+            Settlement::from((050, State::Folding, the_nuts())),
+            Settlement::from((100, State::Playing, two_pair())),
+            Settlement::from((075, State::Folding, the_nuts())),
+            Settlement::from((100, State::Playing, one_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 0);
@@ -142,9 +142,9 @@ mod tests {
     #[test]
     fn multiway_pot_split() {
         let settlement = Showdown::from(vec![
-            Payout::from((100, State::Playing, two_pair())),
-            Payout::from((100, State::Playing, two_pair())),
-            Payout::from((100, State::Playing, one_pair())),
+            Settlement::from((100, State::Playing, two_pair())),
+            Settlement::from((100, State::Playing, two_pair())),
+            Settlement::from((100, State::Playing, one_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 150);
@@ -155,11 +155,11 @@ mod tests {
     #[test]
     fn multiway_winner_takes_all() {
         let settlement = Showdown::from(vec![
-            Payout::from((200, State::Playing, the_nuts())),
-            Payout::from((150, State::Shoving, triplets())),
-            Payout::from((200, State::Playing, two_pair())),
-            Payout::from((100, State::Shoving, one_pair())),
-            Payout::from((050, State::Folding, the_nuts())),
+            Settlement::from((200, State::Playing, the_nuts())),
+            Settlement::from((150, State::Shoving, triplets())),
+            Settlement::from((200, State::Playing, two_pair())),
+            Settlement::from((100, State::Shoving, one_pair())),
+            Settlement::from((050, State::Folding, the_nuts())),
         ])
         .settle();
         assert!(settlement[0].reward == 700);
@@ -172,10 +172,10 @@ mod tests {
     #[test]
     fn multiway_all_in_with_uneven_stacks() {
         let settlement = Showdown::from(vec![
-            Payout::from((150, State::Shoving, the_nuts())),
-            Payout::from((200, State::Shoving, triplets())),
-            Payout::from((350, State::Shoving, one_pair())),
-            Payout::from((050, State::Shoving, six_high())),
+            Settlement::from((150, State::Shoving, the_nuts())),
+            Settlement::from((200, State::Shoving, triplets())),
+            Settlement::from((350, State::Shoving, one_pair())),
+            Settlement::from((050, State::Shoving, ace_high())),
         ])
         .settle();
         assert!(settlement[0].reward == 500);
@@ -187,10 +187,10 @@ mod tests {
     #[test]
     fn multiway_all_in_with_side_pot() {
         let settlement = Showdown::from(vec![
-            Payout::from((050, State::Shoving, the_nuts())),
-            Payout::from((100, State::Shoving, triplets())),
-            Payout::from((150, State::Playing, one_pair())),
-            Payout::from((150, State::Playing, six_high())),
+            Settlement::from((050, State::Shoving, the_nuts())),
+            Settlement::from((100, State::Shoving, triplets())),
+            Settlement::from((150, State::Playing, one_pair())),
+            Settlement::from((150, State::Playing, ace_high())),
         ])
         .settle();
         assert!(settlement[0].reward == 200);
@@ -202,9 +202,9 @@ mod tests {
     #[test]
     fn singular_all_in_with_side_pot() {
         let settlement = Showdown::from(vec![
-            Payout::from((050, State::Shoving, two_pair())),
-            Payout::from((100, State::Playing, one_pair())),
-            Payout::from((100, State::Playing, six_high())),
+            Settlement::from((050, State::Shoving, two_pair())),
+            Settlement::from((100, State::Playing, one_pair())),
+            Settlement::from((100, State::Playing, ace_high())),
         ])
         .settle();
         assert!(settlement[0].reward == 150);
@@ -215,9 +215,9 @@ mod tests {
     #[test]
     fn singular_all_in_with_side_pot_split() {
         let settlement = Showdown::from(vec![
-            Payout::from((050, State::Shoving, the_nuts())),
-            Payout::from((100, State::Playing, two_pair())),
-            Payout::from((100, State::Playing, two_pair())),
+            Settlement::from((050, State::Shoving, the_nuts())),
+            Settlement::from((100, State::Playing, two_pair())),
+            Settlement::from((100, State::Playing, two_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 150);
@@ -228,10 +228,10 @@ mod tests {
     #[test]
     fn last_man_standing() {
         let settlement = Showdown::from(vec![
-            Payout::from((050, State::Folding, the_nuts())),
-            Payout::from((100, State::Playing, six_high())),
-            Payout::from((075, State::Folding, the_nuts())),
-            Payout::from((025, State::Folding, the_nuts())),
+            Settlement::from((050, State::Folding, the_nuts())),
+            Settlement::from((100, State::Playing, ace_high())),
+            Settlement::from((075, State::Folding, the_nuts())),
+            Settlement::from((025, State::Folding, the_nuts())),
         ])
         .settle();
         assert!(settlement[0].reward == 0);
