@@ -3,14 +3,11 @@ robopoker
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/rust.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/rust.yml)
 
+# Overview
+
 `robopoker` is a Rust library to play, learn, analyze, track, and solve No-Limit Texas Hold'em.
 
 The guiding philosophy of this package was to use very tangible abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. Focus on Rust idiomatics is also a goal, avoiding use of unsafe and exploiting strong typing.
-
-# System Requirements
-
-- Minimum 8GB RAM for shortdeck. 50GB+ recommended for full.
-- Multi-core CPU. Clustering and CFR scale embarassingly.
 
 # Modules
 
@@ -22,7 +19,8 @@ Core functionality for working with standard playing cards and Texas Hold'em rul
 - **Equity Calculation**: Fast equity calculations between ranges of hands, supporting both exact enumeration and Monte Carlo simulation
 - **Exhaustive Iteration**: Efficient iteration over cards, hands, decks, and private-public observations with lazy bitwise advancing
 - **Distribution Analysis**: Tools for analyzing equity distributions and range vs range scenarios
-- **Bijective Representations**: Multiple card representations (u8/u16/u32/u64) allowing for maximally efficient operations and transformations
+- **Short Deck Support**: Full support for 36-card short deck variant with adjusted hand rankings and iterators
+- **Bijective Representations**: Multiple card representations `(u8/u16/u32/u64)` allow for maximally efficient operations and transformations
 
 ## `gameplay`
 
@@ -48,7 +46,7 @@ Advanced clustering capabilities for poker hand analysis:
 
 Monte Carlo Counterfactual Regret Minimization solver:
 
-- **RPS Convergence**: Previously demonstrated convergence on Rock-Paper-Scissors as validation
+- **Blueprint Convergence**: Previously demonstrated convergence on Rock-Paper-Scissors as validation
 - **External Sampling**: Implementation of external sampling MCCFR variant
 - **Dynamic Tree Building**: On-the-fly game tree construction for memory efficiency
 - **Linear Strategy Weighting**: Efficient strategy updates using iterative weighting and discount schemes
@@ -58,7 +56,13 @@ Monte Carlo Counterfactual Regret Minimization solver:
 
 Coming soon. A distributed and scalable single-binary WebSocket-based HTTP server that allows players to play, learn, analyze, and track hands remotely.
 
-## References
+# System Requirements
+
+- 8GB RAM for shortdeck abstraction
+- 5GB disk space for stored blueprint, abstraction, and metric tables
+- Multi-core CPU. Clustering and CFR scale embarassingly.
+
+# References
 
 1. (2007). Regret Minimization in Games with Incomplete Information. [(NIPS)](https://papers.nips.cc/paper/3306-regret-minimization-in-games-with-incomplete-information)
 2. (2015). Discretization of Continuous Action Spaces in Extensive-Form Games. [(AAMAS)](http://www.cs.cmu.edu/~sandholm/discretization.aamas15.fromACM.pdf)
