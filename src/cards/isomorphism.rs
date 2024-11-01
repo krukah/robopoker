@@ -85,6 +85,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn super_symmetry() {
         let a = Isomorphism::from(Observation::from((
             Hand::from("2s Ks"),
