@@ -17,8 +17,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 const T: usize = TREE_COUNT / BATCH_SIZE;
-const TREE_COUNT: usize = 1_230_980;
-const BATCH_SIZE: usize = 64; // think i have to make this small enough to avoid infoset bucket collisions in the same epoch?
+const TREE_COUNT: usize = 16_777_216;
+const BATCH_SIZE: usize = 16; // think i have to make this small enough to avoid infoset bucket collisions in the same epoch?
 
 struct Branch(Data, Edge, NodeIndex);
 struct Regret(BTreeMap<Edge, Utility>);
@@ -61,15 +61,16 @@ impl Trainer {
         log::info!("training blueprint");
         let progress = Layer::progress(T);
         while self.profile.next() <= T {
-            for Counterfactual(info, regret, policy) in (0..BATCH_SIZE)
+            let counterfactuals = (0..BATCH_SIZE)
                 .map(|_| self.sample())
                 .collect::<Vec<(Tree, Partition)>>()
                 .into_par_iter()
-                .map(|(tree, partition)| partition.infos(Arc::new(tree)))
+                .map(|(tree, partition)| (Arc::new(tree), partition))
+                .map(|(tree, partition)| partition.infos(tree))
                 .flatten()
                 .map(|info| self.counterfactual(info))
-                .collect::<Vec<Counterfactual>>()
-            {
+                .collect::<Vec<Counterfactual>>();
+            for Counterfactual(info, regret, policy) in counterfactuals {
                 self.profile.update_regret(info.node().bucket(), &regret.0);
                 self.profile.update_policy(info.node().bucket(), &policy.0);
             }
@@ -101,9 +102,9 @@ impl Trainer {
             let tail = tree.insert(tail);
             let from = tree.extend(tail, from, head);
             let head = tree.at(tail);
-            // log::info!("{}", tree);
             self.visit(&head, queue, infos);
         }
+        log::trace!("{}", tree);
         (tree, partition)
     }
 

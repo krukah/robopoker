@@ -51,7 +51,7 @@ impl<'tree> Node<'tree> {
             Player(Ply::Choice(x)) => self
                 .data()
                 .game()
-                .settlement()
+                .settlements()
                 .get(*x)
                 .map(|settlement| settlement.pnl() as f32)
                 .expect("player index in bounds"),

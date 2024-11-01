@@ -1,8 +1,8 @@
 pub mod action;
 pub mod game;
-pub mod payout;
 pub mod ply;
 pub mod seat;
+pub mod settlement;
 pub mod showdown;
 
 pub type Chips = i16;

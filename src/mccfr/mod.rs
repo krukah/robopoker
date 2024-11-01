@@ -1,5 +1,6 @@
 pub mod bucket;
 pub mod data;
+pub mod decision;
 pub mod edge;
 pub mod info;
 pub mod minimizer;
@@ -8,5 +9,4 @@ pub mod partition;
 pub mod path;
 pub mod player;
 pub mod profile;
-pub mod strategy;
 pub mod tree;
