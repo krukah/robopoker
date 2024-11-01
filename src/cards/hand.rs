@@ -196,6 +196,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn ranks_in_suit() {
         let hand = Hand::from("2c 3d 4h 5s 6c 7d 8h 9s Tc Jd Qh Ks Ac");
         assert_eq!(u16::from(hand.of(&Suit::C)), 0b_1000100010001); // C (2c, 6c, Tc, Ac)

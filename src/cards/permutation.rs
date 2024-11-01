@@ -199,6 +199,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "shortdeck"))]
     fn permute_interior() {
         let permutation = Permutation([Suit::C, Suit::H, Suit::D, Suit::S]);
         let original = Hand::from("2c 3d 4h 5s");
