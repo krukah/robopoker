@@ -7,7 +7,6 @@ use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
 use crate::clustering::encoding::Encoder;
-use crate::clustering::layer::Layer;
 use crate::Probability;
 use crate::Utility;
 use petgraph::graph::NodeIndex;
@@ -15,10 +14,6 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-
-const T: usize = TREE_COUNT / BATCH_SIZE;
-const TREE_COUNT: usize = 16_777_216;
-const BATCH_SIZE: usize = 16; // think i have to make this small enough to avoid infoset bucket collisions in the same epoch?
 
 struct Branch(Data, Edge, NodeIndex);
 struct Regret(BTreeMap<Edge, Utility>);
@@ -59,9 +54,8 @@ impl Trainer {
     /// a learning schedule for regret or policy.
     pub fn train(&mut self) {
         log::info!("training blueprint");
-        let progress = Layer::progress(T);
-        while self.profile.next() <= T {
-            let counterfactuals = (0..BATCH_SIZE)
+        while self.profile.next() <= crate::CFR_ITERATIONS {
+            let counterfactuals = (0..crate::CFR_BATCH_SIZE)
                 .map(|_| self.sample())
                 .collect::<Vec<(Tree, Partition)>>()
                 .into_par_iter()
@@ -74,7 +68,6 @@ impl Trainer {
                 self.profile.update_regret(info.node().bucket(), &regret.0);
                 self.profile.update_policy(info.node().bucket(), &policy.0);
             }
-            progress.inc(1);
         }
         self.profile.save();
     }

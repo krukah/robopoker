@@ -136,7 +136,6 @@ impl Encoder {
     }
 
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        const MAX_N_BET: usize = 3;
         // cut off N-betting
         let ref past = node.history();
         let ref head = node.data().game();
@@ -151,7 +150,7 @@ impl Encoder {
             .into_iter()
             .map(|(g, a)| self.encode(g, a, past))
             .collect::<Vec<(Data, Edge)>>();
-        if nbets < MAX_N_BET {
+        if nbets < crate::MAX_N_BETS {
             children
         } else {
             children
