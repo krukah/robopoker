@@ -69,7 +69,7 @@ impl Trainer {
                 self.profile.update_policy(info.node().bucket(), &policy.0);
             }
         }
-        self.profile.save();
+        self.profile.save("blueprint");
     }
 
     /// compute regret and policy vectors for a given infoset

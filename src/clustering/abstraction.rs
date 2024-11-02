@@ -23,13 +23,11 @@ impl Abstraction {
     pub fn random() -> Self {
         Self::Unique(loop {
             let x = rand::random::<u64>();
-            if x & EQUITY_TAG == EQUITY_TAG {
-                continue;
+            match x >> 52 {
+                POCKET_TAG => continue,
+                EQUITY_TAG => continue,
+                _ => break x,
             }
-            if x & POCKET_TAG == POCKET_TAG {
-                continue;
-            }
-            break x;
         })
     }
     fn quantize(p: Probability) -> u8 {
