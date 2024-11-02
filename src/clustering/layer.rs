@@ -56,8 +56,8 @@ impl Layer {
     const fn k(street: Street) -> usize {
         match street {
             Street::Pref => 0,
-            Street::Flop => 8,
-            Street::Turn => 8,
+            Street::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
+            Street::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
             Street::Rive => unreachable!(),
         }
     }
@@ -68,8 +68,8 @@ impl Layer {
     const fn t(street: Street) -> usize {
         match street {
             Street::Pref => 0,
-            Street::Flop => 16,
-            Street::Turn => 16,
+            Street::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
+            Street::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
             Street::Rive => unreachable!(),
         }
     }

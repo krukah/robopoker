@@ -1,6 +1,5 @@
 use super::data::Data;
 use crate::mccfr::bucket::Bucket;
-use crate::mccfr::decision::Decision;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
 use crate::mccfr::node::Node;
@@ -18,54 +17,6 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::usize;
-
-const REGRET_MAX: Utility = Utility::MAX;
-const REGRET_MIN: Utility = -3.1e5;
-const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
-const P_PRUNE: Probability = 0.95;
-// const REGRET_PRUNE: Utility = -3.0e5;
-const PHASE_DLCFR: usize = 100_000;
-const PHASE_PRUNE: usize = 100_000_000;
-
-/* Second, our MCCFR algorithm did not explore every traverser action on every iteration
-after the first 200 minutes. Instead, for 95% of iterations, traverser actions with regret below
--300,000,000 were not explored unless those actions were on the final betting round or those
-actions immediately led to a terminal node. In the remaining 5% of iterations, every traverser
-action was explored. This “pruning” of negative-regret actions means iterations can be completed
-more quickly. More importantly, it also effectively leads to a finer-grained information
-abstraction. For example, on the second betting round there are on average 6,434 infosets per
-abstract infoset bucket. The strategy for that abstract infoset bucket must generalize across all
-of those 6,434 infosets. But with pruning, many of those 6,434 infosets are traversed only 5% as
-often, so the strategy for the abstract infoset can better focus on generalizing across infosets that
-are likely to actually be encountered during strong play. */
-
-#[derive(PartialEq)]
-enum Phase {
-    Discount,
-    Explore,
-    Prune,
-}
-enum Expansion {
-    Explore,
-    Pruning,
-}
-impl From<usize> for Phase {
-    fn from(epochs: usize) -> Self {
-        match epochs {
-            e if e < PHASE_DLCFR => Phase::Discount,
-            e if e < PHASE_PRUNE => Phase::Explore,
-            _ => Phase::Prune,
-        }
-    }
-}
-impl From<Phase> for Expansion {
-    fn from(phase: Phase) -> Self {
-        match phase {
-            Phase::Prune if P_PRUNE > rand::thread_rng().gen::<f32>() => Expansion::Pruning,
-            _ => Expansion::Explore,
-        }
-    }
-}
 
 /// this is the meat of our solution.
 /// we keep a (Regret, AveragePolicy, CurrentPolicy)
@@ -88,6 +39,29 @@ pub struct Discount {
     alpha: f32,    // α parameter. controls recency bias.
     omega: f32,    // ω parameter. controls recency bias.
     gamma: f32,    // γ parameter. controls recency bias.
+}
+
+#[derive(Debug, Default)]
+struct Decision {
+    policy: crate::Probability, // running average, not actually median
+    regret: crate::Utility,     // cumulative non negative regret
+}
+
+#[derive(PartialEq)]
+enum Phase {
+    Discount,
+    Explore,
+    Prune,
+}
+
+impl From<usize> for Phase {
+    fn from(epochs: usize) -> Self {
+        match epochs {
+            e if e < crate::CFR_DISCOUNT_PHASE => Phase::Discount,
+            e if e < crate::CFR_PRUNNING_PHASE => Phase::Explore,
+            _ => Phase::Prune,
+        }
+    }
 }
 
 impl Discount {
@@ -124,18 +98,6 @@ impl Profile {
     fn phase(&self) -> Phase {
         Phase::from(self.epochs())
     }
-    // fn expansion(&self) -> Expansion {
-    //     Expansion::from(self.phase())
-    // }
-    // fn keep(&self, bucket: &Bucket, edge: &Edge) -> bool {
-    //     match self.expansion() {
-    //         Expansion::Explore => true,
-    //         Expansion::Focused => self.regret(bucket, edge) > REGRET_PRUNE,
-    //     }
-    // }
-}
-
-impl Profile {
     /// TODO: load existing profile from disk
     pub fn load() -> Self {
         log::info!("NOT YET !!! loading profile from disk");
@@ -205,8 +167,8 @@ impl Profile {
             .into_iter()
             // .filter(|action| self.prune(infoset.node().bucket(), action))
             .map(|a| (a.clone(), self.instant_regret(infoset, a)))
-            .map(|(a, r)| (a, r.max(REGRET_MIN)))
-            .map(|(a, r)| (a, r.min(REGRET_MAX)))
+            .map(|(a, r)| (a, r.max(crate::REGRET_MIN)))
+            .map(|(a, r)| (a, r.min(crate::REGRET_MAX)))
             .inspect(|(a, r)| log::trace!("{:16} ! {:>10 }", format!("{:?}", a), r))
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
@@ -225,7 +187,7 @@ impl Profile {
             .outgoing()
             .into_iter()
             .map(|action| (action.clone(), self.current_regret(infoset, action)))
-            .map(|(a, r)| (a, r.max(POLICY_MIN)))
+            .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<BTreeMap<Edge, Utility>>();
         let sum = regrets.values().sum::<Utility>();
         let policy = regrets
@@ -578,3 +540,30 @@ impl std::fmt::Display for Profile {
         )
     }
 }
+
+// pruning stuff
+// pruning stuff
+// pruning stuff
+
+// const P_PRUNE: Probability = 0.95;
+// enum Expansion {
+//     Explore,
+//     Pruning,
+// }
+// impl From<Phase> for Expansion {
+//     fn from(phase: Phase) -> Self {
+//         match phase {
+//             Phase::Prune if crate::P_PRUNE > rand::thread_rng().gen::<f32>() => Expansion::Pruning,
+//             _ => Expansion::Explore,
+//         }
+//     }
+// }
+// fn expansion(&self) -> Expansion {
+//     Expansion::from(self.phase())
+// }
+// fn keep(&self, bucket: &Bucket, edge: &Edge) -> bool {
+//     match self.expansion() {
+//         Expansion::Explore => true,
+//         Expansion::Focused => self.regret(bucket, edge) > REGRET_PRUNE,
+//     }
+// }

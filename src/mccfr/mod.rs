@@ -1,6 +1,5 @@
 pub mod bucket;
 pub mod data;
-pub mod decision;
 pub mod edge;
 pub mod info;
 pub mod minimizer;
