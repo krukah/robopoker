@@ -41,7 +41,7 @@ pub struct Discount {
     gamma: f32,    // γ parameter. controls recency bias.
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 struct Decision {
     policy: crate::Probability, // running average, not actually median
     regret: crate::Utility,     // cumulative non negative regret
@@ -122,8 +122,6 @@ impl Profile {
     /// otherwise, we initialize the strategy
     /// at this Node with uniform distribution
     /// over its outgoing Edges .
-    ///
-    /// @assertion
     pub fn witness(&mut self, node: &Node, children: &Vec<(Data, Edge)>) {
         let bucket = node.bucket();
         match self.strategies.get(bucket) {
@@ -136,7 +134,7 @@ impl Profile {
                 // some (incoming, children) branches will be permanently
                 // pruned, both in the Profile and when sampling children
                 // in this case we have to reasses "who" is expected to
-                // have "what" edges
+                // have "what" edges on "which when" epochs
             }
             None => {
                 log::trace!("observe infoset @ {}", bucket);
@@ -165,7 +163,6 @@ impl Profile {
             .node()
             .outgoing()
             .into_iter()
-            // .filter(|action| self.prune(infoset.node().bucket(), action))
             .map(|a| (a.clone(), self.instant_regret(infoset, a)))
             .map(|(a, r)| (a, r.max(crate::REGRET_MIN)))
             .map(|(a, r)| (a, r.min(crate::REGRET_MAX)))
@@ -481,15 +478,62 @@ impl Profile {
     }
 }
 
+impl From<&str> for Profile {
+    fn from(name: &str) -> Self {
+        use crate::clustering::abstraction::Abstraction;
+        use crate::mccfr::path::Path;
+        use byteorder::ReadBytesExt;
+        use byteorder::BE;
+        use std::fs::File;
+        use std::io::BufReader;
+        use std::io::Read;
+        use std::io::Seek;
+        use std::io::SeekFrom;
+        let file = File::open(format!("{}.profile.pgcopy", name)).expect("open file");
+        let mut buffer = [0u8; 2];
+        let mut strategies = BTreeMap::new();
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
+        while reader.read_exact(&mut buffer).is_ok() {
+            if u16::from_be_bytes(buffer) == 5 {
+                // We expect 5 fields per record
+                reader.read_u32::<BE>().expect("path length");
+                let path = Path::from(reader.read_u64::<BE>().expect("read path"));
+                reader.read_u32::<BE>().expect("abstraction length");
+                let abs = Abstraction::from(reader.read_u64::<BE>().expect("read abstraction"));
+                reader.read_u32::<BE>().expect("edge length");
+                let edge = Edge::from(reader.read_u32::<BE>().expect("read edge"));
+                reader.read_u32::<BE>().expect("regret length");
+                let regret = reader.read_f32::<BE>().expect("read regret");
+                reader.read_u32::<BE>().expect("policy length");
+                let policy = reader.read_f32::<BE>().expect("read policy");
+                let bucket = Bucket(path, abs);
+                let memory = Decision { regret, policy };
+                strategies
+                    .entry(bucket)
+                    .or_insert_with(BTreeMap::new)
+                    .insert(edge, memory);
+                continue;
+            } else {
+                break;
+            }
+        }
+        Self {
+            iterations: 0,
+            strategies,
+        }
+    }
+}
+
 impl Profile {
     /// persist the Profile to disk
-    pub fn save(&self) {
+    pub fn save(&self, name: &str) {
         log::info!("saving blueprint");
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create("blueprint.profile.pgcopy").expect("touch");
+        let ref mut file = File::create(format!("{name}.profile.pgcopy")).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
@@ -567,3 +611,58 @@ impl std::fmt::Display for Profile {
 //         Expansion::Focused => self.regret(bucket, edge) > REGRET_PRUNE,
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clustering::abstraction::Abstraction;
+    use crate::mccfr::path::Path;
+    use crate::play::action::Action;
+    use crate::play::Chips;
+
+    #[test]
+    fn persistence() {
+        let name = "test";
+        let file = format!("{}.profile.pgcopy", name);
+        let save = random_profile();
+        save.save(name);
+        let load = Profile::from(name);
+        assert!(std::iter::empty()
+            .chain(save.strategies.iter().zip(load.strategies.iter()))
+            .chain(load.strategies.iter().zip(save.strategies.iter()))
+            .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2));
+        std::fs::remove_file(file).unwrap();
+    }
+
+    // impl Arbitrary for Profile, Decision, Edge, Action, Bucket, Policy, Observation, Isomorphism, Street
+
+    fn random_profile() -> Profile {
+        Profile {
+            iterations: 0,
+            strategies: (0..100)
+                .map(|_| (random_bucket(), random_policy()))
+                .collect(),
+        }
+    }
+    fn random_decision() -> Decision {
+        Decision {
+            regret: rand::thread_rng().gen::<f32>(),
+            policy: rand::thread_rng().gen::<f32>(),
+        }
+    }
+    fn random_action() -> Edge {
+        Edge::from(Action::Raise(rand::thread_rng().gen::<Chips>()))
+    }
+    fn random_policy() -> BTreeMap<Edge, Decision> {
+        let n = rand::thread_rng().gen_range(1..=8);
+        (0..n)
+            .map(|_| (random_action(), random_decision()))
+            .collect()
+    }
+    fn random_bucket() -> Bucket {
+        Bucket(
+            Path::from(rand::thread_rng().gen::<u64>()),
+            Abstraction::random(),
+        )
+    }
+}

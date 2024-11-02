@@ -46,34 +46,6 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// number of kmeans centroids.
-    /// this determines the granularity of the abstraction space.
-    ///
-    /// - CPU: O(N^2) for kmeans initialization
-    /// - CPU: O(N)   for kmeans clustering
-    /// - RAM: O(N^2) for learned metric
-    /// - RAM: O(N)   for learned centroids
-    const fn k(street: Street) -> usize {
-        match street {
-            Street::Pref => 0,
-            Street::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
-            Street::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
-            Street::Rive => unreachable!(),
-        }
-    }
-    /// number of kmeans iterations.
-    /// this controls the precision of the abstraction space.
-    ///
-    /// - CPU: O(N) for kmeans clustering
-    const fn t(street: Street) -> usize {
-        match street {
-            Street::Pref => 0,
-            Street::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
-            Street::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
-            Street::Rive => unreachable!(),
-        }
-    }
-
     /// start with the River layer. everything is empty because we
     /// can generate `Abstractor` and `SmallSpace` from "scratch".
     /// - `lookup`: lazy equity calculation of river observations
@@ -304,7 +276,7 @@ impl Layer {
     }
 
     /// create a progress bar for kmeans clustering
-    pub fn progress(n: usize) -> indicatif::ProgressBar {
+    fn progress(n: usize) -> indicatif::ProgressBar {
         let tick = std::time::Duration::from_secs(5);
         let style = "[{elapsed}] {spinner} {wide_bar} ETA {eta}";
         let style = indicatif::ProgressStyle::with_template(style).unwrap();
@@ -312,5 +284,33 @@ impl Layer {
         progress.set_style(style);
         progress.enable_steady_tick(tick);
         progress
+    }
+
+    /// number of kmeans centroids.
+    /// this determines the granularity of the abstraction space.
+    ///
+    /// - CPU: O(N^2) for kmeans initialization
+    /// - CPU: O(N)   for kmeans clustering
+    /// - RAM: O(N^2) for learned metric
+    /// - RAM: O(N)   for learned centroids
+    const fn k(street: Street) -> usize {
+        match street {
+            Street::Pref => 0,
+            Street::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
+            Street::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
+            Street::Rive => unreachable!(),
+        }
+    }
+    /// number of kmeans iterations.
+    /// this controls the precision of the abstraction space.
+    ///
+    /// - CPU: O(N) for kmeans clustering
+    const fn t(street: Street) -> usize {
+        match street {
+            Street::Pref => 0,
+            Street::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
+            Street::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
+            Street::Rive => unreachable!(),
+        }
     }
 }
