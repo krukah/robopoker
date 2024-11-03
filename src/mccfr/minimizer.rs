@@ -65,8 +65,8 @@ impl Trainer {
                 .map(|info| self.counterfactual(info))
                 .collect::<Vec<Counterfactual>>();
             for Counterfactual(info, regret, policy) in counterfactuals {
-                self.profile.update_regret(info.node().bucket(), &regret.0);
-                self.profile.update_policy(info.node().bucket(), &policy.0);
+                self.profile.regret_update(info.node().bucket(), &regret.0);
+                self.profile.policy_update(info.node().bucket(), &policy.0);
             }
         }
         self.profile.save("blueprint");

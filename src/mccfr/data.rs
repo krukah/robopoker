@@ -1,5 +1,4 @@
 use crate::mccfr::bucket::Bucket;
-use crate::mccfr::edge::Edge;
 use crate::mccfr::player::Player;
 use crate::play::game::Game;
 
@@ -24,12 +23,5 @@ impl Data {
     }
     pub fn player(&self) -> Player {
         Player(self.game.ply())
-    }
-    pub fn edges(&self) -> Vec<Edge> {
-        self.game
-            .options()
-            .into_iter()
-            .map(|a| Edge::from(a))
-            .collect()
     }
 }
