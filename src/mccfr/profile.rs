@@ -163,7 +163,7 @@ impl Profile {
             .node()
             .outgoing()
             .into_iter()
-            .map(|a| (a.clone(), self.instant_regret(infoset, a)))
+            .map(|a| (a.clone(), self.immediate_regret(infoset, a)))
             .map(|(a, r)| (a, r.max(crate::REGRET_MIN)))
             .map(|(a, r)| (a, r.min(crate::REGRET_MAX)))
             .inspect(|(a, r)| log::trace!("{:16} ! {:>10 }", format!("{:?}", a), r))
@@ -183,7 +183,7 @@ impl Profile {
             .node()
             .outgoing()
             .into_iter()
-            .map(|action| (action.clone(), self.current_regret(infoset, action)))
+            .map(|action| (action.clone(), self.cumulated_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<BTreeMap<Edge, Utility>>();
         let sum = regrets.values().sum::<Utility>();
@@ -197,7 +197,7 @@ impl Profile {
         policy
     }
 
-    pub fn update_regret(&mut self, bucket: &Bucket, regrets: &BTreeMap<Edge, Utility>) {
+    pub fn regret_update(&mut self, bucket: &Bucket, regrets: &BTreeMap<Edge, Utility>) {
         log::trace!("update regret @ {}", bucket);
         let t = self.epochs();
         let phase = self.phase();
@@ -218,7 +218,7 @@ impl Profile {
             log::trace!("{} : {}", action, decision.regret);
         }
     }
-    pub fn update_policy(&mut self, bucket: &Bucket, policys: &BTreeMap<Edge, Probability>) {
+    pub fn policy_update(&mut self, bucket: &Bucket, policys: &BTreeMap<Edge, Probability>) {
         log::trace!("update policy @ {}", bucket);
         let t = self.epochs();
         let discount = Discount::default();
@@ -323,7 +323,7 @@ impl Profile {
     /// upon visiting any Node inthis Infoset,
     /// how much cumulative Utility have we missed out on
     /// for not having followed this Edge?
-    fn current_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+    fn cumulated_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
         self.strategies
             .get(infoset.node().bucket())
@@ -338,7 +338,7 @@ impl Profile {
     /// with paths weighted according to our Profile:
     /// if we follow this Edge 100% of the time,
     /// what is the expected marginal increase in Utility?
-    fn instant_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+    fn immediate_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
         infoset
             .nodes()
@@ -507,7 +507,7 @@ impl From<&str> for Profile {
                 let regret = reader.read_f32::<BE>().expect("read regret");
                 reader.read_u32::<BE>().expect("policy length");
                 let policy = reader.read_f32::<BE>().expect("read policy");
-                let bucket = Bucket(path, abs);
+                let bucket = Bucket::from((path, abs));
                 let memory = Decision { regret, policy };
                 strategies
                     .entry(bucket)
@@ -660,9 +660,9 @@ mod tests {
             .collect()
     }
     fn random_bucket() -> Bucket {
-        Bucket(
+        Bucket::from((
             Path::from(rand::thread_rng().gen::<u64>()),
             Abstraction::random(),
-        )
+        ))
     }
 }

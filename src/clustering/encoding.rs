@@ -89,29 +89,36 @@ impl Encoder {
  * methods for unraveling the Tree
  */
 impl Encoder {
-    /// laying groundwork for pseudo-harmonic support
-    /// using the n-bet-filtered set of actions that we can take
-    /// we generalize using the raise granularity abstraction algorithm
-    /// of pseudo-harmonic mapping. then we spawn the children as if
-    /// these were the only actions available to us.
-    /// Self::spawn may be pub on Game
-    /// Self::unfold only takes River -> [River]
-    fn futures(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let edges = self.children(node).into_iter().map(|(_, e)| e).collect();
-        let edges = Self::unfold(node, edges);
-        let datum = node.data();
-        edges
+    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+        // cut off N-betting
+        let nraises = node
+            .history()
+            .iter()
+            .rev()
+            .take_while(|e| e.is_choice())
+            .filter(|e| e.is_raise())
+            .count();
+        node.data()
+            .game()
+            .children() // TODO : implement Game::pseudoharmonic(&Node)
             .into_iter()
-            .map(|action| Self::spawn(datum, action))
-            .collect()
+            .map(|(g, a)| self.encode(g, a, node))
+            .filter(|&(_, e)| !e.is_raise() || nraises < crate::MAX_N_BETS)
+            .collect::<Vec<(Data, Edge)>>()
     }
-    fn unfold(node: &Node, edges: Vec<Edge>) -> Vec<Edge> {
-        todo!()
+    /// convert gameplay types into CFR types
+    /// Game -> Spot
+    /// Action -> Edge
+    /// Vec<Edge> -> Path
+    /// wrap the (Game, Bucket) in a Data
+    pub fn encode(&self, game: Game, action: Action, node: &Node) -> (Data, Edge) {
+        let edge = Edge::from(action); // TODO : add &Node argument for pot normalization?
+        let path = self.action_abstraction(&edge, &node.history());
+        let info = self.chance_abstraction(&game);
+        let sign = Bucket::from((path, info));
+        let data = Data::from((game, sign));
+        (data, edge)
     }
-    fn spawn(data: &Data, edge: Edge) -> (Data, Edge) {
-        todo!()
-    }
-
     pub fn root(&self) -> Data {
         let game = Game::root();
         let info = self.chance_abstraction(&game);
@@ -119,45 +126,6 @@ impl Encoder {
         let sign = Bucket::from((path, info));
         let data = Data::from((game, sign));
         data
-    }
-
-    /// convert gameplay types into CFR types
-    /// Game -> Spot
-    /// Action -> Edge
-    /// Vec<Edge> -> Path
-    /// wrap the (Game, Bucket) in a Data
-    pub fn encode(&self, game: Game, action: Action, past: &Vec<&Edge>) -> (Data, Edge) {
-        let edge = Edge::from(action);
-        let choice = self.action_abstraction(&past, &edge);
-        let chance = self.chance_abstraction(&game);
-        let bucket = Bucket::from((choice, chance));
-        let data = Data::from((game, bucket));
-        (data, edge)
-    }
-
-    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        // cut off N-betting
-        let ref past = node.history();
-        let ref head = node.data().game();
-        let nbets = past
-            .iter()
-            .rev()
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_raise())
-            .count();
-        let children = head
-            .children()
-            .into_iter()
-            .map(|(g, a)| self.encode(g, a, past))
-            .collect::<Vec<(Data, Edge)>>();
-        if nbets < crate::MAX_N_BETS {
-            children
-        } else {
-            children
-                .into_iter()
-                .filter(|&(_, e)| !e.is_raise())
-                .collect()
-        }
     }
 
     /// i like to think of this as "positional encoding"
@@ -171,7 +139,7 @@ impl Encoder {
     /// we need to assert that: any Nodes in the same Infoset have the
     /// same available actions. in addition to depth, we consider
     /// whether or not we are in a Checkable or Foldable state.
-    fn action_abstraction(&self, past: &Vec<&Edge>, edge: &Edge) -> Path {
+    fn action_abstraction(&self, edge: &Edge, past: &Vec<&Edge>) -> Path {
         // cut off N-betting
         let depth = past
             .iter()
@@ -188,7 +156,6 @@ impl Encoder {
             .count();
         Path::from((depth, raise))
     }
-
     /// the compressed card information for an observation
     /// this is defined up to unique Observation > Isomorphism
     /// so pocket vs public is the only distinction made. forget reveal order.
