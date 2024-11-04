@@ -12,6 +12,8 @@ use crate::mccfr::node::Node;
 use crate::mccfr::path::Path;
 use crate::play::action::Action;
 use crate::play::game::Game;
+use crate::play::Chips;
+use crate::Utility;
 use std::collections::BTreeMap;
 
 /// this is the output of the clustering module
@@ -107,27 +109,95 @@ impl Encoder {
             .collect::<Vec<(Data, Edge)>>()
     }
     /// convert gameplay types into CFR types
-    /// Game -> Spot
     /// Action -> Edge
     /// Vec<Edge> -> Path
-    /// wrap the (Game, Bucket) in a Data
-    pub fn encode(&self, game: Game, action: Action, node: &Node) -> (Data, Edge) {
-        let edge = Edge::from(action); // TODO : add &Node argument for pot normalization?
-        let path = self.action_abstraction(&edge, &node.history());
-        let info = self.chance_abstraction(&game);
-        let sign = Bucket::from((path, info));
-        let data = Data::from((game, sign));
+    /// Game -> Data -> Obs -> Iso -> Abs
+    /// Path -> Abs -> Bucket
+    pub fn encode(&self, leaf: Game, from: Action, head: &Node) -> (Data, Edge) {
+        let info = self.card_encoding(&leaf);
+        let edge = self.edge_encoding(&head, &from);
+        let path = self.path_encoding(&head, &edge);
+        let data = Data::from((leaf, Bucket::from((path, info))));
         (data, edge)
     }
     pub fn root(&self) -> Data {
-        let game = Game::root();
-        let info = self.chance_abstraction(&game);
         let path = Path::from(0);
-        let sign = Bucket::from((path, info));
-        let data = Data::from((game, sign));
+        let game = Game::root();
+        let info = self.card_encoding(&game);
+        let data = Data::from((game, Bucket::from((path, info))));
         data
     }
 
+    fn actions(node: &Node) -> Vec<Action> {
+        let mut actions = node
+            .data()
+            .game()
+            .children()
+            .into_iter()
+            .map(|(_, action)| action)
+            .collect::<Vec<Action>>();
+        if let Some(raise) = actions.iter().position(|a| matches!(a, Action::Raise(_))) {
+            if let &Action::Raise(min) = actions.get(raise).unwrap() {
+                let max = node.data().game().to_shove();
+                actions.remove(raise);
+                actions.splice(
+                    raise..raise,
+                    Self::raises(node)
+                        .into_iter()
+                        .map(|relative| relative * node.data().game().pot() as f32)
+                        .map(|absolute| absolute as Chips)
+                        .filter(|raise| min <= *raise && *raise < max)
+                        .map(|absolute| Action::Raise(absolute)),
+                );
+            }
+        }
+        actions
+    }
+    fn raises(node: &Node) -> Vec<f32> {
+        match node.data().game().board().street() {
+            Street::Pref => vec![0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0],
+            Street::Flop => vec![0000000000000.5, 0000000.75, 1.0, 1.5, 2.0],
+            _ => match node
+                .history()
+                .iter()
+                .rev()
+                .take_while(|e| e.is_choice())
+                .filter(|e| e.is_raise())
+                .count() // is_not_first_raise
+            {
+                0 => vec![00000000000000000000.5, 0000000000001.0],
+                _ => vec![0000000000000000000000000000000000001.0],
+            },
+        }
+        // let mut actions: Vec<Action> = sizes.iter().map(|&multiplier| todo!()).collect();
+        // Always include all-in as an option
+        // TODO
+        // do this in Game::children / Game::options
+        // actions.push(Action::Shove(game.to_shove()));
+        // actions
+    }
+
+    fn edge_encoding(&self, node: &Node, action: &Action) -> Edge {
+        enum Thresholds {
+            QuarPot,
+            HalfPot,
+            FullPot,
+            OverPot,
+        }
+        match if let Action::Raise(x) = action {
+            let bets = *x as Utility;
+            let wins = node.data().game().pot() as Utility;
+            let odds = bets / (wins - bets);
+            match odds {
+                x if odds < 0.5 => Thresholds::QuarPot,
+                x if odds < 1.0 => Thresholds::HalfPot,
+                x if odds < 2.0 => Thresholds::FullPot,
+                _ => Thresholds::OverPot,
+            };
+        } {
+            _ => todo!(),
+        }
+    }
     /// i like to think of this as "positional encoding"
     /// i like to think of this as "positional encoding"
     /// later in the same round where the stakes are higher
@@ -139,27 +209,21 @@ impl Encoder {
     /// we need to assert that: any Nodes in the same Infoset have the
     /// same available actions. in addition to depth, we consider
     /// whether or not we are in a Checkable or Foldable state.
-    fn action_abstraction(&self, edge: &Edge, past: &Vec<&Edge>) -> Path {
-        // cut off N-betting
-        let depth = past
-            .iter()
-            .chain(std::iter::once(&edge))
+    fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
+        let round = node
+            .history()
+            .into_iter()
+            .chain(std::iter::once(edge))
             .rev()
-            .take_while(|e| e.is_choice())
-            .count();
-        let raise = past
-            .iter()
-            .chain(std::iter::once(&edge))
-            .rev()
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_raise())
-            .count();
+            .take_while(|e| e.is_choice());
+        let depth = round.clone().count();
+        let raise = round.filter(|e| e.is_raise()).count();
         Path::from((depth, raise))
     }
     /// the compressed card information for an observation
     /// this is defined up to unique Observation > Isomorphism
     /// so pocket vs public is the only distinction made. forget reveal order.
-    fn chance_abstraction(&self, game: &Game) -> Abstraction {
+    fn card_encoding(&self, game: &Game) -> Abstraction {
         self.abstraction(&Isomorphism::from(Observation::from(game)))
     }
 }
