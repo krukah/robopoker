@@ -1,5 +1,5 @@
-use super::Chips;
 use crate::cards::card::Card;
+use crate::Chips;
 use colored::*;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
