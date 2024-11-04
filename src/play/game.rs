@@ -2,9 +2,6 @@ use super::action::Action;
 use super::seat::Seat;
 use super::seat::State;
 use super::settlement::Settlement;
-use super::Chips;
-use super::N;
-use super::STACK;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
@@ -14,6 +11,9 @@ use crate::cards::strength::Strength;
 use crate::play::ply::Ply;
 use crate::play::showdown::Showdown;
 use crate::players::human::Human;
+use crate::Chips;
+use crate::N;
+use crate::STACK;
 
 type Position = usize;
 /// Rotation represents the memoryless state of the game in between actions.
@@ -52,24 +52,27 @@ impl Game {
         root
     }
 
-    /// for chance transitions, only bc of Preflop,
-    /// we use an arbitrary (MIN) draw card
-    /// it will be "coerced" into an Edge::Chance
-    /// variant in the end anyway, in MCCFR
-    ///
-    /// actually we should not have chance transitions at preflop. Explorer::root will
-    /// "spawn" us at a node where blinds are posted and hands are dealt!
-    pub fn children(&self) -> Vec<(Game, Action)> {
-        match self.ply() {
-            Ply::Choice(_) => self.choice_actions(),
-            Ply::Terminal => self.ending_actions(),
-            Ply::Chance => self.chance_actions(),
-        }
-    }
     pub fn n(&self) -> usize {
         self.seats.len()
     }
-
+    pub fn pot(&self) -> Chips {
+        self.chips()
+    }
+    pub fn children(&self) -> Vec<(Action, Game)> {
+        self.options()
+            .into_iter()
+            .map(|action| (action, self.apply(action)))
+            .collect()
+    }
+    pub fn apply(&self, action: Action) -> Self {
+        let mut child = self.clone();
+        match action {
+            Action::Blind(_) => unreachable!("blinds are posted before any actions"),
+            Action::Draw(_) => child.show_revealed(),
+            _ => child.update(action),
+        }
+        child
+    }
     /// play against yourself in an infinite loop
     /// similar to children(), except a single decision action will come from
     /// Human::act() rather than all possible decision actions
@@ -83,38 +86,6 @@ impl Game {
                 Ply::Terminal => node.into_terminal(),
             }
         }
-    }
-
-    fn ending_actions(&self) -> Vec<(Game, Action)> {
-        // just for symmetry, sorry, had to do it to 'em
-        vec![]
-    }
-    fn chance_actions(&self) -> Vec<(Game, Action)> {
-        let mut child = self.clone();
-        child.show_revealed();
-        let action = Action::Draw(self.deck().draw());
-        vec![(child, action)]
-    }
-    fn choice_actions(&self) -> Vec<(Game, Action)> {
-        self.options()
-            .into_iter()
-            .inspect(|action| assert!(!matches!(action, Action::Draw(_) | Action::Blind(_))))
-            .map(|action| (self.spawn(action), action))
-            .collect()
-    }
-
-    fn apply(&mut self, ref action: Action) {
-        // assert!(self.options().contains(action));
-        self.update_stdout(action);
-        self.update_stacks(action);
-        self.update_states(action);
-        self.update_boards(action);
-        self.update_player(action);
-    }
-    fn spawn(&self, action: Action) -> Self {
-        let mut child = self.clone();
-        child.apply(action);
-        child
     }
 
     pub fn actor(&self) -> &Seat {
@@ -162,6 +133,15 @@ impl Game {
         } else {
             unreachable!("game rules violated")
         }
+    }
+
+    fn update(&mut self, ref action: Action) {
+        // assert!(self.options().contains(action));
+        self.update_stdout(action);
+        self.update_stacks(action);
+        self.update_states(action);
+        self.update_boards(action);
+        self.update_player(action);
     }
 
     fn deck(&self) -> Deck {
@@ -213,10 +193,10 @@ impl Game {
     }
 
     const fn bblind() -> Chips {
-        2
+        crate::B_BLIND
     }
     const fn sblind() -> Chips {
-        1
+        crate::S_BLIND
     }
 
     fn update_stacks(&mut self, action: &Action) {
@@ -316,9 +296,9 @@ impl Game {
         assert!(self.board.street() == Street::Pref);
         let stack = self.actor_ref().stack();
         if blind < stack {
-            self.apply(Action::Blind(blind))
+            self.update(Action::Blind(blind))
         } else {
-            self.apply(Action::Shove(stack))
+            self.update(Action::Shove(stack))
         }
     }
 
@@ -334,12 +314,12 @@ impl Game {
         let mut deck = self.deck();
         match self.board.street() {
             Street::Pref => {
-                self.apply(Action::Draw(deck.draw()));
-                self.apply(Action::Draw(deck.draw()));
-                self.apply(Action::Draw(deck.draw()));
+                self.update(Action::Draw(deck.draw()));
+                self.update(Action::Draw(deck.draw()));
+                self.update(Action::Draw(deck.draw()));
             }
-            Street::Turn => self.apply(Action::Draw(deck.draw())),
-            Street::Flop => self.apply(Action::Draw(deck.draw())),
+            Street::Turn => self.update(Action::Draw(deck.draw())),
+            Street::Flop => self.update(Action::Draw(deck.draw())),
             Street::Rive => unreachable!("terminal"),
         }
     }
@@ -351,7 +331,7 @@ impl Game {
 
     //
     fn make_decision(&mut self) {
-        self.apply(Human::act(&self));
+        self.update(Human::act(&self));
     }
 
     //
@@ -426,7 +406,7 @@ impl Game {
         self.to_shove() > self.to_raise()
     }
     fn can_shove(&self) -> bool {
-        self.to_shove() > 0 && false
+        self.to_shove() > 0 // && false
     }
 
     //

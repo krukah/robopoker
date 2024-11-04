@@ -12,7 +12,7 @@ use crate::mccfr::node::Node;
 use crate::mccfr::path::Path;
 use crate::play::action::Action;
 use crate::play::game::Game;
-use crate::play::Chips;
+use crate::Chips;
 use crate::Utility;
 use std::collections::BTreeMap;
 
@@ -104,7 +104,7 @@ impl Encoder {
             .game()
             .children() // TODO : implement Game::pseudoharmonic(&Node)
             .into_iter()
-            .map(|(g, a)| self.encode(g, a, node))
+            .map(|(a, g)| self.encode(g, a, node))
             .filter(|&(_, e)| !e.is_raise() || nraises < crate::MAX_N_BETS)
             .collect::<Vec<(Data, Edge)>>()
     }
@@ -129,26 +129,23 @@ impl Encoder {
     }
 
     fn actions(node: &Node) -> Vec<Action> {
-        let mut actions = node
-            .data()
-            .game()
-            .children()
-            .into_iter()
-            .map(|(_, action)| action)
-            .collect::<Vec<Action>>();
+        let mut actions = node.data().game().options();
         if let Some(raise) = actions.iter().position(|a| matches!(a, Action::Raise(_))) {
-            if let &Action::Raise(min) = actions.get(raise).unwrap() {
-                let max = node.data().game().to_shove();
-                actions.remove(raise);
-                actions.splice(
-                    raise..raise,
-                    Self::raises(node)
-                        .into_iter()
-                        .map(|relative| relative * node.data().game().pot() as f32)
-                        .map(|absolute| absolute as Chips)
-                        .filter(|raise| min <= *raise && *raise < max)
-                        .map(|absolute| Action::Raise(absolute)),
-                );
+            if let Some(shove) = actions.iter().position(|a| matches!(a, Action::Shove(_))) {
+                if let &Action::Raise(min) = actions.get(raise).unwrap() {
+                    if let &Action::Shove(max) = actions.get(shove).unwrap() {
+                        actions.remove(raise);
+                        actions.splice(
+                            raise..raise,
+                            Self::raises(node)
+                                .into_iter()
+                                .map(|relative| relative * node.data().game().pot() as Utility)
+                                .map(|absolute| absolute as Chips)
+                                .filter(|raise| min <= *raise && *raise < max)
+                                .map(|absolute| Action::Raise(absolute)),
+                        );
+                    }
+                }
             }
         }
         actions

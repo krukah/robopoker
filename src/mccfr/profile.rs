@@ -618,7 +618,7 @@ mod tests {
     use crate::clustering::abstraction::Abstraction;
     use crate::mccfr::path::Path;
     use crate::play::action::Action;
-    use crate::play::Chips;
+    use crate::Chips;
 
     #[test]
     fn persistence() {
