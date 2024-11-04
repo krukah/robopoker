@@ -8,6 +8,9 @@ pub enum Edge {
 }
 
 impl Edge {
+    pub fn is_choice(&self) -> bool {
+        matches!(self, Edge::Choice(_))
+    }
     pub fn is_delay(&self) -> bool {
         if let Edge::Choice(action) = self {
             matches!(action, Action::Raise(_) | Action::Shove(_))
@@ -17,13 +20,17 @@ impl Edge {
     }
     pub fn is_raise(&self) -> bool {
         if let Edge::Choice(action) = self {
-            matches!(action, Action::Raise(_) | Action::Shove(_))
+            matches!(action, Action::Raise(_))
         } else {
             false
         }
     }
-    pub fn is_choice(&self) -> bool {
-        matches!(self, Edge::Choice(_))
+    pub fn is_shove(&self) -> bool {
+        if let Edge::Choice(action) = self {
+            matches!(action, Action::Shove(_))
+        } else {
+            false
+        }
     }
 }
 

@@ -117,7 +117,7 @@ impl Encoder {
             .iter()
             .rev()
             .take_while(|e| e.is_choice())
-            .filter(|e| e.is_raise())
+            .filter(|e| e.is_delay())
             .count();
         Self::actions(node)
             .into_iter()
@@ -126,6 +126,36 @@ impl Encoder {
             .filter(|&(_, e)| !e.is_raise() || nraises < crate::MAX_N_BETS)
             .collect::<Vec<(Data, Edge)>>()
     }
+
+    /// i like to think of this as "positional encoding"
+    /// i like to think of this as "positional encoding"
+    /// later in the same round where the stakes are higher
+    /// we should "learn" things i.e. when to n-bet.
+    /// it also helps the recall be a bit "less imperfect"
+    /// the cards we see at a Node are memoryless, but the
+    /// Path represents "how we got here"
+    ///
+    /// we need to assert that: any Nodes in the same Infoset have the
+    /// same available actions. in addition to depth, we consider
+    /// whether or not we are in a Checkable or Foldable state.
+    fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
+        let round = node
+            .history()
+            .into_iter()
+            .chain(std::iter::once(edge))
+            .rev()
+            .take_while(|e| e.is_choice());
+        let depth = round.clone().count();
+        let raise = round.filter(|e| e.is_delay()).count();
+        Path::from((depth, raise))
+    }
+    /// the compressed card information for an observation
+    /// this is defined up to unique Observation > Isomorphism
+    /// so pocket vs public is the only distinction made. forget reveal order.
+    fn card_encoding(&self, game: &Game) -> Abstraction {
+        self.abstraction(&Isomorphism::from(Observation::from(game)))
+    }
+
     /// all actions available to the player at this node
     fn actions(node: &Node) -> Vec<Action> {
         let mut actions = node.data().game().options();
@@ -159,42 +189,13 @@ impl Encoder {
                 .iter()
                 .rev()
                 .take_while(|e| e.is_choice())
-                .filter(|e| e.is_raise())
+                .filter(|e| e.is_delay())
                 .count() // is_not_first_raise
             {
                 0 => vec![00000000000000000000.5, 0000000000001.0],
                 _ => vec![0000000000000000000000000000000000001.0],
             },
         }
-    }
-
-    /// i like to think of this as "positional encoding"
-    /// i like to think of this as "positional encoding"
-    /// later in the same round where the stakes are higher
-    /// we should "learn" things i.e. when to n-bet.
-    /// it also helps the recall be a bit "less imperfect"
-    /// the cards we see at a Node are memoryless, but the
-    /// Path represents "how we got here"
-    ///
-    /// we need to assert that: any Nodes in the same Infoset have the
-    /// same available actions. in addition to depth, we consider
-    /// whether or not we are in a Checkable or Foldable state.
-    fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
-        let round = node
-            .history()
-            .into_iter()
-            .chain(std::iter::once(edge))
-            .rev()
-            .take_while(|e| e.is_choice());
-        let depth = round.clone().count();
-        let raise = round.filter(|e| e.is_raise()).count();
-        Path::from((depth, raise))
-    }
-    /// the compressed card information for an observation
-    /// this is defined up to unique Observation > Isomorphism
-    /// so pocket vs public is the only distinction made. forget reveal order.
-    fn card_encoding(&self, game: &Game) -> Abstraction {
-        self.abstraction(&Isomorphism::from(Observation::from(game)))
     }
 }
 
