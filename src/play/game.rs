@@ -51,18 +51,11 @@ impl Game {
         root.post_blinds(Self::bblind());
         root
     }
-
     pub fn n(&self) -> usize {
         self.seats.len()
     }
     pub fn pot(&self) -> Chips {
         self.chips()
-    }
-    pub fn children(&self) -> Vec<(Action, Game)> {
-        self.options()
-            .into_iter()
-            .map(|action| (action, self.apply(action)))
-            .collect()
     }
     pub fn apply(&self, action: Action) -> Self {
         let mut child = self.clone();
@@ -73,10 +66,6 @@ impl Game {
         }
         child
     }
-    /// play against yourself in an infinite loop
-    /// similar to children(), except a single decision action will come from
-    /// Human::act() rather than all possible decision actions
-    /// coming from self.options()
     pub fn play() -> ! {
         let mut node = Self::root();
         loop {

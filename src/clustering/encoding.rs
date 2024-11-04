@@ -91,23 +91,6 @@ impl Encoder {
  * methods for unraveling the Tree
  */
 impl Encoder {
-    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        // cut off N-betting
-        let nraises = node
-            .history()
-            .iter()
-            .rev()
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_raise())
-            .count();
-        node.data()
-            .game()
-            .children() // TODO : implement Game::pseudoharmonic(&Node)
-            .into_iter()
-            .map(|(a, g)| self.encode(g, a, node))
-            .filter(|&(_, e)| !e.is_raise() || nraises < crate::MAX_N_BETS)
-            .collect::<Vec<(Data, Edge)>>()
-    }
     /// convert gameplay types into CFR types
     /// Action -> Edge
     /// Vec<Edge> -> Path
@@ -127,7 +110,23 @@ impl Encoder {
         let data = Data::from((game, Bucket::from((path, info))));
         data
     }
-
+    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+        // cut off N-betting
+        let nraises = node
+            .history()
+            .iter()
+            .rev()
+            .take_while(|e| e.is_choice())
+            .filter(|e| e.is_raise())
+            .count();
+        Self::actions(node)
+            .into_iter()
+            .map(|action| (action, node.data().game().apply(action)))
+            .map(|(a, g)| self.encode(g, a, node))
+            .filter(|&(_, e)| !e.is_raise() || nraises < crate::MAX_N_BETS)
+            .collect::<Vec<(Data, Edge)>>()
+    }
+    /// all actions available to the player at this node
     fn actions(node: &Node) -> Vec<Action> {
         let mut actions = node.data().game().options();
         if let Some(raise) = actions.iter().position(|a| matches!(a, Action::Raise(_))) {
@@ -150,6 +149,7 @@ impl Encoder {
         }
         actions
     }
+    /// discretized raise sizes, conditional on street and betting history
     fn raises(node: &Node) -> Vec<f32> {
         match node.data().game().board().street() {
             Street::Pref => vec![0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0],
@@ -166,12 +166,6 @@ impl Encoder {
                 _ => vec![0000000000000000000000000000000000001.0],
             },
         }
-        // let mut actions: Vec<Action> = sizes.iter().map(|&multiplier| todo!()).collect();
-        // Always include all-in as an option
-        // TODO
-        // do this in Game::children / Game::options
-        // actions.push(Action::Shove(game.to_shove()));
-        // actions
     }
 
     fn edge_encoding(&self, node: &Node, action: &Action) -> Edge {
