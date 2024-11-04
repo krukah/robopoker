@@ -96,9 +96,9 @@ impl Encoder {
     /// Vec<Edge> -> Path
     /// Game -> Data -> Obs -> Iso -> Abs
     /// Path -> Abs -> Bucket
-    pub fn encode(&self, leaf: Game, from: Action, head: &Node) -> (Data, Edge) {
+    pub fn encode(&self, leaf: Game, edge: Action, head: &Node) -> (Data, Edge) {
+        let edge = Edge::from(edge);
         let info = self.card_encoding(&leaf);
-        let edge = self.edge_encoding(&head, &from);
         let path = self.path_encoding(&head, &edge);
         let data = Data::from((leaf, Bucket::from((path, info))));
         (data, edge)
@@ -168,27 +168,6 @@ impl Encoder {
         }
     }
 
-    fn edge_encoding(&self, node: &Node, action: &Action) -> Edge {
-        enum Thresholds {
-            QuarPot,
-            HalfPot,
-            FullPot,
-            OverPot,
-        }
-        match if let Action::Raise(x) = action {
-            let bets = *x as Utility;
-            let wins = node.data().game().pot() as Utility;
-            let odds = bets / (wins - bets);
-            match odds {
-                x if odds < 0.5 => Thresholds::QuarPot,
-                x if odds < 1.0 => Thresholds::HalfPot,
-                x if odds < 2.0 => Thresholds::FullPot,
-                _ => Thresholds::OverPot,
-            };
-        } {
-            _ => todo!(),
-        }
-    }
     /// i like to think of this as "positional encoding"
     /// i like to think of this as "positional encoding"
     /// later in the same round where the stakes are higher
