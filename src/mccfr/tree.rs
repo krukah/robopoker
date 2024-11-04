@@ -1,5 +1,4 @@
 use super::data::Data;
-use super::info::Info;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use petgraph::graph::DiGraph;
@@ -54,13 +53,6 @@ impl Tree {
             self.draw(f, *child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
-    }
-}
-
-impl Iterator for Tree {
-    type Item = Info;
-    fn next(&mut self) -> Option<Self::Item> {
-        todo!()
     }
 }
 
