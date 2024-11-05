@@ -141,7 +141,7 @@ impl Layer {
             "collecting histograms",
             format!("{} <- {}", self.street.prev(), self.street)
         );
-        let progress = Self::progress(self.street.n_isomorphisms());
+        let progress = crate::progress(self.street.n_isomorphisms());
         let projection = Observation::exhaust(self.street.prev())
             .filter(Isomorphism::is_canonical)
             .map(Isomorphism::from)
@@ -165,7 +165,7 @@ impl Layer {
             format!("{}    {} clusters", self.street, Self::k(self.street))
         );
         let ref mut rng = rand::thread_rng();
-        let progress = Self::progress(Self::k(self.street));
+        let progress = crate::progress(Self::k(self.street));
         let sample = self.sample_uniform(rng);
         self.kmeans.expand(sample);
         progress.inc(1);
@@ -185,7 +185,7 @@ impl Layer {
             "clustering observations",
             format!("{}    {} iterations", self.street, Self::t(self.street))
         );
-        let progress = Self::progress(Self::t(self.street));
+        let progress = crate::progress(Self::t(self.street));
         for _ in 0..Self::t(self.street) {
             let neighbors = self.get_neighbor();
             self.set_neighbor(neighbors);
@@ -273,17 +273,6 @@ impl Layer {
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .map(|(abs, distance)| (abs.clone(), distance))
             .expect("find nearest neighbor")
-    }
-
-    /// create a progress bar for kmeans clustering
-    fn progress(n: usize) -> indicatif::ProgressBar {
-        let tick = std::time::Duration::from_secs(5);
-        let style = "[{elapsed}] {spinner} {wide_bar} ETA {eta}";
-        let style = indicatif::ProgressStyle::with_template(style).unwrap();
-        let progress = indicatif::ProgressBar::new(n as u64);
-        progress.set_style(style);
-        progress.enable_steady_tick(tick);
-        progress
     }
 
     /// number of kmeans centroids.
