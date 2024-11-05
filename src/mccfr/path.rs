@@ -1,8 +1,17 @@
+use super::edge::Edge;
 use super::player::Player;
 use crate::play::ply::Ply;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path(u64);
+
+impl From<Vec<Edge>> for Path {
+    fn from(edges: Vec<Edge>) -> Self {
+        let depth = edges.len();
+        let raise = edges.iter().filter(|e| e.is_raise()).count();
+        Path::from((depth, raise))
+    }
+}
 
 impl From<(usize, usize)> for Path {
     fn from((depth, raise): (usize, usize)) -> Self {

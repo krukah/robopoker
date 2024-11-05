@@ -101,6 +101,7 @@ impl Encoder {
         let info = self.card_encoding(&leaf);
         let path = self.path_encoding(&head, &edge);
         let data = Data::from((leaf, Bucket::from((path, info))));
+        log::trace!("encoding {} -> {:?}", leaf, data.bucket());
         (data, edge)
     }
     pub fn root(&self) -> Data {
@@ -139,15 +140,15 @@ impl Encoder {
     /// same available actions. in addition to depth, we consider
     /// whether or not we are in a Checkable or Foldable state.
     fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
-        let round = node
-            .history()
-            .into_iter()
-            .chain(std::iter::once(edge))
-            .rev()
-            .take_while(|e| e.is_choice());
-        let depth = round.clone().count();
-        let raise = round.filter(|e| e.is_delay()).count();
-        Path::from((depth, raise))
+        Path::from(
+            node.history()
+                .into_iter()
+                .chain(std::iter::once(edge))
+                .rev()
+                .take_while(|e| e.is_choice())
+                .copied()
+                .collect::<Vec<Edge>>(),
+        )
     }
     /// the compressed card information for an observation
     /// this is defined up to unique Observation > Isomorphism
