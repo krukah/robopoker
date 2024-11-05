@@ -22,7 +22,7 @@ const KMEANS_FLOP_CLUSTER_COUNT: usize = 100;
 const KMEANS_TURN_TRAINING_ITERATIONS: usize = 100;
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 100;
 
-const CFR_BATCH_SIZE: usize = 16;
+const CFR_BATCH_SIZE: usize = 1;
 const CFR_TREE_COUNT: usize = 16_777_216;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000;
@@ -33,3 +33,13 @@ const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 
 const MAX_N_BETS: usize = 3;
+
+fn progress(n: usize) -> indicatif::ProgressBar {
+    let tick = std::time::Duration::from_secs(5);
+    let style = "[{elapsed}] {spinner} {wide_bar} ETA {eta}";
+    let style = indicatif::ProgressStyle::with_template(style).unwrap();
+    let progress = indicatif::ProgressBar::new(n as u64);
+    progress.set_style(style);
+    progress.enable_steady_tick(tick);
+    progress
+}

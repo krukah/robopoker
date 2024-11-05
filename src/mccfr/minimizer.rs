@@ -54,6 +54,7 @@ impl Trainer {
     /// a learning schedule for regret or policy.
     pub fn train(&mut self) {
         log::info!("training blueprint");
+        let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
             let counterfactuals = (0..crate::CFR_BATCH_SIZE)
                 .map(|_| self.sample())
@@ -68,6 +69,7 @@ impl Trainer {
                 self.profile.regret_update(info.node().bucket(), &regret.0);
                 self.profile.policy_update(info.node().bucket(), &policy.0);
             }
+            progress.inc(1);
         }
         self.profile.save("blueprint");
     }
@@ -108,6 +110,7 @@ impl Trainer {
     /// - explore 1 of Chance
     /// - explore 1 of Villain
     fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, partition: &mut Partition) {
+        log::trace!("visiting node {}", head);
         let children = self.encoder.children(head);
         let walker = self.profile.walker();
         let chance = Player::chance();
