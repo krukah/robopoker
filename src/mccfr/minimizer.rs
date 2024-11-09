@@ -91,15 +91,17 @@ impl Trainer {
         let head = self.encoder.root();
         let head = tree.insert(head);
         let head = tree.at(head);
+        log::warn!("{}", tree);
         self.visit(&head, queue, infos);
         #[allow(unused_variables)]
         while let Some(Branch(tail, from, head)) = queue.pop() {
             let tail = tree.insert(tail);
             let from = tree.extend(tail, from, head);
             let head = tree.at(tail);
+            log::warn!("{}", tree);
             self.visit(&head, queue, infos);
         }
-        log::trace!("{}", tree);
+        log::warn!("{}", tree);
         (tree, partition)
     }
 
@@ -110,7 +112,8 @@ impl Trainer {
     /// - explore 1 of Chance
     /// - explore 1 of Villain
     fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, partition: &mut Partition) {
-        log::trace!("visiting node {}", head);
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        log::warn!("visiting node {}", head);
         let children = self.encoder.children(head);
         let walker = self.profile.walker();
         let chance = Player::chance();

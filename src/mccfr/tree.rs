@@ -33,7 +33,11 @@ impl Tree {
     }
     pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {
-            writeln!(f, "ROOT   {}", self.0[index].bucket())?;
+            writeln!(
+                f,
+                "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nROOT   {}",
+                self.0[index].recall()
+            )?;
         }
         let mut children = self
             .0
@@ -44,7 +48,7 @@ impl Tree {
             let last = i == children.len() - 1;
             let stem = if last { "└" } else { "├" };
             let gaps = if last { "    " } else { "│   " };
-            let head = self.0[*child].bucket();
+            let head = self.0[*child].recall();
             let edge = self
                 .0
                 .edge_weight(self.0.find_edge(index, *child).unwrap())

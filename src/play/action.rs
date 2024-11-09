@@ -17,6 +17,24 @@ pub enum Action {
     Blind(Chips),
 }
 
+impl Action {
+    pub fn is_raise(&self) -> bool {
+        matches!(self, Action::Raise(_))
+    }
+    pub fn is_shove(&self) -> bool {
+        matches!(self, Action::Shove(_))
+    }
+    pub fn is_random(&self) -> bool {
+        matches!(self, Action::Draw(_))
+    }
+    pub fn is_aggro(&self) -> bool {
+        matches!(self, Action::Raise(_) | Action::Shove(_))
+    }
+    pub fn is_choice(&self) -> bool {
+        !self.is_random()
+    }
+}
+
 impl From<u32> for Action {
     fn from(value: u32) -> Self {
         let kind = value & MASK; // Use lowest 8 bits for action type

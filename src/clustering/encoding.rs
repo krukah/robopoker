@@ -5,15 +5,13 @@ use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::mccfr::bucket::Bucket;
+use crate::mccfr::bucket::Recall;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use crate::mccfr::path::Path;
-use crate::play::action::Action;
 use crate::play::game::Game;
-use crate::Chips;
-use crate::Utility;
+use crate::Probability;
 use std::collections::BTreeMap;
 
 /// this is the output of the clustering module
@@ -96,19 +94,18 @@ impl Encoder {
     /// Vec<Edge> -> Path
     /// Game -> Data -> Obs -> Iso -> Abs
     /// Path -> Abs -> Bucket
-    pub fn encode(&self, leaf: Game, edge: Action, head: &Node) -> (Data, Edge) {
-        let edge = Edge::from(edge);
+    pub fn encode(&self, leaf: Game, edge: &Edge, head: &Node) -> Data {
         let info = self.card_encoding(&leaf);
         let path = self.path_encoding(&head, &edge);
-        let data = Data::from((leaf, Bucket::from((path, info))));
-        log::trace!("encoding {} -> {:?}", leaf, data.bucket());
-        (data, edge)
+        let data = Data::from((leaf, Recall::from((path, info))));
+        log::trace!("encoding {} -> {:?}", leaf, data.recall());
+        data
     }
     pub fn root(&self) -> Data {
         let path = Path::from(0);
         let game = Game::root();
         let info = self.card_encoding(&game);
-        let data = Data::from((game, Bucket::from((path, info))));
+        let data = Data::from((game, Recall::from((path, info))));
         data
     }
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
@@ -118,13 +115,13 @@ impl Encoder {
             .iter()
             .rev()
             .take_while(|e| e.is_choice())
-            .filter(|e| e.is_delay())
+            .filter(|e| e.is_aggro())
             .count();
-        Self::actions(node)
+        node.expand()
             .into_iter()
-            .map(|action| (action, node.data().game().apply(action)))
-            .map(|(a, g)| self.encode(g, a, node))
-            .filter(|&(_, e)| !e.is_raise() || nraises < crate::MAX_N_BETS)
+            .map(|(edge, action)| (edge, node.data().game().apply(action)))
+            .filter(|&(e, _)| !e.is_raise() || nraises < crate::MAX_N_BETS)
+            .map(|(edge, game)| (self.encode(game, &edge, node), edge))
             .collect::<Vec<(Data, Edge)>>()
     }
 
@@ -156,47 +153,19 @@ impl Encoder {
     fn card_encoding(&self, game: &Game) -> Abstraction {
         self.abstraction(&Isomorphism::from(Observation::from(game)))
     }
+}
 
-    /// all actions available to the player at this node
-    fn actions(node: &Node) -> Vec<Action> {
-        let mut actions = node.data().game().options();
-        if let Some(raise) = actions.iter().position(|a| matches!(a, Action::Raise(_))) {
-            if let Some(shove) = actions.iter().position(|a| matches!(a, Action::Shove(_))) {
-                if let &Action::Raise(min) = actions.get(raise).unwrap() {
-                    if let &Action::Shove(max) = actions.get(shove).unwrap() {
-                        actions.remove(raise);
-                        actions.splice(
-                            raise..raise,
-                            Self::raises(node)
-                                .into_iter()
-                                .map(|relative| relative * node.data().game().pot() as Utility)
-                                .map(|absolute| absolute as Chips)
-                                .filter(|raise| min <= *raise && *raise < max)
-                                .map(|absolute| Action::Raise(absolute)),
-                        );
-                    }
-                }
-            }
-        }
-        actions
+/// pot odds for a given raise size, relative to the pot
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct Odds(pub u8, pub u8);
+impl From<Odds> for Probability {
+    fn from(odds: Odds) -> Self {
+        odds.0 as f32 / (/* odds.0 + */odds.1) as f32 // only using this to calculate actual raise amount
     }
-    /// discretized raise sizes, conditional on street and betting history
-    fn raises(node: &Node) -> Vec<f32> {
-        match node.data().game().board().street() {
-            Street::Pref => vec![0.25, 0.33, 0.5, 0.66, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0],
-            Street::Flop => vec![0000000000000.5, 0000000.75, 1.0, 1.5, 2.0],
-            _ => match node
-                .history()
-                .iter()
-                .rev()
-                .take_while(|e| e.is_choice())
-                .filter(|e| e.is_delay())
-                .count() // is_not_first_raise
-            {
-                0 => vec![00000000000000000000.5, 0000000000001.0],
-                _ => vec![0000000000000000000000000000000000001.0],
-            },
-        }
+}
+impl std::fmt::Display for Odds {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:>2}:{:>2}", self.0, self.1)
     }
 }
 
