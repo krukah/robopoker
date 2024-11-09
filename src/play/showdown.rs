@@ -116,8 +116,8 @@ mod tests {
     #[test]
     fn heads_up_showdown() {
         let settlement = Showdown::from(vec![
-            Settlement::from((100, State::Playing, ace_high())),
-            Settlement::from((100, State::Playing, one_pair())),
+            Settlement::from((100, State::Betting, ace_high())),
+            Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 0);
@@ -128,9 +128,9 @@ mod tests {
     fn winners_folded() {
         let settlement = Showdown::from(vec![
             Settlement::from((050, State::Folding, the_nuts())),
-            Settlement::from((100, State::Playing, two_pair())),
+            Settlement::from((100, State::Betting, two_pair())),
             Settlement::from((075, State::Folding, the_nuts())),
-            Settlement::from((100, State::Playing, one_pair())),
+            Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 0);
@@ -142,9 +142,9 @@ mod tests {
     #[test]
     fn multiway_pot_split() {
         let settlement = Showdown::from(vec![
-            Settlement::from((100, State::Playing, two_pair())),
-            Settlement::from((100, State::Playing, two_pair())),
-            Settlement::from((100, State::Playing, one_pair())),
+            Settlement::from((100, State::Betting, two_pair())),
+            Settlement::from((100, State::Betting, two_pair())),
+            Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 150);
@@ -155,9 +155,9 @@ mod tests {
     #[test]
     fn multiway_winner_takes_all() {
         let settlement = Showdown::from(vec![
-            Settlement::from((200, State::Playing, the_nuts())),
+            Settlement::from((200, State::Betting, the_nuts())),
             Settlement::from((150, State::Shoving, triplets())),
-            Settlement::from((200, State::Playing, two_pair())),
+            Settlement::from((200, State::Betting, two_pair())),
             Settlement::from((100, State::Shoving, one_pair())),
             Settlement::from((050, State::Folding, the_nuts())),
         ])
@@ -189,8 +189,8 @@ mod tests {
         let settlement = Showdown::from(vec![
             Settlement::from((050, State::Shoving, the_nuts())),
             Settlement::from((100, State::Shoving, triplets())),
-            Settlement::from((150, State::Playing, one_pair())),
-            Settlement::from((150, State::Playing, ace_high())),
+            Settlement::from((150, State::Betting, one_pair())),
+            Settlement::from((150, State::Betting, ace_high())),
         ])
         .settle();
         assert!(settlement[0].reward == 200);
@@ -203,8 +203,8 @@ mod tests {
     fn singular_all_in_with_side_pot() {
         let settlement = Showdown::from(vec![
             Settlement::from((050, State::Shoving, two_pair())),
-            Settlement::from((100, State::Playing, one_pair())),
-            Settlement::from((100, State::Playing, ace_high())),
+            Settlement::from((100, State::Betting, one_pair())),
+            Settlement::from((100, State::Betting, ace_high())),
         ])
         .settle();
         assert!(settlement[0].reward == 150);
@@ -216,8 +216,8 @@ mod tests {
     fn singular_all_in_with_side_pot_split() {
         let settlement = Showdown::from(vec![
             Settlement::from((050, State::Shoving, the_nuts())),
-            Settlement::from((100, State::Playing, two_pair())),
-            Settlement::from((100, State::Playing, two_pair())),
+            Settlement::from((100, State::Betting, two_pair())),
+            Settlement::from((100, State::Betting, two_pair())),
         ])
         .settle();
         assert!(settlement[0].reward == 150);
@@ -229,7 +229,7 @@ mod tests {
     fn last_man_standing() {
         let settlement = Showdown::from(vec![
             Settlement::from((050, State::Folding, the_nuts())),
-            Settlement::from((100, State::Playing, ace_high())),
+            Settlement::from((100, State::Betting, ace_high())),
             Settlement::from((075, State::Folding, the_nuts())),
             Settlement::from((025, State::Folding, the_nuts())),
         ])

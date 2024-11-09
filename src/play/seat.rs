@@ -17,7 +17,7 @@ impl Seat {
             stack,
             spent: 0,
             stake: 0,
-            state: State::Playing,
+            state: State::Betting,
             cards: Hole::empty(),
         }
     }
@@ -40,21 +40,21 @@ impl Seat {
     pub fn win(&mut self, win: Chips) {
         self.stack += win;
     }
-    pub fn bet(&mut self, bet: &Chips) {
+    pub fn bet(&mut self, bet: Chips) {
         self.stack -= bet;
         self.stake += bet;
         self.spent += bet;
     }
-    pub fn set_state(&mut self, state: State) {
+    pub fn reset_state(&mut self, state: State) {
         self.state = state;
     }
-    pub fn set_cards(&mut self, cards: Hole) {
+    pub fn reset_cards(&mut self, cards: Hole) {
         self.cards = cards;
     }
-    pub fn set_stake(&mut self) {
+    pub fn reset_stake(&mut self) {
         self.stake = 0;
     }
-    pub fn set_spent(&mut self) {
+    pub fn reset_spent(&mut self) {
         self.spent = 0;
     }
 }
@@ -73,7 +73,7 @@ impl std::fmt::Display for Seat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
-    Playing,
+    Betting,
     Shoving,
     Folding,
 }
@@ -81,7 +81,7 @@ pub enum State {
 impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            State::Playing => write!(f, "{}", "P".green()),
+            State::Betting => write!(f, "{}", "P".green()),
             State::Shoving => write!(f, "{}", "S".yellow()),
             State::Folding => write!(f, "{}", "F".red()),
         }

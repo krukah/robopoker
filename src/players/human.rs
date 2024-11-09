@@ -9,7 +9,7 @@ use dialoguer::Select;
 pub struct Human;
 
 impl Human {
-    pub fn act(spot: &Game) -> Action {
+    pub fn decide(spot: &Game) -> Action {
         Self::random(spot)
         // let ref choices = Self::available(spot);
         // let choice = Self::selection(choices, spot);
