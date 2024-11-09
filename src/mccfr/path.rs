@@ -1,6 +1,6 @@
 use super::edge::Edge;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path(u64);
 impl Path {
     pub fn random() -> Self {
