@@ -1,6 +1,7 @@
 use super::card::Card;
 use super::hand::Hand;
 use super::hole::Hole;
+use super::street::Street;
 use rand::Rng;
 
 /// Deck extends much of Hand functionality, with ability to remove cards from itself. Random selection via ::draw(), or sequential via ::flip().
@@ -29,6 +30,13 @@ impl Deck {
         let card = Card::from(card);
         self.0.remove(card);
         card
+    }
+
+    /// only needed for Flop, but the creation of a Hand is well-generalized
+    pub fn deal(&mut self, street: Street) -> Hand {
+        (0..street.n_revealed())
+            .map(|_| self.draw())
+            .fold(Hand::empty(), |h, c| Hand::add(h, Hand::from(c)))
     }
 
     /// remove two cards from the deck

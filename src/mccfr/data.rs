@@ -22,6 +22,6 @@ impl Data {
         &self.bucket
     }
     pub fn player(&self) -> Player {
-        Player(self.game.ply())
+        Player(self.game.player())
     }
 }
