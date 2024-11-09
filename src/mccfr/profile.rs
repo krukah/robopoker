@@ -13,7 +13,7 @@ use rand::Rng;
 use rand::SeedableRng;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::usize;
@@ -127,9 +127,17 @@ impl Profile {
         match self.strategies.get(bucket) {
             Some(strategy) => {
                 log::trace!("revisit infoset @ {}", bucket);
-                let expected = children.iter().map(|(_, e)| e).collect::<HashSet<_>>();
-                let observed = strategy.keys().collect::<HashSet<_>>();
-                assert!(observed == expected);
+                let observed = children.iter().map(|(_, e)| e).collect::<BTreeSet<_>>();
+                let existing = strategy.keys().collect::<BTreeSet<_>>();
+                if existing != observed {
+                    log::error!("bucket: {}", bucket);
+                    log::error!("observed: {:?}", observed);
+                    log::error!("existing: {:?}", existing);
+                }
+                assert!(
+                    observed.is_subset(&existing),
+                    "observed edges must be subset of existing edges"
+                );
                 // asssertion needs to relax once i reintroduce pruning\
                 // some (incoming, children) branches will be permanently
                 // pruned, both in the Profile and when sampling children
@@ -287,7 +295,7 @@ impl Profile {
         choices
             .into_iter()
             // .filter(|(_, edge)| self.prune(node.bucket(), edge))
-            .inspect(|(_, edge)| assert!(matches!(edge, Edge::Choice(_))))
+            .inspect(|(_, edge)| assert!(edge.is_choice()))
             .collect()
     }
     /// uniform sampling of chance Edge
@@ -297,7 +305,7 @@ impl Profile {
         let ref mut rng = self.rng(head);
         let choice = rng.gen_range(0..n);
         let chosen = choices.remove(choice);
-        assert!(matches!(chosen, (_, Edge::Random)));
+        assert!(chosen.1.is_random());
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
@@ -313,7 +321,7 @@ impl Profile {
             .expect("at least one policy > 0")
             .sample(rng);
         let chosen = choices.remove(choice);
-        assert!(matches!(chosen, (_, Edge::Choice(_))));
+        assert!(chosen.1.is_choice());
         vec![chosen]
     }
 
@@ -392,6 +400,7 @@ impl Profile {
         self.external_reach(head)
             * head
                 .follow(edge)
+                .expect("valid edge to follow")
                 .leaves()
                 .iter()
                 .map(|leaf| self.terminal_value(head, leaf))
@@ -477,7 +486,6 @@ impl Profile {
         }
     }
 }
-
 impl From<&str> for Profile {
     fn from(name: &str) -> Self {
         use crate::clustering::abstraction::Abstraction;
@@ -495,19 +503,21 @@ impl From<&str> for Profile {
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) == 5 {
-                // We expect 5 fields per record
-                reader.read_u32::<BE>().expect("path length");
-                let path = Path::from(reader.read_u64::<BE>().expect("read path"));
+            if u16::from_be_bytes(buffer) == 6 {
+                // We expect 6 fields per record
+                reader.read_u32::<BE>().expect("past path length");
+                let past = Path::from(reader.read_u64::<BE>().expect("read past path"));
                 reader.read_u32::<BE>().expect("abstraction length");
                 let abs = Abstraction::from(reader.read_u64::<BE>().expect("read abstraction"));
+                reader.read_u32::<BE>().expect("future path length");
+                let future = Path::from(reader.read_u64::<BE>().expect("read future path"));
                 reader.read_u32::<BE>().expect("edge length");
-                let edge = Edge::from(reader.read_u32::<BE>().expect("read edge"));
+                let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
                 reader.read_u32::<BE>().expect("regret length");
                 let regret = reader.read_f32::<BE>().expect("read regret");
                 reader.read_u32::<BE>().expect("policy length");
                 let policy = reader.read_f32::<BE>().expect("read policy");
-                let bucket = Bucket::from((path, abs));
+                let bucket = Bucket::from((past, abs, future));
                 let memory = Decision { regret, policy };
                 strategies
                     .entry(bucket)
@@ -537,16 +547,18 @@ impl Profile {
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
-        for (Bucket(path, abs), policy) in self.strategies.iter() {
+        for (Bucket(past, abs, future), policy) in self.strategies.iter() {
             for (edge, memory) in policy.iter() {
-                const N_FIELDS: u16 = 5;
+                const N_FIELDS: u16 = 6;
                 file.write_u16::<BE>(N_FIELDS).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(*path)).unwrap();
+                file.write_u64::<BE>(u64::from(*past)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
                 file.write_u64::<BE>(u64::from(*abs)).unwrap();
-                file.write_u32::<BE>(size_of::<u32>() as u32).unwrap();
-                file.write_u32::<BE>(u32::from(*edge)).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(*future)).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(*edge)).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
                 file.write_f32::<BE>(memory.regret).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
@@ -615,8 +627,6 @@ impl std::fmt::Display for Profile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::clustering::abstraction::Abstraction;
-    use crate::mccfr::path::Path;
     use crate::play::action::Action;
     use crate::Chips;
 
@@ -660,9 +670,6 @@ mod tests {
             .collect()
     }
     fn random_bucket() -> Bucket {
-        Bucket::from((
-            Path::from(rand::thread_rng().gen::<u64>()),
-            Abstraction::random(),
-        ))
+        Bucket::random()
     }
 }

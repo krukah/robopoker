@@ -19,7 +19,7 @@ impl Human {
     fn random(game: &Game) -> Action {
         use rand::seq::SliceRandom;
         let ref mut rng = rand::thread_rng();
-        game.options()
+        game.legal()
             .choose(rng)
             .copied()
             .expect("decision node has options")
@@ -61,7 +61,7 @@ impl Human {
     }
 
     fn available(spot: &Game) -> Vec<&str> {
-        spot.options()
+        spot.legal()
             .iter()
             .map(|a| match a {
                 Action::Fold => "Fold",

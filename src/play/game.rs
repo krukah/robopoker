@@ -88,7 +88,7 @@ impl Game {
     pub fn board(&self) -> Board {
         self.board
     }
-    pub fn options(&self) -> Vec<Action> {
+    pub fn legal(&self) -> Vec<Action> {
         let mut options = Vec::new();
         if self.is_terminal() {
             return options;
@@ -191,7 +191,7 @@ impl Game {
         log::trace!("acting {} {}", self.actor_idx(), a);
         assert!(self.is_terminal() == false);
         assert!(self
-            .options()
+            .legal()
             .iter()
             .map(|o| std::mem::discriminant(o))
             .any(|o| std::mem::discriminant(a) == o));
