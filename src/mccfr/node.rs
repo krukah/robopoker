@@ -1,5 +1,4 @@
 use super::bucket::Bucket;
-use super::bucket::Recall;
 use super::path::Path;
 use super::player::Player;
 use crate::cards::street::Street;
@@ -22,7 +21,6 @@ use petgraph::Direction::Outgoing;
 /// for navigational methods.
 #[derive(Debug, Clone, Copy)]
 pub struct Node<'tree> {
-    bucket: Bucket, // initialize lazily by using self.future()
     index: NodeIndex,
     graph: &'tree DiGraph<Data, Edge>,
 }
@@ -33,23 +31,7 @@ pub struct Node<'tree> {
 /// make cheap copies of Node.
 impl<'tree> From<(NodeIndex, &'tree DiGraph<Data, Edge>)> for Node<'tree> {
     fn from((index, graph): (NodeIndex, &'tree DiGraph<Data, Edge>)) -> Self {
-        Self {
-            index,
-            graph,
-            bucket: Bucket::from(Self {
-                index,
-                graph,
-                bucket: Bucket::random(),
-            }),
-        }
-    }
-}
-
-impl From<Node<'_>> for Bucket {
-    fn from(node: Node<'_>) -> Self {
-        let Recall(past, present) = node.data().recall().clone();
-        let future = node.future();
-        Bucket::from((past, present, future))
+        Self { index, graph }
     }
 }
 
@@ -64,7 +46,7 @@ impl<'tree> Node<'tree> {
             .expect("valid node index")
     }
     pub fn bucket(&self) -> &Bucket {
-        &self.bucket
+        &self.data().bucket()
     }
     pub fn index(&self) -> NodeIndex {
         self.index
