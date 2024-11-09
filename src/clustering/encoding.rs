@@ -5,7 +5,7 @@ use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::mccfr::bucket::Recall;
+use crate::mccfr::bucket::Bucket;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
@@ -13,6 +13,23 @@ use crate::mccfr::path::Path;
 use crate::play::game::Game;
 use crate::Probability;
 use std::collections::BTreeMap;
+
+pub struct History(Vec<Edge>);
+pub struct Futures(Vec<Edge>);
+
+/// pot odds for a given raise size, relative to the pot
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct Odds(pub u8, pub u8);
+impl From<Odds> for Probability {
+    fn from(odds: Odds) -> Self {
+        odds.0 as f32 / (/* odds.0 + */odds.1) as f32 // only using this to calculate actual raise amount
+    }
+}
+impl std::fmt::Display for Odds {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:>2}:{:>2}", self.0, self.1)
+    }
+}
 
 /// this is the output of the clustering module
 /// it is a massive table of `Equivalence` -> `Abstraction`.
@@ -95,32 +112,30 @@ impl Encoder {
     /// Game -> Data -> Obs -> Iso -> Abs
     /// Path -> Abs -> Bucket
     pub fn encode(&self, leaf: Game, edge: &Edge, head: &Node) -> Data {
-        let info = self.card_encoding(&leaf);
-        let path = self.path_encoding(&head, &edge);
-        let data = Data::from((leaf, Recall::from((path, info))));
-        log::trace!("encoding {} -> {:?}", leaf, data.recall());
+        let past = self.path_encoding(&head, &edge);
+        let present = self.card_encoding(&leaf);
+        let future = self.future_encoding(&leaf, &edge, &head);
+        let bucket = Bucket::from((past, present, future));
+        let data = Data::from((leaf, bucket));
+        log::trace!("encoding {} -> {:?}", leaf, data.bucket());
         data
     }
     pub fn root(&self) -> Data {
-        let path = Path::from(0);
+        let path = Path::default();
         let game = Game::root();
         let info = self.card_encoding(&game);
-        let data = Data::from((game, Recall::from((path, info))));
+        let future = Path::default();
+        let bucket = Bucket::from((path, info, future));
+        let data = Data::from((game, bucket));
+        log::trace!("encoding root -> {:?}", data.bucket());
         data
     }
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        // cut off N-betting
-        let nraises = node
-            .history()
-            .iter()
-            .rev()
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_aggro())
-            .count();
-        node.expand()
+        let history = node.history().into_iter().cloned().collect::<Vec<Edge>>();
+        node.data()
+            .expand(&history)
             .into_iter()
             .map(|(edge, action)| (edge, node.data().game().apply(action)))
-            .filter(|&(e, _)| !e.is_raise() || nraises < crate::MAX_N_BETS)
             .map(|(edge, game)| (self.encode(game, &edge, node), edge))
             .collect::<Vec<(Data, Edge)>>()
     }
@@ -137,15 +152,7 @@ impl Encoder {
     /// same available actions. in addition to depth, we consider
     /// whether or not we are in a Checkable or Foldable state.
     fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
-        Path::from(
-            node.history()
-                .into_iter()
-                .chain(std::iter::once(edge))
-                .rev()
-                .take_while(|e| e.is_choice())
-                .copied()
-                .collect::<Vec<Edge>>(),
-        )
+        Path::from(node.futures(edge))
     }
     /// the compressed card information for an observation
     /// this is defined up to unique Observation > Isomorphism
@@ -153,19 +160,17 @@ impl Encoder {
     fn card_encoding(&self, game: &Game) -> Abstraction {
         self.abstraction(&Isomorphism::from(Observation::from(game)))
     }
-}
-
-/// pot odds for a given raise size, relative to the pot
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Odds(pub u8, pub u8);
-impl From<Odds> for Probability {
-    fn from(odds: Odds) -> Self {
-        odds.0 as f32 / (/* odds.0 + */odds.1) as f32 // only using this to calculate actual raise amount
-    }
-}
-impl std::fmt::Display for Odds {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:>2}:{:>2}", self.0, self.1)
+    /// we look at the available future continuations
+    /// and encode that as a Path
+    fn future_encoding(&self, leaf: &Game, edge: &Edge, head: &Node) -> Path {
+        // TODO move the future / continuations / expand / raises into Game
+        // TODO move the future / continuations / expand / raises into Game
+        // TODO move the future / continuations / expand / raises into Game
+        // TODO move the future / continuations / expand / raises into Game
+        // TODO move the future / continuations / expand / raises into Game
+        let ref data = Data::from((leaf.clone(), Bucket::random()));
+        let ref past = head.futures(edge);
+        data.future(past)
     }
 }
 

@@ -14,7 +14,7 @@ impl From<Vec<Edge>> for Path {
             edges
                 .into_iter()
                 .map(|e| u64::from(e))
-                .fold(0x1337DEADBEEF1337u64, |acc, x| acc.wrapping_mul(x)),
+                .fold(0x1337DEADBEEF1337u64, |acc, x| acc.wrapping_mul(x + 1)),
         )
     }
 }
