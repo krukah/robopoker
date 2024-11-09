@@ -99,7 +99,7 @@ impl Trainer {
             let head = tree.at(tail);
             self.visit(&head, queue, infos);
         }
-        log::warn!("{}", tree);
+        log::trace!("{}", tree);
         (tree, partition)
     }
 
@@ -110,7 +110,7 @@ impl Trainer {
     /// - explore 1 of Chance
     /// - explore 1 of Villain
     fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, partition: &mut Partition) {
-        log::warn!("visiting node {}", head);
+        log::trace!("visiting node {}", head);
         let children = self.encoder.children(head);
         let walker = self.profile.walker();
         let chance = Player::chance();
