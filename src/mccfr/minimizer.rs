@@ -6,7 +6,7 @@ use super::partition::Partition;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
-use crate::clustering::encoding::Encoder;
+use crate::clustering::encoding::Sampler;
 use crate::Probability;
 use crate::Utility;
 use petgraph::graph::NodeIndex;
@@ -35,7 +35,7 @@ struct Counterfactual(Info, Regret, Policy);
 #[derive(Default)]
 pub struct Trainer {
     profile: Profile,
-    encoder: Encoder,
+    sampler: Sampler,
 }
 
 impl Trainer {
@@ -43,7 +43,7 @@ impl Trainer {
     pub fn load() -> Self {
         Self {
             profile: Profile::load(),
-            encoder: Encoder::load(),
+            sampler: Sampler::load(),
         }
     }
 
@@ -88,7 +88,7 @@ impl Trainer {
         let mut partition = Partition::new();
         let ref mut infos = partition;
         let ref mut queue = Vec::new();
-        let head = self.encoder.root();
+        let head = self.sampler.root();
         let head = tree.insert(head);
         let head = tree.at(head);
         self.visit(&head, queue, infos);
@@ -111,7 +111,7 @@ impl Trainer {
     /// - explore 1 of Villain
     fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, partition: &mut Partition) {
         log::trace!("visiting node {}", head);
-        let children = self.encoder.children(head);
+        let children = self.sampler.children(head);
         let walker = self.profile.walker();
         let chance = Player::chance();
         let player = head.player();

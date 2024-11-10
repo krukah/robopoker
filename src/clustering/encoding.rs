@@ -14,8 +14,22 @@ use crate::play::game::Game;
 use crate::Probability;
 use std::collections::BTreeMap;
 
-pub struct History(Vec<Edge>);
-pub struct Futures(Vec<Edge>);
+// pub struct History<'tree>(Vec<&'tree Edge>, Node<'tree>);
+// pub struct Futures<'tree>(Vec<&'tree Action>);
+
+// impl From<Vec<Edge>> for History {
+//     fn from(edges: Vec<Edge>) -> Self {
+//         edges.iter().inspect(|e| assert!(e.is_choice())).count();
+//         Self(edges)
+//     }
+// }
+
+// impl From<Vec<Edge>> for Futures {
+//     fn from(edges: Vec<Edge>) -> Self {
+//         edges.iter().inspect(|e| assert!(e.is_choice())).count();
+//         Self(edges)
+//     }
+// }
 
 /// pot odds for a given raise size, relative to the pot
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
@@ -38,13 +52,6 @@ impl std::fmt::Display for Odds {
 /// rooted in showdown equity at the River.
 #[derive(Default)]
 pub struct Encoder(BTreeMap<Isomorphism, Abstraction>);
-
-/* learning methods
- *
- * during clustering, we're constantly inserting and updating
- * the abstraction mapping. needs to help project layers
- * hierarchically, while also
- */
 impl Encoder {
     /// only run this once.
     pub fn learn() {
@@ -97,94 +104,22 @@ impl Encoder {
             ),
         }
     }
-}
 
-/* sampling methods
- *
- * another great use case for Abstractor is to "unfold" a Tree
- * by sampling according to a given Profile. here we provide
- * methods for unraveling the Tree
- */
-impl Encoder {
-    /// convert gameplay types into CFR types
-    /// Action -> Edge
-    /// Vec<Edge> -> Path
-    /// Game -> Data -> Obs -> Iso -> Abs
-    /// Path -> Abs -> Bucket
-    pub fn encode(&self, leaf: Game, edge: &Edge, head: &Node) -> Data {
-        let past = self.path_encoding(&head, &edge);
-        let present = self.card_encoding(&leaf);
-        let future = self.future_encoding(&leaf, &edge, &head);
-        let bucket = Bucket::from((past, present, future));
-        let data = Data::from((leaf, bucket));
-        log::trace!("encoding {} -> {:?}", leaf, data.bucket());
-        data
-    }
-    pub fn root(&self) -> Data {
-        let path = Path::default();
-        let game = Game::root();
-        let info = self.card_encoding(&game);
-        let future = Path::default();
-        let bucket = Bucket::from((path, info, future));
-        let data = Data::from((game, bucket));
-        log::trace!("encoding root -> {:?}", data.bucket());
-        data
-    }
-    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let history = node.history().into_iter().cloned().collect::<Vec<Edge>>();
-        node.data()
-            .expand(&history)
-            .into_iter()
-            .map(|(edge, action)| (edge, node.data().game().apply(action)))
-            .map(|(edge, game)| (self.encode(game, &edge, node), edge))
-            .collect::<Vec<(Data, Edge)>>()
-    }
+    // persistence methods
 
-    /// i like to think of this as "positional encoding"
-    /// i like to think of this as "positional encoding"
-    /// later in the same round where the stakes are higher
-    /// we should "learn" things i.e. when to n-bet.
-    /// it also helps the recall be a bit "less imperfect"
-    /// the cards we see at a Node are memoryless, but the
-    /// Path represents "how we got here"
-    ///
-    /// we need to assert that: any Nodes in the same Infoset have the
-    /// same available actions. in addition to depth, we consider
-    /// whether or not we are in a Checkable or Foldable state.
-    fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
-        Path::from(node.futures(edge))
+    pub fn done() -> bool {
+        ["flop.abstraction.pgcopy", "turn.abstraction.pgcopy"]
+            .iter()
+            .any(|file| std::path::Path::new(file).exists())
     }
-    /// the compressed card information for an observation
-    /// this is defined up to unique Observation > Isomorphism
-    /// so pocket vs public is the only distinction made. forget reveal order.
-    fn card_encoding(&self, game: &Game) -> Abstraction {
-        self.abstraction(&Isomorphism::from(Observation::from(game)))
+    pub fn load() -> Self {
+        log::info!("loading encoder");
+        let mut map = BTreeMap::default();
+        map.extend(Self::from(Street::Flop).0);
+        map.extend(Self::from(Street::Turn).0);
+        Self(map)
     }
-    /// we look at the available future continuations
-    /// and encode that as a Path
-    fn future_encoding(&self, leaf: &Game, edge: &Edge, head: &Node) -> Path {
-        // TODO move the future / continuations / expand / raises into Game
-        // TODO move the future / continuations / expand / raises into Game
-        // TODO move the future / continuations / expand / raises into Game
-        // TODO move the future / continuations / expand / raises into Game
-        // TODO move the future / continuations / expand / raises into Game
-        let ref data = Data::from((leaf.clone(), Bucket::random()));
-        let ref past = head.futures(edge);
-        data.future(past)
-    }
-}
-
-/* persistence methods
- *
- * write to disk. if you want to, on your own time,
- * you can stream this to postgres efficiently
- * with pgcopy. it's actually built from both the
- * Turn and Flop layers, with the River and Preflop being
- * straightforward to compute on the fly, for different reasons
- */
-
-impl From<Street> for Encoder {
-    fn from(street: Street) -> Self {
+    pub fn from(street: Street) -> Self {
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -213,33 +148,6 @@ impl From<Street> for Encoder {
         }
         Self(lookup)
     }
-}
-
-impl Encoder {
-    /// indicates whether the abstraction table is already on disk
-    pub fn done() -> bool {
-        ["flop.abstraction.pgcopy", "turn.abstraction.pgcopy"]
-            .iter()
-            .any(|file| std::path::Path::new(file).exists())
-    }
-
-    /// pulls the entire pre-computed abstraction table
-    /// into memory. ~10GB.
-    pub fn load() -> Self {
-        log::info!("loading encoder");
-        let mut map = BTreeMap::default();
-        map.extend(Self::from(Street::Flop).0);
-        map.extend(Self::from(Street::Turn).0);
-        Self(map)
-    }
-
-    /// persist the abstraction mapping to disk
-    /// write the full abstraction lookup to disk
-    /// 1. Write the PGCOPY header (15 bytes)
-    /// 2. Write the flags (4 bytes)
-    /// 3. Write the extension (4 bytes)
-    /// 4. Write the observation and abstraction pairs
-    /// 5. Write the trailer (2 bytes)
     pub fn save(&self, street: Street) {
         log::info!("{:<32}{:<32}", "saving encoding", street);
         use byteorder::WriteBytesExt;
@@ -261,6 +169,64 @@ impl Encoder {
         file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
 }
+
+#[derive(Default)]
+pub struct Sampler(Encoder);
+impl Sampler {
+    pub fn load() -> Self {
+        Self(Encoder::load())
+    }
+    pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
+        let data = node.data();
+        let history = node.history().into_iter().cloned().collect::<Vec<Edge>>();
+        Data::expand(&data, &history)
+            .into_iter()
+            .map(|(edge, action)| (edge, node.data().game().apply(action)))
+            .map(|(edge, game)| (self.encode(game, &edge, node), edge))
+            .collect::<Vec<(Data, Edge)>>()
+    }
+    pub fn root(&self) -> Data {
+        let path = Path::default();
+        let game = Game::root();
+        let info = self.card_encoding(&game);
+        let future = Path::default();
+        let bucket = Bucket::from((path, info, future));
+        let data = Data::from((game, bucket));
+        log::trace!("encoding root -> {:?}", data.bucket());
+        data
+    }
+
+    fn encode(&self, leaf: Game, edge: &Edge, head: &Node) -> Data {
+        let past = self.path_encoding(&head, &edge);
+        let present = self.card_encoding(&leaf);
+        let future = self.next_encoding(&leaf, &edge, &head);
+        let bucket = Bucket::from((past, present, future));
+        let data = Data::from((leaf, bucket));
+        log::trace!("encoding {} -> {:?}", leaf, data.bucket());
+        data
+    }
+    fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
+        Path::from(node.futures(edge))
+    }
+    fn card_encoding(&self, game: &Game) -> Abstraction {
+        self.0
+            .abstraction(&Isomorphism::from(Observation::from(game)))
+    }
+    fn next_encoding(&self, leaf: &Game, edge: &Edge, head: &Node) -> Path {
+        let ref data = Data::from((leaf.clone(), Bucket::random()));
+        let ref past = head.futures(edge);
+        Data::future(data, past)
+    }
+}
+
+/* persistence methods
+ *
+ * write to disk. if you want to, on your own time,
+ * you can stream this to postgres efficiently
+ * with pgcopy. it's actually built from both the
+ * Turn and Flop layers, with the River and Preflop being
+ * straightforward to compute on the fly, for different reasons
+ */
 
 #[cfg(test)]
 mod tests {

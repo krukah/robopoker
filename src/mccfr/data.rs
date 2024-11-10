@@ -30,21 +30,20 @@ impl Data {
     pub fn player(&self) -> Player {
         Player(self.game().player())
     }
-
     /// possible future edges emanating from this node
-    pub fn future(&self, history: &[Edge]) -> Path {
-        Path::from(self.continuations(history))
+    pub fn future(data: &Data, history: &[Edge]) -> Path {
+        Path::from(Data::continuations(data, history))
     }
 
     /// possible edges emanating from this node after N-betting is cut off
-    pub fn continuations(&self, history: &[Edge]) -> Vec<Edge> {
+    pub fn continuations(data: &Data, history: &[Edge]) -> Vec<Edge> {
         let nraises = history
             .iter()
             .rev()
             .take_while(|e| e.is_choice())
             .filter(|e| e.is_aggro())
             .count();
-        self.expand(history)
+        Data::expand(data, history)
             .into_iter()
             .map(|(e, _)| e)
             .filter(|e| !e.is_raise() || nraises < crate::MAX_N_BETS)
@@ -52,8 +51,8 @@ impl Data {
     }
 
     /// all actions available to the player at this node
-    pub fn expand(&self, history: &[Edge]) -> Vec<(Edge, Action)> {
-        let mut options = self
+    pub fn expand(data: &Data, history: &[Edge]) -> Vec<(Edge, Action)> {
+        let mut options = data
             .game()
             .legal()
             .into_iter()
@@ -66,10 +65,10 @@ impl Data {
                         options.remove(raise);
                         options.splice(
                             raise..raise,
-                            self.raises(history)
+                            Data::raises(data, history)
                                 .into_iter()
                                 .map(|odds| (Edge::Raises(odds), Probability::from(odds)))
-                                .map(|(e, p)| (e, p * self.game().pot() as Utility))
+                                .map(|(e, p)| (e, p * data.game().pot() as Utility))
                                 .map(|(e, x)| (e, x as Chips))
                                 .filter(|(_, x)| min <= *x && *x < max)
                                 .map(|(e, a)| (e, Action::Raise(a)))
@@ -84,7 +83,7 @@ impl Data {
     }
 
     /// discretized raise sizes, conditional on street and betting history
-    pub fn raises(&self, history: &[Edge]) -> Vec<Odds> {
+    pub fn raises(data: &Data, history: &[Edge]) -> Vec<Odds> {
         const PREF_RAISES: [Odds; 10] = [
             Odds(1, 4), // 0.25
             Odds(1, 3), // 0.33
@@ -111,7 +110,7 @@ impl Data {
         const LAST_RAISES: [Odds; 1] = [
             Odds(1, 1), // 1.00
         ];
-        match self.game().board().street() {
+        match data.game().board().street() {
             Street::Pref => PREF_RAISES.to_vec(),
             Street::Flop => FLOP_RAISES.to_vec(),
             _ => match history
