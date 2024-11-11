@@ -13,8 +13,9 @@ impl From<Vec<Edge>> for Path {
         let bits = edges
             .into_iter()
             .enumerate()
-            .map(|(i, edge)| (usize::from(edge) as u64 + 1) << (i * 4))
+            .map(|(i, edge)| (usize::from(edge) as u64) << (i * 4))
             .fold(0u64, |acc, x| acc | x);
+        log::info!("PATH {}", bits);
         Self(bits)
     }
 }

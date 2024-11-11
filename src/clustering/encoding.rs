@@ -27,20 +27,35 @@ impl<'tree> History<'tree> {
             .chain(std::iter::once(child.edge()))
             .rev()
             .take_while(|e| e.is_choice())
+            .inspect(|e| log::info!("SUBGAME {}", e))
             .collect()
     }
-    pub fn continuations(&self, child: &Child) -> Vec<(Odds, Action)> {
+    fn continuations(&self, child: &Child) -> Vec<(Odds, Action)> {
         let min = child.game().to_raise();
         let max = child.game().to_shove() - 1;
         self.sizes(child)
             .into_iter()
-            .map(|o| (o, Probability::from(o)))
-            .map(|(o, p)| (o, p * child.game().pot() as Utility))
+            .map(|o| (o, Probability::from(o) * child.game().pot() as Utility))
             .map(|(o, x)| (o, x as Chips))
             .filter(|(_, x)| min <= *x && *x <= max)
-            .map(|(o, x)| (o, Action::Raise(x)))
+            .map(|(o, x)| (o, Action::Raise(x), x))
+            // .inspect(|(o, a, x)| {
+            //     log::info!(
+            //         "OPTION pot=${} raise=${} shove=${} stake=${} stack=${} bet=${} : {} : {}",
+            //         child.game().pot(),
+            //         child.game().to_raise(),
+            //         child.game().to_shove(),
+            //         child.game().actor().stake(),
+            //         child.game().actor().stack(),
+            //         x,
+            //         a,
+            //         o
+            //     )
+            // })
+            .map(|(o, a, _)| (o, a))
             .collect()
     }
+
     pub fn options(&self, child: &Child) -> Vec<Edge> {
         let mut actions = child
             .game()
@@ -64,6 +79,7 @@ impl<'tree> History<'tree> {
                 (a, None) => Edge::from(a),
                 (_, Some(odds)) => Edge::from(odds),
             })
+            .inspect(|e| log::info!("OPTIONS {}", e))
             .collect()
     }
     fn sizes(&self, child: &Child) -> Vec<Odds> {
@@ -153,7 +169,7 @@ impl Odds {
 }
 impl std::fmt::Display for Odds {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:>2}:{:>2}", self.0, self.1)
+        write!(f, "{}:{}", self.0, self.1)
     }
 }
 
@@ -335,12 +351,34 @@ impl Sampler {
         Self(Encoder::load())
     }
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        node.data()
-            .game()
-            .children()
-            .iter()
-            .map(|child| self.sample(node, child))
-            .collect()
+        /// BE CONSISTENT WITH History::options() HERE
+        /// BE CONSISTENT WITH History::options() HERE
+        /// BE CONSISTENT WITH History::options() HERE
+        ///
+        /// really just need a better way to get the "sampled" (Data, Edge) given a Parent and Child
+        ///
+        /// BE CONSISTENT WITH History::options() HERE
+        /// BE CONSISTENT WITH History::options() HERE
+        /// let child = (node.incoming().expect(), node.data().game())
+        /// take History(node.parent()).expect"non-root").options(child_of_current_node)
+        match (node.incoming(), node.parent()) {
+            (None, None) => node
+                .data()
+                .game()
+                .children()
+                .iter()
+                .map(|child| self.sample(node, child))
+                .collect(),
+            (Some(incoming), Some(parent)) => {
+                let ref child = node.child();
+                History(parent)
+                    .options(child)
+                    .iter()
+                    .map(|e| self.sample(node, child))
+                    .collect()
+            }
+            _ => panic!("invalid node relations"),
+        }
     }
     pub fn root(&self) -> Data {
         let game = Game::root();
@@ -359,6 +397,7 @@ impl Sampler {
         let infoset = Bucket::from((history, present, futures));
         let data = Data::from((game, infoset));
         let edge = child.edge();
+        log::info!("game={} info={} edge={}", game, infoset, edge,);
         (data, edge)
     }
     fn recall(&self, game: &Game) -> Abstraction {

@@ -61,6 +61,14 @@ impl<'tree> Node<'tree> {
                 .expect("player index in bounds"),
         }
     }
+    pub fn child(&self) -> Child {
+        use super::child::Child;
+        use crate::play::action::Action;
+        let edge = self.incoming().expect("non-root").clone();
+        let game = self.data().game().clone();
+        let action = Action::from(edge);
+        Child::from((game, action))
+    }
     /// Navigational methods
 
     pub fn futures(&self, edge: &Edge) -> Vec<Edge> {
