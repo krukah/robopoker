@@ -8,6 +8,7 @@ use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
+use crate::mccfr::child::Child;
 use crate::play::ply::Ply;
 use crate::play::showdown::Showdown;
 use crate::players::human::Human;
@@ -117,6 +118,13 @@ impl Game {
             options.push(Action::Shove(self.to_shove()));
         }
         options
+    }
+    pub fn children(&self) -> Vec<Child> {
+        self.legal()
+            .into_iter()
+            .map(|a| (self.apply(a), a))
+            .map(|(g, a)| Child::from((g, a)))
+            .collect()
     }
     pub fn player(&self) -> Ply {
         if self.is_terminal() {

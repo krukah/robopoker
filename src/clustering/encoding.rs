@@ -6,38 +6,150 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::mccfr::bucket::Bucket;
+use crate::mccfr::child::Child;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use crate::mccfr::path::Path;
+use crate::play::action::Action;
 use crate::play::game::Game;
-use crate::Probability;
+use crate::{Chips, Probability, Utility};
 use std::collections::BTreeMap;
 
-// pub struct History<'tree>(Vec<&'tree Edge>, Node<'tree>);
-// pub struct Futures<'tree>(Vec<&'tree Action>);
+struct History<'tree>(Node<'tree>);
 
-// impl From<Vec<Edge>> for History {
-//     fn from(edges: Vec<Edge>) -> Self {
-//         edges.iter().inspect(|e| assert!(e.is_choice())).count();
-//         Self(edges)
-//     }
-// }
+impl<'tree> History<'tree> {
+    pub fn subgame(&self, child: &Child) -> Vec<Edge> {
+        self.0
+            .history()
+            .into_iter()
+            .copied()
+            .chain(std::iter::once(child.edge()))
+            .rev()
+            .take_while(|e| e.is_choice())
+            .collect()
+    }
+    pub fn continuations(&self, child: &Child) -> Vec<(Odds, Action)> {
+        let min = child.game().to_raise();
+        let max = child.game().to_shove() - 1;
+        self.sizes(child)
+            .into_iter()
+            .map(|o| (o, Probability::from(o)))
+            .map(|(o, p)| (o, p * child.game().pot() as Utility))
+            .map(|(o, x)| (o, x as Chips))
+            .filter(|(_, x)| min <= *x && *x <= max)
+            .map(|(o, x)| (o, Action::Raise(x)))
+            .collect()
+    }
+    pub fn options(&self, child: &Child) -> Vec<Edge> {
+        let mut actions = child
+            .game()
+            .legal()
+            .into_iter()
+            .map(|a| (a, None))
+            .collect::<Vec<(Action, Option<Odds>)>>();
+        if let Some(raise) = actions.iter().position(|a| a.0.is_raise()) {
+            actions.remove(raise);
+            actions.splice(
+                raise..raise,
+                self.continuations(child)
+                    .into_iter()
+                    .map(|(o, a)| (a, Some(o)))
+                    .collect::<Vec<(Action, Option<Odds>)>>(),
+            );
+        }
+        actions
+            .into_iter()
+            .map(|(action, odds)| match (action, odds) {
+                (a, None) => Edge::from(a),
+                (_, Some(odds)) => Edge::from(odds),
+            })
+            .collect()
+    }
+    fn sizes(&self, child: &Child) -> Vec<Odds> {
+        let n = self
+            .0
+            .history()
+            .into_iter()
+            .chain(std::iter::once(&child.edge()))
+            .rev()
+            .take_while(|e| e.is_choice())
+            .filter(|e| e.is_aggro())
+            .count();
+        if n > crate::MAX_N_BETS {
+            vec![]
+        } else {
+            match child.game().board().street() {
+                Street::Pref => Odds::PREF_RAISES.to_vec(),
+                Street::Flop => Odds::FLOP_RAISES.to_vec(),
+                _ => match n {
+                    0 => Odds::LATE_RAISES.to_vec(),
+                    _ => Odds::LAST_RAISES.to_vec(),
+                },
+            }
+        }
+    }
+}
+/*
 
-// impl From<Vec<Edge>> for Futures {
-//     fn from(edges: Vec<Edge>) -> Self {
-//         edges.iter().inspect(|e| assert!(e.is_choice())).count();
-//         Self(edges)
-//     }
-// }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
 /// pot odds for a given raise size, relative to the pot
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct Odds(pub u8, pub u8);
+pub struct Odds(pub Chips, pub Chips);
 impl From<Odds> for Probability {
     fn from(odds: Odds) -> Self {
-        odds.0 as f32 / (/* odds.0 + */odds.1) as f32 // only using this to calculate actual raise amount
+        odds.0 as Probability / odds.1 as Probability
     }
+}
+
+impl Odds {
+    pub const GRID: [Self; 10] = Self::PREF_RAISES;
+    const PREF_RAISES: [Self; 10] = [
+        Self(1, 4), // 0.25
+        Self(1, 3), // 0.33
+        Self(1, 2), // 0.50
+        Self(2, 3), // 0.66
+        Self(3, 4), // 0.75
+        Self(1, 1), // 1.00
+        Self(3, 2), // 1.50
+        Self(2, 1), // 2.00
+        Self(3, 1), // 3.00
+        Self(4, 1), // 4.00
+    ];
+    const FLOP_RAISES: [Self; 5] = [
+        Self(1, 2), // 0.50
+        Self(3, 4), // 0.75
+        Self(1, 1), // 1.00
+        Self(3, 2), // 1.50
+        Self(2, 1), // 2.00
+    ];
+    const LATE_RAISES: [Self; 2] = [
+        Self(1, 2), // 0.50
+        Self(1, 1), // 1.00
+    ];
+    const LAST_RAISES: [Self; 1] = [
+        Self(1, 1), // 1.00
+    ];
 }
 impl std::fmt::Display for Odds {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -45,6 +157,29 @@ impl std::fmt::Display for Odds {
     }
 }
 
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
 /// this is the output of the clustering module
 /// it is a massive table of `Equivalence` -> `Abstraction`.
 /// effectively, this is a compressed representation of the
@@ -170,6 +305,29 @@ impl Encoder {
     }
 }
 
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
 #[derive(Default)]
 pub struct Sampler(Encoder);
 impl Sampler {
@@ -177,57 +335,61 @@ impl Sampler {
         Self(Encoder::load())
     }
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let data = node.data();
-        let history = node.history().into_iter().cloned().collect::<Vec<Edge>>();
-        Data::expand(&data, &history)
-            .into_iter()
-            .map(|(edge, action)| (edge, node.data().game().apply(action)))
-            .map(|(edge, game)| (self.encode(game, &edge, node), edge))
-            .collect::<Vec<(Data, Edge)>>()
+        node.data()
+            .game()
+            .children()
+            .iter()
+            .map(|child| self.sample(node, child))
+            .collect()
     }
     pub fn root(&self) -> Data {
-        let path = Path::default();
         let game = Game::root();
-        let info = self.card_encoding(&game);
-        let future = Path::default();
-        let bucket = Bucket::from((path, info, future));
-        let data = Data::from((game, bucket));
-        log::trace!("encoding root -> {:?}", data.bucket());
+        let present = self.recall(&game);
+        let history = Path::default();
+        let futures = Path::default(); // technically wrong but doesn't matter
+        let infoset = Bucket::from((history, present, futures));
+        let data = Data::from((game, infoset));
         data
     }
-
-    fn encode(&self, leaf: Game, edge: &Edge, head: &Node) -> Data {
-        let past = self.path_encoding(&head, &edge);
-        let present = self.card_encoding(&leaf);
-        let future = self.next_encoding(&leaf, &edge, &head);
-        let bucket = Bucket::from((past, present, future));
-        let data = Data::from((leaf, bucket));
-        log::trace!("encoding {} -> {:?}", leaf, data.bucket());
-        data
+    fn sample(&self, node: &Node, child: &Child) -> (Data, Edge) {
+        let game = child.game().clone();
+        let present = self.recall(&game);
+        let history = Path::from(History(node.clone()).subgame(child));
+        let futures = Path::from(History(node.clone()).options(child));
+        let infoset = Bucket::from((history, present, futures));
+        let data = Data::from((game, infoset));
+        let edge = child.edge();
+        (data, edge)
     }
-    fn path_encoding(&self, node: &Node, edge: &Edge) -> Path {
-        Path::from(node.futures(edge))
-    }
-    fn card_encoding(&self, game: &Game) -> Abstraction {
+    fn recall(&self, game: &Game) -> Abstraction {
         self.0
             .abstraction(&Isomorphism::from(Observation::from(game)))
     }
-    fn next_encoding(&self, leaf: &Game, edge: &Edge, head: &Node) -> Path {
-        let ref data = Data::from((leaf.clone(), Bucket::random()));
-        let ref past = head.futures(edge);
-        Data::future(data, past)
-    }
 }
 
-/* persistence methods
- *
- * write to disk. if you want to, on your own time,
- * you can stream this to postgres efficiently
- * with pgcopy. it's actually built from both the
- * Turn and Flop layers, with the River and Preflop being
- * straightforward to compute on the fly, for different reasons
- */
+/*
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
 #[cfg(test)]
 mod tests {
     use super::*;

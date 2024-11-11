@@ -18,20 +18,20 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn is_raise(&self) -> bool {
-        matches!(self, Action::Raise(_))
+    pub fn is_aggro(&self) -> bool {
+        matches!(self, Action::Raise(_) | Action::Shove(_))
     }
     pub fn is_shove(&self) -> bool {
         matches!(self, Action::Shove(_))
     }
-    pub fn is_random(&self) -> bool {
+    pub fn is_raise(&self) -> bool {
+        matches!(self, Action::Raise(_))
+    }
+    pub fn is_chance(&self) -> bool {
         matches!(self, Action::Draw(_))
     }
-    pub fn is_aggro(&self) -> bool {
-        matches!(self, Action::Raise(_) | Action::Shove(_))
-    }
     pub fn is_choice(&self) -> bool {
-        !self.is_random()
+        !self.is_chance()
     }
 }
 
@@ -39,23 +39,27 @@ impl From<u32> for Action {
     fn from(value: u32) -> Self {
         let kind = value & MASK; // Use lowest 8 bits for action type
         let data = value >> BITS; // Shift right by 8 bits for data
+        let bets = data as Chips;
         match kind {
             0 => Action::Fold,
             1 => Action::Check,
-            2 => Action::Call(data as Chips),
-            3 => Action::Raise(data as Chips),
-            4 => Action::Shove(data as Chips),
-            5 => Action::Blind(data as Chips),
-            6 => {
-                let hand = [0, 1, 2]
+            2 => Action::Call(bets),
+            3 => Action::Raise(bets),
+            4 => Action::Shove(bets),
+            5 => Action::Blind(bets),
+            6 => Action::Draw(
+                [0, 1, 2]
                     .iter()
-                    .map(|i| ((data >> (BITS * i)) & MASK) as u8)
-                    .filter(|&c| c > 0)
-                    .map(|c| Hand::from(Card::from(c)))
-                    .fold(Hand::empty(), Hand::add);
-                Action::Draw(hand)
-            }
-            _ => panic!("Invalid action value"),
+                    .map(|i| BITS * i)
+                    .map(|r| data >> r)
+                    .map(|x| x & MASK)
+                    .filter(|&x| x > 0)
+                    .map(|x| x as u8 - 1)
+                    .map(|c| Card::from(c))
+                    .map(|c| Hand::from(c))
+                    .fold(Hand::empty(), Hand::add),
+            ),
+            _ => panic!("at this disco"),
         }
     }
 }
@@ -65,18 +69,20 @@ impl From<Action> for u32 {
         match action {
             Action::Fold => 0,
             Action::Check => 1,
-            Action::Call(amount) => 2 | ((amount as u32) << BITS),
-            Action::Raise(amount) => 3 | ((amount as u32) << BITS),
-            Action::Shove(amount) => 4 | ((amount as u32) << BITS),
-            Action::Blind(amount) => 5 | ((amount as u32) << BITS),
+            Action::Call(bets) => 2 | ((bets as u32) << BITS),
+            Action::Raise(bets) => 3 | ((bets as u32) << BITS),
+            Action::Shove(bets) => 4 | ((bets as u32) << BITS),
+            Action::Blind(bets) => 5 | ((bets as u32) << BITS),
             Action::Draw(hand) => {
-                let data = hand
+                6 | (hand
                     .into_iter()
                     .take(3)
+                    .map(|c| u8::from(c))
+                    .map(|c| c as u32 + 1)
                     .enumerate()
-                    .map(|(i, c)| (u8::from(c) as u32) << (i * BITS as usize))
-                    .fold(0u32, |hand, card| hand | card);
-                6 | (data << BITS)
+                    .map(|(i, x)| x << (i as u32 * BITS))
+                    .fold(0u32, |hand, card| hand | card)
+                    << BITS)
             }
         }
     }
@@ -107,9 +113,13 @@ mod tests {
             Action::Blind(2),
             Action::Call(32767),
             Action::Shove(1738),
-            Action::Draw(Hand::from("2d 3d 4d")),
+            Action::Draw(Hand::from("2c Th As")),
         ] {
-            assert!(action == Action::from(u32::from(action)));
+            assert!(
+                action == Action::from(u32::from(action)),
+                "{}",
+                format!("{} != {}", action, Action::from(u32::from(action))).red()
+            );
         }
     }
 }

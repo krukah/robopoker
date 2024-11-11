@@ -1,66 +1,98 @@
 use crate::clustering::encoding::Odds;
 use crate::play::action::Action;
+use crate::Chips;
 use std::hash::Hash;
 
-#[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, Eq)]
+#[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
 pub enum Edge {
-    Choice(Action),
-    Raises(Odds),
-    Random,
-}
-
-impl PartialEq for Edge {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Edge::Random, Edge::Random) => true,
-            (Edge::Raises(o1), Edge::Raises(o2)) => o1 == o2,
-            (Edge::Choice(a1), Edge::Choice(a2)) => {
-                std::mem::discriminant(a1) == std::mem::discriminant(a2)
-            }
-            _ => false,
-        }
-    }
+    Draw,
+    Fold,
+    Check,
+    Call,
+    Raise(Odds),
+    Shove,
 }
 
 impl Edge {
-    pub fn is_raise(&self) -> bool {
-        matches!(self, Edge::Raises(_))
-    }
-    pub fn is_choice(&self) -> bool {
-        matches!(self, Edge::Raises(_) | Edge::Choice(_))
-    }
     pub fn is_aggro(&self) -> bool {
-        matches!(self, Edge::Raises(_) | Edge::Choice(Action::Shove(_)))
+        matches!(self, Edge::Raise(_) | Edge::Shove)
     }
     pub fn is_shove(&self) -> bool {
-        matches!(self, Edge::Choice(Action::Shove(_)))
+        matches!(self, Edge::Shove)
     }
-    pub fn is_random(&self) -> bool {
-        matches!(self, Edge::Random)
+    pub fn is_raise(&self) -> bool {
+        matches!(self, Edge::Raise(_))
+    }
+    pub fn is_chance(&self) -> bool {
+        matches!(self, Edge::Draw)
+    }
+    pub fn is_choice(&self) -> bool {
+        !self.is_chance()
     }
 }
 
 impl From<Action> for Edge {
     fn from(action: Action) -> Self {
         match action {
-            Action::Draw(_) | Action::Blind(_) => Self::Random,
-            _ => Self::Choice(action),
+            Action::Fold => Edge::Fold,
+            Action::Check => Edge::Check,
+            Action::Call(_) => Edge::Call,
+            Action::Draw(_) => Edge::Draw,
+            Action::Shove(_) => Edge::Shove,
+            Action::Raise(_) => panic!("raise converted from odds"),
+            Action::Blind(_) => panic!("blinds are not in the MCCFR tree"),
+        }
+    }
+}
+impl From<Odds> for Edge {
+    fn from(odds: Odds) -> Self {
+        Edge::Raise(odds)
+    }
+}
+impl From<Edge> for usize {
+    fn from(edge: Edge) -> Self {
+        match edge {
+            Edge::Draw => 0,
+            Edge::Fold => 1,
+            Edge::Check => 2,
+            Edge::Call => 3,
+            Edge::Shove => 4,
+            Edge::Raise(odds) => {
+                5 + Odds::GRID
+                    .iter()
+                    .position(|&o| o == odds)
+                    .expect("invalid odds value") as usize
+            }
         }
     }
 }
 
+impl From<usize> for Edge {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Edge::Draw,
+            1 => Edge::Fold,
+            2 => Edge::Check,
+            3 => Edge::Call,
+            4 => Edge::Shove,
+            5..=14 => Edge::Raise(Odds::GRID[value - 5]),
+            _ => unreachable!("invalid edge encoding"),
+        }
+    }
+}
 impl From<u64> for Edge {
     fn from(value: u64) -> Self {
-        // Use first 2 bits for variant tag
-        match value & 0b11 {
-            0 => Self::Random,
-            1 => Self::Choice(Action::from((value >> 2) as u32)),
-            2 => {
-                // Extract numerator and denominator from next 16 bits
-                let num = ((value >> 2) & 0xFF) as u8;
-                let den = ((value >> 10) & 0xFF) as u8;
-                Self::Raises(Odds(num, den))
-            }
+        // Use first 3 bits for variant tag
+        match value & 0b111 {
+            0 => Self::Draw,
+            1 => Self::Fold,
+            2 => Self::Check,
+            3 => Self::Call,
+            4 => Self::Raise(Odds(
+                ((value >> 3) & 0xFF) as Chips,
+                ((value >> 11) & 0xFF) as Chips,
+            )),
+            5 => Self::Shove,
             _ => unreachable!(),
         }
     }
@@ -69,9 +101,12 @@ impl From<u64> for Edge {
 impl From<Edge> for u64 {
     fn from(edge: Edge) -> Self {
         match edge {
-            Edge::Random => 0,
-            Edge::Choice(action) => 1 | ((u64::from(u32::from(action))) << 2),
-            Edge::Raises(Odds(num, den)) => 2 | ((num as u64) << 2) | ((den as u64) << 10),
+            Edge::Draw => 0,
+            Edge::Fold => 1,
+            Edge::Check => 2,
+            Edge::Call => 3,
+            Edge::Raise(Odds(num, den)) => 4 | ((num as u64) << 3) | ((den as u64) << 11),
+            Edge::Shove => 5,
         }
     }
 }
@@ -79,37 +114,46 @@ impl From<Edge> for u64 {
 impl std::fmt::Display for Edge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Edge::Random => write!(f, "────────"),
-            Edge::Choice(action) => match action {
-                Action::Fold => write!(f, "FOLD    "),
-                Action::Check => write!(f, "CHECK   "),
-                Action::Call(x) => write!(f, "CALL  {:<2}", x),
-                Action::Raise(x) => write!(f, "RAISE {:<2}", x),
-                Action::Shove(x) => write!(f, "SHOVE {:<2}", x),
-                Action::Blind(x) => write!(f, "BLIND {:<2}", x),
-                Action::Draw(_) => unreachable!(),
-            },
-            Edge::Raises(odds) => write!(f, "RAISE {}/{}", odds.0, odds.1),
+            Edge::Draw => write!(f, "────────"),
+            Edge::Fold => write!(f, "FOLD    "),
+            Edge::Check => write!(f, "CHECK   "),
+            Edge::Call => write!(f, "CALL    "),
+            Edge::Raise(Odds(num, den)) => write!(f, "RAISE{}:{}", num, den),
+            Edge::Shove => write!(f, "SHOVE   "),
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod bijection_tests {
     use super::*;
-    use crate::play::action::Action;
+
+    #[test]
+    fn bijective_usize_basic() {
+        assert!(
+            [Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove,]
+                .into_iter()
+                .all(|edge| edge == Edge::from(usize::from(edge)))
+        );
+    }
+
+    #[test]
+    fn bijective_usize_raises() {
+        assert!(Odds::GRID
+            .into_iter()
+            .map(Edge::Raise)
+            .all(|edge| edge == Edge::from(usize::from(edge))));
+    }
 
     #[test]
     fn bijective_u64() {
         assert!([
-            Edge::Random,
-            Edge::Choice(Action::Fold),
-            Edge::Choice(Action::Check),
-            Edge::Choice(Action::Call(100)),
-            Edge::Choice(Action::Raise(200)),
-            Edge::Choice(Action::Shove(1000)),
-            Edge::Raises(Odds(1, 2)),
-            Edge::Raises(Odds(3, 4)),
+            Edge::Draw,
+            Edge::Fold,
+            Edge::Check,
+            Edge::Call,
+            Edge::Raise(Odds(1, 2)),
+            Edge::Shove,
         ]
         .into_iter()
         .all(|edge| edge == Edge::from(u64::from(edge))));
