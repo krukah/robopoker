@@ -10,12 +10,12 @@ impl Path {
 }
 impl From<Vec<Edge>> for Path {
     fn from(edges: Vec<Edge>) -> Self {
-        Self(
-            edges
-                .into_iter()
-                .map(|e| u64::from(e))
-                .fold(0x1337DEADBEEF1337u64, |acc, x| acc.wrapping_mul(x)),
-        )
+        let bits = edges
+            .into_iter()
+            .enumerate()
+            .map(|(i, edge)| (usize::from(edge) as u64 + 1) << (i * 4))
+            .fold(0u64, |acc, x| acc | x);
+        Self(bits)
     }
 }
 

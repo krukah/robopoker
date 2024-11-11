@@ -126,13 +126,12 @@ impl Profile {
         let bucket = node.bucket();
         match self.strategies.get(bucket) {
             Some(strategy) => {
-                log::trace!("revisit infoset @ {}", bucket);
                 let observed = children.iter().map(|(_, e)| e).collect::<BTreeSet<_>>();
                 let existing = strategy.keys().collect::<BTreeSet<_>>();
                 if existing != observed {
-                    log::error!("bucket: {}", bucket);
-                    log::error!("observed: {:?}", observed);
-                    log::error!("existing: {:?}", existing);
+                    log::info!("EXISTING {} $ {}", bucket, node.data().game().pot());
+                    log::info!("!!! {:?}", observed);
+                    log::info!("!!! {:?}", existing);
                 }
                 assert!(
                     observed.is_subset(&existing),
@@ -145,10 +144,11 @@ impl Profile {
                 // have "what" edges on "which when" epochs
             }
             None => {
-                log::trace!("observe infoset @ {}", bucket);
+                log::info!("WITNESSD {} $ {}", bucket, node.data().game().pot());
                 let n = children.len();
                 let uniform = 1. / n as Probability;
                 for (_, edge) in children {
+                    log::info!("??? {} {}", bucket, edge);
                     self.strategies
                         .entry(bucket.clone())
                         .or_insert_with(BTreeMap::default)
@@ -305,7 +305,7 @@ impl Profile {
         let ref mut rng = self.rng(head);
         let choice = rng.gen_range(0..n);
         let chosen = choices.remove(choice);
-        assert!(chosen.1.is_random());
+        assert!(chosen.1.is_chance());
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
@@ -627,8 +627,6 @@ impl std::fmt::Display for Profile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::play::action::Action;
-    use crate::Chips;
 
     #[test]
     fn persistence() {
@@ -654,6 +652,14 @@ mod tests {
                 .collect(),
         }
     }
+    fn random_bucket() -> Bucket {
+        Bucket::random()
+    }
+    fn random_policy() -> BTreeMap<Edge, Decision> {
+        (0..rand::thread_rng().gen_range(1..=8))
+            .map(|_| (random_action(), random_decision()))
+            .collect()
+    }
     fn random_decision() -> Decision {
         Decision {
             regret: rand::thread_rng().gen::<f32>(),
@@ -661,15 +667,13 @@ mod tests {
         }
     }
     fn random_action() -> Edge {
-        Edge::from(Action::Raise(rand::thread_rng().gen::<Chips>()))
-    }
-    fn random_policy() -> BTreeMap<Edge, Decision> {
-        let n = rand::thread_rng().gen_range(1..=8);
-        (0..n)
-            .map(|_| (random_action(), random_decision()))
-            .collect()
-    }
-    fn random_bucket() -> Bucket {
-        Bucket::random()
+        match rand::thread_rng().gen_range(0..6) {
+            0 => Edge::Draw,
+            1 => Edge::Fold,
+            2 => Edge::Check,
+            3 => Edge::Call,
+            4 => Edge::Raise(crate::clustering::encoding::Odds(1, 1)),
+            _ => Edge::Shove,
+        }
     }
 }

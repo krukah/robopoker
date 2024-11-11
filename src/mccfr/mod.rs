@@ -1,4 +1,5 @@
 pub mod bucket;
+pub mod child;
 pub mod data;
 pub mod edge;
 pub mod info;
