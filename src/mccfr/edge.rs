@@ -1,4 +1,4 @@
-use crate::clustering::encoding::Odds;
+use crate::mccfr::odds::Odds;
 use crate::play::action::Action;
 use crate::Chips;
 use std::hash::Hash;
@@ -129,33 +129,22 @@ mod bijection_tests {
     use super::*;
 
     #[test]
-    fn bijective_usize_basic() {
-        assert!(
-            [Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove,]
-                .into_iter()
-                .all(|edge| edge == Edge::from(usize::from(edge)))
-        );
-    }
-
-    #[test]
-    fn bijective_usize_raises() {
-        assert!(Odds::GRID
+    fn bijective_usize() {
+        let raise = Odds::GRID.map(Edge::Raise);
+        let edges = [Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove];
+        assert!(edges
             .into_iter()
-            .map(Edge::Raise)
+            .chain(raise)
             .all(|edge| edge == Edge::from(usize::from(edge))));
     }
 
     #[test]
     fn bijective_u64() {
-        assert!([
-            Edge::Draw,
-            Edge::Fold,
-            Edge::Check,
-            Edge::Call,
-            Edge::Raise(Odds(1, 2)),
-            Edge::Shove,
-        ]
-        .into_iter()
-        .all(|edge| edge == Edge::from(u64::from(edge))));
+        let raise = Odds::GRID.map(Edge::Raise);
+        let edges = [Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove];
+        assert!(edges
+            .into_iter()
+            .chain(raise)
+            .all(|edge| edge == Edge::from(u64::from(edge))));
     }
 }
