@@ -6,7 +6,8 @@ use petgraph::graph::NodeIndex;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-pub struct Partition(pub BTreeMap<Bucket, Vec<NodeIndex>>);
+pub struct Partition(BTreeMap<Bucket, Vec<NodeIndex>>);
+
 impl Partition {
     pub fn new() -> Self {
         Self(BTreeMap::new())
@@ -19,7 +20,7 @@ impl Partition {
     }
     pub fn witness(&mut self, node: &Node) {
         self.0
-            .entry(node.bucket().clone())
+            .entry(node.bucket())
             .or_insert_with(Vec::new)
             .push(node.index());
     }

@@ -12,11 +12,8 @@ pub struct Info {
 }
 
 impl From<(Arc<Tree>, Vec<NodeIndex>)> for Info {
-    fn from((tree, indices): (Arc<Tree>, Vec<NodeIndex>)) -> Self {
-        Self {
-            roots: indices,
-            nodes: tree,
-        }
+    fn from((nodes, roots): (Arc<Tree>, Vec<NodeIndex>)) -> Self {
+        Self { roots, nodes }
     }
 }
 

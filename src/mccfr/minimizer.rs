@@ -66,8 +66,9 @@ impl Trainer {
                 .map(|info| self.counterfactual(info))
                 .collect::<Vec<Counterfactual>>();
             for Counterfactual(info, regret, policy) in counterfactuals {
-                self.profile.regret_update(info.node().bucket(), &regret.0);
-                self.profile.policy_update(info.node().bucket(), &policy.0);
+                let ref bucket = info.node().bucket();
+                self.profile.regret_update(bucket, &regret.0);
+                self.profile.policy_update(bucket, &policy.0);
             }
             progress.inc(1);
         }
