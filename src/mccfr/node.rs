@@ -38,8 +38,8 @@ impl<'tree> Node<'tree> {
             .node_weight(self.index())
             .expect("valid node index")
     }
-    pub fn bucket(&self) -> &Bucket {
-        &self.data().bucket()
+    pub fn bucket(&self) -> Bucket {
+        todo!()
     }
     pub fn index(&self) -> NodeIndex {
         self.index
@@ -60,8 +60,8 @@ impl<'tree> Node<'tree> {
                 .expect("player index in bounds"),
         }
     }
-    /// Navigational methods
 
+    /// Navigational methods
     pub fn futures(&self, edge: &Edge) -> Vec<Edge> {
         self.history()
             .into_iter()
@@ -124,11 +124,14 @@ impl<'tree> Node<'tree> {
         self.graph
     }
 }
+
 use super::odds::Odds;
 use crate::cards::street::Street;
 use crate::play::action::Action;
 
 impl Node<'_> {
+    /// convert an Edge into an Action by using Game state to
+    /// determine free parameters (stack size, pot size, etc)
     pub fn action(&self, edge: Edge) -> Action {
         let game = self.data().game();
         match edge {
@@ -142,7 +145,7 @@ impl Node<'_> {
     }
     /// returns the set of all possible actions from the current node
     /// this is useful for generating a set of children for a given node
-    pub fn unfold(&self) -> Vec<Edge> {
+    pub fn choices(&self) -> Vec<Edge> {
         self.data()
             .game()
             .legal()
@@ -158,7 +161,7 @@ impl Node<'_> {
         self.history()
             .into_iter()
             .take_while(|e| e.is_choice())
-            .inspect(|e| log::trace!("SUBGAME {}", e))
+            .inspect(|e| log::info!("   > {}", e))
             .copied()
             .collect()
     }

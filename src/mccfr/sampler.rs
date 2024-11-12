@@ -26,7 +26,7 @@ impl Sampler {
         Data::from((game, infoset))
     }
     pub fn children(&self, node: &Node) -> Vec<(Data, Edge)> {
-        let choices = node.unfold();
+        let choices = node.choices();
         let history = node.subgame();
         let futures = Path::from(choices.clone());
         let history = Path::from(history);

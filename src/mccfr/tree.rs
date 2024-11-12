@@ -33,24 +33,25 @@ impl Tree {
     }
     pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {
-            writeln!(f, "ROOT   {}", self.0[index].bucket())?;
+            writeln!(f, "ROOT   {}", self.at(index).bucket())?;
         }
         let mut children = self
             .0
             .neighbors_directed(index, petgraph::Outgoing)
             .collect::<Vec<_>>();
+        let n = children.len();
         children.sort();
-        for (i, child) in children.iter().enumerate() {
-            let last = i == children.len() - 1;
+        for (i, child) in children.into_iter().enumerate() {
+            let last = i == n - 1;
             let stem = if last { "└" } else { "├" };
             let gaps = if last { "    " } else { "│   " };
-            let head = self.0[*child].bucket();
+            let head = self.at(child).bucket();
             let edge = self
                 .0
-                .edge_weight(self.0.find_edge(index, *child).unwrap())
+                .edge_weight(self.0.find_edge(index, child).unwrap())
                 .unwrap();
             writeln!(f, "{}{}──{} → {}", prefix, stem, edge, head)?;
-            self.draw(f, *child, &format!("{}{}", prefix, gaps))?;
+            self.draw(f, child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
     }

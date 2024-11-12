@@ -123,13 +123,15 @@ impl Profile {
     /// at this Node with uniform distribution
     /// over its outgoing Edges .
     pub fn witness(&mut self, node: &Node, children: &Vec<(Data, Edge)>) {
-        let bucket = node.bucket();
+        let ref bucket = node.bucket();
         match self.strategies.get(bucket) {
             Some(strategy) => {
                 let observed = children.iter().map(|(_, e)| e).collect::<BTreeSet<_>>();
                 let existing = strategy.keys().collect::<BTreeSet<_>>();
                 if existing != observed {
-                    log::info!("EXISTING {} $ {}", bucket, node.data().game().pot());
+                    log::warn!("EXISTING {}", bucket);
+                    log::warn!("OBSERVED {:?}", observed);
+                    log::warn!("EXISTING {:?}", existing);
                     panic!("observed edges must be subset of existing edges");
                 }
                 // asssertion needs to relax once i reintroduce pruning\
@@ -139,7 +141,7 @@ impl Profile {
                 // have "what" edges on "which when" epochs
             }
             None => {
-                log::info!("WITNESSD {} $ {}", bucket, node.data().game().pot());
+                log::info!("WITNESSD {}", bucket);
                 let n = children.len();
                 let uniform = 1. / n as Probability;
                 for (_, edge) in children {
@@ -288,7 +290,7 @@ impl Profile {
     pub fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
         choices
             .into_iter()
-            // .filter(|(_, edge)| self.prune(node.bucket(), edge))
+            // .filter(|(_, edge)| self.prune(node.fuckit(), edge))
             .inspect(|(_, edge)| assert!(edge.is_choice()))
             .collect()
     }
@@ -306,10 +308,11 @@ impl Profile {
     pub fn sample_one(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
         use rand::distributions::WeightedIndex;
         let ref mut rng = self.rng(head);
+        let ref bucket = head.bucket();
         let mut choices = choices;
         let policy = choices
             .iter()
-            .map(|(_, edge)| self.policy(head.bucket(), edge))
+            .map(|(_, edge)| self.policy(bucket, edge))
             .collect::<Vec<Probability>>();
         let choice = WeightedIndex::new(policy)
             .expect("at least one policy > 0")
@@ -327,8 +330,9 @@ impl Profile {
     /// for not having followed this Edge?
     fn cumulated_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
+        let ref bucket = infoset.node().bucket();
         self.strategies
-            .get(infoset.node().bucket())
+            .get(bucket)
             .expect("bucket has been witnessed")
             .get(edge)
             .expect("action has been witnessed")
@@ -429,7 +433,8 @@ impl Profile {
         if Player::chance() == head.player() {
             1.
         } else {
-            let policy = self.policy(head.bucket(), edge);
+            let ref bucket = head.bucket();
+            let policy = self.policy(bucket, edge);
             policy
         }
     }

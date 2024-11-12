@@ -14,9 +14,6 @@ pub enum Edge {
 }
 
 impl Edge {
-    pub fn is_aggro(&self) -> bool {
-        matches!(self, Edge::Raise(_) | Edge::Shove)
-    }
     pub fn is_shove(&self) -> bool {
         matches!(self, Edge::Shove)
     }
@@ -25,6 +22,9 @@ impl Edge {
     }
     pub fn is_chance(&self) -> bool {
         matches!(self, Edge::Draw)
+    }
+    pub fn is_aggro(&self) -> bool {
+        self.is_raise() || self.is_shove()
     }
     pub fn is_choice(&self) -> bool {
         !self.is_chance()
@@ -39,8 +39,8 @@ impl From<Action> for Edge {
             Action::Call(_) => Edge::Call,
             Action::Draw(_) => Edge::Draw,
             Action::Shove(_) => Edge::Shove,
-            Action::Raise(_) => panic!("raise converted from odds"),
-            Action::Blind(_) => panic!("blinds are not in the MCCFR tree"),
+            Action::Raise(_) => panic!("raise must be converted from odds"),
+            Action::Blind(_) => panic!("blinds are not in any MCCFR trees"),
         }
     }
 }
@@ -49,6 +49,8 @@ impl From<Odds> for Edge {
         Edge::Raise(odds)
     }
 }
+
+/// usize bijection
 impl From<Edge> for usize {
     fn from(edge: Edge) -> Self {
         match edge {
@@ -66,7 +68,6 @@ impl From<Edge> for usize {
         }
     }
 }
-
 impl From<usize> for Edge {
     fn from(value: usize) -> Self {
         match value {
@@ -80,6 +81,8 @@ impl From<usize> for Edge {
         }
     }
 }
+
+/// u64 bijection
 impl From<u64> for Edge {
     fn from(value: u64) -> Self {
         // Use first 3 bits for variant tag
@@ -97,7 +100,6 @@ impl From<u64> for Edge {
         }
     }
 }
-
 impl From<Edge> for u64 {
     fn from(edge: Edge) -> Self {
         match edge {
