@@ -2,12 +2,14 @@ use super::edge::Edge;
 
 #[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path(u64);
+
 impl Path {
     pub fn random() -> Self {
         use rand::Rng;
         Self::from(rand::thread_rng().gen::<u64>())
     }
 }
+
 impl From<Vec<Edge>> for Path {
     fn from(edges: Vec<Edge>) -> Self {
         let bits = edges

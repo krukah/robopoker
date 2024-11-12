@@ -6,7 +6,7 @@ use super::partition::Partition;
 use super::player::Player;
 use super::profile::Profile;
 use super::tree::Tree;
-use crate::clustering::encoding::Sampler;
+use crate::mccfr::sampler::Sampler;
 use crate::Probability;
 use crate::Utility;
 use petgraph::graph::NodeIndex;

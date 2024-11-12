@@ -1,8 +1,11 @@
 use super::bucket::Bucket;
 use super::player::Player;
+use crate::cards::hand::Hand;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::play::ply::Ply;
+use crate::Chips;
+use crate::Probability;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
@@ -19,10 +22,6 @@ pub struct Node<'tree> {
     graph: &'tree DiGraph<Data, Edge>,
 }
 
-/// TODO
-/// very expensive operation to generate a new Bucket on the fly
-/// every time we need a new Node. should find a way to
-/// make cheap copies of Node.
 impl<'tree> From<(NodeIndex, &'tree DiGraph<Data, Edge>)> for Node<'tree> {
     fn from((index, graph): (NodeIndex, &'tree DiGraph<Data, Edge>)) -> Self {
         Self { index, graph }
@@ -60,14 +59,6 @@ impl<'tree> Node<'tree> {
                 .map(|settlement| settlement.pnl() as f32)
                 .expect("player index in bounds"),
         }
-    }
-    pub fn child(&self) -> Child {
-        use super::child::Child;
-        use crate::play::action::Action;
-        let edge = self.incoming().expect("non-root").clone();
-        let game = self.data().game().clone();
-        let action = Action::from(edge);
-        Child::from((game, action))
     }
     /// Navigational methods
 
@@ -131,6 +122,85 @@ impl<'tree> Node<'tree> {
     }
     pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
         self.graph
+    }
+}
+use super::odds::Odds;
+use crate::cards::street::Street;
+use crate::play::action::Action;
+
+impl Node<'_> {
+    pub fn action(&self, edge: Edge) -> Action {
+        let game = self.data().game();
+        match edge {
+            Edge::Raise(o) => Action::Raise((game.pot() as Utility * Utility::from(o)) as Chips),
+            Edge::Shove => Action::Shove(game.to_shove()),
+            Edge::Call => Action::Call(game.to_call()),
+            Edge::Draw => Action::Draw(Hand::empty()),
+            Edge::Fold => Action::Fold,
+            Edge::Check => Action::Check,
+        }
+    }
+    /// returns the set of all possible actions from the current node
+    /// this is useful for generating a set of children for a given node
+    pub fn unfold(&self) -> Vec<Edge> {
+        self.data()
+            .game()
+            .legal()
+            .into_iter()
+            .map(|a| self.explore(a))
+            .flatten()
+            .collect()
+    }
+    /// returns the subgame history of the current node
+    /// within the same Street of action.
+    /// this should be made lazily in the future
+    pub fn subgame(&self) -> Vec<Edge> {
+        self.history()
+            .into_iter()
+            .take_while(|e| e.is_choice())
+            .inspect(|e| log::trace!("SUBGAME {}", e))
+            .copied()
+            .collect()
+    }
+    /// returns a set of possible raises given the current history
+    /// we truncate in a few cases:
+    /// - prevent N-betting explosion of raises
+    /// - allow for finer-grained exploration in early streets
+    /// - on the last street, restrict raise amounts so smaller grid
+    fn raises(&self) -> Vec<Odds> {
+        if self.subgame().len() > crate::MAX_N_BETS {
+            vec![]
+        } else {
+            match self.data().game().board().street() {
+                Street::Pref => Odds::PREF_RAISES.to_vec(),
+                Street::Flop => Odds::FLOP_RAISES.to_vec(),
+                _ => match self.subgame().len() {
+                    0 => Odds::LATE_RAISES.to_vec(),
+                    _ => Odds::LAST_RAISES.to_vec(),
+                },
+            }
+        }
+    }
+    /// generalization of mapping a concrete Action into a set of abstract Vec<Edge>
+    /// this is mostly useful for enumerating a set of desired Raises
+    /// which can be generated however.
+    /// the contract is that the Actions returned by Game are legal,
+    /// but the Raise amount can take any value >= the minimum provided by Game.
+    fn explore(&self, action: Action) -> Vec<Edge> {
+        if let Action::Raise(_) = action {
+            let min = self.data().game().to_raise();
+            let max = self.data().game().to_shove() - 1;
+            self.raises()
+                .into_iter()
+                .map(|o| (o, Probability::from(o)))
+                .map(|(o, p)| (o, p * self.data().game().pot() as Utility))
+                .map(|(o, x)| (o, x as Chips))
+                .filter(|(_, x)| min <= *x && *x <= max)
+                .map(|(o, _)| Edge::from(o))
+                .collect()
+        } else {
+            vec![Edge::from(action)]
+        }
     }
 }
 

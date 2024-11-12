@@ -1,6 +1,7 @@
 /target
 /data
 .vscode/*
+.cursorrules
 .DS_Store
 .todo
 .env

@@ -130,13 +130,8 @@ impl Profile {
                 let existing = strategy.keys().collect::<BTreeSet<_>>();
                 if existing != observed {
                     log::info!("EXISTING {} $ {}", bucket, node.data().game().pot());
-                    log::info!("!!! {:?}", observed);
-                    log::info!("!!! {:?}", existing);
+                    panic!("observed edges must be subset of existing edges");
                 }
-                assert!(
-                    observed.is_subset(&existing),
-                    "observed edges must be subset of existing edges"
-                );
                 // asssertion needs to relax once i reintroduce pruning\
                 // some (incoming, children) branches will be permanently
                 // pruned, both in the Profile and when sampling children
@@ -148,7 +143,6 @@ impl Profile {
                 let n = children.len();
                 let uniform = 1. / n as Probability;
                 for (_, edge) in children {
-                    log::info!("??? {} {}", bucket, edge);
                     self.strategies
                         .entry(bucket.clone())
                         .or_insert_with(BTreeMap::default)
@@ -672,7 +666,7 @@ mod tests {
             1 => Edge::Fold,
             2 => Edge::Check,
             3 => Edge::Call,
-            4 => Edge::Raise(crate::clustering::encoding::Odds(1, 1)),
+            4 => Edge::Raise(crate::mccfr::odds::Odds::from((1, 1))),
             _ => Edge::Shove,
         }
     }
