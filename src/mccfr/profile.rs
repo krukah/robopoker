@@ -1,4 +1,4 @@
-use super::data::Data;
+use super::tree::Branch;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
@@ -122,11 +122,14 @@ impl Profile {
     /// otherwise, we initialize the strategy
     /// at this Node with uniform distribution
     /// over its outgoing Edges .
-    pub fn witness(&mut self, node: &Node, children: &Vec<(Data, Edge)>) {
+    pub fn witness(&mut self, node: &Node, children: &Vec<Branch>) {
         let ref bucket = node.bucket();
         match self.strategies.get(bucket) {
             Some(strategy) => {
-                let observed = children.iter().map(|(_, e)| e).collect::<BTreeSet<_>>();
+                let observed = children
+                    .iter()
+                    .map(|Branch(_, e, _)| e)
+                    .collect::<BTreeSet<_>>();
                 let existing = strategy.keys().collect::<BTreeSet<_>>();
                 if existing != observed {
                     log::warn!("EXISTING {}", bucket);
@@ -144,7 +147,7 @@ impl Profile {
                 log::info!("WITNESSD {}", bucket);
                 let n = children.len();
                 let uniform = 1. / n as Probability;
-                for (_, edge) in children {
+                for Branch(_, edge, _) in children {
                     self.strategies
                         .entry(bucket.clone())
                         .or_insert_with(BTreeMap::default)
@@ -287,15 +290,14 @@ impl Profile {
     }
 
     /// full exploration of my decision space Edges
-    pub fn sample_all(&self, choices: Vec<(Data, Edge)>, _: &Node) -> Vec<(Data, Edge)> {
+    pub fn sample_all(&self, choices: Vec<Branch>, _: &Node) -> Vec<Branch> {
         choices
             .into_iter()
-            // .filter(|(_, edge)| self.prune(node.fuckit(), edge))
-            .inspect(|(_, edge)| assert!(edge.is_choice()))
+            .inspect(|Branch(_, edge, _)| assert!(edge.is_choice()))
             .collect()
     }
     /// uniform sampling of chance Edge
-    pub fn sample_any(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+    pub fn sample_any(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
         let n = choices.len();
         let mut choices = choices;
         let ref mut rng = self.rng(head);
@@ -305,14 +307,14 @@ impl Profile {
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
-    pub fn sample_one(&self, choices: Vec<(Data, Edge)>, head: &Node) -> Vec<(Data, Edge)> {
+    pub fn sample_one(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
         use rand::distributions::WeightedIndex;
         let ref mut rng = self.rng(head);
         let ref bucket = head.bucket();
         let mut choices = choices;
         let policy = choices
             .iter()
-            .map(|(_, edge)| self.policy(bucket, edge))
+            .map(|Branch(_, edge, _)| self.policy(bucket, edge))
             .collect::<Vec<Probability>>();
         let choice = WeightedIndex::new(policy)
             .expect("at least one policy > 0")
@@ -347,7 +349,7 @@ impl Profile {
     fn immediate_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
         infoset
-            .nodes()
+            .roots()
             .iter()
             .map(|head| self.gain(head, edge))
             .sum::<Utility>()

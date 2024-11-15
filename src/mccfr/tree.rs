@@ -2,10 +2,11 @@ use super::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use petgraph::graph::DiGraph;
-use petgraph::graph::EdgeIndex;
 use petgraph::graph::NodeIndex;
 use std::fmt::Formatter;
 use std::fmt::Result;
+
+pub struct Branch(pub Data, pub Edge, pub NodeIndex);
 
 /// Represents the game tree structure used in Monte Carlo Counterfactual Regret Minimization (MCCFR).
 ///
@@ -16,6 +17,9 @@ use std::fmt::Result;
 pub struct Tree(DiGraph<Data, Edge>);
 
 impl Tree {
+    pub fn all(&self) -> Vec<Node> {
+        self.0.node_indices().map(|n| self.at(n)).collect()
+    }
     pub fn at(&self, index: NodeIndex) -> Node {
         Node::from((index, &self.0))
     }
@@ -25,11 +29,25 @@ impl Tree {
     pub fn graph(&self) -> &DiGraph<Data, Edge> {
         &self.0
     }
-    pub fn insert(&mut self, spot: Data) -> NodeIndex {
-        self.0.add_node(spot)
+    pub fn insert(&mut self, data: Data) -> Node {
+        let index = self.0.add_node(data);
+        self.at(index)
     }
-    pub fn extend(&mut self, tail: NodeIndex, from: Edge, head: NodeIndex) -> EdgeIndex {
-        self.0.add_edge(head, tail, from)
+    pub fn attach(&mut self, branch: Branch) -> Node {
+        let leaf = self.0.add_node(branch.0);
+        let from = branch.1;
+        let root = branch.2;
+        self.0.add_edge(root, leaf, from);
+        self.at(leaf)
+    }
+    pub fn partition(&mut self) {
+        for i in self.0.node_indices() {
+            let bucket = self.at(i).localization();
+            self.0
+                .node_weight_mut(i)
+                .map(|data| data.set(bucket))
+                .expect("i in self.0.node_indices()")
+        }
     }
     pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {

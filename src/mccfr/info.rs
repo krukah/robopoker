@@ -11,9 +11,12 @@ pub struct Info {
     nodes: Arc<Tree>,
 }
 
-impl From<(Arc<Tree>, Vec<NodeIndex>)> for Info {
-    fn from((nodes, roots): (Arc<Tree>, Vec<NodeIndex>)) -> Self {
-        Self { roots, nodes }
+impl From<Arc<Tree>> for Info {
+    fn from(nodes: Arc<Tree>) -> Self {
+        Self {
+            roots: vec![],
+            nodes,
+        }
     }
 }
 
@@ -21,7 +24,7 @@ impl Info {
     pub fn add(&mut self, index: NodeIndex) {
         self.roots.push(index);
     }
-    pub fn nodes(&self) -> Vec<Node> {
+    pub fn roots(&self) -> Vec<Node> {
         self.roots
             .iter()
             .copied()

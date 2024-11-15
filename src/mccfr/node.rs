@@ -1,4 +1,5 @@
 use super::bucket::Bucket;
+use super::path::Path;
 use super::player::Player;
 use crate::cards::hand::Hand;
 use crate::mccfr::data::Data;
@@ -39,7 +40,7 @@ impl<'tree> Node<'tree> {
             .expect("valid node index")
     }
     pub fn bucket(&self) -> Bucket {
-        todo!()
+        self.data().full_abstraction().clone()
     }
     pub fn index(&self) -> NodeIndex {
         self.index
@@ -122,6 +123,13 @@ impl<'tree> Node<'tree> {
     }
     pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
         self.graph
+    }
+
+    pub fn localization(&self) -> Bucket {
+        let present = self.data().card_abstraction().clone();
+        let subgame = Path::from(self.subgame()); // could be from &'tree [Edge]
+        let choices = Path::from(self.choices()); // could be from &'tree [Edge]
+        Bucket::from((subgame, present, choices))
     }
 }
 

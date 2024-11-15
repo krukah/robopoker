@@ -51,7 +51,7 @@ impl From<Odds> for Edge {
 }
 
 /// usize bijection
-impl From<Edge> for usize {
+impl From<Edge> for u8 {
     fn from(edge: Edge) -> Self {
         match edge {
             Edge::Draw => 0,
@@ -63,20 +63,20 @@ impl From<Edge> for usize {
                 5 + Odds::GRID
                     .iter()
                     .position(|&o| o == odds)
-                    .expect("invalid odds value") as usize
+                    .expect("invalid odds value") as u8
             }
         }
     }
 }
-impl From<usize> for Edge {
-    fn from(value: usize) -> Self {
+impl From<u8> for Edge {
+    fn from(value: u8) -> Self {
         match value {
             0 => Edge::Draw,
             1 => Edge::Fold,
             2 => Edge::Check,
             3 => Edge::Call,
             4 => Edge::Shove,
-            5..=14 => Edge::Raise(Odds::GRID[value - 5]),
+            5..=14 => Edge::Raise(Odds::GRID[value as usize - 5]),
             _ => unreachable!("invalid edge encoding"),
         }
     }
@@ -137,7 +137,7 @@ mod bijection_tests {
         assert!(edges
             .into_iter()
             .chain(raise)
-            .all(|edge| edge == Edge::from(usize::from(edge))));
+            .all(|edge| edge == Edge::from(u8::from(edge))));
     }
 
     #[test]
