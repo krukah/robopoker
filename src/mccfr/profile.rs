@@ -126,22 +126,17 @@ impl Profile {
         let ref bucket = node.bucket();
         match self.strategies.get(bucket) {
             Some(strategy) => {
-                let observed = children
-                    .iter()
-                    .map(|Branch(_, e, _)| e)
-                    .collect::<BTreeSet<_>>();
-                let existing = strategy.keys().collect::<BTreeSet<_>>();
-                if existing != observed {
-                    log::warn!("EXISTING {}", bucket);
-                    log::warn!("OBSERVED {:?}", observed);
-                    log::warn!("EXISTING {:?}", existing);
-                    panic!("observed edges must be subset of existing edges");
-                }
                 // asssertion needs to relax once i reintroduce pruning\
                 // some (incoming, children) branches will be permanently
                 // pruned, both in the Profile and when sampling children
                 // in this case we have to reasses "who" is expected to
                 // have "what" edges on "which when" epochs
+                let existing = strategy.keys().collect::<BTreeSet<_>>();
+                let observed = children
+                    .iter()
+                    .map(|Branch(_, e, _)| e)
+                    .collect::<BTreeSet<_>>();
+                assert!(observed == existing);
             }
             None => {
                 log::trace!("WITNESSD {}", bucket);

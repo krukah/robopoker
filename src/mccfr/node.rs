@@ -1,7 +1,6 @@
 use super::bucket::Bucket;
 use super::path::Path;
 use super::player::Player;
-use crate::cards::hand::Hand;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::play::ply::Ply;
@@ -128,7 +127,7 @@ impl<'tree> Node<'tree> {
     }
 
     pub fn localization(&self) -> Bucket {
-        let present = self.data().card_abstraction().clone();
+        let present = self.data().abstraction().clone();
         let subgame = Path::from(self.subgame()); // could be from &'tree [Edge]
         let choices = Path::from(self.choices()); // could be from &'tree [Edge]
         Bucket::from((subgame, present, choices))
@@ -160,8 +159,7 @@ impl Node<'_> {
             .game()
             .legal()
             .into_iter()
-            .map(|a| self.explore(a))
-            .flatten()
+            .flat_map(|a| self.generalize(a))
             .collect()
     }
     /// returns the subgame history of the current node
@@ -198,7 +196,7 @@ impl Node<'_> {
     /// which can be generated however.
     /// the contract is that the Actions returned by Game are legal,
     /// but the Raise amount can take any value >= the minimum provided by Game.
-    fn explore(&self, action: Action) -> Vec<Edge> {
+    fn generalize(&self, action: Action) -> Vec<Edge> {
         if let Action::Raise(_) = action {
             let min = self.data().game().to_raise();
             let max = self.data().game().to_shove() - 1;

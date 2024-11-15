@@ -45,17 +45,20 @@ impl Tree {
         self.at(leaf)
     }
     pub fn partition(&mut self) {
+        // TODO
+        // - assign buckets in Solver::explore()
+        // - use lazy localization
         for i in self.0.node_indices() {
             let bucket = self.at(i).localization();
             self.0
                 .node_weight_mut(i)
-                .map(|data| data.set(bucket))
+                .map(|data| data.assign(bucket))
                 .expect("i in self.0.node_indices()")
         }
     }
     pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {
-            writeln!(f, "ROOT   {}", self.at(index).bucket())?;
+            writeln!(f, "\nROOT   {}", self.at(index).bucket())?;
         }
         let mut children = self
             .0

@@ -10,6 +10,9 @@ impl From<Tree> for Partition {
     fn from(tree: Tree) -> Self {
         let mut info = BTreeMap::new();
         let mut tree = tree;
+        // TODO
+        // - assign buckets in Solver::explore()
+        // - use lazy localization
         tree.partition();
         let tree = Arc::new(tree);
         for node in tree.all().iter().filter(|n| n.player() == tree.walker()) {

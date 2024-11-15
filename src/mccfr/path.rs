@@ -26,7 +26,6 @@ impl From<Path> for Vec<Edge> {
             .collect()
     }
 }
-
 impl From<Vec<Edge>> for Path {
     fn from(edges: Vec<Edge>) -> Self {
         let path = edges
@@ -35,7 +34,6 @@ impl From<Vec<Edge>> for Path {
             // our u8 is really u4, so we can compact 16 consecutive edges in a Path(u64) sequence
             .map(|(i, edge)| (u8::from(edge) as u64) << (i * 4))
             .fold(Self::default(), |Self(acc), bits| Self(acc | bits));
-        log::trace!("PATH {}", path.0);
         path
     }
 }
@@ -45,7 +43,6 @@ impl From<u64> for Path {
         Self(value)
     }
 }
-
 impl From<Path> for u64 {
     fn from(path: Path) -> Self {
         path.0
@@ -54,6 +51,6 @@ impl From<Path> for u64 {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:04}", 1999 * self.0 % 7919)
+        write!(f, "{:02}", (self.0.wrapping_mul(2971215073)) % 100)
     }
 }
