@@ -7,7 +7,7 @@ robopoker
 
 # Overview
 
- This started as my first Rust project before gradually evolving into a state-of-the-art poker solver and analysis tool seeking functional parity with Pluribus<sup>1</sup>, the first superhuman agent in multiplayer No Limit Texas Hold'em.
+ This started as a simple Rust project before evolving into a state-of-the-art poker solver and analysis tool seeking functional parity with Pluribus<sup>1</sup>, the first superhuman agent in multiplayer No Limit Texas Hold'em.
  
  The guiding philosophy of this crate is to use very precise struct and trait abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. We lean heavily into idiomatic Rust by using lazy functional patterns, efficient data structure representations, infallible type conversions, thread-safe multi-processing, and strictly safe code.
 

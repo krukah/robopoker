@@ -35,13 +35,10 @@ impl Data {
     /// information that we can't conveive of. so at compile
     /// time we tell ourselves that we will "fill in the blanks"
     /// later in the Tree generation and partitioning process.
-    pub fn set(&mut self, bucket: Bucket) {
+    pub fn assign(&mut self, bucket: Bucket) {
         self.partition = Some(bucket);
     }
-    pub fn card_abstraction(&self) -> &Abstraction {
+    pub fn abstraction(&self) -> &Abstraction {
         &self.info
-    }
-    pub fn full_abstraction(&self) -> &Bucket {
-        self.partition.as_ref().expect("tresssspartitioned")
     }
 }

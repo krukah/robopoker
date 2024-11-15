@@ -87,8 +87,7 @@ impl Solver {
             let children = self.explore(root);
             self.exploring.extend(children);
         }
-        log::trace!("TREE {}", tree);
-        // std::thread::sleep(std::time::Duration::from_secs(1));
+        log::trace!("{}", tree);
         tree
     }
 
@@ -96,6 +95,9 @@ impl Solver {
     /// by using the self.branches() return to inform the set of possible
     /// continuing Edge Actions.
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
+        // TODO
+        // - assign buckets in Solver::explore()
+        // - use lazy localization
         let player = node.player();
         let chance = Player::chance();
         let walker = self.profile.walker();
