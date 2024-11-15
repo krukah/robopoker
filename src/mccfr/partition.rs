@@ -12,7 +12,7 @@ impl From<Tree> for Partition {
         let mut tree = tree;
         tree.partition();
         let tree = Arc::new(tree);
-        for node in tree.all() {
+        for node in tree.all().iter().filter(|n| n.player() == tree.walker()) {
             info.entry(node.bucket())
                 .or_insert_with(|| Info::from(tree.clone()))
                 .add(node.index());

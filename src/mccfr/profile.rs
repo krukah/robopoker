@@ -144,7 +144,7 @@ impl Profile {
                 // have "what" edges on "which when" epochs
             }
             None => {
-                log::info!("WITNESSD {}", bucket);
+                log::trace!("WITNESSD {}", bucket);
                 let n = children.len();
                 let uniform = 1. / n as Probability;
                 for Branch(_, edge, _) in children {
@@ -290,14 +290,14 @@ impl Profile {
     }
 
     /// full exploration of my decision space Edges
-    pub fn sample_all(&self, choices: Vec<Branch>, _: &Node) -> Vec<Branch> {
+    pub fn explore_all(&self, choices: Vec<Branch>, _: &Node) -> Vec<Branch> {
         choices
             .into_iter()
             .inspect(|Branch(_, edge, _)| assert!(edge.is_choice()))
             .collect()
     }
     /// uniform sampling of chance Edge
-    pub fn sample_any(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
+    pub fn explore_any(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
         let n = choices.len();
         let mut choices = choices;
         let ref mut rng = self.rng(head);
@@ -307,7 +307,7 @@ impl Profile {
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
-    pub fn sample_one(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
+    pub fn explore_one(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
         use rand::distributions::WeightedIndex;
         let ref mut rng = self.rng(head);
         let ref bucket = head.bucket();
@@ -368,7 +368,22 @@ impl Profile {
     /// and following this Edge 100% of the time,
     /// what is the expected marginal increase in Utility?
     fn gain(&self, head: &Node, edge: &Edge) -> Utility {
-        assert!(head.player() == self.walker());
+        let bucket = head.bucket();
+        assert!(
+            head.player() == self.walker(),
+            "head bucket: {}\n\
+                history: {}\n\
+                futures: {}\n\
+                edge:    {}\n\
+                player:  {}\n\
+                walker:  {}",
+            bucket,
+            bucket.0,
+            bucket.2,
+            edge,
+            head.player(),
+            self.walker()
+        );
         let expected = self.expected_value(head);
         let cfactual = self.cfactual_value(head, edge);
         cfactual - expected

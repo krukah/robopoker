@@ -54,13 +54,13 @@ impl From<Odds> for Edge {
 impl From<Edge> for u8 {
     fn from(edge: Edge) -> Self {
         match edge {
-            Edge::Draw => 0,
-            Edge::Fold => 1,
-            Edge::Check => 2,
-            Edge::Call => 3,
-            Edge::Shove => 4,
+            Edge::Draw => 1,
+            Edge::Fold => 2,
+            Edge::Check => 3,
+            Edge::Call => 4,
+            Edge::Shove => 5,
             Edge::Raise(odds) => {
-                5 + Odds::GRID
+                6 + Odds::GRID
                     .iter()
                     .position(|&o| o == odds)
                     .expect("invalid odds value") as u8
@@ -71,12 +71,12 @@ impl From<Edge> for u8 {
 impl From<u8> for Edge {
     fn from(value: u8) -> Self {
         match value {
-            0 => Edge::Draw,
-            1 => Edge::Fold,
-            2 => Edge::Check,
-            3 => Edge::Call,
-            4 => Edge::Shove,
-            5..=14 => Edge::Raise(Odds::GRID[value as usize - 5]),
+            1 => Edge::Draw,
+            2 => Edge::Fold,
+            3 => Edge::Check,
+            4 => Edge::Call,
+            5 => Edge::Shove,
+            i @ 6..=15 => Edge::Raise(Odds::GRID[i as usize - 6]),
             _ => unreachable!("invalid edge encoding"),
         }
     }

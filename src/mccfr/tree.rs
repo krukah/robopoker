@@ -1,4 +1,5 @@
 use super::data::Data;
+use super::player::Player;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::node::Node;
 use petgraph::graph::DiGraph;
@@ -14,7 +15,7 @@ pub struct Branch(pub Data, pub Edge, pub NodeIndex);
 /// 1. A directed graph (`DiGraph`) representing the game tree, where nodes are game states and edges are actions.
 /// 2. A mapping from `Bucket`s to `Info`sets, which groups similar game states together.
 #[derive(Debug)]
-pub struct Tree(DiGraph<Data, Edge>);
+pub struct Tree(DiGraph<Data, Edge>, Player);
 
 impl Tree {
     pub fn all(&self) -> Vec<Node> {
@@ -23,8 +24,11 @@ impl Tree {
     pub fn at(&self, index: NodeIndex) -> Node {
         Node::from((index, &self.0))
     }
-    pub fn empty() -> Self {
-        Self(DiGraph::with_capacity(0, 0))
+    pub fn empty(player: Player) -> Self {
+        Self(DiGraph::with_capacity(0, 0), player)
+    }
+    pub fn walker(&self) -> Player {
+        self.1
     }
     pub fn graph(&self) -> &DiGraph<Data, Edge> {
         &self.0

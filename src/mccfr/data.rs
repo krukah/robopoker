@@ -1,9 +1,7 @@
+use super::bucket::Bucket;
 use crate::clustering::abstraction::Abstraction;
 use crate::mccfr::player::Player;
 use crate::play::game::Game;
-
-use super::bucket::Bucket;
-use super::path::Path;
 
 #[derive(Debug)]
 pub struct Data {
@@ -43,15 +41,7 @@ impl Data {
     pub fn card_abstraction(&self) -> &Abstraction {
         &self.info
     }
-    pub fn path_abstraction(&self) -> (&Path, &Path) {
-        self.partition
-            .as_ref()
-            .map(|Bucket(a, _, b)| (a, b))
-            .expect("tree to have been partitioned")
-    }
     pub fn full_abstraction(&self) -> &Bucket {
-        self.partition
-            .as_ref()
-            .expect("tree to have been partitioned")
+        self.partition.as_ref().expect("tresssspartitioned")
     }
 }
