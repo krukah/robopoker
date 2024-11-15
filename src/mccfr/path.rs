@@ -20,6 +20,7 @@ impl From<Path> for Vec<Edge> {
     fn from(path: Path) -> Self {
         (0..16)
             .map(|i| ((path.0 >> (i * 4)) & 0xF) as u8)
+            .filter(|&bits| bits != 0)
             .map(Edge::from)
             .take_while(|e| e.is_choice())
             .collect()
@@ -34,7 +35,7 @@ impl From<Vec<Edge>> for Path {
             // our u8 is really u4, so we can compact 16 consecutive edges in a Path(u64) sequence
             .map(|(i, edge)| (u8::from(edge) as u64) << (i * 4))
             .fold(Self::default(), |Self(acc), bits| Self(acc | bits));
-        log::info!("PATH {}", path.0);
+        log::trace!("PATH {}", path.0);
         path
     }
 }
@@ -53,6 +54,6 @@ impl From<Path> for u64 {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "P{:02x}", self.0 % 256)
+        write!(f, "{:04}", 1999 * self.0 % 7919)
     }
 }

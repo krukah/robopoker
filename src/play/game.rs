@@ -206,8 +206,8 @@ impl Game {
         match a {
             &Action::Draw(cards) => {
                 self.reveal(cards);
-                self.next_street();
                 self.next_player();
+                self.next_street();
             }
             &Action::Check => {
                 self.next_player();
@@ -235,11 +235,12 @@ impl Game {
         // tightly coupled with next_street?
         self.ticker = self.dealer;
         self.board.add(hand);
+    }
+    fn next_street(&mut self) {
         for seat in self.seats.iter_mut() {
             seat.reset_stake();
         }
     }
-    fn next_street(&mut self) {}
     fn next_player(&mut self) {
         if !self.is_everyone_alright() {
             loop {
@@ -385,6 +386,9 @@ impl Game {
     }
 
     //
+    pub fn draw(&self) -> Hand {
+        self.deck().deal(self.board().street())
+    }
     fn deck(&self) -> Deck {
         let mut removed = Hand::from(self.board);
         for seat in self.seats.iter() {

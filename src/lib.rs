@@ -26,7 +26,7 @@ const KMEANS_TURN_TRAINING_ITERATIONS: usize = 100;
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 100;
 
 // mccfr parameters
-const CFR_BATCH_SIZE: usize = 1;
+const CFR_BATCH_SIZE: usize = 128;
 const CFR_TREE_COUNT: usize = 16_777_216;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000;

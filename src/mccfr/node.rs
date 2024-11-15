@@ -40,7 +40,9 @@ impl<'tree> Node<'tree> {
             .expect("valid node index")
     }
     pub fn bucket(&self) -> Bucket {
-        self.data().full_abstraction().clone()
+        // self.data().full_abstraction().clone()
+        // todo: memoize
+        self.localization()
     }
     pub fn index(&self) -> NodeIndex {
         self.index
@@ -146,7 +148,7 @@ impl Node<'_> {
             Edge::Raise(o) => Action::Raise((game.pot() as Utility * Utility::from(o)) as Chips),
             Edge::Shove => Action::Shove(game.to_shove()),
             Edge::Call => Action::Call(game.to_call()),
-            Edge::Draw => Action::Draw(Hand::empty()),
+            Edge::Draw => Action::Draw(game.draw()),
             Edge::Fold => Action::Fold,
             Edge::Check => Action::Check,
         }
@@ -169,7 +171,6 @@ impl Node<'_> {
         self.history()
             .into_iter()
             .take_while(|e| e.is_choice())
-            .inspect(|e| log::info!("   > {}", e))
             .copied()
             .collect()
     }

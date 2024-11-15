@@ -62,6 +62,7 @@ impl Solver {
                 .map(|t| Partition::from(t))
                 .map(|p| Vec::<Info>::from(p))
                 .flatten()
+                .filter(|info| info.node().player() == self.profile.walker())
                 .map(|info| self.counterfactual(info))
                 .collect::<Vec<Counterfactual>>()
             {
@@ -77,19 +78,24 @@ impl Solver {
     /// Build the Tree iteratively starting from the root node.
     /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
     fn simulate(&mut self) -> Tree {
-        let mut tree = Tree::empty();
+        let mut tree = Tree::empty(self.profile.walker());
         let ref root = tree.insert(self.sampler.root());
-        let children = self.sample(root);
+        let children = self.explore(root);
         self.exploring = children;
         while let Some(branch) = self.exploring.pop() {
             let ref root = tree.attach(branch);
-            let children = self.sample(root);
+            let children = self.explore(root);
             self.exploring.extend(children);
         }
+        log::trace!("TREE {}", tree);
+        // std::thread::sleep(std::time::Duration::from_secs(1));
         tree
     }
 
-    fn sample(&mut self, node: &Node) -> Vec<Branch> {
+    /// could make this more mut so that we can populate Data::partition : Bucket
+    /// by using the self.branches() return to inform the set of possible
+    /// continuing Edge Actions.
+    fn explore(&mut self, node: &Node) -> Vec<Branch> {
         let player = node.player();
         let chance = Player::chance();
         let walker = self.profile.walker();
@@ -99,15 +105,17 @@ impl Solver {
                 vec![] //
             }
             (_, p) if p == chance => {
-                self.profile.sample_any(choices, node) //
+                self.profile.explore_any(choices, node) //
             }
             (_, p) if p != walker => {
+                //   self.tree.0.mut_node_weight(node.index()).map(|data| data.set(bucket))
                 self.profile.witness(node, &choices);
-                self.profile.sample_one(choices, node)
+                self.profile.explore_one(choices, node)
             }
             (_, p) if p == walker => {
+                //   self.tree.0.mut_node_weight(node.index()).map(|data| data.set(bucket))
                 self.profile.witness(node, &choices);
-                self.profile.sample_all(choices, node)
+                self.profile.explore_all(choices, node)
             }
             _ => panic!("bitches"),
         }
@@ -128,7 +136,6 @@ impl Solver {
             .map(|(e, g)| (e, g, self.sampler.recall(&g)))
             .map(|(e, g, i)| (e, Data::from((g, i))))
             .map(|(e, d)| (e, d, node.index()))
-            .inspect(|(e, d, n)| log::info!("child of {} {} {}", n.index(), e, d.game()))
             .map(|(e, d, n)| Branch(d, e, n))
             .collect()
     }
