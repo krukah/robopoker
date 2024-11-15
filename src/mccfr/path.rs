@@ -10,21 +10,38 @@ impl Path {
     }
 }
 
+impl From<Edge> for Path {
+    fn from(edge: Edge) -> Self {
+        // our u8 is really u4, so we can compact 16 consecutive edges in a Path(u64) sequence
+        Self(u8::from(edge) as u64)
+    }
+}
+impl From<Path> for Vec<Edge> {
+    fn from(path: Path) -> Self {
+        (0..16)
+            .map(|i| ((path.0 >> (i * 4)) & 0xF) as u8)
+            .map(Edge::from)
+            .take_while(|e| e.is_choice())
+            .collect()
+    }
+}
+
 impl From<Vec<Edge>> for Path {
     fn from(edges: Vec<Edge>) -> Self {
-        let bits = edges
+        let path = edges
             .into_iter()
             .enumerate()
-            .map(|(i, edge)| (usize::from(edge) as u64) << (i * 4))
-            .fold(0u64, |acc, x| acc | x);
-        log::info!("PATH {}", bits);
-        Self(bits)
+            // our u8 is really u4, so we can compact 16 consecutive edges in a Path(u64) sequence
+            .map(|(i, edge)| (u8::from(edge) as u64) << (i * 4))
+            .fold(Self::default(), |Self(acc), bits| Self(acc | bits));
+        log::info!("PATH {}", path.0);
+        path
     }
 }
 
 impl From<u64> for Path {
     fn from(value: u64) -> Self {
-        Path(value)
+        Self(value)
     }
 }
 

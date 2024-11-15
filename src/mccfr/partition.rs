@@ -1,27 +1,28 @@
 use super::bucket::Bucket;
 use super::tree::Tree;
 use crate::mccfr::info::Info;
-use crate::mccfr::node::Node;
-use petgraph::graph::NodeIndex;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-pub struct Partition(BTreeMap<Bucket, Vec<NodeIndex>>);
+pub struct Partition(BTreeMap<Bucket, Info>);
 
-impl Partition {
-    pub fn new() -> Self {
-        Self(BTreeMap::new())
+impl From<Tree> for Partition {
+    fn from(tree: Tree) -> Self {
+        let mut info = BTreeMap::new();
+        let mut tree = tree;
+        tree.partition();
+        let tree = Arc::new(tree);
+        for node in tree.all() {
+            info.entry(node.bucket())
+                .or_insert_with(|| Info::from(tree.clone()))
+                .add(node.index());
+        }
+        Self(info)
     }
-    pub fn infos(&self, tree: Arc<Tree>) -> Vec<Info> {
-        self.0
-            .iter()
-            .map(|(_, indices)| Info::from((tree.clone(), indices.clone())))
-            .collect()
-    }
-    pub fn witness(&mut self, node: &Node) {
-        self.0
-            .entry(node.bucket())
-            .or_insert_with(Vec::new)
-            .push(node.index());
+}
+
+impl From<Partition> for Vec<Info> {
+    fn from(infosets: Partition) -> Self {
+        infosets.0.into_values().collect()
     }
 }

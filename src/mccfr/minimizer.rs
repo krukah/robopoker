@@ -5,17 +5,15 @@ use super::node::Node;
 use super::partition::Partition;
 use super::player::Player;
 use super::profile::Profile;
+use super::sampler::Sampler;
+use super::tree::Branch;
 use super::tree::Tree;
-use crate::mccfr::sampler::Sampler;
 use crate::Probability;
 use crate::Utility;
-use petgraph::graph::NodeIndex;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
-struct Branch(Data, Edge, NodeIndex);
 struct Regret(BTreeMap<Edge, Utility>);
 struct Policy(BTreeMap<Edge, Probability>);
 struct Counterfactual(Info, Regret, Policy);
@@ -33,17 +31,19 @@ struct Counterfactual(Info, Regret, Policy);
 /// - Regret & Policy vector evaluations are pure.
 /// - Profile updates mutates Profile for obvious reasons.
 #[derive(Default)]
-pub struct Trainer {
+pub struct Solver {
     profile: Profile,
     sampler: Sampler,
+    exploring: Vec<Branch>,
 }
 
-impl Trainer {
+impl Solver {
     /// load existing profile and encoder from disk
     pub fn load() -> Self {
         Self {
             profile: Profile::load(),
             sampler: Sampler::load(),
+            exploring: Vec::new(),
         }
     }
 
@@ -53,26 +53,84 @@ impl Trainer {
     /// encapsulated by Profile, but we are yet to impose
     /// a learning schedule for regret or policy.
     pub fn train(&mut self) {
-        log::info!("training blueprint");
         let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
-            let counterfactuals = (0..crate::CFR_BATCH_SIZE)
-                .map(|_| self.sample())
-                .collect::<Vec<(Tree, Partition)>>()
+            for Counterfactual(info, regret, policy) in (0..crate::CFR_BATCH_SIZE)
+                .map(|_| self.simulate())
+                .collect::<Vec<Tree>>()
                 .into_par_iter()
-                .map(|(tree, partition)| (Arc::new(tree), partition))
-                .map(|(tree, partition)| partition.infos(tree))
+                .map(|t| Partition::from(t))
+                .map(|p| Vec::<Info>::from(p))
                 .flatten()
                 .map(|info| self.counterfactual(info))
-                .collect::<Vec<Counterfactual>>();
-            for Counterfactual(info, regret, policy) in counterfactuals {
-                let ref bucket = info.node().bucket();
-                self.profile.regret_update(bucket, &regret.0);
-                self.profile.policy_update(bucket, &policy.0);
+                .collect::<Vec<Counterfactual>>()
+            {
+                let bucket = info.node().bucket();
+                self.profile.regret_update(&bucket, &regret.0);
+                self.profile.policy_update(&bucket, &policy.0);
             }
             progress.inc(1);
         }
         self.profile.save("blueprint");
+    }
+
+    /// Build the Tree iteratively starting from the root node.
+    /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
+    fn simulate(&mut self) -> Tree {
+        let mut tree = Tree::empty();
+        let ref root = tree.insert(self.sampler.root());
+        let children = self.sample(root);
+        self.exploring = children;
+        while let Some(branch) = self.exploring.pop() {
+            let ref root = tree.attach(branch);
+            let children = self.sample(root);
+            self.exploring.extend(children);
+        }
+        tree
+    }
+
+    fn sample(&mut self, node: &Node) -> Vec<Branch> {
+        let player = node.player();
+        let chance = Player::chance();
+        let walker = self.profile.walker();
+        let choices = self.branches(node);
+        match (choices.len(), player) {
+            (0, _) => {
+                vec![] //
+            }
+            (_, p) if p == chance => {
+                self.profile.sample_any(choices, node) //
+            }
+            (_, p) if p != walker => {
+                self.profile.witness(node, &choices);
+                self.profile.sample_one(choices, node)
+            }
+            (_, p) if p == walker => {
+                self.profile.witness(node, &choices);
+                self.profile.sample_all(choices, node)
+            }
+            _ => panic!("bitches"),
+        }
+    }
+
+    /// unfiltered set of possible children of a Node,
+    /// conditional on its History (# raises, street granularity).
+    /// the head Node is attached to the Tree stack-recursively,
+    /// while the leaf Data is generated here with help from Sampler.
+    /// Rust's ownership makes this a bit awkward but for very good reason!
+    /// It has forced me to decouple global (Path) from local (Data)
+    /// properties of Tree sampling, which makes lots of sense and is stronger model.
+    fn branches(&self, node: &Node) -> Vec<Branch> {
+        node.choices()
+            .into_iter()
+            .map(|e| (e, node.action(e)))
+            .map(|(e, a)| (e, node.data().game().apply(a)))
+            .map(|(e, g)| (e, g, self.sampler.recall(&g)))
+            .map(|(e, g, i)| (e, Data::from((g, i))))
+            .map(|(e, d)| (e, d, node.index()))
+            .inspect(|(e, d, n)| log::info!("child of {} {} {}", n.index(), e, d.game()))
+            .map(|(e, d, n)| Branch(d, e, n))
+            .collect()
     }
 
     /// compute regret and policy vectors for a given infoset
@@ -80,58 +138,5 @@ impl Trainer {
         let regret = Regret(self.profile.regret_vector(&info));
         let policy = Policy(self.profile.policy_vector(&info));
         Counterfactual(info, regret, policy)
-    }
-
-    /// Build the Tree iteratively starting from the root node.
-    /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
-    fn sample(&mut self) -> (Tree, Partition) {
-        let mut tree = Tree::empty();
-        let mut partition = Partition::new();
-        let ref mut infos = partition;
-        let ref mut queue = Vec::new();
-        let head = self.sampler.root();
-        let head = tree.insert(head);
-        let head = tree.at(head);
-        self.visit(&head, queue, infos);
-        #[allow(unused_variables)]
-        while let Some(Branch(tail, from, head)) = queue.pop() {
-            let tail = tree.insert(tail);
-            let from = tree.extend(tail, from, head);
-            let head = tree.at(tail);
-            self.visit(&head, queue, infos);
-        }
-        log::trace!("{}", tree);
-        (tree, partition)
-    }
-
-    /// Process a node: witness it for profile and partition if necessary,
-    /// and add its children to the exploration queue.
-    /// under external sampling rules:
-    /// - explore ALL my options
-    /// - explore 1 of Chance
-    /// - explore 1 of Villain
-    fn visit(&mut self, head: &Node, queue: &mut Vec<Branch>, partition: &mut Partition) {
-        log::trace!("visiting node {}", head);
-        let children = self.sampler.children(head);
-        let walker = self.profile.walker();
-        let chance = Player::chance();
-        let player = head.player();
-        let sample = if children.is_empty() {
-            children
-        } else if player == chance {
-            self.profile.sample_any(children, head)
-        } else if player != walker {
-            self.profile.witness(head, &children);
-            self.profile.sample_one(children, head)
-        } else if player == walker {
-            partition.witness(head);
-            self.profile.witness(head, &children);
-            self.profile.sample_all(children, head)
-        } else {
-            panic!("at the disco")
-        };
-        for (tail, from) in sample {
-            queue.push(Branch(tail, from, head.index()));
-        }
     }
 }
