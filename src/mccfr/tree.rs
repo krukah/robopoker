@@ -8,13 +8,18 @@ use std::fmt::Formatter;
 use std::fmt::Result;
 
 pub struct Branch(pub Data, pub Edge, pub NodeIndex);
+impl Branch {
+    pub fn edge(&self) -> &Edge {
+        &self.1
+    }
+}
 
 /// Represents the game tree structure used in Monte Carlo Counterfactual Regret Minimization (MCCFR).
 ///
 /// The `Tree` struct contains two main components:
 /// 1. A directed graph (`DiGraph`) representing the game tree, where nodes are game states and edges are actions.
 /// 2. A mapping from `Bucket`s to `Info`sets, which groups similar game states together.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Tree(DiGraph<Data, Edge>, Player);
 
 impl Tree {
@@ -35,26 +40,19 @@ impl Tree {
     }
     pub fn insert(&mut self, data: Data) -> Node {
         let index = self.0.add_node(data);
+        let bucket = self.at(index).localization();
+        self.0
+            .node_weight_mut(index)
+            .map(|data| data.assign(bucket))
+            .expect("node index in tree");
         self.at(index)
     }
     pub fn attach(&mut self, branch: Branch) -> Node {
-        let leaf = self.0.add_node(branch.0);
+        let leaf = self.insert(branch.0).index();
         let from = branch.1;
         let root = branch.2;
         self.0.add_edge(root, leaf, from);
         self.at(leaf)
-    }
-    pub fn partition(&mut self) {
-        // TODO
-        // - assign buckets in Solver::explore()
-        // - use lazy localization
-        for i in self.0.node_indices() {
-            let bucket = self.at(i).localization();
-            self.0
-                .node_weight_mut(i)
-                .map(|data| data.assign(bucket))
-                .expect("i in self.0.node_indices()")
-        }
     }
     pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {
@@ -70,7 +68,8 @@ impl Tree {
             let last = i == n - 1;
             let stem = if last { "└" } else { "├" };
             let gaps = if last { "    " } else { "│   " };
-            let head = self.at(child).bucket();
+            let node = self.at(child);
+            let head = node.bucket();
             let edge = self
                 .0
                 .edge_weight(self.0.find_edge(index, child).unwrap())

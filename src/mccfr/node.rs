@@ -38,10 +38,8 @@ impl<'tree> Node<'tree> {
             .node_weight(self.index())
             .expect("valid node index")
     }
-    pub fn bucket(&self) -> Bucket {
-        // self.data().full_abstraction().clone()
-        // todo: memoize
-        self.localization()
+    pub fn bucket(&self) -> &Bucket {
+        self.data().bucket()
     }
     pub fn index(&self) -> NodeIndex {
         self.index
@@ -141,10 +139,10 @@ use crate::play::action::Action;
 impl Node<'_> {
     /// convert an Edge into an Action by using Game state to
     /// determine free parameters (stack size, pot size, etc)
-    pub fn action(&self, edge: Edge) -> Action {
+    pub fn action(&self, edge: &Edge) -> Action {
         let game = self.data().game();
-        match edge {
-            Edge::Raise(o) => Action::Raise((game.pot() as Utility * Utility::from(o)) as Chips),
+        match &edge {
+            Edge::Raise(o) => Action::Raise((game.pot() as Utility * Utility::from(*o)) as Chips),
             Edge::Shove => Action::Shove(game.to_shove()),
             Edge::Call => Action::Call(game.to_call()),
             Edge::Draw => Action::Draw(game.draw()),
@@ -154,6 +152,7 @@ impl Node<'_> {
     }
     /// returns the set of all possible actions from the current node
     /// this is useful for generating a set of children for a given node
+    /// broadly goes from Node -> Game -> Action -> Edge
     pub fn choices(&self) -> Vec<Edge> {
         self.data()
             .game()
@@ -178,13 +177,14 @@ impl Node<'_> {
     /// - allow for finer-grained exploration in early streets
     /// - on the last street, restrict raise amounts so smaller grid
     fn raises(&self) -> Vec<Odds> {
-        if self.subgame().len() > crate::MAX_N_BETS {
+        let n = self.subgame().len();
+        if n > crate::MAX_N_BETS {
             vec![]
         } else {
             match self.data().game().board().street() {
                 Street::Pref => Odds::PREF_RAISES.to_vec(),
                 Street::Flop => Odds::FLOP_RAISES.to_vec(),
-                _ => match self.subgame().len() {
+                _ => match n {
                     0 => Odds::LATE_RAISES.to_vec(),
                     _ => Odds::LAST_RAISES.to_vec(),
                 },

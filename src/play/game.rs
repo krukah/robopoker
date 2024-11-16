@@ -336,15 +336,20 @@ impl Game {
         self.actor_ref().stack()
     }
     pub fn to_raise(&self) -> Chips {
-        let mut stakes = self
+        let (most_large_stake, next_large_stake) = self
             .seats
             .iter()
             .filter(|s| s.state() != State::Folding)
             .map(|s| s.stake())
-            .collect::<Vec<Chips>>();
-        stakes.sort_unstable();
-        let most_large_stake = stakes.pop().unwrap_or(0);
-        let next_large_stake = stakes.pop().unwrap_or(0);
+            .fold((0, 0), |(most, next), stake| {
+                if stake > most {
+                    (stake, most)
+                } else if stake > next {
+                    (most, stake)
+                } else {
+                    (most, next)
+                }
+            });
         let relative_raise = most_large_stake - self.actor().stake();
         let marginal_raise = most_large_stake - next_large_stake;
         let required_raise = std::cmp::max(marginal_raise, Self::bblind());
