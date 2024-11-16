@@ -101,20 +101,20 @@ impl Game {
             options.push(Action::Blind(Self::sblind()));
             return options;
         }
-        if self.can_check() {
-            options.push(Action::Check);
-        }
-        if self.can_fold() {
-            options.push(Action::Fold);
-        }
-        if self.can_call() {
-            options.push(Action::Call(self.to_call()));
-        }
         if self.can_raise() {
             options.push(Action::Raise(self.to_raise()));
         }
         if self.can_shove() {
             options.push(Action::Shove(self.to_shove()));
+        }
+        if self.can_call() {
+            options.push(Action::Call(self.to_call()));
+        }
+        if self.can_fold() {
+            options.push(Action::Fold);
+        }
+        if self.can_check() {
+            options.push(Action::Check);
         }
         options
     }

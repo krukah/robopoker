@@ -7,8 +7,23 @@ robopoker
 
 # Overview
 
- This started as a simple Rust project before evolving into a state-of-the-art poker solver and analysis tool seeking functional parity with Pluribus<sup>1</sup>, the first superhuman agent in multiplayer No Limit Texas Hold'em.
- 
+This started as a simple Rust project before evolving into a state-of-the-art poker solver and analysis tool seeking functional parity with Pluribus<sup>1</sup>, the first superhuman agent in multiplayer No Limit Texas Hold'em.
+
+<table>
+<tr>
+<td align="center">
+    <img src="https://github.com/user-attachments/assets/5118eba3-3d64-42f8-ac07-5c83ff733439" height="200" alt="Training Progress"/>
+    <br>
+    <em>Monte Carlo Tree Search</em>
+</td>
+<td align="center">
+    <img src="https://github.com/user-attachments/assets/90b491df-9482-483e-9475-4360f5a17add" height="200" alt="Strategy Growth"/>
+    <br>
+    <em>Equity Distributions</em>
+</td>
+</tr>
+</table>
+
  The guiding philosophy of this crate is to use very precise struct and trait abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. We lean heavily into idiomatic Rust by using lazy functional patterns, efficient data structure representations, infallible type conversions, thread-safe multi-processing, and strictly safe code.
 
  The intended use case is a one-time resource-intensive training run that will save information abstractions, k-means clusters, distance metrics, and blueprint profiles to disk for use in later runs or analyses. To generate these datasets under arbitrary parametrization, the program will iterate through the following steps:
