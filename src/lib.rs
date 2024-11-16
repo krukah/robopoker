@@ -27,7 +27,7 @@ const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 128;
 
 // mccfr parameters
 const CFR_BATCH_SIZE: usize = 9182;
-const CFR_TREE_COUNT: usize = 67_108_864;
+const CFR_TREE_COUNT: usize = 68_719_476_736;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000;
 const CFR_PRUNNING_PHASE: usize = 100_000_000;
