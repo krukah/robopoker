@@ -9,3 +9,5 @@
 *.pgcopy
 *.log
 *.png
+*.gif
+*.sh
