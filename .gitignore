@@ -1,11 +1,14 @@
 /target
 /data
-.vscode/*
+/analysis
+/.vscode
+
 .cursorrules
 .DS_Store
 .todo
 .env
 .swp
+
 *.pgcopy
 *.log
 *.png
