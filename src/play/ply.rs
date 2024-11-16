@@ -1,8 +1,9 @@
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Ply {
-    Choice(usize),
-    Chance,
+    #[default]
     Terminal,
+    Chance,
+    Choice(usize),
 }
 
 impl std::fmt::Display for Ply {

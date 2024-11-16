@@ -34,7 +34,6 @@ struct Counterfactual(Info, Regret, Policy);
 pub struct Solver {
     profile: Profile,
     sampler: Sampler,
-    exploring: Vec<Branch>,
 }
 
 impl Solver {
@@ -43,7 +42,6 @@ impl Solver {
         Self {
             profile: Profile::load(),
             sampler: Sampler::load(),
-            exploring: Vec::new(),
         }
     }
 
@@ -53,10 +51,11 @@ impl Solver {
     /// encapsulated by Profile, but we are yet to impose
     /// a learning schedule for regret or policy.
     pub fn train(&mut self) {
+        log::info!("minimizing regrets");
         let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
             for Counterfactual(info, regret, policy) in (0..crate::CFR_BATCH_SIZE)
-                .map(|_| self.simulate())
+                .map(|_| self.sample())
                 .collect::<Vec<Tree>>()
                 .into_par_iter()
                 .map(|t| Partition::from(t))
@@ -66,9 +65,8 @@ impl Solver {
                 .map(|info| self.counterfactual(info))
                 .collect::<Vec<Counterfactual>>()
             {
-                let bucket = info.node().bucket();
-                self.profile.regret_update(&bucket, &regret.0);
-                self.profile.policy_update(&bucket, &policy.0);
+                self.profile.regret_update(info.node().bucket(), &regret.0);
+                self.profile.policy_update(info.node().bucket(), &policy.0);
             }
             progress.inc(1);
         }
@@ -77,15 +75,14 @@ impl Solver {
 
     /// Build the Tree iteratively starting from the root node.
     /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
-    fn simulate(&mut self) -> Tree {
+    fn sample(&mut self) -> Tree {
         let mut tree = Tree::empty(self.profile.walker());
         let ref root = tree.insert(self.sampler.root());
-        let children = self.explore(root);
-        self.exploring = children;
-        while let Some(branch) = self.exploring.pop() {
+        let mut todo = self.explore(root);
+        while let Some(branch) = todo.pop() {
             let ref root = tree.attach(branch);
             let children = self.explore(root);
-            self.exploring.extend(children);
+            todo.extend(children);
         }
         log::trace!("{}", tree);
         tree
@@ -94,10 +91,8 @@ impl Solver {
     /// could make this more mut so that we can populate Data::partition : Bucket
     /// by using the self.branches() return to inform the set of possible
     /// continuing Edge Actions.
+    /// fn explore(&mut self, tree: &mut Tree,node: &Node) -> Vec<Branch> {
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
-        // TODO
-        // - assign buckets in Solver::explore()
-        // - use lazy localization
         let player = node.player();
         let chance = Player::chance();
         let walker = self.profile.walker();
@@ -110,12 +105,10 @@ impl Solver {
                 self.profile.explore_any(choices, node) //
             }
             (_, p) if p != walker => {
-                //   self.tree.0.mut_node_weight(node.index()).map(|data| data.set(bucket))
                 self.profile.witness(node, &choices);
                 self.profile.explore_one(choices, node)
             }
             (_, p) if p == walker => {
-                //   self.tree.0.mut_node_weight(node.index()).map(|data| data.set(bucket))
                 self.profile.witness(node, &choices);
                 self.profile.explore_all(choices, node)
             }
@@ -130,15 +123,16 @@ impl Solver {
     /// Rust's ownership makes this a bit awkward but for very good reason!
     /// It has forced me to decouple global (Path) from local (Data)
     /// properties of Tree sampling, which makes lots of sense and is stronger model.
+    /// broadly goes from Edge -> Action -> Game -> Abstraction
     fn branches(&self, node: &Node) -> Vec<Branch> {
-        node.choices()
+        node.outgoing()
             .into_iter()
             .map(|e| (e, node.action(e)))
             .map(|(e, a)| (e, node.data().game().apply(a)))
             .map(|(e, g)| (e, g, self.sampler.recall(&g)))
             .map(|(e, g, i)| (e, Data::from((g, i))))
             .map(|(e, d)| (e, d, node.index()))
-            .map(|(e, d, n)| Branch(d, e, n))
+            .map(|(e, d, n)| Branch(d, e.clone(), n))
             .collect()
     }
 

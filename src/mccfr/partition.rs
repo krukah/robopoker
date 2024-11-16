@@ -9,14 +9,14 @@ pub struct Partition(BTreeMap<Bucket, Info>);
 impl From<Tree> for Partition {
     fn from(tree: Tree) -> Self {
         let mut info = BTreeMap::new();
-        let mut tree = tree;
-        // TODO
-        // - assign buckets in Solver::explore()
-        // - use lazy localization
-        tree.partition();
         let tree = Arc::new(tree);
-        for node in tree.all().iter().filter(|n| n.player() == tree.walker()) {
-            info.entry(node.bucket())
+        for node in tree
+            .all()
+            .iter()
+            .filter(|n| n.children().len() > 0)
+            .filter(|n| n.player() == tree.walker())
+        {
+            info.entry(node.bucket().clone())
                 .or_insert_with(|| Info::from(tree.clone()))
                 .add(node.index());
         }

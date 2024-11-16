@@ -1,7 +1,7 @@
 use crate::play::ply::Ply;
 use std::hash::Hash;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Player(pub Ply);
 
 impl Player {

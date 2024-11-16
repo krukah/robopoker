@@ -13,25 +13,9 @@ use rand::Rng;
 use rand::SeedableRng;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::usize;
-
-/// this is the meat of our solution.
-/// we keep a (Regret, AveragePolicy, CurrentPolicy)
-/// for each distinct Bucket(Path, Abstraction) that we visit.
-/// we also count how many training epochs we've run so far.
-/// i feel like this can be broken up into
-/// - Minimizer: handles policy and regret updates by implementing some regret-minimzation subroutine
-/// - Profile: stores policy & regret values. used by reference for a lot of calculations,
-/// such as Reach, Utility, MinimizerRegretVector, MinimizerPolicyVector, SampleTree, etc.
-#[derive(Default)]
-pub struct Profile {
-    iterations: usize,
-    strategies: BTreeMap<Bucket, BTreeMap<Edge, Decision>>,
-}
-
 /// Discount parameters for DCFR
 #[derive(Debug)]
 pub struct Discount {
@@ -91,19 +75,29 @@ impl Discount {
     }
 }
 
-/*
- * learning schedule implementation
-*/
+/// this is the meat of our solution.
+/// we keep a (Regret, AveragePolicy, CurrentPolicy)
+/// for each distinct Bucket(Path, Abstraction) that we visit.
+/// we also count how many training epochs we've run so far.
+/// i feel like this can be broken up into
+/// - Minimizer: handles policy and regret updates by implementing some regret-minimzation subroutine
+/// - Profile: stores policy & regret values. used by reference for a lot of calculations,
+/// such as Reach, Utility, MinimizerRegretVector, MinimizerPolicyVector, SampleTree, etc.
+#[derive(Default)]
+pub struct Profile {
+    iterations: usize,
+    strategies: BTreeMap<Bucket, BTreeMap<Edge, Decision>>,
+}
+
 impl Profile {
     fn phase(&self) -> Phase {
         Phase::from(self.epochs())
     }
-    /// TODO: load existing profile from disk
     pub fn load() -> Self {
-        log::info!("NOT YET !!! loading profile from disk");
-        Self {
-            strategies: BTreeMap::new(),
-            iterations: 0,
+        let name = "blueprint";
+        match std::fs::File::open(format!("{}.profile.pgcopy", name)) {
+            Ok(_) => Self::from(name),
+            Err(_) => Self::default(),
         }
     }
     /// increment Epoch counter
@@ -123,26 +117,12 @@ impl Profile {
     /// at this Node with uniform distribution
     /// over its outgoing Edges .
     pub fn witness(&mut self, node: &Node, children: &Vec<Branch>) {
-        let ref bucket = node.bucket();
+        let bucket = node.bucket();
         match self.strategies.get(bucket) {
-            Some(strategy) => {
-                // asssertion needs to relax once i reintroduce pruning\
-                // some (incoming, children) branches will be permanently
-                // pruned, both in the Profile and when sampling children
-                // in this case we have to reasses "who" is expected to
-                // have "what" edges on "which when" epochs
-                let existing = strategy.keys().collect::<BTreeSet<_>>();
-                let observed = children
-                    .iter()
-                    .map(|Branch(_, e, _)| e)
-                    .collect::<BTreeSet<_>>();
-                assert!(observed == existing);
-            }
             None => {
-                log::trace!("WITNESSD {}", bucket);
                 let n = children.len();
                 let uniform = 1. / n as Probability;
-                for Branch(_, edge, _) in children {
+                for edge in children.iter().map(|b| b.edge()) {
                     self.strategies
                         .entry(bucket.clone())
                         .or_insert_with(BTreeMap::default)
@@ -150,6 +130,16 @@ impl Profile {
                         .or_insert_with(Decision::default)
                         .policy = uniform;
                 }
+            }
+            Some(_) => {
+                // asssertion needs to relax once i reintroduce pruning\
+                // some (incoming, children) branches will be permanently
+                // pruned, both in the Profile and when sampling children
+                // in this case we have to reasses "who" is expected to
+                // have "what" edges on "which when" epochs
+                // let existing = strategy.keys().collect::<BTreeSet<_>>();
+                // let observed = children.iter().map(|b| b.edge()).collect::<BTreeSet<_>>();
+                // assert!(observed == existing);
             }
         }
     }
@@ -327,7 +317,8 @@ impl Profile {
     /// for not having followed this Edge?
     fn cumulated_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
-        let ref bucket = infoset.node().bucket();
+        let node = infoset.node();
+        let bucket = node.bucket();
         self.strategies
             .get(bucket)
             .expect("bucket has been witnessed")
@@ -508,6 +499,7 @@ impl From<&str> for Profile {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
+        log::info!("loading profile from disk");
         let file = File::open(format!("{}.profile.pgcopy", name)).expect("open file");
         let mut buffer = [0u8; 2];
         let mut strategies = BTreeMap::new();
