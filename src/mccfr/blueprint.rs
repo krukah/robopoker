@@ -127,7 +127,7 @@ impl Solver {
     fn branches(&self, node: &Node) -> Vec<Branch> {
         node.outgoing()
             .into_iter()
-            .map(|e| (e, node.action(e)))
+            .map(|e| (e, node.actionization(e)))
             .map(|(e, a)| (e, node.data().game().apply(a)))
             .map(|(e, g)| (e, g, self.sampler.recall(&g)))
             .map(|(e, g, i)| (e, Data::from((g, i))))

@@ -209,19 +209,20 @@ impl Game {
                 self.next_player();
             }
             &Action::Blind(chips) | &Action::Raise(chips) | &Action::Call(chips) => {
-                self.remove(chips);
+                self.bet(chips);
                 self.next_player();
             }
             &Action::Shove(chips) => {
-                self.remove(chips);
+                self.bet(chips);
                 self.actor_mut().reset_state(State::Shoving);
                 self.next_player();
             }
         }
     }
-    fn remove(&mut self, bet: Chips) {
-        self.chips += bet;
+    fn bet(&mut self, bet: Chips) {
+        assert!(self.actor_ref().stack() >= bet);
         self.actor_mut().bet(bet);
+        self.chips += bet;
     }
     fn reveal(&mut self, hand: Hand) {
         // tightly coupled with next_street?

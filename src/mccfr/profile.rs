@@ -354,22 +354,7 @@ impl Profile {
     /// and following this Edge 100% of the time,
     /// what is the expected marginal increase in Utility?
     fn gain(&self, head: &Node, edge: &Edge) -> Utility {
-        let bucket = head.bucket();
-        assert!(
-            head.player() == self.walker(),
-            "head bucket: {}\n\
-                history: {}\n\
-                futures: {}\n\
-                edge:    {}\n\
-                player:  {}\n\
-                walker:  {}",
-            bucket,
-            bucket.0,
-            bucket.2,
-            edge,
-            head.player(),
-            self.walker()
-        );
+        assert!(head.player() == self.walker());
         let expected = self.expected_value(head);
         let cfactual = self.cfactual_value(head, edge);
         cfactual - expected
