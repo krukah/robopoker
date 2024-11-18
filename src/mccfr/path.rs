@@ -10,6 +10,12 @@ impl Path {
     }
 }
 
+impl crate::Arbitrary for Path {
+    fn arbitrary() -> Self {
+        Self::random()
+    }
+}
+
 impl From<Edge> for Path {
     fn from(edge: Edge) -> Self {
         // our u8 is really u4, so we can compact 16 consecutive edges in a Path(u64) sequence

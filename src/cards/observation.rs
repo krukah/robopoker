@@ -156,3 +156,9 @@ mod tests {
         assert!(random == Observation::from(i64::from(random)));
     }
 }
+
+impl crate::Arbitrary for Observation {
+    fn arbitrary() -> Self {
+        Self::from(Street::arbitrary())
+    }
+}

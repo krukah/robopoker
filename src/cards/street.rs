@@ -92,3 +92,15 @@ impl std::fmt::Display for Street {
         }
     }
 }
+
+impl crate::Arbitrary for Street {
+    fn arbitrary() -> Self {
+        use rand::Rng;
+        match rand::thread_rng().gen_range(0..4) {
+            0 => Self::Pref,
+            1 => Self::Flop,
+            2 => Self::Turn,
+            _ => Self::Rive,
+        }
+    }
+}

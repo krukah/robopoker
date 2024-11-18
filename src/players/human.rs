@@ -9,11 +9,11 @@ use dialoguer::Select;
 pub struct Human;
 
 impl Human {
-    pub fn decide(spot: &Game) -> Action {
-        Self::random(spot)
-        // let ref choices = Self::available(spot);
-        // let choice = Self::selection(choices, spot);
-        // Self::choose(choices, choice, spot)
+    pub fn decide(game: &Game) -> Action {
+        Self::random(game)
+        // let ref choices = Self::available(game);
+        // let choice = Self::selection(choices, game);
+        // Self::choose(choices, choice, game)
     }
 
     fn random(game: &Game) -> Action {
@@ -25,18 +25,18 @@ impl Human {
             .expect("decision node has options")
     }
 
-    fn raise(spot: &Game) -> Chips {
+    fn raise(game: &Game) -> Chips {
         Input::new()
-            .with_prompt(Self::infoset(spot))
+            .with_prompt(Self::infoset(game))
             .validate_with(|i: &String| -> Result<(), &str> {
                 let input = match i.parse::<Chips>() {
                     Ok(value) => value,
                     Err(_) => return Err("Enter a positive integer"),
                 };
-                if input < spot.to_raise() {
+                if input < game.to_raise() {
                     return Err("Raise too small");
                 }
-                if input > spot.to_shove() {
+                if input > game.to_shove() {
                     return Err("Raise too large");
                 }
                 Ok(())
@@ -53,15 +53,15 @@ impl Human {
             "\nBOARD      {}\nCARDS      {}\nPOT        {}\nSTACK      {}\nTO CALL    {}\nMIN RAISE  {}\n\nAction",
             game.board(),
             game.actor().cards(),
-            game.chips(),
+            game.pot(),
             game.actor().stack(),
             game.to_call(),
             game.to_raise(),
         )
     }
 
-    fn available(spot: &Game) -> Vec<&str> {
-        spot.legal()
+    fn available(game: &Game) -> Vec<&str> {
+        game.legal()
             .iter()
             .map(|a| match a {
                 Action::Fold => "Fold",
@@ -74,9 +74,9 @@ impl Human {
             .collect::<Vec<&str>>()
     }
 
-    fn selection(choices: &[&str], spot: &Game) -> usize {
+    fn selection(choices: &[&str], game: &Game) -> usize {
         Select::new()
-            .with_prompt(Self::infoset(spot))
+            .with_prompt(Self::infoset(game))
             .report(false)
             .items(choices)
             .default(0)
@@ -84,15 +84,15 @@ impl Human {
             .unwrap()
     }
 
-    fn choose(choices: &[&str], selection: usize, spot: &Game) -> Action {
+    fn choose(choices: &[&str], selection: usize, game: &Game) -> Action {
         match choices[selection] {
             "Fold" => Action::Fold,
             "Check" => Action::Check,
-            "Call" => Action::Call(spot.to_call()),
-            "Shove" => Action::Shove(spot.to_shove()),
+            "Call" => Action::Call(game.to_call()),
+            "Shove" => Action::Shove(game.to_shove()),
             "Raise" => {
-                let raise = Self::raise(spot);
-                let shove = spot.to_shove();
+                let raise = Self::raise(game);
+                let shove = game.to_shove();
                 if raise == shove {
                     Action::Shove(shove)
                 } else {

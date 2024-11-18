@@ -1,3 +1,10 @@
+use super::counterfactual::Counterfactual;
+use super::discount::Discount;
+use super::memory::Memory;
+use super::phase::Phase;
+use super::policy::Policy;
+use super::regret::Regret;
+use super::strategy::Strategy;
 use super::tree::Branch;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
@@ -16,64 +23,6 @@ use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::usize;
-/// Discount parameters for DCFR
-#[derive(Debug)]
-pub struct Discount {
-    period: usize, // interval between strategy updates.
-    alpha: f32,    // α parameter. controls recency bias.
-    omega: f32,    // ω parameter. controls recency bias.
-    gamma: f32,    // γ parameter. controls recency bias.
-}
-
-#[derive(Debug, Default, PartialEq)]
-struct Decision {
-    policy: crate::Probability, // running average, not actually median
-    regret: crate::Utility,     // cumulative non negative regret
-}
-
-#[derive(PartialEq)]
-enum Phase {
-    Discount,
-    Explore,
-    Prune,
-}
-
-impl From<usize> for Phase {
-    fn from(epochs: usize) -> Self {
-        match epochs {
-            e if e < crate::CFR_DISCOUNT_PHASE => Phase::Discount,
-            e if e < crate::CFR_PRUNNING_PHASE => Phase::Explore,
-            _ => Phase::Prune,
-        }
-    }
-}
-
-impl Discount {
-    pub const fn default() -> &'static Self {
-        &Self {
-            period: 1,
-            alpha: 1.5,
-            omega: 0.5,
-            gamma: 2.0,
-        }
-    }
-    pub fn policy(&self, t: usize) -> f32 {
-        (t as f32 / (t as f32 + 1.)).powf(self.gamma)
-    }
-    pub fn regret(&self, t: usize, regret: Utility) -> Utility {
-        if t % self.period != 0 {
-            1.
-        } else if regret > 0. {
-            let x = (t as f32 / self.period as f32).powf(self.alpha);
-            x / (x + 1.)
-        } else if regret < 0. {
-            let x = (t as f32 / self.period as f32).powf(self.omega);
-            x / (x + 1.)
-        } else {
-            1.
-        }
-    }
-}
 
 /// this is the meat of our solution.
 /// we keep a (Regret, AveragePolicy, CurrentPolicy)
@@ -86,7 +35,7 @@ impl Discount {
 #[derive(Default)]
 pub struct Profile {
     iterations: usize,
-    strategies: BTreeMap<Bucket, BTreeMap<Edge, Decision>>,
+    strategies: BTreeMap<Bucket, Strategy>,
 }
 
 impl Profile {
@@ -123,12 +72,13 @@ impl Profile {
                 let n = children.len();
                 let uniform = 1. / n as Probability;
                 for edge in children.iter().map(|b| b.edge()) {
+                    let mut memory = Memory::default();
+                    memory.set_policy(uniform);
                     self.strategies
                         .entry(bucket.clone())
-                        .or_insert_with(BTreeMap::default)
+                        .or_insert_with(Strategy::new)
                         .entry(edge.clone())
-                        .or_insert_with(Decision::default)
-                        .policy = uniform;
+                        .or_insert(memory);
                 }
             }
             Some(_) => {
@@ -189,7 +139,7 @@ impl Profile {
         policy
     }
 
-    pub fn regret_update(&mut self, bucket: &Bucket, regrets: &BTreeMap<Edge, Utility>) {
+    pub fn add_regret(&mut self, bucket: &Bucket, regrets: &Regret) {
         log::trace!("update regret @ {}", bucket);
         let t = self.epochs();
         let phase = self.phase();
@@ -198,19 +148,18 @@ impl Profile {
             .strategies
             .get_mut(bucket)
             .expect("bucket been witnessed");
-        for (action, &regret) in regrets {
+        for (action, &regret) in regrets.inner() {
             let decision = strategy.get_mut(action).expect("action been witnessed");
             let discount = match phase {
                 Phase::Discount => discount.regret(t, regret),
                 Phase::Explore => 1.,
                 Phase::Prune => 1.,
             };
-            decision.regret *= discount;
-            decision.regret += regret;
-            log::trace!("{} : {}", action, decision.regret);
+            decision.add_regret(discount, regret);
+            log::trace!("{} : {}", action, decision.regret());
         }
     }
-    pub fn policy_update(&mut self, bucket: &Bucket, policys: &BTreeMap<Edge, Probability>) {
+    pub fn add_policy(&mut self, bucket: &Bucket, policys: &Policy) {
         log::trace!("update policy @ {}", bucket);
         let t = self.epochs();
         let discount = Discount::default();
@@ -218,12 +167,11 @@ impl Profile {
             .strategies
             .get_mut(bucket)
             .expect("bucket been witnessed");
-        for (action, &policy) in policys {
+        for (action, &policy) in policys.inner() {
             let discount = discount.policy(t);
             let decision = strategy.get_mut(action).expect("action been witnessed");
-            decision.policy *= discount;
-            decision.policy += policy;
-            log::trace!("{} : {}", action, decision.policy);
+            decision.add_policy(discount, policy);
+            log::trace!("{} : {}", action, decision.policy());
         }
     }
 
@@ -248,22 +196,22 @@ impl Profile {
             _ => Player(Ply::Choice(1)),
         }
     }
+    pub fn policy(&self, bucket: &Bucket) -> Policy {
+        self.strategies
+            .get(bucket)
+            .expect("bucket must exist")
+            .policy()
+    }
     /// only used for Tree sampling in Monte Carlo Trainer.
     /// assertions remain valid as long as Trainer::children is consistent
     /// with external sampling rules, where this fn is used to
     /// emulate the "opponent" strategy. the opponent is just whoever is not
     /// the traverser
-    pub fn policy(&self, bucket: &Bucket, edge: &Edge) -> Probability {
-        //     .get(bucket)
-        //     .expect("bucket must exist")
-        //     .get(edge)
-        //     .expect("edge must exist")
-        //     .policy
-        //     / self.epochs() as Probability
-        let bucket = self.strategies.get(bucket).expect("bucket must exist");
-        let weight = bucket.get(edge).expect("edge must exist").policy;
-        let shared = bucket.values().map(|s| s.policy).sum::<Probability>();
-        weight / shared
+    pub fn weight(&self, bucket: &Bucket, edge: &Edge) -> Probability {
+        self.strategies
+            .get(bucket)
+            .expect("bucket must exist")
+            .weight(edge)
     }
     /// generate seed for PRNG. using hashing yields for deterministic, reproducable sampling
     /// for our Monte Carlo sampling.
@@ -299,7 +247,7 @@ impl Profile {
         let mut choices = choices;
         let policy = choices
             .iter()
-            .map(|Branch(_, edge, _)| self.policy(bucket, edge))
+            .map(|Branch(_, edge, _)| self.weight(bucket, edge))
             .collect::<Vec<Probability>>();
         let choice = WeightedIndex::new(policy)
             .expect("at least one policy > 0")
@@ -309,7 +257,14 @@ impl Profile {
         vec![chosen]
     }
 
-    /// regret calculations
+    /// counterfactual regret calculations
+
+    /// compute regret and policy vectors for a given infoset
+    pub fn counterfactual(&self, info: Info) -> Counterfactual {
+        let regret = Regret::from(self.regret_vector(&info));
+        let policy = Policy::from(self.policy_vector(&info));
+        Counterfactual::from((info, regret, policy))
+    }
 
     /// historically,
     /// upon visiting any Node inthis Infoset,
@@ -322,9 +277,10 @@ impl Profile {
         self.strategies
             .get(bucket)
             .expect("bucket has been witnessed")
+            .0
             .get(edge)
             .expect("action has been witnessed")
-            .regret
+            .regret()
             / self.epochs() as Utility
     }
     /// conditional on being in this Infoset,
@@ -422,7 +378,7 @@ impl Profile {
             1.
         } else {
             let ref bucket = head.bucket();
-            let policy = self.policy(bucket, edge);
+            let policy = self.weight(bucket, edge);
             policy
         }
     }
@@ -505,12 +461,15 @@ impl From<&str> for Profile {
                 let regret = reader.read_f32::<BE>().expect("read regret");
                 reader.read_u32::<BE>().expect("policy length");
                 let policy = reader.read_f32::<BE>().expect("read policy");
+                // idempotent insert
                 let bucket = Bucket::from((past, abs, future));
-                let memory = Decision { regret, policy };
-                strategies
+                let memory = strategies
                     .entry(bucket)
-                    .or_insert_with(BTreeMap::new)
-                    .insert(edge, memory);
+                    .or_insert_with(Strategy::new)
+                    .entry(edge)
+                    .or_insert_with(Memory::default);
+                memory.set_regret(regret);
+                memory.set_policy(policy);
                 continue;
             } else {
                 break;
@@ -535,22 +494,22 @@ impl Profile {
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
-        for (Bucket(past, abs, future), policy) in self.strategies.iter() {
-            for (edge, memory) in policy.iter() {
+        for (bucket, strategy) in self.strategies.iter() {
+            for (edge, memory) in strategy.iter() {
                 const N_FIELDS: u16 = 6;
                 file.write_u16::<BE>(N_FIELDS).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(*past)).unwrap();
+                file.write_u64::<BE>(u64::from(bucket.0)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(*abs)).unwrap();
+                file.write_u64::<BE>(u64::from(bucket.1)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(*future)).unwrap();
+                file.write_u64::<BE>(u64::from(bucket.2)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
                 file.write_u64::<BE>(u64::from(*edge)).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-                file.write_f32::<BE>(memory.regret).unwrap();
+                file.write_f32::<BE>(memory.regret()).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-                file.write_f32::<BE>(memory.policy).unwrap();
+                file.write_f32::<BE>(memory.policy()).unwrap();
             }
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
@@ -573,7 +532,7 @@ impl std::fmt::Display for Profile {
                             .map(|(edge, _)| format!(
                                 " ├─{}: {:.2}",
                                 edge,
-                                self.policy(bucket, edge)
+                                self.weight(bucket, edge)
                             ))
                             .collect::<Vec<_>>()
                             .join("\n")
@@ -582,6 +541,17 @@ impl std::fmt::Display for Profile {
                 .collect::<Vec<_>>()
                 .join("\n")
         )
+    }
+}
+
+impl crate::Arbitrary for Profile {
+    fn arbitrary() -> Self {
+        Self {
+            iterations: 0,
+            strategies: (0..100)
+                .map(|_| (Bucket::arbitrary(), Strategy::arbitrary()))
+                .collect(),
+        }
     }
 }
 
@@ -615,53 +585,19 @@ impl std::fmt::Display for Profile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Arbitrary;
 
     #[test]
     fn persistence() {
         let name = "test";
         let file = format!("{}.profile.pgcopy", name);
-        let save = random_profile();
+        let save = Profile::arbitrary();
         save.save(name);
         let load = Profile::from(name);
+        std::fs::remove_file(file).unwrap();
         assert!(std::iter::empty()
             .chain(save.strategies.iter().zip(load.strategies.iter()))
             .chain(load.strategies.iter().zip(save.strategies.iter()))
             .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2));
-        std::fs::remove_file(file).unwrap();
-    }
-
-    // impl Arbitrary for Profile, Decision, Edge, Action, Bucket, Policy, Observation, Isomorphism, Street
-
-    fn random_profile() -> Profile {
-        Profile {
-            iterations: 0,
-            strategies: (0..100)
-                .map(|_| (random_bucket(), random_policy()))
-                .collect(),
-        }
-    }
-    fn random_bucket() -> Bucket {
-        Bucket::random()
-    }
-    fn random_policy() -> BTreeMap<Edge, Decision> {
-        (0..rand::thread_rng().gen_range(1..=8))
-            .map(|_| (random_action(), random_decision()))
-            .collect()
-    }
-    fn random_decision() -> Decision {
-        Decision {
-            regret: rand::thread_rng().gen::<f32>(),
-            policy: rand::thread_rng().gen::<f32>(),
-        }
-    }
-    fn random_action() -> Edge {
-        match rand::thread_rng().gen_range(0..6) {
-            0 => Edge::Draw,
-            1 => Edge::Fold,
-            2 => Edge::Check,
-            3 => Edge::Call,
-            4 => Edge::Raise(crate::mccfr::odds::Odds::from((1, 1))),
-            _ => Edge::Shove,
-        }
     }
 }
