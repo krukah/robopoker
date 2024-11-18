@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 /// rooted in showdown equity at the River.
 #[derive(Default)]
 pub struct Encoder(BTreeMap<Isomorphism, Abstraction>);
+
 impl Encoder {
     /// only run this once.
     pub fn learn() {
@@ -28,8 +29,8 @@ impl Encoder {
     }
     /// simple insertion.
     /// can we optimize out this clone though? maybe for key but not for value
-    pub fn assign(&mut self, abs: &Abstraction, obs: &Isomorphism) {
-        self.0.insert(obs.clone(), abs.clone());
+    pub fn assign(&mut self, abs: &Abstraction, iso: &Isomorphism) {
+        self.0.insert(iso.clone(), abs.clone());
     }
     /// lookup the pre-computed abstraction for the outer observation
     /// for preflop, we lookup the Hole cards, up to isomorphism
@@ -69,9 +70,10 @@ impl Encoder {
     // persistence methods
 
     pub fn done() -> bool {
-        ["flop.abstraction.pgcopy", "turn.abstraction.pgcopy"]
+        Street::all()
             .iter()
-            .any(|file| std::path::Path::new(file).exists())
+            .map(|street| format!("{}.abstraction.pgcopy", street))
+            .any(|file| std::fs::metadata(file).is_ok())
     }
     pub fn load() -> Self {
         log::info!("loading encoder");

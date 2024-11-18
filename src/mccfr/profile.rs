@@ -39,14 +39,17 @@ pub struct Profile {
 }
 
 impl Profile {
-    fn phase(&self) -> Phase {
-        Phase::from(self.epochs())
+    const PREFIX: &'static str = "blueprint";
+    /// check (by filename) if a profile has been saved to disk.
+    pub fn done() -> bool {
+        std::fs::metadata(format!("{}.profile.pgcopy", Self::PREFIX)).is_ok()
     }
+    /// load existing profile from disk. implicit assumption of Self::done() having been checked beforehand.
     pub fn load() -> Self {
-        let name = "blueprint";
-        match std::fs::File::open(format!("{}.profile.pgcopy", name)) {
-            Ok(_) => Self::from(name),
-            Err(_) => Self::default(),
+        if Self::done() {
+            Self::from(Self::PREFIX)
+        } else {
+            Self::default()
         }
     }
     /// increment Epoch counter
@@ -139,6 +142,7 @@ impl Profile {
         policy
     }
 
+    /// update regret vector for a given Bucket
     pub fn add_regret(&mut self, bucket: &Bucket, regrets: &Regret) {
         log::trace!("update regret @ {}", bucket);
         let t = self.epochs();
@@ -159,6 +163,7 @@ impl Profile {
             log::trace!("{} : {}", action, decision.regret());
         }
     }
+    /// update policy vector for a given Bucket
     pub fn add_policy(&mut self, bucket: &Bucket, policys: &Policy) {
         log::trace!("update policy @ {}", bucket);
         let t = self.epochs();
@@ -188,6 +193,10 @@ impl Profile {
     pub fn epochs(&self) -> usize {
         self.iterations
     }
+    /// derive current phase from Epoch count
+    pub fn phase(&self) -> Phase {
+        Phase::from(self.epochs())
+    }
     /// which player is traversing the Tree on this Epoch?
     /// used extensively in assertions and utility calculations
     pub fn walker(&self) -> Player {
@@ -196,17 +205,14 @@ impl Profile {
             _ => Player(Ply::Choice(1)),
         }
     }
+    /// full set of available actions and their weights (not Probabilities)
     pub fn policy(&self, bucket: &Bucket) -> Policy {
         self.strategies
             .get(bucket)
             .expect("bucket must exist")
             .policy()
     }
-    /// only used for Tree sampling in Monte Carlo Trainer.
-    /// assertions remain valid as long as Trainer::children is consistent
-    /// with external sampling rules, where this fn is used to
-    /// emulate the "opponent" strategy. the opponent is just whoever is not
-    /// the traverser
+    /// absolute Probability. only used for Tree sampling in Monte Carlo Trainer.
     pub fn weight(&self, bucket: &Bucket, edge: &Edge) -> Probability {
         self.strategies
             .get(bucket)
@@ -556,9 +562,6 @@ impl crate::Arbitrary for Profile {
 }
 
 // pruning stuff
-// pruning stuff
-// pruning stuff
-
 // const P_PRUNE: Probability = 0.95;
 // enum Expansion {
 //     Explore,
