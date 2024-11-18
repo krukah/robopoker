@@ -44,12 +44,13 @@ impl Sampler {
     pub fn branches(&self, node: &Node) -> Vec<Branch> {
         node.outgoing()
             .into_iter()
-            .map(|e| (e, node.actionization(e)))
-            .map(|(e, a)| (e, node.data().game().apply(a)))
+            .cloned()
+            .map(|e| (e, node.actionization(&e)))
+            .map(|(e, a)| (e, node.data().game().apply(a))) // up to here should prolly be encapsulated by Node::children()
             .map(|(e, g)| (e, g, self.abstraction(&g)))
             .map(|(e, g, i)| (e, Data::from((g, i))))
             .map(|(e, d)| (e, d, node.index()))
-            .map(|(e, d, n)| Branch(d, e.clone(), n))
+            .map(|(e, d, n)| Branch(d, e, n))
             .collect()
     }
 }

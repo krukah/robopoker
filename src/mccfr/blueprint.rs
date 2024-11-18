@@ -41,7 +41,7 @@ impl Solver {
     }
 
     /// load existing profile and encoder from disk
-    pub fn load() -> Self {
+    fn load() -> Self {
         Self {
             profile: Profile::load(),
             sampler: Sampler::load(),
@@ -53,8 +53,20 @@ impl Solver {
     /// for the traverser. regret and policy updates are
     /// encapsulated by Profile, but we are yet to impose
     /// a learning schedule for regret or policy.
-    pub fn train(&mut self) {
-        log::info!("minimizing regrets");
+    pub fn train() {
+        if Self::done() {
+            log::info!("skipping regret minimization");
+        } else {
+            log::info!("starting regret minimization");
+            Self::load().solve();
+        }
+    }
+    /// check (by filename) if a blueprint solver has been saved to disk.
+    fn done() -> bool {
+        Profile::done()
+    }
+    /// the main training loop.
+    fn solve(&mut self) {
         let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
             for counterfactual in self.updates() {
@@ -76,7 +88,6 @@ impl Solver {
             .map(|t| Partition::from(t))
             .map(|p| Vec::<Info>::from(p))
             .flatten()
-            .filter(|info| self.profile.walker() == info.node().player())
             .map(|info| self.profile.counterfactual(info))
             .collect::<Vec<Counterfactual>>()
     }
