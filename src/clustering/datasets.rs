@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 /// as we compute the Wasserstein distance between
 /// `Equivalence`s and the available `Abstraction`s > `Centroid`s > `Histogram`s
 #[derive(Default)]
-pub struct ObservationSpace(pub BTreeMap<Isomorphism, Histogram>);
+pub struct IsomorphismSpace(pub BTreeMap<Isomorphism, Histogram>);
 
 /// intermediate data structure to mutate during kmeans
 /// as `Equivalence`s become assigned to `Abstraction`s.

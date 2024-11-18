@@ -71,6 +71,9 @@ impl Metric {
     /// if anything, the most expensive part about this is the double BTreeMap
     /// allocation. considering that we do this a few billion times it is
     /// probably worth optimizing into a 0-alloc implementation.
+    ///
+    /// also, it turns out this algorithm sucks in worst case. like it's just not at all
+    /// a reasonable heuristic, even in pathological 1D trivial cases.
     fn greedy(&self, x: &Histogram, y: &Histogram) -> f32 {
         let mut cost = 0.;
         let mut pile = x.normalize();

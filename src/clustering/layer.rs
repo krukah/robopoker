@@ -1,6 +1,6 @@
 use super::abstraction::Abstraction;
 use super::datasets::AbstractionSpace;
-use super::datasets::ObservationSpace;
+use super::datasets::IsomorphismSpace;
 use super::encoding::Encoder;
 use super::histogram::Histogram;
 use super::metric::Metric;
@@ -42,7 +42,7 @@ pub struct Layer {
     metric: Metric,
     lookup: Encoder,
     kmeans: AbstractionSpace,
-    points: ObservationSpace,
+    points: IsomorphismSpace,
 }
 
 impl Layer {
@@ -58,7 +58,7 @@ impl Layer {
             metric: Metric::default(),
             lookup: Encoder::default(),
             kmeans: AbstractionSpace::default(),
-            points: ObservationSpace::default(),
+            points: IsomorphismSpace::default(),
         }
     }
     /// hierarchically, recursively generate the inner layer
@@ -135,7 +135,7 @@ impl Layer {
     /// 2. map each to possible `self.street` `Observation`s
     /// 3. use `self.abstractor` to map each into an `Abstraction`
     /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
-    fn inner_points(&self) -> ObservationSpace {
+    fn inner_points(&self) -> IsomorphismSpace {
         log::info!(
             "{:<32}{:<32}",
             "collecting histograms",
@@ -151,7 +151,7 @@ impl Layer {
             .inspect(|_| progress.inc(1))
             .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
-        ObservationSpace(projection)
+        IsomorphismSpace(projection)
     }
 
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
