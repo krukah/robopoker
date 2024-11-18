@@ -120,6 +120,12 @@ impl From<Hole> for Abstraction {
     }
 }
 
+impl crate::Arbitrary for Abstraction {
+    fn arbitrary() -> Self {
+        Self::random()
+    }
+}
+
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

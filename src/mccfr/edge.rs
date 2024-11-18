@@ -1,6 +1,6 @@
 use crate::mccfr::odds::Odds;
 use crate::play::action::Action;
-use crate::Chips;
+use crate::{Arbitrary, Chips};
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
@@ -149,5 +149,19 @@ mod bijection_tests {
             .into_iter()
             .chain(raise)
             .all(|edge| edge == Edge::from(u64::from(edge))));
+    }
+}
+
+impl Arbitrary for Edge {
+    fn arbitrary() -> Self {
+        use rand::Rng;
+        match rand::thread_rng().gen_range(0..6) {
+            0 => Self::Draw,
+            1 => Self::Fold,
+            2 => Self::Check,
+            3 => Self::Call,
+            4 => Self::Raise(crate::mccfr::odds::Odds::from((1, 1))),
+            _ => Self::Shove,
+        }
     }
 }

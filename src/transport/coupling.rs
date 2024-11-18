@@ -34,4 +34,11 @@ pub trait Coupling {
         }
         cost
     }
+
+    /// relative entropy, or Kullback-Leibler divergence,
+    /// is penalized such that we favor less sparse couplings
+    /// over the joint P x Q distribution.
+    fn entropy(&self, _: &Self::P, _: &Self::Q) -> f32 {
+        todo!()
+    }
 }

@@ -25,7 +25,7 @@ type Position = usize;
 #[derive(Debug, Clone, Copy)]
 pub struct Game {
     seats: [Seat; N],
-    chips: Chips,
+    pot: Chips,
     board: Board,
     dealer: Position,
     ticker: Position,
@@ -39,11 +39,11 @@ impl Game {
     /// as long as we alternate the traverser/paths explored
     pub fn root() -> Self {
         let mut root = Self {
-            chips: 0 as Chips,
+            pot: 0 as Chips,
             dealer: 0usize,
             ticker: 0usize,
             board: Board::empty(),
-            seats: [Seat::new(STACK); N],
+            seats: [Seat::from(STACK); N],
         };
         root.next_player();
         root.deal_cards();
@@ -53,9 +53,6 @@ impl Game {
     }
     pub fn n(&self) -> usize {
         self.seats.len()
-    }
-    pub fn pot(&self) -> Chips {
-        self.chips()
     }
     pub fn apply(&self, action: Action) -> Self {
         let mut child = self.clone();
@@ -79,14 +76,23 @@ impl Game {
     }
 
     //
-    pub fn actor(&self) -> &Seat {
-        self.actor_ref()
-    }
-    pub fn chips(&self) -> Chips {
-        self.chips
+    pub fn pot(&self) -> Chips {
+        self.pot
     }
     pub fn board(&self) -> Board {
         self.board
+    }
+    pub fn player(&self) -> Ply {
+        if self.is_terminal() {
+            Ply::Terminal
+        } else if self.is_sampling() {
+            Ply::Chance
+        } else {
+            Ply::Choice(self.actor_idx())
+        }
+    }
+    pub fn actor(&self) -> &Seat {
+        self.actor_ref()
     }
     pub fn legal(&self) -> Vec<Action> {
         let mut options = Vec::new();
@@ -118,15 +124,6 @@ impl Game {
         }
         options
     }
-    pub fn player(&self) -> Ply {
-        if self.is_terminal() {
-            Ply::Terminal
-        } else if self.is_sampling() {
-            Ply::Chance
-        } else {
-            Ply::Choice(self.actor_idx())
-        }
-    }
 
     //
     fn conclude(&mut self) {
@@ -154,7 +151,7 @@ impl Game {
         }
     }
     fn wipe_board(&mut self) {
-        self.chips = 0;
+        self.pot = 0;
         self.board.clear();
         assert!(self.board.street() == Street::Pref);
     }
@@ -222,7 +219,7 @@ impl Game {
     fn bet(&mut self, bet: Chips) {
         assert!(self.actor_ref().stack() >= bet);
         self.actor_mut().bet(bet);
-        self.chips += bet;
+        self.pot += bet;
     }
     fn reveal(&mut self, hand: Hand) {
         // tightly coupled with next_street?
@@ -266,7 +263,7 @@ impl Game {
     /// blinds have not yet been posted // TODO some edge case of all in blinds
     fn is_blinding(&self) -> bool {
         if self.board.street() == Street::Pref {
-            self.chips() < Self::sblind() + Self::bblind()
+            self.pot() < Self::sblind() + Self::bblind()
         } else {
             false
         }
@@ -444,7 +441,7 @@ impl std::fmt::Display for Game {
         for seat in self.seats.iter() {
             write!(f, "{:>6}", seat.stack())?;
         }
-        write!(f, " :: {:>6} {}", self.chips, self.board)?;
+        write!(f, " :: {:>6} {}", self.pot, self.board)?;
         Ok(())
     }
 }
@@ -468,7 +465,7 @@ mod tests {
         assert!(game.ticker != game.dealer);
         assert!(game.board().street() == Street::Pref);
         assert!(game.actor().state() == State::Betting);
-        assert!(game.chips() == Game::sblind() + Game::bblind());
+        assert!(game.pot() == Game::sblind() + Game::bblind());
     }
 
     #[test]
@@ -501,7 +498,7 @@ mod tests {
         // Blinds
         let game = Game::root();
         assert!(game.board().street() == Street::Pref);
-        assert!(game.chips() == 3);
+        assert!(game.pot() == 3);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false);
@@ -513,7 +510,7 @@ mod tests {
         // SmallB Preflop
         let game = game.apply(Action::Call(1));
         assert!(game.board().street() == Street::Pref);
-        assert!(game.chips() == 4); //
+        assert!(game.pot() == 4); //
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false);
@@ -525,7 +522,7 @@ mod tests {
         // Dealer Preflop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Pref);
-        assert!(game.chips() == 4);
+        assert!(game.pot() == 4);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == true); //
@@ -538,7 +535,7 @@ mod tests {
         let flop = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(flop));
         assert!(game.board().street() == Street::Flop); //
-        assert!(game.chips() == 4);
+        assert!(game.pot() == 4);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false); //
@@ -550,7 +547,7 @@ mod tests {
         // SmallB Flop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
-        assert!(game.chips() == 4);
+        assert!(game.pot() == 4);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false);
@@ -562,7 +559,7 @@ mod tests {
         // Dealer Flop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
-        assert!(game.chips() == 4);
+        assert!(game.pot() == 4);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == true); //
@@ -575,7 +572,7 @@ mod tests {
         let turn = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(turn));
         assert!(game.board().street() == Street::Turn);
-        assert!(game.chips() == 4);
+        assert!(game.pot() == 4);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false); //
@@ -587,7 +584,7 @@ mod tests {
         // SmallB Turn
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Turn);
-        assert!(game.chips() == 4);
+        assert!(game.pot() == 4);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false);
@@ -599,7 +596,7 @@ mod tests {
         // Dealer Turn
         let game = game.apply(Action::Raise(4));
         assert!(game.board().street() == Street::Turn);
-        assert!(game.chips() == 8);
+        assert!(game.pot() == 8);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false);
@@ -611,7 +608,7 @@ mod tests {
         // SmallB Turn
         let game = game.apply(Action::Call(4));
         assert!(game.board().street() == Street::Turn);
-        assert!(game.chips() == 12); //
+        assert!(game.pot() == 12); //
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == true); //
@@ -624,7 +621,7 @@ mod tests {
         let rive = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(rive));
         assert!(game.board().street() == Street::Rive); //
-        assert!(game.chips() == 12);
+        assert!(game.pot() == 12);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false); //
@@ -636,7 +633,7 @@ mod tests {
         // SmallB River
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
-        assert!(game.chips() == 12);
+        assert!(game.pot() == 12);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == false);
         assert!(game.is_sampling() == false);
@@ -648,7 +645,7 @@ mod tests {
         // Dealer River
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
-        assert!(game.chips() == 12);
+        assert!(game.pot() == 12);
         assert!(game.is_blinding() == false);
         assert!(game.is_terminal() == true); //
         assert!(game.is_sampling() == false);

@@ -1,22 +1,16 @@
-use super::data::Data;
-use super::edge::Edge;
+use super::counterfactual::Counterfactual;
 use super::info::Info;
 use super::node::Node;
 use super::partition::Partition;
 use super::player::Player;
+use super::policy::Policy;
 use super::profile::Profile;
 use super::sampler::Sampler;
+use super::spot::Spot;
 use super::tree::Branch;
 use super::tree::Tree;
-use crate::Probability;
-use crate::Utility;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-use std::collections::BTreeMap;
-
-struct Regret(BTreeMap<Edge, Utility>);
-struct Policy(BTreeMap<Edge, Probability>);
-struct Counterfactual(Info, Regret, Policy);
 
 /// this is how we learn the optimal strategy of
 /// the abstracted game. with the learned Encoder
@@ -37,6 +31,15 @@ pub struct Solver {
 }
 
 impl Solver {
+    /// after training, use the learned Profile to advise
+    /// a Spot on how to play.
+    fn advise(&self, spot: Spot) -> Policy {
+        let bucket = self.sampler.bucket(&spot);
+        let policy = self.profile.policy(&bucket);
+        let policy = spot.coalesce(policy);
+        Policy::from(policy)
+    }
+
     /// load existing profile and encoder from disk
     pub fn load() -> Self {
         Self {
@@ -54,23 +57,38 @@ impl Solver {
         log::info!("minimizing regrets");
         let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
-            for Counterfactual(info, regret, policy) in (0..crate::CFR_BATCH_SIZE)
-                .map(|_| self.sample())
-                .collect::<Vec<Tree>>()
-                .into_par_iter()
-                .map(|t| Partition::from(t))
-                .map(|p| Vec::<Info>::from(p))
-                .flatten()
-                .filter(|info| info.node().player() == self.profile.walker())
-                .map(|info| self.counterfactual(info))
-                .collect::<Vec<Counterfactual>>()
-            {
-                self.profile.regret_update(info.node().bucket(), &regret.0);
-                self.profile.policy_update(info.node().bucket(), &policy.0);
+            for counterfactual in self.updates() {
+                let ref regret = counterfactual.regret();
+                let ref policy = counterfactual.policy();
+                let ref bucket = counterfactual.info().node().bucket().clone();
+                self.profile.add_regret(bucket, regret);
+                self.profile.add_policy(bucket, policy);
             }
             progress.inc(1);
         }
         self.profile.save("blueprint");
+    }
+
+    /// compute regret and policy updates for a batch of Trees.
+    fn updates(&mut self) -> Vec<Counterfactual> {
+        self.batch()
+            .into_par_iter()
+            .map(|t| Partition::from(t))
+            .map(|p| Vec::<Info>::from(p))
+            .flatten()
+            .filter(|info| self.profile.walker() == info.node().player())
+            .map(|info| self.profile.counterfactual(info))
+            .collect::<Vec<Counterfactual>>()
+    }
+
+    /// sample a batch of Trees. mutates because we must
+    /// Profile::witness all the decision points of the newly
+    /// sample Tree.
+    fn batch(&mut self) -> Vec<Tree> {
+        (0..crate::CFR_BATCH_SIZE)
+            .map(|_| self.sample())
+            .inspect(|t| log::trace!("{}", t))
+            .collect::<Vec<Tree>>()
     }
 
     /// Build the Tree iteratively starting from the root node.
@@ -84,7 +102,6 @@ impl Solver {
             let children = self.explore(root);
             todo.extend(children);
         }
-        log::trace!("{}", tree);
         tree
     }
 
@@ -93,53 +110,26 @@ impl Solver {
     /// continuing Edge Actions.
     /// fn explore(&mut self, tree: &mut Tree,node: &Node) -> Vec<Branch> {
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
-        let player = node.player();
-        let chance = Player::chance();
+        let branches = self.sampler.branches(node);
         let walker = self.profile.walker();
-        let choices = self.branches(node);
-        match (choices.len(), player) {
+        let chance = Player::chance();
+        let player = node.player();
+        match (branches.len(), player) {
             (0, _) => {
                 vec![] //
             }
             (_, p) if p == chance => {
-                self.profile.explore_any(choices, node) //
+                self.profile.explore_any(branches, node) //
             }
             (_, p) if p != walker => {
-                self.profile.witness(node, &choices);
-                self.profile.explore_one(choices, node)
+                self.profile.witness(node, &branches);
+                self.profile.explore_one(branches, node)
             }
             (_, p) if p == walker => {
-                self.profile.witness(node, &choices);
-                self.profile.explore_all(choices, node)
+                self.profile.witness(node, &branches);
+                self.profile.explore_all(branches, node)
             }
             _ => panic!("bitches"),
         }
-    }
-
-    /// unfiltered set of possible children of a Node,
-    /// conditional on its History (# raises, street granularity).
-    /// the head Node is attached to the Tree stack-recursively,
-    /// while the leaf Data is generated here with help from Sampler.
-    /// Rust's ownership makes this a bit awkward but for very good reason!
-    /// It has forced me to decouple global (Path) from local (Data)
-    /// properties of Tree sampling, which makes lots of sense and is stronger model.
-    /// broadly goes from Edge -> Action -> Game -> Abstraction
-    fn branches(&self, node: &Node) -> Vec<Branch> {
-        node.outgoing()
-            .into_iter()
-            .map(|e| (e, node.actionization(e)))
-            .map(|(e, a)| (e, node.data().game().apply(a)))
-            .map(|(e, g)| (e, g, self.sampler.recall(&g)))
-            .map(|(e, g, i)| (e, Data::from((g, i))))
-            .map(|(e, d)| (e, d, node.index()))
-            .map(|(e, d, n)| Branch(d, e.clone(), n))
-            .collect()
-    }
-
-    /// compute regret and policy vectors for a given infoset
-    fn counterfactual(&self, info: Info) -> Counterfactual {
-        let regret = Regret(self.profile.regret_vector(&info));
-        let policy = Policy(self.profile.policy_vector(&info));
-        Counterfactual(info, regret, policy)
     }
 }

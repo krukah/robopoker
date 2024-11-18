@@ -37,6 +37,11 @@ const REGRET_MIN: Utility = -3e5;
 const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 
+// Add this near your other trait definitions
+pub trait Arbitrary {
+    fn arbitrary() -> Self;
+}
+
 fn progress(n: usize) -> indicatif::ProgressBar {
     let tick = std::time::Duration::from_secs(5);
     let style = "{percent:>2}% {spinner:.cyan} {elapsed} ETA {eta} {wide_bar:.cyan}";

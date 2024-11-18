@@ -5,14 +5,20 @@ use colored::Colorize;
 #[derive(Debug, Clone, Copy)]
 pub struct Seat {
     cards: Hole,
-    spent: Chips,
+    state: State,
     stack: Chips,
     stake: Chips,
-    state: State,
+    spent: Chips,
+}
+
+impl From<Chips> for Seat {
+    fn from(stack: Chips) -> Self {
+        Self::new(stack)
+    }
 }
 
 impl Seat {
-    pub fn new(stack: Chips) -> Seat {
+    fn new(stack: Chips) -> Seat {
         Seat {
             stack,
             spent: 0,
