@@ -9,6 +9,12 @@ pub trait Coupling {
     type P: Density<S = Self::X>;
     type Q: Density<S = Self::Y>;
 
+    /// minimize the coupling using whatever algorithm
+    /// the implementor sees fit. the contract is that
+    /// when calling ::cost(), the coupling has already been minimized.
+    /// alternatively, we might move this implementation into a From<T> trait.
+    fn minimize(self) -> Self;
+
     /// default ::cost() implemenation assumes that we have flow(x, y
     /// available cheaply enough that we can doubly-integrate
     /// over the support of joint distribution.

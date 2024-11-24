@@ -28,7 +28,7 @@ pub struct Sinkhorn<'a> {
 
 impl<'a> Sinkhorn<'a> {
     /// calculate ε-minimizing coupling by scaling potentials
-    pub fn minimize(mut self) -> Self {
+    fn minimize(mut self) -> Self {
         for _ in 0..self.iterations() {
             self.lhs = self
                 .lhs
@@ -47,7 +47,6 @@ impl<'a> Sinkhorn<'a> {
         }
         self
     }
-
     /// marginalize over the other side of the coupling
     fn update(&self, a: &Abstraction, side: Side) -> Probability {
         let (density, marginal) = match side {
@@ -62,7 +61,7 @@ impl<'a> Sinkhorn<'a> {
     }
 
     /// compute frobenius norm of the coupling w.r.t. given metric
-    fn frobenius(&self) -> f32 {
+    fn frobenius(&self) -> Distance {
         self.lhs
             .support()
             .map(|x| self.rhs.support().map(move |y| (x, y)))
@@ -73,7 +72,7 @@ impl<'a> Sinkhorn<'a> {
     /// alternatively, could implemment Measure for Potential<'_>
     /// and interpret as living in a different entropically regularized metric
     /// space, but the intent is more clear this way probably.
-    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> f32 {
+    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Distance {
         (self.metric.distance(x, y) / self.epsilon() / self.mass())
             .neg()
             .exp()
@@ -104,6 +103,9 @@ impl Coupling for Sinkhorn<'_> {
     type Q = Potential;
     type M = Metric;
 
+    fn minimize(self) -> Self {
+        self.minimize()
+    }
     fn flow(&self, x: &Self::X, y: &Self::Y) -> f32 {
         self.flow(x, y)
     }
