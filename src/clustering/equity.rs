@@ -1,10 +1,9 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
-use crate::transport::coupling::Coupling;
-use crate::transport::density::Density;
 use crate::transport::measure::Measure;
+use crate::Distance;
 
-/// useful struct for methods that help in calculating
+/// useful struct for grouping methods that help in calculating
 /// optimal transport between two Equity Histograms.
 /// more broadly, this can generalize to calclaute distance
 /// between arbitrary distributions over the [0, 1] interval.
@@ -26,34 +25,14 @@ impl Measure for Equity {
     }
 }
 
-impl Coupling for Equity {
-    type M = Self;
-    type X = Abstraction; //::Equity(i8) variant
-    type Y = Abstraction; //::Equity(i8) variant
-    type P = Histogram;
-    type Q = Histogram;
-    /// this would just be the difference between
-    /// CDF's of the two Histograms at points x and y.
-    fn flow(&self, _: &Self::X, _: &Self::Y) -> f32 {
-        todo!("implementation would require storage of the optimal transport plan, in which case this fn would become a simple lookup.")
-    }
-    /// we could use any of the (Histogram, Histogram) -> f32
-    /// distance metrics defined in this module.
-    /// absolute variation is a reasonable default, and it corresponds
-    /// to the Wasserstein-1 distance between inverse CDFs.
-    fn cost(&self, x: &Self::P, y: &Self::Q, _: &Self::M) -> f32 {
-        Self::variation(x, y)
-    }
-}
-
 /// different distance metrics over Equity Histograms
 /// conveniently have properties of distributions over the [0, 1] interval.
 #[allow(dead_code)]
 impl Equity {
-    pub fn variation(x: &Histogram, y: &Histogram) -> f32 {
+    pub fn variation(x: &Histogram, y: &Histogram) -> Distance {
         Abstraction::range()
             .iter()
-            .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
+            .map(|a| (x.density(a), y.density(a)))
             .scan((0., 0.), |cdf, (px, py)| {
                 Some({
                     cdf.0 += px;
@@ -62,30 +41,30 @@ impl Equity {
                 })
             })
             .map(|(x, y)| (x - y).abs())
-            .sum::<f32>()
-            / Abstraction::range().len() as f32
+            .sum::<Distance>()
+            / Abstraction::range().len() as Distance
             / 2.
     }
-    pub fn euclidean(x: &Histogram, y: &Histogram) -> f32 {
+    pub fn euclidean(x: &Histogram, y: &Histogram) -> Distance {
         Abstraction::range()
             .iter()
             .map(|abstraction| x.density(abstraction) - y.density(abstraction))
             .map(|delta| delta * delta)
-            .sum::<f32>()
+            .sum::<Distance>()
             .sqrt()
     }
-    pub fn chisquare(x: &Histogram, y: &Histogram) -> f32 {
+    pub fn chisquare(x: &Histogram, y: &Histogram) -> Distance {
         Abstraction::range()
             .iter()
             .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
             .map(|(x, y)| (x - y).powi(2) / (x + y))
-            .sum::<f32>()
+            .sum::<Distance>()
     }
-    pub fn divergent(x: &Histogram, y: &Histogram) -> f32 {
+    pub fn divergent(x: &Histogram, y: &Histogram) -> Distance {
         Abstraction::range()
             .iter()
             .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
             .map(|(x, y)| (x - y).abs())
-            .sum::<f32>()
+            .sum::<Distance>()
     }
 }

@@ -21,5 +21,5 @@ pub trait Coupling {
     ///
     /// Equity uses simple O(N) integration of total variation
     /// Metric uses greedy approximation of EMD.
-    fn cost(&self, p: &Self::P, q: &Self::Q, m: &Self::M) -> f32;
+    fn cost(&self) -> f32;
 }

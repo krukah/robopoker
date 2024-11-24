@@ -14,7 +14,7 @@ pub struct Centroid {
 
 impl Centroid {
     pub fn reset(&mut self) {
-        self.last.destroy();
+        self.last.empty();
         // std::mem::swap(&mut self.last, &mut self.next);
     }
     pub fn absorb(&mut self, h: &Histogram) {
@@ -25,7 +25,7 @@ impl Centroid {
         &self.last
     }
     pub fn is_empty(&self) -> bool {
-        self.last.is_empty()
+        self.last.n() == 0
     }
 }
 

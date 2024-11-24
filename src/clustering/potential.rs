@@ -1,43 +1,27 @@
-use crate::cards::hand::Hand;
-use crate::cards::observation::Observation;
-use crate::cards::street::Street;
-use crate::cards::strength::Strength;
-use crate::clustering::histogram::Histogram;
+use super::abstraction::Abstraction;
+use crate::transport::density::Density;
+use crate::Distance;
+use crate::Probability;
+use std::collections::BTreeMap;
 
-#[allow(dead_code)]
-struct Potential;
-impl std::fmt::Display for Potential {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let observation = Observation::from(Street::Turn);
-        let histogram = Histogram::from(observation.clone());
-        let strength = Strength::from(Hand::from(observation.clone()));
-        let equity = histogram.equity();
-        // Display the histogram
-        writeln!(f, "{}", histogram)?;
-        // Mark the point on the x-axis corresponding to the value "ev"
-        let n_x_bins = 32;
-        let x = (equity * n_x_bins as f32).floor() as usize;
-        let x = x.min(n_x_bins - 1);
-        for i in 0..n_x_bins {
-            if i == x {
-                write!(f, "^")?;
-            } else {
-                write!(f, " ")?;
-            }
-        }
-        writeln!(f)?;
-        writeln!(f, "{}", observation)?;
-        writeln!(f, "{}", strength)?;
-        writeln!(f, "{:.2}%", equity * 100.0)?;
-        Ok(())
+/// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
+/// potential formulation of the optimal transport problem.
+/// this structure can also be treated as a normalized distribution over Abstractions.
+pub struct Potential(pub BTreeMap<Abstraction, Probability>);
+
+impl Density for Potential {
+    type S = Abstraction;
+
+    fn density(&self, x: &Self::S) -> Distance {
+        self.0.get(x).copied().unwrap_or(0.)
+    }
+    fn support(&self) -> impl Iterator<Item = &Self::S> {
+        self.0.keys()
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn am_i_pretty() {
-        println!("{}", Potential);
+impl From<BTreeMap<Abstraction, Probability>> for Potential {
+    fn from(potential: BTreeMap<Abstraction, Probability>) -> Self {
+        Self(potential)
     }
 }

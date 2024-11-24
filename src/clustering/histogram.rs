@@ -1,5 +1,6 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::clustering::potential::Potential;
 use crate::transport::density::Density;
 use crate::Arbitrary;
 use crate::Equity;
@@ -14,77 +15,62 @@ use std::ops::AddAssign;
 #[derive(Debug, Default, Clone)]
 pub struct Histogram {
     mass: usize,
-    contribution: BTreeMap<Abstraction, usize>,
+    counts: BTreeMap<Abstraction, usize>,
 }
 
 impl Histogram {
-    /// the weight of a given Abstraction.
-    /// returns 0 if the Abstraction was never witnessed.
-    pub fn weight(&self, abstraction: &Abstraction) -> f32 {
-        self.contribution
-            .get(abstraction)
-            .copied()
-            .unwrap_or(0usize) as f32
-            / self.mass as f32
+    /// the weight of a given Abstraction. returns 0 if the Abstraction was never witnessed.
+    pub fn density(&self, x: &Abstraction) -> Probability {
+        self.counts.get(x).copied().unwrap_or(0usize) as f32 / self.mass as f32
     }
-
-    /// all witnessed Abstractions.
-    /// treat this like an unordered array
-    /// even though we use BTreeMap for struct.
+    /// all witnessed Abstractions in the support
     pub fn support(&self) -> impl Iterator<Item = &Abstraction> {
-        self.contribution.keys()
+        self.counts.keys()
     }
-    pub fn normalize(&self) -> BTreeMap<Abstraction, f32> {
-        self.contribution
-            .iter()
-            .map(|(&a, &count)| (a, count as f32 / self.mass as f32))
-            .collect()
+    /// unit normalized distribution over the support
+    pub fn normalize(&self) -> Potential {
+        self.support()
+            .copied()
+            .map(|x| (x, self.density(&x)))
+            .collect::<BTreeMap<_, _>>()
+            .into()
     }
-
-    /// useful only for k-means edge case of centroid drift
-    pub fn is_empty(&self) -> bool {
-        assert!(self.contribution.is_empty() == (self.mass == 0));
-        self.contribution.is_empty()
+    /// uniform distribution over the support
+    pub fn uniformed(&self) -> Potential {
+        self.support()
+            .copied()
+            .map(|x| (x, 1. / self.n() as Probability))
+            .collect::<BTreeMap<_, _>>()
+            .into()
     }
-
     /// size of the support
-    pub fn size(&self) -> usize {
-        self.contribution.len()
-    }
-
-    /// insert the Abstraction into our support,
-    /// incrementing its local weight,
-    /// incrementing our global norm.
-    pub fn increment(mut self, abstraction: Abstraction) -> Self {
-        self.mass.add_assign(1usize);
-        self.contribution
-            .entry(abstraction)
-            .or_insert(0usize)
-            .add_assign(1usize);
-        self
+    pub fn n(&self) -> usize {
+        self.counts.len()
     }
 
     /// empty the whole thing,
     /// reset the norm to zero,
     /// clear the weights
-    pub fn destroy(&mut self) {
+    pub fn empty(&mut self) {
         self.mass = 0;
-        self.contribution.clear();
+        self.counts.clear();
     }
-
+    /// insert the Abstraction into our support,
+    /// incrementing its local weight,
+    /// incrementing our global norm.
+    pub fn increment(mut self, abstraction: Abstraction) -> Self {
+        self.mass.add_assign(1usize);
+        self.counts
+            .entry(abstraction)
+            .or_insert(0usize)
+            .add_assign(1usize);
+        self
+    }
     /// absorb the other histogram into this one.
-    ///
-    /// TODO:
-    /// Note that this implicitly assumes sum normalizations are the same,
-    /// which should hold for now...
-    /// until we implement Observation isomorphisms!
     pub fn absorb(&mut self, other: &Self) {
         self.mass += other.mass;
-        for (key, count) in other.contribution.iter() {
-            self.contribution
-                .entry(*key)
-                .or_insert(0usize)
-                .add_assign(*count);
+        for (key, count) in other.counts.iter() {
+            self.counts.entry(*key).or_insert(0usize).add_assign(*count);
         }
     }
 
@@ -93,12 +79,8 @@ impl Histogram {
     /// Abstraction variants, so we expose this method to
     /// infer the type of Abstraction contained by this Histogram.
     pub fn peek(&self) -> &Abstraction {
-        self.contribution
-            .keys()
-            .next()
-            .expect("non empty histogram")
+        self.counts.keys().next().expect("non empty histogram")
     }
-
     /// exhaustive calculation of all
     /// possible Rivers and Showdowns,
     /// naive to strategy of course.
@@ -106,7 +88,6 @@ impl Histogram {
         assert!(matches!(self.peek(), Abstraction::Percent(_)));
         self.pdf().iter().map(|(x, y)| x * y).sum()
     }
-
     /// this yields the posterior equity distribution
     /// at Street::Turn.
     /// this is the only street we explicitly can calculate
@@ -116,21 +97,11 @@ impl Histogram {
     /// hence a distribution over showdown equities.
     pub fn pdf(&self) -> Vec<(Equity, Probability)> {
         assert!(matches!(self.peek(), Abstraction::Percent(_)));
-        self.contribution
+        self.counts
             .iter()
             .map(|(&key, &value)| (key, value as f32 / self.mass as f32))
             .map(|(k, v)| (Equity::from(k), Probability::from(v)))
             .collect()
-    }
-}
-
-impl Density for Histogram {
-    type S = Abstraction;
-    fn density(&self, x: &Self::S) -> f32 {
-        self.weight(x)
-    }
-    fn support(&self) -> impl Iterator<Item = &Self::S> {
-        self.support()
     }
 }
 
@@ -139,14 +110,24 @@ impl From<Observation> for Histogram {
         assert!(turn.street() == crate::cards::street::Street::Turn);
         turn.children()
             .map(|river| Abstraction::from(river.equity()))
-            .fold(Histogram::default(), |hist, abs| hist.increment(abs))
+            .fold(Self::default(), |hist, abs| hist.increment(abs))
     }
 }
 
 impl From<Vec<Abstraction>> for Histogram {
     fn from(a: Vec<Abstraction>) -> Self {
         a.into_iter()
-            .fold(Histogram::default(), |hist, abs| hist.increment(abs))
+            .fold(Self::default(), |hist, abs| hist.increment(abs))
+    }
+}
+
+impl Density for Histogram {
+    type S = Abstraction;
+    fn density(&self, x: &Self::S) -> f32 {
+        self.density(x)
+    }
+    fn support(&self) -> impl Iterator<Item = &Self::S> {
+        self.support()
     }
 }
 
