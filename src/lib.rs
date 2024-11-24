@@ -4,12 +4,13 @@ pub mod gameplay;
 pub mod kmeans;
 pub mod mccfr;
 pub mod players;
-pub mod rts;
+pub mod search;
 pub mod transport;
 
 type Chips = i16;
 type Equity = f32;
 type Utility = f32;
+type Distance = f32;
 type Probability = f32;
 
 // game tree parameters
@@ -41,7 +42,7 @@ pub trait Arbitrary {
     fn random() -> Self;
 }
 
-fn progress(n: usize) -> indicatif::ProgressBar {
+pub fn progress(n: usize) -> indicatif::ProgressBar {
     let tick = std::time::Duration::from_secs(5);
     let style = "{percent:>2}% {spinner:.cyan} {elapsed} ETA {eta} {wide_bar:.cyan}";
     let style = indicatif::ProgressStyle::with_template(style).unwrap();

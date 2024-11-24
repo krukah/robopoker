@@ -82,25 +82,26 @@ impl From<Observation> for i64 {
 }
 impl From<i64> for Observation {
     fn from(bits: i64) -> Self {
-        let mut i = 0;
-        let mut bits = bits as u64;
-        let mut pocket = Hand::empty();
-        let mut public = Hand::empty();
-        while bits > 0 {
-            let card = bits as u8 - 1; // distinguish 0x00 and 2c
-            let card = Card::from(card);
-            let hand = Hand::from(card);
-            if i < 2 {
-                pocket = Hand::add(pocket, hand);
-            } else {
-                public = Hand::add(public, hand);
-            }
-            bits >>= 8; // next card
-            i += 1;
-        }
-        assert!(pocket.size() == 2);
-        assert!(public.size() <= 5);
-        Self::from((pocket, public))
+        Self::from(
+            (0u64..8u64)
+                .map(|i| bits >> (i * 8))
+                .take_while(|&bits| bits > 0)
+                .map(|bits| bits as u8)
+                .map(|bits| bits - 1) // distinguish 0x00 and 2c
+                .map(Card::from)
+                .map(Hand::from)
+                .enumerate()
+                .fold(
+                    (Hand::empty(), Hand::empty()),
+                    |(pocket, public), (i, hand)| {
+                        if i < 2 {
+                            (Hand::add(pocket, hand), public)
+                        } else {
+                            (pocket, Hand::add(public, hand))
+                        }
+                    },
+                ),
+        )
     }
 }
 
@@ -139,26 +140,27 @@ impl From<Observation> for Hand {
     }
 }
 
+impl crate::Arbitrary for Observation {
+    fn random() -> Self {
+        Self::from(Street::random())
+    }
+}
+
 /// display Observation as pocket + public
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{} + {}", self.pocket, self.public)
+        write!(f, "{} ~ {}", self.pocket, self.public)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Arbitrary;
 
     #[test]
     fn bijective_i64() {
-        let random = Observation::from(Street::Rive);
+        let random = Observation::random();
         assert!(random == Observation::from(i64::from(random)));
-    }
-}
-
-impl crate::Arbitrary for Observation {
-    fn random() -> Self {
-        Self::from(Street::random())
     }
 }
