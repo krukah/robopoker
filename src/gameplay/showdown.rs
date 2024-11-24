@@ -1,8 +1,8 @@
 use crate::cards::kicks::Kickers;
 use crate::cards::ranking::Ranking;
 use crate::cards::strength::Strength;
-use crate::play::seat::State;
-use crate::play::settlement::Settlement;
+use crate::gameplay::seat::State;
+use crate::gameplay::settlement::Settlement;
 use crate::Chips;
 
 // ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic

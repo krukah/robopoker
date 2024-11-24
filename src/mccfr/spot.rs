@@ -1,7 +1,7 @@
 use super::policy::Policy;
 use crate::cards::hole::Hole;
-use crate::play::action::Action;
-use crate::play::game::Game;
+use crate::gameplay::action::Action;
+use crate::gameplay::game::Game;
 
 pub struct Spot {
     root: Game, // only used for starting stacks (hopefully)

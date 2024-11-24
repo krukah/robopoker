@@ -8,7 +8,7 @@ use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::encoding::Encoder;
-use crate::play::game::Game;
+use crate::gameplay::game::Game;
 
 #[derive(Default)]
 pub struct Sampler(Encoder);

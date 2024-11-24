@@ -1,7 +1,7 @@
 use super::bucket::Bucket;
 use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::game::Game;
 use crate::mccfr::player::Player;
-use crate::play::game::Game;
 
 #[derive(Debug)]
 pub struct Data {

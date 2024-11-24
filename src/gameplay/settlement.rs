@@ -1,5 +1,5 @@
 use crate::cards::strength::Strength;
-use crate::play::seat::State;
+use crate::gameplay::seat::State;
 use crate::Chips;
 use colored::Colorize;
 
