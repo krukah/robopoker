@@ -158,7 +158,7 @@ mod tests {
 }
 
 impl crate::Arbitrary for Observation {
-    fn arbitrary() -> Self {
-        Self::from(Street::arbitrary())
+    fn random() -> Self {
+        Self::from(Street::random())
     }
 }

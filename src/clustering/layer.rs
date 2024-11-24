@@ -127,7 +127,7 @@ impl Layer {
                 }
             }
         }
-        Metric(metric)
+        Metric::from(metric)
     }
     /// using the current layer's `Abstractor`,
     /// we generate the `LargeSpace` of `Observation` -> `Histogram`.

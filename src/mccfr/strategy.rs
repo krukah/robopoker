@@ -52,14 +52,10 @@ impl Default for Strategy {
 }
 
 impl Arbitrary for Strategy {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let n = rng.gen_range(1..=8);
-        Self(
-            (0..n)
-                .map(|_| (Edge::arbitrary(), Memory::arbitrary()))
-                .collect(),
-        )
+        Self((0..n).map(|_| (Edge::random(), Memory::random())).collect())
     }
 }

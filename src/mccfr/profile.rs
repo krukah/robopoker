@@ -551,11 +551,11 @@ impl std::fmt::Display for Profile {
 }
 
 impl crate::Arbitrary for Profile {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         Self {
             iterations: 0,
             strategies: (0..100)
-                .map(|_| (Bucket::arbitrary(), Strategy::arbitrary()))
+                .map(|_| (Bucket::random(), Strategy::random()))
                 .collect(),
         }
     }
@@ -594,7 +594,7 @@ mod tests {
     fn persistence() {
         let name = "test";
         let file = format!("{}.profile.pgcopy", name);
-        let save = Profile::arbitrary();
+        let save = Profile::random();
         save.save(name);
         let load = Profile::from(name);
         std::fs::remove_file(file).unwrap();

@@ -26,7 +26,7 @@ const KMEANS_TURN_TRAINING_ITERATIONS: usize = 128;
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 128;
 
 // mccfr parameters
-const CFR_BATCH_SIZE: usize = 9182;
+const CFR_BATCH_SIZE: usize = 9_182;
 const CFR_TREE_COUNT: usize = 68_719_476_736;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000;
@@ -37,9 +37,8 @@ const REGRET_MIN: Utility = -3e5;
 const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 
-// Add this near your other trait definitions
 pub trait Arbitrary {
-    fn arbitrary() -> Self;
+    fn random() -> Self;
 }
 
 fn progress(n: usize) -> indicatif::ProgressBar {
@@ -50,4 +49,29 @@ fn progress(n: usize) -> indicatif::ProgressBar {
     progress.set_style(style);
     progress.enable_steady_tick(tick);
     progress
+}
+
+pub fn logs() {
+    std::fs::create_dir_all("logs").expect("create logs directory");
+    let config = simplelog::ConfigBuilder::new()
+        .set_location_level(log::LevelFilter::Off)
+        .set_target_level(log::LevelFilter::Off)
+        .set_thread_level(log::LevelFilter::Off)
+        .build();
+    let time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("time moves slow")
+        .as_secs();
+    let file = simplelog::WriteLogger::new(
+        log::LevelFilter::Debug,
+        config.clone(),
+        std::fs::File::create(format!("logs/{}.log", time)).expect("create log file"),
+    );
+    let term = simplelog::TermLogger::new(
+        log::LevelFilter::Info,
+        config.clone(),
+        simplelog::TerminalMode::Mixed,
+        simplelog::ColorChoice::Auto,
+    );
+    simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
 }

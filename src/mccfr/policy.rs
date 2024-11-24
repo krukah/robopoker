@@ -18,13 +18,13 @@ impl From<BTreeMap<Edge, Probability>> for Policy {
 }
 
 impl Arbitrary for Policy {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let n = rng.gen_range(1..=8);
         Self::from(
             (0..n)
-                .map(|_| (Edge::arbitrary(), rng.gen()))
+                .map(|_| (Edge::random(), rng.gen()))
                 .collect::<BTreeMap<Edge, Probability>>(),
         )
     }
