@@ -153,7 +153,7 @@ mod bijection_tests {
 }
 
 impl Arbitrary for Edge {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         use rand::Rng;
         match rand::thread_rng().gen_range(0..6) {
             0 => Self::Draw,

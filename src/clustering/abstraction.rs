@@ -12,16 +12,16 @@ use std::u64;
 /// - Other Streets: we use a u64 to represent the hash signature of the centroid Histogram over lower layers of abstraction.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub enum Abstraction {
-    Equity(u8),   // river
-    Unique(u64),  // flop, turn
-    Pocket(Hole), // preflop
+    Percent(u8),   // river
+    Learned(u64),  // flop, turn
+    PreFlop(Hole), // preflop
 }
 
 impl Support for Abstraction {}
 
 impl Abstraction {
     pub fn random() -> Self {
-        Self::Unique(loop {
+        Self::Learned(loop {
             let x = rand::random::<u64>();
             match x >> 52 {
                 POCKET_TAG => continue,
@@ -40,10 +40,10 @@ impl Abstraction {
     const N: u8 = 63;
     const BUCKETS: [Self; Self::N as usize + 1] = Self::buckets();
     const fn buckets() -> [Self; Self::N as usize + 1] {
-        let mut buckets = [Self::Equity(0); Self::N as usize + 1];
+        let mut buckets = [Self::Percent(0); Self::N as usize + 1];
         let mut i = 0;
         while i <= Self::N {
-            buckets[i as usize] = Self::Equity(i as u8);
+            buckets[i as usize] = Self::Percent(i as u8);
             i += 1;
         }
         buckets
@@ -62,15 +62,15 @@ impl From<Probability> for Abstraction {
     fn from(p: Probability) -> Self {
         assert!(p >= 0.);
         assert!(p <= 1.);
-        Self::Equity(Abstraction::quantize(p))
+        Self::Percent(Abstraction::quantize(p))
     }
 }
 impl From<Abstraction> for Probability {
     fn from(abstraction: Abstraction) -> Self {
         match abstraction {
-            Abstraction::Equity(n) => Abstraction::floatize(n),
-            Abstraction::Unique(_) => unreachable!("no cluster into probability"),
-            Abstraction::Pocket(_) => unreachable!("no preflop into probability"),
+            Abstraction::Percent(n) => Abstraction::floatize(n),
+            Abstraction::Learned(_) => unreachable!("no cluster into probability"),
+            Abstraction::PreFlop(_) => unreachable!("no preflop into probability"),
         }
     }
 }
@@ -83,18 +83,18 @@ const POCKET_TAG: u64 = 0xFFF;
 impl From<Abstraction> for u64 {
     fn from(a: Abstraction) -> Self {
         match a {
-            Abstraction::Unique(n) => n,
-            Abstraction::Equity(e) => (EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
-            Abstraction::Pocket(h) => (POCKET_TAG << 52) | u64::from(Hand::from(h)),
+            Abstraction::Learned(n) => n,
+            Abstraction::Percent(e) => (EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
+            Abstraction::PreFlop(h) => (POCKET_TAG << 52) | u64::from(Hand::from(h)),
         }
     }
 }
 impl From<u64> for Abstraction {
     fn from(n: u64) -> Self {
         match n >> 52 {
-            EQUITY_TAG => Self::Equity(((n >> 44) & 0xFF) as u8),
-            POCKET_TAG => Self::Pocket(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
-            _ => Self::Unique(n),
+            EQUITY_TAG => Self::Percent(((n >> 44) & 0xFF) as u8),
+            POCKET_TAG => Self::PreFlop(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
+            _ => Self::Learned(n),
         }
     }
 }
@@ -109,19 +109,19 @@ impl From<Abstraction> for i64 {
 }
 impl From<i64> for Abstraction {
     fn from(n: i64) -> Self {
-        Self::Unique(n as u64)
+        Self::Learned(n as u64)
     }
 }
 
 /// lossless preflop abstraction
 impl From<Hole> for Abstraction {
     fn from(hole: Hole) -> Self {
-        Self::Pocket(hole)
+        Self::PreFlop(hole)
     }
 }
 
 impl crate::Arbitrary for Abstraction {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         Self::random()
     }
 }
@@ -129,9 +129,9 @@ impl crate::Arbitrary for Abstraction {
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unique(n) => write!(f, "{:016x}", n),
-            Self::Equity(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
-            Self::Pocket(h) => write!(f, "Pocket({})", h),
+            Self::Learned(n) => write!(f, "{:016x}", n),
+            Self::Percent(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
+            Self::PreFlop(h) => write!(f, "Pocket({})", h),
         }
     }
 }
@@ -168,13 +168,13 @@ mod tests {
 
     #[test]
     fn bijective_u64_equity() {
-        let equity = Abstraction::Equity(Abstraction::N / 2);
+        let equity = Abstraction::Percent(Abstraction::N / 2);
         assert_eq!(equity, Abstraction::from(u64::from(equity)));
     }
 
     #[test]
     fn bijective_u64_pocket() {
-        let pocket = Abstraction::Pocket(Hole::from(Observation::from(Street::Pref)));
+        let pocket = Abstraction::PreFlop(Hole::from(Observation::from(Street::Pref)));
         assert_eq!(pocket, Abstraction::from(u64::from(pocket)));
     }
 }

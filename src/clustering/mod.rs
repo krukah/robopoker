@@ -4,6 +4,7 @@ pub mod datasets;
 pub mod encoding;
 pub mod equity;
 pub mod histogram;
+pub mod kontorovich;
 pub mod layer;
 pub mod metric;
 pub mod potential;

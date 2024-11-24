@@ -20,7 +20,7 @@ impl Measure for Equity {
     type Y = Abstraction; //::Equity(i8) variant
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
         match (x, y) {
-            (Self::X::Equity(x), Self::Y::Equity(y)) => (*x as f32 - *y as f32).abs(),
+            (Self::X::Percent(x), Self::Y::Percent(y)) => (*x as f32 - *y as f32).abs(),
             _ => unreachable!("only equity distance for equity abstractions. perhaps Self::X should be f32 to avoid this pattern match"),
         }
     }

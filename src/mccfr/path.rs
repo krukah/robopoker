@@ -11,7 +11,7 @@ impl Path {
 }
 
 impl crate::Arbitrary for Path {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         Self::random()
     }
 }

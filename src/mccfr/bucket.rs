@@ -18,11 +18,11 @@ impl std::fmt::Display for Bucket {
 }
 
 impl crate::Arbitrary for Bucket {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         Self::from((
-            Path::arbitrary(),
-            Abstraction::arbitrary(),
-            Path::arbitrary(),
+            Path::random(),
+            Abstraction::random(),
+            Path::random(),
         ))
     }
 }

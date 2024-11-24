@@ -1,16 +1,5 @@
 use robopoker::*;
 
-fn main() {
-    // Boring stuff
-    logging();
-    // The k-means earth mover's distance hand-clustering algorithm.
-    clustering::encoding::Encoder::learn();
-    // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    mccfr::blueprint::Solver::train();
-    // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
-    play::game::Game::play();
-}
-
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
 //    2019. Regret Circuits: Composability of Regret Minimizers. In Proceedings of the International Conference on Machine Learning (ICML), 2019. arXiv version. (https://arxiv.org/abs/1811.02540)
 //    2019. Stable-Predictive Optimistic Counterfactual Regret Minimization. In ICML. arXiv version. (https://arxiv.org/pdf/1902.04982.pdf)
@@ -57,27 +46,13 @@ fn main() {
 //    2009. Computing Equilibria in Multiplayer Stochastic Games of Imperfect Information (http://www.cs.cmu.edu/~sandholm/stochgames.ijcai09.pdf). In IJCAI.
 //    2003. Using the Triangle Inequality to Accelerate-Means (https://cdn.aaai.org/ICML/2003/ICML03-022.pdf) In ICML.
 
-fn logging() {
-    std::fs::create_dir_all("logs").expect("create logs directory");
-    let config = simplelog::ConfigBuilder::new()
-        .set_location_level(log::LevelFilter::Off)
-        .set_target_level(log::LevelFilter::Off)
-        .set_thread_level(log::LevelFilter::Off)
-        .build();
-    let time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("time moves slow")
-        .as_secs();
-    let file = simplelog::WriteLogger::new(
-        log::LevelFilter::Debug,
-        config.clone(),
-        std::fs::File::create(format!("logs/{}.log", time)).expect("create log file"),
-    );
-    let term = simplelog::TermLogger::new(
-        log::LevelFilter::Info,
-        config.clone(),
-        simplelog::TerminalMode::Mixed,
-        simplelog::ColorChoice::Auto,
-    );
-    simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
+fn main() {
+    // Boring stuff
+    crate::logs();
+    // The k-means earth mover's distance hand-clustering algorithm.
+    crate::clustering::encoding::Encoder::learn();
+    // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
+    crate::mccfr::blueprint::Solver::train();
+    // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
+    crate::play::game::Game::play();
 }

@@ -1,6 +1,7 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
 use crate::transport::density::Density;
+use crate::Arbitrary;
 use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
@@ -14,16 +15,6 @@ use std::ops::AddAssign;
 pub struct Histogram {
     mass: usize,
     contribution: BTreeMap<Abstraction, usize>,
-}
-
-impl Density for Histogram {
-    type X = Abstraction;
-    fn density(&self, x: &Self::X) -> f32 {
-        self.weight(x)
-    }
-    fn support(&self) -> impl Iterator<Item = &Self::X> {
-        self.support()
-    }
 }
 
 impl Histogram {
@@ -64,7 +55,7 @@ impl Histogram {
     /// insert the Abstraction into our support,
     /// incrementing its local weight,
     /// incrementing our global norm.
-    pub fn witness(mut self, abstraction: Abstraction) -> Self {
+    pub fn increment(mut self, abstraction: Abstraction) -> Self {
         self.mass.add_assign(1usize);
         self.contribution
             .entry(abstraction)
@@ -91,9 +82,9 @@ impl Histogram {
         self.mass += other.mass;
         for (key, count) in other.contribution.iter() {
             self.contribution
-                .entry(key.to_owned())
+                .entry(*key)
                 .or_insert(0usize)
-                .add_assign(count.to_owned());
+                .add_assign(*count);
         }
     }
 
@@ -112,8 +103,8 @@ impl Histogram {
     /// possible Rivers and Showdowns,
     /// naive to strategy of course.
     pub fn equity(&self) -> Equity {
-        assert!(matches!(self.peek(), Abstraction::Equity(_)));
-        self.distribution().iter().map(|(x, y)| x * y).sum()
+        assert!(matches!(self.peek(), Abstraction::Percent(_)));
+        self.pdf().iter().map(|(x, y)| x * y).sum()
     }
 
     /// this yields the posterior equity distribution
@@ -123,8 +114,8 @@ impl Histogram {
     ///     Probability -> Probability
     /// vs  Probability -> Abstraction
     /// hence a distribution over showdown equities.
-    pub fn distribution(&self) -> Vec<(Equity, Probability)> {
-        assert!(matches!(self.peek(), Abstraction::Equity(_)));
+    pub fn pdf(&self) -> Vec<(Equity, Probability)> {
+        assert!(matches!(self.peek(), Abstraction::Percent(_)));
         self.contribution
             .iter()
             .map(|(&key, &value)| (key, value as f32 / self.mass as f32))
@@ -133,32 +124,57 @@ impl Histogram {
     }
 }
 
+impl Density for Histogram {
+    type S = Abstraction;
+    fn density(&self, x: &Self::S) -> f32 {
+        self.weight(x)
+    }
+    fn support(&self) -> impl Iterator<Item = &Self::S> {
+        self.support()
+    }
+}
+
 impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
         assert!(turn.street() == crate::cards::street::Street::Turn);
         turn.children()
             .map(|river| Abstraction::from(river.equity()))
-            .fold(Histogram::default(), |hist, abs| hist.witness(abs))
+            .fold(Histogram::default(), |hist, abs| hist.increment(abs))
     }
 }
 
 impl From<Vec<Abstraction>> for Histogram {
     fn from(a: Vec<Abstraction>) -> Self {
         a.into_iter()
-            .fold(Histogram::default(), |hist, abs| hist.witness(abs))
+            .fold(Histogram::default(), |hist, abs| hist.increment(abs))
+    }
+}
+
+impl Arbitrary for Histogram {
+    fn random() -> Self {
+        const S: usize = 4;
+        const N: usize = 32;
+        (0..S)
+            .map(|_| Abstraction::random())
+            .collect::<Vec<_>>()
+            .into_iter()
+            .cycle()
+            .filter(|_| rand::random::<bool>())
+            .take(N)
+            .fold(Self::default(), |h, a| h.increment(a))
     }
 }
 
 impl std::fmt::Display for Histogram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        assert!(matches!(self.peek(), Abstraction::Equity(_)));
+        assert!(matches!(self.peek(), Abstraction::Percent(_)));
         // 1. interpret each key of the Histogram as probability
         // 2. they should already be sorted bc BTreeMap
-        let ref distribution = self.distribution();
+        let ref pdf = self.pdf();
         // 3. Create 32 bins for the x-axis
         let n_x_bins = 32;
         let ref mut bins = vec![0.0; n_x_bins];
-        for (key, value) in distribution {
+        for (key, value) in pdf {
             let x = key * n_x_bins as f32;
             let x = x.floor() as usize;
             let x = x.min(n_x_bins - 1);

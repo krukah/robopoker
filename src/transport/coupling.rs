@@ -6,8 +6,8 @@ pub trait Coupling {
     type X: Support;
     type Y: Support;
     type M: Measure<X = Self::X, Y = Self::Y>;
-    type P: Density<X = Self::X>;
-    type Q: Density<X = Self::Y>;
+    type P: Density<S = Self::X>;
+    type Q: Density<S = Self::Y>;
 
     /// default ::cost() implemenation assumes that we have flow(x, y
     /// available cheaply enough that we can doubly-integrate
@@ -21,24 +21,5 @@ pub trait Coupling {
     ///
     /// Equity uses simple O(N) integration of total variation
     /// Metric uses greedy approximation of EMD.
-    fn cost(&self, p: &Self::P, q: &Self::Q, m: &Self::M) -> f32 {
-        let mut cost = 0.;
-        for x in p.support() {
-            for y in q.support() {
-                let dx = p.density(x);
-                let dy = q.density(y);
-                let area = m.distance(x, y);
-                let flux = self.flow(x, y);
-                cost += area * flux * dx * dy;
-            }
-        }
-        cost
-    }
-
-    /// relative entropy, or Kullback-Leibler divergence,
-    /// is penalized such that we favor less sparse couplings
-    /// over the joint P x Q distribution.
-    fn entropy(&self, _: &Self::P, _: &Self::Q) -> f32 {
-        todo!()
-    }
+    fn cost(&self, p: &Self::P, q: &Self::Q, m: &Self::M) -> f32;
 }

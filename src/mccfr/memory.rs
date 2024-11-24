@@ -38,7 +38,7 @@ impl From<(f32, f32)> for Memory {
 }
 
 impl Arbitrary for Memory {
-    fn arbitrary() -> Self {
+    fn random() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         Self {
