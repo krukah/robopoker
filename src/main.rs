@@ -54,5 +54,5 @@ fn main() {
     // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Solver::train();
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
-    crate::play::game::Game::play();
+    crate::gameplay::game::Game::play();
 }

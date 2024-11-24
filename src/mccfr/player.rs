@@ -1,4 +1,4 @@
-use crate::play::ply::Ply;
+use crate::gameplay::ply::Ply;
 use std::hash::Hash;
 
 #[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq)]

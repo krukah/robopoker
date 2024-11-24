@@ -1,5 +1,5 @@
+use crate::gameplay::action::Action;
 use crate::mccfr::odds::Odds;
-use crate::play::action::Action;
 use crate::{Arbitrary, Chips};
 use std::hash::Hash;
 
