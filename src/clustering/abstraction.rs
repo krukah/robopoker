@@ -14,7 +14,7 @@ use std::u64;
 pub enum Abstraction {
     Percent(u8),   // river
     Learned(u64),  // flop, turn
-    PreFlop(Hole), // preflop
+    Preflop(Hole), // preflop
 }
 
 impl Support for Abstraction {}
@@ -70,7 +70,7 @@ impl From<Abstraction> for Probability {
         match abstraction {
             Abstraction::Percent(n) => Abstraction::floatize(n),
             Abstraction::Learned(_) => unreachable!("no cluster into probability"),
-            Abstraction::PreFlop(_) => unreachable!("no preflop into probability"),
+            Abstraction::Preflop(_) => unreachable!("no preflop into probability"),
         }
     }
 }
@@ -85,7 +85,7 @@ impl From<Abstraction> for u64 {
         match a {
             Abstraction::Learned(n) => n,
             Abstraction::Percent(e) => (EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
-            Abstraction::PreFlop(h) => (POCKET_TAG << 52) | u64::from(Hand::from(h)),
+            Abstraction::Preflop(h) => (POCKET_TAG << 52) | u64::from(Hand::from(h)),
         }
     }
 }
@@ -93,7 +93,7 @@ impl From<u64> for Abstraction {
     fn from(n: u64) -> Self {
         match n >> 52 {
             EQUITY_TAG => Self::Percent(((n >> 44) & 0xFF) as u8),
-            POCKET_TAG => Self::PreFlop(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
+            POCKET_TAG => Self::Preflop(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
             _ => Self::Learned(n),
         }
     }
@@ -116,7 +116,7 @@ impl From<i64> for Abstraction {
 /// lossless preflop abstraction
 impl From<Hole> for Abstraction {
     fn from(hole: Hole) -> Self {
-        Self::PreFlop(hole)
+        Self::Preflop(hole)
     }
 }
 
@@ -131,7 +131,7 @@ impl std::fmt::Display for Abstraction {
         match self {
             Self::Learned(n) => write!(f, "{:016x}", n),
             Self::Percent(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
-            Self::PreFlop(h) => write!(f, "Pocket({})", h),
+            Self::Preflop(h) => write!(f, "Pocket({})", h),
         }
     }
 }
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn bijective_u64_pocket() {
-        let pocket = Abstraction::PreFlop(Hole::from(Observation::from(Street::Pref)));
+        let pocket = Abstraction::Preflop(Hole::from(Observation::from(Street::Pref)));
         assert_eq!(pocket, Abstraction::from(u64::from(pocket)));
     }
 }

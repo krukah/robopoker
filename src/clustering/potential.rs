@@ -9,6 +9,15 @@ use std::collections::BTreeMap;
 /// this structure can also be treated as a normalized distribution over Abstractions.
 pub struct Potential(pub BTreeMap<Abstraction, Probability>);
 
+impl Potential {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Abstraction, &mut Probability)> {
+        self.0.iter_mut()
+    }
+    pub fn values(&self) -> impl Iterator<Item = &Probability> {
+        self.0.values()
+    }
+}
+
 impl Density for Potential {
     type S = Abstraction;
 

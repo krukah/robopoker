@@ -3,6 +3,7 @@ pub mod centroid;
 pub mod datasets;
 pub mod encoding;
 pub mod equity;
+pub mod heuristic;
 pub mod histogram;
 pub mod layer;
 pub mod metric;
