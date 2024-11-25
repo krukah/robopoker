@@ -1,7 +1,7 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use crate::transport::measure::Measure;
-use crate::Distance;
+use crate::Energy;
 
 /// useful struct for grouping methods that help in calculating
 /// optimal transport between two Equity Histograms.
@@ -29,7 +29,7 @@ impl Measure for Equity {
 /// conveniently have properties of distributions over the [0, 1] interval.
 #[allow(dead_code)]
 impl Equity {
-    pub fn variation(x: &Histogram, y: &Histogram) -> Distance {
+    pub fn variation(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
             .iter()
             .map(|a| (x.density(a), y.density(a)))
@@ -41,30 +41,30 @@ impl Equity {
                 })
             })
             .map(|(x, y)| (x - y).abs())
-            .sum::<Distance>()
-            / Abstraction::range().len() as Distance
+            .sum::<Energy>()
+            / Abstraction::range().len() as Energy
             / 2.
     }
-    pub fn euclidean(x: &Histogram, y: &Histogram) -> Distance {
+    pub fn euclidean(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
             .iter()
             .map(|abstraction| x.density(abstraction) - y.density(abstraction))
             .map(|delta| delta * delta)
-            .sum::<Distance>()
+            .sum::<Energy>()
             .sqrt()
     }
-    pub fn chisquare(x: &Histogram, y: &Histogram) -> Distance {
+    pub fn chisquare(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
             .iter()
             .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
             .map(|(x, y)| (x - y).powi(2) / (x + y))
-            .sum::<Distance>()
+            .sum::<Energy>()
     }
-    pub fn divergent(x: &Histogram, y: &Histogram) -> Distance {
+    pub fn divergent(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
             .iter()
             .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
             .map(|(x, y)| (x - y).abs())
-            .sum::<Distance>()
+            .sum::<Energy>()
     }
 }

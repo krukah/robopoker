@@ -4,7 +4,7 @@ use super::datasets::IsomorphismSpace;
 use super::encoding::Encoder;
 use super::histogram::Histogram;
 use super::metric::Metric;
-use super::xor::Pair;
+use super::pair::Pair;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;

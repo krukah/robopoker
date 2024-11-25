@@ -3,6 +3,7 @@ use crate::Arbitrary;
 use crate::Probability;
 use std::collections::BTreeMap;
 
+/// probability vector over the simplex of edges
 pub struct Policy(BTreeMap<Edge, Probability>);
 
 impl Policy {
@@ -24,7 +25,7 @@ impl Arbitrary for Policy {
         let n = rng.gen_range(1..=8);
         Self::from(
             (0..n)
-                .map(|_| (Edge::random(), rng.gen()))
+                .map(|_| (Edge::random(), rng.gen::<Probability>()))
                 .collect::<BTreeMap<Edge, Probability>>(),
         )
     }

@@ -9,8 +9,8 @@ pub mod transport;
 
 type Chips = i16;
 type Equity = f32;
+type Energy = f32;
 type Utility = f32;
-type Distance = f32;
 type Probability = f32;
 
 // game tree parameters

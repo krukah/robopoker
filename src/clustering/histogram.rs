@@ -3,10 +3,12 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::potential::Potential;
 use crate::transport::density::Density;
 use crate::Arbitrary;
+use crate::Energy;
 use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
 use std::ops::AddAssign;
+use std::ops::Neg;
 
 /// A distribution over arbitrary Abstractions.
 ///
@@ -39,7 +41,8 @@ impl Histogram {
     pub fn uniform(&self) -> Potential {
         self.support()
             .copied()
-            .map(|x| (x, 1. / self.n() as Probability))
+            .map(|x| (x, self.n() as Probability))
+            .map(|(x, y)| (x, y.ln().neg() as Energy))
             .collect::<BTreeMap<_, _>>()
             .into()
     }
