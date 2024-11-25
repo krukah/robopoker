@@ -1,5 +1,6 @@
 use super::observation::Observation;
 use super::permutation::Permutation;
+use crate::Arbitrary;
 
 /// because of the equivalence of Suit,
 /// many Observations are strategically equivalent !
@@ -40,6 +41,12 @@ impl From<Isomorphism> for Observation {
 impl From<i64> for Isomorphism {
     fn from(i: i64) -> Self {
         Self(Observation::from(i))
+    }
+}
+
+impl Arbitrary for Isomorphism {
+    fn random() -> Self {
+        Self::from(Observation::random())
     }
 }
 

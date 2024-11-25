@@ -131,7 +131,7 @@ mod tests {
 
     fn transport() -> (Metric, Histogram, Histogram) {
         // construct random metric satisfying symmetric semipositivity
-        const MAX_DISTANCE: f32 = 1.0;
+        const MAX_DISTANCE: f32 = 100.0;
         let mut rng = thread_rng();
         let mut metric = BTreeMap::new();
         let p = Histogram::random();
@@ -182,8 +182,8 @@ mod tests {
         let (metric, h1, h2) = transport();
         let d11 = metric.emd(&h1, &h1);
         let d22 = metric.emd(&h2, &h2);
-        assert!(d11 == 0., "{}", d11);
-        assert!(d22 == 0., "{}", d22);
+        assert!(d11 == 0., "non zero self distance {} {}", d11, d22);
+        assert!(d22 == 0., "non zero self distance {} {}", d11, d22);
     }
 
     #[test]
@@ -191,8 +191,8 @@ mod tests {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
-        assert!(d12 > 0., "{}", d12);
-        assert!(d21 > 0., "{}", d21);
+        assert!(d12 > 0., "non positive {} {}", d12, d21);
+        assert!(d21 > 0., "non positive {} {}", d12, d21);
     }
 
     #[test]
@@ -200,7 +200,7 @@ mod tests {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
-        assert!(d12 == d21, "{} {}", d12, d21);
+        assert!(d12 == d21, "non symmetric {} {}", d12, d21);
     }
 
     #[test]

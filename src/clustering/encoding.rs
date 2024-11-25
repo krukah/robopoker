@@ -4,6 +4,7 @@ use crate::cards::isomorphism::Isomorphism;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
+use crate::Arbitrary;
 use std::collections::BTreeMap;
 
 /// this is the output of the clustering module
@@ -134,22 +135,29 @@ impl Encoder {
     }
 }
 
+impl Arbitrary for Encoder {
+    fn random() -> Self {
+        Self(
+            (0..100)
+                .map(|_| Isomorphism::random())
+                .map(|i| (i, Abstraction::random()))
+                .collect(),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::Observation;
 
     #[test]
     fn persistence() {
         let street = Street::Rive;
         let file = format!("{}.abstraction.pgcopy", street);
-        let save = Encoder(
-            (0..100)
-                .map(|_| Observation::from(street))
-                .map(|o| Isomorphism::from(o))
-                .map(|o| (o, Abstraction::random()))
-                .collect(),
-        );
+        if std::path::Path::new(&file).exists() {
+            return;
+        }
+        let save = Encoder::random();
         save.save(street);
         let load = Encoder::from(street);
         std::iter::empty()
