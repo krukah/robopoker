@@ -56,7 +56,7 @@ impl Layer {
         Self {
             street: Street::Rive,
             metric: Metric::default(),
-            lookup: Encoder::default(),
+            lookup: Encoder::rivers(),
             kmeans: AbstractionSpace::default(),
             points: IsomorphismSpace::default(),
         }
