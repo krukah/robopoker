@@ -27,7 +27,57 @@ impl Metric {
         }
     }
 
-    /// save profile to disk in a PGCOPY compatible format
+    pub fn emd(&self, source: &Histogram, target: &Histogram) -> Distance {
+        match source.peek() {
+            Abstraction::Learned(_) => Sinkhorn::from((source, target, self)).minimize().cost(),
+            Abstraction::Percent(_) => Equity::variation(source, target),
+            Abstraction::Preflop(_) => unreachable!("no preflop emd"),
+        }
+    }
+}
+impl Metric {
+    pub fn done() -> bool {
+        Street::all()
+            .iter()
+            .map(|street| format!("{}.metric.pgcopy", street))
+            .any(|file| std::fs::metadata(file).is_ok())
+    }
+    pub fn load() -> Self {
+        log::info!("loading metric");
+        let mut map = BTreeMap::default();
+        map.extend(Self::from(Street::Pref).0);
+        map.extend(Self::from(Street::Flop).0);
+        map.extend(Self::from(Street::Turn).0);
+        Self(map)
+    }
+    fn from(street: Street) -> Self {
+        use byteorder::ReadBytesExt;
+        use byteorder::BE;
+        use std::fs::File;
+        use std::io::BufReader;
+        use std::io::Read;
+        use std::io::Seek;
+        use std::io::SeekFrom;
+        let file = File::open(format!("{}.metric.pgcopy", street)).expect("open file");
+        let mut buffer = [0u8; 2];
+        let mut lookup = BTreeMap::new();
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
+        while reader.read_exact(&mut buffer).is_ok() {
+            if u16::from_be_bytes(buffer) == 2 {
+                reader.read_u32::<BE>().expect("pair length");
+                let pair_i64 = reader.read_i64::<BE>().expect("read pair");
+                reader.read_u32::<BE>().expect("distance length");
+                let dist_f32 = reader.read_f32::<BE>().expect("read distance");
+                let pair = Pair::from(pair_i64);
+                lookup.insert(pair, dist_f32);
+                continue;
+            } else {
+                break;
+            }
+        }
+        Self(lookup)
+    }
     pub fn save(&self, street: Street) {
         println!("{:<32}{:<32}", "saving metric", street);
         use byteorder::WriteBytesExt;
@@ -47,14 +97,6 @@ impl Metric {
             file.write_f32::<BE>(*distance).unwrap();
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
-    }
-
-    pub fn emd(&self, source: &Histogram, target: &Histogram) -> Distance {
-        match source.peek() {
-            Abstraction::Learned(_) => Sinkhorn::from((source, target, self)).minimize().cost(),
-            Abstraction::Percent(_) => Equity::variation(source, target),
-            Abstraction::Preflop(_) => unreachable!("no preflop emd"),
-        }
     }
 }
 
@@ -87,7 +129,7 @@ mod tests {
     use rand::thread_rng;
     use rand::Rng;
 
-    fn transportation() -> (Metric, Histogram, Histogram) {
+    fn transport() -> (Metric, Histogram, Histogram) {
         // construct random metric satisfying symmetric semipositivity
         const MAX_DISTANCE: f32 = 1.0;
         let mut rng = thread_rng();
@@ -136,21 +178,34 @@ mod tests {
 
     #[test]
     fn is_transport_emd_zero() {
-        let (metric, h1, h2) = transportation();
+        let (metric, h1, h2) = transport();
         assert!(metric.emd(&h1, &h1) == 0.);
         assert!(metric.emd(&h2, &h2) == 0.);
     }
 
     #[test]
     fn is_transport_emd_positive() {
-        let (metric, h1, h2) = transportation();
+        let (metric, h1, h2) = transport();
         assert!(metric.emd(&h1, &h2) > 0.);
         assert!(metric.emd(&h2, &h1) > 0.);
     }
 
     #[test]
     fn is_transport_emd_symmetric() {
-        let (metric, h1, h2) = transportation();
+        let (metric, h1, h2) = transport();
         assert!(metric.emd(&h1, &h2) == metric.emd(&h2, &h1));
+    }
+
+    #[test]
+    fn persistence() {
+        let street = Street::Rive;
+        let (save, _, _) = transport();
+        save.save(street);
+        let load = Metric::from(street);
+        std::iter::empty()
+            .chain(save.0.iter().zip(load.0.iter()))
+            .chain(load.0.iter().zip(save.0.iter()))
+            .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2);
+        std::fs::remove_file(format!("{}.metric.pgcopy", street)).unwrap();
     }
 }
