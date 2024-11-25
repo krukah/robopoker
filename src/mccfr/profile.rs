@@ -79,7 +79,7 @@ impl Profile {
                     memory.set_policy(uniform);
                     self.strategies
                         .entry(bucket.clone())
-                        .or_insert_with(Strategy::new)
+                        .or_insert_with(Strategy::default)
                         .entry(edge.clone())
                         .or_insert(memory);
                 }
@@ -283,7 +283,6 @@ impl Profile {
         self.strategies
             .get(bucket)
             .expect("bucket has been witnessed")
-            .0
             .get(edge)
             .expect("action has been witnessed")
             .regret()
@@ -471,7 +470,7 @@ impl From<&str> for Profile {
                 let bucket = Bucket::from((past, abs, future));
                 let memory = strategies
                     .entry(bucket)
-                    .or_insert_with(Strategy::new)
+                    .or_insert_with(Strategy::default)
                     .entry(edge)
                     .or_insert_with(Memory::default);
                 memory.set_regret(regret);

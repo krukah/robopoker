@@ -2,7 +2,7 @@ use super::edge::Edge;
 use crate::Utility;
 use std::collections::BTreeMap;
 
-pub struct Regret(pub BTreeMap<Edge, Utility>);
+pub struct Regret(BTreeMap<Edge, Utility>);
 
 impl Regret {
     pub fn inner(&self) -> &BTreeMap<Edge, Utility> {
