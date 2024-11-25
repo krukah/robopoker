@@ -5,13 +5,10 @@ use crate::Arbitrary;
 use crate::Probability;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Strategy(pub BTreeMap<Edge, Memory>);
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Strategy(BTreeMap<Edge, Memory>);
 
 impl Strategy {
-    pub fn new() -> Self {
-        Self(BTreeMap::default())
-    }
     pub fn policy(&self) -> Policy {
         Policy::from(
             self.0
@@ -42,12 +39,6 @@ impl Strategy {
 
     pub fn iter(&self) -> std::collections::btree_map::Iter<Edge, Memory> {
         self.0.iter()
-    }
-}
-
-impl Default for Strategy {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

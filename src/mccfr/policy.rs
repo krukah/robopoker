@@ -3,7 +3,7 @@ use crate::Arbitrary;
 use crate::Probability;
 use std::collections::BTreeMap;
 
-pub struct Policy(pub BTreeMap<Edge, Probability>);
+pub struct Policy(BTreeMap<Edge, Probability>);
 
 impl Policy {
     pub fn inner(&self) -> &BTreeMap<Edge, Probability> {

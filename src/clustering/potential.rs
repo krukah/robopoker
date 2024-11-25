@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 /// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
 /// potential formulation of the optimal transport problem.
 /// this structure can also be treated as a normalized distribution over Abstractions.
-pub struct Potential(pub BTreeMap<Abstraction, Probability>);
+pub struct Potential(BTreeMap<Abstraction, Probability>);
 
 impl Potential {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Abstraction, &mut Probability)> {

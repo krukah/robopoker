@@ -1,4 +1,5 @@
 use super::equity::Equity;
+use super::heuristic::Heuristic;
 use super::sinkhorn::Sinkhorn;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
@@ -151,34 +152,36 @@ mod tests {
     }
 
     #[test]
-    fn is_turn_emd_zero() {
+    fn is_equity_emd_zero() {
         let metric = Metric::default();
-        let obs = Observation::from(Street::Turn);
-        let ref h1 = Histogram::from(obs.clone());
-        let ref h2 = Histogram::from(obs.clone());
-        assert!(metric.emd(h1, h2) == 0.);
-        assert!(metric.emd(h2, h1) == 0.);
+        let h = Histogram::from(Observation::from(Street::Turn));
+        let d = metric.emd(&h, &h);
+        assert!(d == 0., "non zero self distance {}", d);
     }
 
     #[test]
-    fn is_turn_emd_positive() {
+    fn is_equity_emd_positive() {
         let metric = Metric::default();
         let ref h1 = Histogram::from(Observation::from(Street::Turn));
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        assert!(metric.emd(h1, h2) > 0.);
-        assert!(metric.emd(h2, h1) > 0.);
+        let d12 = metric.emd(h1, h2);
+        let d21 = metric.emd(h2, h1);
+        assert!(d12 > 0., "non positive {} {}", d12, d21);
+        assert!(d21 > 0., "non positive {} {}", d12, d21);
     }
 
     #[test]
-    fn is_turn_emd_symmetric() {
+    fn is_equity_emd_symmetric() {
         let metric = Metric::default();
         let ref h1 = Histogram::from(Observation::from(Street::Turn));
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        assert!(metric.emd(h1, h2) == metric.emd(h2, h1));
+        let d12 = metric.emd(h1, h2);
+        let d21 = metric.emd(h2, h1);
+        assert!(d12 == d21, "non symmetric {} {}", d12, d21);
     }
 
     #[test]
-    fn is_transport_emd_zero() {
+    fn is_abstract_emd_zero() {
         let (metric, h1, h2) = transport();
         let d11 = metric.emd(&h1, &h1);
         let d22 = metric.emd(&h2, &h2);
@@ -187,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn is_transport_emd_positive() {
+    fn is_abstract_emd_positive() {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
@@ -196,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn is_transport_emd_symmetric() {
+    fn is_abstract_emd_symmetric() {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
@@ -206,7 +209,7 @@ mod tests {
     #[test]
     fn persistence() {
         let street = Street::Rive;
-        let (save, _, _) = transport();
+        let (save, ..) = transport();
         save.save(street);
         let load = Metric::from(street);
         std::iter::empty()
