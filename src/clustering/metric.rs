@@ -136,8 +136,9 @@ mod tests {
         let mut metric = BTreeMap::new();
         let p = Histogram::random();
         let q = Histogram::random();
-        for x in p.support() {
-            for y in q.support() {
+        let support = p.support().chain(q.support()).collect::<Vec<_>>();
+        for &x in &support {
+            for &y in &support {
                 if x != y {
                     let dist = rng.gen_range(0.0..MAX_DISTANCE);
                     let pair = Pair::from((x, y));
@@ -179,21 +180,27 @@ mod tests {
     #[test]
     fn is_transport_emd_zero() {
         let (metric, h1, h2) = transport();
-        assert!(metric.emd(&h1, &h1) == 0.);
-        assert!(metric.emd(&h2, &h2) == 0.);
+        let d11 = metric.emd(&h1, &h1);
+        let d22 = metric.emd(&h2, &h2);
+        assert!(d11 == 0., "{}", d11);
+        assert!(d22 == 0., "{}", d22);
     }
 
     #[test]
     fn is_transport_emd_positive() {
         let (metric, h1, h2) = transport();
-        assert!(metric.emd(&h1, &h2) > 0.);
-        assert!(metric.emd(&h2, &h1) > 0.);
+        let d12 = metric.emd(&h1, &h2);
+        let d21 = metric.emd(&h2, &h1);
+        assert!(d12 > 0., "{}", d12);
+        assert!(d21 > 0., "{}", d21);
     }
 
     #[test]
     fn is_transport_emd_symmetric() {
         let (metric, h1, h2) = transport();
-        assert!(metric.emd(&h1, &h2) == metric.emd(&h2, &h1));
+        let d12 = metric.emd(&h1, &h2);
+        let d21 = metric.emd(&h2, &h1);
+        assert!(d12 == d21, "{} {}", d12, d21);
     }
 
     #[test]
