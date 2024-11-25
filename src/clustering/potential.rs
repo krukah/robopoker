@@ -22,7 +22,11 @@ impl Density for Potential {
     type S = Abstraction;
 
     fn density(&self, x: &Self::S) -> Distance {
-        self.0.get(x).copied().unwrap_or(0.)
+        self.0
+            .get(x)
+            .copied()
+            .inspect(|p| assert!(p.is_finite(), "density overflow"))
+            .expect("abstraction in potential")
     }
     fn support(&self) -> impl Iterator<Item = &Self::S> {
         self.0.keys()

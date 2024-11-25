@@ -6,6 +6,7 @@ use super::xor::Pair;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Distance;
+use crate::Probability;
 use std::collections::BTreeMap;
 
 /// greedy algorithm for optimimal transport.
@@ -27,15 +28,21 @@ use std::collections::BTreeMap;
 /// also, it turns out this algorithm sucks in worst case. like it's just not at all
 /// a reasonable heuristic, even in pathological 1D trivial cases.
 pub struct Heuristic<'a> {
-    greedy: Metric,
+    plan: BTreeMap<Pair, Distance>,
     metric: &'a Metric,
     source: &'a Histogram,
     target: &'a Histogram,
 }
 
-impl Heuristic<'_> {
+impl Coupling for Heuristic<'_> {
+    type X = Abstraction;
+    type Y = Abstraction;
+    type P = Potential;
+    type Q = Potential;
+    type M = Metric;
+
     fn minimize(mut self) -> Self {
-        let mut plan = BTreeMap::<Pair, Distance>::default();
+        self.plan.clear();
         let ref mut pile = self.source.normalize();
         let ref mut sink = self.target.normalize();
         'cost: while pile.values().any(|&dx| dx > 0.) {
@@ -53,55 +60,34 @@ impl Heuristic<'_> {
                 {
                     None => break 'cost,
                     Some(((y, dy), distance)) => {
+                        let mass = Probability::min(*dx, *dy);
                         let pair = Pair::from((&x, &y));
-                        let flow = Distance::min(*dx, *dy);
-                        let cost = flow * distance;
-                        *plan.entry(pair).or_default() += cost;
-                        *dx -= flow;
-                        *dy -= flow;
+                        *dx -= mass;
+                        *dy -= mass;
+                        *self.plan.entry(pair).or_default() += mass * distance;
                         continue 'pile;
                     }
                 }
             }
         }
-        self.greedy = Metric::from(plan);
         self
     }
-    fn flow(&self, x: &Abstraction, y: &Abstraction) -> Distance {
-        self.greedy.distance(x, y) // interpretation as distance even though it's just useful bc typing
-    }
-    fn cost(&self) -> Distance {
-        self.source
-            .support()
-            .map(|x| self.target.support().map(move |y| (x, y)))
-            .flatten()
-            .map(|(x, y)| self.flow(&x, &y))
-            .sum()
-    }
-}
-
-impl Coupling for Heuristic<'_> {
-    type X = Abstraction;
-    type Y = Abstraction;
-    type P = Potential;
-    type Q = Potential;
-    type M = Metric;
-
-    fn minimize(self) -> Self {
-        self.minimize()
-    }
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Distance {
-        self.flow(x, y)
+        let ref index = Pair::from((x, y));
+        self.plan
+            .get(index)
+            .copied()
+            .expect("missing in transport plan")
     }
     fn cost(&self) -> Distance {
-        self.cost()
+        self.plan.values().sum()
     }
 }
 
 impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Heuristic<'a> {
     fn from((source, target, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
         Self {
-            greedy: Metric::default(),
+            plan: BTreeMap::<Pair, Probability>::default(),
             metric,
             source,
             target,

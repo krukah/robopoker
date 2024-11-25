@@ -19,17 +19,18 @@ enum Side {
 /// potential formulation of the optimal transport problem.
 pub struct Sinkhorn<'a> {
     metric: &'a Metric,
-    p: &'a Histogram,
-    q: &'a Histogram,
+    mu: &'a Histogram,
+    nu: &'a Histogram,
     lhs: Potential,
     rhs: Potential,
     mass: Probability,
 }
 
-impl<'a> Sinkhorn<'a> {
+impl Sinkhorn<'_> {
     /// calculate ε-minimizing coupling by scaling potentials
     fn minimize(mut self) -> Self {
-        for _ in 0..self.iterations() {
+        for i in 0..self.iterations() {
+            // println!("ITERATION {i}");
             self.lhs = self
                 .lhs
                 .support()
@@ -47,27 +48,38 @@ impl<'a> Sinkhorn<'a> {
         }
         self
     }
-    /// marginalize over the other side of the coupling
+    /// update the potential on a given side
     fn update(&self, a: &Abstraction, side: Side) -> Probability {
-        let (density, marginal) = match side {
-            Side::LHS => (self.p.density(a), &self.rhs),
-            Side::RHS => (self.q.density(a), &self.lhs),
+        let (p_a, _, v) = match side {
+            Side::LHS => (self.mu.density(a), 0, &self.rhs),
+            Side::RHS => (self.nu.density(a), 0, &self.lhs),
         };
-        density
-            / marginal
-                .support()
-                .map(|b| marginal.density(b) * self.kernel(a, b))
+        let update = p_a.ln()
+            - v.support()
+                // .inspect(|b| println!("density {b} {} kernel {}", v.density(b), self.kernel(a, b)))
+                .map(|b| v.density(b) * self.kernel(a, b))
                 .sum::<Probability>()
+                .ln();
+        let update_exp = update.exp();
+        assert!(update.is_finite(), "update overflow \n{update}");
+        assert!(update_exp.is_finite(), "update.exp() overflow \n{update}",);
+        update_exp
     }
-
     /// compute frobenius norm of the coupling w.r.t. given metric
     fn frobenius(&self) -> Distance {
         self.lhs
             .support()
-            .map(|x| self.rhs.support().map(move |y| (x, y)))
-            .flatten()
-            .map(|(x, y)| self.flow(x, y))
-            .sum()
+            .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
+            // .inspect(|(x, y)| self.inspection(x, y))
+            .map(|(x, y)| {
+                self.kernel(x, y)
+                    * self.metric.distance(x, y)
+                    * self.lhs.density(x)
+                    * self.rhs.density(y)
+            })
+            .inspect(|x| assert!(!x.is_nan()))
+            .inspect(|x| assert!(x.is_finite()))
+            .sum::<Distance>()
     }
     /// alternatively, could implemment Measure for Potential<'_>
     /// and interpret as living in a different entropically regularized metric
@@ -77,10 +89,6 @@ impl<'a> Sinkhorn<'a> {
             .neg()
             .exp()
     }
-    /// compute local cost of coupling w.r.t. given metric
-    fn flow(&self, x: &Abstraction, y: &Abstraction) -> Distance {
-        self.lhs.density(x) * self.kernel(x, y) * self.rhs.density(y)
-    }
     /// normalization of metric subspace supported by the coupling
     fn mass(&self) -> Distance {
         self.mass
@@ -88,11 +96,20 @@ impl<'a> Sinkhorn<'a> {
 
     /// hyperparameter that determines maximum number of iterations
     const fn iterations(&self) -> usize {
-        10
+        100
     }
     /// hyperparameter that determines strength of entropic regularization
     const fn epsilon(&self) -> Distance {
-        1e-4
+        1e-2
+    }
+
+    fn inspection(&self, x: &Abstraction, y: &Abstraction) {
+        println!(
+            "FLOW {x} {y} {:>6.2e} * {:>6.2e}, * {:>6.2e}",
+            self.mu.density(x),
+            self.nu.density(y),
+            self.kernel(x, y)
+        );
     }
 }
 
@@ -107,7 +124,7 @@ impl Coupling for Sinkhorn<'_> {
         self.minimize()
     }
     fn flow(&self, x: &Self::X, y: &Self::Y) -> f32 {
-        self.flow(x, y)
+        self.kernel(x, y)
     }
     fn cost(&self) -> f32 {
         self.frobenius()
@@ -117,17 +134,12 @@ impl Coupling for Sinkhorn<'_> {
 impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Sinkhorn<'a> {
     fn from((p, q, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
         Self {
-            p,
-            q,
+            mass: 1.,
             metric,
-            lhs: p.uniformed(),
-            rhs: q.uniformed(),
-            mass: p
-                .support()
-                .map(|x| q.support().map(move |y| (x, y)))
-                .flatten()
-                .map(|(x, y)| metric.distance(&x, &y))
-                .sum::<Distance>(),
+            mu: p,
+            nu: q,
+            lhs: p.uniform(),
+            rhs: q.uniform(),
         }
     }
 }
