@@ -57,8 +57,7 @@ impl Encoder {
         let observation = inner.0;
         match observation.street() {
             Street::Rive => unreachable!("never project outermost abstraction layer"),
-            Street::Turn => Histogram::from(observation),
-            Street::Pref | Street::Flop => Histogram::from(
+            _ => Histogram::from(
                 observation
                     .children()
                     .map(|outer| Isomorphism::from(outer)) // isomorphism translation
@@ -66,6 +65,10 @@ impl Encoder {
                     .collect::<Vec<Abstraction>>(), // histogram collection
             ),
         }
+    }
+
+    pub fn rivers() -> Self {
+        todo!("exhaustive equity calculation over river isomorphisms")
     }
 }
 
@@ -82,6 +85,7 @@ impl Encoder {
         let mut map = BTreeMap::default();
         map.extend(Self::from(Street::Flop).0);
         map.extend(Self::from(Street::Turn).0);
+        map.extend(Self::from(Street::Rive).0);
         Self(map)
     }
     pub fn from(street: Street) -> Self {
@@ -152,11 +156,8 @@ mod tests {
 
     #[test]
     fn persistence() {
-        let street = Street::Rive;
+        let street = Street::Pref;
         let file = format!("{}.abstraction.pgcopy", street);
-        if std::path::Path::new(&file).exists() {
-            return;
-        }
         let save = Encoder::random();
         save.save(street);
         let load = Encoder::from(street);
