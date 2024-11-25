@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 /// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
 #[derive(Default)]
-pub struct Metric(BTreeMap<Pair, Distance>);
+pub struct Metric(pub BTreeMap<Pair, Distance>);
 
 impl Metric {
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Distance {
@@ -132,7 +132,7 @@ mod tests {
 
     fn transport() -> (Metric, Histogram, Histogram) {
         // construct random metric satisfying symmetric semipositivity
-        const MAX_DISTANCE: f32 = 100.0;
+        const MAX_DISTANCE: f32 = 1.0;
         let mut rng = thread_rng();
         let mut metric = BTreeMap::new();
         let p = Histogram::random();
@@ -140,7 +140,7 @@ mod tests {
         let support = p.support().chain(q.support()).collect::<Vec<_>>();
         for &x in &support {
             for &y in &support {
-                if x != y {
+                if x > y {
                     let dist = rng.gen_range(0.0..MAX_DISTANCE);
                     let pair = Pair::from((x, y));
                     metric.insert(pair, dist);
@@ -166,8 +166,8 @@ mod tests {
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
-        assert!(d12 > 0., "non positive {} {}", d12, d21);
-        assert!(d21 > 0., "non positive {} {}", d12, d21);
+        assert!(d12 > 0., "non positive \n{} \n{}", d12, d21);
+        assert!(d21 > 0., "non positive \n{} \n{}", d12, d21);
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
-        assert!(d12 == d21, "non symmetric {} {}", d12, d21);
+        assert!(d12 == d21, "non symmetric \n{} \n{}", d12, d21);
     }
 
     #[test]
@@ -185,8 +185,8 @@ mod tests {
         let (metric, h1, h2) = transport();
         let d11 = metric.emd(&h1, &h1);
         let d22 = metric.emd(&h2, &h2);
-        assert!(d11 == 0., "non zero self distance {} {}", d11, d22);
-        assert!(d22 == 0., "non zero self distance {} {}", d11, d22);
+        assert!(d11 == 0., "non zero self distance \n{} \n{}", d11, d22);
+        assert!(d22 == 0., "non zero self distance \n{} \n{}", d11, d22);
     }
 
     #[test]
@@ -194,8 +194,8 @@ mod tests {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
-        assert!(d12 > 0., "non positive {} {}", d12, d21);
-        assert!(d21 > 0., "non positive {} {}", d12, d21);
+        assert!(d12 > 0., "non positive \n{} \n{}", d12, d21);
+        assert!(d21 > 0., "non positive \n{} \n{}", d12, d21);
     }
 
     #[test]
@@ -203,7 +203,7 @@ mod tests {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
-        assert!(d12 == d21, "non symmetric {} {}", d12, d21);
+        assert!(d12 == d21, "non symmetric \n{} \n{}", d12, d21);
     }
 
     #[test]

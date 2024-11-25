@@ -36,7 +36,7 @@ impl Histogram {
             .into()
     }
     /// uniform distribution over the support
-    pub fn uniformed(&self) -> Potential {
+    pub fn uniform(&self) -> Potential {
         self.support()
             .copied()
             .map(|x| (x, 1. / self.n() as Probability))
