@@ -5,8 +5,9 @@ use super::potential::Potential;
 use crate::transport::coupling::Coupling;
 use crate::transport::density::Density;
 use crate::transport::measure::Measure;
-use crate::Distance;
+use crate::Energy;
 use crate::Probability;
+use crate::Utility;
 use std::collections::BTreeMap;
 use std::ops::Neg;
 
@@ -29,68 +30,58 @@ pub struct Sinkhorn<'a> {
 impl Sinkhorn<'_> {
     /// calculate ε-minimizing coupling by scaling potentials
     fn minimize(mut self) -> Self {
-        for i in 0..self.iterations() {
-            // println!("ITERATION {i}");
-            self.lhs = self
-                .lhs
-                .support()
-                .copied()
-                .map(|x| (x, self.update(&x, Side::LHS)))
-                .collect::<BTreeMap<_, _>>()
-                .into();
-            self.rhs = self
-                .rhs
-                .support()
-                .copied()
-                .map(|y| (y, self.update(&y, Side::RHS)))
-                .collect::<BTreeMap<_, _>>()
-                .into();
+        for _ in 0..self.iterations() {
+            self.lhs = self.lhs();
+            self.rhs = self.rhs();
         }
         self
     }
-    /// update the potential on a given side
-    fn update(&self, a: &Abstraction, side: Side) -> Probability {
-        let (p_a, _, v) = match side {
-            Side::LHS => (self.mu.density(a), 0, &self.rhs),
-            Side::RHS => (self.nu.density(a), 0, &self.lhs),
-        };
-        let update = p_a.ln()
-            - v.support()
-                // .inspect(|b| println!("density {b} {} kernel {}", v.density(b), self.kernel(a, b)))
-                .map(|b| v.density(b) * self.kernel(a, b))
-                .sum::<Probability>()
-                .ln();
-        let update_exp = update.exp();
-        assert!(update.is_finite(), "update overflow \n{update}");
-        assert!(update_exp.is_finite(), "update.exp() overflow \n{update}",);
-        update_exp
+    /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
+    fn lhs(&self) -> Potential {
+        self.lhs
+            .support()
+            .copied()
+            .map(|x| (x, self.energy(&x, self.mu, &self.rhs)))
+            .collect::<BTreeMap<_, _>>()
+            .into()
+    }
+    /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
+    fn rhs(&self) -> Potential {
+        self.rhs
+            .support()
+            .copied()
+            .map(|x| (x, self.energy(&x, self.nu, &self.lhs)))
+            .collect::<BTreeMap<_, _>>()
+            .into()
+    }
+    /// update the potential energy on a given side
+    fn energy(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Energy {
+        histogram.density(a).ln()
+            - potential
+                .support()
+                .map(|b| potential.density(b) - self.kernel(a, b))
+                .map(|x| x.exp())
+                .sum::<Energy>()
+                .ln()
     }
     /// compute frobenius norm of the coupling w.r.t. given metric
-    fn frobenius(&self) -> Distance {
+    fn frobenius(&self) -> Energy {
         self.lhs
             .support()
             .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            // .inspect(|(x, y)| self.inspection(x, y))
-            .map(|(x, y)| {
-                self.kernel(x, y)
-                    * self.metric.distance(x, y)
-                    * self.lhs.density(x)
-                    * self.rhs.density(y)
-            })
+            .map(|(x, y)| self.flow(x, y) * self.metric.distance(x, y))
             .inspect(|x| assert!(!x.is_nan()))
             .inspect(|x| assert!(x.is_finite()))
-            .sum::<Distance>()
+            .sum::<Energy>()
     }
-    /// alternatively, could implemment Measure for Potential<'_>
-    /// and interpret as living in a different entropically regularized metric
-    /// space, but the intent is more clear this way probably.
-    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Distance {
-        (self.metric.distance(x, y) / self.epsilon() / self.mass())
-            .neg()
-            .exp()
+
+    fn flow(&self, x: &Abstraction, y: &Abstraction) -> Probability {
+        (self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)).exp()
     }
-    /// normalization of metric subspace supported by the coupling
-    fn mass(&self) -> Distance {
+    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Energy {
+        self.metric.distance(x, y) / self.epsilon()
+    }
+    fn mass(&self) -> Energy {
         self.mass
     }
 
@@ -99,17 +90,8 @@ impl Sinkhorn<'_> {
         100
     }
     /// hyperparameter that determines strength of entropic regularization
-    const fn epsilon(&self) -> Distance {
+    const fn epsilon(&self) -> Energy {
         1e-2
-    }
-
-    fn inspection(&self, x: &Abstraction, y: &Abstraction) {
-        println!(
-            "FLOW {x} {y} {:>6.2e} * {:>6.2e}, * {:>6.2e}",
-            self.mu.density(x),
-            self.nu.density(y),
-            self.kernel(x, y)
-        );
     }
 }
 
@@ -123,10 +105,10 @@ impl Coupling for Sinkhorn<'_> {
     fn minimize(self) -> Self {
         self.minimize()
     }
-    fn flow(&self, x: &Self::X, y: &Self::Y) -> f32 {
-        self.kernel(x, y)
+    fn flow(&self, x: &Self::X, y: &Self::Y) -> Utility {
+        self.flow(x, y)
     }
-    fn cost(&self) -> f32 {
+    fn cost(&self) -> Utility {
         self.frobenius()
     }
 }

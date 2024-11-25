@@ -4,20 +4,20 @@ use super::sinkhorn::Sinkhorn;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::xor::Pair;
+use crate::clustering::pair::Pair;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
-use crate::Distance;
+use crate::Energy;
 use std::collections::BTreeMap;
 
 /// Distance metric for kmeans clustering.
 /// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
 #[derive(Default)]
-pub struct Metric(pub BTreeMap<Pair, Distance>);
+pub struct Metric(pub BTreeMap<Pair, Energy>);
 
 impl Metric {
-    fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Distance {
+    fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
         if x == y {
             0.
         } else {
@@ -28,7 +28,7 @@ impl Metric {
         }
     }
 
-    pub fn emd(&self, source: &Histogram, target: &Histogram) -> Distance {
+    pub fn emd(&self, source: &Histogram, target: &Histogram) -> Energy {
         match source.peek() {
             Abstraction::Learned(_) => Sinkhorn::from((source, target, self)).minimize().cost(),
             Abstraction::Percent(_) => Equity::variation(source, target),
@@ -104,7 +104,7 @@ impl Metric {
 impl Measure for Metric {
     type X = Abstraction;
     type Y = Abstraction;
-    fn distance(&self, x: &Self::X, y: &Self::Y) -> Distance {
+    fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
         match (x, y) {
             (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
             (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
@@ -114,8 +114,8 @@ impl Measure for Metric {
     }
 }
 
-impl From<BTreeMap<Pair, Distance>> for Metric {
-    fn from(metric: BTreeMap<Pair, Distance>) -> Self {
+impl From<BTreeMap<Pair, Energy>> for Metric {
+    fn from(metric: BTreeMap<Pair, Energy>) -> Self {
         Self(metric)
     }
 }
@@ -127,13 +127,12 @@ mod tests {
     use crate::cards::street::Street;
     use crate::clustering::histogram::Histogram;
     use crate::Arbitrary;
-    use rand::thread_rng;
-    use rand::Rng;
 
     fn transport() -> (Metric, Histogram, Histogram) {
         // construct random metric satisfying symmetric semipositivity
+        use rand::Rng;
         const MAX_DISTANCE: f32 = 1.0;
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
         let mut metric = BTreeMap::new();
         let p = Histogram::random();
         let q = Histogram::random();

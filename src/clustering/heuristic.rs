@@ -1,11 +1,11 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::metric::Metric;
+use super::pair::Pair;
 use super::potential::Potential;
-use super::xor::Pair;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
-use crate::Distance;
+use crate::Energy;
 use crate::Probability;
 use std::collections::BTreeMap;
 
@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 /// also, it turns out this algorithm sucks in worst case. like it's just not at all
 /// a reasonable heuristic, even in pathological 1D trivial cases.
 pub struct Heuristic<'a> {
-    plan: BTreeMap<Pair, Distance>,
+    plan: BTreeMap<Pair, Energy>,
     metric: &'a Metric,
     source: &'a Histogram,
     target: &'a Histogram,
@@ -72,14 +72,14 @@ impl Coupling for Heuristic<'_> {
         }
         self
     }
-    fn flow(&self, x: &Self::X, y: &Self::Y) -> Distance {
+    fn flow(&self, x: &Self::X, y: &Self::Y) -> Energy {
         let ref index = Pair::from((x, y));
         self.plan
             .get(index)
             .copied()
             .expect("missing in transport plan")
     }
-    fn cost(&self) -> Distance {
+    fn cost(&self) -> Energy {
         self.plan.values().sum()
     }
 }

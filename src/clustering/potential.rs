@@ -1,19 +1,19 @@
 use super::abstraction::Abstraction;
 use crate::transport::density::Density;
-use crate::Distance;
+use crate::Energy;
 use crate::Probability;
 use std::collections::BTreeMap;
 
 /// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
 /// potential formulation of the optimal transport problem.
 /// this structure can also be treated as a normalized distribution over Abstractions.
-pub struct Potential(BTreeMap<Abstraction, Probability>);
+pub struct Potential(BTreeMap<Abstraction, Energy>);
 
 impl Potential {
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Abstraction, &mut Probability)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Abstraction, &mut Energy)> {
         self.0.iter_mut()
     }
-    pub fn values(&self) -> impl Iterator<Item = &Probability> {
+    pub fn values(&self) -> impl Iterator<Item = &Energy> {
         self.0.values()
     }
 }
@@ -21,7 +21,7 @@ impl Potential {
 impl Density for Potential {
     type S = Abstraction;
 
-    fn density(&self, x: &Self::S) -> Distance {
+    fn density(&self, x: &Self::S) -> Energy {
         self.0
             .get(x)
             .copied()
