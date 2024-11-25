@@ -66,9 +66,10 @@ impl Encoder {
             ),
         }
     }
+}
 
-    // persistence methods
-
+/// persistence methods
+impl Encoder {
     pub fn done() -> bool {
         Street::all()
             .iter()
