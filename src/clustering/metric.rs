@@ -1,5 +1,4 @@
 use super::equity::Equity;
-use super::heuristic::Heuristic;
 use super::sinkhorn::Sinkhorn;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
@@ -35,8 +34,7 @@ impl Metric {
             Abstraction::Preflop(_) => unreachable!("no preflop emd"),
         }
     }
-}
-impl Metric {
+
     pub fn done() -> bool {
         Street::all()
             .iter()
@@ -46,12 +44,12 @@ impl Metric {
     pub fn load() -> Self {
         log::info!("loading metric");
         let mut map = BTreeMap::default();
-        map.extend(Self::from(Street::Pref).0);
-        map.extend(Self::from(Street::Flop).0);
-        map.extend(Self::from(Street::Turn).0);
+        map.extend(Self::grab(Street::Pref).0);
+        map.extend(Self::grab(Street::Flop).0);
+        map.extend(Self::grab(Street::Turn).0);
         Self(map)
     }
-    fn from(street: Street) -> Self {
+    pub fn grab(street: Street) -> Self {
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -116,110 +114,30 @@ impl Measure for Metric {
 
 impl From<BTreeMap<Pair, Energy>> for Metric {
     fn from(metric: BTreeMap<Pair, Energy>) -> Self {
-        Self(metric)
+        let max = metric.values().copied().fold(f32::MIN_POSITIVE, f32::max);
+        Self(
+            metric
+                .into_iter()
+                .map(|(index, distance)| (index, distance / max))
+                .collect(),
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::Observation;
     use crate::cards::street::Street;
-    use crate::clustering::histogram::Histogram;
+    use crate::clustering::emd::EMD;
     use crate::Arbitrary;
 
     #[test]
-    fn is_equity_emd_positive() {
-        let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        let d12 = metric.emd(h1, h2);
-        let d21 = metric.emd(h2, h1);
-        assert!(d12 > 0.);
-        assert!(d21 > 0.);
-    }
-
-    #[test]
-    fn is_equity_emd_symmetric() {
-        let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        let d12 = metric.emd(h1, h2);
-        let d21 = metric.emd(h2, h1);
-        assert!(d12 == d21);
-    }
-
-    #[test]
-    fn is_equity_emd_zero() {
-        let metric = Metric::default();
-        let h = Histogram::from(Observation::from(Street::Turn));
-        let d = metric.emd(&h, &h);
-        assert!(d == 0.);
-    }
-
-    /// this guy is used just to construct arbitrary metric, histogram, histogram tuples
-    /// to test transport mechanisms
-    fn transport() -> (Metric, Histogram, Histogram) {
-        // construct random metric satisfying symmetric semipositivity
-        use rand::Rng;
-        const MAX_DISTANCE: f32 = 1.0;
-        let mut rng = rand::thread_rng();
-        let mut metric = BTreeMap::new();
-        let p = Histogram::random();
-        let q = Histogram::random();
-        let support = p.support().chain(q.support()).collect::<Vec<_>>();
-        for &x in &support {
-            for &y in &support {
-                if x > y {
-                    let dist = rng.gen_range(0.0..MAX_DISTANCE);
-                    let pair = Pair::from((x, y));
-                    metric.insert(pair, dist);
-                }
-            }
-        }
-        let m = Metric(metric);
-        (m, p, q)
-    }
-
-    #[test]
-    fn is_abstract_emd_positive() {
-        let (metric, h1, h2) = transport();
-        let d12 = metric.emd(&h1, &h2);
-        let d21 = metric.emd(&h2, &h1);
-        assert!(d12 > 0., "non positive \n{} \n{}", d12, d21);
-        assert!(d21 > 0., "non positive \n{} \n{}", d12, d21);
-    }
-
-    #[test]
-    fn is_abstract_emd_symmetric() {
-        const TOLERANCE: f32 = 0.15;
-        let (metric, h1, h2) = transport();
-        let d12 = metric.emd(&h1, &h2);
-        let d21 = metric.emd(&h2, &h1);
-        assert!(
-            (d12 - d21).abs() <= TOLERANCE * d12.max(d21),
-            "non symmetric \n{} \n{}",
-            d12,
-            d21
-        );
-    }
-
-    #[test]
-    fn is_abstract_emd_zero() {
-        const TOLERANCE: f32 = 0.005;
-        let (metric, h1, h2) = transport();
-        let d11 = metric.emd(&h1, &h1);
-        let d22 = metric.emd(&h2, &h2);
-        assert!(d11 <= TOLERANCE);
-        assert!(d22 <= TOLERANCE);
-    }
-
-    #[test]
     fn persistence() {
+        let emd = EMD::random();
+        let save = emd.metric();
         let street = Street::Rive;
-        let (save, ..) = transport();
         save.save(street);
-        let load = Metric::from(street);
+        let load = Metric::grab(street);
         std::iter::empty()
             .chain(save.0.iter().zip(load.0.iter()))
             .chain(load.0.iter().zip(save.0.iter()))
