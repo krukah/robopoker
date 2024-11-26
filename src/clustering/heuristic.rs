@@ -5,7 +5,6 @@ use super::pair::Pair;
 use super::potential::Potential;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
-use crate::Energy;
 use crate::Probability;
 use std::collections::BTreeMap;
 
@@ -28,7 +27,7 @@ use std::collections::BTreeMap;
 /// also, it turns out this algorithm sucks in worst case. like it's just not at all
 /// a reasonable heuristic, even in pathological 1D trivial cases.
 pub struct Heuristic<'a> {
-    plan: BTreeMap<Pair, Energy>,
+    plan: BTreeMap<Pair, Probability>,
     metric: &'a Metric,
     source: &'a Histogram,
     target: &'a Histogram,
@@ -41,6 +40,16 @@ impl Coupling for Heuristic<'_> {
     type Q = Potential;
     type M = Metric;
 
+    fn cost(&self) -> Probability {
+        self.plan.values().sum()
+    }
+    fn flow(&self, x: &Self::X, y: &Self::Y) -> Probability {
+        let ref index = Pair::from((x, y));
+        self.plan
+            .get(index)
+            .copied()
+            .expect("missing in transport plan")
+    }
     fn minimize(mut self) -> Self {
         self.plan.clear();
         let ref mut pile = self.source.normalize();
@@ -72,22 +81,12 @@ impl Coupling for Heuristic<'_> {
         }
         self
     }
-    fn flow(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        let ref index = Pair::from((x, y));
-        self.plan
-            .get(index)
-            .copied()
-            .expect("missing in transport plan")
-    }
-    fn cost(&self) -> Energy {
-        self.plan.values().sum()
-    }
 }
 
 impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Heuristic<'a> {
     fn from((source, target, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
         Self {
-            plan: BTreeMap::<Pair, Probability>::default(),
+            plan: BTreeMap::default(),
             metric,
             source,
             target,

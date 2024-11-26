@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 /// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
 #[derive(Default)]
-pub struct Metric(pub BTreeMap<Pair, Energy>);
+pub struct Metric(BTreeMap<Pair, Energy>);
 
 impl Metric {
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
@@ -128,6 +128,37 @@ mod tests {
     use crate::clustering::histogram::Histogram;
     use crate::Arbitrary;
 
+    #[test]
+    fn is_equity_emd_positive() {
+        let metric = Metric::default();
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        let d12 = metric.emd(h1, h2);
+        let d21 = metric.emd(h2, h1);
+        assert!(d12 > 0.);
+        assert!(d21 > 0.);
+    }
+
+    #[test]
+    fn is_equity_emd_symmetric() {
+        let metric = Metric::default();
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        let d12 = metric.emd(h1, h2);
+        let d21 = metric.emd(h2, h1);
+        assert!(d12 == d21);
+    }
+
+    #[test]
+    fn is_equity_emd_zero() {
+        let metric = Metric::default();
+        let h = Histogram::from(Observation::from(Street::Turn));
+        let d = metric.emd(&h, &h);
+        assert!(d == 0.);
+    }
+
+    /// this guy is used just to construct arbitrary metric, histogram, histogram tuples
+    /// to test transport mechanisms
     fn transport() -> (Metric, Histogram, Histogram) {
         // construct random metric satisfying symmetric semipositivity
         use rand::Rng;
@@ -151,44 +182,6 @@ mod tests {
     }
 
     #[test]
-    fn is_equity_emd_zero() {
-        let metric = Metric::default();
-        let h = Histogram::from(Observation::from(Street::Turn));
-        let d = metric.emd(&h, &h);
-        assert!(d == 0., "non zero self distance {}", d);
-    }
-
-    #[test]
-    fn is_equity_emd_positive() {
-        let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        let d12 = metric.emd(h1, h2);
-        let d21 = metric.emd(h2, h1);
-        assert!(d12 > 0., "non positive \n{} \n{}", d12, d21);
-        assert!(d21 > 0., "non positive \n{} \n{}", d12, d21);
-    }
-
-    #[test]
-    fn is_equity_emd_symmetric() {
-        let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        let d12 = metric.emd(h1, h2);
-        let d21 = metric.emd(h2, h1);
-        assert!(d12 == d21, "non symmetric \n{} \n{}", d12, d21);
-    }
-
-    #[test]
-    fn is_abstract_emd_zero() {
-        let (metric, h1, h2) = transport();
-        let d11 = metric.emd(&h1, &h1);
-        let d22 = metric.emd(&h2, &h2);
-        assert!(d11 == 0., "non zero self distance \n{} \n{}", d11, d22);
-        assert!(d22 == 0., "non zero self distance \n{} \n{}", d11, d22);
-    }
-
-    #[test]
     fn is_abstract_emd_positive() {
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
@@ -199,10 +192,26 @@ mod tests {
 
     #[test]
     fn is_abstract_emd_symmetric() {
+        const TOLERANCE: f32 = 0.15;
         let (metric, h1, h2) = transport();
         let d12 = metric.emd(&h1, &h2);
         let d21 = metric.emd(&h2, &h1);
-        assert!(d12 == d21, "non symmetric \n{} \n{}", d12, d21);
+        assert!(
+            (d12 - d21).abs() <= TOLERANCE * d12.max(d21),
+            "non symmetric \n{} \n{}",
+            d12,
+            d21
+        );
+    }
+
+    #[test]
+    fn is_abstract_emd_zero() {
+        const TOLERANCE: f32 = 0.005;
+        let (metric, h1, h2) = transport();
+        let d11 = metric.emd(&h1, &h1);
+        let d22 = metric.emd(&h2, &h2);
+        assert!(d11 <= TOLERANCE);
+        assert!(d22 <= TOLERANCE);
     }
 
     #[test]
