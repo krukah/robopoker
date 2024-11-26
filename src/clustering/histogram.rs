@@ -1,14 +1,11 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
-use crate::clustering::potential::Potential;
 use crate::transport::density::Density;
 use crate::Arbitrary;
-use crate::Entropy;
 use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
 use std::ops::AddAssign;
-use std::ops::Neg;
 
 /// A distribution over arbitrary Abstractions.
 ///
@@ -28,23 +25,6 @@ impl Histogram {
     /// all witnessed Abstractions in the support
     pub fn support(&self) -> impl Iterator<Item = &Abstraction> {
         self.counts.keys()
-    }
-    /// unit normalized distribution over the support
-    pub fn normalize(&self) -> Potential {
-        self.support()
-            .copied()
-            .map(|x| (x, self.density(&x)))
-            .collect::<BTreeMap<_, _>>()
-            .into()
-    }
-    /// uniform distribution over the support
-    pub fn uniform(&self) -> Potential {
-        self.support()
-            .copied()
-            .map(|x| (x, self.n() as Probability))
-            .map(|(x, y)| (x, y.ln().neg() as Entropy))
-            .collect::<BTreeMap<_, _>>()
-            .into()
     }
     /// size of the support
     pub fn n(&self) -> usize {

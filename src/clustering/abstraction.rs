@@ -30,6 +30,7 @@ impl Abstraction {
             }
         })
     }
+
     fn quantize(p: Probability) -> u8 {
         (p * Probability::from(Self::N)).round() as u8
     }
@@ -50,6 +51,9 @@ impl Abstraction {
     }
     pub const fn range() -> &'static [Self] {
         &Self::BUCKETS
+    }
+    pub const fn size() -> usize {
+        Self::N as usize
     }
 }
 

@@ -19,8 +19,8 @@ impl Measure for Equity {
     type Y = Abstraction; //::Equity(i8) variant
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
         match (x, y) {
-            (Self::X::Percent(x), Self::Y::Percent(y)) => (*x as f32 - *y as f32).abs(),
-            _ => unreachable!("only equity distance for equity abstractions. perhaps Self::X should be f32 to avoid this pattern match"),
+            (Self::X::Percent(x), Self::Y::Percent(y)) => (*x as f32 - *y as f32).abs() / Abstraction::size() as f32,
+            _ => unreachable!("should make Abstraction::distance a thing. perhaps Self::X should be f32 to avoid this pattern match"),
         }
     }
 }
@@ -42,7 +42,7 @@ impl Equity {
             })
             .map(|(x, y)| (x - y).abs())
             .sum::<Energy>()
-            / Abstraction::range().len() as Energy
+            / Abstraction::size() as Energy
             / 2.
     }
     pub fn euclidean(x: &Histogram, y: &Histogram) -> Energy {

@@ -23,11 +23,11 @@ pub struct Sinkhorn<'a> {
 impl Sinkhorn<'_> {
     /// hyperparameter that determines maximum number of iterations
     const fn iterations(&self) -> usize {
-        10
+        100
     }
-    /// hyperparameter that determines strength of entropic regularization
+    /// hyperparameter that determines strength of entropic regularization. incorrect units but whatever
     const fn temperature(&self) -> Entropy {
-        1e-2
+        1e-3
     }
 
     /// calculate ε-minimizing coupling by scaling potentials
@@ -40,35 +40,44 @@ impl Sinkhorn<'_> {
     }
     /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
     fn lhs(&self) -> Potential {
-        self.lhs
-            .support()
-            .copied()
-            .map(|x| (x, self.entropy(&x, self.mu, &self.rhs)))
-            .inspect(|x| assert!(x.1.is_finite(), "lhs entropy overflow"))
-            .collect::<BTreeMap<_, _>>()
-            .into()
+        Potential::from(
+            self.lhs
+                .support()
+                .copied()
+                .map(|x| (x, self.entropy(&x, &self.mu, &self.rhs)))
+                .inspect(|x| assert!(x.1.is_finite(), "lhs entropy overflow"))
+                .collect::<BTreeMap<_, _>>(),
+        )
     }
     /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
     fn rhs(&self) -> Potential {
-        self.rhs
-            .support()
-            .copied()
-            .map(|x| (x, self.entropy(&x, self.nu, &self.lhs)))
-            .inspect(|x| assert!(x.1.is_finite(), "rhs entropy overflow"))
-            .collect::<BTreeMap<_, _>>()
-            .into()
+        Potential::from(
+            self.rhs
+                .support()
+                .copied()
+                .map(|x| (x, self.entropy(&x, &self.nu, &self.lhs)))
+                .inspect(|x| assert!(x.1.is_finite(), "rhs entropy overflow"))
+                .collect::<BTreeMap<_, _>>(),
+        )
     }
     /// update the potential energy on a given side
+    /// histogram is where a: Abstraction is supported
+    /// potential is the distribution that is being integrated against
+    /// so we scale PDF(A::histogram | t) by the mass of the PDF(B::potential | t, x == a)
+    /// not sure yet why i'm calling it entropy but it's giving partition function
+    /// actually now that i think of it this might be KL div / relative entropy
+    /// it might not be though
     fn entropy(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
         histogram.density(a).ln()
             - potential
                 .support()
                 .map(|b| potential.density(b) - self.kernel(a, b))
                 .map(|x| x.exp())
-                .sum::<Entropy>()
+                .map(|x| x.max(Energy::MIN_POSITIVE))
+                .sum::<Energy>()
                 .ln()
     }
-    fn energy(&self, x: &Abstraction, y: &Abstraction) -> Energy {
+    fn boltzmann(&self, x: &Abstraction, y: &Abstraction) -> Energy {
         (self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)).exp()
     }
     fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
@@ -87,26 +96,26 @@ impl Coupling for Sinkhorn<'_> {
         self.evolve()
     }
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Utility {
-        self.energy(x, y)
+        self.boltzmann(x, y)
     }
     fn cost(&self) -> Utility {
         self.lhs
             .support()
             .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            .map(|(x, y)| self.energy(x, y) * self.metric.distance(x, y))
+            .map(|(x, y)| self.boltzmann(x, y) * self.metric.distance(x, y))
             .inspect(|x| assert!(x.is_finite()))
             .sum::<Energy>()
     }
 }
 
 impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Sinkhorn<'a> {
-    fn from((p, q, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
+    fn from((mu, nu, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
         Self {
             metric,
-            mu: p,
-            nu: q,
-            lhs: p.uniform(),
-            rhs: q.uniform(),
+            lhs: Potential::uniform(mu),
+            rhs: Potential::uniform(nu),
+            mu,
+            nu,
         }
     }
 }

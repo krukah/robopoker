@@ -52,8 +52,8 @@ impl Coupling for Heuristic<'_> {
     }
     fn minimize(mut self) -> Self {
         self.plan.clear();
-        let ref mut pile = self.source.normalize();
-        let ref mut sink = self.target.normalize();
+        let ref mut pile = Potential::normalize(self.source);
+        let ref mut sink = Potential::normalize(self.target);
         'cost: while pile.values().any(|&dx| dx > 0.) {
             'pile: for (x, dx) in pile
                 .iter_mut()
