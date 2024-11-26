@@ -7,7 +7,6 @@ use crate::transport::density::Density;
 use crate::transport::measure::Measure;
 use crate::Energy;
 use crate::Entropy;
-use crate::Utility;
 use std::collections::BTreeMap;
 
 /// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
@@ -77,9 +76,6 @@ impl Sinkhorn<'_> {
                 .sum::<Energy>()
                 .ln()
     }
-    fn boltzmann(&self, x: &Abstraction, y: &Abstraction) -> Energy {
-        (self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)).exp()
-    }
     fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
         self.metric.distance(x, y) / self.temperature()
     }
@@ -95,14 +91,14 @@ impl Coupling for Sinkhorn<'_> {
     fn minimize(self) -> Self {
         self.evolve()
     }
-    fn flow(&self, x: &Self::X, y: &Self::Y) -> Utility {
-        self.boltzmann(x, y)
+    fn flow(&self, x: &Self::X, y: &Self::Y) -> Entropy {
+        self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)
     }
-    fn cost(&self) -> Utility {
+    fn cost(&self) -> Energy {
         self.lhs
             .support()
             .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            .map(|(x, y)| self.boltzmann(x, y) * self.metric.distance(x, y))
+            .map(|(x, y)| self.flow(x, y).exp() * self.metric.distance(x, y))
             .inspect(|x| assert!(x.is_finite()))
             .sum::<Energy>()
     }
@@ -110,12 +106,15 @@ impl Coupling for Sinkhorn<'_> {
 
 impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Sinkhorn<'a> {
     fn from((mu, nu, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
+        /// TODO
+        /// initialize hyperparametrs accordingly
+        /// applyy stopping condition
         Self {
             metric,
-            lhs: Potential::uniform(mu),
-            rhs: Potential::uniform(nu),
             mu,
             nu,
+            lhs: Potential::uniform(mu),
+            rhs: Potential::uniform(nu),
         }
     }
 }

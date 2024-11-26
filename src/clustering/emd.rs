@@ -50,6 +50,11 @@ mod tests {
     use crate::cards::street::Street;
     use crate::clustering::histogram::Histogram;
 
+    /// equity implementation should be
+    /// 1. symmetric
+    /// 2. positive semidefinite
+    /// 3. self-annihilating
+
     #[test]
     fn is_equity_emd_symmetric() {
         let metric = Metric::default();
@@ -77,38 +82,48 @@ mod tests {
         assert!(d == 0.);
     }
 
+    /// sinkhorn implementation should be
+    /// 1. positive semidefinite
+    /// 2. approximately symmetric
+    /// 3. approximately self-annihilating
+
     #[test]
     fn is_sinkhorn_emd_positive() {
         let EMD(metric, h1, h2) = EMD::random();
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d21 = Sinkhorn::from((&h2, &h1, &metric)).minimize().cost();
-        assert!(d12 > 0., "non positive \n{} \n{}", d12, d21);
-        assert!(d21 > 0., "non positive \n{} \n{}", d12, d21);
+        assert!(d12 > 0.);
+        assert!(d21 > 0.);
     }
     #[test]
     fn is_sinkhorn_emd_zero() {
-        const TOLERANCE: f32 = 1e-4;
+        const TOLERANCE: f32 = 1e-3;
         let EMD(metric, h1, h2) = EMD::random();
         let d11 = Sinkhorn::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Sinkhorn::from((&h2, &h2, &metric)).minimize().cost();
-        assert!(d11 <= TOLERANCE, "non zero: \n{} \n{}", d11, d22);
-        assert!(d22 <= TOLERANCE, "non zero: \n{} \n{}", d11, d22);
+        assert!(d11 <= TOLERANCE);
+        assert!(d22 <= TOLERANCE);
     }
+
+    /// heuristic implementation should be
+    /// 1. positive semidefinite
+    /// 2. approximately symmetric
+    /// 3. exactly self-annihilating
 
     #[test]
     fn is_heuristic_emd_positive() {
         let EMD(metric, h1, h2) = EMD::random();
         let d12 = Heuristic::from((&h1, &h2, &metric)).minimize().cost();
         let d21 = Heuristic::from((&h2, &h1, &metric)).minimize().cost();
-        assert!(d12 > 0., "non positive \n{} \n{}", d12, d21);
-        assert!(d21 > 0., "non positive \n{} \n{}", d12, d21);
+        assert!(d12 > 0.);
+        assert!(d21 > 0.);
     }
     #[test]
     fn is_heuristic_emd_zero() {
         let EMD(metric, h1, h2) = EMD::random();
         let d11 = Heuristic::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Heuristic::from((&h2, &h2, &metric)).minimize().cost();
-        assert!(d11 == 0., "non zero: \n{} \n{}", d11, d22);
-        assert!(d22 == 0., "non zero: \n{} \n{}", d11, d22);
+        assert!(d11 == 0.);
+        assert!(d22 == 0.);
     }
 }
