@@ -3,7 +3,7 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::potential::Potential;
 use crate::transport::density::Density;
 use crate::Arbitrary;
-use crate::Energy;
+use crate::Entropy;
 use crate::Equity;
 use crate::Probability;
 use std::collections::BTreeMap;
@@ -42,7 +42,7 @@ impl Histogram {
         self.support()
             .copied()
             .map(|x| (x, self.n() as Probability))
-            .map(|(x, y)| (x, y.ln().neg() as Energy))
+            .map(|(x, y)| (x, y.ln().neg() as Entropy))
             .collect::<BTreeMap<_, _>>()
             .into()
     }
@@ -136,7 +136,7 @@ impl Density for Histogram {
 
 impl Arbitrary for Histogram {
     fn random() -> Self {
-        const S: usize = 4;
+        const S: usize = 8;
         const N: usize = 32;
         (0..S)
             .map(|_| Abstraction::random())

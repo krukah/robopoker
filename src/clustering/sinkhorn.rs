@@ -6,15 +6,9 @@ use crate::transport::coupling::Coupling;
 use crate::transport::density::Density;
 use crate::transport::measure::Measure;
 use crate::Energy;
-use crate::Probability;
+use crate::Entropy;
 use crate::Utility;
 use std::collections::BTreeMap;
-use std::ops::Neg;
-
-enum Side {
-    LHS,
-    RHS,
-}
 
 /// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
 /// potential formulation of the optimal transport problem.
@@ -24,12 +18,20 @@ pub struct Sinkhorn<'a> {
     nu: &'a Histogram,
     lhs: Potential,
     rhs: Potential,
-    mass: Probability,
 }
 
 impl Sinkhorn<'_> {
+    /// hyperparameter that determines maximum number of iterations
+    const fn iterations(&self) -> usize {
+        10
+    }
+    /// hyperparameter that determines strength of entropic regularization
+    const fn temperature(&self) -> Entropy {
+        1e-2
+    }
+
     /// calculate ε-minimizing coupling by scaling potentials
-    fn minimize(mut self) -> Self {
+    fn evolve(mut self) -> Self {
         for _ in 0..self.iterations() {
             self.lhs = self.lhs();
             self.rhs = self.rhs();
@@ -41,7 +43,8 @@ impl Sinkhorn<'_> {
         self.lhs
             .support()
             .copied()
-            .map(|x| (x, self.energy(&x, self.mu, &self.rhs)))
+            .map(|x| (x, self.entropy(&x, self.mu, &self.rhs)))
+            .inspect(|x| assert!(x.1.is_finite(), "lhs entropy overflow"))
             .collect::<BTreeMap<_, _>>()
             .into()
     }
@@ -50,48 +53,26 @@ impl Sinkhorn<'_> {
         self.rhs
             .support()
             .copied()
-            .map(|x| (x, self.energy(&x, self.nu, &self.lhs)))
+            .map(|x| (x, self.entropy(&x, self.nu, &self.lhs)))
+            .inspect(|x| assert!(x.1.is_finite(), "rhs entropy overflow"))
             .collect::<BTreeMap<_, _>>()
             .into()
     }
     /// update the potential energy on a given side
-    fn energy(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Energy {
+    fn entropy(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
         histogram.density(a).ln()
             - potential
                 .support()
                 .map(|b| potential.density(b) - self.kernel(a, b))
                 .map(|x| x.exp())
-                .sum::<Energy>()
+                .sum::<Entropy>()
                 .ln()
     }
-    /// compute frobenius norm of the coupling w.r.t. given metric
-    fn frobenius(&self) -> Energy {
-        self.lhs
-            .support()
-            .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            .map(|(x, y)| self.flow(x, y) * self.metric.distance(x, y))
-            .inspect(|x| assert!(!x.is_nan()))
-            .inspect(|x| assert!(x.is_finite()))
-            .sum::<Energy>()
-    }
-
-    fn flow(&self, x: &Abstraction, y: &Abstraction) -> Probability {
+    fn energy(&self, x: &Abstraction, y: &Abstraction) -> Energy {
         (self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)).exp()
     }
-    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Energy {
-        self.metric.distance(x, y) / self.epsilon()
-    }
-    fn mass(&self) -> Energy {
-        self.mass
-    }
-
-    /// hyperparameter that determines maximum number of iterations
-    const fn iterations(&self) -> usize {
-        100
-    }
-    /// hyperparameter that determines strength of entropic regularization
-    const fn epsilon(&self) -> Energy {
-        1e-2
+    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
+        self.metric.distance(x, y) / self.temperature()
     }
 }
 
@@ -103,20 +84,24 @@ impl Coupling for Sinkhorn<'_> {
     type M = Metric;
 
     fn minimize(self) -> Self {
-        self.minimize()
+        self.evolve()
     }
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Utility {
-        self.flow(x, y)
+        self.energy(x, y)
     }
     fn cost(&self) -> Utility {
-        self.frobenius()
+        self.lhs
+            .support()
+            .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
+            .map(|(x, y)| self.energy(x, y) * self.metric.distance(x, y))
+            .inspect(|x| assert!(x.is_finite()))
+            .sum::<Energy>()
     }
 }
 
 impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Sinkhorn<'a> {
     fn from((p, q, metric): (&'a Histogram, &'a Histogram, &'a Metric)) -> Self {
         Self {
-            mass: 1.,
             metric,
             mu: p,
             nu: q,
