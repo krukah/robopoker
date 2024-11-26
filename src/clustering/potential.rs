@@ -25,13 +25,12 @@ impl Potential {
 
     /// uniform distribution over the support
     pub fn uniform(h: &Histogram) -> Self {
-        use std::ops::Neg;
         Self(
             h.support()
                 .copied()
                 .map(|x| (x, h.n()))
                 .map(|(x, y)| (x, 1. / y as Probability))
-                .map(|(x, y)| (x, y.ln().neg() as Entropy))
+                .map(|(x, y)| (x, y.ln() as Entropy))
                 .collect::<BTreeMap<_, _>>(),
         )
     }
