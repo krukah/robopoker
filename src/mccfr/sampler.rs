@@ -23,13 +23,12 @@ impl Sampler {
         Data::from((game, info))
     }
     pub fn abstraction(&self, game: &Game) -> Abstraction {
-        self.0
-            .abstraction(&Isomorphism::from(Observation::from(game)))
+        self.0.abstraction(&Observation::from(game))
     }
-    pub fn replay(&self, spot: &Spot) -> Tree {
+    pub fn replay(&self, _: &Spot) -> Tree {
         todo!()
     }
-    pub fn bucket(&self, spot: &Spot) -> Bucket {
+    pub fn bucket(&self, _: &Spot) -> Bucket {
         todo!();
     }
 

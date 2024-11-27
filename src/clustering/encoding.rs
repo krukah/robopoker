@@ -38,14 +38,13 @@ impl Encoder {
     /// for preflop, we lookup the Hole cards, up to isomorphism
     /// for river, we compute the equity on the fly. could use MC sampling to speed up
     /// for turn and flop, we lookup the pre-computed abstraction that we woked so hard for in ::clustering
-    pub fn abstraction(&self, outer: &Isomorphism) -> Abstraction {
-        let observation = outer.0;
-        match observation.street() {
-            Street::Pref => Abstraction::from(Hole::from(observation)),
-            Street::Rive => Abstraction::from(observation.equity()),
+    pub fn abstraction(&self, outer: &Observation) -> Abstraction {
+        match outer.street() {
+            Street::Pref => Abstraction::from(Hole::from(*outer)),
+            Street::Rive => Abstraction::from(outer.equity()),
             Street::Flop | Street::Turn => self
                 .0
-                .get(outer)
+                .get(&Isomorphism::from(*outer))
                 .cloned()
                 .expect("precomputed abstraction mapping for Turn/Flop"),
         }
@@ -61,7 +60,6 @@ impl Encoder {
             _ => Histogram::from(
                 observation
                     .children()
-                    .map(|outer| Isomorphism::from(outer)) // isomorphism translation
                     .map(|outer| self.abstraction(&outer)) // abstraction lookup
                     .collect::<Vec<Abstraction>>(), // histogram collection
             ),
