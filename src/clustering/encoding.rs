@@ -41,12 +41,11 @@ impl Encoder {
     pub fn abstraction(&self, outer: &Observation) -> Abstraction {
         match outer.street() {
             Street::Pref => Abstraction::from(Hole::from(*outer)),
-            Street::Rive => Abstraction::from(outer.equity()),
-            Street::Flop | Street::Turn => self
+            Street::Flop | Street::Turn | Street::Rive => self
                 .0
                 .get(&Isomorphism::from(*outer))
                 .cloned()
-                .expect("precomputed abstraction mapping for Turn/Flop"),
+                .expect("precomputed abstraction mapping for Turn/Flop/River"),
         }
     }
     /// at a given `Street`,
@@ -67,12 +66,14 @@ impl Encoder {
     }
     /// pre-compute the river abstraction mapping
     pub fn rivers() -> Self {
-        Self(
+        let rivers = Self(
             Observation::exhaust(Street::Rive)
                 .filter(Isomorphism::is_canonical)
                 .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs.equity())))
                 .collect::<BTreeMap<Isomorphism, Abstraction>>(),
-        )
+        );
+        rivers.save(Street::Rive);
+        rivers
     }
 }
 
