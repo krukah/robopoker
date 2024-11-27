@@ -116,8 +116,8 @@ impl Density for Histogram {
 
 impl Arbitrary for Histogram {
     fn random() -> Self {
-        const S: usize = 8;
-        const N: usize = 32;
+        const S: usize = 16;
+        const N: usize = 64;
         (0..S)
             .map(|_| Abstraction::random())
             .collect::<Vec<_>>()
