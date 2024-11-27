@@ -9,7 +9,8 @@ use std::collections::BTreeMap;
 
 /// this guy is used just to construct arbitrary metric, histogram, histogram tuples
 /// to test transport mechanisms
-pub struct EMD(Metric, Histogram, Histogram);
+#[allow(dead_code)]
+pub struct EMD(Metric, Histogram, Histogram, Histogram);
 
 impl EMD {
     pub fn metric(&self) -> &Metric {
@@ -30,16 +31,23 @@ impl Arbitrary for EMD {
         let mut rng = rand::thread_rng();
         let p = Histogram::random();
         let q = Histogram::random();
+        let r = Histogram::random();
         let m = Metric::from(
             p.support()
                 .chain(q.support())
-                .flat_map(|x| p.support().chain(q.support()).map(move |y| (x, y)))
+                .chain(r.support())
+                .flat_map(|x| {
+                    p.support()
+                        .chain(q.support())
+                        .chain(r.support())
+                        .map(move |y| (x, y))
+                })
                 .filter(|(x, y)| x > y)
                 .map(|(x, y)| Pair::from((x, y)))
                 .map(|paired| (paired, rng.gen::<f32>()))
                 .collect::<BTreeMap<_, _>>(),
         );
-        Self(m, p, q)
+        Self(m, p, q, r)
     }
 }
 
@@ -84,12 +92,25 @@ mod tests {
 
     /// sinkhorn implementation should be
     /// 1. positive semidefinite
-    /// 2. approximately symmetric
+    /// 2. approximately symmetric (untested)
     /// 3. approximately self-annihilating
+    /// 4. satisfies triangle inequality
 
     #[test]
+    fn is_sinkhorn_emd_triangle() {
+        const TOLERANCE: f32 = 1.5;
+        let EMD(metric, h1, h2, h3) = EMD::random();
+        let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
+        let d23 = Sinkhorn::from((&h2, &h3, &metric)).minimize().cost();
+        let d13 = Sinkhorn::from((&h1, &h3, &metric)).minimize().cost();
+        println!("{:8.4e} {:8.4e} {:8.4e}", d12, d23, d13);
+        assert!(d12 + d23 >= d13 / TOLERANCE);
+        assert!(d12 + d13 >= d23 / TOLERANCE);
+        assert!(d23 + d13 >= d12 / TOLERANCE);
+    }
+    #[test]
     fn is_sinkhorn_emd_positive() {
-        let EMD(metric, h1, h2) = EMD::random();
+        let EMD(metric, h1, h2, _) = EMD::random();
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d21 = Sinkhorn::from((&h2, &h1, &metric)).minimize().cost();
         assert!(d12 > 0.);
@@ -98,7 +119,7 @@ mod tests {
     #[test]
     fn is_sinkhorn_emd_zero() {
         const TOLERANCE: f32 = 1e-3;
-        let EMD(metric, h1, h2) = EMD::random();
+        let EMD(metric, h1, h2, _) = EMD::random();
         let d11 = Sinkhorn::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Sinkhorn::from((&h2, &h2, &metric)).minimize().cost();
         assert!(d11 <= TOLERANCE);
@@ -109,10 +130,22 @@ mod tests {
     /// 1. positive semidefinite
     /// 2. approximately symmetric
     /// 3. exactly self-annihilating
+    /// 4. satisfies triangle inequality
 
     #[test]
+    fn is_heuristic_emd_triangle() {
+        const TOLERANCE: f32 = 1.5;
+        let EMD(metric, h1, h2, h3) = EMD::random();
+        let d12 = Heuristic::from((&h1, &h2, &metric)).minimize().cost();
+        let d23 = Heuristic::from((&h2, &h3, &metric)).minimize().cost();
+        let d13 = Heuristic::from((&h1, &h3, &metric)).minimize().cost();
+        assert!(d12 + d23 >= d13 / TOLERANCE);
+        assert!(d12 + d13 >= d23 / TOLERANCE);
+        assert!(d23 + d13 >= d12 / TOLERANCE);
+    }
+    #[test]
     fn is_heuristic_emd_positive() {
-        let EMD(metric, h1, h2) = EMD::random();
+        let EMD(metric, h1, h2, _) = EMD::random();
         let d12 = Heuristic::from((&h1, &h2, &metric)).minimize().cost();
         let d21 = Heuristic::from((&h2, &h1, &metric)).minimize().cost();
         assert!(d12 > 0.);
@@ -120,7 +153,7 @@ mod tests {
     }
     #[test]
     fn is_heuristic_emd_zero() {
-        let EMD(metric, h1, h2) = EMD::random();
+        let EMD(metric, h1, h2, _) = EMD::random();
         let d11 = Heuristic::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Heuristic::from((&h2, &h2, &metric)).minimize().cost();
         assert!(d11 == 0.);

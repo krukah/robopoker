@@ -1,6 +1,7 @@
 use super::layer::Layer;
 use crate::cards::hole::Hole;
 use crate::cards::isomorphism::Isomorphism;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
@@ -66,9 +67,14 @@ impl Encoder {
             ),
         }
     }
-
+    /// pre-compute the river abstraction mapping
     pub fn rivers() -> Self {
-        todo!("exhaustive equity calculation over river isomorphisms")
+        Self(
+            Observation::exhaust(Street::Rive)
+                .filter(Isomorphism::is_canonical)
+                .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs.equity())))
+                .collect::<BTreeMap<Isomorphism, Abstraction>>(),
+        )
     }
 }
 
