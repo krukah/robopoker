@@ -22,11 +22,11 @@ pub struct Sinkhorn<'a> {
 impl Sinkhorn<'_> {
     /// hyperparameter that determines maximum number of iterations
     const fn iterations(&self) -> usize {
-        10
+        5
     }
     /// hyperparameter that determines strength of entropic regularization. incorrect units but whatever
     const fn temperature(&self) -> Entropy {
-        1e-3
+      0.125
     }
 
     /// calculate ε-minimizing coupling by scaling potentials

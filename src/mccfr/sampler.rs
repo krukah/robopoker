@@ -4,7 +4,6 @@ use super::node::Node;
 use super::spot::Spot;
 use super::tree::Branch;
 use super::tree::Tree;
-use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::encoding::Encoder;
