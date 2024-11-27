@@ -22,6 +22,9 @@ impl EMD {
     pub fn heuristic(&self) -> Heuristic {
         Heuristic::from((&self.1, &self.2, &self.0)).minimize()
     }
+    pub fn inner(self) -> (Metric, Histogram, Histogram, Histogram) {
+        (self.0, self.1, self.2, self.3)
+    }
 }
 
 impl Arbitrary for EMD {

@@ -11,11 +11,13 @@ criterion::criterion_group! {
         sampling_river_evaluation,
         sampling_river_equity,
         sampling_river_observation,
-        sampling_turn_isomorphism,
+        converting_turn_isomorphism,
         exhausting_flop_observations,
         exhausting_flop_isomorphisms,
-        sampling_turn_histogram,
-        sampling_turn_histogram_emd,
+        collecting_turn_histogram,
+        computing_optimal_transport_variation,
+        computing_optimal_transport_heuristic,
+        computing_optimal_transport_sinkhorns,
 }
 
 fn sampling_river_evaluation(c: &mut criterion::Criterion) {
@@ -32,8 +34,8 @@ fn sampling_river_observation(c: &mut criterion::Criterion) {
 }
 
 fn sampling_river_equity(c: &mut criterion::Criterion) {
+    let observation = Observation::from(Street::Rive);
     c.bench_function("calculate River equity", |b| {
-        let observation = Observation::from(Street::Rive);
         b.iter(|| observation.equity())
     });
 }
@@ -54,26 +56,39 @@ fn exhausting_flop_isomorphisms(c: &mut criterion::Criterion) {
     });
 }
 
-fn sampling_turn_isomorphism(c: &mut criterion::Criterion) {
-    c.bench_function("compute Isomorphism from a Turn Observation", |b| {
-        let observation = Observation::from(Street::Turn);
+fn converting_turn_isomorphism(c: &mut criterion::Criterion) {
+    let observation = Observation::from(Street::Turn);
+    c.bench_function("convert a Turn Observation to Isomorphism", |b| {
         b.iter(|| Isomorphism::from(observation))
     });
 }
 
-fn sampling_turn_histogram(c: &mut criterion::Criterion) {
+fn collecting_turn_histogram(c: &mut criterion::Criterion) {
+    let observation = Observation::from(Street::Turn);
     c.bench_function("collect a Histogram from a Turn Observation", |b| {
-        let observation = Observation::from(Street::Turn);
         b.iter(|| Histogram::from(observation))
     });
 }
 
-fn sampling_turn_histogram_emd(c: &mut criterion::Criterion) {
-    c.bench_function("calculate EMD between two Turn Histograms", |b| {
-        let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
-        b.iter(|| metric.emd(h1, h2))
+fn computing_optimal_transport_variation(c: &mut criterion::Criterion) {
+    let ref h1 = Histogram::from(Observation::from(Street::Turn));
+    let ref h2 = Histogram::from(Observation::from(Street::Turn));
+    c.bench_function("compute optimal transport (1-dimensional)", |b| {
+        b.iter(|| Equity::variation(&h1, &h2))
+    });
+}
+
+fn computing_optimal_transport_heuristic(c: &mut criterion::Criterion) {
+    let (metric, h1, h2, _) = EMD::random().inner();
+    c.bench_function("compute optimal transport (greedy)", |b| {
+        b.iter(|| Heuristic::from((&h1, &h2, &metric)).minimize().cost())
+    });
+}
+
+fn computing_optimal_transport_sinkhorns(c: &mut criterion::Criterion) {
+    let (metric, h1, h2, _) = EMD::random().inner();
+    c.bench_function("compute optimal transport (entropy regularized)", |b| {
+        b.iter(|| Sinkhorn::from((&h1, &h2, &metric)).minimize().cost())
     });
 }
 
@@ -84,5 +99,10 @@ use robopoker::cards::observation::Observation;
 use robopoker::cards::observations::ObservationIterator;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
+use robopoker::clustering::emd::EMD;
+use robopoker::clustering::equity::Equity;
+use robopoker::clustering::heuristic::Heuristic;
 use robopoker::clustering::histogram::Histogram;
-use robopoker::clustering::metric::Metric;
+use robopoker::clustering::sinkhorn::Sinkhorn;
+use robopoker::transport::coupling::Coupling;
+use robopoker::Arbitrary;
