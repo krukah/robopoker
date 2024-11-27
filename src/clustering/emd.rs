@@ -9,7 +9,6 @@ use std::collections::BTreeMap;
 
 /// this guy is used just to construct arbitrary metric, histogram, histogram tuples
 /// to test transport mechanisms
-#[allow(dead_code)]
 pub struct EMD(Metric, Histogram, Histogram, Histogram);
 
 impl EMD {
