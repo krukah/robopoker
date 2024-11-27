@@ -19,23 +19,23 @@ pub struct Sinkhorn<'a> {
     rhs: Potential,
 }
 
-#[allow(dead_code)]
 impl Sinkhorn<'_> {
     /// hyperparameter that determines strength of entropic regularization. incorrect units but whatever
     const fn temperature(&self) -> Entropy {
-        0.125
+        crate::SINKHORN_TEMPERATURE
     }
     /// hyperparameter that determines maximum number of iterations
     const fn iterations(&self) -> usize {
-        16
+        crate::SINKHORN_ITERATIONS
     }
+    #[allow(dead_code)]
     /// hyperparameter that determines stopping criteria
     const fn tolerance(&self) -> Energy {
-        0.001
+        crate::SINKHORN_TOLERANCE
     }
-
+    #[allow(dead_code)]
     /// stopping criteria
-    fn delta(&self, last: &Potential, next: &Potential) -> Energy {
+    fn delta(last: &Potential, next: &Potential) -> Energy {
         next.support()
             .map(|x| next.density(x).exp() - last.density(x).exp())
             .map(|x| x.abs())
@@ -43,7 +43,9 @@ impl Sinkhorn<'_> {
     }
     /// calculate ε-minimizing coupling by scaling potentials
     fn evolve(mut self) -> Self {
-        for _i in 0..self.iterations() {
+        for _ in 0..self.iterations() {
+            self.lhs = self.lhs();
+            self.rhs = self.rhs();
             // let ref mut next = self.lhs();
             // let lhs_delta = self.delta(&self.lhs, &next);
             // std::mem::swap(&mut self.lhs, next);
@@ -51,11 +53,9 @@ impl Sinkhorn<'_> {
             // let rhs_delta = self.delta(&self.rhs, &next);
             // std::mem::swap(&mut self.rhs, next);
             // if (lhs_delta + rhs_delta) < self.tolerance() {
-            //     // println!("converged in {} iterations", _i);
+            //     // println!("converged in {} iterations", i);
             //     break;
             // }
-            self.lhs = self.lhs();
-            self.rhs = self.rhs();
         }
         self
     }
