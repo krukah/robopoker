@@ -45,10 +45,12 @@ const REGRET_MIN: Utility = -3e5;
 const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 
+/// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {
     fn random() -> Self;
 }
 
+/// progress bar
 pub fn progress(n: usize) -> indicatif::ProgressBar {
     let tick = std::time::Duration::from_secs(5);
     let style = "{percent:>2}% {spinner:.cyan} {elapsed} ETA {eta} {wide_bar:.cyan}";
@@ -59,6 +61,7 @@ pub fn progress(n: usize) -> indicatif::ProgressBar {
     progress
 }
 
+/// initialize logging
 pub fn logs() {
     std::fs::create_dir_all("logs").expect("create logs directory");
     let config = simplelog::ConfigBuilder::new()

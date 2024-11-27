@@ -2,18 +2,41 @@ use super::centroid::Centroid;
 use crate::cards::isomorphism::Isomorphism;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
 /// intermediate data structure to reference during kmeans
 /// as we compute the Wasserstein distance between
 /// `Equivalence`s and the available `Abstraction`s > `Centroid`s > `Histogram`s
 #[derive(Default)]
-pub struct IsomorphismSpace(pub BTreeMap<Isomorphism, Histogram>);
+pub struct IsomorphismSpace(BTreeMap<Isomorphism, Histogram>);
+
+impl From<BTreeMap<Isomorphism, Histogram>> for IsomorphismSpace {
+    fn from(map: BTreeMap<Isomorphism, Histogram>) -> Self {
+        Self(map)
+    }
+}
+
+impl IsomorphismSpace {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn values(&self) -> impl Iterator<Item = &Histogram> {
+        self.0.values()
+    }
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (&Isomorphism, &Histogram)> {
+        self.0.par_iter()
+    }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Isomorphism, &mut Histogram)> {
+        self.0.iter_mut()
+    }
+}
 
 /// intermediate data structure to mutate during kmeans
 /// as `Equivalence`s become assigned to `Abstraction`s.
 #[derive(Default)]
-pub struct AbstractionSpace(pub BTreeMap<Abstraction, Centroid>);
+pub struct AbstractionSpace(BTreeMap<Abstraction, Centroid>);
 
 impl AbstractionSpace {
     /// during initialization, add a distance-weighted
@@ -44,5 +67,20 @@ impl AbstractionSpace {
         for (_, centroid) in self.0.iter_mut() {
             centroid.reset();
         }
+    }
+
+    // shallow accessors
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn get(&self, a: &Abstraction) -> Option<&Centroid> {
+        self.0.get(a)
+    }
+    pub fn keys(&self) -> impl Iterator<Item = &Abstraction> {
+        self.0.keys()
+    }
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (&Abstraction, &Centroid)> {
+        self.0.par_iter()
     }
 }
