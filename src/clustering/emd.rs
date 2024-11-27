@@ -100,15 +100,13 @@ mod tests {
 
     #[test]
     fn is_sinkhorn_emd_triangle() {
-        const TOLERANCE: f32 = 1.5;
         let EMD(metric, h1, h2, h3) = EMD::random();
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d23 = Sinkhorn::from((&h2, &h3, &metric)).minimize().cost();
         let d13 = Sinkhorn::from((&h1, &h3, &metric)).minimize().cost();
-        println!("{:8.4e} {:8.4e} {:8.4e}", d12, d23, d13);
-        assert!(d12 + d23 >= d13 / TOLERANCE);
-        assert!(d12 + d13 >= d23 / TOLERANCE);
-        assert!(d23 + d13 >= d12 / TOLERANCE);
+        assert!(d12 + d23 >= d13);
+        assert!(d12 + d13 >= d23);
+        assert!(d23 + d13 >= d12);
     }
     #[test]
     fn is_sinkhorn_emd_positive() {
@@ -136,7 +134,7 @@ mod tests {
 
     #[test]
     fn is_heuristic_emd_triangle() {
-        const TOLERANCE: f32 = 1.5;
+        const TOLERANCE: f32 = 1.25;
         let EMD(metric, h1, h2, h3) = EMD::random();
         let d12 = Heuristic::from((&h1, &h2, &metric)).minimize().cost();
         let d23 = Heuristic::from((&h2, &h3, &metric)).minimize().cost();

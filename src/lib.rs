@@ -7,6 +7,7 @@ pub mod players;
 pub mod search;
 pub mod transport;
 
+/// dimensional analysis types
 type Chips = i16;
 type Equity = f32;
 type Energy = f32;
