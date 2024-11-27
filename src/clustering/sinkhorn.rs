@@ -65,7 +65,7 @@ impl Sinkhorn<'_> {
             self.lhs
                 .support()
                 .copied()
-                .map(|x| (x, self.entropy(&x, &self.mu, &self.rhs)))
+                .map(|x| (x, self.divergence(&x, &self.mu, &self.rhs)))
                 .inspect(|x| assert!(x.1.is_finite(), "lhs entropy overflow"))
                 .collect::<BTreeMap<_, _>>(),
         )
@@ -76,7 +76,7 @@ impl Sinkhorn<'_> {
             self.rhs
                 .support()
                 .copied()
-                .map(|x| (x, self.entropy(&x, &self.nu, &self.lhs)))
+                .map(|x| (x, self.divergence(&x, &self.nu, &self.lhs)))
                 .inspect(|x| assert!(x.1.is_finite(), "rhs entropy overflow"))
                 .collect::<BTreeMap<_, _>>(),
         )
@@ -88,23 +88,23 @@ impl Sinkhorn<'_> {
     /// not sure yet why i'm calling it entropy but it's giving partition function
     /// actually now that i think of it this might be KL div / relative entropy
     /// it might not be though
-    fn entropy(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
+    fn divergence(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
         histogram.density(a).ln()
             - potential
                 .support()
-                .map(|b| potential.density(b) - self.kernel(a, b))
+                .map(|b| potential.density(b) - self.entropy(a, b))
                 .map(|x| x.exp())
                 .map(|x| x.max(Energy::MIN_POSITIVE))
                 .sum::<Energy>()
                 .ln()
     }
     /// the regularizing kernel
-    fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
+    fn entropy(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
         self.metric.distance(x, y) / self.temperature()
     }
     /// energy contributed by a given x, y Abstraction pair in the final coupling
     fn boltzmann(&self, x: &Abstraction, y: &Abstraction) -> Energy {
-        (self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)).exp()
+        (self.lhs.density(x) + self.rhs.density(y) - self.entropy(x, y)).exp()
             * self.metric.distance(x, y)
     }
 }

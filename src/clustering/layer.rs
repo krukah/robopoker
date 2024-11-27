@@ -13,7 +13,6 @@ use rand::distributions::WeightedIndex;
 use rand::seq::IteratorRandom;
 use rand::Rng;
 use rayon::iter::IntoParallelIterator;
-use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
@@ -115,12 +114,12 @@ impl Layer {
             format!("{} <- {}", self.street.prev(), self.street)
         );
         let mut metric = BTreeMap::new();
-        for a in self.kmeans.0.keys() {
-            for b in self.kmeans.0.keys() {
+        for a in self.kmeans.keys() {
+            for b in self.kmeans.keys() {
                 if a > b {
                     let index = Pair::from((a, b));
-                    let x = self.kmeans.0.get(a).expect("pre-computed").histogram();
-                    let y = self.kmeans.0.get(b).expect("pre-computed").histogram();
+                    let x = self.kmeans.get(a).expect("pre-computed").histogram();
+                    let y = self.kmeans.get(b).expect("pre-computed").histogram();
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.;
                     metric.insert(index, distance);
@@ -151,7 +150,8 @@ impl Layer {
             .inspect(|_| progress.inc(1))
             .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
-        IsomorphismSpace(projection)
+        println!();
+        IsomorphismSpace::from(projection)
     }
 
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
@@ -169,12 +169,13 @@ impl Layer {
         let sample = self.sample_uniform(rng);
         self.kmeans.expand(sample);
         progress.inc(1);
-        while self.kmeans.0.len() < Self::k(self.street) {
+        while self.kmeans.len() < Self::k(self.street) {
             let sample = self.sample_outlier(rng);
             self.kmeans.expand(sample);
             progress.inc(1);
         }
         progress.finish();
+        println!();
     }
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
@@ -193,13 +194,13 @@ impl Layer {
             progress.inc(1);
         }
         progress.finish();
+        println!();
     }
 
     /// find the nearest neighbor `Abstraction` to each `Observation`.
     /// work in parallel and collect results before mutating kmeans state.
     fn get_neighbor(&self) -> Vec<(Abstraction, f32)> {
         self.points
-            .0
             .par_iter()
             .map(|(_, h)| self.nearest(h))
             .collect::<Vec<(Abstraction, f32)>>()
@@ -210,12 +211,12 @@ impl Layer {
     fn set_neighbor(&mut self, neighbors: Vec<(Abstraction, f32)>) {
         self.kmeans.clear();
         let mut loss = 0.;
-        for ((obs, hist), (abs, dist)) in self.points.0.iter_mut().zip(neighbors.iter()) {
+        for ((obs, hist), (abs, dist)) in self.points.iter_mut().zip(neighbors.iter()) {
             self.lookup.assign(abs, obs);
             self.kmeans.absorb(abs, hist);
             loss += dist * dist;
         }
-        log::trace!("LOSS {:.6e}", loss / self.points.0.len() as f32);
+        log::trace!("LOSS {:.6e}", loss / self.points.len() as f32);
     }
     /// centroid drift may make it such that some centroids are empty
     /// so we reinitialize empty centroids with random Observations if necessary
@@ -235,7 +236,6 @@ impl Layer {
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
     fn sample_uniform<R: Rng>(&self, rng: &mut R) -> Histogram {
         self.points
-            .0
             .values()
             .choose(rng)
             .cloned()
@@ -247,7 +247,6 @@ impl Layer {
     fn sample_outlier<R: Rng>(&self, rng: &mut R) -> Histogram {
         let weights = self
             .points
-            .0
             .par_iter()
             .map(|(_obs, hist)| self.nearest(hist))
             .map(|(_abs, dist)| dist * dist)
@@ -256,7 +255,6 @@ impl Layer {
             .expect("valid weights array")
             .sample(rng);
         self.points
-            .0
             .values()
             .nth(index)
             .cloned()
@@ -266,7 +264,6 @@ impl Layer {
     /// find the nearest neighbor `Abstraction` to a given `Histogram` for kmeans clustering
     fn nearest(&self, histogram: &Histogram) -> (Abstraction, f32) {
         self.kmeans
-            .0
             .par_iter()
             .map(|(abs, centroid)| (abs, centroid.histogram()))
             .map(|(abs, centroid)| (abs, self.metric.emd(histogram, centroid)))
