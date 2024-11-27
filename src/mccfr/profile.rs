@@ -12,6 +12,7 @@ use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
 use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
+use crate::Arbitrary;
 use crate::Probability;
 use crate::Utility;
 use rand::prelude::Distribution;
@@ -510,7 +511,7 @@ impl Profile {
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
                 file.write_u64::<BE>(u64::from(bucket.2)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(*edge)).unwrap();
+                file.write_u64::<BE>(u64::from(edge.clone())).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
                 file.write_f32::<BE>(memory.regret()).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
@@ -549,7 +550,7 @@ impl std::fmt::Display for Profile {
     }
 }
 
-impl crate::Arbitrary for Profile {
+impl Arbitrary for Profile {
     fn random() -> Self {
         Self {
             iterations: 0,
@@ -559,30 +560,6 @@ impl crate::Arbitrary for Profile {
         }
     }
 }
-
-// pruning stuff
-// const P_PRUNE: Probability = 0.95;
-// enum Expansion {
-//     Explore,
-//     Pruning,
-// }
-// impl From<Phase> for Expansion {
-//     fn from(phase: Phase) -> Self {
-//         match phase {
-//             Phase::Prune if crate::P_PRUNE > rand::thread_rng().gen::<f32>() => Expansion::Pruning,
-//             _ => Expansion::Explore,
-//         }
-//     }
-// }
-// fn expansion(&self) -> Expansion {
-//     Expansion::from(self.phase())
-// }
-// fn keep(&self, bucket: &Bucket, edge: &Edge) -> bool {
-//     match self.expansion() {
-//         Expansion::Explore => true,
-//         Expansion::Focused => self.regret(bucket, edge) > REGRET_PRUNE,
-//     }
-// }
 
 #[cfg(test)]
 mod tests {

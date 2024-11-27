@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::policy::Policy;
 use crate::cards::hole::Hole;
 use crate::gameplay::action::Action;

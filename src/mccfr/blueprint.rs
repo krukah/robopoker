@@ -33,6 +33,7 @@ pub struct Solver {
 impl Solver {
     /// after training, use the learned Profile to advise
     /// a Spot on how to play.
+    #[allow(unused)]
     fn advise(&self, spot: Spot) -> Policy {
         let bucket = self.sampler.bucket(&spot);
         let policy = self.profile.policy(&bucket);
