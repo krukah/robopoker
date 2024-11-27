@@ -28,13 +28,13 @@ impl Sinkhorn<'_> {
     const fn iterations(&self) -> usize {
         crate::SINKHORN_ITERATIONS
     }
-    #[allow(dead_code)]
     /// hyperparameter that determines stopping criteria
+    #[allow(dead_code)]
     const fn tolerance(&self) -> Energy {
         crate::SINKHORN_TOLERANCE
     }
-    #[allow(dead_code)]
     /// stopping criteria
+    #[allow(dead_code)]
     fn delta(last: &Potential, next: &Potential) -> Energy {
         next.support()
             .map(|x| next.density(x).exp() - last.density(x).exp())
@@ -98,17 +98,14 @@ impl Sinkhorn<'_> {
                 .sum::<Energy>()
                 .ln()
     }
-    /// the energy contributed by a given x, y Abstraction pair,
-    /// using our scaled Potentials + regularizing kernel.
-    fn energy(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
-        self.metric.distance(x, y) * self.boltzmann(x, y).exp()
-    }
     /// the regularizing kernel
     fn kernel(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
         self.metric.distance(x, y) / self.temperature()
     }
-    fn boltzmann(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
-        self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)
+    /// energy contributed by a given x, y Abstraction pair in the final coupling
+    fn boltzmann(&self, x: &Abstraction, y: &Abstraction) -> Energy {
+        (self.lhs.density(x) + self.rhs.density(y) - self.kernel(x, y)).exp()
+            * self.metric.distance(x, y)
     }
 }
 
@@ -122,14 +119,14 @@ impl Coupling for Sinkhorn<'_> {
     fn minimize(self) -> Self {
         self.evolve()
     }
-    fn flow(&self, x: &Self::X, y: &Self::Y) -> Entropy {
+    fn flow(&self, x: &Self::X, y: &Self::Y) -> Energy {
         self.boltzmann(x, y)
     }
     fn cost(&self) -> Energy {
         self.lhs
             .support()
             .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            .map(|(x, y)| self.energy(x, y))
+            .map(|(x, y)| self.boltzmann(x, y))
             .inspect(|x| assert!(x.is_finite()))
             .sum::<Energy>()
     }
