@@ -21,6 +21,11 @@ const B_BLIND: Chips = 2;
 const S_BLIND: Chips = 1;
 const MAX_N_BETS: usize = 3;
 
+/// sinkhorn optimal transport parameters
+const SINKHORN_TEMPERATURE: Entropy = 0.125;
+const SINKHORN_ITERATIONS: usize = 16;
+const SINKHORN_TOLERANCE: Energy = 0.001;
+
 // kmeans clustering parameters
 const KMEANS_TURN_CLUSTER_COUNT: usize = 128;
 const KMEANS_FLOP_CLUSTER_COUNT: usize = 128;
@@ -28,11 +33,11 @@ const KMEANS_TURN_TRAINING_ITERATIONS: usize = 128;
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 128;
 
 // mccfr parameters
-const CFR_BATCH_SIZE: usize = 9_182;
-const CFR_TREE_COUNT: usize = 68_719_476_736;
+const CFR_BATCH_SIZE: usize = 256;
+const CFR_TREE_COUNT: usize = 1_048_576;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
-const CFR_DISCOUNT_PHASE: usize = 100_000;
-const CFR_PRUNNING_PHASE: usize = 100_000_000;
+const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
+const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
 
 // regret matching parameters
 const REGRET_MIN: Utility = -3e5;
