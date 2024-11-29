@@ -4,6 +4,7 @@ use crate::transport::density::Density;
 use crate::Entropy;
 use crate::Probability;
 use std::collections::BTreeMap;
+use std::ops::AddAssign;
 
 /// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
 /// potential formulation of the optimal transport problem.
@@ -23,7 +24,19 @@ impl Potential {
         self.0.values()
     }
 
-    /// uniform distribution over the support
+    pub fn increment(&mut self, i: &Abstraction, delta: Entropy) {
+        self.0
+            .get_mut(i)
+            .expect("fixed abstraction space")
+            .add_assign(delta)
+    }
+
+    /// zero potential over the support, in log prob space
+    pub fn zeroes(h: &Histogram) -> Self {
+        Self(h.support().copied().map(|x| (x, 0.)).collect())
+    }
+
+    /// uniform distribution over the support, in log prob space
     pub fn uniform(h: &Histogram) -> Self {
         Self(
             h.support()
