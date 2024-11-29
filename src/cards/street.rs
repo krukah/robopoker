@@ -1,9 +1,9 @@
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Street {
-    Pref,
-    Flop,
-    Turn,
-    Rive,
+    Pref = 0,
+    Flop = 1,
+    Turn = 2,
+    Rive = 3,
 }
 
 impl Street {
@@ -80,6 +80,43 @@ impl Street {
             Self::Rive => 0_175_301_280,
         }
     }
+
+    const fn from(n: usize) -> Self {
+        match n {
+            0 => Self::Pref,
+            3 => Self::Flop,
+            4 => Self::Turn,
+            5 => Self::Rive,
+            _ => panic!("no other usizes"),
+        }
+    }
+}
+
+impl From<usize> for Street {
+    fn from(n: usize) -> Self {
+        Self::from(n)
+    }
+}
+
+impl From<i64> for Street {
+    /// im gonna try to do i64 -> Observation -> Street
+    /// in purely bitwise operations
+    /// so that i can use it in Postgres to naturally
+    /// map Obs -> Street when geenrating abstraction table.
+    /// so i'll have to inline a lot of methods until i can eliminate
+    /// all imported methods.
+    fn from(obs: i64) -> Self {
+        Self::from(
+            (0u64..8u64)
+                .map(|i| obs >> (i * 8))
+                .take_while(|bits| *bits > 0)
+                .map(|bits| bits as u8)
+                .map(|bits| bits - 1)
+                .map(|bits| 1u64 << bits)
+                .skip(2)
+                .count(),
+        )
+    }
 }
 
 impl std::fmt::Display for Street {
@@ -102,5 +139,23 @@ impl crate::Arbitrary for Street {
             2 => Self::Turn,
             _ => Self::Rive,
         }
+    }
+}
+
+fn postgres_observation_to_street(obs: i64) -> u8 {
+    match (0u64..8u64)
+        .map(|i| obs >> (i * 8))
+        .take_while(|bits| *bits > 0)
+        .map(|bits| bits as u8)
+        .map(|bits| bits - 1)
+        .map(|bits| 1u64 << bits)
+        .skip(2)
+        .count()
+    {
+        0 => 0, // Street::Pref as u8,
+        3 => 1, // Street::Flop as u8,
+        4 => 2, // Street::Turn as u8,
+        5 => 3, // Street::Rive as u8,
+        _ => unreachable!("no other usizes"),
     }
 }
