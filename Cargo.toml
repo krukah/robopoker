@@ -22,6 +22,7 @@ rayon = "1.10.0"
 byteorder = "1.5.0"
 indicatif = "0.17.8"
 simplelog = "0.12.2"
+tokio-postgres = "0.7.12"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
