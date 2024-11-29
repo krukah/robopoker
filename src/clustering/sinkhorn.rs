@@ -20,44 +20,25 @@ pub struct Sinkhorn<'a> {
 }
 
 impl Sinkhorn<'_> {
-    /// hyperparameter that determines strength of entropic regularization. incorrect units but whatever
-    const fn temperature(&self) -> Entropy {
-        crate::SINKHORN_TEMPERATURE
-    }
-    /// hyperparameter that determines maximum number of iterations
-    const fn iterations(&self) -> usize {
-        crate::SINKHORN_ITERATIONS
-    }
-    /// hyperparameter that determines stopping criteria
-    #[allow(dead_code)]
-    const fn tolerance(&self) -> Energy {
-        crate::SINKHORN_TOLERANCE
-    }
-    /// stopping criteria
-    #[allow(dead_code)]
-    fn delta(last: &Potential, next: &Potential) -> Energy {
-        next.support()
-            .map(|x| next.density(x).exp() - last.density(x).exp())
-            .map(|x| x.abs())
-            .fold(0f32, f32::max)
-    }
     /// calculate ε-minimizing coupling by scaling potentials
-    fn evolve(mut self) -> Self {
+    fn sinkhorn(&mut self) {
         for _ in 0..self.iterations() {
-            self.lhs = self.lhs();
-            self.rhs = self.rhs();
-            // let ref mut next = self.lhs();
-            // let lhs_delta = self.delta(&self.lhs, &next);
-            // std::mem::swap(&mut self.lhs, next);
-            // let ref mut next = self.rhs();
-            // let rhs_delta = self.delta(&self.rhs, &next);
-            // std::mem::swap(&mut self.rhs, next);
-            // if (lhs_delta + rhs_delta) < self.tolerance() {
-            //     // println!("converged in {} iterations", i);
-            //     break;
-            // }
+            let ref mut next = self.lhs();
+            let ref mut prev = self.lhs;
+            let lhs = Self::error(prev, next);
+            std::mem::swap(prev, next);
+            let ref mut next = self.rhs();
+            let ref mut prev = self.rhs;
+            let rhs = Self::error(prev, next);
+            std::mem::swap(prev, next);
+            if (lhs + rhs) < self.tolerance() {
+                return;
+            }
         }
-        self
+        println!(
+            "sinkhorn failed to converge in {} iterations",
+            self.iterations()
+        );
     }
     /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
     fn lhs(&self) -> Potential {
@@ -81,6 +62,10 @@ impl Sinkhorn<'_> {
                 .collect::<BTreeMap<_, _>>(),
         )
     }
+    /// the coupling formed by joint distribution of LHS and RHS potentials
+    fn coupling(&self, x: &Abstraction, y: &Abstraction) -> Energy {
+        (self.lhs.density(x) + self.rhs.density(y) - self.regularization(x, y)).exp()
+    }
     /// update the potential energy on a given side
     /// histogram is where a: Abstraction is supported
     /// potential is the distribution that is being integrated against
@@ -88,24 +73,38 @@ impl Sinkhorn<'_> {
     /// not sure yet why i'm calling it entropy but it's giving partition function
     /// actually now that i think of it this might be KL div / relative entropy
     /// it might not be though
-    fn divergence(&self, a: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
-        histogram.density(a).ln()
+    fn divergence(&self, x: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
+        histogram.density(x).ln()
             - potential
                 .support()
-                .map(|b| potential.density(b) - self.entropy(a, b))
-                .map(|x| x.exp())
-                .map(|x| x.max(Energy::MIN_POSITIVE))
+                .map(|y| potential.density(y) - self.regularization(x, y))
+                .map(|e| e.exp())
+                .map(|e| e.max(Energy::MIN_POSITIVE))
                 .sum::<Energy>()
                 .ln()
     }
-    /// the regularizing kernel
-    fn entropy(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
+    /// distance in fixed temperature exponent space
+    fn regularization(&self, x: &Abstraction, y: &Abstraction) -> Entropy {
         self.metric.distance(x, y) / self.temperature()
     }
-    /// energy contributed by a given x, y Abstraction pair in the final coupling
-    fn boltzmann(&self, x: &Abstraction, y: &Abstraction) -> Energy {
-        (self.lhs.density(x) + self.rhs.density(y) - self.entropy(x, y)).exp()
-            * self.metric.distance(x, y)
+    /// stopping criteria
+    fn error(last: &Potential, next: &Potential) -> Energy {
+        next.support()
+            .map(|x| next.density(x).exp() - last.density(x).exp())
+            .map(|e| e.abs())
+            .fold(0f32, f32::max)
+    }
+    /// hyperparameter that determines strength of entropic regularization. incorrect units but whatever
+    const fn temperature(&self) -> Entropy {
+        crate::SINKHORN_TEMPERATURE
+    }
+    /// hyperparameter that determines maximum number of iterations
+    const fn iterations(&self) -> usize {
+        crate::SINKHORN_ITERATIONS
+    }
+    /// hyperparameter that determines stopping criteria
+    const fn tolerance(&self) -> Energy {
+        crate::SINKHORN_TOLERANCE
     }
 }
 
@@ -116,17 +115,18 @@ impl Coupling for Sinkhorn<'_> {
     type Q = Potential;
     type M = Metric;
 
-    fn minimize(self) -> Self {
-        self.evolve()
+    fn minimize(mut self) -> Self {
+        self.sinkhorn();
+        self
     }
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        self.boltzmann(x, y)
+        self.coupling(x, y) * self.metric.distance(x, y)
     }
     fn cost(&self) -> Energy {
         self.lhs
             .support()
             .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            .map(|(x, y)| self.boltzmann(x, y))
+            .map(|(x, y)| self.flow(x, y))
             .inspect(|x| assert!(x.is_finite()))
             .sum::<Energy>()
     }

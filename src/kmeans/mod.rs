@@ -1,4 +1,49 @@
+use crate::cards::street::Street;
+use crate::clustering::encoding::Encoder;
+use crate::clustering::histogram::Histogram;
+use crate::clustering::layer::Layer;
+use crate::clustering::metric::Metric;
+use crate::Utility;
+
 pub trait Point: Clone {}
+impl Point for Histogram {}
+
+type Neighbor = (usize, f32);
+type Populace = usize;
+
+struct StreetKmeans<const K: usize, const N: usize> {
+    street: Street,
+    lookup: Encoder,
+    metric: Metric,
+    kmeans: [Histogram; K],
+    points: [Histogram; N],
+}
+
+impl KMeans<Histogram> for StreetKmeans<K, N> {
+    fn loss(&self) -> f32 {
+        todo!()
+    }
+
+    fn measure(&self, a: &Histogram, b: &Histogram) -> f32 {
+        todo!()
+    }
+
+    fn average(&self, points: &[Histogram]) -> Histogram {
+        todo!()
+    }
+
+    fn points(&self) -> &[Histogram; N] {
+        todo!()
+    }
+
+    fn kmeans(&self) -> &[Histogram; K] {
+        todo!()
+    }
+
+    fn neighbors(&self) -> [Neighbor; N] {
+        todo!()
+    }
+}
 
 /// number of points in dataset
 const N: usize = 1000;
@@ -16,15 +61,11 @@ where
     /// average a collection of points
     fn average(&self, points: &[P]) -> P;
     /// full dataset of Points
-    fn dataset(&self) -> &[P; N];
+    fn points(&self) -> &[P; N];
     /// mean dataset of Points
-    fn centers(&self) -> &[P; K];
-    /// get the distances
-    fn distances(&mut self) -> &mut [f32; N];
-    /// to what cluster is each point assigned
-    fn neighbors(&mut self) -> &mut [usize; N];
-    /// how many points are in each cluster
-    fn densities(&mut self) -> &mut [usize; K];
+    fn kmeans(&self) -> &[P; K];
+    /// freshly calculated nearest neighbors + distances
+    fn neighbors(&self) -> [Neighbor; N];
 }
 
 impl<P> Iterator for dyn KMeans<P>

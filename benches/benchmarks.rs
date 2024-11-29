@@ -90,6 +90,15 @@ fn computing_optimal_transport_sinkhorns(c: &mut criterion::Criterion) {
     c.bench_function("compute optimal transport (entropy regularized)", |b| {
         b.iter(|| Sinkhorn::from((&h1, &h2, &metric)).minimize().cost())
     });
+    /*
+    TEMPERATURE   ITERS  TOLERANCE  TIME
+        0.125       16     0.001     200
+        0.125       16     0.010     135
+        0.125       16     0.100     67
+        8.000       16     0.001     55
+        8.000       16     0.010     55
+        8.000       16     0.100     55
+     */
 }
 
 use robopoker::cards::evaluator::Evaluator;

@@ -56,6 +56,11 @@ impl Histogram {
             self.counts.entry(*key).or_insert(0usize).add_assign(*count);
         }
     }
+    /// same thing but consumes the merging histogram
+    pub fn merge(mut self, other: &Self) -> Self {
+        self.absorb(other);
+        self
+    }
 
     /// it is useful in EMD calculation
     /// to know if we're dealing with ::Equity or ::Random
