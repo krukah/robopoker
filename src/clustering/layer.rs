@@ -150,7 +150,6 @@ impl Layer {
             .inspect(|_| progress.inc(1))
             .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
-        println!();
         IsomorphismSpace::from(projection)
     }
 
@@ -175,7 +174,6 @@ impl Layer {
             progress.inc(1);
         }
         progress.finish();
-        println!();
     }
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
@@ -194,7 +192,6 @@ impl Layer {
             progress.inc(1);
         }
         progress.finish();
-        println!();
     }
 
     /// find the nearest neighbor `Abstraction` to each `Observation`.

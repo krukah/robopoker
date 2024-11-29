@@ -78,7 +78,7 @@ impl Metric {
         Self(lookup)
     }
     pub fn save(&self, street: Street) {
-        println!("{:<32}{:<32}", "saving metric", street);
+        log::info!("{:<32}{:<32}", "saving metric", street);
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;

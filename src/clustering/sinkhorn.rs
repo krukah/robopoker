@@ -35,10 +35,6 @@ impl Sinkhorn<'_> {
                 return;
             }
         }
-        println!(
-            "sinkhorn failed to converge in {} iterations",
-            self.iterations()
-        );
     }
     /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
     fn lhs(&self) -> Potential {
