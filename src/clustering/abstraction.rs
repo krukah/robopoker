@@ -124,6 +124,13 @@ impl From<Hole> for Abstraction {
     }
 }
 
+impl TryFrom<&str> for Abstraction {
+    type Error = Box<dyn std::error::Error>;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Ok(Self::Preflop(Hole::from(Hand::try_from(s)?)))
+    }
+}
+
 impl crate::Arbitrary for Abstraction {
     fn random() -> Self {
         Self::random()

@@ -1,9 +1,9 @@
 use robopoker::*;
 
 //  + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
-//    2019. Regret Circuits: Composability of Regret Minimizers. In Proceedings of the International Conference on Machine Learning (ICML), 2019. arXiv version. (https://arxiv.org/abs/1811.02540)
-//    2019. Stable-Predictive Optimistic Counterfactual Regret Minimization. In ICML. arXiv version. (https://arxiv.org/pdf/1902.04982.pdf)
-//    2019. Deep Counterfactual Regret Minimization In ICML. Early version (https://arxiv.org/pdf/1811.00164.pdf) in NeurIPS-18 Deep RL Workshop, 2018.
+//    2019. Regret Circuits: Composability of Regret Minimizers. (https://arxiv.org/abs/1811.02540). In ICML.
+//    2019. Stable-Predictive Optimistic Counterfactual Regret Minimization. (https://arxiv.org/pdf/1902.04982.pdf). In ICML.
+//    2019. Deep Counterfactual Regret Minimization. (https://arxiv.org/pdf/1811.00164.pdf). In NeurIPS.
 //  + 2019. Solving Imperfect-Information Games via Discounted Regret Minimization (https://arxiv.org/pdf/1809.04040.pdf). In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).
 //    2019. Online Convex Optimization for Sequential Decision Processes and Extensive-Form Games (http://www.cs.cmu.edu/~gfarina/2018/laminar-regret-aaai19/). In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).
 //    2019. Quasi-Perfect Stackelberg Equilibrium (http://www.cs.cmu.edu/~gfarina/2018/qp-stackelberg-aaai19/). In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI).
@@ -23,7 +23,7 @@ use robopoker::*;
 //    2017. Smoothing Method for Approximate Extensive-Form Perfect Equilibrium. (http://www.cs.cmu.edu/~sandholm/smoothingEFPE.ijcai17.pdf) In IJCAI. ArXiv version. (http://arxiv.org/abs/1705.09326)
 //    2017. Dynamic Thresholding and Pruning for Regret Minimization. (http://www.cs.cmu.edu/~sandholm/dynamicThresholding.aaai17.pdf) In AAAI.
 //    2016. Imperfect-Recall Abstractions with Bounds in Games. (http://www.cs.cmu.edu/~sandholm/imperfect-recall-abstraction-with-bounds.ec16.pdf) In Proc. ACM Conference on Economics and Computation (EC).
-//    2016. Strategy-Based Warm Starting for Regret Minimization in Games. In AAAI. Extended version with appendix. (http://www.cs.cmu.edu/~sandholm/warmStart.aaai16.withAppendixAndTypoFix.pdf)
+//    2016. Strategy-Based Warm Starting for Regret Minimization in Games. (http://www.cs.cmu.edu/~sandholm/warmStart.aaai16.withAppendixAndTypoFix.pdf). In AAAI.
 //  + 2015. Regret-Based Pruning in Extensive-Form Games. (http://www.cs.cmu.edu/~sandholm/cs15-892F15) In NIPS. Extended version. (http://www.cs.cmu.edu/~sandholm/regret-basedPruning.nips15.withAppendix.pdf)
 //    2015. Simultaneous Abstraction and Equilibrium Finding in Games. (http://www.cs.cmu.edu/~sandholm/simultaneous.ijcai15.pdf) In IJCAI.
 //    2015. Limited Lookahead in Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/limited-look-ahead.ijcai15.pdf) IJCAI.
@@ -35,7 +35,7 @@ use robopoker::*;
 //    2014. Regret Transfer and Parameter Optimization. (http://www.cs.cmu.edu/~sandholm/regret_transfer.aaai14.pdf) In AAAI.
 //  + 2014. Potential-Aware Imperfect-Recall Abstraction with Earth Mover’s Distance in Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/potential-aware_imperfect-recall.aaai14.pdf) In AAAI.
 //  + 2013. Action Translation in Extensive-Form Games with Large Action Spaces: Axioms, Paradoxes, and the Pseudo-Harmonic Mapping. (http://www.cs.cmu.edu/~sandholm/reverse%20mapping.ijcai13.pdf) In IJCAI.
-//  + 2013. A Fast and Optimal Hand Isomorphism Algorithm. In the Second Computer Poker and Imperfect Information Symposium at AAAI. (https://www.cs.cmu.edu/~waugh/publications/isomorphism13.pdf)
+//  + 2013. A Fast and Optimal Hand Isomorphism Algorithm. (https://www.cs.cmu.edu/~waugh/publications/isomorphism13.pdf). In AAAI.
 //    2012. Lossy Stochastic Game Abstraction with Bounds. (http://www.cs.cmu.edu/~sandholm/lossyStochasticGameAbstractionWBounds.ec12.pdf) In EC.
 //    2012. First-Order Algorithm with O(ln(1/epsilon)) Convergence for epsilon-Equilibrium in Two-Person Zero-Sum Games. (http://www.cs.cmu.edu/~sandholm/restart.MathProg12.pdf) Mathematical Programming 133(1-2), 279-298. Subsumes our AAAI-08 20paper.
 //    2012. Strategy Purification and Thresholding: Effective Non-Equilibrium Approaches for Playing Large Games. (http://www.cs.cmu.edu/~sandholm/StrategyPurification_AAMAS2012_camera_ready_2.pdf) In AAMAS.
@@ -47,13 +47,16 @@ use robopoker::*;
 //    2009. Computing Equilibria in Multiplayer Stochastic Games of Imperfect Information (http://www.cs.cmu.edu/~sandholm/stochgames.ijcai09.pdf). In IJCAI.
 //    2003. Using the Triangle Inequality to Accelerate-Means (https://cdn.aaai.org/ICML/2003/ICML03-022.pdf) In ICML.
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Boring stuff
     crate::logs();
     // The k-means earth mover's distance hand-clustering algorithm.
     crate::clustering::encoding::Encoder::learn();
     // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Solver::train();
+    // Let's see what we've learned.
+    crate::analysis::cli::CLI::new().await.run().await;
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
     crate::gameplay::game::Game::play();
 }
