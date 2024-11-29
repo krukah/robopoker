@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::cards::street::Street;
 use crate::clustering::encoding::Encoder;
 use crate::clustering::histogram::Histogram;
@@ -18,6 +20,8 @@ struct StreetKmeans<const K: usize, const N: usize> {
     kmeans: [Histogram; K],
     points: [Histogram; N],
 }
+
+impl StreetKmeans<K, N> {}
 
 impl KMeans<Histogram> for StreetKmeans<K, N> {
     fn loss(&self) -> f32 {
