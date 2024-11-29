@@ -1,3 +1,4 @@
+pub mod analysis;
 pub mod cards;
 pub mod clustering;
 pub mod gameplay;
@@ -25,7 +26,7 @@ const MAX_N_BETS: usize = 3;
 /// sinkhorn optimal transport parameters
 const SINKHORN_TEMPERATURE: Entropy = 0.125;
 const SINKHORN_ITERATIONS: usize = 16;
-const SINKHORN_TOLERANCE: Energy = 0.01;
+const SINKHORN_TOLERANCE: Energy = 0.001;
 
 // kmeans clustering parameters
 const KMEANS_TURN_CLUSTER_COUNT: usize = 128;

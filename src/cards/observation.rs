@@ -140,6 +140,14 @@ impl From<Observation> for Hand {
     }
 }
 
+impl TryFrom<&str> for Observation {
+    type Error = Box<dyn std::error::Error>;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let (pocket, public) = s.split_once('~').ok_or("no ~")?;
+        Ok(Self::from((Hand::from(pocket), Hand::from(public))))
+    }
+}
+
 impl crate::Arbitrary for Observation {
     fn random() -> Self {
         Self::from(Street::random())

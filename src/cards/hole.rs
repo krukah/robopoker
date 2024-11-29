@@ -44,3 +44,14 @@ impl From<(Card, Card)> for Hole {
         Self(hand)
     }
 }
+
+impl TryFrom<&str> for Hole {
+    type Error = Box<dyn std::error::Error>;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let hand = Hand::try_from(s)?;
+        match hand.size() {
+            2 => Ok(Self(hand)),
+            _ => Err("Hand must contain exactly two cards".into()),
+        }
+    }
+}
