@@ -80,14 +80,15 @@ impl Layer {
     /// edge case for Preflop where we want to calculate the raised metric
     /// without saving it to disk under self.street.next() (i.e. its 1st)
     fn cluster(&mut self) {
-        self.metric.save(self.street.next());
+        match self.street.next() {
+            Street::Rive => (),
+            s => self.metric.save(s),
+        }
         self.kmeans_initial();
         self.kmeans_cluster();
-        if self.street == Street::Pref {
-            self.metric = self.inner_metric();
-            self.metric.save(self.street);
-        } else {
-            self.lookup.save(self.street);
+        match self.street {
+            Street::Pref => self.inner_metric().save(Street::Pref),
+            s => self.lookup.save(s),
         }
     }
 
