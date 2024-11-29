@@ -51,13 +51,7 @@ impl Observation {
         }
     }
     pub fn street(&self) -> Street {
-        match self.public.size() {
-            0 => Street::Pref,
-            3 => Street::Flop,
-            4 => Street::Turn,
-            5 => Street::Rive,
-            _ => unreachable!("no other sizes"),
-        }
+        Street::from(self.public.size())
     }
     pub fn pocket(&self) -> &Hand {
         &self.pocket
@@ -66,7 +60,6 @@ impl Observation {
         &self.public
     }
 }
-
 /// i64 isomorphism
 ///
 /// Packs all the cards in order, starting from LSBs.

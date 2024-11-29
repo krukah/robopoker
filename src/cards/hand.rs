@@ -150,7 +150,7 @@ impl From<Hand> for u16 {
 /// one-way conversion from Card
 impl From<Card> for Hand {
     fn from(card: Card) -> Self {
-        Self(1 << u8::from(card))
+        Self(1u64 << u8::from(card))
     }
 }
 

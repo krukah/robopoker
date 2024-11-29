@@ -11,7 +11,7 @@ impl CLI {
     pub async fn new() -> Self {
         let (client, connection) = Config::default()
             .host("localhost")
-            .dbname("poker")
+            .dbname("robopoker")
             .connect(NoTls)
             .await
             .expect("db connection");
@@ -29,7 +29,7 @@ impl CLI {
                 "quit" => break,
                 "exit" => break,
                 _ => match self.handle(input).await {
-                    Err(e) => eprintln!("Error: {}", e),
+                    Err(e) => eprintln!("handle error: {}", e),
                     Ok(_) => continue,
                 },
             }

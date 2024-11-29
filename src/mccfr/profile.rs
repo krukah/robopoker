@@ -448,13 +448,14 @@ impl From<&str> for Profile {
         use std::io::SeekFrom;
         log::info!("loading profile from disk");
         let file = File::open(format!("{}.profile.pgcopy", name)).expect("open file");
-        let mut buffer = [0u8; 2];
         let mut strategies = BTreeMap::new();
         let mut reader = BufReader::new(file);
+        let mut buffer = [0u8; 2];
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) == 6 {
-                // We expect 6 fields per record
+                // we expect 6 fields per record
+                // 4 indexed fields
                 reader.read_u32::<BE>().expect("past path length");
                 let past = Path::from(reader.read_u64::<BE>().expect("read past path"));
                 reader.read_u32::<BE>().expect("abstraction length");
@@ -463,6 +464,7 @@ impl From<&str> for Profile {
                 let future = Path::from(reader.read_u64::<BE>().expect("read future path"));
                 reader.read_u32::<BE>().expect("edge length");
                 let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
+                // 2 unindexed fields
                 reader.read_u32::<BE>().expect("regret length");
                 let regret = reader.read_f32::<BE>().expect("read regret");
                 reader.read_u32::<BE>().expect("policy length");
@@ -504,6 +506,7 @@ impl Profile {
             for (edge, memory) in strategy.iter() {
                 const N_FIELDS: u16 = 6;
                 file.write_u16::<BE>(N_FIELDS).unwrap();
+                // 4 indexed fields
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
                 file.write_u64::<BE>(u64::from(bucket.0)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
@@ -512,6 +515,7 @@ impl Profile {
                 file.write_u64::<BE>(u64::from(bucket.2)).unwrap();
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
                 file.write_u64::<BE>(u64::from(edge.clone())).unwrap();
+                // 2 unindexed fields
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
                 file.write_f32::<BE>(memory.regret()).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
@@ -519,6 +523,17 @@ impl Profile {
             }
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
+    }
+}
+
+impl Arbitrary for Profile {
+    fn random() -> Self {
+        Self {
+            iterations: 0,
+            strategies: (0..100)
+                .map(|_| (Bucket::random(), Strategy::random()))
+                .collect(),
+        }
     }
 }
 
@@ -549,18 +564,6 @@ impl std::fmt::Display for Profile {
         )
     }
 }
-
-impl Arbitrary for Profile {
-    fn random() -> Self {
-        Self {
-            iterations: 0,
-            strategies: (0..100)
-                .map(|_| (Bucket::random(), Strategy::random()))
-                .collect(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
