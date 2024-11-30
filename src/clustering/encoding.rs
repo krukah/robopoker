@@ -82,7 +82,7 @@ impl Encoder {
     pub fn done() -> bool {
         Street::all()
             .iter()
-            .map(|street| format!("{}.abstraction.pgcopy", street))
+            .map(|street| format!("{}.encoder.pgcopy", street))
             .any(|file| std::fs::metadata(file).is_ok())
     }
     pub fn load() -> Self {
@@ -101,7 +101,7 @@ impl Encoder {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let file = File::open(format!("{}.abstraction.pgcopy", street)).expect("open file");
+        let file = File::open(format!("{}.encoder.pgcopy", street)).expect("open file");
         let mut buffer = [0u8; 2];
         let mut lookup = BTreeMap::new();
         let mut reader = BufReader::new(file);
@@ -128,7 +128,7 @@ impl Encoder {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}.abstraction.pgcopy", street)).expect("touch");
+        let ref mut file = File::create(format!("{}.encoder.pgcopy", street)).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn persistence() {
         let street = Street::Pref;
-        let file = format!("{}.abstraction.pgcopy", street);
+        let file = format!("{}.encoder.pgcopy", street);
         let save = Encoder::random();
         save.save(street);
         let load = Encoder::from(street);

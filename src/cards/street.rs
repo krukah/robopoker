@@ -1,9 +1,9 @@
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Street {
-    Pref = 0,
-    Flop = 1,
-    Turn = 2,
-    Rive = 3,
+    Pref = 0isize,
+    Flop = 1isize,
+    Turn = 2isize,
+    Rive = 3isize,
 }
 
 impl Street {
@@ -51,6 +51,15 @@ impl Street {
             Self::Rive => 0_175_301_280,
         }
     }
+    #[cfg(not(feature = "shortdeck"))]
+    pub const fn n_observations(&self) -> usize {
+        match self {
+            Self::Pref => 0_______1_326,
+            Self::Flop => 0__25_989_600,
+            Self::Turn => 0_305_377_800,
+            Self::Rive => 2_809_475_760,
+        }
+    }
     #[cfg(feature = "shortdeck")]
     pub const fn n_isomorphisms(&self) -> usize {
         // TODO
@@ -62,15 +71,6 @@ impl Street {
             Self::Rive => 0_175_301_280,
         }
     }
-    #[cfg(not(feature = "shortdeck"))]
-    pub const fn n_observations(&self) -> usize {
-        match self {
-            Self::Pref => 0_______1_326,
-            Self::Flop => 0__25_989_600,
-            Self::Turn => 0_305_377_800,
-            Self::Rive => 2_809_475_760,
-        }
-    }
     #[cfg(feature = "shortdeck")]
     pub const fn n_observations(&self) -> usize {
         match self {
@@ -80,8 +80,22 @@ impl Street {
             Self::Rive => 0_175_301_280,
         }
     }
+}
 
-    const fn from(n: usize) -> Self {
+impl From<isize> for Street {
+    fn from(n: isize) -> Self {
+        match n {
+            0 => Self::Pref,
+            1 => Self::Flop,
+            2 => Self::Turn,
+            3 => Self::Rive,
+            _ => panic!("no other u8s"),
+        }
+    }
+}
+
+impl From<usize> for Street {
+    fn from(n: usize) -> Self {
         match n {
             0 => Self::Pref,
             3 => Self::Flop,
@@ -92,19 +106,8 @@ impl Street {
     }
 }
 
-impl From<usize> for Street {
-    fn from(n: usize) -> Self {
-        Self::from(n)
-    }
-}
-
+/// useful for reference of Postgres Street::from(i64) calculation that is done in analysis.sql
 impl From<i64> for Street {
-    /// im gonna try to do i64 -> Observation -> Street
-    /// in purely bitwise operations
-    /// so that i can use it in Postgres to naturally
-    /// map Obs -> Street when geenrating abstraction table.
-    /// so i'll have to inline a lot of methods until i can eliminate
-    /// all imported methods.
     fn from(obs: i64) -> Self {
         Self::from(
             (0u64..8u64)
@@ -139,23 +142,5 @@ impl crate::Arbitrary for Street {
             2 => Self::Turn,
             _ => Self::Rive,
         }
-    }
-}
-
-fn postgres_observation_to_street(obs: i64) -> u8 {
-    match (0u64..8u64)
-        .map(|i| obs >> (i * 8))
-        .take_while(|bits| *bits > 0)
-        .map(|bits| bits as u8)
-        .map(|bits| bits - 1)
-        .map(|bits| 1u64 << bits)
-        .skip(2)
-        .count()
-    {
-        0 => 0, // Street::Pref as u8,
-        3 => 1, // Street::Flop as u8,
-        4 => 2, // Street::Turn as u8,
-        5 => 3, // Street::Rive as u8,
-        _ => unreachable!("no other usizes"),
     }
 }
