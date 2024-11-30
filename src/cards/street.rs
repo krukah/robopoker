@@ -45,7 +45,7 @@ impl Street {
     #[cfg(not(feature = "shortdeck"))]
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
-            Self::Pref => 0_________630,
+            Self::Pref => 0_________169,
             Self::Flop => 0___3_769_920,
             Self::Turn => 0__29_216_880,
             Self::Rive => 0_175_301_280,
@@ -64,11 +64,12 @@ impl Street {
     pub const fn n_isomorphisms(&self) -> usize {
         // TODO
         // pencil paper math, combinatorics. still learning how to count 25 years later
+        // for now i'm using empirical values from analysis.py without verifying combinatorics
         match self {
-            Self::Pref => 0_________630,
-            Self::Flop => 0___3_769_920,
-            Self::Turn => 0__29_216_880,
-            Self::Rive => 0_175_301_280,
+            Self::Pref => 0______81,
+            Self::Flop => 0_186_696,
+            Self::Turn => 1_340_856,
+            Self::Rive => 7_723_728,
         }
     }
     #[cfg(feature = "shortdeck")]
