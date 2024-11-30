@@ -42,58 +42,60 @@ impl Analysis {
     pub async fn metric(&self, street: Street) -> Result<Metric, PgError> {
         unimplemented!()
     }
-
-    pub async fn upload(&self) -> Result<(), PgError> {
-        self.0.execute(SQL_UPLOAD, &[]).await.map(std::mem::drop)
-    }
 }
 
-const SQL_UPLOAD: &'static str = r#"
-    -- create tables
+const SQL_RESET: &'static str = r#"
+    DROP SCHEMA public CASCADE;
+    CREATE SCHEMA public;
+"#;
+const SQL_CREATE_TABLES: &'static str = r#"
     CREATE TABLE IF NOT EXISTS encoder     (obs  BIGINT, abs  BIGINT);
     CREATE TABLE IF NOT EXISTS metric      (xor  BIGINT, dx   REAL);
     CREATE TABLE IF NOT EXISTS abstraction (abs  BIGINT, st   SMALLINT);
     CREATE TABLE IF NOT EXISTS blueprint   (edge BIGINT, past BIGINT, present BIGINT, future BIGINT, policy REAL, regret REAL);
-    
-    -- truncate for copy insert performance and idempotence
+"#;
+
+const SQL_TRUNCATE_TABLES: &'static str = r#"
     TRUNCATE TABLE encoder;
     TRUNCATE TABLE metric;
     TRUNCATE TABLE abstraction;
     TRUNCATE TABLE blueprint;
-    
-    -- set unlogged for copy insert performance
+"#;
+
+const SQL_SET_UNLOGGED: &'static str = r#"
     ALTER TABLE encoder      SET UNLOGGED;
     ALTER TABLE metric       SET UNLOGGED;
     ALTER TABLE abstraction  SET UNLOGGED;
     ALTER TABLE blueprint    SET UNLOGGED;
-    
-    -- blueprint --
-    -- add indices for convenient joins
+"#;
+
+const SQL_BLUEPRINT: &'static str = r#"
     COPY blueprint (past, present, future, edge, policy, regret) FROM '/Users/krukah/Code/robopoker/blueprint.profile.pgcopy' WITH (FORMAT BINARY);
     CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
     CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
     CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
     CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
     CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
-    
-    -- metric --
-    -- (skips river)
+"#;
+
+const SQL_METRIC: &'static str = r#"
     COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/turn.metric.pgcopy'     WITH (FORMAT BINARY);
     COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/flop.metric.pgcopy'     WITH (FORMAT BINARY);
     COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/preflop.metric.pgcopy'  WITH (FORMAT BINARY);
     CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
     CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
-    
-    -- encoder --
-    -- (skips preflop)
+"#;
+
+const SQL_ENCODER: &'static str = r#"
     COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/river.encoder.pgcopy' WITH (FORMAT BINARY);
     COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/turn.encoder.pgcopy'  WITH (FORMAT BINARY);
     COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/flop.encoder.pgcopy'  WITH (FORMAT BINARY);
+    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/preflop.encoder.pgcopy' WITH (FORMAT BINARY);
     CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
     CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
-    
-    -- abstraction --
-    -- map distinct encoder abs -> obs -> street
+"#;
+
+const SQL_ABSTRACTION: &'static str = r#"
     CREATE OR REPLACE FUNCTION street(obs BIGINT) RETURNS SMALLINT AS
     $$
     DECLARE
@@ -111,8 +113,7 @@ const SQL_UPLOAD: &'static str = r#"
         ELSIF n_cards = 5 THEN RETURN 1;  -- Street::Flop
         ELSIF n_cards = 6 THEN RETURN 2;  -- Street::Turn
         ELSIF n_cards = 7 THEN RETURN 3;  -- Street::River
-        ELSE
-            RAISE EXCEPTION 'Invalid n_cards: %', n_cards;
+        ELSE  RAISE EXCEPTION 'Invalid n_cards: %', n_cards;
         END IF;
     END; 
     $$ 
