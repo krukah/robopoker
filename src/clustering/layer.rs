@@ -5,7 +5,6 @@ use super::encoding::Encoder;
 use super::histogram::Histogram;
 use super::metric::Metric;
 use super::pair::Pair;
-use crate::cards::hole::Hole;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
@@ -74,19 +73,23 @@ impl Layer {
             kmeans: AbstractionSpace::default(), // assigned during clustering
             lookup: Encoder::default(),          // assigned during clustering
         };
+        layer.save_metric();
         layer.cluster();
+        layer.save_kmeans();
         layer
     }
 
-    /// edge case for Preflop where we want to calculate the raised metric
-    /// without saving it to disk under self.street.next() (i.e. its 1st)
     fn cluster(&mut self) {
+        self.kmeans_initial();
+        self.kmeans_cluster();
+    }
+    fn save_metric(&self) {
         match self.street.next() {
             Street::Rive => (),
             s => self.metric.save(s),
         }
-        self.kmeans_initial();
-        self.kmeans_cluster();
+    }
+    fn save_kmeans(&self) {
         match self.street {
             Street::Pref => self.inner_metric().save(Street::Pref),
             s => self.lookup.save(s),
@@ -170,7 +173,7 @@ impl Layer {
         let progress = crate::progress(k);
         if self.street == Street::Pref {
             for (iso, hist) in self.points.iter_mut() {
-                let labels = Abstraction::from(Hole::from(iso.0));
+                let labels = Abstraction::from(iso.0);
                 let sample = hist.clone();
                 self.kmeans.expand(labels, sample);
                 progress.inc(1);
