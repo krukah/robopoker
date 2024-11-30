@@ -45,7 +45,7 @@ impl CLI {
                     args.get(1)
                         .map(|obs| Observation::try_from(*obs))
                         .transpose()?
-                        .map(|obs| self.0.cluster(obs))
+                        .map(|obs| self.0.abstraction(obs))
                         .unwrap()
                         .await?
                 )
@@ -56,7 +56,7 @@ impl CLI {
                     args.get(1)
                         .map(|abs| Abstraction::try_from(*abs))
                         .transpose()?
-                        .map(|abs| self.0.neighbors(abs))
+                        .map(|abs| self.0.neighborhood(abs))
                         .unwrap()
                         .await?
                         .iter()
@@ -72,7 +72,7 @@ impl CLI {
                     args.get(1)
                         .map(|abs| Abstraction::try_from(*abs))
                         .transpose()?
-                        .map(|abs| self.0.constituents(abs))
+                        .map(|abs| self.0.membership(abs))
                         .unwrap()
                         .await?
                         .iter()
