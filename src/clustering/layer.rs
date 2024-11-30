@@ -39,7 +39,7 @@ use std::collections::BTreeMap;
 pub struct Layer {
     street: Street,
     metric: Metric,
-    lookup: Encoder,
+    encode: Encoder,
     kmeans: AbstractionSpace,
     points: IsomorphismSpace,
 }
@@ -55,7 +55,7 @@ impl Layer {
         Self {
             street: Street::Rive,
             metric: Metric::default(),
-            lookup: Encoder::rivers(),
+            encode: Encoder::rivers(),
             kmeans: AbstractionSpace::default(),
             points: IsomorphismSpace::default(),
         }
@@ -71,7 +71,7 @@ impl Layer {
             metric: self.inner_metric(),         // uniquely determined by outer layer
             points: self.inner_points(),         // uniquely determined by outer layer
             kmeans: AbstractionSpace::default(), // assigned during clustering
-            lookup: Encoder::default(),          // assigned during clustering
+            encode: Encoder::default(),          // assigned during clustering
         };
         layer.save_metric();
         layer.cluster();
@@ -90,10 +90,11 @@ impl Layer {
         }
     }
     fn save_kmeans(&self) {
-        match self.street {
-            Street::Pref => self.inner_metric().save(Street::Pref),
-            s => self.lookup.save(s),
+        // shloppy
+        if self.street == Street::Pref {
+            self.inner_metric().save(Street::Pref);
         }
+        self.encode.save(self.street);
     }
 
     /// simply go to the previous street
@@ -151,7 +152,7 @@ impl Layer {
             .map(Isomorphism::from)
             .collect::<Vec<Isomorphism>>()
             .into_par_iter()
-            .map(|inner| (inner, self.lookup.projection(&inner)))
+            .map(|inner| (inner, self.encode.projection(&inner)))
             .inspect(|_| progress.inc(1))
             .collect::<BTreeMap<Isomorphism, Histogram>>();
         progress.finish();
@@ -169,18 +170,17 @@ impl Layer {
             "declaring abstractions",
             format!("{}    {} clusters", self.street, k)
         );
-        let ref mut rng = rand::thread_rng();
-        let progress = crate::progress(k);
+        // shloppy
         if self.street == Street::Pref {
             for (iso, hist) in self.points.iter_mut() {
                 let labels = Abstraction::from(iso.0);
                 let sample = hist.clone();
                 self.kmeans.expand(labels, sample);
-                progress.inc(1);
             }
-            progress.finish();
             return;
         }
+        let ref mut rng = rand::thread_rng();
+        let progress = crate::progress(k);
         let sample = self.sample_uniform(rng);
         let labels = Abstraction::random();
         self.kmeans.expand(labels, sample);
@@ -203,6 +203,15 @@ impl Layer {
             "clustering observations",
             format!("{}    {} iterations", self.street, t)
         );
+        // shloppy
+        if self.street == Street::Pref {
+            for (iso, _) in self.points.iter_mut() {
+                let ref abs = Abstraction::from(iso.0);
+                let ref abs = Abstraction::from(abs.hash());
+                self.encode.assign(abs, iso);
+            }
+            return;
+        }
         let progress = crate::progress(t);
         for _ in 0..t {
             let neighbors = self.get_neighbor();
@@ -228,7 +237,7 @@ impl Layer {
         self.kmeans.clear();
         let mut loss = 0.;
         for ((obs, hist), (abs, dist)) in self.points.iter_mut().zip(neighbors.iter()) {
-            self.lookup.assign(abs, obs);
+            self.encode.assign(abs, obs);
             self.kmeans.absorb(abs, hist);
             loss += dist * dist;
         }

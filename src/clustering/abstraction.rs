@@ -1,5 +1,6 @@
 use crate::cards::hand::Hand;
 use crate::cards::hole::Hole;
+use crate::cards::observation::Observation;
 use crate::transport::support::Support;
 use crate::Probability;
 use std::hash::Hash;
@@ -17,18 +18,30 @@ pub enum Abstraction {
     Preflop(Hole), // preflop
 }
 
-impl Support for Abstraction {}
-
 impl Abstraction {
     pub fn random() -> Self {
-        Self::Learned(loop {
+        loop {
             let x = rand::random::<u64>();
             match x >> 52 {
-                POCKET_TAG => continue,
-                EQUITY_TAG => continue,
-                _ => break x,
+                Self::POCKET_TAG => continue,
+                Self::EQUITY_TAG => continue,
+                _ => return Self::Learned(x),
             }
-        })
+        }
+    }
+    pub fn hash(&self) -> u64 {
+        // uses fibonacci hash to avoid XOR collisions on Preflop variants
+        match self {
+            Self::Learned(n) => *n,
+            Self::Preflop(_) => u64::from(*self).wrapping_mul(0x9E3779B97F4A7C15),
+            Self::Percent(_) => unreachable!(),
+        }
+    }
+    pub const fn range() -> &'static [Self] {
+        &Self::BUCKETS
+    }
+    pub const fn size() -> usize {
+        Self::N as usize + 1
     }
 
     fn quantize(p: Probability) -> u8 {
@@ -39,9 +52,11 @@ impl Abstraction {
     }
 
     const N: u8 = 63;
-    const BUCKETS: [Self; Self::N as usize + 1] = Self::buckets();
-    const fn buckets() -> [Self; Self::N as usize + 1] {
-        let mut buckets = [Self::Percent(0); Self::N as usize + 1];
+    const EQUITY_TAG: u64 = 0xEEE;
+    const POCKET_TAG: u64 = 0xFFF;
+    const BUCKETS: [Self; Self::size()] = Self::buckets();
+    const fn buckets() -> [Self; Self::size()] {
+        let mut buckets = [Self::Percent(0); Self::size()];
         let mut i = 0;
         while i <= Self::N {
             buckets[i as usize] = Self::Percent(i as u8);
@@ -49,11 +64,49 @@ impl Abstraction {
         }
         buckets
     }
-    pub const fn range() -> &'static [Self] {
-        &Self::BUCKETS
+}
+
+/// u64 isomorphism
+///
+/// conversion to u64 for SQL storage.
+impl From<Abstraction> for u64 {
+    fn from(a: Abstraction) -> Self {
+        match a {
+            Abstraction::Learned(n) => n,
+            Abstraction::Percent(e) => (Abstraction::EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
+            Abstraction::Preflop(h) => (Abstraction::POCKET_TAG << 52) | u64::from(Hand::from(h)),
+        }
     }
-    pub const fn size() -> usize {
-        Self::N as usize
+}
+impl From<u64> for Abstraction {
+    fn from(n: u64) -> Self {
+        match n >> 52 {
+            Self::EQUITY_TAG => Self::Percent(((n >> 44) & 0xFF) as u8),
+            Self::POCKET_TAG => Self::Preflop(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
+            _ => Self::Learned(n),
+        }
+    }
+}
+
+/// i64 isomorphism
+///
+/// conversion to i64 for SQL storage.
+impl From<Abstraction> for i64 {
+    fn from(abstraction: Abstraction) -> Self {
+        u64::from(abstraction) as i64
+    }
+}
+impl From<i64> for Abstraction {
+    fn from(n: i64) -> Self {
+        Self::Learned(n as u64)
+    }
+}
+
+/// lossless preflop abstraction
+impl From<Observation> for Abstraction {
+    fn from(observation: Observation) -> Self {
+        assert!(observation.street() == crate::cards::street::Street::Pref);
+        Self::Preflop(Hole::from(observation))
     }
 }
 
@@ -79,50 +132,7 @@ impl From<Abstraction> for Probability {
     }
 }
 
-const EQUITY_TAG: u64 = 0xEEE;
-const POCKET_TAG: u64 = 0xFFF;
-/// u64 isomorphism
-///
-/// conversion to u64 for SQL storage.
-impl From<Abstraction> for u64 {
-    fn from(a: Abstraction) -> Self {
-        match a {
-            Abstraction::Learned(n) => n,
-            Abstraction::Percent(e) => (EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
-            Abstraction::Preflop(h) => (POCKET_TAG << 52) | u64::from(Hand::from(h)),
-        }
-    }
-}
-impl From<u64> for Abstraction {
-    fn from(n: u64) -> Self {
-        match n >> 52 {
-            EQUITY_TAG => Self::Percent(((n >> 44) & 0xFF) as u8),
-            POCKET_TAG => Self::Preflop(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
-            _ => Self::Learned(n),
-        }
-    }
-}
-
-/// i64 isomorphism
-///
-/// conversion to i64 for SQL storage.
-impl From<Abstraction> for i64 {
-    fn from(abstraction: Abstraction) -> Self {
-        u64::from(abstraction) as i64
-    }
-}
-impl From<i64> for Abstraction {
-    fn from(n: i64) -> Self {
-        Self::Learned(n as u64)
-    }
-}
-
-/// lossless preflop abstraction
-impl From<Hole> for Abstraction {
-    fn from(hole: Hole) -> Self {
-        Self::Preflop(hole)
-    }
-}
+impl Support for Abstraction {}
 
 impl TryFrom<&str> for Abstraction {
     type Error = Box<dyn std::error::Error>;
