@@ -13,9 +13,9 @@ use std::u64;
 /// - Other Streets: we use a u64 to represent the hash signature of the centroid Histogram over lower layers of abstraction.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub enum Abstraction {
-    Percent(u8),   // river
-    Learned(u64),  // flop, turn
-    Preflop(Hole), // preflop
+    Percent(u8),  // river
+    Learned(u64), // flop, turn
+    Preflop(u64), // preflop
 }
 
 impl Abstraction {
@@ -29,14 +29,6 @@ impl Abstraction {
             }
         }
     }
-    pub fn hash(&self) -> u64 {
-        // uses fibonacci hash to avoid XOR collisions on Preflop variants
-        match self {
-            Self::Learned(n) => *n,
-            Self::Preflop(_) => u64::from(*self).wrapping_mul(0x9E3779B97F4A7C15),
-            Self::Percent(_) => unreachable!(),
-        }
-    }
     pub const fn range() -> &'static [Self] {
         &Self::BUCKETS
     }
@@ -44,6 +36,12 @@ impl Abstraction {
         Self::N as usize + 1
     }
 
+    fn hash(n: u64) -> u64 {
+        Self::mask(n.wrapping_mul(0x9E3779B97F4A7C15))
+    }
+    fn mask(n: u64) -> u64 {
+        n & 0x000FFFFFFFFFFFFF
+    }
     fn quantize(p: Probability) -> u8 {
         (p * Probability::from(Self::N)).round() as u8
     }
@@ -74,7 +72,7 @@ impl From<Abstraction> for u64 {
         match a {
             Abstraction::Learned(n) => n,
             Abstraction::Percent(e) => (Abstraction::EQUITY_TAG << 52) | (e as u64 & 0xFF) << 44,
-            Abstraction::Preflop(h) => (Abstraction::POCKET_TAG << 52) | u64::from(Hand::from(h)),
+            Abstraction::Preflop(h) => (Abstraction::POCKET_TAG << 52) | (Abstraction::mask(h)),
         }
     }
 }
@@ -82,7 +80,7 @@ impl From<u64> for Abstraction {
     fn from(n: u64) -> Self {
         match n >> 52 {
             Self::EQUITY_TAG => Self::Percent(((n >> 44) & 0xFF) as u8),
-            Self::POCKET_TAG => Self::Preflop(Hole::from(Hand::from(n & 0x000FFFFFFFFFFFFF))),
+            Self::POCKET_TAG => Self::Preflop(Self::mask(n)),
             _ => Self::Learned(n),
         }
     }
@@ -106,7 +104,10 @@ impl From<i64> for Abstraction {
 impl From<Observation> for Abstraction {
     fn from(observation: Observation) -> Self {
         assert!(observation.street() == crate::cards::street::Street::Pref);
-        Self::Preflop(Hole::from(observation))
+        let hole = Hole::from(observation);
+        let hand = Hand::from(hole);
+        let hash = Self::hash(u64::from(hand));
+        Self::Preflop(hash)
     }
 }
 
@@ -137,7 +138,7 @@ impl Support for Abstraction {}
 impl TryFrom<&str> for Abstraction {
     type Error = Box<dyn std::error::Error>;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        Ok(Self::Preflop(Hole::from(Hand::try_from(s)?)))
+        todo!()
     }
 }
 
@@ -195,7 +196,7 @@ mod tests {
 
     #[test]
     fn bijective_u64_pocket() {
-        let pocket = Abstraction::Preflop(Hole::from(Observation::from(Street::Pref)));
+        let pocket = Abstraction::from(Observation::from(Street::Pref));
         assert_eq!(pocket, Abstraction::from(u64::from(pocket)));
     }
 }

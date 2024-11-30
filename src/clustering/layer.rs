@@ -207,7 +207,6 @@ impl Layer {
         if self.street == Street::Pref {
             for (iso, _) in self.points.iter_mut() {
                 let ref abs = Abstraction::from(iso.0);
-                let ref abs = Abstraction::from(abs.hash());
                 self.encode.assign(abs, iso);
             }
             return;

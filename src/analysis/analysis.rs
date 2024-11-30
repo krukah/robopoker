@@ -129,7 +129,6 @@ const SQL_ABSTRACTION: &'static str = r#"
 "#;
 
 const SQL_CLUSTERS: &'static str = r#"
-    -- sanity checks
     SELECT 
         e.abs        AS abs,
         a.st         AS street, 

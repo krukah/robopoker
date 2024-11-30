@@ -7,7 +7,7 @@ pub struct Pair(u64);
 
 impl From<(&Abstraction, &Abstraction)> for Pair {
     fn from((a, b): (&Abstraction, &Abstraction)) -> Self {
-        Self(a.hash() ^ b.hash())
+        Self(u64::from(*a) ^ u64::from(*b))
     }
 }
 impl From<Pair> for i64 {
