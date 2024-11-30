@@ -5,6 +5,7 @@ use super::encoding::Encoder;
 use super::histogram::Histogram;
 use super::metric::Metric;
 use super::pair::Pair;
+use crate::cards::hole::Hole;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
@@ -159,19 +160,32 @@ impl Layer {
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn kmeans_initial(&mut self) {
+        let k = Self::k(self.street);
         log::info!(
             "{:<32}{:<32}",
             "declaring abstractions",
-            format!("{}    {} clusters", self.street, Self::k(self.street))
+            format!("{}    {} clusters", self.street, k)
         );
         let ref mut rng = rand::thread_rng();
-        let progress = crate::progress(Self::k(self.street));
+        let progress = crate::progress(k);
+        if self.street == Street::Pref {
+            for (iso, hist) in self.points.iter_mut() {
+                let labels = Abstraction::from(Hole::from(iso.0));
+                let sample = hist.clone();
+                self.kmeans.expand(labels, sample);
+                progress.inc(1);
+            }
+            progress.finish();
+            return;
+        }
         let sample = self.sample_uniform(rng);
-        self.kmeans.expand(sample);
+        let labels = Abstraction::random();
+        self.kmeans.expand(labels, sample);
         progress.inc(1);
-        while self.kmeans.len() < Self::k(self.street) {
+        while self.kmeans.len() < k {
             let sample = self.sample_outlier(rng);
-            self.kmeans.expand(sample);
+            let labels = Abstraction::random();
+            self.kmeans.expand(labels, sample);
             progress.inc(1);
         }
         progress.finish();
@@ -180,13 +194,14 @@ impl Layer {
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
     fn kmeans_cluster(&mut self) {
+        let t = Self::t(self.street);
         log::info!(
             "{:<32}{:<32}",
             "clustering observations",
-            format!("{}    {} iterations", self.street, Self::t(self.street))
+            format!("{}    {} iterations", self.street, t)
         );
-        let progress = crate::progress(Self::t(self.street));
-        for _ in 0..Self::t(self.street) {
+        let progress = crate::progress(t);
+        for _ in 0..t {
             let neighbors = self.get_neighbor();
             self.set_neighbor(neighbors);
             self.set_orphaned();
@@ -214,7 +229,7 @@ impl Layer {
             self.kmeans.absorb(abs, hist);
             loss += dist * dist;
         }
-        log::trace!("LOSS {:.6e}", loss / self.points.len() as f32);
+        log::debug!("LOSS {:.6e}", loss / self.points.len() as f32);
     }
     /// centroid drift may make it such that some centroids are empty
     /// so we reinitialize empty centroids with random Observations if necessary
@@ -279,7 +294,7 @@ impl Layer {
     /// - RAM: O(N)   for learned centroids
     const fn k(street: Street) -> usize {
         match street {
-            Street::Pref => 0,
+            Street::Pref => street.n_isomorphisms(),
             Street::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
             Street::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
             Street::Rive => unreachable!(),

@@ -41,9 +41,8 @@ pub struct AbstractionSpace(BTreeMap<Abstraction, Centroid>);
 impl AbstractionSpace {
     /// during initialization, add a distance-weighted
     /// Histogram to the kmeans clusters
-    pub fn expand(&mut self, histogram: Histogram) {
-        self.0
-            .insert(Abstraction::random(), Centroid::from(histogram));
+    pub fn expand(&mut self, abs: Abstraction, histogram: Histogram) {
+        self.0.insert(abs, Centroid::from(histogram));
     }
 
     /// absorb a `Histogram` into an `Abstraction`
