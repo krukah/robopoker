@@ -1,5 +1,4 @@
 use super::layer::Layer;
-use crate::cards::hole::Hole;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
@@ -40,7 +39,7 @@ impl Encoder {
     /// for turn and flop, we lookup the pre-computed abstraction that we woked so hard for in ::clustering
     pub fn abstraction(&self, outer: &Observation) -> Abstraction {
         match outer.street() {
-            Street::Pref => Abstraction::from(Hole::from(*outer)),
+            Street::Pref => Abstraction::from(*outer),
             Street::Flop | Street::Turn | Street::Rive => self
                 .0
                 .get(&Isomorphism::from(*outer))
