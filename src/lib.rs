@@ -29,10 +29,10 @@ const SINKHORN_ITERATIONS: usize = 16;
 const SINKHORN_TOLERANCE: Energy = 0.001;
 
 // kmeans clustering parameters
-const KMEANS_TURN_CLUSTER_COUNT: usize = 128;
-const KMEANS_FLOP_CLUSTER_COUNT: usize = 128;
-const KMEANS_TURN_TRAINING_ITERATIONS: usize = 128;
-const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 128;
+const KMEANS_TURN_CLUSTER_COUNT: usize = 16;
+const KMEANS_FLOP_CLUSTER_COUNT: usize = 16;
+const KMEANS_TURN_TRAINING_ITERATIONS: usize = 32;
+const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32;
 
 // mccfr parameters
 const CFR_BATCH_SIZE: usize = 256;
@@ -51,10 +51,21 @@ pub trait Arbitrary {
     fn random() -> Self;
 }
 
+pub trait Pipe: Sized {
+    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R;
+}
+impl<T> Pipe for T {
+    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R {
+        {
+            f(self)
+        }
+    }
+}
+
 /// progress bar
 pub fn progress(n: usize) -> indicatif::ProgressBar {
     let tick = std::time::Duration::from_secs(60);
-    let style = "{spinner:.cyan} {percent:>2}% after {elapsed} {wide_bar:.cyan}";
+    let style = "{spinner:.cyan} {elapsed>3} ~ {percent:>3}% {wide_bar:.cyan}";
     let style = indicatif::ProgressStyle::with_template(style).unwrap();
     let progress = indicatif::ProgressBar::new(n as u64);
     progress.set_style(style);

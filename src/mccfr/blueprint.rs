@@ -57,6 +57,7 @@ impl Solver {
     pub fn train() {
         if Self::done() {
             log::info!("skipping regret minimization");
+            println!("PROFILE LOADED: {}\n\n\n\n", Profile::load());
         } else {
             log::info!("starting regret minimization");
             Self::load().solve();
