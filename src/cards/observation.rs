@@ -59,6 +59,8 @@ impl Observation {
     pub fn public(&self) -> &Hand {
         &self.public
     }
+
+    const SEPARATOR: &'static str = "+";
 }
 /// i64 isomorphism
 ///
@@ -134,10 +136,16 @@ impl From<Observation> for Hand {
 }
 
 impl TryFrom<&str> for Observation {
-    type Error = Box<dyn std::error::Error>;
+    type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let (pocket, public) = s.split_once('~').ok_or("no ~")?;
-        Ok(Self::from((Hand::from(pocket), Hand::from(public))))
+        let (pocket, public) = s
+            .trim()
+            .split_once(Self::SEPARATOR)
+            .unwrap_or((s.trim(), ""));
+        Ok(Self::from((
+            Hand::try_from(pocket)?,
+            Hand::try_from(public)?,
+        )))
     }
 }
 
@@ -150,7 +158,7 @@ impl crate::Arbitrary for Observation {
 /// display Observation as pocket + public
 impl std::fmt::Display for Observation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{} ~ {}", self.pocket, self.public)
+        write!(f, "{} {} {}", self.pocket, Self::SEPARATOR, self.public)
     }
 }
 

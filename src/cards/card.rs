@@ -75,12 +75,17 @@ impl std::fmt::Display for Card {
 }
 
 /// str isomorphism
-impl From<&str> for Card {
-    fn from(s: &str) -> Self {
-        assert!(s.len() == 2);
-        let rank = Rank::from(&s[0..1]);
-        let suit = Suit::from(&s[1..2]);
-        Card::from((rank, suit))
+impl TryFrom<&str> for Card {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.trim().len() {
+            2 => {
+                let rank = Rank::try_from(&s.trim()[0..1])?;
+                let suit = Suit::try_from(&s.trim()[1..2])?;
+                Ok(Card::from((rank, suit)))
+            }
+            _ => Err("2 characters".into()),
+        }
     }
 }
 

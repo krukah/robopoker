@@ -72,48 +72,45 @@ impl From<Rank> for u64 {
 }
 
 /// str isomorphism
-impl From<&str> for Rank {
-    fn from(s: &str) -> Self {
-        match s {
-            "2" => Rank::Two,
-            "3" => Rank::Three,
-            "4" => Rank::Four,
-            "5" => Rank::Five,
-            "6" => Rank::Six,
-            "7" => Rank::Seven,
-            "8" => Rank::Eight,
-            "9" => Rank::Nine,
-            "T" => Rank::Ten,
-            "J" => Rank::Jack,
-            "Q" => Rank::Queen,
-            "K" => Rank::King,
-            "A" => Rank::Ace,
-            _ => panic!("Invalid rank str: {}", s),
+impl TryFrom<&str> for Rank {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.trim().to_uppercase().as_str() {
+            "2" => Ok(Rank::Two),
+            "3" => Ok(Rank::Three),
+            "4" => Ok(Rank::Four),
+            "5" => Ok(Rank::Five),
+            "6" => Ok(Rank::Six),
+            "7" => Ok(Rank::Seven),
+            "8" => Ok(Rank::Eight),
+            "9" => Ok(Rank::Nine),
+            "T" => Ok(Rank::Ten),
+            "J" => Ok(Rank::Jack),
+            "Q" => Ok(Rank::Queen),
+            "K" => Ok(Rank::King),
+            "A" => Ok(Rank::Ace),
+            _ => Err(format!("invalid rank str: {}", s)),
         }
     }
 }
 
 impl std::fmt::Display for Rank {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Rank::Two => "2",
-                Rank::Three => "3",
-                Rank::Four => "4",
-                Rank::Five => "5",
-                Rank::Six => "6",
-                Rank::Seven => "7",
-                Rank::Eight => "8",
-                Rank::Nine => "9",
-                Rank::Ten => "T",
-                Rank::Jack => "J",
-                Rank::Queen => "Q",
-                Rank::King => "K",
-                Rank::Ace => "A",
-            }
-        )
+        match self {
+            Rank::Two => write!(f, "2"),
+            Rank::Three => write!(f, "3"),
+            Rank::Four => write!(f, "4"),
+            Rank::Five => write!(f, "5"),
+            Rank::Six => write!(f, "6"),
+            Rank::Seven => write!(f, "7"),
+            Rank::Eight => write!(f, "8"),
+            Rank::Nine => write!(f, "9"),
+            Rank::Ten => write!(f, "T"),
+            Rank::Jack => write!(f, "J"),
+            Rank::Queen => write!(f, "Q"),
+            Rank::King => write!(f, "K"),
+            Rank::Ace => write!(f, "A"),
+        }
     }
 }
 

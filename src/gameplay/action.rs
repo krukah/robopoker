@@ -113,13 +113,9 @@ mod tests {
             Action::Blind(2),
             Action::Call(32767),
             Action::Shove(1738),
-            Action::Draw(Hand::from("2c Th As")),
+            Action::Draw(Hand::try_from("2c Th As").unwrap()),
         ] {
-            assert!(
-                action == Action::from(u32::from(action)),
-                "{}",
-                format!("{} != {}", action, Action::from(u32::from(action))).red()
-            );
+            assert!(action == Action::from(u32::from(action)));
         }
     }
 }

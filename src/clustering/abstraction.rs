@@ -104,10 +104,12 @@ impl From<i64> for Abstraction {
 impl From<Observation> for Abstraction {
     fn from(observation: Observation) -> Self {
         assert!(observation.street() == crate::cards::street::Street::Pref);
-        let hole = Hole::from(observation);
-        let hand = Hand::from(hole);
-        let hash = Self::hash(u64::from(hand));
-        Self::Preflop(hash)
+        Self::from(Hole::from(observation))
+    }
+}
+impl From<Hole> for Abstraction {
+    fn from(hole: Hole) -> Self {
+        Self::Preflop(Self::hash(u64::from(Hand::from(hole))))
     }
 }
 
@@ -133,12 +135,22 @@ impl From<Abstraction> for Probability {
     }
 }
 
-impl Support for Abstraction {}
-
 impl TryFrom<&str> for Abstraction {
     type Error = Box<dyn std::error::Error>;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        todo!()
+        let s = s.trim();
+        let n = &s[8..s.len() - 1];
+        if false {
+            unreachable!()
+        } else if s.starts_with("Percent(") && s.ends_with(")") {
+            Ok(Self::from(Probability::from(n.parse::<Probability>()?)))
+        } else if s.starts_with("Preflop(") && s.ends_with(")") {
+            Ok(Self::from(Hole::from(Hand::try_from(n)?)))
+        } else if s.starts_with("Learned(") && s.ends_with(")") {
+            Ok(Self::from(u64::from_str_radix(n, 16)?))
+        } else {
+            Err("invalid Abstraction string".into())
+        }
     }
 }
 
@@ -157,6 +169,8 @@ impl std::fmt::Display for Abstraction {
         }
     }
 }
+
+impl Support for Abstraction {}
 
 #[cfg(test)]
 mod tests {

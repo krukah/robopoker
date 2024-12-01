@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn permute_unique() {
-        let ref hand = Hand::from("Ac Kd Qh Js");
+        let ref hand = Hand::try_from("Ac Kd Qh Js").unwrap();
         let mut unique = std::collections::HashSet::new();
         let n = Permutation::exhaust()
             .into_iter()
@@ -193,8 +193,8 @@ mod tests {
     #[test]
     fn permute_rotation() {
         let permutation = Permutation([Suit::S, Suit::C, Suit::D, Suit::H]);
-        let original = Hand::from("Ac Kd Qh Js");
-        let permuted = Hand::from("As Kc Qd Jh");
+        let original = Hand::try_from("Ac Kd Qh Js").unwrap();
+        let permuted = Hand::try_from("As Kc Qd Jh").unwrap();
         assert!(permutation.image(&original) == permuted);
     }
 
@@ -202,8 +202,8 @@ mod tests {
     #[cfg(not(feature = "shortdeck"))]
     fn permute_interior() {
         let permutation = Permutation([Suit::C, Suit::H, Suit::D, Suit::S]);
-        let original = Hand::from("2c 3d 4h 5s");
-        let permuted = Hand::from("2c 3h 4d 5s");
+        let original = Hand::try_from("2c 3d 4h 5s").unwrap();
+        let permuted = Hand::try_from("2c 3h 4d 5s").unwrap();
         assert!(permutation.image(&original) == permuted);
     }
 

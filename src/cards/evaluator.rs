@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn high_card() {
         assert!(
-            Evaluator::from(Hand::from("As Kh Qd Jc 9s")).find_ranking()
+            Evaluator::from(Hand::try_from("As Kh Qd Jc 9s").unwrap()).find_ranking()
                 == Ranking::HighCard(Rank::Ace)
         );
     }
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn one_pair() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Kd Qc Js")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Kd Qc Js").unwrap()).find_ranking()
                 == Ranking::OnePair(Rank::Ace)
         );
     }
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn two_pair() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Kd Kc Qs")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Kd Kc Qs").unwrap()).find_ranking()
                 == Ranking::TwoPair(Rank::Ace, Rank::King)
         );
     }
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn three_oak() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Ad Kc Qs")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Ad Kc Qs").unwrap()).find_ranking()
                 == Ranking::ThreeOAK(Rank::Ace)
         );
     }
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn straight() {
         assert!(
-            Evaluator::from(Hand::from("Ts Jh Qd Kc As")).find_ranking()
+            Evaluator::from(Hand::try_from("Ts Jh Qd Kc As").unwrap()).find_ranking()
                 == Ranking::Straight(Rank::Ace)
         );
     }
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn flush() {
         assert!(
-            Evaluator::from(Hand::from("As Ks Qs Js 9s")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ks Qs Js 9s").unwrap()).find_ranking()
                 == Ranking::Flush(Rank::Ace)
         );
     }
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn full_house() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Ad Kc Ks")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Ad Kc Ks").unwrap()).find_ranking()
                 == Ranking::FullHouse(Rank::Ace, Rank::King)
         );
     }
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn four_oak() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Ad Ac Ks")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Ad Ac Ks").unwrap()).find_ranking()
                 == Ranking::FourOAK(Rank::Ace)
         );
     }
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn straight_flush() {
         assert!(
-            Evaluator::from(Hand::from("Ts Js Qs Ks As")).find_ranking()
+            Evaluator::from(Hand::try_from("Ts Js Qs Ks As").unwrap()).find_ranking()
                 == Ranking::StraightFlush(Rank::Ace)
         );
     }
@@ -233,7 +233,7 @@ mod tests {
     #[cfg(not(feature = "shortdeck"))]
     fn wheel_straight() {
         assert!(
-            Evaluator::from(Hand::from("As 2h 3d 4c 5s")).find_ranking()
+            Evaluator::from(Hand::try_from("As 2h 3d 4c 5s").unwrap()).find_ranking()
                 == Ranking::Straight(Rank::Five)
         );
     }
@@ -242,7 +242,7 @@ mod tests {
     #[cfg(feature = "shortdeck")]
     fn shortdeck_wheel_straight() {
         assert_eq!(
-            Evaluator::from(Hand::from("6s 7h 8d 9c As")).find_ranking(),
+            Evaluator::from(Hand::try_from("6s 7h 8d 9c As").unwrap()).find_ranking(),
             Ranking::Straight(Rank::Nine)
         );
     }
@@ -251,7 +251,7 @@ mod tests {
     #[cfg(not(feature = "shortdeck"))]
     fn wheel_straight_flush() {
         assert!(
-            Evaluator::from(Hand::from("As 2s 3s 4s 5s")).find_ranking()
+            Evaluator::from(Hand::try_from("As 2s 3s 4s 5s").unwrap()).find_ranking()
                 == Ranking::StraightFlush(Rank::Five)
         );
     }
@@ -260,7 +260,7 @@ mod tests {
     #[cfg(feature = "shortdeck")]
     fn wheel_straight_flush() {
         assert!(
-            Evaluator::from(Hand::from("As 6s 7s 8s 9s")).find_ranking()
+            Evaluator::from(Hand::try_from("As 6s 7s 8s 9s").unwrap()).find_ranking()
                 == Ranking::StraightFlush(Rank::Nine)
         );
     }
@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn seven_card_hand() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Kd Kc Qs Jh 9d")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Kd Kc Qs Jh 9d").unwrap()).find_ranking()
                 == Ranking::TwoPair(Rank::Ace, Rank::King)
         );
     }
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn flush_over_straight() {
         assert!(
-            Evaluator::from(Hand::from("4h 6h 7h 8h 9h Ts")).find_ranking()
+            Evaluator::from(Hand::try_from("4h 6h 7h 8h 9h Ts").unwrap()).find_ranking()
                 == Ranking::Flush(Rank::Nine)
         );
     }
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn full_house_over_flush() {
         assert!(
-            Evaluator::from(Hand::from("Kh Ah Ad As Ks Qs Js")).find_ranking()
+            Evaluator::from(Hand::try_from("Kh Ah Ad As Ks Qs Js").unwrap()).find_ranking()
                 == Ranking::FullHouse(Rank::Ace, Rank::King)
         );
     }
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn four_oak_over_full_house() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Ad Ac Ks Kh Qd")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Ad Ac Ks Kh Qd").unwrap()).find_ranking()
                 == Ranking::FourOAK(Rank::Ace)
         );
     }
@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn straight_flush_over_four_oak() {
         assert!(
-            Evaluator::from(Hand::from("Ts Js Qs Ks As Ah Ad")).find_ranking()
+            Evaluator::from(Hand::try_from("Ts Js Qs Ks As Ah Ad").unwrap()).find_ranking()
                 == Ranking::StraightFlush(Rank::Ace)
         );
     }
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn low_straight() {
         assert!(
-            Evaluator::from(Hand::from("As 2s 3h 4d 5c 6s")).find_ranking()
+            Evaluator::from(Hand::try_from("As 2s 3h 4d 5c 6s").unwrap()).find_ranking()
                 == Ranking::Straight(Rank::Six)
         );
     }
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn three_pair() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Kd Kc Qs Qh Jd")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Kd Kc Qs Qh Jd").unwrap()).find_ranking()
                 == Ranking::TwoPair(Rank::Ace, Rank::King)
         );
     }
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn two_three_oak() {
         assert!(
-            Evaluator::from(Hand::from("As Ah Ad Kc Ks Kh Qd")).find_ranking()
+            Evaluator::from(Hand::try_from("As Ah Ad Kc Ks Kh Qd").unwrap()).find_ranking()
                 == Ranking::FullHouse(Rank::Ace, Rank::King)
         );
     }

@@ -95,12 +95,12 @@ mod tests {
     #[cfg(not(feature = "shortdeck"))]
     fn super_symmetry() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("2s Ks"),
-            Hand::from("2d 5h 8c Tc Th"),
+            Hand::try_from("2s Ks").unwrap(),
+            Hand::try_from("2d 5h 8c Tc Th").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("2s Ks"),
-            Hand::from("2h 5c 8d Tc Td"),
+            Hand::try_from("2s Ks").unwrap(),
+            Hand::try_from("2h 5c 8d Tc Td").unwrap(),
         )));
         assert!(a == b);
     }
@@ -108,12 +108,12 @@ mod tests {
     #[test]
     fn pocket_rank_symmetry() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("Ac Ad"),
-            Hand::from("Jc Ts 5s"),
+            Hand::try_from("Ac Ad").unwrap(),
+            Hand::try_from("Jc Ts 5s").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("As Ah"),
-            Hand::from("Js Tc 5c"),
+            Hand::try_from("As Ah").unwrap(),
+            Hand::try_from("Js Tc 5c").unwrap(),
         )));
         assert!(a == b);
     }
@@ -121,12 +121,12 @@ mod tests {
     #[test]
     fn public_rank_symmetry() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("Td As"),
-            Hand::from("Ts Ks Kh"),
+            Hand::try_from("Td As").unwrap(),
+            Hand::try_from("Ts Ks Kh").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("Tc Ad"),
-            Hand::from("Td Kd Kh"),
+            Hand::try_from("Tc Ad").unwrap(),
+            Hand::try_from("Td Kd Kh").unwrap(),
         )));
         assert!(a == b);
     }
@@ -134,12 +134,12 @@ mod tests {
     #[test]
     fn offsuit_backdoor() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("As Jh"),
-            Hand::from("Ks Js 2d"),
+            Hand::try_from("As Jh").unwrap(),
+            Hand::try_from("Ks Js 2d").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("Ah Jd"),
-            Hand::from("Kh Jh 2c"),
+            Hand::try_from("Ah Jd").unwrap(),
+            Hand::try_from("Kh Jh 2c").unwrap(),
         )));
         assert!(a == b);
     }
@@ -147,12 +147,12 @@ mod tests {
     #[test]
     fn offsuit_draw() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("As Qh"),
-            Hand::from("Ks Js 2s"),
+            Hand::try_from("As Qh").unwrap(),
+            Hand::try_from("Ks Js 2s").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("Ad Qh"),
-            Hand::from("Kd Jd 2d"),
+            Hand::try_from("Ad Qh").unwrap(),
+            Hand::try_from("Kd Jd 2d").unwrap(),
         )));
         assert!(a == b);
     }
@@ -160,12 +160,12 @@ mod tests {
     #[test]
     fn monochrome() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("Ad Kd"),
-            Hand::from("Qd Jd Td"),
+            Hand::try_from("Ad Kd").unwrap(),
+            Hand::try_from("Qd Jd Td").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("As Ks"),
-            Hand::from("Qs Js Ts"),
+            Hand::try_from("As Ks").unwrap(),
+            Hand::try_from("Qs Js Ts").unwrap(),
         )));
         assert!(a == b);
     }
@@ -173,12 +173,12 @@ mod tests {
     #[test]
     fn antichrome() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("Ac Kc"),
-            Hand::from("Qs Js Ts"),
+            Hand::try_from("Ac Kc").unwrap(),
+            Hand::try_from("Qs Js Ts").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("As Ks"),
-            Hand::from("Qh Jh Th"),
+            Hand::try_from("As Ks").unwrap(),
+            Hand::try_from("Qh Jh Th").unwrap(),
         )));
         assert!(a == b);
     }
@@ -186,12 +186,12 @@ mod tests {
     #[test]
     fn semichrome() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("Ac Ks"),
-            Hand::from("Qc Js Ts"),
+            Hand::try_from("Ac Ks").unwrap(),
+            Hand::try_from("Qc Js Ts").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("Ad Kh"),
-            Hand::from("Qd Jh Th"),
+            Hand::try_from("Ad Kh").unwrap(),
+            Hand::try_from("Qd Jh Th").unwrap(),
         )));
         assert!(a == b);
     }
@@ -199,12 +199,12 @@ mod tests {
     #[test]
     fn polychrome() {
         let a = Isomorphism::from(Observation::from((
-            Hand::from("Ac Kd"),
-            Hand::from("Qh Js 9c"),
+            Hand::try_from("Ac Kd").unwrap(),
+            Hand::try_from("Qh Js 9c").unwrap(),
         )));
         let b = Isomorphism::from(Observation::from((
-            Hand::from("Ah Ks"),
-            Hand::from("Qc Jd 9h"),
+            Hand::try_from("Ah Ks").unwrap(),
+            Hand::try_from("Qc Jd 9h").unwrap(),
         )));
         assert!(a == b);
     }
