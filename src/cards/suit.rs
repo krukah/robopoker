@@ -21,7 +21,7 @@ impl From<u8> for Suit {
             1 => Suit::D,
             2 => Suit::H,
             3 => Suit::S,
-            _ => panic!("Invalid suit"),
+            _ => unreachable!("invalid suit"),
         }
     }
 }
@@ -44,30 +44,27 @@ impl From<Suit> for u64 {
 }
 
 /// str isomorphism
-impl From<&str> for Suit {
-    fn from(s: &str) -> Self {
-        match s {
-            "c" | "♣" => Suit::C,
-            "d" | "♦" => Suit::D,
-            "h" | "♥" => Suit::H,
-            "s" | "♠" => Suit::S,
-            _ => panic!("Invalid suit string: {}", s),
+impl TryFrom<&str> for Suit {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.trim().to_lowercase().as_str() {
+            "c" | "♣" => Ok(Suit::C),
+            "d" | "♦" => Ok(Suit::D),
+            "h" | "♥" => Ok(Suit::H),
+            "s" | "♠" => Ok(Suit::S),
+            _ => Err(format!("invalid suit str: {}", s)),
         }
     }
 }
 
 impl std::fmt::Display for Suit {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Suit::C => "c",
-                Suit::D => "d",
-                Suit::H => "h",
-                Suit::S => "s",
-            }
-        )
+        match self {
+            Suit::C => write!(f, "c"),
+            Suit::D => write!(f, "d"),
+            Suit::H => write!(f, "h"),
+            Suit::S => write!(f, "s"),
+        }
     }
 }
 

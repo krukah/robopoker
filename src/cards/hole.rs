@@ -46,7 +46,7 @@ impl From<(Card, Card)> for Hole {
 }
 
 impl TryFrom<&str> for Hole {
-    type Error = Box<dyn std::error::Error>;
+    type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let hand = Hand::try_from(s)?;
         match hand.size() {

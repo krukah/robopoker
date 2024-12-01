@@ -54,21 +54,18 @@ const SQL_CREATE_TABLES: &'static str = r#"
     CREATE TABLE IF NOT EXISTS abstraction (abs  BIGINT, st   SMALLINT);
     CREATE TABLE IF NOT EXISTS blueprint   (edge BIGINT, past BIGINT, present BIGINT, future BIGINT, policy REAL, regret REAL);
 "#;
-
 const SQL_TRUNCATE_TABLES: &'static str = r#"
     TRUNCATE TABLE encoder;
     TRUNCATE TABLE metric;
     TRUNCATE TABLE abstraction;
     TRUNCATE TABLE blueprint;
 "#;
-
 const SQL_SET_UNLOGGED: &'static str = r#"
     ALTER TABLE encoder      SET UNLOGGED;
     ALTER TABLE metric       SET UNLOGGED;
     ALTER TABLE abstraction  SET UNLOGGED;
     ALTER TABLE blueprint    SET UNLOGGED;
 "#;
-
 const SQL_BLUEPRINT: &'static str = r#"
     COPY blueprint (past, present, future, edge, policy, regret) FROM '/Users/krukah/Code/robopoker/blueprint.profile.pgcopy' WITH (FORMAT BINARY);
     CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
@@ -77,24 +74,21 @@ const SQL_BLUEPRINT: &'static str = r#"
     CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
     CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
 "#;
-
 const SQL_METRIC: &'static str = r#"
-    COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/turn.metric.pgcopy'     WITH (FORMAT BINARY);
-    COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/flop.metric.pgcopy'     WITH (FORMAT BINARY);
-    COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/preflop.metric.pgcopy'  WITH (FORMAT BINARY);
+    COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/turn.metric.pgcopy'       WITH (FORMAT BINARY);
+    COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/flop.metric.pgcopy'       WITH (FORMAT BINARY);
+    COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/preflop.metric.pgcopy'    WITH (FORMAT BINARY);
     CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
     CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
 "#;
-
 const SQL_ENCODER: &'static str = r#"
-    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/river.encoder.pgcopy' WITH (FORMAT BINARY);
-    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/turn.encoder.pgcopy'  WITH (FORMAT BINARY);
-    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/flop.encoder.pgcopy'  WITH (FORMAT BINARY);
+    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/river.encoder.pgcopy'   WITH (FORMAT BINARY);
+    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/turn.encoder.pgcopy'    WITH (FORMAT BINARY);
+    COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/flop.encoder.pgcopy'    WITH (FORMAT BINARY);
     COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/preflop.encoder.pgcopy' WITH (FORMAT BINARY);
     CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
     CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
 "#;
-
 const SQL_ABSTRACTION: &'static str = r#"
     CREATE OR REPLACE FUNCTION street(obs BIGINT) RETURNS SMALLINT AS
     $$
@@ -113,7 +107,7 @@ const SQL_ABSTRACTION: &'static str = r#"
         ELSIF n_cards = 5 THEN RETURN 1;  -- Street::Flop
         ELSIF n_cards = 6 THEN RETURN 2;  -- Street::Turn
         ELSIF n_cards = 7 THEN RETURN 3;  -- Street::River
-        ELSE  RAISE EXCEPTION 'Invalid n_cards: %', n_cards;
+        ELSE  RAISE EXCEPTION 'invalid observation: %', n_cards;
         END IF;
     END; 
     $$ 
@@ -127,7 +121,6 @@ const SQL_ABSTRACTION: &'static str = r#"
     CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
     CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (st);
 "#;
-
 const SQL_CLUSTERS: &'static str = r#"
     SELECT 
         e.abs        AS abs,
@@ -142,7 +135,6 @@ const SQL_CLUSTERS: &'static str = r#"
     ORDER BY 
         a.st, COUNT(*);
 "#;
-
 const SQL_HEATMAP: &'static str = r#"
     WITH stabs AS (
         SELECT  abs

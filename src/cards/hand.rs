@@ -156,13 +156,14 @@ impl From<Card> for Hand {
 
 /// str isomorphism
 /// this follows from Vec<Card> isomorphism
-impl From<&str> for Hand {
-    fn from(s: &str) -> Self {
-        Self::from(
+impl TryFrom<&str> for Hand {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        Ok(Self::from(
             s.split_whitespace()
-                .map(|s| Card::from(s))
-                .collect::<Vec<Card>>(),
-        )
+                .map(Card::try_from)
+                .collect::<Result<Vec<Card>, _>>()?,
+        ))
     }
 }
 
@@ -187,18 +188,18 @@ mod tests {
 
     #[test]
     fn card_iteration() {
-        let mut iter = Hand::from("Jc Ts 2c Js").into_iter();
-        assert_eq!(iter.next(), Some(Card::from("2c")));
-        assert_eq!(iter.next(), Some(Card::from("Ts")));
-        assert_eq!(iter.next(), Some(Card::from("Jc")));
-        assert_eq!(iter.next(), Some(Card::from("Js")));
+        let mut iter = Hand::try_from("Jc Ts 2c Js").unwrap().into_iter();
+        assert_eq!(iter.next(), Some(Card::try_from("2c").unwrap()));
+        assert_eq!(iter.next(), Some(Card::try_from("Ts").unwrap()));
+        assert_eq!(iter.next(), Some(Card::try_from("Jc").unwrap()));
+        assert_eq!(iter.next(), Some(Card::try_from("Js").unwrap()));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
     #[cfg(not(feature = "shortdeck"))]
     fn ranks_in_suit() {
-        let hand = Hand::from("2c 3d 4h 5s 6c 7d 8h 9s Tc Jd Qh Ks Ac");
+        let hand = Hand::try_from("2c 3d 4h 5s 6c 7d 8h 9s Tc Jd Qh Ks Ac").unwrap();
         assert_eq!(u16::from(hand.of(&Suit::C)), 0b_1000100010001); // C (2c, 6c, Tc, Ac)
         assert_eq!(u16::from(hand.of(&Suit::D)), 0b_0001000100010); // D (3d, 7d, Jd)
         assert_eq!(u16::from(hand.of(&Suit::H)), 0b_0010001000100); // H (4h, 8h, Qh)
