@@ -1,6 +1,8 @@
 use super::analysis::Analysis;
 use super::query::Query;
+use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
+use crate::cards::strength::Strength;
 use crate::clustering::abstraction::Abstraction;
 use crate::Pipe;
 use clap::Parser;
@@ -45,18 +47,23 @@ impl CLI {
                 "abstraction: {}",
                 Observation::try_from(observation.as_str())
                     .map_err(|e| format!("invalid observation: {}", e))?
-                    .pipe(|obs| self.0.abstraction(obs))
+                    .pipe(|obs| self.0.abstractione(obs))
                     .await?
             )),
             Query::Memberships { abstraction } => Ok(println!(
                 "membership: \n{}",
                 Abstraction::try_from(abstraction.as_str())
                     .map_err(|e| format!("invalid abstraction: {}", e))?
-                    .pipe(|abs| self.0.membership(abs))
+                    .pipe(|abs| self.0.constituents(abs))
                     .await?
                     .iter()
                     .enumerate()
-                    .map(|(i, obs)| format!("{:>2}. {}", i + 1, obs))
+                    .map(|(i, obs)| format!(
+                        "{:>2}. {:<18} {}",
+                        i + 1,
+                        obs,
+                        Strength::from(Hand::from(*obs))
+                    ))
                     .collect::<Vec<String>>()
                     .join("\n")
             )),

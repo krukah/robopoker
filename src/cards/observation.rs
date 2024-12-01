@@ -60,7 +60,7 @@ impl Observation {
         &self.public
     }
 
-    const SEPARATOR: &'static str = "+";
+    const SEPARATOR: &'static str = "~";
 }
 /// i64 isomorphism
 ///

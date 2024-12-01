@@ -22,7 +22,44 @@ impl Analysis {
         Self(Arc::new(client))
     }
 
-    pub async fn abstraction(&self, obs: Observation) -> Result<Abstraction, PgError> {
+    pub async fn basis(&self, street: Street) -> Result<Vec<Abstraction>, PgError> {
+        let street = street as i8;
+        const SQL_BASIS: &'static str = r#"
+            SELECT a2.abs
+            FROM abstraction a2
+            JOIN abstraction a1 ON a2.st = a1.st
+            WHERE a1.abs = $1;
+        "#;
+        Ok(self
+            .0
+            .query(SQL_BASIS, &[&street])
+            .await?
+            .iter()
+            .map(|row| row.get::<_, i64>(0).into())
+            .collect())
+    }
+    pub async fn space(&self, street: Street) -> Result<Metric, PgError> {
+        let street = street as i8;
+        const SQL_METRIC: &'static str = r#"
+            SELECT 
+                a1.abs ^ a2.abs AS xor,
+                dx 
+            FROM abstraction a1 
+            JOIN abstraction a2 
+            ON a1.st = a2.st 
+            WHERE a1.st = $1 AND a1.abs != a2.abs;
+        "#;
+        Ok(self
+            .0
+            .query(SQL_METRIC, &[&street])
+            .await?
+            .iter()
+            .map(|row| (row.get::<_, i64>(0), row.get::<_, f32>(1)))
+            .map(|(xor, distance)| (Pair::from(xor), distance))
+            .collect::<BTreeMap<Pair, f32>>()
+            .pipe(Metric::from))
+    }
+    pub async fn abstractione(&self, obs: Observation) -> Result<Abstraction, PgError> {
         let iso = obs
             .pipe(Isomorphism::from)
             .pipe(Observation::from)
@@ -39,8 +76,7 @@ impl Analysis {
             .get::<_, i64>(0)
             .into())
     }
-
-    pub async fn histogram(&self, obs: Observation) -> Result<Histogram, PgError> {
+    pub async fn distribution(&self, obs: Observation) -> Result<Histogram, PgError> {
         let isos = obs
             .children()
             .map(Isomorphism::from)
@@ -64,7 +100,29 @@ impl Analysis {
             .collect::<Vec<Abstraction>>()
             .pipe(Histogram::from))
     }
-
+    pub async fn similarities(&self, obs: Observation) -> Result<Vec<Observation>, PgError> {
+        let iso = i64::from(obs);
+        const SQL_SIMILARITIES: &'static str = r#"
+            SELECT obs
+            FROM encoder
+            WHERE abs = (
+                SELECT abs 
+                FROM encoder 
+                WHERE obs = $1
+            )
+            AND obs != $1
+            ORDER BY RANDOM()
+            LIMIT 5;
+        "#;
+        Ok(self
+            .0
+            .query(SQL_SIMILARITIES, &[&iso])
+            .await?
+            .iter()
+            .map(|row| row.get::<_, i64>(0))
+            .map(Observation::from)
+            .collect())
+    }
     pub async fn neighborhood(&self, abs: Abstraction) -> Result<Vec<(Abstraction, f32)>, PgError> {
         let abs = i64::from(abs);
         const SQL_NEIGHBORHOOD: &'static str = r#"
@@ -87,14 +145,14 @@ impl Analysis {
             .map(|(abs, distance)| (Abstraction::from(abs), distance))
             .collect())
     }
-
-    pub async fn membership(&self, abs: Abstraction) -> Result<Vec<Observation>, PgError> {
+    pub async fn constituents(&self, abs: Abstraction) -> Result<Vec<Observation>, PgError> {
         let abs = i64::from(abs);
         const SQL_MEMBERSHIP: &'static str = r#"
             SELECT obs
             FROM encoder
             WHERE abs = $1
-            LIMIT 10;
+            ORDER BY RANDOM()
+            LIMIT 5;
         "#;
         Ok(self
             .0
@@ -105,46 +163,6 @@ impl Analysis {
             .map(Observation::from)
             .collect())
     }
-
-    pub async fn basis(&self, street: Street) -> Result<Vec<Abstraction>, PgError> {
-        let street = street as i8;
-        const SQL_BASIS: &'static str = r#"
-            SELECT a2.abs
-            FROM abstraction a2
-            JOIN abstraction a1 ON a2.st = a1.st
-            WHERE a1.abs = $1;
-        "#;
-        Ok(self
-            .0
-            .query(SQL_BASIS, &[&street])
-            .await?
-            .iter()
-            .map(|row| row.get::<_, i64>(0).into())
-            .collect())
-    }
-
-    pub async fn metric(&self, street: Street) -> Result<Metric, PgError> {
-        let street = street as i8;
-        const SQL_METRIC: &'static str = r#"
-            SELECT 
-                a1.abs ^ a2.abs AS xor,
-                dx 
-            FROM abstraction a1 
-            JOIN abstraction a2 
-            ON a1.st = a2.st 
-            WHERE a1.st = $1 AND a1.abs != a2.abs;
-        "#;
-        Ok(self
-            .0
-            .query(SQL_METRIC, &[&street])
-            .await?
-            .iter()
-            .map(|row| (row.get::<_, i64>(0), row.get::<_, f32>(1)))
-            .map(|(xor, distance)| (Pair::from(xor), distance))
-            .collect::<BTreeMap<Pair, f32>>()
-            .pipe(Metric::from))
-    }
-
     pub async fn abs_distance(&self, x: Observation, y: Observation) -> Result<Energy, PgError> {
         if x.street() != y.street() {
             return Err(PgError::__private_api_timeout());
@@ -171,15 +189,14 @@ impl Analysis {
             .await?
             .get::<_, Energy>(1))
     }
-
     pub async fn obs_distance(&self, x: Observation, y: Observation) -> Result<Energy, PgError> {
         if x.street() != y.street() {
             return Err(PgError::__private_api_timeout());
         }
         let (ref hx, ref hy, ref metric) = tokio::try_join!(
-            self.histogram(x),
-            self.histogram(y),
-            self.metric(x.street())
+            self.distribution(x),
+            self.distribution(y),
+            self.space(x.street())
         )?;
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
@@ -195,7 +212,6 @@ impl Analysis {
         self.copy_abstraction().await?;
         Ok(())
     }
-
     #[rustfmt::skip]
     async fn nuke(&self) -> Result<u64, PgError> {
         Ok(self.0.execute(r#"
@@ -228,6 +244,16 @@ impl Analysis {
             ALTER TABLE metric       SET UNLOGGED;
             ALTER TABLE abstraction  SET UNLOGGED;
             ALTER TABLE blueprint    SET UNLOGGED;
+        "#, &[]).await?)
+    }
+    #[allow(dead_code)]
+    #[rustfmt::skip]
+    async fn relogged(&self) -> Result<u64, PgError> {
+        Ok(self.0.execute(r#"
+            ALTER TABLE encoder      SET LOGGED;
+            ALTER TABLE metric       SET LOGGED;
+            ALTER TABLE abstraction  SET LOGGED;
+            ALTER TABLE blueprint    SET LOGGED;
         "#, &[]).await?)
     }
     #[rustfmt::skip]
@@ -298,40 +324,3 @@ impl Analysis {
         "#, &[]).await?)
     }
 }
-
-const SQL_CLUSTERS: &'static str = r#"
-    SELECT 
-        e.abs        AS abs,
-        a.st         AS street, 
-        COUNT(*)     AS n_obs 
-    FROM 
-        encoder e 
-    JOIN 
-        abstraction a ON e.abs = a.abs 
-    GROUP BY 
-        e.abs, a.st 
-    ORDER BY 
-        a.st, COUNT(*);
-"#;
-const SQL_HEATMAP: &'static str = r#"
-    WITH stabs AS (
-        SELECT  abs
-        FROM    abstraction
-        WHERE   st = 1
-    ),
-    pairs AS (
-        SELECT 
-            a.abs                   AS abs1,
-            b.abs                   AS abs2,
-            (a.abs # b.abs)::bigint AS pxor
-        FROM        stabs a
-        CROSS JOIN  stabs b
-        WHERE       a.abs > b.abs
-    )
-    SELECT 
-        c.abs1,
-        c.abs2,
-        COALESCE(m.dx, 0) AS dst
-    FROM pairs c
-    LEFT JOIN metric m ON m.xor = c.pxor 
-"#;

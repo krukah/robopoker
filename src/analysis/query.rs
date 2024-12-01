@@ -11,7 +11,6 @@ pub enum Query {
         #[arg(required = true)]
         observation: String,
     },
-
     #[command(
         about = "find the observations in any given abstraction",
         alias = "mem"
@@ -20,7 +19,6 @@ pub enum Query {
         #[arg(required = true)]
         abstraction: String,
     },
-
     #[command(
         about = "find the neighborhood of any given abstraction",
         alias = "nbr"
@@ -29,10 +27,9 @@ pub enum Query {
         #[arg(required = true)]
         abstraction: String,
     },
-
     #[command(
         about = "find the abstraction distance between two observations",
-        alias = "distabs"
+        alias = "dab"
     )]
     AbsDistance {
         #[arg(required = true)]
@@ -40,10 +37,9 @@ pub enum Query {
         #[arg(required = true)]
         obs2: String,
     },
-
     #[command(
         about = "find the observation distance between two observations",
-        alias = "distobs"
+        alias = "dob"
     )]
     ObsDistance {
         #[arg(required = true)]
