@@ -1,6 +1,8 @@
 use super::analysis::Analysis;
+use super::query::Query;
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use clap::Parser;
 use std::io::Write;
 use tokio_postgres::Config;
 use tokio_postgres::NoTls;
@@ -37,97 +39,65 @@ impl CLI {
     }
 
     async fn handle(&self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let args = input.split_whitespace().collect::<Vec<&str>>();
-        match args.get(0).map(|s| *s) {
-            Some("cluster") => {
-                println!(
-                    "cluster: {}",
-                    args.get(1)
-                        .map(|obs| Observation::try_from(*obs))
-                        .transpose()?
-                        .map(|obs| self.0.abstraction(obs))
-                        .unwrap()
-                        .await?
-                )
-            }
-            Some("neighbors") => {
-                println!(
-                    "nearest neighbors: {}",
-                    args.get(1)
-                        .map(|abs| Abstraction::try_from(*abs))
-                        .transpose()?
-                        .map(|abs| self.0.neighborhood(abs))
-                        .unwrap()
-                        .await?
-                        .iter()
-                        .enumerate()
-                        .map(|(i, abs)| format!("{:>2}. {}", i + 1, abs))
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                )
-            }
-            Some("constituents") => {
-                println!(
-                    "constituents: {}",
-                    args.get(1)
-                        .map(|abs| Abstraction::try_from(*abs))
-                        .transpose()?
-                        .map(|abs| self.0.membership(abs))
-                        .unwrap()
-                        .await?
-                        .iter()
-                        .enumerate()
-                        .map(|(i, c)| format!("{}. {}", i + 1, c))
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                );
-            }
-            Some("abs-distance") => {
-                println!(
-                    "abstraction distance: {:.4}",
-                    args.get(1)
-                        .map(|obs1| Observation::try_from(*obs1))
-                        .transpose()?
-                        .and_then(|obs1| args
-                            .get(2)
-                            .map(|obs2| Observation::try_from(*obs2))
-                            .transpose()
-                            .unwrap()
-                            .map(|obs2| self.0.abs_distance(obs1, obs2)))
-                        .unwrap()
-                        .await?
-                );
-            }
-            Some("obs-distance") => {
-                println!(
-                    "observation distance: {:.4}",
-                    args.get(1)
-                        .map(|obs1| Observation::try_from(*obs1))
-                        .transpose()
-                        .unwrap()
-                        .map(|obs1| args
-                            .get(2)
-                            .map(|obs2| Observation::try_from(*obs2))
-                            .transpose()
-                            .unwrap()
-                            .map(|obs2| self.0.obs_distance(obs1, obs2)))
-                        .unwrap()
-                        .unwrap()
-                        .await?
-                );
-            }
-            Some("help") => {
-                println!("available commands:");
-                println!("  cluster <observation>              - get cluster for observation");
-                println!("  neighbors <abstraction> [k]        - get k nearest neighbors");
-                println!("  constituents <abstraction>         - get constituents of abstraction");
-                println!("  abs-distance <obs1> <obs2>         - get abstraction distance");
-                println!("  obs-distance <obs1> <obs2>         - get observation distance");
-                println!("  help                               - show this help");
-                println!("  exit/quit                          - exit the program");
-            }
-            _ => println!("unknown command. type 'help' for usage."),
+        match Query::parse_from(input.split_whitespace()) {
+            Query::Abstraction { observation } => Ok(println!(
+                "abstraction: {}",
+                Observation::try_from(observation.as_str())
+                    .map_err(|e| format!("invalid observation: {}", e))?
+                    .pipe(|obs| self.0.abstraction(obs))
+                    .await?
+            )),
+            Query::Memberships { abstraction } => Ok(println!(
+                "membership: \n{}",
+                Abstraction::try_from(abstraction.as_str())
+                    .map_err(|e| format!("invalid abstraction: {}", e))?
+                    .pipe(|abs| self.0.membership(abs))
+                    .await?
+                    .iter()
+                    .enumerate()
+                    .map(|(i, obs)| format!("{:>2}. {}", i + 1, obs))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            )),
+            Query::Neighborhood { abstraction } => Ok(println!(
+                "neighborhood: \n{}",
+                Abstraction::try_from(abstraction.as_str())
+                    .map_err(|e| format!("invalid abstraction: {}", e))?
+                    .pipe(|abs| self.0.neighborhood(abs))
+                    .await?
+                    .iter()
+                    .enumerate()
+                    .map(|(i, abs)| format!("{:>2}. {}", i + 1, abs))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            )),
+            Query::AbsDistance { obs1, obs2 } => Ok(println!(
+                "abstraction distance: {:.4}",
+                Observation::try_from(obs1.as_str())
+                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))
+                    .map_err(|e| format!("invalid observation: {}", e))?
+                    .pipe(|(o1, o2)| self.0.abs_distance(o1, o2))
+                    .await?
+            )),
+            Query::ObsDistance { obs1, obs2 } => Ok(println!(
+                "observation distance: {:.4}",
+                Observation::try_from(obs1.as_str())
+                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))
+                    .map_err(|e| format!("invalid observation: {}", e))?
+                    .pipe(|(o1, o2)| self.0.obs_distance(o1, o2))
+                    .await?
+            )),
         }
-        Ok(())
+    }
+}
+
+trait Pipe: Sized {
+    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R;
+}
+impl<T> Pipe for T {
+    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R {
+        {
+            f(self)
+        }
     }
 }
