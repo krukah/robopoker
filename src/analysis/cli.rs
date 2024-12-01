@@ -2,6 +2,7 @@ use super::analysis::Analysis;
 use super::query::Query;
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::Pipe;
 use clap::Parser;
 use std::io::Write;
 use tokio_postgres::Config;
@@ -39,7 +40,7 @@ impl CLI {
     }
 
     async fn handle(&self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
-        match Query::parse_from(input.split_whitespace()) {
+        match Query::try_parse_from(std::iter::once(". ").chain(input.split_whitespace()))? {
             Query::Abstraction { observation } => Ok(println!(
                 "abstraction: {}",
                 Observation::try_from(observation.as_str())
@@ -67,7 +68,7 @@ impl CLI {
                     .await?
                     .iter()
                     .enumerate()
-                    .map(|(i, abs)| format!("{:>2}. {}", i + 1, abs))
+                    .map(|(i, (abs, dist))| format!("{:>2}. {} ({:.4})", i + 1, abs, dist))
                     .collect::<Vec<String>>()
                     .join("\n")
             )),
@@ -87,17 +88,6 @@ impl CLI {
                     .pipe(|(o1, o2)| self.0.obs_distance(o1, o2))
                     .await?
             )),
-        }
-    }
-}
-
-trait Pipe: Sized {
-    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R;
-}
-impl<T> Pipe for T {
-    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R {
-        {
-            f(self)
         }
     }
 }

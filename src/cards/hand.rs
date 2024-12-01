@@ -159,11 +159,20 @@ impl From<Card> for Hand {
 impl TryFrom<&str> for Hand {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        Ok(Self::from(
-            s.split_whitespace()
-                .map(Card::try_from)
-                .collect::<Result<Vec<Card>, _>>()?,
-        ))
+        Ok(s.split_whitespace()
+            .map(|token| {
+                token
+                    .chars()
+                    .collect::<Vec<_>>()
+                    .chunks(2)
+                    .map(|chunk| chunk.iter().collect::<String>())
+                    .map(|owned| Card::try_from(owned.as_str()))
+                    .collect::<Result<Vec<Card>, _>>()
+            })
+            .flatten()
+            .flatten()
+            .collect::<Vec<Card>>()
+            .into())
     }
 }
 

@@ -2,7 +2,7 @@
 name = "robopoker"
 version = "0.1.1"
 authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description = "Implementations of Meta's Pluribus No-Limit Texas Hold-Em solution."
+description = "Implementations of No-Limit Texas Hold-Em solution."
 homepage = "https://github.com/krukah/robopoker"
 repository = "https://github.com/krukah/robopoker"
 readme = "README.md"

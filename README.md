@@ -49,6 +49,26 @@ This started as a simple Rust project before evolving into a state-of-the-art po
    - Run targeted Monte Carlo rollouts
    - Return optimal actions within time constraints
 
+# System Requirements
+
+The abstraction and counterfactual regret minimization algorithms are quite resource intensive.
+- Hierarchical k-means requires holding all strategically isomorphic observations at a given street, as well as their projected distributions onto their future streets.
+- Monte Carlo CFR requires sampling game trees with full game state information and accumulating regret and policy information
+
+| Variant    | RAM   | CPU      | Abstraction  | Blueprint  |
+|------------|-------|----------|--------------|------------|
+| Full Deck  | 50GB  | 8+ cores | 12GB         | 12GB       |
+| Short Deck | 8GB   | 4+ cores | 5GB          | 5GB        |
+| Broadway   | 1GB   | 2+ cores | 2GB          | 2GB        |
+
+
+| Street     | Abstraction Size  | Metric Size |
+|------------|-------------------|-------------|
+| Preflop    | -                 |  ?? KB      |
+| Flop       | .032 GB           | 175 KB      |
+| Turn       | .347 GB           | 175 KB      |
+| River      | 3.02 GB           | -           |
+
 # Modules
 
 ## `cards`
@@ -95,18 +115,6 @@ Monte Carlo Counterfactual Regret Minimization solver:
 ## `api`
 
 Coming soon. A distributed and scalable single-binary WebSocket-based HTTP server that allows players to play, learn, analyze, and track hands remotely.
-
-# System Requirements
-
-The abstraction and counterfactual regret minimization algorithms are quite resource intensive.
-- Hierarchical k-means requires holding all strategically isomorphic observations at a given street, as well as their projected distributions onto their future streets.
-- Monte Carlo CFR requires sampling game trees with full game state information and accumulating regret and policy information
-
-| Variant    | RAM   | CPU      | Abstraction  | Blueprint  |
-|------------|-------|----------|--------------|------------|
-| Full Deck  | 50GB  | 8+ cores | 12GB         | 12GB       |
-| Short Deck | 8GB   | 4+ cores | 5GB          | 5GB        |
-| Broadway   | 1GB   | 2+ cores | 2GB          | 2GB        |
 
 # References
 
