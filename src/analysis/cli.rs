@@ -42,12 +42,12 @@ impl CLI {
     }
 
     async fn handle(&self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
-        match Query::try_parse_from(std::iter::once(". ").chain(input.split_whitespace()))? {
+        match Query::try_parse_from(std::iter::once("> ").chain(input.split_whitespace()))? {
             Query::Abstraction { observation } => Ok(println!(
                 "abstraction: {}",
                 Observation::try_from(observation.as_str())
                     .map_err(|e| format!("invalid observation: {}", e))?
-                    .pipe(|obs| self.0.abstractione(obs))
+                    .pipe(|obs| self.0.abstractable(obs))
                     .await?
             )),
             Query::Memberships { abstraction } => Ok(println!(
