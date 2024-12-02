@@ -57,7 +57,6 @@ impl Solver {
     pub fn train() {
         if Self::done() {
             log::info!("skipping regret minimization");
-            println!("PROFILE LOADED: {}\n\n\n\n", Profile::load());
         } else {
             log::info!("starting regret minimization");
             Self::load().solve();
@@ -69,7 +68,6 @@ impl Solver {
     }
     /// the main training loop.
     fn solve(&mut self) {
-        let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
             for counterfactual in self.updates() {
                 let ref regret = counterfactual.regret();
@@ -78,7 +76,6 @@ impl Solver {
                 self.profile.add_regret(bucket, regret);
                 self.profile.add_policy(bucket, policy);
             }
-            progress.inc(1);
         }
         self.profile.save("blueprint");
     }
