@@ -4,7 +4,7 @@ use clap::Parser;
 #[command(author, version, about, long_about = None)]
 pub enum Query {
     #[command(
-        about = "find the abstractions of any given observation",
+        about = "Find the abstractions of any given observation",
         alias = "abs"
     )]
     Abstraction {
@@ -12,7 +12,7 @@ pub enum Query {
         observation: String,
     },
     #[command(
-        about = "find the observations in any given abstraction",
+        about = "Find the observations in any given abstraction",
         alias = "mem"
     )]
     Memberships {
@@ -20,7 +20,7 @@ pub enum Query {
         abstraction: String,
     },
     #[command(
-        about = "find the neighborhood of any given abstraction",
+        about = "Find the neighborhood of any given abstraction",
         alias = "nbr"
     )]
     Neighborhood {
@@ -28,7 +28,7 @@ pub enum Query {
         abstraction: String,
     },
     #[command(
-        about = "find the abstraction distance between two observations",
+        about = "Find the abstraction distance between two observations",
         alias = "dab"
     )]
     AbsDistance {
@@ -38,7 +38,7 @@ pub enum Query {
         obs2: String,
     },
     #[command(
-        about = "find the observation distance between two observations",
+        about = "Find the observation distance between two observations",
         alias = "dob"
     )]
     ObsDistance {

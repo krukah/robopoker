@@ -26,8 +26,9 @@ impl CLI {
 
     pub async fn run(&self) -> () {
         loop {
-            let ref mut input = String::new();
+            log::info!("launching analysis");
             print!("> ");
+            let ref mut input = String::new();
             std::io::stdout().flush().unwrap();
             std::io::stdin().read_line(input).unwrap();
             match input.trim() {
