@@ -40,8 +40,8 @@ impl Sampler {
     /// properties of Tree sampling, which makes lots of sense and is stronger model.
     /// broadly goes from Edge -> Action -> Game -> Abstraction
     pub fn branches(&self, node: &Node) -> Vec<Branch> {
-        node.outgoing()
-            .into_iter()
+        node.continuations()
+            .iter()
             .map(|e| (e, node.actionization(e)))
             .map(|(e, a)| (e.clone(), node.data().game().apply(a))) // up to here should prolly be encapsulated by Node::children()
             .map(|(e, g)| (e, g, self.abstraction(&g)))
