@@ -16,6 +16,40 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
+impl Layer {
+    /// something aobut just reading the Flop metric and abstractions, and then using it to generate the preflop layer
+    ///
+    pub fn preflop() {
+        Encoder::preflops(); // this runs save on Iso -> Abs for preflop
+
+        let turn_street = Street::Flop;
+        let turn_layer = Self {
+            street: turn_street,
+            metric: Metric::grab(turn_street),
+            encode: Encoder::from(turn_street),
+            kmeans: AbstractionSpace::default(),
+            points: IsomorphismSpace::default(),
+        };
+        let preflop_points = turn_layer.inner_points();
+
+        let mut metric = BTreeMap::new();
+        for a in preflop_points.0.keys() {
+            for b in preflop_points.0.keys() {
+                if a > b {
+                    let index = Pair::from((&Abstraction::from((a.0)), &Abstraction::from((b.0))));
+                    let x = preflop_points.0.get(a).expect("pre-computed");
+                    let y = preflop_points.0.get(b).expect("pre-computed");
+                    let distance = turn_layer.metric.emd(x, y) + turn_layer.metric.emd(y, x);
+                    let distance = distance / 2.;
+                    metric.insert(index, distance);
+                }
+            }
+        }
+        Metric::from(metric).save(Street::Pref);
+        panic!("at the disco");
+    }
+}
+
 /// Hierarchical K Means Learner.
 /// this is decomposed into the necessary data structures
 /// for kmeans clustering to occur for a given `Street`.

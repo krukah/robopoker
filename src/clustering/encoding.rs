@@ -18,7 +18,6 @@ pub struct Encoder(BTreeMap<Isomorphism, Abstraction>);
 impl Encoder {
     /// only run this once.
     pub fn learn() {
-        Layer::preflop();
         if Self::done() {
             log::info!("skipping abstraction");
         } else {
