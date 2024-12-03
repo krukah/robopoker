@@ -16,38 +16,12 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
-impl Layer {
-    /// something aobut just reading the Flop metric and abstractions, and then using it to generate the preflop layer
-    ///
-    pub fn preflop() {
-        Encoder::preflops(); // this runs save on Iso -> Abs for preflop
-
-        let turn_street = Street::Flop;
-        let turn_layer = Self {
-            street: turn_street,
-            metric: Metric::grab(turn_street),
-            encode: Encoder::from(turn_street),
-            kmeans: AbstractionSpace::default(),
-            points: IsomorphismSpace::default(),
-        };
-        let preflop_points = turn_layer.inner_points();
-
-        let mut metric = BTreeMap::new();
-        for a in preflop_points.0.keys() {
-            for b in preflop_points.0.keys() {
-                if a > b {
-                    let index = Pair::from((&Abstraction::from((a.0)), &Abstraction::from((b.0))));
-                    let x = preflop_points.0.get(a).expect("pre-computed");
-                    let y = preflop_points.0.get(b).expect("pre-computed");
-                    let distance = turn_layer.metric.emd(x, y) + turn_layer.metric.emd(y, x);
-                    let distance = distance / 2.;
-                    metric.insert(index, distance);
-                }
-            }
-        }
-        Metric::from(metric).save(Street::Pref);
-        panic!("at the disco");
-    }
+pub struct Layer {
+    street: Street,
+    metric: Metric,
+    encode: Encoder,
+    kmeans: AbstractionSpace,
+    points: IsomorphismSpace,
 }
 
 /// Hierarchical K Means Learner.
@@ -70,14 +44,6 @@ impl Layer {
 /// - CPU := O(# centroids)^2
 /// - RAM := O(# centroids)^2
 ///
-pub struct Layer {
-    street: Street,
-    metric: Metric,
-    encode: Encoder,
-    kmeans: AbstractionSpace,
-    points: IsomorphismSpace,
-}
-
 impl Layer {
     /// start with the River layer. everything is empty because we
     /// can generate `Abstractor` and `SmallSpace` from "scratch".
@@ -104,31 +70,17 @@ impl Layer {
             street: self.inner_street(),         // uniquely determined by outer layer
             metric: self.inner_metric(),         // uniquely determined by outer layer
             points: self.inner_points(),         // uniquely determined by outer layer
-            kmeans: AbstractionSpace::default(), // assigned during clustering
             encode: Encoder::default(),          // assigned during clustering
+            kmeans: AbstractionSpace::default(), // assigned during clustering
         };
-        layer.save_metric();
-        layer.cluster();
-        layer.save_kmeans();
+        // function starts here
+        // Layer::cluster() -> Self
+        // Layer::save() -> Self
+        layer.kmeans_initial();
+        layer.kmeans_cluster();
+        layer.metric.save(layer.street);
+        layer.encode.save(layer.street);
         layer
-    }
-
-    fn cluster(&mut self) {
-        self.kmeans_initial();
-        self.kmeans_cluster();
-    }
-    fn save_metric(&self) {
-        match self.street.next() {
-            Street::Rive => (),
-            s => self.metric.save(s),
-        }
-    }
-    fn save_kmeans(&self) {
-        // shloppy
-        if self.street == Street::Pref {
-            self.inner_metric().save(Street::Pref);
-        }
-        self.encode.save(self.street);
     }
 
     /// simply go to the previous street
@@ -140,6 +92,7 @@ impl Layer {
         );
         self.street.prev()
     }
+
     /// compute the outer product of the `Abstraction -> Histogram`s at the current layer,
     /// - generate the _inner layer_ `Metric` between `Abstraction`s
     /// - by using the _outer layer_ `Metric` between `Histogram`s via EMD calcluations.
@@ -168,6 +121,7 @@ impl Layer {
         }
         Metric::from(metric)
     }
+
     /// using the current layer's `Abstractor`,
     /// we generate the `LargeSpace` of `Observation` -> `Histogram`.
     /// 1. take all `Observation`s for `self.street.prev()`
@@ -204,15 +158,17 @@ impl Layer {
             "declaring abstractions",
             format!("{}    {} clusters", self.street, k)
         );
-        // shloppy
+        // SLOP SLOP SLOP
+        // SLOP SLOP SLOP
         if self.street == Street::Pref {
-            for (iso, hist) in self.points.iter_mut() {
+            return for (iso, hist) in self.points.iter_mut() {
                 let labels = Abstraction::from(iso.0);
                 let sample = hist.clone();
                 self.kmeans.expand(labels, sample);
-            }
-            return;
+            };
         }
+        // SLOP SLOP SLOP
+        // SLOP SLOP SLOP
         let ref mut rng = rand::thread_rng();
         let progress = crate::progress(k);
         let sample = self.sample_uniform(rng);
@@ -227,6 +183,7 @@ impl Layer {
         }
         progress.finish();
     }
+
     /// for however many iterations we want,
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
@@ -237,14 +194,16 @@ impl Layer {
             "clustering observations",
             format!("{}    {} iterations", self.street, t)
         );
-        // shloppy
+        // SLOP SLOP SLOP
+        // SLOP SLOP SLOP
         if self.street == Street::Pref {
-            for (iso, _) in self.points.iter_mut() {
+            return for (iso, _) in self.points.iter_mut() {
                 let ref abs = Abstraction::from(iso.0);
                 self.encode.assign(abs, iso);
-            }
-            return;
+            };
         }
+        // SLOP SLOP SLOP
+        // SLOP SLOP SLOP
         let progress = crate::progress(t);
         for _ in 0..t {
             let neighbors = self.get_neighbor();
