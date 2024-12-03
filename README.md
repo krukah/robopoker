@@ -23,9 +23,9 @@ This started as a simple Rust project before evolving into a state-of-the-art po
 </tr>
 </table>
 
- The guiding philosophy of this crate is to use very precise struct and trait abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. We lean heavily into idiomatic Rust by using lazy functional patterns, efficient data structure representations, infallible type conversions, thread-safe multi-processing, and strictly safe code.
+The guiding philosophy of this crate is to use very precise struct and trait abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. We lean heavily into idiomatic Rust by using lazy functional patterns, efficient data structure representations, infallible type conversions, thread-safe multi-processing, and strictly safe code.
 
- The intended use case is a one-time resource-intensive training run that will save information abstractions, k-means clusters, distance metrics, and blueprint profiles to disk for use in later runs or analyses. To generate these datasets under arbitrary parametrization, the program will iterate through the following steps:
+The intended use case is a one-time resource-intensive training run that will save information abstractions, k-means clusters, distance metrics, and blueprint profiles to disk for use in later runs or analyses. To generate these datasets under arbitrary parametrization, the program will iterate through the following steps:
 
 1. For each layer of hierarchical abstraction (`preflop`, `flop`, `turn`, `river`):
    - Generate isomorphic hand clusters by exhaustively iterating through strategically equivalent situations
@@ -55,19 +55,12 @@ The abstraction and counterfactual regret minimization algorithms are quite reso
 - Hierarchical k-means requires holding all strategically isomorphic observations at a given street, as well as their projected distributions onto their future streets.
 - Monte Carlo CFR requires sampling game trees with full game state information and accumulating regret and policy information
 
-| Variant    | RAM   | CPU      | Abstraction  | Blueprint  |
-|------------|-------|----------|--------------|------------|
-| Full Deck  | 50GB  | 8+ cores | 12GB         | 12GB       |
-| Short Deck | 8GB   | 4+ cores | 5GB          | 5GB        |
-| Broadway   | 1GB   | 2+ cores | 2GB          | 2GB        |
-
-
 | Street     | Abstraction Size  | Metric Size |
 |------------|-------------------|-------------|
-| Preflop    | -                 |  ?? KB      |
-| Flop       | .032 GB           | 175 KB      |
-| Turn       | .347 GB           | 175 KB      |
-| River      | 3.02 GB           | -           |
+| Preflop    |          4 KB     | 301 KB      |
+| Flop       |         32 MB     | 175 KB      |
+| Turn       |        347 MB     | 175 KB      |
+| River      |       3.02 GB     | -           | 
 
 # Modules
 

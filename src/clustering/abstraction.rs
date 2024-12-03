@@ -37,7 +37,7 @@ impl Abstraction {
     }
 
     fn hash(n: u64) -> u64 {
-        Self::mask(n.wrapping_mul(0x9E3779B97F4A7C15))
+        Self::mask(n.wrapping_mul(Self::FIBONACCI))
     }
     fn mask(n: u64) -> u64 {
         n & 0x000FFFFFFFFFFFFF
@@ -50,9 +50,11 @@ impl Abstraction {
     }
 
     const N: u8 = 63;
+    const FIBONACCI: u64 = 0x9E3779B97F4A7C15;
     const EQUITY_TAG: u64 = 0xEEE;
     const POCKET_TAG: u64 = 0xFFF;
     const BUCKETS: [Self; Self::size()] = Self::buckets();
+
     const fn buckets() -> [Self; Self::size()] {
         let mut buckets = [Self::Percent(0); Self::size()];
         let mut i = 0;
@@ -104,12 +106,7 @@ impl From<i64> for Abstraction {
 impl From<Observation> for Abstraction {
     fn from(observation: Observation) -> Self {
         assert!(observation.street() == crate::cards::street::Street::Pref);
-        Self::from(Hole::from(observation))
-    }
-}
-impl From<Hole> for Abstraction {
-    fn from(hole: Hole) -> Self {
-        Self::Preflop(Self::hash(u64::from(Hand::from(hole))))
+        Self::Preflop(Self::hash(u64::from(Hand::from(Hole::from(observation)))))
     }
 }
 
@@ -145,9 +142,9 @@ impl TryFrom<&str> for Abstraction {
         } else if s.starts_with("Percent(") && s.ends_with(")") {
             Ok(Self::from(Probability::from(n.parse::<Probability>()?)))
         } else if s.starts_with("Preflop(") && s.ends_with(")") {
-            Ok(Self::from(Hole::from(Hand::try_from(n)?)))
+            Ok(Self::Preflop(u64::from_str_radix(n, 16)?))
         } else if s.starts_with("Learned(") && s.ends_with(")") {
-            Ok(Self::from(u64::from_str_radix(n, 16)?))
+            Ok(Self::Learned(u64::from_str_radix(n, 16)?))
         } else {
             Err("invalid Abstraction string".into())
         }
@@ -163,9 +160,9 @@ impl crate::Arbitrary for Abstraction {
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Learned(n) => write!(f, "{:016x}", n),
-            Self::Percent(n) => write!(f, "Equity({:00.2})", Self::floatize(*n)),
-            Self::Preflop(h) => write!(f, "Pocket({})", h),
+            Self::Learned(n) => write!(f, "Learned({:016x})", n),
+            Self::Preflop(h) => write!(f, "Preflop({:016x})", h),
+            Self::Percent(n) => write!(f, "Percent({:00.2})", Self::floatize(*n)),
         }
     }
 }
@@ -186,7 +183,6 @@ mod tests {
             assert!((p - f).abs() < 1. / Abstraction::N as Probability);
         }
     }
-
     #[test]
     fn is_floatize_inverse_quantize() {
         for q in 0..=Abstraction::N {
@@ -195,19 +191,16 @@ mod tests {
             assert!(q == i);
         }
     }
-
     #[test]
     fn bijective_u64_random() {
         let random = Abstraction::random();
         assert_eq!(random, Abstraction::from(u64::from(random)));
     }
-
     #[test]
     fn bijective_u64_equity() {
         let equity = Abstraction::Percent(Abstraction::N / 2);
         assert_eq!(equity, Abstraction::from(u64::from(equity)));
     }
-
     #[test]
     fn bijective_u64_pocket() {
         let pocket = Abstraction::from(Observation::from(Street::Pref));
