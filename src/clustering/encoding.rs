@@ -18,6 +18,7 @@ pub struct Encoder(BTreeMap<Isomorphism, Abstraction>);
 impl Encoder {
     /// only run this once.
     pub fn learn() {
+        Layer::preflop();
         if Self::done() {
             log::info!("skipping abstraction");
         } else {
@@ -64,15 +65,27 @@ impl Encoder {
         }
     }
     /// pre-compute the river abstraction mapping
+    /// these are fixed since game rules enforce equity values
     pub fn rivers() -> Self {
-        let rivers = Self(
-            Observation::exhaust(Street::Rive)
-                .filter(Isomorphism::is_canonical)
-                .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs.equity())))
-                .collect::<BTreeMap<Isomorphism, Abstraction>>(),
-        );
+        let rivers = Observation::exhaust(Street::Rive)
+            .filter(Isomorphism::is_canonical)
+            .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs.equity())))
+            .collect::<BTreeMap<_, _>>();
+        let rivers = Self(rivers);
         rivers.save(Street::Rive);
         rivers
+    }
+
+    /// pre-compute the preflop abstraction mapping
+    /// these are "fixed" since we don't do abstraction on preflop, so deterministic
+    pub fn preflops() -> Self {
+        let preflops = Observation::exhaust(Street::Pref)
+            .filter(Isomorphism::is_canonical)
+            .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs)))
+            .collect::<BTreeMap<_, _>>();
+        let preflops = Self(preflops);
+        preflops.save(Street::Pref);
+        preflops
     }
 }
 
