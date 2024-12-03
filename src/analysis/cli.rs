@@ -14,8 +14,10 @@ pub struct CLI(Analysis);
 
 impl CLI {
     pub async fn new() -> Self {
+        log::info!("connecting to db");
         let (client, connection) = Config::default()
             .host("localhost")
+            .port(5432)
             .dbname("robopoker")
             .connect(NoTls)
             .await
@@ -25,8 +27,8 @@ impl CLI {
     }
 
     pub async fn run(&self) -> () {
+        log::info!("launching analysis");
         loop {
-            log::info!("launching analysis");
             print!("> ");
             let ref mut input = String::new();
             std::io::stdout().flush().unwrap();

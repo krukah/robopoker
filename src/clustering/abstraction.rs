@@ -119,7 +119,7 @@ impl From<Probability> for Abstraction {
     fn from(p: Probability) -> Self {
         assert!(p >= 0.);
         assert!(p <= 1.);
-        Self::Percent(Abstraction::quantize(p))
+        Self::Percent(Self::quantize(p))
     }
 }
 impl From<Abstraction> for Probability {

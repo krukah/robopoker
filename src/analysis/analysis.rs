@@ -212,6 +212,11 @@ impl Analysis {
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
 
+    /// call this exactly once after we've written everything to disk, namely:
+    /// - blueprint
+    /// - (for each street) metric
+    /// - (for each street) encoder
+    /// should probably add a method to assert that we're not erasing any data
     pub async fn upload(&self) -> Result<(), E> {
         self.nuke().await?;
         self.truncate().await?;
@@ -223,85 +228,67 @@ impl Analysis {
         self.copy_abstraction().await?;
         Ok(())
     }
-    #[rustfmt::skip]
-    async fn nuke(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn nuke(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             DROP SCHEMA public CASCADE;
             CREATE SCHEMA public;
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[rustfmt::skip]
-    async fn recreate(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn recreate(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             CREATE TABLE IF NOT EXISTS encoder     (obs  BIGINT, abs  BIGINT);
             CREATE TABLE IF NOT EXISTS metric      (xor  BIGINT, dx   REAL);
             CREATE TABLE IF NOT EXISTS abstraction (abs  BIGINT, st   SMALLINT);
             CREATE TABLE IF NOT EXISTS blueprint   (edge BIGINT, past BIGINT, present BIGINT, future BIGINT, policy REAL, regret REAL);
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[rustfmt::skip]
-    async fn truncate(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn truncate(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             TRUNCATE TABLE encoder;
             TRUNCATE TABLE metric;
             TRUNCATE TABLE abstraction;
             TRUNCATE TABLE blueprint;
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[rustfmt::skip]
-    async fn unlogged(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn unlogged(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             ALTER TABLE encoder      SET UNLOGGED;
             ALTER TABLE metric       SET UNLOGGED;
             ALTER TABLE abstraction  SET UNLOGGED;
             ALTER TABLE blueprint    SET UNLOGGED;
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[allow(dead_code)]
-    #[rustfmt::skip]
-    async fn relogged(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
-            ALTER TABLE encoder      SET LOGGED;
-            ALTER TABLE metric       SET LOGGED;
-            ALTER TABLE abstraction  SET LOGGED;
-            ALTER TABLE blueprint    SET LOGGED;
-        "#, &[]).await?)
-    }
-    #[rustfmt::skip]
-    async fn copy_blueprint(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn copy_blueprint(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             COPY blueprint (past, present, future, edge, policy, regret) FROM '/Users/krukah/Code/robopoker/blueprint.profile.pgcopy' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
             CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
             CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
             CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
             CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[rustfmt::skip]
-    async fn copy_metric(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn copy_metric(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/turn.metric.pgcopy'       WITH (FORMAT BINARY);
             COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/flop.metric.pgcopy'       WITH (FORMAT BINARY);
             COPY metric (xor, dx) FROM '/Users/krukah/Code/robopoker/preflop.metric.pgcopy'    WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
             CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[rustfmt::skip]
-    async fn copy_encoder(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn copy_encoder(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/river.encoder.pgcopy'   WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/turn.encoder.pgcopy'    WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/flop.encoder.pgcopy'    WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '/Users/krukah/Code/robopoker/preflop.encoder.pgcopy' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
             CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
-        "#, &[]).await?)
+        "#).await?)
     }
-    #[rustfmt::skip]
-    async fn copy_abstraction(&self) -> Result<u64, E> {
-        Ok(self.0.execute(r#"
+    async fn copy_abstraction(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                  
             CREATE OR REPLACE FUNCTION street(obs BIGINT) RETURNS SMALLINT AS
             $$
             DECLARE
@@ -332,6 +319,6 @@ impl Analysis {
             GROUP BY e.abs;
             CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
             CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (st);
-        "#, &[]).await?)
+        "#).await?)
     }
 }
