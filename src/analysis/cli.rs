@@ -4,7 +4,6 @@ use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::strength::Strength;
 use crate::clustering::abstraction::Abstraction;
-use crate::Pipe;
 use clap::Parser;
 use std::io::Write;
 use tokio_postgres::Config;
@@ -23,11 +22,11 @@ impl CLI {
             .await
             .expect("db connection");
         tokio::spawn(connection);
-        Self(Analysis::new(client))
+        Self(Analysis::from(client))
     }
 
     pub async fn run(&self) -> () {
-        log::info!("launching analysis");
+        log::info!("entering analysis");
         loop {
             print!("> ");
             let ref mut input = String::new();
@@ -37,8 +36,8 @@ impl CLI {
                 "quit" => break,
                 "exit" => break,
                 _ => match self.handle(input).await {
-                    Err(e) => eprintln!("handle error: {}", e),
                     Ok(_) => continue,
+                    Err(e) => eprintln!("{}", e),
                 },
             }
         }
@@ -46,58 +45,50 @@ impl CLI {
 
     async fn handle(&self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
         match Query::try_parse_from(std::iter::once("> ").chain(input.split_whitespace()))? {
-            Query::Abstraction { observation } => Ok(println!(
-                "abstraction: {}",
-                Observation::try_from(observation.as_str())
-                    .map_err(|e| format!("invalid observation: {}", e))?
-                    .pipe(|obs| self.0.abstractable(obs))
-                    .await?
-            )),
-            Query::Memberships { abstraction } => Ok(println!(
-                "membership: \n{}",
-                Abstraction::try_from(abstraction.as_str())
-                    .map_err(|e| format!("invalid abstraction: {}", e))?
-                    .pipe(|abs| self.0.constituents(abs))
-                    .await?
-                    .iter()
-                    .enumerate()
-                    .map(|(i, obs)| format!(
-                        "{:>2}. {:<18} {}",
-                        i + 1,
-                        obs,
-                        Strength::from(Hand::from(*obs))
-                    ))
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            )),
-            Query::Neighborhood { abstraction } => Ok(println!(
-                "neighborhood: \n{}",
-                Abstraction::try_from(abstraction.as_str())
-                    .map_err(|e| format!("invalid abstraction: {}", e))?
-                    .pipe(|abs| self.0.neighborhood(abs))
+            Query::Abstraction { observation } => {
+                let obs = Observation::try_from(observation.as_str())?;
+                let abstraction = self.0.encode(obs).await?;
+                Ok(println!("abstraction: {}", abstraction))
+            }
+            Query::AbsDistance { obs1, obs2 } => {
+                let (o1, o2) = Observation::try_from(obs1.as_str())
+                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))?;
+                let distance = self.0.abs_distance(o1, o2).await?;
+                Ok(println!("abstraction distance: {:.4}", distance))
+            }
+            Query::ObsDistance { obs1, obs2 } => {
+                let (o1, o2) = Observation::try_from(obs1.as_str())
+                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))?;
+                let distance = self.0.obs_distance(o1, o2).await?;
+                Ok(println!("observation distance: {:.4}", distance))
+            }
+            Query::Memberships { abstraction } => {
+                let abs = Abstraction::try_from(abstraction.as_str())?;
+                let memberships = self
+                    .0
+                    .membership(abs)
                     .await?
                     .iter()
                     .enumerate()
-                    .map(|(i, (abs, dist))| format!("{:>2}. {} ({:.4})", i + 1, abs, dist))
+                    .map(|(i, obs)| (i + 1, obs, Strength::from(Hand::from(*obs))))
+                    .map(|(i, o, s)| format!("\n{:>2}. {:<18} {}", i, o, s))
                     .collect::<Vec<String>>()
-                    .join("\n")
-            )),
-            Query::AbsDistance { obs1, obs2 } => Ok(println!(
-                "abstraction distance: {:.4}",
-                Observation::try_from(obs1.as_str())
-                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))
-                    .map_err(|e| format!("invalid observation: {}", e))?
-                    .pipe(|(o1, o2)| self.0.abs_distance(o1, o2))
+                    .join("");
+                Ok(println!("membership: {}", memberships))
+            }
+            Query::Neighborhood { abstraction } => {
+                let abs = Abstraction::try_from(abstraction.as_str())?;
+                let neighborhood = self
+                    .0
+                    .vicinity(abs)
                     .await?
-            )),
-            Query::ObsDistance { obs1, obs2 } => Ok(println!(
-                "observation distance: {:.4}",
-                Observation::try_from(obs1.as_str())
-                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))
-                    .map_err(|e| format!("invalid observation: {}", e))?
-                    .pipe(|(o1, o2)| self.0.obs_distance(o1, o2))
-                    .await?
-            )),
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (abs, dist))| format!("\n{:>2}. {} ({:.4})", i + 1, abs, dist))
+                    .collect::<Vec<String>>()
+                    .join("");
+                Ok(println!("neighborhood: {}", neighborhood))
+            }
         }
     }
 }

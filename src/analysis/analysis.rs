@@ -8,7 +8,6 @@ use crate::clustering::pair::Pair;
 use crate::clustering::sinkhorn::Sinkhorn;
 use crate::transport::coupling::Coupling;
 use crate::Energy;
-use crate::Pipe;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -18,11 +17,20 @@ use tokio_postgres::Error as E;
 pub struct Analysis(Arc<Client>);
 
 impl Analysis {
-    pub fn new(client: Client) -> Self {
-        Self(Arc::new(client))
+    pub async fn upload(&self) -> Result<(), E> {
+        self.nuke().await?;
+        self.truncate().await?;
+        self.recreate().await?;
+        self.unlogged().await?;
+        self.copy_metric().await?;
+        self.copy_encoder().await?;
+        self.copy_streets().await?;
+        self.copy_blueprint().await?;
+        self.copy_abstraction().await?;
+        Ok(())
     }
 
-    pub async fn abasis(&self, street: Street) -> Result<Vec<Abstraction>, E> {
+    pub async fn basis(&self, street: Street) -> Result<Vec<Abstraction>, E> {
         let street = street as i16;
         const SQL: &'static str = r#"
             SELECT a2.abs
@@ -35,22 +43,23 @@ impl Analysis {
             .query(SQL, &[&street])
             .await?
             .iter()
-            .map(|row| row.get::<_, i64>(0).into())
+            .map(|row| row.get::<_, i64>(0))
+            .map(Abstraction::from)
             .collect())
     }
     pub async fn metric(&self, street: Street) -> Result<Metric, E> {
         let street = street as i16;
         const SQL: &'static str = r#"
-            SELECT 
+            SELECT
                 a1.abs # a2.abs AS xor,
                 m.dx            AS dx
-            FROM abstraction a1 
-            JOIN abstraction a2 
-                ON a1.st = a2.st 
-            JOIN metric m 
+            FROM abstraction a1
+            JOIN abstraction a2
+                ON a1.st = a2.st
+            JOIN metric m
                 ON (a1.abs # a2.abs) = m.xor
-            WHERE 
-                a1.st   = $1 AND 
+            WHERE
+                a1.st   = $1 AND
                 a1.abs != a2.abs;
         "#;
         Ok(self
@@ -61,16 +70,13 @@ impl Analysis {
             .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
             .map(|(xor, distance)| (Pair::from(xor), distance))
             .collect::<BTreeMap<Pair, Energy>>()
-            .pipe(Metric::from))
+            .into())
     }
-    pub async fn abstractable(&self, obs: Observation) -> Result<Abstraction, E> {
-        let iso = obs
-            .pipe(Isomorphism::from)
-            .pipe(Observation::from)
-            .pipe(i64::from);
+    pub async fn encode(&self, obs: Observation) -> Result<Abstraction, E> {
+        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
-            SELECT abs 
-            FROM encoder 
+            SELECT abs
+            FROM encoder
             WHERE obs = $1
         "#;
         Ok(self
@@ -91,8 +97,8 @@ impl Analysis {
             .into_iter()
             .collect::<Vec<i64>>();
         const SQL: &'static str = r#"
-            SELECT abs 
-            FROM encoder 
+            SELECT abs
+            FROM encoder
             WHERE obs = ANY($1)
         "#;
         Ok(self
@@ -103,20 +109,17 @@ impl Analysis {
             .map(|row| row.get::<_, i64>(0))
             .map(Abstraction::from)
             .collect::<Vec<Abstraction>>()
-            .pipe(Histogram::from))
+            .into())
     }
-    pub async fn similarities(&self, obs: Observation) -> Result<Vec<Observation>, E> {
+    pub async fn equivalents(&self, obs: Observation) -> Result<Vec<Observation>, E> {
         // 8d8s~6dJs7c
-        let iso = obs
-            .pipe(Isomorphism::from)
-            .pipe(Observation::from)
-            .pipe(i64::from);
+        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
             SELECT obs
             FROM encoder
             WHERE abs = (
-                SELECT abs 
-                FROM encoder 
+                SELECT abs
+                FROM encoder
                 WHERE obs = $1
             )
             AND obs != $1
@@ -132,7 +135,7 @@ impl Analysis {
             .map(Observation::from)
             .collect())
     }
-    pub async fn constituents(&self, abs: Abstraction) -> Result<Vec<Observation>, E> {
+    pub async fn membership(&self, abs: Abstraction) -> Result<Vec<Observation>, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT obs
@@ -150,14 +153,14 @@ impl Analysis {
             .map(Observation::from)
             .collect())
     }
-    pub async fn neighborhood(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
+    pub async fn vicinity(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT a1.abs, m.dx
             FROM abstraction a1
             JOIN abstraction a2 ON a1.st = a2.st
             JOIN metric m ON (a1.abs # $1) = m.xor
-            WHERE 
+            WHERE
                 a2.abs  = $1 AND
                 a1.abs != $1
             ORDER BY m.dx
@@ -180,21 +183,15 @@ impl Analysis {
         if x == y {
             return Ok(0 as Energy);
         }
-        let x = x
-            .pipe(Isomorphism::from)
-            .pipe(Observation::from)
-            .pipe(i64::from);
-        let y = y
-            .pipe(Isomorphism::from)
-            .pipe(Observation::from)
-            .pipe(i64::from);
+        let x = i64::from(Observation::from(Isomorphism::from(x)));
+        let y = i64::from(Observation::from(Isomorphism::from(y)));
         const SQL: &'static str = r#"
             SELECT m.dx
             FROM encoder e1
             JOIN encoder e2
                 ON  e1.obs = $1
                 AND e2.obs = $2
-            JOIN metric m 
+            JOIN metric m
                 ON (e1.abs # e2.abs) = m.xor;
         "#;
         Ok(self.0.query_one(SQL, &[&x, &y]).await?.get::<_, Energy>(0))
@@ -212,85 +209,59 @@ impl Analysis {
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
 
-    /// call this exactly once after we've written everything to disk, namely:
-    /// - blueprint
-    /// - (for each street) metric
-    /// - (for each street) encoder
-    /// should probably add a method to assert that we're not erasing any data
-    pub async fn upload(&self) -> Result<(), E> {
-        self.nuke().await?;
-        self.truncate().await?;
-        self.recreate().await?;
-        self.unlogged().await?;
-        self.copy_metric().await?;
-        self.copy_encoder().await?;
-        self.copy_blueprint().await?;
-        self.copy_abstraction().await?;
-        Ok(())
+    fn path(&self) -> String {
+        std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
     }
     async fn nuke(&self) -> Result<(), E> {
-        Ok(self.0.batch_execute(r#"                                                                                  
+        Ok(self.0.batch_execute(r#"                                                                                                   
             DROP SCHEMA public CASCADE;
             CREATE SCHEMA public;
         "#).await?)
     }
     async fn recreate(&self) -> Result<(), E> {
-        Ok(self.0.batch_execute(r#"                                                                                  
+        Ok(self.0.batch_execute(r#"                                                        
             CREATE TABLE IF NOT EXISTS encoder     (obs  BIGINT, abs  BIGINT);
             CREATE TABLE IF NOT EXISTS metric      (xor  BIGINT, dx   REAL);
             CREATE TABLE IF NOT EXISTS abstraction (abs  BIGINT, st   SMALLINT);
+            CREATE TABLE IF NOT EXISTS street      (st SMALLINT, nobs INTEGER, nabs INTEGER);
             CREATE TABLE IF NOT EXISTS blueprint   (edge BIGINT, past BIGINT, present BIGINT, future BIGINT, policy REAL, regret REAL);
         "#).await?)
     }
     async fn truncate(&self) -> Result<(), E> {
-        Ok(self.0.batch_execute(r#"                                                                                  
+        Ok(self.0.batch_execute(r#"                                                                                                   
             TRUNCATE TABLE encoder;
             TRUNCATE TABLE metric;
             TRUNCATE TABLE abstraction;
+            TRUNCATE TABLE street;
             TRUNCATE TABLE blueprint;
         "#).await?)
     }
     async fn unlogged(&self) -> Result<(), E> {
-        Ok(self.0.batch_execute(r#"                                                                                  
+        Ok(self.0.batch_execute(r#"                                                                                                   
             ALTER TABLE encoder      SET UNLOGGED;
             ALTER TABLE metric       SET UNLOGGED;
             ALTER TABLE abstraction  SET UNLOGGED;
+            ALTER TABLE street       SET UNLOGGED;
             ALTER TABLE blueprint    SET UNLOGGED;
         "#).await?)
     }
-    async fn copy_blueprint(&self) -> Result<(), E> {
-        let path = std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned();
-        Ok(self.0.batch_execute(format!(r#"                                                                                  
-            COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/blueprint.profile.pgcopy' WITH (FORMAT BINARY);
-            CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
-            CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
-            CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
-            CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
-            CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
-        "#, path).as_str()).await?)
-    }
     async fn copy_metric(&self) -> Result<(), E> {
-        let path = std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned();
-        Ok(self.0.batch_execute(format!(r#"                                                                                  
-            COPY metric (xor, dx) FROM '{}/turn.metric.pgcopy'       WITH (FORMAT BINARY);
-            COPY metric (xor, dx) FROM '{}/flop.metric.pgcopy'       WITH (FORMAT BINARY);
-            COPY metric (xor, dx) FROM '{}/preflop.metric.pgcopy'    WITH (FORMAT BINARY);
+        let path = self.path();
+        Ok(self.0.batch_execute(format!(r#"                                                                                                   
+            INSERT INTO metric (xor, dx) VALUES (0, 0);
+            COPY        metric (xor, dx) FROM '{}/turn.metric.pgcopy'       WITH (FORMAT BINARY);
+            COPY        metric (xor, dx) FROM '{}/flop.metric.pgcopy'       WITH (FORMAT BINARY);
+            COPY        metric (xor, dx) FROM '{}/preflop.metric.pgcopy'    WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
             CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
         "#, path, path, path).as_str()).await?)
     }
     async fn copy_encoder(&self) -> Result<(), E> {
-        let path = std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned();
-        Ok(self.0.batch_execute(format!(r#"                                                                                  
+        let path = self.path();
+        Ok(self.0.batch_execute(format!(r#"                                                                                                   
             COPY encoder (obs, abs) FROM '{}/river.encoder.pgcopy'   WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '{}/turn.encoder.pgcopy'    WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '{}/flop.encoder.pgcopy'    WITH (FORMAT BINARY);
@@ -299,8 +270,38 @@ impl Analysis {
             CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
         "#, path, path, path, path).as_str()).await?)
     }
+    async fn copy_streets(&self) -> Result<(), E> {
+        Ok(self.0.batch_execute(r#"                                                                                                                
+            INSERT INTO street (st, nobs, nabs) VALUES
+                (0, 
+                    (SELECT COUNT(*) FROM encoder e
+                    JOIN abstraction a ON e.abs = a.abs
+                    WHERE a.st = 0),
+                    (SELECT COUNT(*) FROM abstraction a
+                    WHERE a.st = 0)),
+                (1, 
+                    (SELECT COUNT(*) FROM encoder e
+                    JOIN abstraction a ON e.abs = a.abs
+                    WHERE a.st = 1),
+                    (SELECT COUNT(*) FROM abstraction a
+                    WHERE a.st = 1)),
+                (2, 
+                    (SELECT COUNT(*) FROM encoder e
+                    JOIN abstraction a ON e.abs = a.abs
+                    WHERE a.st = 2),
+                    (SELECT COUNT(*) FROM abstraction a
+                    WHERE a.st = 2)),
+                (3, 
+                    (SELECT COUNT(*) FROM encoder e
+                    JOIN abstraction a ON e.abs = a.abs
+                    WHERE a.st = 3),
+                    (SELECT COUNT(*) FROM abstraction a
+                    WHERE a.st = 3));
+                CREATE INDEX IF NOT EXISTS idx_street_st ON street (st);
+        "#).await?)
+    }
     async fn copy_abstraction(&self) -> Result<(), E> {
-        Ok(self.0.batch_execute(r#"                                                                                  
+        Ok(self.0.batch_execute(r#"                                                                                                   
             CREATE OR REPLACE FUNCTION street(obs BIGINT) RETURNS SMALLINT AS
             $$
             DECLARE
@@ -320,8 +321,8 @@ impl Analysis {
                 ELSIF n_cards = 7 THEN RETURN 3;  -- Street::River
                 ELSE  RAISE EXCEPTION 'invalid observation: %', n_cards;
                 END IF;
-            END; 
-            $$ 
+            END;
+            $$
             LANGUAGE plpgsql;
             INSERT INTO abstraction (abs, st)
             SELECT
@@ -332,5 +333,22 @@ impl Analysis {
             CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
             CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (st);
         "#).await?)
+    }
+    async fn copy_blueprint(&self) -> Result<(), E> {
+        let path = self.path();
+        Ok(self.0.batch_execute(format!(r#"                                                                                                   
+            COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/blueprint.profile.pgcopy' WITH (FORMAT BINARY);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
+        "#, path).as_str()).await?)
+    }
+}
+
+impl From<Client> for Analysis {
+    fn from(client: Client) -> Self {
+        Self(Arc::new(client))
     }
 }
