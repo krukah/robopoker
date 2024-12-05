@@ -62,7 +62,19 @@ impl CLI {
                 let distance = self.0.obs_distance(o1, o2).await?;
                 Ok(println!("observation distance: {:.4}", distance))
             }
-            Query::Memberships { abstraction } => {
+            Query::Equivalents { observation } => {
+                let obs = Observation::try_from(observation.as_str())?;
+                let equivalents = self
+                    .0
+                    .equivalents(obs)
+                    .await?
+                    .iter()
+                    .map(|o| format!("\n - {}", o))
+                    .collect::<Vec<String>>()
+                    .join("");
+                Ok(println!("equivalents:\n{}", equivalents))
+            }
+            Query::Membership { abstraction } => {
                 let abs = Abstraction::try_from(abstraction.as_str())?;
                 let memberships = self
                     .0
