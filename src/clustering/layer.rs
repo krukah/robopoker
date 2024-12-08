@@ -152,7 +152,7 @@ impl Layer {
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn kmeans_initial(&mut self) {
-        let k = Self::k(self.street);
+        let k = self.street.k();
         log::info!(
             "{:<32}{:<32}",
             "declaring abstractions",
@@ -188,7 +188,7 @@ impl Layer {
     /// 1. assign each `Observation` to the nearest `Centroid`
     /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
     fn kmeans_cluster(&mut self) {
-        let t = Self::t(self.street);
+        let t = self.street.t();
         log::info!(
             "{:<32}{:<32}",
             "clustering observations",
@@ -287,33 +287,5 @@ impl Layer {
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .map(|(abs, distance)| (abs.clone(), distance))
             .expect("find nearest neighbor")
-    }
-
-    /// number of kmeans centroids.
-    /// this determines the granularity of the abstraction space.
-    ///
-    /// - CPU: O(N^2) for kmeans initialization
-    /// - CPU: O(N)   for kmeans clustering
-    /// - RAM: O(N^2) for learned metric
-    /// - RAM: O(N)   for learned centroids
-    const fn k(street: Street) -> usize {
-        match street {
-            Street::Pref => street.n_isomorphisms(),
-            Street::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
-            Street::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
-            Street::Rive => unreachable!(),
-        }
-    }
-    /// number of kmeans iterations.
-    /// this controls the precision of the abstraction space.
-    ///
-    /// - CPU: O(N) for kmeans clustering
-    const fn t(street: Street) -> usize {
-        match street {
-            Street::Pref => 0,
-            Street::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
-            Street::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
-            Street::Rive => unreachable!(),
-        }
     }
 }

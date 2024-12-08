@@ -81,6 +81,22 @@ impl Street {
             Self::Rive => 0_175_301_280,
         }
     }
+    pub const fn k(&self) -> usize {
+        match self {
+            Self::Pref => self.n_isomorphisms(),
+            Self::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
+            Self::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
+            Self::Rive => unreachable!(),
+        }
+    }
+    pub const fn t(&self) -> usize {
+        match self {
+            Self::Pref => 0,
+            Self::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
+            Self::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
+            Self::Rive => unreachable!(),
+        }
+    }
 }
 
 impl From<isize> for Street {
