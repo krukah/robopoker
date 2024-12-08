@@ -1,88 +1,118 @@
-#![allow(unused)]
+#![allow(dead_code)]
 
 use crate::cards::street::Street;
 use crate::clustering::encoding::Encoder;
 use crate::clustering::histogram::Histogram;
-use crate::clustering::layer::Layer;
 use crate::clustering::metric::Metric;
-use crate::Utility;
-
-pub trait Point: Clone {}
-impl Point for Histogram {}
+use rand::seq::SliceRandom;
+use rand::Rng;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 
 type Neighbor = (usize, f32);
-type Populace = usize;
 
-struct StreetKmeans<const K: usize, const N: usize> {
+/// it's either we can take a (collected) Vec<P> and convert it into a P  (by &[P] nonetheless)
+/// or we take (P, &P) -> P repeatedly and fold over it
+pub trait Point: Clone {}
+
+impl Point for Histogram {}
+
+struct Layer {
     street: Street,
-    lookup: Encoder,
     metric: Metric,
-    kmeans: [Histogram; K],
-    points: [Histogram; N],
+    points: Vec<Histogram>,
+    kmeans: Vec<Histogram>,
 }
 
-impl StreetKmeans<K, N> {}
-
-impl KMeans<Histogram> for StreetKmeans<K, N> {
-    fn loss(&self) -> f32 {
-        todo!()
+impl Layer {
+    fn encoder(&self) -> Encoder {
+        todo!("collet neighbors and turn into BTreeMap by zipping over ObservationIterator -> IsomorphismIterator")
+    }
+    /// accessors to internal kmeans (mtuating) and points (immutable)
+    fn points(&self) -> &[Histogram] {
+        &self.points
+    }
+    fn kmeans(&self) -> &[Histogram] {
+        &self.kmeans
+    }
+    fn street(&self) -> Street {
+        self.street
     }
 
-    fn measure(&self, a: &Histogram, b: &Histogram) -> f32 {
+    fn running(&self) -> bool {
         todo!()
     }
-
-    fn average(&self, points: &[Histogram]) -> Histogram {
-        todo!()
+    /// initializes the centroids for k-means clustering using the k-means++ algorithm
+    /// 1. choose 1st centroid randomly from the dataset
+    /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
+    /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
+    fn initial(&self) -> Vec<Histogram> {
+        let n = self.street().n_isomorphisms();
+        let k = self.street().k();
+        match self.street() {
+            Street::Pref => {
+                assert!(k == n, "lossless abstraction on preflop");
+                self.points().to_vec()
+            }
+            _ => {
+                let progress = crate::progress(k);
+                let ref mut rng = rand::thread_rng();
+                let mut initial = vec![];
+                for _ in 0..k {
+                    let sample = self.sample(rng, &initial);
+                    initial.push(sample);
+                    progress.inc(1);
+                }
+                progress.finish();
+                initial
+            }
+        }
     }
 
-    fn points(&self) -> &[Histogram; N] {
-        todo!()
+    fn sample<R: Rng>(&self, rng: &mut R, kmeans: &[Histogram]) -> Histogram {
+        match kmeans.len() {
+            0 => self.points().choose(rng).unwrap().clone(), // uniform
+            _ => self.kmeans().choose(rng).unwrap().clone(), // square weights
+        }
     }
-
-    fn kmeans(&self) -> &[Histogram; K] {
-        todo!()
+    fn cluster(&mut self) {
+        let ref mut initial = self.initial();
+        std::mem::swap(self.replace(), initial);
+        while self.running() {
+            let ref mut kmeans = self.iterate();
+            std::mem::swap(self.replace(), kmeans);
+        }
     }
-
-    fn neighbors(&self) -> [Neighbor; N] {
-        todo!()
+    fn replace(&mut self) -> &mut Vec<Histogram> {
+        &mut self.kmeans
     }
-}
-
-/// number of points in dataset
-const N: usize = 1000;
-/// number of clusters
-const K: usize = 10;
-
-pub trait KMeans<P>
-where
-    P: Point,
-{
-    /// do some ::fold on the dataset to accumulate loss metric
-    fn loss(&self) -> f32;
-    /// abstract distance metric
-    fn measure(&self, a: &P, b: &P) -> f32;
-    /// average a collection of points
-    fn average(&self, points: &[P]) -> P;
-    /// full dataset of Points
-    fn points(&self) -> &[P; N];
-    /// mean dataset of Points
-    fn kmeans(&self) -> &[P; K];
-    /// freshly calculated nearest neighbors + distances
-    fn neighbors(&self) -> [Neighbor; N];
-}
-
-impl<P> Iterator for dyn KMeans<P>
-where
-    P: Point,
-{
-    type Item = f32;
-    fn next(&mut self) -> Option<Self::Item> {
-        // do the inner of Layer::cluster_kmeans() loop
-        // calculate neighbors &self.neighbors()
-        // calculate densities &self.densities()
-        // check against stopping rule(s)
-        Some(self.loss())
+    fn iterate(&self) -> Vec<Histogram> {
+        let k = self.street().k();
+        let means = vec![Histogram::default(); k];
+        self.nearests()
+            .into_iter()
+            .zip(self.points())
+            .fold(means, |mut m, ((i, _), p)| {
+                m[i].absorb(p);
+                m
+            })
+    }
+    fn nearests(&self) -> Vec<Neighbor> {
+        self.points()
+            .par_iter()
+            .map(|h| self.neighbor(h))
+            .collect::<Vec<Neighbor>>()
+            .try_into()
+            .expect("constant size N")
+    }
+    fn neighbor(&self, h: &Histogram) -> Neighbor {
+        self.kmeans()
+            .iter()
+            .enumerate()
+            .map(|(i, k)| (i, self.metric.emd(h, k)))
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .expect("find nearest neighbor")
+            .into()
     }
 }
 
