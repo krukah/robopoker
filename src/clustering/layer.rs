@@ -66,21 +66,23 @@ impl Layer {
     /// 2. initialize kmeans centroids with weighted random Observation sampling (kmeans++ for faster convergence)
     /// 3. cluster kmeans centroids
     pub fn inner(&self) -> Self {
-        let mut layer = Self {
+        Self {
             street: self.inner_street(),         // uniquely determined by outer layer
             metric: self.inner_metric(),         // uniquely determined by outer layer
             points: self.inner_points(),         // uniquely determined by outer layer
             encode: Encoder::default(),          // assigned during clustering
             kmeans: AbstractionSpace::default(), // assigned during clustering
-        };
-        // function starts here
-        // Layer::cluster() -> Self
-        // Layer::save() -> Self
-        layer.kmeans_initial();
-        layer.kmeans_cluster();
-        layer.metric.save(layer.street);
-        layer.encode.save(layer.street);
-        layer
+        }
+    }
+    pub fn cluster(mut self) -> Self {
+        self.kmeans_initial();
+        self.kmeans_cluster();
+        self
+    }
+    pub fn save(self) -> Self {
+        self.metric.save(self.street);
+        self.encode.save(self.street);
+        self
     }
 
     /// simply go to the previous street
