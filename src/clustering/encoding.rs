@@ -23,9 +23,16 @@ impl Encoder {
         } else {
             log::info!("learning abstraction");
             Layer::outer()
-                .inner() // turn
-                .inner() // flop
-                .inner(); // preflop
+                .save() // river
+                .inner()
+                .cluster()
+                .save() // turn
+                .inner()
+                .cluster()
+                .save() // flop
+                .inner()
+                .cluster()
+                .save(); // preflop
         }
     }
     /// simple insertion.
