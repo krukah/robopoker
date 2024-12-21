@@ -156,7 +156,17 @@ impl TryFrom<&str> for Abstraction {
 }
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {:02x}", self.street(), self.index())
+        write!(
+            f,
+            "{}::{:02x}",
+            self.street()
+                .to_string()
+                .chars()
+                .next()
+                .unwrap()
+                .to_uppercase(),
+            self.index()
+        )
     }
 }
 
