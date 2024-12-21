@@ -2,9 +2,9 @@ use super::card::Card;
 use super::deck::Deck;
 use super::hand::Hand;
 use super::hands::HandIterator;
-use super::observations::ObservationIterator;
 use super::street::Street;
 use super::strength::Strength;
+use crate::Probability;
 use std::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
@@ -21,9 +21,6 @@ pub struct Observation {
 }
 
 impl Observation {
-    pub fn exhaust<'a>(street: Street) -> impl Iterator<Item = Self> + 'a {
-        ObservationIterator::from(street)
-    }
     pub fn children<'a>(&'a self) -> impl Iterator<Item = Self> + 'a {
         let n = self.street().n_revealed();
         let removed = Hand::from(*self);
@@ -31,7 +28,7 @@ impl Observation {
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Self::from((self.pocket, public)))
     }
-    pub fn equity(&self) -> f32 {
+    pub fn equity(&self) -> Probability {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
         let hero = Strength::from(hand);
@@ -47,7 +44,7 @@ impl Observation {
             });
         match sum {
             0 => 0.5, // all draw edge case
-            _ => won as f32 / sum as f32,
+            _ => won as Probability / sum as Probability,
         }
     }
     pub fn street(&self) -> Street {

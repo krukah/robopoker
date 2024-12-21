@@ -6,7 +6,7 @@ use super::histogram::Histogram;
 use super::metric::Metric;
 use super::pair::Pair;
 use crate::cards::isomorphism::Isomorphism;
-use crate::cards::observation::Observation;
+use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::street::Street;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
@@ -137,9 +137,7 @@ impl Layer {
             format!("{} <- {}", self.street.prev(), self.street)
         );
         let progress = crate::progress(self.street.n_isomorphisms());
-        let projection = Observation::exhaust(self.street.prev())
-            .filter(Isomorphism::is_canonical)
-            .map(Isomorphism::from)
+        let projection = IsomorphismIterator::from(self.street.prev())
             .collect::<Vec<Isomorphism>>()
             .into_par_iter()
             .map(|inner| (inner, self.encode.projection(&inner)))

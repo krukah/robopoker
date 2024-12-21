@@ -1,5 +1,6 @@
 use super::layer::Layer;
 use crate::cards::isomorphism::Isomorphism;
+use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
@@ -73,25 +74,11 @@ impl Encoder {
     /// pre-compute the river abstraction mapping
     /// these are fixed since game rules enforce equity values
     pub fn rivers() -> Self {
-        let rivers = Observation::exhaust(Street::Rive)
-            .filter(Isomorphism::is_canonical)
-            .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs.equity())))
-            .collect::<BTreeMap<_, _>>();
-        let rivers = Self(rivers);
-        rivers.save(Street::Rive);
-        rivers
-    }
-
-    /// pre-compute the preflop abstraction mapping
-    /// these are "fixed" since we don't do abstraction on preflop, so deterministic
-    pub fn preflops() -> Self {
-        let preflops = Observation::exhaust(Street::Pref)
-            .filter(Isomorphism::is_canonical)
-            .map(|obs| (Isomorphism::from(obs), Abstraction::from(obs)))
-            .collect::<BTreeMap<_, _>>();
-        let preflops = Self(preflops);
-        preflops.save(Street::Pref);
-        preflops
+        Self(
+            IsomorphismIterator::from(Street::Rive)
+                .map(|iso| (iso, Abstraction::from(iso.0.equity())))
+                .collect::<BTreeMap<_, _>>(),
+        )
     }
 }
 
@@ -101,11 +88,12 @@ impl Encoder {
         Street::all()
             .iter()
             .map(|street| format!("{}.encoder.pgcopy", street))
-            .any(|file| std::fs::metadata(file).is_ok())
+            .any(|path| std::fs::metadata(path).is_ok())
     }
     pub fn load() -> Self {
         log::info!("loading encoder");
         let mut map = BTreeMap::default();
+        map.extend(Self::from(Street::Pref).0);
         map.extend(Self::from(Street::Flop).0);
         map.extend(Self::from(Street::Turn).0);
         map.extend(Self::from(Street::Rive).0);
