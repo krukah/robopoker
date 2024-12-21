@@ -1,3 +1,5 @@
+use cards::street::Street;
+
 pub mod analysis;
 pub mod cards;
 pub mod clustering;
@@ -47,20 +49,18 @@ const REGRET_MIN: Utility = -3e5;
 const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 
+pub trait Load {
+    fn load(street: Street) -> Self;
+    fn done(street: Street) -> bool;
+}
+
+pub trait Save {
+    fn save(&self);
+}
+
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {
     fn random() -> Self;
-}
-
-pub trait Pipe: Sized {
-    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R;
-}
-impl<T> Pipe for T {
-    fn pipe<F: FnOnce(Self) -> R, R>(self, f: F) -> R {
-        {
-            f(self)
-        }
-    }
 }
 
 /// progress bar
