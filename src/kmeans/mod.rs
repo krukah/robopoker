@@ -1,21 +1,14 @@
-#![allow(dead_code)]
-
+use crate::cards::isomorphism::Isomorphism;
+use crate::cards::isomorphisms::IsomorphismIterator;
+use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::clustering::encoding::Encoder;
+use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
-use rand::seq::SliceRandom;
-use rand::Rng;
-use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
+use std::collections::BTreeMap;
 
 type Neighbor = (usize, f32);
-
-/// it's either we can take a (collected) Vec<P> and convert it into a P  (by &[P] nonetheless)
-/// or we take (P, &P) -> P repeatedly and fold over it
-pub trait Point: Clone {}
-
-impl Point for Histogram {}
 
 struct Layer {
     street: Street,
@@ -25,105 +18,123 @@ struct Layer {
 }
 
 impl Layer {
-    fn encoder(&self) -> Encoder {
-        todo!("collet neighbors and turn into BTreeMap by zipping over ObservationIterator -> IsomorphismIterator")
-    }
-    /// accessors to internal kmeans (mtuating) and points (immutable)
-    fn points(&self) -> &[Histogram] {
-        &self.points
-    }
-    fn kmeans(&self) -> &[Histogram] {
-        &self.kmeans
-    }
-    fn street(&self) -> Street {
-        self.street
+    /// primary clustering algorithm loop
+    fn cluster(&mut self) {
+        let ref mut start = self.init();
+        std::mem::swap(start, &mut self.kmeans);
+        while true {
+            let ref mut means = self.next();
+            std::mem::swap(means, &mut self.kmeans);
+        }
     }
 
-    fn running(&self) -> bool {
-        todo!()
+    fn inner_street(&self) -> Street {
+        self.street().prev()
     }
+    fn inner_metric(&self) -> Metric {
+        todo!("double for loop, outer product over self.kmeans()")
+    }
+    fn inner_points(&self) -> Vec<Histogram> {
+        // get owned instance of BTreeMap<I, A> as Lookup
+        use rayon::iter::IntoParallelIterator;
+        IsomorphismIterator::from(self.street().prev())
+            .collect::<Vec<Isomorphism>>()
+            .into_par_iter()
+            .map(|inner| self.encode.projection(inner))
+    }
+    fn inner_kmeans(&self) -> Vec<Histogram> {
+        vec![]
+    }
+
+    /// reference to current street
+    fn street(&self) -> &Street {
+        &self.street
+    }
+    /// distance metric for Abstractions of the current layer
+    fn metric(&self) -> &Metric {
+        &self.metric
+    }
+    /// reference to the observed points
+    fn points(&self) -> &Vec<Histogram> /* N */ {
+        &self.points
+    }
+    /// reference to the current kmeans centorid histograms
+    fn kmeans(&self) -> &Vec<Histogram> /* K */ {
+        &self.kmeans
+    }
+
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    fn initial(&self) -> Vec<Histogram> {
+    fn init(&self) -> Vec<Histogram> /* K */ {
         let n = self.street().n_isomorphisms();
         let k = self.street().k();
-        match self.street() {
-            Street::Pref => {
-                assert!(k == n, "lossless abstraction on preflop");
-                self.points().to_vec()
-            }
-            _ => {
-                let progress = crate::progress(k);
-                let ref mut rng = rand::thread_rng();
-                let mut initial = vec![];
-                for _ in 0..k {
-                    let sample = self.sample(rng, &initial);
-                    initial.push(sample);
-                    progress.inc(1);
-                }
-                progress.finish();
-                initial
-            }
-        }
+        todo!()
     }
-
-    fn sample<R: Rng>(&self, rng: &mut R, kmeans: &[Histogram]) -> Histogram {
-        match kmeans.len() {
-            0 => self.points().choose(rng).unwrap().clone(), // uniform
-            _ => self.kmeans().choose(rng).unwrap().clone(), // square weights
-        }
-    }
-    fn cluster(&mut self) {
-        let ref mut initial = self.initial();
-        std::mem::swap(self.replace(), initial);
-        while self.running() {
-            let ref mut kmeans = self.iterate();
-            std::mem::swap(self.replace(), kmeans);
-        }
-    }
-    fn replace(&mut self) -> &mut Vec<Histogram> {
-        &mut self.kmeans
-    }
-    fn iterate(&self) -> Vec<Histogram> {
-        let k = self.street().k();
-        let means = vec![Histogram::default(); k];
-        self.nearests()
-            .into_iter()
-            .zip(self.points())
-            .fold(means, |mut m, ((i, _), p)| {
-                m[i].absorb(p);
-                m
-            })
-    }
-    fn nearests(&self) -> Vec<Neighbor> {
+    /// calculates the next step of the kmeans iteration by
+    /// determining K * N optimal transport calculations and
+    /// taking the nearest neighbor
+    fn next(&self) -> Vec<Histogram> /* K */ {
+        use rayon::iter::IntoParallelRefIterator;
+        //? check for empty centroids??
+        let kmeans = vec![Histogram::default(); self.street().k()];
         self.points()
             .par_iter()
-            .map(|h| self.neighbor(h))
-            .collect::<Vec<Neighbor>>()
-            .try_into()
-            .expect("constant size N")
+            .map(|h| (h, self.neighbored(h)))
+            .collect::<Vec<(&Histogram, Neighbor)>>()
+            .into_iter()
+            .fold(kmeans, |mut kmeans, (hist, (mean, _))| {
+                kmeans.get_mut(mean).expect("bounds").absorb(hist);
+                kmeans
+            })
     }
-    fn neighbor(&self, h: &Histogram) -> Neighbor {
+
+    /// because we have fixed-order Abstractions that are determined by
+    /// street and K-index, we should encapsulate the self.street depenency
+    fn abstracted(&self, i: usize) -> Abstraction {
+        Abstraction::from((self.street().clone(), i))
+    }
+    /// calculates nearest neighbor and separation distance for a Histogram
+    fn neighbored(&self, h: &Histogram) -> Neighbor {
         self.kmeans()
             .iter()
             .enumerate()
-            .map(|(i, k)| (i, self.metric.emd(h, k)))
+            .map(|(i, k)| (i, self.metric().emd(h, k)))
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
             .into()
     }
+
+    /// in ObsIterator order, get a mapping of
+    /// Isomorphism -> Abstraction
+    fn embeddings(&self) -> BTreeMap<Isomorphism, Abstraction> {
+        use rayon::iter::IntoParallelRefIterator;
+        self.points()
+            .par_iter()
+            .map(|h| self.neighbored(h))
+            .collect::<Vec<Neighbor>>()
+            .into_iter()
+            .map(|(k, _)| self.abstracted(k))
+            .zip(IsomorphismIterator::from(self.street().clone()))
+            .map(|(abs, iso)| (iso, abs))
+            .collect::<BTreeMap<Isomorphism, Abstraction>>()
+    }
+    /// in AbsIterator order, get a mapping of
+    /// Abstraction -> Histogram
+    fn histograms(&self) -> BTreeMap<Abstraction, Histogram> {
+        self.kmeans()
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(k, mean)| (self.abstracted(k), mean))
+            .collect::<BTreeMap<Abstraction, Histogram>>()
+    }
 }
 
-pub enum Initialization {
-    Random,              // chooses random points from dataset
-    Spaced,              // chooses evenly spaced points from dataset
-    FullPlusPlus,        // weights every point inverse distance to the nearest centroid
-    MiniPlusPlus(usize), // weights batch point inverse distance to the nearest centroid
-}
-
-pub enum Termination {
-    Iterations(usize),
-    Convergent(usize, f32),
+trait Lookup {
+    fn street(&self) -> Street;
+    fn future(&self, iso: &Isomorphism) -> Histogram;
+    fn lookup(&self, obs: &Observation) -> Abstraction;
+    fn assign(&mut self, abs: &Abstraction, iso: &Isomorphism);
 }
