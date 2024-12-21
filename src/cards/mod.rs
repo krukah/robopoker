@@ -6,6 +6,7 @@ pub mod hand;
 pub mod hands;
 pub mod hole;
 pub mod isomorphism;
+pub mod isomorphisms;
 pub mod kicks;
 pub mod observation;
 pub mod observations;
