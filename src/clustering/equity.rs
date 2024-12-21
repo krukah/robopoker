@@ -31,8 +31,7 @@ impl Measure for Equity {
 impl Equity {
     pub fn variation(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
-            .iter()
-            .map(|a| (x.density(a), y.density(a)))
+            .map(|abstraction| (x.density(&abstraction), y.density(&abstraction)))
             .scan((0., 0.), |cdf, (px, py)| {
                 Some({
                     cdf.0 += px;
@@ -47,23 +46,20 @@ impl Equity {
     }
     pub fn euclidean(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
-            .iter()
-            .map(|abstraction| x.density(abstraction) - y.density(abstraction))
+            .map(|abstraction| x.density(&abstraction) - y.density(&abstraction))
             .map(|delta| delta * delta)
             .sum::<Energy>()
             .sqrt()
     }
     pub fn chisquare(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
-            .iter()
-            .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
+            .map(|abstraction| (x.density(&abstraction), y.density(&abstraction)))
             .map(|(x, y)| (x - y).powi(2) / (x + y))
             .sum::<Energy>()
     }
     pub fn divergent(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
-            .iter()
-            .map(|abstraction| (x.density(abstraction), y.density(abstraction)))
+            .map(|abstraction| (x.density(&abstraction), y.density(&abstraction)))
             .map(|(x, y)| (x - y).abs())
             .sum::<Energy>()
     }
