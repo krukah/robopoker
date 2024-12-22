@@ -9,6 +9,9 @@ use super::sampler::Sampler;
 use super::spot::Spot;
 use super::tree::Branch;
 use super::tree::Tree;
+use crate::cards::street::Street;
+use crate::Arbitrary;
+use crate::Save;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
@@ -45,7 +48,7 @@ impl Solver {
     fn load() -> Self {
         Self {
             profile: Profile::load(),
-            sampler: Sampler::load(),
+            sampler: Sampler::load(Street::random()),
         }
     }
 

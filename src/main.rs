@@ -52,8 +52,8 @@ async fn main() {
     // Boring stuff
     crate::logs();
     // The k-means earth mover's distance hand-clustering algorithm.
-    crate::clustering::encoding::Encoder::learn();
-    // Monet Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
+    crate::mccfr::sampler::Sampler::learn();
+    // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Solver::train();
     // Let's see what we've learned.
     crate::analysis::cli::CLI::new().await.run().await;
