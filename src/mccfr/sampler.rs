@@ -98,10 +98,13 @@ impl Save for Sampler {
 
 impl Arbitrary for Sampler {
     fn random() -> Self {
+        const S: usize = 128;
         Self(
-            (0..100)
+            (0..)
                 .map(|_| Isomorphism::random())
                 .map(|i| (i, Abstraction::random()))
+                .filter(|(i, a)| i.0.street() == a.street())
+                .take(S)
                 .collect::<BTreeMap<_, _>>()
                 .into(),
         )
