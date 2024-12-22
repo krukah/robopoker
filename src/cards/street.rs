@@ -42,6 +42,22 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
+    pub const fn k(&self) -> usize {
+        match self {
+            Self::Pref => self.n_isomorphisms(),
+            Self::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
+            Self::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
+            Self::Rive => crate::KMEANS_EQTY_CLUSTER_COUNT,
+        }
+    }
+    pub const fn t(&self) -> usize {
+        match self {
+            Self::Pref => 0,
+            Self::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
+            Self::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
+            Self::Rive => 0,
+        }
+    }
     #[cfg(not(feature = "shortdeck"))]
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
@@ -62,14 +78,11 @@ impl Street {
     }
     #[cfg(feature = "shortdeck")]
     pub const fn n_isomorphisms(&self) -> usize {
-        // TODO
-        // pencil paper math, combinatorics. still learning how to count 25 years later
-        // for now i'm using empirical values from analysis.py without verifying combinatorics
         match self {
-            Self::Pref => 0______81,
-            Self::Flop => 0_186_696,
-            Self::Turn => 1_340_856,
-            Self::Rive => 7_723_728,
+            Self::Pref => 0__________81,
+            Self::Flop => 0_____186_696,
+            Self::Turn => 0___1_340_856,
+            Self::Rive => 0___7_723_728,
         }
     }
     #[cfg(feature = "shortdeck")]
@@ -79,22 +92,6 @@ impl Street {
             Self::Flop => 0___3_769_920,
             Self::Turn => 0__29_216_880,
             Self::Rive => 0_175_301_280,
-        }
-    }
-    pub const fn k(&self) -> usize {
-        match self {
-            Self::Pref => self.n_isomorphisms(),
-            Self::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
-            Self::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
-            Self::Rive => crate::KMEANS_EQTY_CLUSTER_COUNT,
-        }
-    }
-    pub const fn t(&self) -> usize {
-        match self {
-            Self::Pref => 0,
-            Self::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
-            Self::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
-            Self::Rive => unreachable!(),
         }
     }
 }
