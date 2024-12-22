@@ -5,7 +5,7 @@ use super::partition::Partition;
 use super::player::Player;
 use super::policy::Policy;
 use super::profile::Profile;
-use super::sampler::Sampler;
+use super::sampler::Encoding;
 use super::spot::Spot;
 use super::tree::Branch;
 use super::tree::Tree;
@@ -30,7 +30,7 @@ use rayon::iter::ParallelIterator;
 #[derive(Default)]
 pub struct Solver {
     profile: Profile,
-    sampler: Sampler,
+    sampler: Encoding,
 }
 
 impl Solver {
@@ -48,7 +48,7 @@ impl Solver {
     fn load() -> Self {
         Self {
             profile: Profile::load(),
-            sampler: Sampler::load(Street::random()),
+            sampler: Encoding::load(Street::random()),
         }
     }
 
