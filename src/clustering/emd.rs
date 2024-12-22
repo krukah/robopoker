@@ -35,11 +35,13 @@ impl Arbitrary for EMD {
         let q = Histogram::random();
         let r = Histogram::random();
         let m = Metric::from(
-            p.support()
+            std::iter::empty()
+                .chain(p.support())
                 .chain(q.support())
                 .chain(r.support())
                 .flat_map(|x| {
-                    p.support()
+                    std::iter::empty()
+                        .chain(p.support())
                         .chain(q.support())
                         .chain(r.support())
                         .map(move |y| (x, y))
@@ -48,6 +50,24 @@ impl Arbitrary for EMD {
                 .map(|(x, y)| Pair::from((x, y)))
                 .map(|paired| (paired, rng.gen::<f32>()))
                 .collect::<BTreeMap<_, _>>(),
+        );
+        println!(
+            "this is how many combos were considered: {}",
+            std::iter::empty()
+                .chain(p.support())
+                .chain(q.support())
+                .chain(r.support())
+                .flat_map(|x| {
+                    std::iter::empty()
+                        .chain(p.support())
+                        .chain(q.support())
+                        .chain(r.support())
+                        .map(move |y| (x, y))
+                })
+                .filter(|(x, y)| x > y)
+                .map(|(x, y)| Pair::from((x, y)))
+                .map(|paired| (paired, rng.gen::<f32>()))
+                .count()
         );
         Self(m, p, q, r)
     }
