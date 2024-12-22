@@ -56,12 +56,15 @@ impl Metric {
     /// if this is off by just a few then it probably means a bunch of collisions
     /// maybe i should determinsitcally seed kmeans process, could be cool for reproducability too
     fn street(&self) -> Street {
+        fn choose_2(k: usize) -> usize {
+            k * (k - 1) / 2
+        }
         match self.0.len() {
             0 => Street::Rive,
-            n if n == Street::Turn.k() => Street::Turn,
-            n if n == Street::Flop.k() => Street::Flop,
-            n if n == Street::Pref.k() => Street::Pref,
-            n => panic!("incorrect N = {} entries in metric", n),
+            n if n == choose_2(Street::Turn.k()) => Street::Turn,
+            n if n == choose_2(Street::Flop.k()) => Street::Flop,
+            n if n == choose_2(Street::Pref.k()) => Street::Pref,
+            _ => Street::Rive, // assertion of no-collisions is convenient for tests
         }
     }
 }
