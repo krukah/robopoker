@@ -35,7 +35,7 @@ impl Abstraction {
     pub fn street(&self) -> Street {
         match self {
             Abstraction::Percent(n) | Abstraction::Learned(n) | Abstraction::Preflop(n) => {
-                match n >> 56 {
+                match (n >> LSB) as isize {
                     0 => Street::Pref,
                     1 => Street::Flop,
                     2 => Street::Turn,
@@ -48,7 +48,7 @@ impl Abstraction {
     pub fn index(&self) -> usize {
         match self {
             Abstraction::Percent(n) | Abstraction::Learned(n) | Abstraction::Preflop(n) => {
-                (n & 0xFFFFFFFFFFFFFF) as usize
+                (n & ((1 << LSB) - 1)) as usize
             }
         }
     }
@@ -63,13 +63,21 @@ impl Abstraction {
 
 impl From<(Street, usize)> for Abstraction {
     fn from((street, index): (Street, usize)) -> Self {
-        let bits = ((street as u8 as u64) << 52) | (index as u64);
         match street {
-            Street::Pref => Abstraction::Preflop(bits),
-            Street::Flop => Abstraction::Learned(bits),
-            Street::Turn => Abstraction::Learned(bits),
-            Street::Rive => Abstraction::Percent(bits),
+            Street::Pref => Abstraction::Preflop(((street as u8 as u64) << LSB) | (index as u64)),
+            Street::Flop => Abstraction::Learned(((street as u8 as u64) << LSB) | (index as u64)),
+            Street::Turn => Abstraction::Learned(((street as u8 as u64) << LSB) | (index as u64)),
+            Street::Rive => Abstraction::Percent(((street as u8 as u64) << LSB) | (index as u64)),
         }
+    }
+}
+
+impl From<Street> for Abstraction {
+    fn from(street: Street) -> Self {
+        use rand::Rng;
+        let k = street.k();
+        let n = rand::thread_rng().gen_range(0..k);
+        Self::from((street, n))
     }
 }
 
@@ -102,7 +110,7 @@ impl From<Abstraction> for u64 {
     fn from(a: Abstraction) -> Self {
         // let street = a.street();
         // let index = a.index();
-        // let bits = ((street as u8 as u64) << 52) | (index as u64);
+        // let bits = ((street as u8 as u64) << LSB) | (index as u64);
         // bits
         match a {
             Abstraction::Percent(n) | Abstraction::Learned(n) | Abstraction::Preflop(n) => n,
@@ -111,7 +119,7 @@ impl From<Abstraction> for u64 {
 }
 impl From<u64> for Abstraction {
     fn from(n: u64) -> Self {
-        match (n >> 56) as u8 {
+        match (n >> LSB) as u8 {
             0 => Abstraction::Preflop(n),
             1 => Abstraction::Learned(n),
             2 => Abstraction::Learned(n),
@@ -177,6 +185,11 @@ impl crate::Arbitrary for Abstraction {
 }
 
 impl Support for Abstraction {}
+
+/// establish that the lower 56 LSBs are what the index
+/// contains information about Abstraction
+/// the upper 8 MSBs is the Street tag'
+const LSB: usize = 56;
 
 #[cfg(test)]
 mod tests {
