@@ -127,8 +127,10 @@ impl Arbitrary for Histogram {
     fn random() -> Self {
         const S: usize = 16;
         const N: usize = 64;
-        (0..S)
+        (0..)
             .map(|_| Abstraction::random())
+            .filter(|a| a.street() == crate::cards::street::Street::Flop)
+            .take(S)
             .collect::<Vec<_>>()
             .into_iter()
             .cycle()
