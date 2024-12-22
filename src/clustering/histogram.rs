@@ -18,6 +18,10 @@ pub struct Histogram {
 }
 
 impl Histogram {
+    pub fn set(&mut self, abs: Abstraction, count: usize) {
+        self.counts.insert(abs, count);
+        self.mass += count;
+    }
     /// the weight of a given Abstraction. returns 0 if the Abstraction was never witnessed.
     pub fn density(&self, x: &Abstraction) -> Probability {
         self.counts.get(x).copied().unwrap_or(0usize) as f32 / self.mass as f32

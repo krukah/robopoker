@@ -4,7 +4,6 @@ pub mod analysis;
 pub mod cards;
 pub mod clustering;
 pub mod gameplay;
-pub mod kmeans;
 pub mod mccfr;
 pub mod players;
 pub mod search;
@@ -49,13 +48,30 @@ const REGRET_MIN: Utility = -3e5;
 const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 
-pub trait Load {
-    fn load(street: Street) -> Self;
-    fn done(street: Street) -> bool;
-}
-
-pub trait Save {
+/// street-level properties that can be written to and read from disk,
+/// may or may not be dependent on other entities being written/in memory.
+/// or in the case of River Abstractions, we can just generate it from scratch
+/// on the fly if we need to.
+pub trait Save: Sized {
     fn save(&self);
+    fn done(street: Street) -> bool;
+    fn load(street: Street) -> Self;
+    fn make(street: Street) -> Self;
+    fn push(street: Street) -> Self {
+        if Self::done(street) {
+            log::info!(
+                "loading {} from file {street}",
+                std::any::type_name::<Self>()
+            );
+            Self::load(street)
+        } else {
+            log::info!(
+                "writing {} into file {street}",
+                std::any::type_name::<Self>()
+            );
+            Self::make(street)
+        }
+    }
 }
 
 /// trait for random generation, mainly (strictly?) for testing

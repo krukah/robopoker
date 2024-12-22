@@ -1,120 +1,111 @@
 use super::abstraction::Abstraction;
-use super::datasets::AbstractionSpace;
-use super::datasets::IsomorphismSpace;
-use super::encoding::Encoder;
 use super::histogram::Histogram;
+use super::lookup::Lookup;
 use super::metric::Metric;
 use super::pair::Pair;
+use super::transitions::Decomp;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::street::Street;
+use crate::Energy;
+use crate::Save;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
-use rand::seq::IteratorRandom;
 use rand::Rng;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
+
+type Neighbor = (usize, f32);
 
 pub struct Layer {
     street: Street,
     metric: Metric,
-    encode: Encoder,
-    kmeans: AbstractionSpace,
-    points: IsomorphismSpace,
+    points: Vec<Histogram>, // positioned by Isomorphism
+    kmeans: Vec<Histogram>, // positioned by K-means abstraction
 }
 
-/// Hierarchical K Means Learner.
-/// this is decomposed into the necessary data structures
-/// for kmeans clustering to occur for a given `Street`.
-/// it should also parallelize well, with kmeans and lookup
-/// being the only mutable fields.
-/// EMD dominates compute, by introducing a k^2 dependence
-/// for every distance calculation.
-///
-/// ## kmeans initialization:
-/// - CPU := (# centroids)^2 *   (# isomorphisms)
-/// - RAM := (# centroids)   +   (# isomorphisms)
-///
-/// ## kmeans clustering:
-/// - CPU := (# centroids)^3 *   (# isomorphisms)   *    (# iterations)
-/// - RAM := (# centroids)   +   (# isomorphisms)
-///
-/// ## metric calculation:
-/// - CPU := O(# centroids)^2
-/// - RAM := O(# centroids)^2
-///
 impl Layer {
-    /// start with the River layer. everything is empty because we
-    /// can generate `Abstractor` and `SmallSpace` from "scratch".
-    /// - `lookup`: lazy equity calculation of river observations
-    /// - `kmeans`: equity percentile buckets of equivalent river observations
-    /// - `metric`: absolute value of `Abstraction::Equity` difference
-    /// - `points`: not used for inward projection. only used for clustering. and no clustering on River.
-    pub fn outer() -> Self {
-        Self {
-            street: Street::Rive,
-            metric: Metric::default(),
-            encode: Encoder::rivers(),
-            kmeans: AbstractionSpace::default(),
-            points: IsomorphismSpace::default(),
+    /// primary clustering algorithm loop
+    fn cluster(mut self) -> Self {
+        let ref mut start = self.init();
+        std::mem::swap(start, &mut self.kmeans);
+        for _ in 0..self.street().t() {
+            let ref mut means = self.next();
+            std::mem::swap(means, &mut self.kmeans);
         }
-    }
-    /// hierarchically, recursively generate the inner layer
-    /// 0. initialize empty lookup table and kmeans centroids
-    /// 1. generate Street, Metric, and Points as a pure function of the outer Layer
-    /// 2. initialize kmeans centroids with weighted random Observation sampling (kmeans++ for faster convergence)
-    /// 3. cluster kmeans centroids
-    pub fn inner(&self) -> Self {
-        Self {
-            street: self.inner_street(),         // uniquely determined by outer layer
-            metric: self.inner_metric(),         // uniquely determined by outer layer
-            points: self.inner_points(),         // uniquely determined by outer layer
-            encode: Encoder::default(),          // assigned during clustering
-            kmeans: AbstractionSpace::default(), // assigned during clustering
-        }
-    }
-    pub fn cluster(mut self) -> Self {
-        self.kmeans_initial();
-        self.kmeans_cluster();
-        self
-    }
-    pub fn save(self) -> Self {
-        self.metric.save(self.street);
-        self.encode.save(self.street);
         self
     }
 
-    /// simply go to the previous street
-    fn inner_street(&self) -> Street {
-        log::info!(
-            "{:<32}{:<32}",
-            "advancing street",
-            format!("{} <- {}", self.street.prev(), self.street)
-        );
-        self.street.prev()
+    /// reference to the observed points
+    fn points(&self) -> &Vec<Histogram> /* N */ {
+        &self.points
+    }
+    /// reference to the current kmeans centorid histograms
+    fn kmeans(&self) -> &Vec<Histogram> /* K */ {
+        &self.kmeans
     }
 
-    /// compute the outer product of the `Abstraction -> Histogram`s at the current layer,
-    /// - generate the _inner layer_ `Metric` between `Abstraction`s
-    /// - by using the _outer layer_ `Metric` between `Histogram`s via EMD calcluations.
-    ///
-    /// we symmetrize the distance by averaging the EMDs in both directions.
-    /// the distnace isn't symmetric in the first place only because our greedy heuristic algo
-    /// will find different optimal Coupling/Transport plans depending on which direction we consider.
-    fn inner_metric(&self) -> Metric {
-        log::info!(
-            "{:<32}{:<32}",
-            "computing metric",
-            format!("{} <- {}", self.street.prev(), self.street)
-        );
+    /// initializes the centroids for k-means clustering using the k-means++ algorithm
+    /// 1. choose 1st centroid randomly from the dataset
+    /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
+    /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
+    fn init(&self) -> Vec<Histogram> /* K */ {
+        let n = self.street().n_isomorphisms();
+        let k = self.street().k();
+        todo!()
+    }
+    /// calculates the next step of the kmeans iteration by
+    /// determining K * N optimal transport calculations and
+    /// taking the nearest neighbor
+    fn next(&self) -> Vec<Histogram> /* K */ {
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
+        //? check for empty centroids??
+        let kmeans = vec![Histogram::default(); self.street().k()];
+        self.points()
+            .par_iter()
+            .map(|h| (h, self.neighbored(h)))
+            .collect::<Vec<(&Histogram, Neighbor)>>()
+            .into_iter()
+            .fold(kmeans, |mut kmeans, (hist, (mean, _))| {
+                kmeans.get_mut(mean).expect("bounds").absorb(hist);
+                kmeans
+            })
+    }
+
+    /// wrawpper for distance metric calculations
+    fn emd(&self, x: &Histogram, y: &Histogram) -> Energy {
+        self.metric.emd(x, y)
+    }
+    /// because we have fixed-order Abstractions that are determined by
+    /// street and K-index, we should encapsulate the self.street depenency
+    fn abstracted(&self, i: usize) -> Abstraction {
+        Abstraction::from((self.street(), i))
+    }
+    /// calculates nearest neighbor and separation distance for a Histogram
+    fn neighbored(&self, x: &Histogram) -> Neighbor {
+        self.kmeans()
+            .iter()
+            .enumerate()
+            .map(|(k, h)| (k, self.emd(x, h)))
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .expect("find nearest neighbor")
+            .into()
+    }
+
+    /// reference to current street
+    fn street(&self) -> Street {
+        self.street
+    }
+    /// take outer product of current learned kmeans
+    /// Histograms, using whatever is stored as the future metric
+    fn metric(&self) -> Metric {
         let mut metric = BTreeMap::new();
-        for a in self.kmeans.keys() {
-            for b in self.kmeans.keys() {
-                if a > b {
+        for (i, x) in self.kmeans.iter().enumerate() {
+            for (j, y) in self.kmeans.iter().enumerate() {
+                if i > j {
+                    let ref a = self.abstracted(i);
+                    let ref b = self.abstracted(j);
                     let index = Pair::from((a, b));
-                    let x = self.kmeans.get(a).expect("pre-computed").histogram();
-                    let y = self.kmeans.get(b).expect("pre-computed").histogram();
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.;
                     metric.insert(index, distance);
@@ -123,169 +114,92 @@ impl Layer {
         }
         Metric::from(metric)
     }
-
-    /// using the current layer's `Abstractor`,
-    /// we generate the `LargeSpace` of `Observation` -> `Histogram`.
-    /// 1. take all `Observation`s for `self.street.prev()`
-    /// 2. map each to possible `self.street` `Observation`s
-    /// 3. use `self.abstractor` to map each into an `Abstraction`
-    /// 4. collect `Abstraction`s into a `Histogram`, for each `Observation`
-    fn inner_points(&self) -> IsomorphismSpace {
-        log::info!(
-            "{:<32}{:<32}",
-            "collecting histograms",
-            format!("{} <- {}", self.street.prev(), self.street)
-        );
-        let progress = crate::progress(self.street.n_isomorphisms());
-        let projection = IsomorphismIterator::from(self.street.prev())
-            .collect::<Vec<Isomorphism>>()
-            .into_par_iter()
-            .map(|inner| (inner, self.encode.projection(&inner)))
-            .inspect(|_| progress.inc(1))
-            .collect::<BTreeMap<Isomorphism, Histogram>>();
-        progress.finish();
-        IsomorphismSpace::from(projection)
+    /// in ObsIterator order, get a mapping of
+    /// Isomorphism -> Abstraction
+    fn lookup(&self) -> Lookup {
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
+        let street = self.street();
+        match street {
+            Street::Pref | Street::Rive => Lookup::make(street),
+            Street::Flop | Street::Turn => self
+                .points()
+                .par_iter()
+                .map(|h| self.neighbored(h))
+                .collect::<Vec<Neighbor>>()
+                .into_iter()
+                .map(|(k, _)| self.abstracted(k))
+                .zip(IsomorphismIterator::from(street))
+                .map(|(abs, iso)| (iso, abs))
+                .collect::<BTreeMap<Isomorphism, Abstraction>>()
+                .into(),
+        }
     }
-
-    /// initializes the centroids for k-means clustering using the k-means++ algorithm
-    /// 1. choose 1st centroid randomly from the dataset
-    /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
-    /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    fn kmeans_initial(&mut self) {
-        let k = self.street.k();
-        log::info!(
-            "{:<32}{:<32}",
-            "declaring abstractions",
-            format!("{}    {} clusters", self.street, k)
-        );
-        // SLOP SLOP SLOP
-        // SLOP SLOP SLOP
-        if self.street == Street::Pref {
-            return for (iso, hist) in self.points.iter_mut() {
-                let labels = Abstraction::from(iso.0);
-                let sample = hist.clone();
-                self.kmeans.expand(labels, sample);
-            };
-        }
-        // SLOP SLOP SLOP
-        // SLOP SLOP SLOP
-        let ref mut rng = rand::thread_rng();
-        let progress = crate::progress(k);
-        let sample = self.sample_uniform(rng);
-        let labels = Abstraction::random();
-        self.kmeans.expand(labels, sample);
-        progress.inc(1);
-        while self.kmeans.len() < k {
-            let sample = self.sample_outlier(rng);
-            let labels = Abstraction::random();
-            self.kmeans.expand(labels, sample);
-            progress.inc(1);
-        }
-        progress.finish();
-    }
-
-    /// for however many iterations we want,
-    /// 1. assign each `Observation` to the nearest `Centroid`
-    /// 2. update each `Centroid` by averaging the `Observation`s assigned to it
-    fn kmeans_cluster(&mut self) {
-        let t = self.street.t();
-        log::info!(
-            "{:<32}{:<32}",
-            "clustering observations",
-            format!("{}    {} iterations", self.street, t)
-        );
-        // SLOP SLOP SLOP
-        // SLOP SLOP SLOP
-        if self.street == Street::Pref {
-            return for (iso, _) in self.points.iter_mut() {
-                let ref abs = Abstraction::from(iso.0);
-                self.encode.assign(abs, iso);
-            };
-        }
-        // SLOP SLOP SLOP
-        // SLOP SLOP SLOP
-        let progress = crate::progress(t);
-        for _ in 0..t {
-            let neighbors = self.get_neighbor();
-            self.set_neighbor(neighbors);
-            self.set_orphaned();
-            progress.inc(1);
-        }
-        progress.finish();
-    }
-
-    /// find the nearest neighbor `Abstraction` to each `Observation`.
-    /// work in parallel and collect results before mutating kmeans state.
-    fn get_neighbor(&self) -> Vec<(Abstraction, f32)> {
-        self.points
-            .par_iter()
-            .map(|(_, h)| self.nearest(h))
-            .collect::<Vec<(Abstraction, f32)>>()
-    }
-    /// assign each `Observation` to the nearest `Centroid`
-    /// by computing the EMD distance between the `Observation`'s `Histogram` and each `Centroid`'s `Histogram`
-    /// and returning the `Abstraction` of the nearest `Centroid`
-    fn set_neighbor(&mut self, neighbors: Vec<(Abstraction, f32)>) {
-        self.kmeans.clear();
-        let mut loss = 0.;
-        for ((obs, hist), (abs, dist)) in self.points.iter_mut().zip(neighbors.iter()) {
-            self.encode.assign(abs, obs);
-            self.kmeans.absorb(abs, hist);
-            loss += dist * dist;
-        }
-        log::debug!("LOSS {:.6e}", loss / self.points.len() as f32);
-    }
-    /// centroid drift may make it such that some centroids are empty
-    /// so we reinitialize empty centroids with random Observations if necessary
-    fn set_orphaned(&mut self) {
-        let ref mut rng = rand::thread_rng();
-        for ref a in self.kmeans.orphans() {
-            let ref sample = self.sample_uniform(rng);
-            self.kmeans.absorb(a, sample);
-            log::debug!(
-                "{:<32}{:<32}",
-                "reassigned empty centroid",
-                format!("0x{}", a)
-            );
-        }
+    /// in AbsIterator order, get a mapping of
+    /// Abstraction -> Histogram
+    /// end-of-recurse call
+    fn decomp(&self) -> Decomp {
+        self.kmeans()
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(k, mean)| (self.abstracted(k), mean))
+            .collect::<BTreeMap<Abstraction, Histogram>>()
+            .into()
     }
 
     /// the first Centroid is uniformly random across all `Observation` `Histogram`s
     fn sample_uniform<R: Rng>(&self, rng: &mut R) -> Histogram {
-        self.points
-            .values()
-            .choose(rng)
-            .cloned()
-            .expect("observation projections have been populated")
+        todo!()
     }
     /// each next Centroid is selected with probability proportional to
     /// the squared distance to the nearest neighboring Centroid.
     /// faster convergence, i guess. on the shoulders of giants
     fn sample_outlier<R: Rng>(&self, rng: &mut R) -> Histogram {
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
         let weights = self
             .points
             .par_iter()
-            .map(|(_obs, hist)| self.nearest(hist))
-            .map(|(_abs, dist)| dist * dist)
+            .map(|hist| self.neighbored(hist).1)
+            .map(|dist| dist * dist)
             .collect::<Vec<f32>>();
         let index = WeightedIndex::new(weights)
             .expect("valid weights array")
             .sample(rng);
         self.points
-            .values()
-            .nth(index)
+            .get(index)
             .cloned()
             .expect("shared index with outer layer")
     }
+}
 
-    /// find the nearest neighbor `Abstraction` to a given `Histogram` for kmeans clustering
-    fn nearest(&self, histogram: &Histogram) -> (Abstraction, f32) {
-        self.kmeans
-            .par_iter()
-            .map(|(abs, centroid)| (abs, centroid.histogram()))
-            .map(|(abs, centroid)| (abs, self.metric.emd(histogram, centroid)))
-            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
-            .map(|(abs, distance)| (abs.clone(), distance))
-            .expect("find nearest neighbor")
+impl Save for Layer {
+    fn done(street: Street) -> bool {
+        Lookup::done(street) && Decomp::done(street) && Metric::done(street)
+    }
+    fn load(street: Street) -> Self {
+        match street {
+            Street::Rive => Self {
+                street,
+                kmeans: Vec::default(),
+                points: Vec::default(),
+                metric: Metric::default(),
+            },
+            _ => Self {
+                street,
+                kmeans: Vec::default(),
+                points: Lookup::load(street.next()).projections(),
+                metric: Metric::load(street.next()),
+            },
+        }
+    }
+    fn save(&self) {
+        self.metric().save();
+        self.decomp().save();
+        self.lookup().save();
+    }
+    fn make(street: Street) -> Self {
+        Self::load(street).cluster()
     }
 }

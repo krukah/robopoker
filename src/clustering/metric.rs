@@ -7,6 +7,7 @@ use crate::clustering::pair::Pair;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Energy;
+use crate::Save;
 use std::collections::BTreeMap;
 
 /// Distance metric for kmeans clustering.
@@ -16,6 +17,8 @@ use std::collections::BTreeMap;
 pub struct Metric(BTreeMap<Pair, Energy>);
 
 impl Metric {
+    const SUFFIX: &'static str = ".metric.pgcopy";
+
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
         if x == y {
             0.
@@ -34,22 +37,43 @@ impl Metric {
             Abstraction::Preflop(_) => unreachable!("no preflop emd"),
         }
     }
-
-    pub fn done() -> bool {
-        Street::all()
-            .iter()
-            .map(|street| format!("{}.metric.pgcopy", street))
-            .any(|file| std::fs::metadata(file).is_ok())
-    }
-    pub fn load() -> Self {
+    pub fn read() -> Self {
         log::info!("loading metric");
-        let mut map = BTreeMap::default();
-        map.extend(Self::grab(Street::Pref).0);
-        map.extend(Self::grab(Street::Flop).0);
-        map.extend(Self::grab(Street::Turn).0);
-        Self(map)
+        Self(
+            Street::all()
+                .iter()
+                .filter(|street| Self::done(**street))
+                .fold(BTreeMap::default(), |mut map, street| {
+                    map.extend(Self::load(*street).0);
+                    map
+                }),
+        )
     }
-    pub fn grab(street: Street) -> Self {
+
+    /// we're assuming tht the street is being generated AFTER the learned kmeans
+    /// cluster distance calculation. so we should have (Street::K() choose 2)
+    /// entreis in our abstraction pair lookup table.
+    /// if this is off by just a few then it probably means a bunch of collisions
+    /// maybe i should determinsitcally seed kmeans process, could be cool for reproducability too
+    fn street(&self) -> Street {
+        match self.0.len() {
+            0 => Street::Rive,
+            n if n == Street::Turn.k() => Street::Turn,
+            n if n == Street::Flop.k() => Street::Flop,
+            n if n == Street::Pref.k() => Street::Pref,
+            n => panic!("incorrect N = {} entries in metric", n),
+        }
+    }
+}
+
+impl crate::Save for Metric {
+    fn done(street: Street) -> bool {
+        std::fs::metadata(format!("{}{}", street, Self::SUFFIX)).is_ok()
+    }
+    fn make(street: Street) -> Self {
+        unreachable!("you have no business being calculated from scratch, rather than from default {street} ")
+    }
+    fn load(street: Street) -> Self {
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -57,7 +81,7 @@ impl Metric {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let file = File::open(format!("{}.metric.pgcopy", street)).expect("open file");
+        let file = File::open(format!("{}{}", street, Self::SUFFIX)).expect("open file");
         let mut buffer = [0u8; 2];
         let mut lookup = BTreeMap::new();
         let mut reader = BufReader::new(file);
@@ -77,13 +101,14 @@ impl Metric {
         }
         Self(lookup)
     }
-    pub fn save(&self, street: Street) {
+    fn save(&self) {
+        let street = self.street();
         log::info!("{:<32}{:<32}", "saving metric", street);
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}.metric.pgcopy", street)).expect("touch");
+        let ref mut file = File::create(format!("{}{}", street, Self::SUFFIX)).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
@@ -98,7 +123,6 @@ impl Metric {
         file.write_u16::<BE>(0xFFFF).expect("trailer");
     }
 }
-
 impl Measure for Metric {
     type X = Abstraction;
     type Y = Abstraction;
@@ -129,19 +153,18 @@ mod tests {
     use super::*;
     use crate::cards::street::Street;
     use crate::clustering::emd::EMD;
-    use crate::Arbitrary;
+    use crate::{Arbitrary, Save};
 
     #[test]
     fn persistence() {
+        let street = Street::Rive;
         let emd = EMD::random();
         let save = emd.metric();
-        let street = Street::Rive;
-        save.save(street);
-        let load = Metric::grab(street);
+        save.save();
+        let load = Metric::load(street);
         std::iter::empty()
             .chain(save.0.iter().zip(load.0.iter()))
             .chain(load.0.iter().zip(save.0.iter()))
             .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2);
-        std::fs::remove_file(format!("{}.metric.pgcopy", street)).unwrap();
     }
 }

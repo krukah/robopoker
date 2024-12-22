@@ -4,17 +4,29 @@ use super::node::Node;
 use super::spot::Spot;
 use super::tree::Branch;
 use super::tree::Tree;
+use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
+use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
-use crate::clustering::encoding::Encoder;
+use crate::clustering::layer::Layer;
+use crate::clustering::lookup::Lookup;
 use crate::gameplay::game::Game;
+use crate::Arbitrary;
+use crate::Save;
+use std::collections::BTreeMap;
 
 #[derive(Default)]
-pub struct Sampler(Encoder);
+pub struct Sampler(BTreeMap<Isomorphism, Abstraction>);
 
 impl Sampler {
-    pub fn load() -> Self {
-        Self(Encoder::load())
+    /// all-in-one entry point for learning the kmeans abstraction and
+    /// writing to disk in pgcopy
+    pub fn learn() {
+        Street::all()
+            .iter()
+            .filter(|s| !Layer::done(**s))
+            .map(|s| Layer::make(*s))
+            .count();
     }
     pub fn root(&self) -> Data {
         let game = Game::root();
@@ -22,7 +34,10 @@ impl Sampler {
         Data::from((game, info))
     }
     pub fn abstraction(&self, game: &Game) -> Abstraction {
-        self.0.abstraction(&Observation::from(game))
+        self.0
+            .get(&Isomorphism::from(Observation::from(game)))
+            .cloned()
+            .expect(&format!("precomputed abstraction missing for {game}"))
     }
     pub fn replay(&self, _: &Spot) -> Tree {
         todo!()
@@ -49,5 +64,46 @@ impl Sampler {
             .map(|(e, d)| (e, d, node.index()))
             .map(|(e, d, n)| Branch(d, e, n))
             .collect()
+    }
+}
+
+impl Save for Sampler {
+    fn save(&self) {
+        unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
+    }
+    fn make(_: Street) -> Self {
+        unreachable!("you have no buisiness making an encoding from scratch")
+    }
+    fn done(_: Street) -> bool {
+        Street::all()
+            .iter()
+            .copied()
+            .all(|street| Lookup::done(street))
+    }
+    fn load(_: Street) -> Self {
+        Self(
+            Street::all()
+                .into_iter()
+                .copied()
+                .map(|s| Lookup::load(s))
+                .map(|l| BTreeMap::from(l))
+                .fold(BTreeMap::default(), |mut map, l| {
+                    map.extend(l);
+                    map
+                })
+                .into(),
+        )
+    }
+}
+
+impl Arbitrary for Sampler {
+    fn random() -> Self {
+        Self(
+            (0..100)
+                .map(|_| Isomorphism::random())
+                .map(|i| (i, Abstraction::random()))
+                .collect::<BTreeMap<_, _>>()
+                .into(),
+        )
     }
 }
