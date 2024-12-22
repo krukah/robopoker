@@ -16,14 +16,15 @@ use crate::Save;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
-pub struct Sampler(BTreeMap<Isomorphism, Abstraction>);
+pub struct Encoding(BTreeMap<Isomorphism, Abstraction>);
 
-impl Sampler {
+impl Encoding {
     /// all-in-one entry point for learning the kmeans abstraction and
     /// writing to disk in pgcopy
     pub fn learn() {
         Street::all()
             .iter()
+            .rev()
             .filter(|s| !Layer::done(**s))
             .map(|s| Layer::make(*s))
             .count();
@@ -67,7 +68,7 @@ impl Sampler {
     }
 }
 
-impl Save for Sampler {
+impl Save for Encoding {
     fn save(&self) {
         unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
     }
@@ -96,7 +97,7 @@ impl Save for Sampler {
     }
 }
 
-impl Arbitrary for Sampler {
+impl Arbitrary for Encoding {
     fn random() -> Self {
         const S: usize = 128;
         Self(
