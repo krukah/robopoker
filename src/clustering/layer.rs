@@ -25,11 +25,18 @@ pub struct Layer {
 impl Layer {
     /// primary clustering algorithm loop
     fn cluster(mut self) -> Self {
-        let ref mut start = self.init();
-        std::mem::swap(start, &mut self.kmeans);
+        log::info!("{:<32}{:<32}", "initialize kmeans", self.street());
+        let ref mut init = self.init();
+        let ref mut last = self.kmeans;
+        std::mem::swap(init, last);
+        log::info!("{:<32}{:<32}", "clustering kmeans", self.street());
+        let t = self.street().t();
+        let progress = crate::progress(t);
         for _ in 0..self.street().t() {
-            let ref mut means = self.next();
-            std::mem::swap(means, &mut self.kmeans);
+            let ref mut next = self.next();
+            let ref mut last = self.kmeans;
+            std::mem::swap(next, last);
+            progress.inc(1);
         }
         self
     }
@@ -48,11 +55,14 @@ impl Layer {
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn init(&self) -> Vec<Histogram> /* K */ {
-        let ref mut rng = rand::thread_rng();
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
+        let n = self.points().len();
+        let k = self.street().k();
+        let progress = crate::progress(k * n);
         let mut histograms = Vec::new();
-        let mut potentials = vec![1.; self.points().len()];
+        let mut potentials = vec![1.; n];
+        let ref mut rng = rand::thread_rng();
         while histograms.len() < self.street().k() {
             let i = WeightedIndex::new(potentials.iter())
                 .expect("valid weights array")
@@ -68,6 +78,7 @@ impl Layer {
                 .par_iter()
                 .map(|h| self.emd(x, h))
                 .map(|p| p * p)
+                .inspect(|_| progress.inc(1))
                 .collect::<Vec<Energy>>()
                 .iter()
                 .zip(potentials.iter())
@@ -126,6 +137,7 @@ impl Layer {
     /// take outer product of current learned kmeans
     /// Histograms, using whatever is stored as the future metric
     fn metric(&self) -> Metric {
+        log::info!("{:<32}{:<32}", "calculating metric", self.street());
         let mut metric = BTreeMap::new();
         for (i, x) in self.kmeans.iter().enumerate() {
             for (j, y) in self.kmeans.iter().enumerate() {
@@ -144,15 +156,19 @@ impl Layer {
     /// in ObsIterator order, get a mapping of
     /// Isomorphism -> Abstraction
     fn lookup(&self) -> Lookup {
+        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
+        let n = self.street().n_isomorphisms();
         let street = self.street();
+        let progress = crate::progress(n);
         match street {
             Street::Pref | Street::Rive => Lookup::make(street),
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
                 .map(|h| self.neighboring(h))
+                .inspect(|_| progress.inc(1))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstracting(k))
@@ -166,6 +182,7 @@ impl Layer {
     /// Abstraction -> Histogram
     /// end-of-recurse call
     fn decomp(&self) -> Decomp {
+        log::info!("{:<32}{:<32}", "calculating transitions", self.street());
         self.kmeans()
             .iter()
             .cloned()
@@ -181,6 +198,7 @@ impl Save for Layer {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)
     }
     fn load(street: Street) -> Self {
+        log::info!("{:<32}{:<32}", "loading layer", street);
         match street {
             Street::Rive => Self {
                 street,
@@ -197,11 +215,13 @@ impl Save for Layer {
         }
     }
     fn save(&self) {
+        log::info!("{:<32}{:<32}", "saving layer", self.street());
         self.metric().save();
-        self.decomp().save();
         self.lookup().save();
+        self.decomp().save();
     }
     fn make(street: Street) -> Self {
+        log::info!("{:<32}{:<32}", "making layer", street);
         Self::load(street).cluster()
     }
 }

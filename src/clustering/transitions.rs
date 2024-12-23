@@ -2,7 +2,6 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::Save;
-
 use std::collections::BTreeMap;
 
 pub struct Decomp(BTreeMap<Abstraction, Histogram>);
@@ -24,7 +23,8 @@ impl Save for Decomp {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let file = File::open(format!("{}{}", street, Self::SUFFIX)).expect("open file");
+        let path = format!("{}{}", street, Self::SUFFIX);
+        let file = File::open(&path).expect(&format!("open {}", path));
         let mut transitions = BTreeMap::new();
         let mut reader = BufReader::new(file);
         let mut buffer = [0u8; 2];
@@ -64,20 +64,21 @@ impl Save for Decomp {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}{}", street, Self::SUFFIX)).expect("touch");
+        let path = format!("{}{}", street, Self::SUFFIX);
+        let ref mut file = File::create(&path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
-        for (current_abs, histogram) in self.0.iter() {
-            for next_abs in histogram.support() {
+        for (from, histogram) in self.0.iter() {
+            for into in histogram.support() {
                 const N_FIELDS: u16 = 3;
                 file.write_u16::<BE>(N_FIELDS).unwrap();
                 file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
-                file.write_i64::<BE>(i64::from(*current_abs)).unwrap();
+                file.write_i64::<BE>(i64::from(*from)).unwrap();
                 file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
-                file.write_i64::<BE>(i64::from(*next_abs)).unwrap();
+                file.write_i64::<BE>(i64::from(*into)).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-                file.write_f32::<BE>(histogram.density(next_abs)).unwrap();
+                file.write_f32::<BE>(histogram.density(into)).unwrap();
             }
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");

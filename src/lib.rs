@@ -81,7 +81,7 @@ pub trait Arbitrary {
 
 /// progress bar
 pub fn progress(n: usize) -> indicatif::ProgressBar {
-    let tick = std::time::Duration::from_secs(60);
+    let tick = std::time::Duration::from_secs(1);
     let style = "{spinner:.cyan} {elapsed} ~ {percent:>3}% {wide_bar:.cyan}";
     let style = indicatif::ProgressStyle::with_template(style).unwrap();
     let progress = indicatif::ProgressBar::new(n as u64);
