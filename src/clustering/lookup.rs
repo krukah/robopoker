@@ -70,7 +70,8 @@ impl Save for Lookup {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let file = File::open(format!("{}{}", street, Self::SUFFIX)).expect("open file");
+        let path = format!("{}{}", street, Self::SUFFIX);
+        let file = File::open(&path).expect(&format!("can't open {}", path));
         let mut reader = BufReader::new(file);
         let mut lookup = BTreeMap::new();
         let mut buffer = [0u8; 2];

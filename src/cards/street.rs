@@ -47,7 +47,7 @@ impl Street {
             Self::Pref => self.n_isomorphisms(),
             Self::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
             Self::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
-            Self::Rive => crate::KMEANS_EQTY_CLUSTER_COUNT,
+            Self::Rive => 0,
         }
     }
     pub const fn t(&self) -> usize {

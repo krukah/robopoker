@@ -26,7 +26,7 @@ impl Encoding {
             .iter()
             .rev()
             .filter(|s| !Layer::done(**s))
-            .map(|s| Layer::make(*s))
+            .map(|s| Layer::make(*s).save())
             .count();
     }
     pub fn root(&self) -> Data {
