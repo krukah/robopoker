@@ -11,7 +11,6 @@ use crate::Energy;
 use crate::Save;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
-use rand::Rng;
 use std::collections::BTreeMap;
 
 type Neighbor = (usize, f32);
@@ -49,9 +48,37 @@ impl Layer {
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn init(&self) -> Vec<Histogram> /* K */ {
-        let n = self.street().n_isomorphisms();
-        let k = self.street().k();
-        todo!()
+        let ref mut rng = rand::thread_rng();
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
+        let mut histograms = Vec::new();
+        let mut potentials = vec![1.; self.points().len()];
+        while histograms.len() < self.street().k() {
+            let i = WeightedIndex::new(potentials.iter())
+                .expect("valid weights array")
+                .sample(rng);
+            let x = self
+                .points()
+                .get(i)
+                .expect("sharing index with outer layer");
+            histograms.push(i);
+            potentials[i] = 0.;
+            potentials = self
+                .points()
+                .par_iter()
+                .map(|h| self.emd(x, h))
+                .map(|p| p * p)
+                .collect::<Vec<Energy>>()
+                .iter()
+                .zip(potentials.iter())
+                .map(|(d0, d1)| Energy::min(*d0, *d1))
+                .collect::<Vec<Energy>>();
+        }
+        histograms
+            .into_iter()
+            .map(|i| self.points().get(i).expect("bounds"))
+            .cloned()
+            .collect()
     }
     /// calculates the next step of the kmeans iteration by
     /// determining K * N optimal transport calculations and
@@ -63,7 +90,7 @@ impl Layer {
         let kmeans = vec![Histogram::default(); self.street().k()];
         self.points()
             .par_iter()
-            .map(|h| (h, self.neighbored(h)))
+            .map(|h| (h, self.neighboring(h)))
             .collect::<Vec<(&Histogram, Neighbor)>>()
             .into_iter()
             .fold(kmeans, |mut kmeans, (hist, (mean, _))| {
@@ -78,11 +105,11 @@ impl Layer {
     }
     /// because we have fixed-order Abstractions that are determined by
     /// street and K-index, we should encapsulate the self.street depenency
-    fn abstracted(&self, i: usize) -> Abstraction {
+    fn abstracting(&self, i: usize) -> Abstraction {
         Abstraction::from((self.street(), i))
     }
     /// calculates nearest neighbor and separation distance for a Histogram
-    fn neighbored(&self, x: &Histogram) -> Neighbor {
+    fn neighboring(&self, x: &Histogram) -> Neighbor {
         self.kmeans()
             .iter()
             .enumerate()
@@ -103,8 +130,8 @@ impl Layer {
         for (i, x) in self.kmeans.iter().enumerate() {
             for (j, y) in self.kmeans.iter().enumerate() {
                 if i > j {
-                    let ref a = self.abstracted(i);
-                    let ref b = self.abstracted(j);
+                    let ref a = self.abstracting(i);
+                    let ref b = self.abstracting(j);
                     let index = Pair::from((a, b));
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.;
@@ -125,10 +152,10 @@ impl Layer {
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
-                .map(|h| self.neighbored(h))
+                .map(|h| self.neighboring(h))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
-                .map(|(k, _)| self.abstracted(k))
+                .map(|(k, _)| self.abstracting(k))
                 .zip(IsomorphismIterator::from(street))
                 .map(|(abs, iso)| (iso, abs))
                 .collect::<BTreeMap<Isomorphism, Abstraction>>()
@@ -143,34 +170,9 @@ impl Layer {
             .iter()
             .cloned()
             .enumerate()
-            .map(|(k, mean)| (self.abstracted(k), mean))
+            .map(|(k, mean)| (self.abstracting(k), mean))
             .collect::<BTreeMap<Abstraction, Histogram>>()
             .into()
-    }
-
-    /// the first Centroid is uniformly random across all `Observation` `Histogram`s
-    fn sample_uniform<R: Rng>(&self, rng: &mut R) -> Histogram {
-        todo!()
-    }
-    /// each next Centroid is selected with probability proportional to
-    /// the squared distance to the nearest neighboring Centroid.
-    /// faster convergence, i guess. on the shoulders of giants
-    fn sample_outlier<R: Rng>(&self, rng: &mut R) -> Histogram {
-        use rayon::iter::IntoParallelRefIterator;
-        use rayon::iter::ParallelIterator;
-        let weights = self
-            .points
-            .par_iter()
-            .map(|hist| self.neighbored(hist).1)
-            .map(|dist| dist * dist)
-            .collect::<Vec<f32>>();
-        let index = WeightedIndex::new(weights)
-            .expect("valid weights array")
-            .sample(rng);
-        self.points
-            .get(index)
-            .cloned()
-            .expect("shared index with outer layer")
     }
 }
 

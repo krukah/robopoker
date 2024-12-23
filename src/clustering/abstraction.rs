@@ -72,15 +72,6 @@ impl From<(Street, usize)> for Abstraction {
     }
 }
 
-impl From<Street> for Abstraction {
-    fn from(street: Street) -> Self {
-        use rand::Rng;
-        let k = street.k();
-        let n = rand::thread_rng().gen_range(0..k);
-        Self::from((street, n))
-    }
-}
-
 /// probability isomorphism
 ///
 /// for river, we use a u8 to represent the equity bucket,
