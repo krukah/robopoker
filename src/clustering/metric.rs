@@ -56,7 +56,7 @@ impl Metric {
             k * (k.saturating_sub(1)) / 2
         }
         match self.0.len() {
-            0 => Street::Rive,
+            n if n == choose_2(Street::Rive.k()) => Street::Rive,
             n if n == choose_2(Street::Turn.k()) => Street::Turn,
             n if n == choose_2(Street::Flop.k()) => Street::Flop,
             n if n == choose_2(Street::Pref.k()) => Street::Pref,
@@ -92,6 +92,7 @@ impl Save for Metric {
         unreachable!("you have no business being calculated from scratch, rather than from default {street} ")
     }
     fn load(street: Street) -> Self {
+        log::info!("{:<32}{:<32}", "loading metric", street);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -99,10 +100,10 @@ impl Save for Metric {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let path = format!("{}{}", street, Self::name());
-        let file = File::open(&path).expect(&format!("open {}", path));
+        let ref path = format!("{}{}", street, Self::name());
+        let ref file = File::open(path).expect(&format!("open {}", path));
         let mut buffer = [0u8; 2];
-        let mut lookup = BTreeMap::new();
+        let mut metric = BTreeMap::new();
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
@@ -111,13 +112,13 @@ impl Save for Metric {
                 let pair = reader.read_i64::<BE>().expect("read pair");
                 reader.read_u32::<BE>().expect("distance length");
                 let dist = reader.read_f32::<BE>().expect("read distance");
-                lookup.insert(Pair::from(pair), dist);
+                metric.insert(Pair::from(pair), dist);
                 continue;
             } else {
                 break;
             }
         }
-        Self(lookup)
+        Self(metric)
     }
     fn save(&self) {
         let street = self.street();
@@ -126,8 +127,8 @@ impl Save for Metric {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let path = format!("{}{}", street, Self::name());
-        let ref mut file = File::create(&path).expect(&format!("touch {}", path));
+        let ref path = format!("{}{}", street, Self::name());
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");

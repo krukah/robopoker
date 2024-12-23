@@ -8,7 +8,7 @@ use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
-use crate::clustering::layer::Layer;
+use crate::clustering::layer::KMeansLayer;
 use crate::clustering::lookup::Lookup;
 use crate::gameplay::game::Game;
 use crate::Arbitrary;
@@ -25,8 +25,8 @@ impl Encoding {
         Street::all()
             .iter()
             .rev()
-            .filter(|s| !Layer::done(**s))
-            .map(|s| Layer::make(*s).save())
+            .filter(|s| !KMeansLayer::done(**s))
+            .map(|s| KMeansLayer::make(*s).save())
             .count();
     }
     pub fn root(&self) -> Data {

@@ -14,6 +14,7 @@ use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
 use crate::Arbitrary;
 use crate::Probability;
+use crate::Save;
 use crate::Utility;
 use rand::prelude::Distribution;
 use rand::rngs::SmallRng;
@@ -40,19 +41,6 @@ pub struct Profile {
 }
 
 impl Profile {
-    const PREFIX: &'static str = "blueprint";
-    /// check (by filename) if a profile has been saved to disk.
-    pub fn done() -> bool {
-        std::fs::metadata(format!("{}.profile.pgcopy", Self::PREFIX)).is_ok()
-    }
-    /// load existing profile from disk. implicit assumption of Self::done() having been checked beforehand.
-    pub fn load() -> Self {
-        if Self::done() {
-            Self::from(Self::PREFIX)
-        } else {
-            Self::default()
-        }
-    }
     /// increment Epoch counter
     /// and return current count
     pub fn next(&mut self) -> usize {
@@ -435,8 +423,18 @@ impl Profile {
         }
     }
 }
-impl From<&str> for Profile {
-    fn from(name: &str) -> Self {
+
+impl Save for Profile {
+    fn name() -> &'static str {
+        "blueprint.profile.pgcopy"
+    }
+    fn done(_: crate::cards::street::Street) -> bool {
+        std::fs::metadata(Self::name()).is_ok()
+    }
+    fn make(_: crate::cards::street::Street) -> Self {
+        unreachable!("must be learned in MCCFR minimization")
+    }
+    fn load(_: crate::cards::street::Street) -> Self {
         use crate::clustering::abstraction::Abstraction;
         use crate::mccfr::path::Path;
         use byteorder::ReadBytesExt;
@@ -447,7 +445,8 @@ impl From<&str> for Profile {
         use std::io::Seek;
         use std::io::SeekFrom;
         log::info!("loading profile from disk");
-        let file = File::open(format!("{}.profile.pgcopy", name)).expect("open file");
+        let ref path = format!("{}", Self::name());
+        let file = File::open(path).expect("open file");
         let mut strategies = BTreeMap::new();
         let mut reader = BufReader::new(file);
         let mut buffer = [0u8; 2];
@@ -488,17 +487,14 @@ impl From<&str> for Profile {
             strategies,
         }
     }
-}
-
-impl Profile {
-    /// persist the Profile to disk
-    pub fn save(&self, name: &str) {
+    fn save(&self) {
         log::info!("saving blueprint");
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{name}.profile.pgcopy")).expect("touch");
+        let ref path = format!("{}", Self::name());
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
@@ -567,15 +563,17 @@ impl std::fmt::Display for Profile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cards::street::Street;
     use crate::Arbitrary;
+    use crate::Save;
 
     #[test]
     fn persistence() {
         let name = "test";
         let file = format!("{}.profile.pgcopy", name);
         let save = Profile::random();
-        save.save(name);
-        let load = Profile::from(name);
+        save.save();
+        let load = Profile::load(Street::random());
         std::fs::remove_file(file).unwrap();
         assert!(std::iter::empty()
             .chain(save.strategies.iter().zip(load.strategies.iter()))
