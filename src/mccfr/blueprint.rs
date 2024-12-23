@@ -80,7 +80,7 @@ impl Solver {
                 self.profile.add_policy(bucket, policy);
             }
         }
-        self.profile.save();
+        self.save();
     }
 
     /// compute regret and policy updates for a batch of Trees.
@@ -142,7 +142,28 @@ impl Solver {
                 self.profile.witness(node, &branches);
                 self.profile.explore_all(branches, node)
             }
-            _ => panic!("bitches"),
+            _ => panic!("kyle walker"),
+        }
+    }
+}
+
+impl Save for Solver {
+    fn name() -> &'static str {
+        unreachable!()
+    }
+    fn make(_: Street) -> Self {
+        unreachable!()
+    }
+    fn save(&self) {
+        self.profile.save();
+    }
+    fn done(street: Street) -> bool {
+        Encoding::done(street) && Profile::done(street)
+    }
+    fn load(street: Street) -> Self {
+        Self {
+            sampler: Encoding::load(street),
+            profile: Profile::load(street),
         }
     }
 }

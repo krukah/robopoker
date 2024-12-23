@@ -49,7 +49,7 @@ use robopoker::*;
 
 #[rustfmt::skip]
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Boring stuff
     crate::logs();
     // The k-means earth mover's distance hand-clustering algorithm.
@@ -57,7 +57,7 @@ async fn main() {
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Solver::train();
     // Let's upload the data to the database.
-    crate::analysis::analysis::Analysis::new().await.upload().await;
+    crate::analysis::analysis::Analysis::new().await.upload().await?;
     // Let's see what we've learned.
     crate::analysis::cli::CLI::new().await.run().await;
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
