@@ -11,7 +11,7 @@ pub struct CLI(Analysis);
 
 impl CLI {
     pub async fn new() -> Self {
-        log::info!("connecting to db: CLI");
+        log::info!("connecting to db (CLI)");
         let (client, connection) = tokio_postgres::Config::default()
             .host("localhost")
             .port(5432)

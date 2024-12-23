@@ -62,12 +62,12 @@ impl Solver {
             log::info!("skipping regret minimization");
         } else {
             log::info!("starting regret minimization");
-            Self::load().solve();
+            Self::make(Street::random()).solve();
         }
     }
     /// check (by filename) if a blueprint solver has been saved to disk.
     fn done() -> bool {
-        Profile::done(Street::random())
+        Encoding::done(Street::random()) && Profile::done(Street::random())
     }
     /// the main training loop.
     fn solve(&mut self) {
@@ -151,8 +151,11 @@ impl Save for Solver {
     fn name() -> &'static str {
         unreachable!()
     }
-    fn make(_: Street) -> Self {
-        unreachable!()
+    fn make(street: Street) -> Self {
+        Self {
+            profile: Profile::default(),
+            sampler: Encoding::load(street),
+        }
     }
     fn save(&self) {
         self.profile.save();

@@ -30,10 +30,10 @@ const SINKHORN_ITERATIONS: usize = 16;
 const SINKHORN_TOLERANCE: Energy = 0.001;
 
 // kmeans clustering parameters
-const KMEANS_TURN_TRAINING_ITERATIONS: usize = 32;
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32;
+const KMEANS_TURN_TRAINING_ITERATIONS: usize = 32;
+const KMEANS_FLOP_CLUSTER_COUNT: usize = 24;
 const KMEANS_TURN_CLUSTER_COUNT: usize = 16;
-const KMEANS_FLOP_CLUSTER_COUNT: usize = 16;
 const KMEANS_EQTY_CLUSTER_COUNT: usize = 64;
 
 // mccfr parameters

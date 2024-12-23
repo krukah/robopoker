@@ -101,7 +101,7 @@ impl Save for Lookup {
     }
     fn save(&self) {
         let street = self.street();
-        log::info!("{:<32}{:<32}", "saving lookup", street);
+        log::info!("{:<32}{:<32}", "saving      lookup", street);
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
