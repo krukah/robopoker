@@ -52,7 +52,13 @@ impl Save for Decomp {
         Self(transitions)
     }
     fn save(&self) {
-        let street = self.0.keys().next().expect("non empty").street();
+        let street = self
+            .0
+            .keys()
+            .next()
+            .copied()
+            .unwrap_or_else(|| Abstraction::from(0.))
+            .street();
         log::info!("{:<32}{:<32}", "saving transition", street);
         use byteorder::WriteBytesExt;
         use byteorder::BE;

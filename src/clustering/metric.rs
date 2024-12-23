@@ -55,7 +55,7 @@ impl Metric {
     /// maybe i should determinsitcally seed kmeans process, could be cool for reproducability too
     fn street(&self) -> Street {
         fn choose_2(k: usize) -> usize {
-            k * (k - 1) / 2
+            k * (k.saturating_sub(1)) / 2
         }
         match self.0.len() {
             0 => Street::Rive,
