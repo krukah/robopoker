@@ -15,14 +15,14 @@ use std::collections::BTreeMap;
 
 type Neighbor = (usize, f32);
 
-pub struct Layer {
+pub struct KMeansLayer {
     street: Street,
     metric: Metric,
     points: Vec<Histogram>, // positioned by Isomorphism
     kmeans: Vec<Histogram>, // positioned by K-means abstraction
 }
 
-impl Layer {
+impl KMeansLayer {
     /// primary clustering algorithm loop
     fn cluster(mut self) -> Self {
         log::info!("{:<32}{:<32}", "initialize kmeans", self.street());
@@ -56,15 +56,22 @@ impl Layer {
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn init(&self) -> Vec<Histogram> /* K */ {
+        use rand::rngs::SmallRng;
+        use rand::SeedableRng;
+        use std::hash::DefaultHasher;
+        use std::hash::Hash;
+        use std::hash::Hasher;
+        let ref mut hasher = DefaultHasher::new();
+        self.street().hash(hasher);
+        let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
-        let n = self.points().len();
         let k = self.street().k();
-        let progress = crate::progress(k * n);
+        let n = self.points().len();
         let mut histograms = Vec::new();
         let mut potentials = vec![1.; n];
-        let ref mut rng = rand::thread_rng();
-        while histograms.len() < self.street().k() {
+        let progress = crate::progress(k * n);
+        while histograms.len() < k {
             let i = WeightedIndex::new(potentials.iter())
                 .expect("valid weights array")
                 .sample(rng);
@@ -86,6 +93,7 @@ impl Layer {
                 .map(|(d0, d1)| Energy::min(*d0, *d1))
                 .collect::<Vec<Energy>>();
         }
+        progress.finish();
         histograms
     }
     /// calculates the next step of the kmeans iteration by
@@ -156,16 +164,13 @@ impl Layer {
         log::info!("{:<32}{:<32}", "calculating lookup", self.street());
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
-        let n = self.street().n_isomorphisms();
         let street = self.street();
-        let progress = crate::progress(n);
         match street {
             Street::Pref | Street::Rive => Lookup::make(street),
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
                 .map(|h| self.neighboring(h))
-                .inspect(|_| progress.inc(1))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstracting(k))
@@ -190,7 +195,7 @@ impl Layer {
     }
 }
 
-impl Save for Layer {
+impl Save for KMeansLayer {
     fn name() -> &'static str {
         unreachable!("save lookups and transitions and metrics, not higher level layer")
     }

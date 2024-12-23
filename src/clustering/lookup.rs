@@ -69,6 +69,7 @@ impl Save for Lookup {
         }
     }
     fn load(street: Street) -> Self {
+        log::info!("{:<32}{:<32}", "loading lookup", street);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -76,8 +77,8 @@ impl Save for Lookup {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let path = format!("{}{}", street, Self::name());
-        let file = File::open(&path).expect(&format!("can't open {}", path));
+        let ref path = format!("{}{}", street, Self::name());
+        let ref file = File::open(path).expect(&format!("can't open {}", path));
         let mut reader = BufReader::new(file);
         let mut lookup = BTreeMap::new();
         let mut buffer = [0u8; 2];
@@ -105,7 +106,8 @@ impl Save for Lookup {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}{}", street, Self::name())).expect("touch");
+        let ref path = format!("{}{}", street, Self::name());
+        let ref mut file = File::create(path).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");

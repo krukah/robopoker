@@ -5,17 +5,19 @@ use crate::Save;
 use std::collections::BTreeMap;
 
 pub struct Decomp(BTreeMap<Abstraction, Histogram>);
-impl Decomp {
-    const SUFFIX: &'static str = ".transition.pgcopy";
-}
+impl Decomp {}
 impl Save for Decomp {
+    fn name() -> &'static str {
+        ".transition.pgcopy"
+    }
     fn make(street: Street) -> Self {
         unreachable!("you have no business making transition table from scratch {street}")
     }
     fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", street, Self::SUFFIX)).is_ok()
+        std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
     }
     fn load(street: Street) -> Self {
+        log::info!("{:<32}{:<32}", "loading transitions", street);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -23,8 +25,8 @@ impl Save for Decomp {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let path = format!("{}{}", street, Self::SUFFIX);
-        let file = File::open(&path).expect(&format!("open {}", path));
+        let ref path = format!("{}{}", street, Self::name());
+        let ref file = File::open(path).expect(&format!("open {}", path));
         let mut transitions = BTreeMap::new();
         let mut reader = BufReader::new(file);
         let mut buffer = [0u8; 2];
@@ -64,7 +66,7 @@ impl Save for Decomp {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let path = format!("{}{}", street, Self::SUFFIX);
+        let path = format!("{}{}", street, Self::name());
         let ref mut file = File::create(&path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
