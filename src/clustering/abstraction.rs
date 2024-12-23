@@ -22,13 +22,6 @@ impl Abstraction {
     pub const fn size() -> usize {
         Self::N as usize + 1
     }
-    pub fn random() -> Self {
-        use rand::Rng;
-        let street = Street::random();
-        let n = street.k();
-        let i = rand::thread_rng().gen_range(0..n);
-        Self::from((street, i))
-    }
     pub fn range() -> impl Iterator<Item = Self> {
         (0..=Self::N).map(|i| Self::from((Street::Rive, i as usize)))
     }
@@ -133,24 +126,16 @@ impl From<i64> for Abstraction {
         Self::from(n as u64)
     }
 }
-
 /// string isomorophism
 impl TryFrom<&str> for Abstraction {
     type Error = Box<dyn std::error::Error>;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let s = s.trim().to_lowercase();
-        let n = &s[8..s.len() - 1];
-        if false {
-            unreachable!()
-        } else if s.starts_with("percent(") && s.ends_with(")") {
-            Ok(Self::from(Probability::from(n.parse::<Probability>()?)))
-        } else if s.starts_with("preflop(") && s.ends_with(")") {
-            Ok(Self::Preflop(u64::from_str_radix(n, 16)?))
-        } else if s.starts_with("learned(") && s.ends_with(")") {
-            Ok(Self::Learned(u64::from_str_radix(n, 16)?))
-        } else {
-            Err("invalid Abstraction string".into())
-        }
+        let s = s.trim().split("::").collect::<Vec<_>>();
+        let a = s[0];
+        let b = s[1];
+        let street = Street::try_from(a)?;
+        let index = usize::from_str_radix(b, 16)?;
+        Ok(Abstraction::from((street, index)))
     }
 }
 impl std::fmt::Display for Abstraction {
@@ -169,9 +154,13 @@ impl std::fmt::Display for Abstraction {
     }
 }
 
-impl crate::Arbitrary for Abstraction {
+impl Arbitrary for Abstraction {
     fn random() -> Self {
-        Self::random()
+        use rand::Rng;
+        let street = Street::random();
+        let n = street.k();
+        let i = rand::thread_rng().gen_range(0..n);
+        Abstraction::from((street, i))
     }
 }
 
@@ -187,6 +176,7 @@ mod tests {
     use super::*;
     use crate::cards::observation::Observation;
     use crate::cards::street::Street;
+    use crate::Arbitrary;
 
     #[test]
     fn is_quantize_inverse_floatize() {

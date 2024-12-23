@@ -147,6 +147,19 @@ impl std::fmt::Display for Street {
     }
 }
 
+impl TryFrom<&str> for Street {
+    type Error = Box<dyn std::error::Error>;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.chars().next() {
+            Some('p') => Ok(Self::Pref),
+            Some('f') => Ok(Self::Flop),
+            Some('t') => Ok(Self::Turn),
+            Some('r') => Ok(Self::Rive),
+            _ => Err("invalid street character".into()),
+        }
+    }
+}
+
 impl crate::Arbitrary for Street {
     fn random() -> Self {
         use rand::Rng;
