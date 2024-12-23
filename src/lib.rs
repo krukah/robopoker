@@ -53,6 +53,7 @@ const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 /// or in the case of River Abstractions, we can just generate it from scratch
 /// on the fly if we need to.
 pub trait Save: Sized {
+    fn name() -> &'static str;
     fn save(&self);
     fn done(street: Street) -> bool;
     fn load(street: Street) -> Self;

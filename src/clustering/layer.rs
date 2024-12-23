@@ -38,6 +38,7 @@ impl Layer {
             std::mem::swap(next, last);
             progress.inc(1);
         }
+        progress.finish();
         self
     }
 
@@ -71,7 +72,7 @@ impl Layer {
                 .points()
                 .get(i)
                 .expect("sharing index with outer layer");
-            histograms.push(i);
+            histograms.push(x.clone());
             potentials[i] = 0.;
             potentials = self
                 .points()
@@ -86,10 +87,6 @@ impl Layer {
                 .collect::<Vec<Energy>>();
         }
         histograms
-            .into_iter()
-            .map(|i| self.points().get(i).expect("bounds"))
-            .cloned()
-            .collect()
     }
     /// calculates the next step of the kmeans iteration by
     /// determining K * N optimal transport calculations and
@@ -98,14 +95,14 @@ impl Layer {
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
         //? check for empty centroids??
-        let kmeans = vec![Histogram::default(); self.street().k()];
+        let next = vec![Histogram::default(); self.street().k()];
         self.points()
             .par_iter()
             .map(|h| (h, self.neighboring(h)))
             .collect::<Vec<(&Histogram, Neighbor)>>()
             .into_iter()
-            .fold(kmeans, |mut kmeans, (hist, (mean, _))| {
-                kmeans.get_mut(mean).expect("bounds").absorb(hist);
+            .fold(next, |mut kmeans, (hist, (mean, _))| {
+                kmeans[mean].absorb(hist);
                 kmeans
             })
     }
@@ -194,6 +191,9 @@ impl Layer {
 }
 
 impl Save for Layer {
+    fn name() -> &'static str {
+        unreachable!("save lookups and transitions and metrics, not higher level layer")
+    }
     fn done(street: Street) -> bool {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)
     }

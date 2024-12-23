@@ -12,7 +12,6 @@ use std::collections::BTreeMap;
 pub struct Lookup(BTreeMap<Isomorphism, Abstraction>);
 
 impl Lookup {
-    const SUFFIX: &'static str = ".encoder.pgcopy";
     /// lookup the pre-computed abstraction for the outer observation
     pub fn lookup(&self, obs: &Observation) -> Abstraction {
         self.0
@@ -45,8 +44,11 @@ impl Lookup {
 }
 
 impl Save for Lookup {
+    fn name() -> &'static str {
+        ".encoder.pgcopy"
+    }
     fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", street, Self::SUFFIX)).is_ok()
+        std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
     }
     fn make(street: Street) -> Self {
         let n = street.n_isomorphisms();
@@ -74,7 +76,7 @@ impl Save for Lookup {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let path = format!("{}{}", street, Self::SUFFIX);
+        let path = format!("{}{}", street, Self::name());
         let file = File::open(&path).expect(&format!("can't open {}", path));
         let mut reader = BufReader::new(file);
         let mut lookup = BTreeMap::new();
@@ -103,7 +105,7 @@ impl Save for Lookup {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}{}", street, Self::SUFFIX)).expect("touch");
+        let ref mut file = File::create(format!("{}{}", street, Self::name())).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
