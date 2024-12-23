@@ -18,7 +18,7 @@ pub struct Analysis(Arc<Client>);
 
 impl Analysis {
     pub async fn new() -> Self {
-        log::info!("connecting to db: Analysis");
+        log::info!("connecting to db (Analysis)");
         let (client, connection) = tokio_postgres::Config::default()
             .host("localhost")
             .port(5432)
@@ -30,9 +30,10 @@ impl Analysis {
         Self(Arc::new(client))
     }
     pub async fn upload(&self) -> Result<(), E> {
+        log::info!("uploading data");
         self.nuke().await?;
-        self.truncate().await?;
         self.recreate().await?;
+        self.truncate().await?;
         self.unlogged().await?;
         self.copy_metric().await?;
         self.copy_encoder().await?;
@@ -98,6 +99,27 @@ impl Analysis {
             .await?
             .get::<_, i64>(0)
             .into())
+    }
+    pub async fn decomposition(&self, abs: Abstraction) -> Result<Histogram, E> {
+        let mass = (abs.street().next().n_observations() / abs.street().n_observations()) as f32;
+        let abs = i64::from(abs);
+        const SQL: &'static str = r#"
+            SELECT next, dx
+            FROM transitions
+            WHERE prev = $1
+        "#;
+        Ok(self
+            .0
+            .query(SQL, &[&abs])
+            .await?
+            .iter()
+            .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
+            .map(|(next, dx)| (Abstraction::from(next), dx))
+            .map(|(next, dx)| (next, (dx * mass).round() as usize))
+            .fold(Histogram::default(), |mut h, (next, dx)| {
+                h.set(next, dx);
+                h
+            }))
     }
     pub async fn distribution(&self, obs: Observation) -> Result<Histogram, E> {
         // Kd8s~6dJsAc
@@ -353,10 +375,10 @@ impl Analysis {
     async fn copy_transitions(&self) -> Result<(), E> {
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"                                                                                                   
-            COPY transitions (prev, next, dx) FROM '{}/river.transitions.pgcopy'   WITH (FORMAT BINARY);
-            COPY transitions (prev, next, dx) FROM '{}/turn.transitions.pgcopy'    WITH (FORMAT BINARY);
-            COPY transitions (prev, next, dx) FROM '{}/flop.transitions.pgcopy'    WITH (FORMAT BINARY);
-            COPY transitions (prev, next, dx) FROM '{}/preflop.transitions.pgcopy' WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/river.transition.pgcopy'   WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/turn.transition.pgcopy'    WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/flop.transition.pgcopy'    WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/preflop.transition.pgcopy' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_transitions_prev ON transitions (prev);
             CREATE INDEX IF NOT EXISTS idx_transitions_next ON transitions (next);
             CREATE INDEX IF NOT EXISTS idx_transitions_dx   ON transitions (dx);

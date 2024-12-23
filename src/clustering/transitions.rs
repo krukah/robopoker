@@ -34,13 +34,13 @@ impl Save for Decomp {
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) == 3 {
                 reader.read_u32::<BE>().expect("from abstraction");
-                let from_i64 = reader.read_i64::<BE>().expect("read from abstraction");
+                let from = reader.read_i64::<BE>().expect("read from abstraction");
                 reader.read_u32::<BE>().expect("into abstraction");
-                let into_i64 = reader.read_i64::<BE>().expect("read into abstraction");
+                let into = reader.read_i64::<BE>().expect("read into abstraction");
                 reader.read_u32::<BE>().expect("weight");
                 let weight = reader.read_f32::<BE>().expect("read weight");
-                let from_abs = Abstraction::from(from_i64);
-                let into_abs = Abstraction::from(into_i64);
+                let from_abs = Abstraction::from(from);
+                let into_abs = Abstraction::from(into);
                 let mass = (street.next().n_observations() / street.n_observations()) as f32;
                 transitions
                     .entry(from_abs)
@@ -61,7 +61,7 @@ impl Save for Decomp {
             .copied()
             .unwrap_or_else(|| Abstraction::from(0.))
             .street();
-        log::info!("{:<32}{:<32}", "saving transition", street);
+        log::info!("{:<32}{:<32}", "saving      transition", street);
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
