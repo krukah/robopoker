@@ -44,14 +44,6 @@ impl Solver {
         Policy::from(policy)
     }
 
-    /// load existing profile and encoder from disk
-    fn load() -> Self {
-        Self {
-            profile: Profile::load(Street::random()),
-            sampler: Encoding::load(Street::random()),
-        }
-    }
-
     /// here's the training loop. infosets might be generated
     /// in parallel later. infosets come pre-filtered
     /// for the traverser. regret and policy updates are

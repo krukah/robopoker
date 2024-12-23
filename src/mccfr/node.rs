@@ -190,7 +190,7 @@ impl<'tree> Node<'tree> {
     /// - on the last street, restrict raise amounts so smaller grid
     fn raises(&self) -> Vec<Odds> {
         let n = self.subgame().iter().filter(|e| e.is_raise()).count();
-        if n > crate::MAX_N_BETS {
+        if n > crate::N_RAISE {
             vec![]
         } else {
             match self.data().game().board().street() {
