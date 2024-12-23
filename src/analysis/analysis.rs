@@ -17,6 +17,18 @@ use tokio_postgres::Error as E;
 pub struct Analysis(Arc<Client>);
 
 impl Analysis {
+    pub async fn new() -> Self {
+        log::info!("connecting to db: Analysis");
+        let (client, connection) = tokio_postgres::Config::default()
+            .host("localhost")
+            .port(5432)
+            .dbname("robopoker")
+            .connect(tokio_postgres::NoTls)
+            .await
+            .expect("db connection");
+        tokio::spawn(connection);
+        Self(Arc::new(client))
+    }
     pub async fn upload(&self) -> Result<(), E> {
         self.nuke().await?;
         self.truncate().await?;
@@ -27,6 +39,7 @@ impl Analysis {
         self.copy_streets().await?;
         self.copy_blueprint().await?;
         self.copy_abstraction().await?;
+        self.copy_transitions().await?;
         Ok(())
     }
 
@@ -223,10 +236,11 @@ impl Analysis {
     }
     async fn recreate(&self) -> Result<(), E> {
         Ok(self.0.batch_execute(r#"                                                        
+            CREATE TABLE IF NOT EXISTS street      (st SMALLINT, nobs INTEGER, nabs INTEGER);
             CREATE TABLE IF NOT EXISTS encoder     (obs  BIGINT, abs  BIGINT);
             CREATE TABLE IF NOT EXISTS metric      (xor  BIGINT, dx   REAL);
             CREATE TABLE IF NOT EXISTS abstraction (abs  BIGINT, st   SMALLINT);
-            CREATE TABLE IF NOT EXISTS street      (st SMALLINT, nobs INTEGER, nabs INTEGER);
+            CREATE TABLE IF NOT EXISTS transitions (prev BIGINT, next BIGINT, dx   REAL);
             CREATE TABLE IF NOT EXISTS blueprint   (edge BIGINT, past BIGINT, present BIGINT, future BIGINT, policy REAL, regret REAL);
         "#).await?)
     }
@@ -235,6 +249,7 @@ impl Analysis {
             TRUNCATE TABLE encoder;
             TRUNCATE TABLE metric;
             TRUNCATE TABLE abstraction;
+            TRUNCATE TABLE transitions;
             TRUNCATE TABLE street;
             TRUNCATE TABLE blueprint;
         "#).await?)
@@ -244,6 +259,7 @@ impl Analysis {
             ALTER TABLE encoder      SET UNLOGGED;
             ALTER TABLE metric       SET UNLOGGED;
             ALTER TABLE abstraction  SET UNLOGGED;
+            ALTER TABLE transitions  SET UNLOGGED;
             ALTER TABLE street       SET UNLOGGED;
             ALTER TABLE blueprint    SET UNLOGGED;
         "#).await?)
@@ -333,6 +349,18 @@ impl Analysis {
             CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
             CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (st);
         "#).await?)
+    }
+    async fn copy_transitions(&self) -> Result<(), E> {
+        let path = self.path();
+        Ok(self.0.batch_execute(format!(r#"                                                                                                   
+            COPY transitions (prev, next, dx) FROM '{}/river.transitions.pgcopy'   WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/turn.transitions.pgcopy'    WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/flop.transitions.pgcopy'    WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/preflop.transitions.pgcopy' WITH (FORMAT BINARY);
+            CREATE INDEX IF NOT EXISTS idx_transitions_prev ON transitions (prev);
+            CREATE INDEX IF NOT EXISTS idx_transitions_next ON transitions (next);
+            CREATE INDEX IF NOT EXISTS idx_transitions_dx   ON transitions (dx);
+        "#, path, path, path, path).as_str()).await?)
     }
     async fn copy_blueprint(&self) -> Result<(), E> {
         let path = self.path();
