@@ -1,5 +1,6 @@
 use super::path::Path;
 use crate::clustering::abstraction::Abstraction;
+use crate::Arbitrary;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
@@ -17,12 +18,8 @@ impl std::fmt::Display for Bucket {
     }
 }
 
-impl crate::Arbitrary for Bucket {
+impl Arbitrary for Bucket {
     fn random() -> Self {
-        Self::from((
-            Path::random(),
-            Abstraction::random(),
-            Path::random(),
-        ))
+        Self::from((Path::random(), Abstraction::random(), Path::random()))
     }
 }
