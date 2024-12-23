@@ -22,7 +22,7 @@ const N: usize = 2;
 const STACK: Chips = 100;
 const B_BLIND: Chips = 2;
 const S_BLIND: Chips = 1;
-const MAX_N_BETS: usize = 3;
+const N_RAISE: usize = 3;
 
 /// sinkhorn optimal transport parameters
 const SINKHORN_TEMPERATURE: Entropy = 0.125;

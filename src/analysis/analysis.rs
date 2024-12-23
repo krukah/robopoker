@@ -30,18 +30,23 @@ impl Analysis {
         Self(Arc::new(client))
     }
     pub async fn upload(&self) -> Result<(), E> {
-        log::info!("uploading data");
-        self.nuke().await?;
-        self.recreate().await?;
-        self.truncate().await?;
-        self.unlogged().await?;
-        self.copy_metric().await?;
-        self.copy_encoder().await?;
-        self.copy_streets().await?;
-        self.copy_blueprint().await?;
-        self.copy_abstraction().await?;
-        self.copy_transitions().await?;
-        Ok(())
+        if self.done().await? {
+            log::info!("data already uploaded");
+            Ok(())
+        } else {
+            log::info!("uploading data");
+            self.nuke().await?;
+            self.recreate().await?;
+            self.truncate().await?;
+            self.unlogged().await?;
+            self.copy_metric().await?;
+            self.copy_encoder().await?;
+            self.copy_streets().await?;
+            self.copy_blueprint().await?;
+            self.copy_abstraction().await?;
+            self.copy_transitions().await?;
+            Ok(())
+        }
     }
 
     pub async fn basis(&self, street: Street) -> Result<Vec<Abstraction>, E> {
@@ -244,6 +249,22 @@ impl Analysis {
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
 
+    async fn done(&self) -> Result<bool, E> {
+        for table in vec!["street", "metric", "encoder", "abstraction", "transitions"] {
+            let count: i64 = self
+                .0
+                .query_one(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1",
+                    &[&table],
+                )
+                .await?
+                .get(0);
+            if count == 0 {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
     fn path(&self) -> String {
         std::env::current_dir()
             .unwrap()
@@ -251,6 +272,8 @@ impl Analysis {
             .into_owned()
     }
     async fn nuke(&self) -> Result<(), E> {
+        return Ok(());
+        #[allow(unreachable_code)]
         Ok(self.0.batch_execute(r#"                                                                                                   
             DROP SCHEMA public CASCADE;
             CREATE SCHEMA public;

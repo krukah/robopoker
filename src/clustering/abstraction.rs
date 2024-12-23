@@ -146,8 +146,8 @@ impl TryFrom<&str> for Abstraction {
     type Error = Box<dyn std::error::Error>;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let s = s.trim().split("::").collect::<Vec<_>>();
-        let a = s[0];
-        let b = s[1];
+        let a = s.get(0).copied().ok_or("broken delimiter")?;
+        let b = s.get(0).copied().ok_or("broken delimiter")?;
         let street = Street::try_from(a)?;
         let index = usize::from_str_radix(b, 16)?;
         Ok(Abstraction::from((street, index)))
