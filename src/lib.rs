@@ -38,7 +38,7 @@ const KMEANS_EQTY_CLUSTER_COUNT: usize = 64;
 
 // mccfr parameters
 const CFR_BATCH_SIZE: usize = 256;
-const CFR_TREE_COUNT: usize = 1_048_576;
+const CFR_TREE_COUNT: usize = 0; // WARNING THIS WILL NOT SOLVE ANYTHING
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
@@ -47,6 +47,11 @@ const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
 const REGRET_MIN: Utility = -3e5;
 const REGRET_MAX: Utility = Utility::MAX;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
+
+/// trait for random generation, mainly (strictly?) for testing
+pub trait Arbitrary {
+    fn random() -> Self;
+}
 
 /// street-level properties that can be written to and read from disk,
 /// may or may not be dependent on other entities being written/in memory.
@@ -73,11 +78,6 @@ pub trait Save: Sized {
             Self::make(street)
         }
     }
-}
-
-/// trait for random generation, mainly (strictly?) for testing
-pub trait Arbitrary {
-    fn random() -> Self;
 }
 
 /// progress bar
