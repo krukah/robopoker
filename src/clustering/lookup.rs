@@ -69,7 +69,7 @@ impl Save for Lookup {
         }
     }
     fn load(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading lookup", street);
+        log::info!("{:<32}{:<32}", "loading     lookup", street);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
