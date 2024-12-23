@@ -69,6 +69,9 @@ impl Encoding {
 }
 
 impl Save for Encoding {
+    fn name() -> &'static str {
+        unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
+    }
     fn save(&self) {
         unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
     }
@@ -84,10 +87,10 @@ impl Save for Encoding {
     fn load(_: Street) -> Self {
         Self(
             Street::all()
-                .into_iter()
+                .iter()
                 .copied()
-                .map(|s| Lookup::load(s))
-                .map(|l| BTreeMap::from(l))
+                .map(Lookup::load)
+                .map(BTreeMap::from)
                 .fold(BTreeMap::default(), |mut map, l| {
                     map.extend(l);
                     map

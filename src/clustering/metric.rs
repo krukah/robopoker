@@ -17,8 +17,6 @@ use std::collections::BTreeMap;
 pub struct Metric(BTreeMap<Pair, Energy>);
 
 impl Metric {
-    const SUFFIX: &'static str = ".metric.pgcopy";
-
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
         self.0
             .get(&Pair::from((x, y)))
@@ -66,10 +64,29 @@ impl Metric {
         }
     }
 }
+impl Measure for Metric {
+    type X = Abstraction;
+    type Y = Abstraction;
+    fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
+        if x == y {
+            0.
+        } else {
+            match (x, y) {
+                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
+                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
+                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
+                _ => unreachable!(),
+            }
+        }
+    }
+}
 
-impl crate::Save for Metric {
+impl Save for Metric {
+    fn name() -> &'static str {
+        ".metric.pgcopy"
+    }
     fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", street, Self::SUFFIX)).is_ok()
+        std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
     }
     fn make(street: Street) -> Self {
         unreachable!("you have no business being calculated from scratch, rather than from default {street} ")
@@ -82,7 +99,8 @@ impl crate::Save for Metric {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let file = File::open(format!("{}{}", street, Self::SUFFIX)).expect("open file");
+        let path = format!("{}{}", street, Self::name());
+        let file = File::open(&path).expect(&format!("open {}", path));
         let mut buffer = [0u8; 2];
         let mut lookup = BTreeMap::new();
         let mut reader = BufReader::new(file);
@@ -108,7 +126,8 @@ impl crate::Save for Metric {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref mut file = File::create(format!("{}{}", street, Self::SUFFIX)).expect("touch");
+        let path = format!("{}{}", street, Self::name());
+        let ref mut file = File::create(&path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
@@ -121,22 +140,6 @@ impl crate::Save for Metric {
             file.write_f32::<BE>(*distance).unwrap();
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
-    }
-}
-impl Measure for Metric {
-    type X = Abstraction;
-    type Y = Abstraction;
-    fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        if x == y {
-            0.
-        } else {
-            match (x, y) {
-                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
-                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
-                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
-                _ => unreachable!(),
-            }
-        }
     }
 }
 
