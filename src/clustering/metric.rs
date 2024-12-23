@@ -20,14 +20,10 @@ impl Metric {
     const SUFFIX: &'static str = ".metric.pgcopy";
 
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
-        if x == y {
-            0.
-        } else {
-            self.0
-                .get(&Pair::from((x, y)))
-                .copied()
-                .expect("missing abstraction pair")
-        }
+        self.0
+            .get(&Pair::from((x, y)))
+            .copied()
+            .expect("missing abstraction pair")
     }
 
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> Energy {
@@ -41,10 +37,12 @@ impl Metric {
         log::info!("loading metric");
         Self(
             Street::all()
-                .iter()
+                .into_iter()
                 .filter(|street| Self::done(**street))
+                .map(|street| Self::load(*street))
+                .map(|metric| metric.0)
                 .fold(BTreeMap::default(), |mut map, street| {
-                    map.extend(Self::load(*street).0);
+                    map.extend(street);
                     map
                 }),
         )
@@ -92,11 +90,10 @@ impl crate::Save for Metric {
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) == 2 {
                 reader.read_u32::<BE>().expect("pair length");
-                let pair_i64 = reader.read_i64::<BE>().expect("read pair");
+                let pair = reader.read_i64::<BE>().expect("read pair");
                 reader.read_u32::<BE>().expect("distance length");
-                let dist_f32 = reader.read_f32::<BE>().expect("read distance");
-                let pair = Pair::from(pair_i64);
-                lookup.insert(pair, dist_f32);
+                let dist = reader.read_f32::<BE>().expect("read distance");
+                lookup.insert(Pair::from(pair), dist);
                 continue;
             } else {
                 break;
@@ -130,11 +127,15 @@ impl Measure for Metric {
     type X = Abstraction;
     type Y = Abstraction;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        match (x, y) {
-            (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
-            (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
-            (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
-            _ => unreachable!(),
+        if x == y {
+            0.
+        } else {
+            match (x, y) {
+                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
+                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
+                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
+                _ => unreachable!(),
+            }
         }
     }
 }

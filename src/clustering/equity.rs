@@ -36,7 +36,7 @@ impl Equity {
                 Some({
                     cdf.0 += px;
                     cdf.1 += py;
-                    *cdf
+                    cdf.clone()
                 })
             })
             .map(|(x, y)| (x - y).abs())
