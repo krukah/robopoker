@@ -25,11 +25,11 @@ pub struct KMeansLayer {
 impl KMeansLayer {
     /// primary clustering algorithm loop
     fn cluster(mut self) -> Self {
-        log::info!("{:<32}{:<32}", "initialize kmeans", self.street());
+        log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
         let ref mut init = self.init();
         let ref mut last = self.kmeans;
         std::mem::swap(init, last);
-        log::info!("{:<32}{:<32}", "clustering kmeans", self.street());
+        log::info!("{:<32}{:<32}", "clustering  kmeans", self.street());
         let t = self.street().t();
         let progress = crate::progress(t);
         for _ in 0..self.street().t() {
@@ -203,7 +203,6 @@ impl Save for KMeansLayer {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)
     }
     fn load(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading layer", street);
         match street {
             Street::Rive => Self {
                 street,
@@ -220,13 +219,11 @@ impl Save for KMeansLayer {
         }
     }
     fn save(&self) {
-        log::info!("{:<32}{:<32}", "saving layer", self.street());
         self.metric().save();
         self.lookup().save();
         self.decomp().save();
     }
     fn make(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "making layer", street);
         Self::load(street).cluster()
     }
 }

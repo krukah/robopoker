@@ -435,6 +435,7 @@ impl Save for Profile {
         unreachable!("must be learned in MCCFR minimization")
     }
     fn load(_: crate::cards::street::Street) -> Self {
+        log::info!("{:<32}{:<32}", "loading     blueprint", Self::name());
         use crate::clustering::abstraction::Abstraction;
         use crate::mccfr::path::Path;
         use byteorder::ReadBytesExt;
@@ -444,7 +445,6 @@ impl Save for Profile {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        log::info!("loading profile from disk");
         let ref path = format!("{}", Self::name());
         let file = File::open(path).expect("open file");
         let mut strategies = BTreeMap::new();

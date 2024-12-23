@@ -32,7 +32,7 @@ impl Metric {
         }
     }
     pub fn read() -> Self {
-        log::info!("loading metric");
+        log::info!("loading     metric");
         Self(
             Street::all()
                 .into_iter()
@@ -92,7 +92,7 @@ impl Save for Metric {
         unreachable!("you have no business being calculated from scratch, rather than from default {street} ")
     }
     fn load(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading metric", street);
+        log::info!("{:<32}{:<32}", "loading     metric", street);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;

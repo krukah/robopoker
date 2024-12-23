@@ -66,7 +66,7 @@ pub trait Save: Sized {
     fn push(street: Street) -> Self {
         if Self::done(street) {
             log::info!(
-                "loading {} from file {street}",
+                "loading     {} from file {street}",
                 std::any::type_name::<Self>()
             );
             Self::load(street)

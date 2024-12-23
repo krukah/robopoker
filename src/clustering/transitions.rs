@@ -17,7 +17,7 @@ impl Save for Decomp {
         std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
     }
     fn load(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading transitions", street);
+        log::info!("{:<32}{:<32}", "loading     transitions", street);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
