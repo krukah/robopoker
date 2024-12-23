@@ -47,6 +47,7 @@ use robopoker::*;
 //    2009. Computing Equilibria in Multiplayer Stochastic Games of Imperfect Information (http://www.cs.cmu.edu/~sandholm/stochgames.ijcai09.pdf). In IJCAI.
 //    2003. Using the Triangle Inequality to Accelerate-Means (https://cdn.aaai.org/ICML/2003/ICML03-022.pdf) In ICML.
 
+#[rustfmt::skip]
 #[tokio::main]
 async fn main() {
     // Boring stuff
@@ -55,6 +56,8 @@ async fn main() {
     crate::mccfr::sampler::Encoding::learn();
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Solver::train();
+    // Let's upload the data to the database.
+    crate::analysis::analysis::Analysis::new().await.upload().await;
     // Let's see what we've learned.
     crate::analysis::cli::CLI::new().await.run().await;
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.

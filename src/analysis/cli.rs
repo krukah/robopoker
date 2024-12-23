@@ -6,19 +6,17 @@ use crate::cards::strength::Strength;
 use crate::clustering::abstraction::Abstraction;
 use clap::Parser;
 use std::io::Write;
-use tokio_postgres::Config;
-use tokio_postgres::NoTls;
 
 pub struct CLI(Analysis);
 
 impl CLI {
     pub async fn new() -> Self {
-        log::info!("connecting to db");
-        let (client, connection) = Config::default()
+        log::info!("connecting to db: CLI");
+        let (client, connection) = tokio_postgres::Config::default()
             .host("localhost")
             .port(5432)
             .dbname("robopoker")
-            .connect(NoTls)
+            .connect(tokio_postgres::NoTls)
             .await
             .expect("db connection");
         tokio::spawn(connection);

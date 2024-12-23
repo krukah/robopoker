@@ -47,7 +47,7 @@ impl Solver {
     /// load existing profile and encoder from disk
     fn load() -> Self {
         Self {
-            profile: Profile::load(),
+            profile: Profile::load(Street::random()),
             sampler: Encoding::load(Street::random()),
         }
     }
@@ -67,7 +67,7 @@ impl Solver {
     }
     /// check (by filename) if a blueprint solver has been saved to disk.
     fn done() -> bool {
-        Profile::done()
+        Profile::done(Street::random())
     }
     /// the main training loop.
     fn solve(&mut self) {
@@ -80,7 +80,7 @@ impl Solver {
                 self.profile.add_policy(bucket, policy);
             }
         }
-        self.profile.save("blueprint");
+        self.profile.save();
     }
 
     /// compute regret and policy updates for a batch of Trees.
