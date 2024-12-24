@@ -26,6 +26,7 @@ const M: u64 = 0x00FFFFFFFFFFF000;
 const L: u64 = 0x0000000000000FFF;
 
 impl Abstraction {
+    const DELIM: &'static str = "::";
     const N: usize = crate::KMEANS_EQTY_CLUSTER_COUNT - 1;
     pub const fn size() -> usize {
         Self::N as usize + 1
@@ -145,9 +146,9 @@ impl From<i64> for Abstraction {
 impl TryFrom<&str> for Abstraction {
     type Error = Box<dyn std::error::Error>;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let s = s.trim().split("::").collect::<Vec<_>>();
+        let s = s.trim().split(Self::DELIM).collect::<Vec<_>>();
         let a = s.get(0).copied().ok_or("broken delimiter")?;
-        let b = s.get(0).copied().ok_or("broken delimiter")?;
+        let b = s.get(1).copied().ok_or("broken delimiter")?;
         let street = Street::try_from(a)?;
         let index = usize::from_str_radix(b, 16)?;
         Ok(Abstraction::from((street, index)))
@@ -157,13 +158,14 @@ impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}::{:02x}",
+            "{}{}{:02x}",
             self.street()
                 .to_string()
                 .chars()
                 .next()
                 .unwrap()
                 .to_uppercase(),
+            Self::DELIM,
             self.index()
         )
     }

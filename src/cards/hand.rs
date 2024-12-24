@@ -1,6 +1,7 @@
 use super::card::Card;
 use super::rank::Rank;
 use super::suit::Suit;
+use crate::Arbitrary;
 
 /// Hand represents an unordered set of Cards. only in the limit, it is more memory efficient than Vec<Card>, ... but also, an advantage even for small N is that we avoid heap allocation. nice to use a single word for the full Hand independent of size stored as a u64, but only needs LSB bitstring of 52 bits. Each bit represents a unique card in the (unordered) set.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -9,12 +10,6 @@ pub struct Hand(u64);
 impl Hand {
     pub fn empty() -> Self {
         Self(0)
-    }
-    pub fn random() -> Self {
-        let ref mut rng = rand::thread_rng();
-        let cards = rand::Rng::gen::<u64>(rng);
-        let cards = cards & Self::mask();
-        Self(cards)
     }
 
     pub fn add(lhs: Self, rhs: Self) -> Self {
@@ -182,6 +177,15 @@ impl std::fmt::Display for Hand {
             write!(f, "{}", card)?;
         }
         Ok(())
+    }
+}
+
+impl Arbitrary for Hand {
+    fn random() -> Self {
+        let ref mut rng = rand::thread_rng();
+        let cards = rand::Rng::gen::<u64>(rng);
+        let cards = cards & Self::mask();
+        Self(cards)
     }
 }
 
