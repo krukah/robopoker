@@ -12,10 +12,10 @@ pub enum Query {
         observation: String,
     },
     #[command(
-        about = "Find the equivalences of any given observation",
-        alias = "eqv"
+        about = "Find the isomorphisms of any given observation",
+        alias = "iso"
     )]
-    Equivalents {
+    Isomorphisms {
         #[arg(required = true)]
         observation: String,
     },
@@ -23,7 +23,7 @@ pub enum Query {
         about = "Find the observations in any given abstraction",
         alias = "mem"
     )]
-    Membership {
+    Constituents {
         #[arg(required = true)]
         abstraction: String,
     },

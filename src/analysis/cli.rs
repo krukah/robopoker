@@ -45,26 +45,26 @@ impl CLI {
         match Query::try_parse_from(std::iter::once("> ").chain(input.split_whitespace()))? {
             Query::Abstraction { observation } => {
                 let obs = Observation::try_from(observation.as_str())?;
-                let abstraction = self.0.encode(obs).await?;
+                let abstraction = self.0.abstraction(obs).await?;
                 Ok(println!("abstraction: {}", abstraction))
             }
             Query::AbsDistance { obs1, obs2 } => {
-                let (o1, o2) = Observation::try_from(obs1.as_str())
-                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))?;
+                let o1 = Observation::try_from(obs1.as_str())?;
+                let o2 = Observation::try_from(obs2.as_str())?;
                 let distance = self.0.abs_distance(o1, o2).await?;
                 Ok(println!("abstraction distance: {:.4}", distance))
             }
             Query::ObsDistance { obs1, obs2 } => {
-                let (o1, o2) = Observation::try_from(obs1.as_str())
-                    .and_then(|o1| Observation::try_from(obs2.as_str()).map(|o2| (o1, o2)))?;
+                let o1 = Observation::try_from(obs1.as_str())?;
+                let o2 = Observation::try_from(obs2.as_str())?;
                 let distance = self.0.obs_distance(o1, o2).await?;
                 Ok(println!("observation distance: {:.4}", distance))
             }
-            Query::Equivalents { observation } => {
+            Query::Isomorphisms { observation } => {
                 let obs = Observation::try_from(observation.as_str())?;
                 let equivalents = self
                     .0
-                    .equivalents(obs)
+                    .isomorphisms(obs)
                     .await?
                     .iter()
                     .map(|o| format!("\n - {}", o))
@@ -72,11 +72,11 @@ impl CLI {
                     .join("");
                 Ok(println!("equivalents:\n{}", equivalents))
             }
-            Query::Membership { abstraction } => {
+            Query::Constituents { abstraction } => {
                 let abs = Abstraction::try_from(abstraction.as_str())?;
                 let memberships = self
                     .0
-                    .membership(abs)
+                    .constituents(abs)
                     .await?
                     .iter()
                     .enumerate()
@@ -90,7 +90,7 @@ impl CLI {
                 let abs = Abstraction::try_from(abstraction.as_str())?;
                 let neighborhood = self
                     .0
-                    .vicinity(abs)
+                    .neighborhood(abs)
                     .await?
                     .iter()
                     .enumerate()
