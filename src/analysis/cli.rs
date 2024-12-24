@@ -43,11 +43,6 @@ impl CLI {
 
     async fn handle(&self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
         match Query::try_parse_from(std::iter::once("> ").chain(input.split_whitespace()))? {
-            Query::Abstraction { observation } => {
-                let obs = Observation::try_from(observation.as_str())?;
-                let abstraction = self.0.abstraction(obs).await?;
-                Ok(println!("abstraction: {}", abstraction))
-            }
             Query::AbsDistance { obs1, obs2 } => {
                 let o1 = Observation::try_from(obs1.as_str())?;
                 let o2 = Observation::try_from(obs2.as_str())?;
@@ -59,6 +54,11 @@ impl CLI {
                 let o2 = Observation::try_from(obs2.as_str())?;
                 let distance = self.0.obs_distance(o1, o2).await?;
                 Ok(println!("observation distance: {:.4}", distance))
+            }
+            Query::Abstraction { observation } => {
+                let obs = Observation::try_from(observation.as_str())?;
+                let abstraction = self.0.abstraction(obs).await?;
+                Ok(println!("abstraction: {}", abstraction))
             }
             Query::Isomorphisms { observation } => {
                 let obs = Observation::try_from(observation.as_str())?;
