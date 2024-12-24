@@ -139,10 +139,12 @@ impl TryFrom<&str> for Observation {
             .trim()
             .split_once(Self::SEPARATOR)
             .unwrap_or((s.trim(), ""));
-        Ok(Self::from((
-            Hand::try_from(pocket)?,
-            Hand::try_from(public)?,
-        )))
+        let pocket = Hand::try_from(pocket)?;
+        let public = Hand::try_from(public)?;
+        match (pocket.size(), public.size()) {
+            (2, 0) | (2, 3) | (2, 4) | (2, 5) => Ok(Self::from((pocket, public))),
+            _ => Err(format!("invalid card counts: {} {}", pocket, public)),
+        }
     }
 }
 

@@ -29,6 +29,7 @@ impl Analysis {
         tokio::spawn(connection);
         Self(Arc::new(client))
     }
+
     pub async fn upload(&self) -> Result<(), E> {
         if self.done().await? {
             log::info!("data already uploaded");
@@ -91,7 +92,8 @@ impl Analysis {
             .collect::<BTreeMap<Pair, Energy>>()
             .into())
     }
-    pub async fn encode(&self, obs: Observation) -> Result<Abstraction, E> {
+
+    pub async fn abstraction(&self, obs: Observation) -> Result<Abstraction, E> {
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
             SELECT abs
@@ -105,7 +107,73 @@ impl Analysis {
             .get::<_, i64>(0)
             .into())
     }
-    pub async fn decomposition(&self, abs: Abstraction) -> Result<Histogram, E> {
+
+    pub async fn isomorphisms(&self, obs: Observation) -> Result<Vec<Observation>, E> {
+        // 8d8s~6dJs7c
+        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
+        const SQL: &'static str = r#"
+            SELECT obs
+            FROM encoder
+            WHERE abs = (
+                SELECT abs
+                FROM encoder
+                WHERE obs = $1
+            )
+            AND obs != $1
+            ORDER BY RANDOM()
+            LIMIT 5;
+        "#;
+        Ok(self
+            .0
+            .query(SQL, &[&iso])
+            .await?
+            .iter()
+            .map(|row| row.get::<_, i64>(0))
+            .map(Observation::from)
+            .collect())
+    }
+    pub async fn constituents(&self, abs: Abstraction) -> Result<Vec<Observation>, E> {
+        let abs = i64::from(abs);
+        const SQL: &'static str = r#"
+            SELECT obs
+            FROM encoder
+            WHERE abs = $1
+            ORDER BY RANDOM()
+            LIMIT 5;
+        "#;
+        Ok(self
+            .0
+            .query(SQL, &[&abs])
+            .await?
+            .iter()
+            .map(|row| row.get::<_, i64>(0))
+            .map(Observation::from)
+            .collect())
+    }
+    pub async fn neighborhood(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
+        let abs = i64::from(abs);
+        const SQL: &'static str = r#"
+            SELECT a1.abs, m.dx
+            FROM abstraction a1
+            JOIN abstraction a2 ON a1.st = a2.st
+            JOIN metric m ON (a1.abs # $1) = m.xor
+            WHERE
+                a2.abs  = $1 AND
+                a1.abs != $1
+            ORDER BY m.dx
+            LIMIT 5;
+        "#;
+        Ok(self
+            .0
+            .query(SQL, &[&abs])
+            .await?
+            .iter()
+            .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
+            .map(|(abs, distance)| (Abstraction::from(abs), distance))
+            .collect())
+    }
+
+    pub async fn abs_histogram(&self, abs: Abstraction) -> Result<Histogram, E> {
         let mass = (abs.street().next().n_observations() / abs.street().n_observations()) as f32;
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
@@ -119,14 +187,14 @@ impl Analysis {
             .await?
             .iter()
             .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
-            .map(|(next, dx)| (Abstraction::from(next), dx))
             .map(|(next, dx)| (next, (dx * mass).round() as usize))
+            .map(|(next, dx)| (Abstraction::from(next), dx))
             .fold(Histogram::default(), |mut h, (next, dx)| {
                 h.set(next, dx);
                 h
             }))
     }
-    pub async fn distribution(&self, obs: Observation) -> Result<Histogram, E> {
+    pub async fn obs_histogram(&self, obs: Observation) -> Result<Histogram, E> {
         // Kd8s~6dJsAc
         let isos = obs
             .children()
@@ -151,70 +219,7 @@ impl Analysis {
             .collect::<Vec<Abstraction>>()
             .into())
     }
-    pub async fn equivalents(&self, obs: Observation) -> Result<Vec<Observation>, E> {
-        // 8d8s~6dJs7c
-        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
-        const SQL: &'static str = r#"
-            SELECT obs
-            FROM encoder
-            WHERE abs = (
-                SELECT abs
-                FROM encoder
-                WHERE obs = $1
-            )
-            AND obs != $1
-            ORDER BY RANDOM()
-            LIMIT 5;
-        "#;
-        Ok(self
-            .0
-            .query(SQL, &[&iso])
-            .await?
-            .iter()
-            .map(|row| row.get::<_, i64>(0))
-            .map(Observation::from)
-            .collect())
-    }
-    pub async fn membership(&self, abs: Abstraction) -> Result<Vec<Observation>, E> {
-        let abs = i64::from(abs);
-        const SQL: &'static str = r#"
-            SELECT obs
-            FROM encoder
-            WHERE abs = $1
-            ORDER BY RANDOM()
-            LIMIT 5;
-        "#;
-        Ok(self
-            .0
-            .query(SQL, &[&abs])
-            .await?
-            .iter()
-            .map(|row| row.get::<_, i64>(0))
-            .map(Observation::from)
-            .collect())
-    }
-    pub async fn vicinity(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
-        let abs = i64::from(abs);
-        const SQL: &'static str = r#"
-            SELECT a1.abs, m.dx
-            FROM abstraction a1
-            JOIN abstraction a2 ON a1.st = a2.st
-            JOIN metric m ON (a1.abs # $1) = m.xor
-            WHERE
-                a2.abs  = $1 AND
-                a1.abs != $1
-            ORDER BY m.dx
-            LIMIT 5;
-        "#;
-        Ok(self
-            .0
-            .query(SQL, &[&abs])
-            .await?
-            .iter()
-            .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
-            .map(|(abs, distance)| (Abstraction::from(abs), distance))
-            .collect())
-    }
+
     pub async fn abs_distance(&self, x: Observation, y: Observation) -> Result<Energy, E> {
         // dab Qh6s~QdTc6c QhQs~QdQcAc
         if x.street() != y.street() {
@@ -242,13 +247,19 @@ impl Analysis {
             return Err(E::__private_api_timeout());
         }
         let (ref hx, ref hy, ref metric) = tokio::try_join!(
-            self.distribution(x),
-            self.distribution(y),
+            self.obs_histogram(x),
+            self.obs_histogram(y),
             self.metric(x.street().next())
         )?;
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
 
+    fn path(&self) -> String {
+        std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    }
     async fn done(&self) -> Result<bool, E> {
         for table in vec!["street", "metric", "encoder", "abstraction", "transitions"] {
             let count: i64 = self
@@ -264,12 +275,6 @@ impl Analysis {
             }
         }
         Ok(true)
-    }
-    fn path(&self) -> String {
-        std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned()
     }
     async fn nuke(&self) -> Result<(), E> {
         return Ok(());
