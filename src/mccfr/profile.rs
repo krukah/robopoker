@@ -16,7 +16,6 @@ use crate::Arbitrary;
 use crate::Probability;
 use crate::Save;
 use crate::Utility;
-use rand::prelude::Distribution;
 use rand::rngs::SmallRng;
 use rand::Rng;
 use rand::SeedableRng;
@@ -237,6 +236,7 @@ impl Profile {
     /// Profile-weighted sampling of opponent Edge
     pub fn explore_one(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
         use rand::distributions::WeightedIndex;
+        use rand::prelude::Distribution;
         let ref mut rng = self.rng(head);
         let ref bucket = head.bucket();
         let mut choices = choices;

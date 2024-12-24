@@ -209,6 +209,7 @@ mod tests {
 
     #[test]
     fn permute_identity() {
+        use crate::Arbitrary;
         let permutation = Permutation::identity();
         let hand = Hand::random();
         assert!(permutation.image(&hand) == hand);
