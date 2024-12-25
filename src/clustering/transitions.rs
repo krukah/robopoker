@@ -39,13 +39,11 @@ impl Save for Decomp {
                 let into = reader.read_i64::<BE>().expect("read into abstraction");
                 reader.read_u32::<BE>().expect("weight");
                 let weight = reader.read_f32::<BE>().expect("read weight");
-                let from_abs = Abstraction::from(from);
-                let into_abs = Abstraction::from(into);
-                let mass = (street.next().n_observations() / street.n_observations()) as f32;
+                let mass = street.n_children() as f32;
                 transitions
-                    .entry(from_abs)
+                    .entry(Abstraction::from(from))
                     .or_insert_with(Histogram::default)
-                    .set(into_abs, (weight * mass) as usize);
+                    .set(Abstraction::from(into), (weight * mass) as usize);
                 continue;
             } else {
                 break;
