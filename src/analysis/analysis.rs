@@ -174,7 +174,7 @@ impl Analysis {
     }
 
     pub async fn abs_histogram(&self, abs: Abstraction) -> Result<Histogram, E> {
-        let mass = (abs.street().next().n_observations() / abs.street().n_observations()) as f32;
+        let mass = abs.street().n_children() as f32;
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT next, dx

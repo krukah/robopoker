@@ -26,6 +26,22 @@ impl Street {
             Self::Rive => Self::Turn,
         }
     }
+    pub const fn k(&self) -> usize {
+        match self {
+            Self::Pref => self.n_isomorphisms(),
+            Self::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
+            Self::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
+            Self::Rive => 0,
+        }
+    }
+    pub const fn t(&self) -> usize {
+        match self {
+            Self::Pref => 0,
+            Self::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
+            Self::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
+            Self::Rive => 0,
+        }
+    }
     pub const fn n_observed(&self) -> usize {
         match self {
             Self::Pref => 0,
@@ -42,20 +58,14 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
-    pub const fn k(&self) -> usize {
+
+    #[cfg(not(feature = "shortdeck"))]
+    pub const fn n_children(&self) -> usize {
         match self {
-            Self::Pref => self.n_isomorphisms(),
-            Self::Flop => crate::KMEANS_FLOP_CLUSTER_COUNT,
-            Self::Turn => crate::KMEANS_TURN_CLUSTER_COUNT,
-            Self::Rive => 0,
-        }
-    }
-    pub const fn t(&self) -> usize {
-        match self {
-            Self::Pref => 0,
-            Self::Flop => crate::KMEANS_FLOP_TRAINING_ITERATIONS,
-            Self::Turn => crate::KMEANS_TURN_TRAINING_ITERATIONS,
-            Self::Rive => 0,
+            Self::Pref => 19_600,
+            Self::Flop => 0___47,
+            Self::Turn => 0___46,
+            Self::Rive => panic!("terminal"),
         }
     }
     #[cfg(not(feature = "shortdeck"))]
@@ -92,6 +102,15 @@ impl Street {
             Self::Flop => 0___3_769_920,
             Self::Turn => 0__29_216_880,
             Self::Rive => 0_175_301_280,
+        }
+    }
+    #[cfg(feature = "shortdeck")]
+    pub const fn n_children(&self) -> usize {
+        match self {
+            Self::Pref => 5_984,
+            Self::Flop => 0__31,
+            Self::Turn => 0__30,
+            Self::Rive => panic!("terminal"),
         }
     }
 }
