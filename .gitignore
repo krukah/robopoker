@@ -14,3 +14,8 @@
 *.png
 *.gif
 *.sh
+
+react/.next/
+react/build/
+react/dist/
+react/node_modules/
