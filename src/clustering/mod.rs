@@ -1,6 +1,4 @@
 pub mod abstraction;
-pub mod centroid;
-pub mod datasets;
 pub mod emd;
 pub mod equity;
 pub mod heuristic;
