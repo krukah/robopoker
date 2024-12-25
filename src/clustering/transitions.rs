@@ -57,7 +57,7 @@ impl Save for Decomp {
             .keys()
             .next()
             .copied()
-            .unwrap_or_else(|| Abstraction::from(0.))
+            .unwrap_or_else(|| Abstraction::from(0.)) // coerce to River equity Abstraction if empty
             .street();
         log::info!("{:<32}{:<32}", "saving      transition", street);
         use byteorder::WriteBytesExt;
