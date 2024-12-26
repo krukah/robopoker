@@ -35,13 +35,6 @@ impl Histogram {
         self.counts.len()
     }
 
-    /// empty the whole thing,
-    /// reset the norm to zero,
-    /// clear the weights
-    pub fn empty(&mut self) {
-        self.mass = 0;
-        self.counts.clear();
-    }
     /// insert the Abstraction into our support,
     /// incrementing its local weight,
     /// incrementing our global norm.
@@ -59,11 +52,6 @@ impl Histogram {
         for (key, count) in other.counts.iter() {
             self.counts.entry(*key).or_insert(0usize).add_assign(*count);
         }
-    }
-    /// same thing but consumes the merging histogram
-    pub fn merge(mut self, other: &Self) -> Self {
-        self.absorb(other);
-        self
     }
 
     /// it is useful in EMD calculation
