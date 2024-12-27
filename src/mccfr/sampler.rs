@@ -56,10 +56,9 @@ impl Encoding {
     /// properties of Tree sampling, which makes lots of sense and is stronger model.
     /// broadly goes from Edge -> Action -> Game -> Abstraction
     pub fn branches(&self, node: &Node) -> Vec<Branch> {
-        node.continuations()
-            .iter()
-            .map(|e| (e, node.actionization(e)))
-            .map(|(e, a)| (e.clone(), node.data().game().apply(a))) // up to here should prolly be encapsulated by Node::children()
+        // SOMETHING WRONG
+        node.branches()
+            .into_iter()
             .map(|(e, g)| (e, g, self.abstraction(&g)))
             .map(|(e, g, x)| (e, Data::from((g, x))))
             .map(|(e, d)| (e, d, node.index()))

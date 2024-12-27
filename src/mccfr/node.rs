@@ -4,6 +4,7 @@ use super::path::Path;
 use super::player::Player;
 use crate::cards::street::Street;
 use crate::gameplay::action::Action;
+use crate::gameplay::game::Game;
 use crate::gameplay::ply::Ply;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
@@ -129,13 +130,24 @@ impl<'tree> Node<'tree> {
         let present = self.data().abstraction().clone();
         let subgame = Path::from(self.subgame()); // could be from &'tree [Edge]
         let choices = Path::from(self.continuations()); // could be from &'tree [Edge]
+
+        // SOMETHING WRONG
         Bucket::from((subgame, present, choices))
     }
 
+    /// TODO
+    /// compare to self::futures()
+    pub fn branches(&self) -> Vec<(Edge, Game)> {
+        self.continuations()
+            .into_iter()
+            .map(|e| (e, self.actionization(&e)))
+            .map(|(e, a)| (e.clone(), self.data().game().apply(a))) // up to here should prolly be encapsulated by Node::children()
+            .collect()
+    }
     /// returns the set of all possible actions from the current node
     /// this is useful for generating a set of children for a given node
     /// broadly goes from Node -> Game -> Action -> Edge
-    pub fn continuations(&self) -> Vec<Edge> {
+    fn continuations(&self) -> Vec<Edge> {
         self.data()
             .game()
             .legal()
@@ -151,7 +163,7 @@ impl<'tree> Node<'tree> {
     /// represent the same action. moreover, we "snap" raises to be
     /// within range of legal bet sizes, so sometimes Raise(5:1) yields
     /// an identical Game node as Raise(1:1) or Shove.
-    pub fn actionization(&self, edge: &Edge) -> Action {
+    fn actionization(&self, edge: &Edge) -> Action {
         let game = self.data().game();
         match &edge {
             Edge::Check => Action::Check,
@@ -176,7 +188,7 @@ impl<'tree> Node<'tree> {
     /// which can be generated however.
     /// the contract is that the Actions returned by Game are legal,
     /// but the Raise amount can take any value >= the minimum provided by Game.
-    pub fn edgifications(&self, action: Action) -> Vec<Edge> {
+    fn edgifications(&self, action: Action) -> Vec<Edge> {
         if let Action::Raise(_) = action {
             self.raises().into_iter().map(Edge::from).collect()
         } else {
