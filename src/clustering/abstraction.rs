@@ -174,9 +174,9 @@ impl std::fmt::Display for Abstraction {
 impl Arbitrary for Abstraction {
     fn random() -> Self {
         use rand::Rng;
-        let street = Street::random();
-        let n = street.k();
-        let i = rand::thread_rng().gen_range(0..n);
+        let street = Street::Flop;
+        let k = street.k();
+        let i = rand::thread_rng().gen_range(0..k);
         Abstraction::from((street, i))
     }
 }
