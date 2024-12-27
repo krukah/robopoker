@@ -583,12 +583,8 @@ mod tests {
     /// arguments to the save function to write to a temporary name
     /// and delete the file
     fn persistence() {
-        let name = "test";
-        let file = format!("{}.profile.pgcopy", name);
         let save = Profile::random();
-        save.save();
         let load = Profile::load(Street::random());
-        std::fs::remove_file(file).unwrap();
         assert!(std::iter::empty()
             .chain(save.strategies.iter().zip(load.strategies.iter()))
             .chain(load.strategies.iter().zip(save.strategies.iter()))

@@ -26,19 +26,19 @@ const N_RAISE: usize = 3;
 
 /// sinkhorn optimal transport parameters
 const SINKHORN_TEMPERATURE: Entropy = 0.125;
-const SINKHORN_ITERATIONS: usize = 16;
-const SINKHORN_TOLERANCE: Energy = 0.001;
+const SINKHORN_ITERATIONS: usize = 32;
+const SINKHORN_TOLERANCE: Energy = 0.005;
 
 // kmeans clustering parameters
-const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32;
-const KMEANS_TURN_TRAINING_ITERATIONS: usize = 32;
-const KMEANS_FLOP_CLUSTER_COUNT: usize = 24;
-const KMEANS_TURN_CLUSTER_COUNT: usize = 16;
-const KMEANS_EQTY_CLUSTER_COUNT: usize = 64;
+const KMEANS_FLOP_TRAINING_ITERATIONS: usize = KMEANS_TURN_TRAINING_ITERATIONS;
+const KMEANS_TURN_TRAINING_ITERATIONS: usize = KMEANS_TURN_CLUSTER_COUNT;
+const KMEANS_FLOP_CLUSTER_COUNT: usize = 128;
+const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
+const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 // mccfr parameters
-const CFR_BATCH_SIZE: usize = 16;
-const CFR_TREE_COUNT: usize = 1024; // WARNING THIS WILL NOT SOLVE ANYTHING
+const CFR_BATCH_SIZE: usize = 256;
+const CFR_TREE_COUNT: usize = 1_048_576;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
