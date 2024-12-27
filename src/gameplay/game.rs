@@ -94,6 +94,9 @@ impl Game {
     pub fn actor(&self) -> &Seat {
         self.actor_ref()
     }
+    pub fn street(&self) -> Street {
+        self.board.street()
+    }
     pub fn legal(&self) -> Vec<Action> {
         let mut options = Vec::new();
         if self.is_terminal() {
@@ -122,6 +125,7 @@ impl Game {
         if self.can_check() {
             options.push(Action::Check);
         }
+        assert!(options.len() > 0);
         options
     }
 
@@ -356,7 +360,7 @@ impl Game {
 
     //
     pub fn settlements(&self) -> Vec<Settlement> {
-        assert!(self.is_terminal());
+        assert!(self.is_terminal(), "non terminal game state:\n{}", self);
         Showdown::from(self.ledger()).settle()
     }
     fn ledger(&self) -> Vec<Settlement> {
@@ -438,10 +442,15 @@ impl Game {
 
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use colored::Colorize;
         for seat in self.seats.iter() {
-            write!(f, "{:>6}", seat.stack())?;
+            write!(f, "{}{:<6}", seat.state(), seat.stack())?;
         }
-        write!(f, " :: {:>6} {}", self.pot, self.board)?;
+        write!(
+            f,
+            "{}",
+            format!(" @ {:>6} {} {}", self.pot, self.board, self.street()).bright_green()
+        )?;
         Ok(())
     }
 }

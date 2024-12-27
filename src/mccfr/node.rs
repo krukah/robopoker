@@ -64,14 +64,19 @@ impl<'tree> Node<'tree> {
         }
     }
 
-    /// Navigational methods
-    pub fn futures(&self, edge: &Edge) -> Vec<Edge> {
+    // Navigational methods
+
+    /// if we were to play this edge, what would the
+    /// history: Vec<Edge> of the resulting Node be?
+    #[allow(dead_code)]
+    fn chained(&self, edge: &Edge) -> Vec<Edge> {
         self.history()
             .into_iter()
+            .rev()
             .chain(std::iter::once(edge))
             .rev()
             .take_while(|e| e.is_choice())
-            .cloned()
+            .copied()
             .collect()
     }
     pub fn history(&self) -> Vec<&'tree Edge> {
@@ -129,25 +134,28 @@ impl<'tree> Node<'tree> {
     pub fn localization(&self) -> Bucket {
         let present = self.data().abstraction().clone();
         let subgame = Path::from(self.subgame()); // could be from &'tree [Edge]
-        let choices = Path::from(self.continuations()); // could be from &'tree [Edge]
-
-        // SOMETHING WRONG
+        let choices = Path::from(self.fresh_continuations()); // could be from &'tree [Edge]
         Bucket::from((subgame, present, choices))
     }
 
     /// TODO
     /// compare to self::futures()
     pub fn branches(&self) -> Vec<(Edge, Game)> {
-        self.continuations()
+        self.stale_continuations()
             .into_iter()
             .map(|e| (e, self.actionization(&e)))
-            .map(|(e, a)| (e.clone(), self.data().game().apply(a))) // up to here should prolly be encapsulated by Node::children()
+            .map(|(e, a)| (e.clone(), self.data().game().apply(a)))
             .collect()
+    }
+    /// what if we got the node continuations FROM the node data path bucket ?
+    ///
+    fn stale_continuations(&self) -> Vec<Edge> {
+        Vec::<Edge>::from(self.data().bucket().2.clone())
     }
     /// returns the set of all possible actions from the current node
     /// this is useful for generating a set of children for a given node
     /// broadly goes from Node -> Game -> Action -> Edge
-    fn continuations(&self) -> Vec<Edge> {
+    fn fresh_continuations(&self) -> Vec<Edge> {
         self.data()
             .game()
             .legal()

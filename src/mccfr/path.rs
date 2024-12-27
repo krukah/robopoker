@@ -29,7 +29,8 @@ impl From<Vec<Edge>> for Path {
         edges
             .into_iter()
             .enumerate()
-            .map(|(i, edge)| (u8::from(edge) as u64) << (i * 4))
+            .map(|(i, edge)| (i, u8::from(edge)))
+            .map(|(i, byte)| (byte as u64) << (i * 4))
             .fold(Self::default(), |Self(acc), bits| Self(acc | bits))
     }
 }
@@ -49,7 +50,12 @@ impl From<Path> for u64 {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:02}", (self.0.wrapping_mul(2971215073)) % 100)
+        write!(f, "--")?;
+        Vec::<Edge>::from(self.clone())
+            .iter()
+            .map(|e| write!(f, "+{}", e))
+            .count();
+        Ok(())
     }
 }
 
