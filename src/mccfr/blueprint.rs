@@ -64,6 +64,7 @@ impl Solver {
     /// the main training loop.
     fn solve(&mut self) {
         log::info!("beginning training loop");
+        let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
             for counterfactual in self.updates() {
                 let ref regret = counterfactual.regret();
@@ -72,6 +73,10 @@ impl Solver {
                 self.profile.add_regret(bucket, regret);
                 self.profile.add_policy(bucket, policy);
             }
+            progress.inc(1);
+            let count = self.profile.size();
+            let epoch = self.profile.epochs();
+            log::debug!("epochs {:<10} buckets {:<10}", epoch, count);
         }
         self.save();
     }
