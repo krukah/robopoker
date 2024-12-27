@@ -56,7 +56,6 @@ impl Encoding {
     /// properties of Tree sampling, which makes lots of sense and is stronger model.
     /// broadly goes from Edge -> Action -> Game -> Abstraction
     pub fn branches(&self, node: &Node) -> Vec<Branch> {
-        // SOMETHING WRONG
         node.branches()
             .into_iter()
             .map(|(e, g)| (e, g, self.abstraction(&g)))

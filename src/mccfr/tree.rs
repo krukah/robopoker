@@ -49,9 +49,9 @@ impl Tree {
     }
     pub fn attach(&mut self, branch: Branch) -> Node {
         let leaf = self.insert(branch.0).index();
-        let from = branch.1;
+        let edge = branch.1;
         let root = branch.2;
-        self.0.add_edge(root, leaf, from);
+        self.0.add_edge(root, leaf, edge);
         self.at(leaf)
     }
     pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {

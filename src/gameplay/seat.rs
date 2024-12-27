@@ -87,9 +87,9 @@ pub enum State {
 impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            State::Betting => write!(f, "{}", "P".green()),
-            State::Shoving => write!(f, "{}", "S".yellow()),
-            State::Folding => write!(f, "{}", "F".red()),
+            State::Betting => write!(f, "{}", "P".bright_green()),
+            State::Shoving => write!(f, "{}", "S".bright_magenta()),
+            State::Folding => write!(f, "{}", "F".bright_red()),
         }
     }
 }

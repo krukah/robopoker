@@ -58,10 +58,24 @@ impl Profile {
     /// over its outgoing Edges .
     pub fn witness(&mut self, node: &Node, children: &Vec<Branch>) {
         let bucket = node.bucket();
+        let n = children.len();
+        let uniform = 1. / n as Probability;
+        // this asssertion needs to relax once i reintroduce pruning\
+        // some (incoming, children) branches will be permanently
+        // pruned, both in the Profile and when sampling children
+        // in this case we have to reasses "who" is expected to
+        // have "what" edges on "which when" epochs
+        assert!(
+            Vec::<Edge>::from(bucket.2.clone())
+                == children
+                    .iter()
+                    .map(|b| b.edge())
+                    .copied()
+                    .collect::<Vec<_>>()
+        );
         match self.strategies.get(bucket) {
+            Some(_) => return,
             None => {
-                let n = children.len();
-                let uniform = 1. / n as Probability;
                 for edge in children.iter().map(|b| b.edge()) {
                     let mut memory = Memory::default();
                     memory.set_policy(uniform);
@@ -71,16 +85,6 @@ impl Profile {
                         .entry(edge.clone())
                         .or_insert(memory);
                 }
-            }
-            Some(_) => {
-                // asssertion needs to relax once i reintroduce pruning\
-                // some (incoming, children) branches will be permanently
-                // pruned, both in the Profile and when sampling children
-                // in this case we have to reasses "who" is expected to
-                // have "what" edges on "which when" epochs
-                // let existing = strategy.keys().collect::<BTreeSet<_>>();
-                // let observed = children.iter().map(|b| b.edge()).collect::<BTreeSet<_>>();
-                // assert!(observed == existing);
             }
         }
     }

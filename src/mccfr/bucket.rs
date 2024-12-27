@@ -11,10 +11,16 @@ impl From<(Path, Abstraction, Path)> for Bucket {
         Self(past, present, future)
     }
 }
-
 impl std::fmt::Display for Bucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}::{}::{}", self.0, self.1, self.2)
+        use colored::Colorize;
+        write!(
+            f,
+            "{}{}{}",
+            format!("{}>>", self.0).bright_cyan(),
+            self.1,
+            format!("<<{}", self.2).bright_cyan()
+        )
     }
 }
 

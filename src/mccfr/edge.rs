@@ -118,12 +118,12 @@ impl std::fmt::Display for Edge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use colored::*;
         match self {
-            Edge::Draw => write!(f, "{}", "─────────".dimmed()),
-            Edge::Fold => write!(f, "{}", "FOLD     ".red()),
-            Edge::Call => write!(f, "{}", "CALL     ".blue()),
-            Edge::Check => write!(f, "{}", "CHECK    ".green()),
-            Edge::Shove => write!(f, "{}", "SHOVE    ".magenta()),
-            Edge::Raise(Odds(a, b)) => write!(f, "{}", format!("RAISE {}:{}", a, b).yellow()),
+            Edge::Draw => write!(f, "{}", "─".dimmed()),
+            Edge::Fold => write!(f, "{}", "F".red()),
+            Edge::Call => write!(f, "{}", "C".bright_blue()),
+            Edge::Check => write!(f, "{}", "X".green()),
+            Edge::Shove => write!(f, "{}", "!".magenta()),
+            Edge::Raise(Odds(a, b)) => write!(f, "{}", format!("R{}^{}", a, b).yellow()),
         }
     }
 }
