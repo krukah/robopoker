@@ -1,6 +1,7 @@
 use crate::gameplay::action::Action;
 use crate::mccfr::odds::Odds;
-use crate::{Arbitrary, Chips};
+use crate::Arbitrary;
+use crate::Chips;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
@@ -160,8 +161,9 @@ impl Arbitrary for Edge {
             1 => Self::Fold,
             2 => Self::Check,
             3 => Self::Call,
-            4 => Self::Raise(crate::mccfr::odds::Odds::from((1, 1))),
-            _ => Self::Shove,
+            4 => Self::Shove,
+            5 => Self::Raise(crate::mccfr::odds::Odds::random()),
+            _ => unreachable!(),
         }
     }
 }
