@@ -223,7 +223,16 @@ impl<'tree> Node<'tree> {
     }
     /// if we were to play this edge, what would the
     /// history: Vec<Edge> of the resulting Node be?
-    #[allow(dead_code)]
+    ///
+    /// this used to be useful when the approach was
+    /// to generate a Bucket for a Node>Data at
+    /// *creation-time*, but now we generate the Bucket at
+    /// *insertion-time* in Tree::attach()/Tree::insert().
+    /// the current contract is that Data will be bucket-less
+    /// until it gets inserted into a Tree. we could use
+    /// different types for pre-post insertion, but this works
+    /// well-enough to have Data own an Option<Bucket>.
+    #[allow(unused)]
     fn chained(&self, edge: &Edge) -> Vec<Edge> {
         self.history()
             .into_iter()
