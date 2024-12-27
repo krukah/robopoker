@@ -51,18 +51,16 @@ impl Save for Lookup {
         std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
     }
     fn make(street: Street) -> Self {
-        let n = street.n_isomorphisms();
-        let progress = crate::progress(n);
+        // abstractions for River are calculated once via obs.equity
+        // abstractions for Preflop are cequivalent to just enumerating isomorphisms
         match street {
             Street::Rive => IsomorphismIterator::from(Street::Rive)
                 .map(|iso| (iso, Abstraction::from(iso.0.equity())))
-                .inspect(|_| progress.inc(1))
                 .collect::<BTreeMap<_, _>>()
                 .into(),
             Street::Pref => IsomorphismIterator::from(Street::Pref)
                 .enumerate()
                 .map(|(k, iso)| (iso, Abstraction::from((Street::Pref, k))))
-                .inspect(|_| progress.inc(1))
                 .collect::<BTreeMap<_, _>>()
                 .into(),
             _ => panic!("lookup must be learned via layer for {street}"),
