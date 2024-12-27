@@ -51,6 +51,17 @@ impl Metric {
     /// entreis in our abstraction pair lookup table.
     /// if this is off by just a few then it probably means a bunch of collisions
     /// maybe i should determinsitcally seed kmeans process, could be cool for reproducability too
+    ///
+    /// TODO
+    ///
+    /// determine street dynamiccaly by checking for existence of XOR'ed abstraction pairs using
+    /// Abstraction::From(Street, Index)
+    ///
+    /// it's also not great that we are FORCED to have different number of abstractions
+    /// clusters K means for each street to avoid nC2 collisions !!
+    /// we should either just store Street as Self.1 or determine from XOR hits what street we're on
+    /// whichever solution should work with test case so we don't have to remove test case
+    /// to not overwrite existing metric. we like overwriting river.metric bc it can be empty
     fn street(&self) -> Street {
         fn choose_2(k: usize) -> usize {
             k * (k.saturating_sub(1)) / 2

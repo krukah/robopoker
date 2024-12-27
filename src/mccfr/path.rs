@@ -15,7 +15,7 @@ impl Arbitrary for Path {
 /// we (un)pack the byte representation of the edges in a Path(u64) sequence
 impl From<Path> for Vec<Edge> {
     fn from(path: Path) -> Self {
-        (0..)
+        (0..16)
             .map(|i| i * 4)
             .map(|b| 0xF & (path.0 >> b))
             .map(|bits| bits as u8)
@@ -69,18 +69,17 @@ mod tests {
     #[test]
     fn bijective_path_empty() {
         let edges = vec![];
-        let round = Vec::<Edge>::from(Path::from(edges.clone()));
-        assert_eq!(edges, round);
+        let paths = Vec::<Edge>::from(Path::from(edges.clone()));
+        assert_eq!(edges, paths);
     }
 
     #[test]
     fn bijective_path_edges() {
         let edges = (0..)
             .map(|_| Edge::random())
-            .filter(|e| e.is_choice())
             .take(16)
             .collect::<Vec<Edge>>();
-        let round = Vec::<Edge>::from(Path::from(edges.clone()));
-        assert_eq!(edges, round);
+        let paths = Vec::<Edge>::from(Path::from(edges.clone()));
+        assert_eq!(edges, paths);
     }
 }

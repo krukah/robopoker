@@ -568,6 +568,7 @@ impl std::fmt::Display for Profile {
         )
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -576,6 +577,11 @@ mod tests {
     use crate::Save;
 
     #[test]
+    #[ignore]
+    /// we don't run this test because we don't want to overwrite
+    /// an existing blueprint profile, and we no longer use any
+    /// arguments to the save function to write to a temporary name
+    /// and delete the file
     fn persistence() {
         let name = "test";
         let file = format!("{}.profile.pgcopy", name);
