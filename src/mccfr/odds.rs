@@ -1,3 +1,4 @@
+use crate::Arbitrary;
 use crate::Chips;
 use crate::Probability;
 use crate::Utility;
@@ -66,5 +67,15 @@ impl Odds {
 impl std::fmt::Display for Odds {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}:{}", self.0, self.1)
+    }
+}
+
+impl Arbitrary for Odds {
+    fn random() -> Self {
+        use rand::seq::SliceRandom;
+        Self::GRID
+            .choose(&mut rand::thread_rng())
+            .copied()
+            .expect("GRID is empty")
     }
 }

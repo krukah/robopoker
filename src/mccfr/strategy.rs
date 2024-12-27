@@ -29,14 +29,15 @@ impl Strategy {
         self.0.get_mut(edge)
     }
 
+    pub fn keys(&self) -> std::collections::btree_map::Keys<Edge, Memory> {
+        self.0.keys()
+    }
     pub fn entry(&mut self, edge: Edge) -> std::collections::btree_map::Entry<Edge, Memory> {
         self.0.entry(edge)
     }
-
     pub fn values(&self) -> std::collections::btree_map::Values<Edge, Memory> {
         self.0.values()
     }
-
     pub fn iter(&self) -> std::collections::btree_map::Iter<Edge, Memory> {
         self.0.iter()
     }
