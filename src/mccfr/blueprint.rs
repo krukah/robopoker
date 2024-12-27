@@ -116,16 +116,12 @@ impl Solver {
     /// continuing Edge Actions.
     /// fn explore(&mut self, tree: &mut Tree,node: &Node) -> Vec<Branch> {
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
-        use crate::gameplay::ply::Ply;
-        // INCORRECT
         let branches = self.sampler.branches(node);
         let walker = self.profile.walker();
         let chance = Player::chance();
         let player = node.player();
         match (branches.len(), player) {
-            (0, p) => {
-                // INCORRECT
-                assert!(p.0 == Ply::Terminal);
+            (0, _) => {
                 vec![] //
             }
             (_, p) if p == chance => {

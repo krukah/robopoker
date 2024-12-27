@@ -40,6 +40,10 @@ pub struct Profile {
 }
 
 impl Profile {
+    /// count of Buckets visited so far
+    pub fn size(&self) -> usize {
+        self.strategies.len()
+    }
     /// increment Epoch counter
     /// and return current count
     pub fn next(&mut self) -> usize {

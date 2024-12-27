@@ -15,11 +15,12 @@ impl Arbitrary for Path {
 /// we (un)pack the byte representation of the edges in a Path(u64) sequence
 impl From<Path> for Vec<Edge> {
     fn from(path: Path) -> Self {
-        (0..16)
-            .map(|i| ((path.0 >> (i * 4)) & 0xF) as u8)
-            .filter(|&bits| bits != 0)
+        (0..)
+            .map(|i| i * 4)
+            .map(|b| 0xF & (path.0 >> b))
+            .map(|bits| bits as u8)
+            .take_while(|bits| bits != &0)
             .map(Edge::from)
-            .take_while(|e| e.is_choice())
             .collect()
     }
 }
@@ -28,10 +29,12 @@ impl From<Vec<Edge>> for Path {
         assert!(edges.len() <= 16);
         edges
             .into_iter()
+            .map(u8::from)
+            .map(|byte| byte as u64)
             .enumerate()
-            .map(|(i, edge)| (i, u8::from(edge)))
-            .map(|(i, byte)| (byte as u64) << (i * 4))
-            .fold(Self::default(), |Self(acc), bits| Self(acc | bits))
+            .map(|(i, byte)| byte << (i * 4))
+            .fold(0u64, |acc, bits| acc | bits)
+            .into()
     }
 }
 
