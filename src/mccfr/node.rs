@@ -66,19 +66,6 @@ impl<'tree> Node<'tree> {
 
     // Navigational methods
 
-    /// if we were to play this edge, what would the
-    /// history: Vec<Edge> of the resulting Node be?
-    #[allow(dead_code)]
-    fn chained(&self, edge: &Edge) -> Vec<Edge> {
-        self.history()
-            .into_iter()
-            .rev()
-            .chain(std::iter::once(edge))
-            .rev()
-            .take_while(|e| e.is_choice())
-            .copied()
-            .collect()
-    }
     pub fn history(&self) -> Vec<&'tree Edge> {
         if let (Some(edge), Some(head)) = (self.incoming(), self.parent()) {
             let mut history = head.history();
@@ -138,8 +125,9 @@ impl<'tree> Node<'tree> {
         Bucket::from((subgame, present, choices))
     }
 
-    /// TODO
-    /// compare to self::futures()
+    /// determine the set of branches that could be taken from this node
+    /// this determines what Bucket we end up in since Tree::attach()
+    /// uses this to assign Buckets to Data upon insertion
     pub fn branches(&self) -> Vec<(Edge, Game)> {
         self.stale_continuations()
             .into_iter()
@@ -229,6 +217,19 @@ impl<'tree> Node<'tree> {
     fn subgame(&self) -> Vec<Edge> {
         self.history()
             .into_iter()
+            .take_while(|e| e.is_choice())
+            .copied()
+            .collect()
+    }
+    /// if we were to play this edge, what would the
+    /// history: Vec<Edge> of the resulting Node be?
+    #[allow(dead_code)]
+    fn chained(&self, edge: &Edge) -> Vec<Edge> {
+        self.history()
+            .into_iter()
+            .rev()
+            .chain(std::iter::once(edge))
+            .rev()
             .take_while(|e| e.is_choice())
             .copied()
             .collect()
