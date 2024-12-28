@@ -51,10 +51,13 @@ impl Save for Lookup {
         std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
     }
     fn make(street: Street) -> Self {
+        use rayon::iter::IntoParallelIterator;
         // abstractions for River are calculated once via obs.equity
         // abstractions for Preflop are cequivalent to just enumerating isomorphisms
         match street {
             Street::Rive => IsomorphismIterator::from(Street::Rive)
+                .collect::<Vec<_>>()
+                .into_par_iter()
                 .map(|iso| (iso, Abstraction::from(iso.0.equity())))
                 .collect::<BTreeMap<_, _>>()
                 .into(),
