@@ -12,6 +12,7 @@ use crate::Save;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 type Neighbor = (usize, f32);
 
@@ -32,7 +33,7 @@ impl KMeansLayer {
         log::info!("{:<32}{:<32}", "clustering  kmeans", self.street());
         let t = self.street().t();
         let progress = crate::progress(t);
-        for _ in 0..self.street().t() {
+        for _ in 0..t {
             let ref mut next = self.next();
             let ref mut last = self.kmeans;
             std::mem::swap(next, last);
@@ -102,17 +103,48 @@ impl KMeansLayer {
     fn next(&self) -> Vec<Histogram> /* K */ {
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
-        //? check for empty centroids??
-        let next = vec![Histogram::default(); self.street().k()];
-        self.points()
+        let k = self.street().k();
+        let mut loss = 0f32;
+        let mut outliers = BTreeSet::new();
+        let mut centroids = vec![Histogram::default(); k];
+        // assign points to nearest neighbors
+        for (i, (point, (neighbor, distance))) in self
+            .points()
             .par_iter()
             .map(|h| (h, self.neighboring(h)))
-            .collect::<Vec<(&Histogram, Neighbor)>>()
+            .collect::<Vec<_>>()
             .into_iter()
-            .fold(next, |mut kmeans, (hist, (mean, _))| {
-                kmeans[mean].absorb(hist);
-                kmeans
-            })
+            .enumerate()
+        {
+            loss += distance * distance;
+            centroids[neighbor].absorb(point);
+            // update outliers in case we need to resample an empty histogram
+            let outlier = ((distance * 4096 as f32) as u64, i);
+            if outliers.first().unwrap_or(&(0u64, 0usize)) < &outlier {
+                outliers.insert(outlier);
+            }
+            if outliers.len() > k {
+                outliers.pop_first();
+            }
+        }
+        // resample empty centroids
+        for (k, centroid) in centroids.iter_mut().enumerate() {
+            if centroid.n() == 0 {
+                log::warn!("resampling empty centroid {}", k);
+                *centroid = outliers
+                    .pop_last()
+                    .map(|(_, n)| n)
+                    .map(|outlier| self.points().get(outlier).expect("outlier index in bounds"))
+                    .cloned()
+                    .expect("fewer than k empty centroids")
+            }
+        }
+        log::debug!(
+            "{:<32}{:<32}",
+            "kmeans loss",
+            (loss / self.points().len() as f32).sqrt()
+        );
+        centroids
     }
 
     /// wrawpper for distance metric calculations

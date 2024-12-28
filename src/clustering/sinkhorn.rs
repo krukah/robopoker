@@ -43,7 +43,7 @@ impl Sinkhorn<'_> {
                 .support()
                 .copied()
                 .map(|x| (x, self.divergence(&x, &self.mu, &self.rhs)))
-                .inspect(|x| assert!(x.1.is_finite(), "lhs entropy overflow"))
+                .inspect(|(_, dx)| assert!(dx.is_finite(), "lhs entropy overflow"))
                 .collect::<BTreeMap<_, _>>(),
         )
     }
@@ -54,7 +54,7 @@ impl Sinkhorn<'_> {
                 .support()
                 .copied()
                 .map(|x| (x, self.divergence(&x, &self.nu, &self.lhs)))
-                .inspect(|x| assert!(x.1.is_finite(), "rhs entropy overflow"))
+                .inspect(|(_, dx)| assert!(dx.is_finite(), "rhs entropy overflow"))
                 .collect::<BTreeMap<_, _>>(),
         )
     }
@@ -66,9 +66,8 @@ impl Sinkhorn<'_> {
     /// histogram is where a: Abstraction is supported
     /// potential is the distribution that is being integrated against
     /// so we scale PDF(A::histogram | t) by the mass of the PDF(B::potential | t, x == a)
-    /// not sure yet why i'm calling it entropy but it's giving partition function
+    /// not sure yet why i'm calling it entropy but it's giving partition function.
     /// actually now that i think of it this might be KL div / relative entropy
-    /// it might not be though
     fn divergence(&self, x: &Abstraction, histogram: &Histogram, potential: &Potential) -> Entropy {
         histogram.density(x).ln()
             - potential
