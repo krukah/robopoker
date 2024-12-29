@@ -127,6 +127,11 @@ impl KMeansLayer {
                 outliers.pop_first();
             }
         }
+        log::debug!(
+            "{:<32}{:<32}",
+            "kmeans loss",
+            (loss / self.points().len() as f32).sqrt()
+        );
         // resample empty centroids
         for (k, centroid) in centroids.iter_mut().enumerate() {
             if centroid.n() == 0 {
@@ -139,11 +144,6 @@ impl KMeansLayer {
                     .expect("fewer than k empty centroids")
             }
         }
-        log::debug!(
-            "{:<32}{:<32}",
-            "kmeans loss",
-            (loss / self.points().len() as f32).sqrt()
-        );
         centroids
     }
 

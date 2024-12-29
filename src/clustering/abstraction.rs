@@ -21,9 +21,9 @@ pub enum Abstraction {
 /// contains information about Abstraction
 /// the upper 8 MSBs is the Street tag'
 
-const H: u64 = 0xFF00000000000000;
-const M: u64 = 0x00FFFFFFFFFFF000;
-const L: u64 = 0x0000000000000FFF;
+const H: u64 = 0xFF00000000000000; // street mask
+const M: u64 = 0x00FFFFFFFFFFF000; // hash mask
+const L: u64 = 0x0000000000000FFF; // index mask
 
 impl Abstraction {
     const DELIM: &'static str = "::";
