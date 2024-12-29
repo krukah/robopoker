@@ -458,6 +458,10 @@ impl Save for Profile {
         let mut strategies = BTreeMap::new();
         let mut reader = BufReader::new(file);
         let mut buffer = [0u8; 2];
+        reader.seek(SeekFrom::Start(11)).expect("seek to flags");
+        let epochs_hi = reader.read_u32::<BE>().expect("read flags") as usize;
+        let epochs_lo = reader.read_u32::<BE>().expect("read extension") as usize;
+        let iterations = (epochs_hi << 32) | epochs_lo;
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) == 6 {
@@ -491,7 +495,7 @@ impl Save for Profile {
             }
         }
         Self {
-            iterations: 0,
+            iterations,
             strategies,
         }
     }
@@ -504,8 +508,10 @@ impl Save for Profile {
         let ref path = format!("{}", Self::name());
         let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
-        file.write_u32::<BE>(0).expect("flags");
-        file.write_u32::<BE>(0).expect("extension");
+        let epochs_hi = (self.iterations >> 32) as u32;
+        let epochs_lo = self.iterations as u32;
+        file.write_u32::<BE>(epochs_hi).expect("flags");
+        file.write_u32::<BE>(epochs_lo).expect("extension");
         for (bucket, strategy) in self.strategies.iter() {
             for (edge, memory) in strategy.iter() {
                 const N_FIELDS: u16 = 6;
