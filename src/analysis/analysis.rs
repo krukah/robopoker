@@ -318,20 +318,21 @@ impl Analysis {
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"                                                                                                   
             INSERT INTO metric (xor, dx) VALUES (0, 0);
-            COPY        metric (xor, dx) FROM '{}/turn.metric.pgcopy'       WITH (FORMAT BINARY);
-            COPY        metric (xor, dx) FROM '{}/flop.metric.pgcopy'       WITH (FORMAT BINARY);
-            COPY        metric (xor, dx) FROM '{}/preflop.metric.pgcopy'    WITH (FORMAT BINARY);
+            COPY        metric (xor, dx) FROM '{}/pgcopy.metric.river'      WITH (FORMAT BINARY);
+            COPY        metric (xor, dx) FROM '{}/pgcopy.metric.turn'       WITH (FORMAT BINARY);
+            COPY        metric (xor, dx) FROM '{}/pgcopy.metric.flop'       WITH (FORMAT BINARY);
+            COPY        metric (xor, dx) FROM '{}/pgcopy.metric.preflop'    WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
-            CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
-        "#, path, path, path).as_str()).await?)
+            CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);  
+        "#, path, path, path, path).as_str()).await?)
     }
     async fn copy_encoder(&self) -> Result<(), E> {
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"                                                                                                   
-            COPY encoder (obs, abs) FROM '{}/river.encoder.pgcopy'   WITH (FORMAT BINARY);
-            COPY encoder (obs, abs) FROM '{}/turn.encoder.pgcopy'    WITH (FORMAT BINARY);
-            COPY encoder (obs, abs) FROM '{}/flop.encoder.pgcopy'    WITH (FORMAT BINARY);
-            COPY encoder (obs, abs) FROM '{}/preflop.encoder.pgcopy' WITH (FORMAT BINARY);
+            COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.river'   WITH (FORMAT BINARY);
+            COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
+            COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
+            COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
             CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
         "#, path, path, path, path).as_str()).await?)
@@ -403,10 +404,10 @@ impl Analysis {
     async fn copy_transitions(&self) -> Result<(), E> {
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"                                                                                                   
-            COPY transitions (prev, next, dx) FROM '{}/river.transition.pgcopy'   WITH (FORMAT BINARY);
-            COPY transitions (prev, next, dx) FROM '{}/turn.transition.pgcopy'    WITH (FORMAT BINARY);
-            COPY transitions (prev, next, dx) FROM '{}/flop.transition.pgcopy'    WITH (FORMAT BINARY);
-            COPY transitions (prev, next, dx) FROM '{}/preflop.transition.pgcopy' WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.river'   WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.turn'    WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.flop'    WITH (FORMAT BINARY);
+            COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.preflop' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_transitions_prev ON transitions (prev);
             CREATE INDEX IF NOT EXISTS idx_transitions_next ON transitions (next);
             CREATE INDEX IF NOT EXISTS idx_transitions_dx   ON transitions (dx);
@@ -415,7 +416,7 @@ impl Analysis {
     async fn copy_blueprint(&self) -> Result<(), E> {
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"                                                                                                   
-            COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/blueprint.profile.pgcopy' WITH (FORMAT BINARY);
+            COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/pgcopy.profile.blueprint' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
             CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
             CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);

@@ -129,7 +129,7 @@ impl KMeansLayer {
         }
         log::debug!(
             "{:<32}{:<32}",
-            "kmeans loss",
+            "abstraction cluster RMS error",
             (loss / self.points().len() as f32).sqrt()
         );
         // resample empty centroids

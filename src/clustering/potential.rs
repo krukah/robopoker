@@ -61,6 +61,7 @@ impl Potential {
 
 impl From<BTreeMap<Abstraction, Entropy>> for Potential {
     fn from(potential: BTreeMap<Abstraction, Entropy>) -> Self {
+        assert!(potential.len() > 0);
         Self(potential)
     }
 }

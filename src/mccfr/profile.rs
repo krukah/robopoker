@@ -434,7 +434,7 @@ impl Profile {
 
 impl Save for Profile {
     fn name() -> &'static str {
-        "blueprint.profile.pgcopy"
+        "pgcopy.profile.blueprint"
     }
     fn done(_: crate::cards::street::Street) -> bool {
         std::fs::metadata(Self::name()).is_ok()

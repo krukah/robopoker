@@ -94,7 +94,7 @@ impl Measure for Metric {
 
 impl Save for Metric {
     fn name() -> &'static str {
-        ".metric.pgcopy"
+        "pgcopy.metric."
     }
     fn done(street: Street) -> bool {
         std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
@@ -111,7 +111,7 @@ impl Save for Metric {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = format!("{}{}", street, Self::name());
+        let ref path = format!("{}{}", Self::name(), street);
         let ref file = File::open(path).expect(&format!("open {}", path));
         let mut buffer = [0u8; 2];
         let mut metric = BTreeMap::new();
@@ -138,7 +138,7 @@ impl Save for Metric {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = format!("{}{}", street, Self::name());
+        let ref path = format!("{}{}", Self::name(), street);
         let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
