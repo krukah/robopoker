@@ -25,13 +25,13 @@ const S_BLIND: Chips = 1;
 const N_RAISE: usize = 3;
 
 /// sinkhorn optimal transport parameters
-const SINKHORN_TEMPERATURE: Entropy = 0.125;
-const SINKHORN_ITERATIONS: usize = 32;
-const SINKHORN_TOLERANCE: Energy = 0.005;
+const SINKHORN_TEMPERATURE: Entropy = 0.001;
+const SINKHORN_ITERATIONS: usize = 16;
+const SINKHORN_TOLERANCE: Energy = 0.001;
 
 // kmeans clustering parameters
-const KMEANS_FLOP_TRAINING_ITERATIONS: usize = KMEANS_TURN_TRAINING_ITERATIONS;
-const KMEANS_TURN_TRAINING_ITERATIONS: usize = KMEANS_TURN_CLUSTER_COUNT;
+const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32; // eyeball test seems to converge around here for K = 128
+const KMEANS_TURN_TRAINING_ITERATIONS: usize = 32; // eyeball test seems to converge around here for K = 144
 const KMEANS_FLOP_CLUSTER_COUNT: usize = 128;
 const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
 const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;

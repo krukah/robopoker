@@ -106,21 +106,21 @@ mod tests {
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d23 = Sinkhorn::from((&h2, &h3, &metric)).minimize().cost();
         let d13 = Sinkhorn::from((&h1, &h3, &metric)).minimize().cost();
-        assert!(d12 + d23 >= d13);
-        assert!(d12 + d13 >= d23);
-        assert!(d23 + d13 >= d12);
+        assert!(d12 + d23 >= d13, "{} + {} > {}", d12, d23, d13);
+        assert!(d12 + d13 >= d23, "{} + {} > {}", d12, d13, d23);
+        assert!(d23 + d13 >= d12, "{} + {} > {}", d23, d13, d12);
     }
     #[test]
     fn is_sinkhorn_emd_positive() {
         let EMD(metric, h1, h2, _) = EMD::random();
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d21 = Sinkhorn::from((&h2, &h1, &metric)).minimize().cost();
-        assert!(d12 > 0.);
-        assert!(d21 > 0.);
+        assert!(d12 > 0., "{}", d12);
+        assert!(d21 > 0., "{}", d21);
     }
     #[test]
     fn is_sinkhorn_emd_zero() {
-        const TOLERANCE: f32 = 1e-1;
+        const TOLERANCE: f32 = 0.01;
         let EMD(metric, h1, h2, _) = EMD::random();
         let d11 = Sinkhorn::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Sinkhorn::from((&h2, &h2, &metric)).minimize().cost();
@@ -141,9 +141,9 @@ mod tests {
         let d12 = Heuristic::from((&h1, &h2, &metric)).minimize().cost();
         let d23 = Heuristic::from((&h2, &h3, &metric)).minimize().cost();
         let d13 = Heuristic::from((&h1, &h3, &metric)).minimize().cost();
-        assert!(d12 + d23 >= d13 / TOLERANCE);
-        assert!(d12 + d13 >= d23 / TOLERANCE);
-        assert!(d23 + d13 >= d12 / TOLERANCE);
+        assert!(d12 + d23 >= d13 / TOLERANCE, "{} + {} > {}", d12, d23, d13);
+        assert!(d12 + d13 >= d23 / TOLERANCE, "{} + {} > {}", d12, d13, d23);
+        assert!(d23 + d13 >= d12 / TOLERANCE, "{} + {} > {}", d23, d13, d12);
     }
     #[test]
     fn is_heuristic_emd_positive() {

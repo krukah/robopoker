@@ -85,8 +85,8 @@ impl Solver {
     fn updates(&mut self) -> Vec<Counterfactual> {
         self.batch()
             .into_par_iter()
-            .map(|t| Partition::from(t))
-            .map(|p| Vec::<Info>::from(p))
+            .map(Partition::from)
+            .map(Vec::<Info>::from)
             .flatten()
             .map(|info| self.profile.counterfactual(info))
             .collect::<Vec<Counterfactual>>()
