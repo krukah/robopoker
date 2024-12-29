@@ -8,13 +8,13 @@ pub struct Decomp(BTreeMap<Abstraction, Histogram>);
 impl Decomp {}
 impl Save for Decomp {
     fn name() -> &'static str {
-        ".transition.pgcopy"
+        "pgcopy.transitions."
     }
     fn make(street: Street) -> Self {
         unreachable!("you have no business making transition table from scratch {street}")
     }
     fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
+        std::fs::metadata(format!("{}{}", Self::name(), street)).is_ok()
     }
     fn load(street: Street) -> Self {
         log::info!("{:<32}{:<32}", "loading     transitions", street);
@@ -25,7 +25,7 @@ impl Save for Decomp {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = format!("{}{}", street, Self::name());
+        let ref path = format!("{}{}", Self::name(), street);
         let ref file = File::open(path).expect(&format!("open {}", path));
         let mut transitions = BTreeMap::new();
         let mut reader = BufReader::new(file);

@@ -45,10 +45,10 @@ impl Lookup {
 
 impl Save for Lookup {
     fn name() -> &'static str {
-        ".encoder.pgcopy"
+        "pgcopy.encoder."
     }
     fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", street, Self::name())).is_ok()
+        std::fs::metadata(format!("{}{}", Self::name(), street)).is_ok()
     }
     fn make(street: Street) -> Self {
         use rayon::iter::IntoParallelIterator;
@@ -78,7 +78,7 @@ impl Save for Lookup {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = format!("{}{}", street, Self::name());
+        let ref path = format!("{}{}", Self::name(), street);
         let ref file = File::open(path).expect(&format!("can't open {}", path));
         let mut reader = BufReader::new(file);
         let mut lookup = BTreeMap::new();
