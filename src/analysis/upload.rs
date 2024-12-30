@@ -257,10 +257,10 @@ impl Upload {
     }
 
     async fn copy_abstraction(&self) -> Result<(), E> {
-        self.get_population().await?;
-        self.get_centrality().await?;
         self.get_street().await?;
         self.get_equity().await?;
+        self.get_population().await?;
+        self.get_centrality().await?;
         self.0
             .batch_execute(
                 r#"
@@ -274,9 +274,9 @@ impl Upload {
             FROM encoder e;
             CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
             CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (st);
+            CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
             CREATE INDEX IF NOT EXISTS idx_abstraction_pop ON abstraction (population);
             CREATE INDEX IF NOT EXISTS idx_abstraction_cen ON abstraction (centrality);
-            CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
         "#,
             )
             .await?;
@@ -376,11 +376,5 @@ impl Upload {
             )
             .await?;
         Ok(())
-    }
-}
-
-impl From<Client> for Upload {
-    fn from(client: Client) -> Self {
-        Self(Arc::new(client))
     }
 }

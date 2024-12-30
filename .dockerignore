@@ -3,5 +3,6 @@
 # Allow only Rust-related files and folders
 !Cargo.toml
 !Cargo.lock
+!pgcopy.*
 !benches/
 !src/
