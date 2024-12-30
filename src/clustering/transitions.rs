@@ -13,9 +13,6 @@ impl Save for Decomp {
     fn make(street: Street) -> Self {
         unreachable!("you have no business making transition table from scratch {street}")
     }
-    fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", Self::name(), street)).is_ok()
-    }
     fn load(street: Street) -> Self {
         log::info!("{:<32}{:<32}", "loading     transitions", street);
         use byteorder::ReadBytesExt;
@@ -25,7 +22,7 @@ impl Save for Decomp {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = format!("{}{}", Self::name(), street);
+        let ref path = Self::path(street);
         let ref file = File::open(path).expect(&format!("open {}", path));
         let mut transitions = BTreeMap::new();
         let mut reader = BufReader::new(file);
@@ -64,8 +61,8 @@ impl Save for Decomp {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let path = format!("{}{}", street, Self::name());
-        let ref mut file = File::create(&path).expect(&format!("touch {}", path));
+        let ref path = Self::path(street);
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
