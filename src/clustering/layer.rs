@@ -62,7 +62,8 @@ impl KMeansLayer {
         use std::hash::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
-        let ref mut hasher = DefaultHasher::new();
+        let ref mut hasher = DefaultHasher::default();
+        self.street().hash(hasher);
         self.street().hash(hasher);
         let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
         use rayon::iter::IntoParallelRefIterator;
