@@ -47,9 +47,6 @@ impl Save for Lookup {
     fn name() -> &'static str {
         "pgcopy.encoder."
     }
-    fn done(street: Street) -> bool {
-        std::fs::metadata(format!("{}{}", Self::name(), street)).is_ok()
-    }
     fn make(street: Street) -> Self {
         use rayon::iter::IntoParallelIterator;
         // abstractions for River are calculated once via obs.equity
@@ -78,10 +75,10 @@ impl Save for Lookup {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = format!("{}{}", Self::name(), street);
-        let ref file = File::open(path).expect(&format!("can't open {}", path));
-        let mut reader = BufReader::new(file);
+        let ref path = Self::path(street);
+        let ref file = File::open(path).expect(&format!("open {}", path));
         let mut lookup = BTreeMap::new();
+        let mut reader = BufReader::new(file);
         let mut buffer = [0u8; 2];
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
@@ -107,7 +104,7 @@ impl Save for Lookup {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = format!("{}{}", street, Self::name());
+        let ref path = Self::path(street);
         let ref mut file = File::create(path).expect("touch");
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");

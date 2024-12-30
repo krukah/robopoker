@@ -436,12 +436,11 @@ impl Save for Profile {
     fn name() -> &'static str {
         "pgcopy.profile.blueprint"
     }
-    fn done(_: crate::cards::street::Street) -> bool {
-        std::fs::metadata(Self::name()).is_ok()
-    }
+
     fn make(_: crate::cards::street::Street) -> Self {
         unreachable!("must be learned in MCCFR minimization")
     }
+
     fn load(_: crate::cards::street::Street) -> Self {
         log::info!("{:<32}{:<32}", "loading     blueprint", Self::name());
         use crate::clustering::abstraction::Abstraction;
@@ -453,7 +452,7 @@ impl Save for Profile {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = format!("{}", Self::name());
+        let ref path = Self::path(crate::cards::street::Street::Pref);
         let file = File::open(path).expect("open file");
         let mut strategies = BTreeMap::new();
         let mut reader = BufReader::new(file);
@@ -462,7 +461,6 @@ impl Save for Profile {
         let epochs_hi = reader.read_u32::<BE>().expect("read flags") as usize;
         let epochs_lo = reader.read_u32::<BE>().expect("read extension") as usize;
         let iterations = (epochs_hi << 32) | epochs_lo;
-        reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(&mut buffer).is_ok() {
             if u16::from_be_bytes(buffer) == 6 {
                 // we expect 6 fields per record
@@ -505,7 +503,7 @@ impl Save for Profile {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = format!("{}", Self::name());
+        let ref path = Self::path(crate::cards::street::Street::Pref);
         let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         let epochs_hi = (self.iterations >> 32) as u32;

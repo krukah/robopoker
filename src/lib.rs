@@ -60,9 +60,18 @@ pub trait Arbitrary {
 pub trait Save: Sized {
     fn name() -> &'static str;
     fn save(&self);
-    fn done(street: Street) -> bool;
     fn load(street: Street) -> Self;
     fn make(street: Street) -> Self;
+    fn done(street: Street) -> bool {
+        std::fs::metadata(Self::path(street)).is_ok()
+    }
+    fn path(street: Street) -> String {
+        if std::path::Path::new("/usr/local/share/robopoker").exists() {
+            format!("/usr/local/share/robopoker/{}{}", Self::name(), street)
+        } else {
+            format!("{}{}", Self::name(), street)
+        }
+    }
     fn push(street: Street) -> Self {
         if Self::done(street) {
             log::info!(
