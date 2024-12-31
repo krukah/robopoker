@@ -68,7 +68,6 @@ impl From<BTreeMap<Abstraction, Entropy>> for Potential {
 
 impl Density for Potential {
     type S = Abstraction;
-
     fn density(&self, x: &Self::S) -> Entropy {
         self.0
             .get(x)

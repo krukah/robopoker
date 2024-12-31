@@ -26,8 +26,8 @@ const N_RAISE: usize = 3;
 
 /// sinkhorn optimal transport parameters
 const SINKHORN_TEMPERATURE: Entropy = 0.05;
-const SINKHORN_ITERATIONS: usize = 64;
-const SINKHORN_TOLERANCE: Energy = 0.01;
+const SINKHORN_ITERATIONS: usize = 2048;
+const SINKHORN_TOLERANCE: Energy = 0.005;
 
 // kmeans clustering parameters
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32; // eyeball test seems to converge around here for K = 128
@@ -66,11 +66,7 @@ pub trait Save: Sized {
         std::fs::metadata(Self::path(street)).is_ok()
     }
     fn path(street: Street) -> String {
-        if std::path::Path::new("/usr/local/share/robopoker").exists() {
-            format!("/usr/local/share/robopoker/{}{}", Self::name(), street)
-        } else {
-            format!("{}{}", Self::name(), street)
-        }
+        format!("{}{}", Self::name(), street)
     }
     fn push(street: Street) -> Self {
         if Self::done(street) {
