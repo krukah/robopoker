@@ -14,6 +14,8 @@ use std::sync::Arc;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
 
+type Neighbor = (Abstraction, Energy);
+
 pub struct Analysis(Arc<Client>);
 
 impl Analysis {
@@ -130,7 +132,8 @@ impl Analysis {
             .map(Observation::from)
             .collect())
     }
-    pub async fn neighborhood(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
+
+    pub async fn neighborhood(&self, abs: Abstraction) -> Result<Vec<Neighbor>, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT a1.abs, m.dx

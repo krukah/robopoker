@@ -47,16 +47,9 @@ impl Upload {
     }
 
     async fn done(&self) -> Result<bool, E> {
-        for table in vec!["street", "metric", "encoder", "abstraction", "transitions"] {
-            let count: i64 = self
-                .0
-                .query_one(
-                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1",
-                    &[&table],
-                )
-                .await?
-                .get(0);
-            if count == 0 {
+        let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
+        for table in ["street", "metric", "encoder", "abstraction", "transitions"] {
+            if 0 == self.0.query_one(count, &[&table]).await?.get(0) {
                 return Ok(false);
             }
         }
