@@ -1,5 +1,3 @@
-use cards::street::Street;
-
 pub mod analysis;
 pub mod cards;
 pub mod clustering;
@@ -26,8 +24,8 @@ const N_RAISE: usize = 3;
 
 /// sinkhorn optimal transport parameters
 const SINKHORN_TEMPERATURE: Entropy = 0.05;
-const SINKHORN_ITERATIONS: usize = 2048;
-const SINKHORN_TOLERANCE: Energy = 0.005;
+const SINKHORN_ITERATIONS: usize = 1024;
+const SINKHORN_TOLERANCE: Energy = 0.01;
 
 // kmeans clustering parameters
 const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32; // eyeball test seems to converge around here for K = 128
@@ -53,6 +51,7 @@ pub trait Arbitrary {
     fn random() -> Self;
 }
 
+use cards::street::Street;
 /// street-level properties that can be written to and read from disk,
 /// may or may not be dependent on other entities being written/in memory.
 /// or in the case of River Abstractions, we can just generate it from scratch
@@ -67,21 +66,6 @@ pub trait Save: Sized {
     }
     fn path(street: Street) -> String {
         format!("{}{}", Self::name(), street)
-    }
-    fn push(street: Street) -> Self {
-        if Self::done(street) {
-            log::info!(
-                "loading     {} from file {street}",
-                std::any::type_name::<Self>()
-            );
-            Self::load(street)
-        } else {
-            log::info!(
-                "writing {} into file {street}",
-                std::any::type_name::<Self>()
-            );
-            Self::make(street)
-        }
     }
 }
 

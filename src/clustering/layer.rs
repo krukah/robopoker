@@ -12,7 +12,6 @@ use crate::Save;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 
 type Neighbor = (usize, f32);
 
@@ -59,6 +58,8 @@ impl KMeansLayer {
     fn init(&self) -> Vec<Histogram> /* K */ {
         use rand::rngs::SmallRng;
         use rand::SeedableRng;
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
         use std::hash::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
@@ -66,8 +67,6 @@ impl KMeansLayer {
         self.street().hash(hasher);
         self.street().hash(hasher);
         let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
-        use rayon::iter::IntoParallelRefIterator;
-        use rayon::iter::ParallelIterator;
         let k = self.street().k();
         let n = self.points().len();
         let mut histograms = Vec::new();
@@ -106,45 +105,26 @@ impl KMeansLayer {
         use rayon::iter::ParallelIterator;
         let k = self.street().k();
         let mut loss = 0f32;
-        let mut outliers = BTreeSet::new();
         let mut centroids = vec![Histogram::default(); k];
         // assign points to nearest neighbors
-        for (i, (point, (neighbor, distance))) in self
+        for (point, (neighbor, distance)) in self
             .points()
             .par_iter()
             .map(|h| (h, self.neighboring(h)))
             .collect::<Vec<_>>()
             .into_iter()
-            .enumerate()
         {
-            loss += distance * distance;
-            centroids[neighbor].absorb(point);
-            // update outliers in case we need to resample an empty histogram
-            let outlier = ((distance * 4096 as f32) as u64, i);
-            if outliers.first().unwrap_or(&(0u64, 0usize)) < &outlier {
-                outliers.insert(outlier);
-            }
-            if outliers.len() > k {
-                outliers.pop_first();
-            }
+            loss = loss + distance * distance;
+            centroids
+                .get_mut(neighbor)
+                .expect("index from neighbor calculation")
+                .absorb(point);
         }
         log::debug!(
             "{:<32}{:<32}",
             "abstraction cluster RMS error",
             (loss / self.points().len() as f32).sqrt()
         );
-        // resample empty centroids
-        for (k, centroid) in centroids.iter_mut().enumerate() {
-            if centroid.n() == 0 {
-                log::warn!("resampling empty centroid {}", k);
-                *centroid = outliers
-                    .pop_last()
-                    .map(|(_, n)| n)
-                    .map(|outlier| self.points().get(outlier).expect("outlier index in bounds"))
-                    .cloned()
-                    .expect("fewer than k empty centroids")
-            }
-        }
         centroids
     }
 
