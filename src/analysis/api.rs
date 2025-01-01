@@ -16,11 +16,11 @@ use tokio_postgres::Error as E;
 
 type Neighbor = (Abstraction, Energy);
 
-pub struct Analysis(Arc<Client>);
+pub struct API(Arc<Client>);
 
-impl Analysis {
+impl API {
     pub async fn new() -> Self {
-        log::info!("connecting to db (Analysis)");
+        log::info!("connecting to db (API)");
         let (client, connection) = tokio_postgres::Config::default()
             .host("localhost")
             .port(5432)
@@ -238,8 +238,18 @@ impl Analysis {
     }
 }
 
-impl From<Client> for Analysis {
+impl From<Client> for API {
     fn from(client: Client) -> Self {
         Self(Arc::new(client))
     }
 }
+
+// abstraction: Obs -> Abs
+// obs distance: (Obs -> Obs) -> Energy
+// abs distance: (Abs -> Abs) -> Energy
+// neighborhood: Abs -> Vec<Neighbor>
+// abs histogram: Abs -> Histogram
+// obs histogram: Obs -> Histogram
+// isomorphisms: Obs -> Vec<Obs>
+// memberships: Abs -> Vec<Obs>
+// constituents: Abs -> Vec<Obs>

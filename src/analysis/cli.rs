@@ -1,4 +1,4 @@
-use super::analysis::Analysis;
+use super::api::API;
 use super::query::Query;
 use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
@@ -7,7 +7,7 @@ use crate::clustering::abstraction::Abstraction;
 use clap::Parser;
 use std::io::Write;
 
-pub struct CLI(Analysis);
+pub struct CLI(API);
 
 impl CLI {
     pub async fn new() -> Self {
@@ -20,7 +20,7 @@ impl CLI {
             .await
             .expect("db connection");
         tokio::spawn(connection);
-        Self(Analysis::from(client))
+        Self(API::from(client))
     }
 
     pub async fn run(&self) -> () {
