@@ -15,14 +15,25 @@ use std::collections::BTreeMap;
 
 type Neighbor = (usize, f32);
 
-pub struct KMeansLayer {
+pub struct Layer {
     street: Street,
     metric: Metric,
     points: Vec<Histogram>, // positioned by Isomorphism
     kmeans: Vec<Histogram>, // positioned by K-means abstraction
 }
 
-impl KMeansLayer {
+impl Layer {
+    /// all-in-one entry point for learning the kmeans abstraction and
+    /// writing to disk in pgcopy
+    pub fn learn() {
+        Street::all()
+            .iter()
+            .rev()
+            .filter(|s| !Self::done(**s))
+            .map(|s| Self::make(*s).save())
+            .count();
+    }
+
     /// primary clustering algorithm loop
     fn cluster(mut self) -> Self {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
@@ -208,7 +219,7 @@ impl KMeansLayer {
     }
 }
 
-impl Save for KMeansLayer {
+impl Save for Layer {
     fn name() -> &'static str {
         unreachable!("save lookups and transitions and metrics, not higher level layer")
     }
