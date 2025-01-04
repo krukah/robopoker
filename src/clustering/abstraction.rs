@@ -216,4 +216,10 @@ mod tests {
         let equity = Abstraction::from(Observation::from(Street::Rive).equity());
         assert_eq!(equity, Abstraction::from(u64::from(equity)));
     }
+    #[test]
+    fn bijective_str() {
+        let abs = Abstraction::random();
+        let str = format!("{}", abs);
+        assert_eq!(abs, Abstraction::try_from(str.as_str()).unwrap());
+    }
 }
