@@ -8,9 +8,11 @@ impl Upload {
     pub async fn new() -> Self {
         log::info!("connecting to db (Upload)");
         let (client, connection) = tokio_postgres::Config::default()
-            .host("localhost")
             .port(5432)
+            .host("localhost")
+            .user("postgres")
             .dbname("robopoker")
+            .password("postgrespassword")
             .connect(tokio_postgres::NoTls)
             .await
             .expect("db connection");
@@ -31,10 +33,10 @@ impl Upload {
             db.unlogged().await?;
             db.copy_metric().await?;
             db.copy_encoder().await?;
-            db.copy_streets().await?;
             db.copy_blueprint().await?;
             db.copy_abstraction().await?;
             db.copy_transitions().await?;
+            db.copy_streets().await?;
             Ok(())
         }
     }
@@ -42,7 +44,7 @@ impl Upload {
     async fn done(&self) -> Result<bool, E> {
         let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
         for table in ["street", "metric", "encoder", "abstraction", "transitions"] {
-            if 0 == self.0.query_one(count, &[&table]).await?.get(0) {
+            if 0 == self.0.query_one(count, &[&table]).await?.get::<_, i8>(0) {
                 return Ok(false);
             }
         }
@@ -69,7 +71,7 @@ impl Upload {
             .batch_execute(
                 r#"
             CREATE TABLE IF NOT EXISTS street      (
-                st         SMALLINT,
+                street     SMALLINT,
                 nobs       INTEGER,
                 nabs       INTEGER
             );
@@ -83,7 +85,7 @@ impl Upload {
             );
             CREATE TABLE IF NOT EXISTS abstraction (
                 abs        BIGINT,
-                st         SMALLINT,
+                street     SMALLINT,
                 population INTEGER,
                 centrality REAL,
                 equity     REAL
@@ -251,7 +253,7 @@ impl Upload {
             .batch_execute(
                 r#"
             INSERT INTO abstraction (abs, street, equity, population, centrality)
-            SELECT DISTINCT
+            SELECT DISTINCT ON (e.abs)
                 e.abs,
                 get_street(e.abs),
                 get_equity(e.abs),
@@ -290,9 +292,9 @@ impl Upload {
             .batch_execute(
                 r#"
             CREATE OR REPLACE FUNCTION
-                get_population(abs BIGINT) RETURNS INTEGER AS
+                get_population(xxx BIGINT) RETURNS INTEGER AS
                 $$
-                BEGIN RETURN ( SELECT COUNT(*) FROM encoder e WHERE e.abs = abs ); END;
+                BEGIN RETURN ( SELECT COUNT(*) FROM encoder e WHERE e.abs = xxx ); END;
                 $$
                 LANGUAGE plpgsql;
         "#,
@@ -306,7 +308,7 @@ impl Upload {
             .batch_execute(
                 r#"
             CREATE OR REPLACE FUNCTION
-                get_centrality(abs BIGINT) RETURNS REAL AS
+                get_centrality(xxx BIGINT) RETURNS REAL AS
                 $$
                 DECLARE
                     numer REAL;
@@ -321,7 +323,7 @@ impl Upload {
                     FROM abstraction a1
                     JOIN abstraction a2  ON get_street(a1.abs) = get_street(a2.abs)
                     JOIN metric m        ON (a1.abs # a2.abs)  = m.xor
-                    WHERE a1.abs = abs   AND a1.abs != a2.abs;
+                    WHERE a1.abs = xxx   AND a1.abs != a2.abs;
                     RETURN CASE
                         WHEN denom IS NULL OR denom = 0
                         THEN 0
