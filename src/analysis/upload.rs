@@ -39,13 +39,6 @@ impl Upload {
         }
     }
 
-    fn path(&self) -> String {
-        std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned()
-    }
-
     async fn done(&self) -> Result<bool, E> {
         let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
         for table in ["street", "metric", "encoder", "abstraction", "transitions"] {
@@ -193,32 +186,32 @@ impl Upload {
             .0
             .batch_execute(
                 r#"
-            INSERT INTO street (st, nobs, nabs) VALUES
+            INSERT INTO street (street, nobs, nabs) VALUES
                 (0,
                     (SELECT COUNT(*) FROM encoder e
                     JOIN abstraction a ON e.abs = a.abs
-                    WHERE a.st = 0),
+                    WHERE a.street = 0),
                     (SELECT COUNT(*) FROM abstraction a
-                    WHERE a.st = 0)),
+                    WHERE a.street = 0)),
                 (1,
                     (SELECT COUNT(*) FROM encoder e
                     JOIN abstraction a ON e.abs = a.abs
-                    WHERE a.st = 1),
+                    WHERE a.street = 1),
                     (SELECT COUNT(*) FROM abstraction a
-                    WHERE a.st = 1)),
+                    WHERE a.street = 1)),
                 (2,
                     (SELECT COUNT(*) FROM encoder e
                     JOIN abstraction a ON e.abs = a.abs
-                    WHERE a.st = 2),
+                    WHERE a.street = 2),
                     (SELECT COUNT(*) FROM abstraction a
-                    WHERE a.st = 2)),
+                    WHERE a.street = 2)),
                 (3,
                     (SELECT COUNT(*) FROM encoder e
                     JOIN abstraction a ON e.abs = a.abs
-                    WHERE a.st = 3),
+                    WHERE a.street = 3),
                     (SELECT COUNT(*) FROM abstraction a
-                    WHERE a.st = 3));
-                CREATE INDEX IF NOT EXISTS idx_street_st ON street (st);
+                    WHERE a.street = 3));
+                CREATE INDEX IF NOT EXISTS idx_street_st ON street (street);
         "#,
             )
             .await?)
@@ -257,7 +250,7 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-            INSERT INTO abstraction (abs, st, equity, population, centrality)
+            INSERT INTO abstraction (abs, street, equity, population, centrality)
             SELECT DISTINCT
                 e.abs,
                 get_street(e.abs),
@@ -266,7 +259,7 @@ impl Upload {
                 get_centrality(e.abs)
             FROM encoder e;
             CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
-            CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (st);
+            CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
             CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
             CREATE INDEX IF NOT EXISTS idx_abstraction_pop ON abstraction (population);
             CREATE INDEX IF NOT EXISTS idx_abstraction_cen ON abstraction (centrality);
@@ -316,19 +309,22 @@ impl Upload {
                 get_centrality(abs BIGINT) RETURNS REAL AS
                 $$
                 DECLARE
-                    denom INTEGER;
                     numer REAL;
+                    denom INTEGER;
                 BEGIN
                     SELECT
-                        SUM(get_population(a2.abs)),
-                        SUM(get_population(a2.abs) * m.dx)
-                    INTO denom, numer
+                        SUM(get_population(a2.abs) * m.dx),
+                        SUM(get_population(a2.abs))
+                    INTO
+                        numer,
+                        denom
                     FROM abstraction a1
-                    JOIN abstraction a2 ON get_street(a1.abs) = get_street(a2.abs)
-                    JOIN metric m ON (a1.abs # a2.abs) = m.xor
-                    WHERE a1.abs = abs AND a1.abs != a2.abs;
+                    JOIN abstraction a2  ON get_street(a1.abs) = get_street(a2.abs)
+                    JOIN metric m        ON (a1.abs # a2.abs)  = m.xor
+                    WHERE a1.abs = abs   AND a1.abs != a2.abs;
                     RETURN CASE
-                        WHEN denom IS NULL OR denom = 0 THEN 0
+                        WHEN denom IS NULL OR denom = 0
+                        THEN 0
                         ELSE numer / denom
                     END;
                 END;
@@ -352,15 +348,20 @@ impl Upload {
                     numer   REAL;
                     denom   REAL;
                 BEGIN
-                    street := get_street(abs);
+                    street   := get_street(abs);
                     IF street = 3 THEN RETURN (abs & 255)::REAL / 100; END IF;
                     SELECT
                         SUM(t.dx * get_equity(t.next)),
                         SUM(t.dx)
-                    INTO numer, denom
+                    INTO
+                        numer,
+                        denom
                     FROM transitions t
                     WHERE t.prev = abs;
-                    RETURN CASE WHEN denom IS NULL OR denom = 0 THEN 0 ELSE numer / denom
+                    RETURN CASE
+                        WHEN denom IS NULL OR denom = 0
+                        THEN 0
+                        ELSE numer / denom
                     END;
                 END;
                 $$
@@ -369,5 +370,12 @@ impl Upload {
             )
             .await?;
         Ok(())
+    }
+
+    fn path(&self) -> String {
+        std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
     }
 }

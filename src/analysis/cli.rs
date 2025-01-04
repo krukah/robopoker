@@ -57,7 +57,7 @@ impl CLI {
             }
             Query::Abstraction { observation } => {
                 let obs = Observation::try_from(observation.as_str())?;
-                let abstraction = self.0.abstraction(obs).await?;
+                let abstraction = self.0.encode(obs).await?;
                 Ok(println!("abstraction: {}", abstraction))
             }
             Query::Isomorphisms { observation } => {
