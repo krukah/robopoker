@@ -22,9 +22,11 @@ impl API {
     pub async fn new() -> Self {
         log::info!("connecting to db (API)");
         let (client, connection) = tokio_postgres::Config::default()
-            .host("localhost")
             .port(5432)
+            .host("localhost")
+            .user("postgres")
             .dbname("robopoker")
+            .password("postgrespassword")
             .connect(tokio_postgres::NoTls)
             .await
             .expect("db connection");
@@ -32,7 +34,7 @@ impl API {
         Self(Arc::new(client))
     }
 
-    // trivial lookups
+    // global lookups
     pub async fn encode(&self, obs: Observation) -> Result<Abstraction, E> {
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
@@ -90,7 +92,7 @@ impl API {
             .collect())
     }
 
-    // element-wise equity calculations
+    // equity calculations
     pub async fn abs_equity(&self, abs: Abstraction) -> Result<Probability, E> {
         let iso = i64::from(abs);
         const SQL: &'static str = r#"

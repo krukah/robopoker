@@ -6,6 +6,7 @@ use super::policy::Policy;
 use super::regret::Regret;
 use super::strategy::Strategy;
 use super::tree::Branch;
+use crate::cards::street::Street;
 use crate::gameplay::ply::Ply;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
@@ -436,9 +437,11 @@ impl Save for Profile {
     fn name() -> &'static str {
         "pgcopy.profile.blueprint"
     }
-
     fn make(_: crate::cards::street::Street) -> Self {
         unreachable!("must be learned in MCCFR minimization")
+    }
+    fn path(_: Street) -> String {
+        Self::name().to_string()
     }
 
     fn load(_: crate::cards::street::Street) -> Self {
@@ -452,7 +455,7 @@ impl Save for Profile {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = Self::path(crate::cards::street::Street::Pref);
+        let ref path = Self::name();
         let file = File::open(path).expect("open file");
         let mut strategies = BTreeMap::new();
         let mut reader = BufReader::new(file);
@@ -503,7 +506,7 @@ impl Save for Profile {
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = Self::path(crate::cards::street::Street::Pref);
+        let ref path = Self::name();
         let ref mut file = File::create(path).expect(&format!("touch {}", path));
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         let epochs_hi = (self.iterations >> 32) as u32;
