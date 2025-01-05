@@ -9,50 +9,71 @@ pub enum Query {
     )]
     Abstraction {
         #[arg(required = true)]
-        observation: String,
+        target: String,
     },
+
     #[command(
-        about = "Find the isomorphisms of any given observation",
-        alias = "iso"
+        about = "Find the distance between two targets (obs~obs or abs~abs)",
+        alias = "dst"
     )]
-    Isomorphisms {
+    Distance {
         #[arg(required = true)]
-        observation: String,
+        target1: String,
+        #[arg(required = true)]
+        target2: String,
     },
+
     #[command(
-        about = "Find the observations in any given abstraction",
-        alias = "mem"
+        about = "Find observations belonging to the same cluster of any given observation or abstraction",
+        alias = "sim"
     )]
-    Constituents {
+    Similar {
         #[arg(required = true)]
-        abstraction: String,
+        target: String,
     },
+
     #[command(
-        about = "Find the neighborhood of any given abstraction",
+        about = "Find abstractions in the neighborhood of any given observation or abstraction",
         alias = "nbr"
     )]
-    Neighborhood {
+    Nearby {
         #[arg(required = true)]
-        abstraction: String,
+        target: String,
     },
+
     #[command(
-        about = "Find the abstraction distance between two observations",
-        alias = "dab"
+        about = "Find the equity of any given observation or abstraction",
+        alias = "eqt"
     )]
-    AbsDistance {
+    Equity {
         #[arg(required = true)]
-        obs1: String,
-        #[arg(required = true)]
-        obs2: String,
+        target: String,
     },
+
     #[command(
-        about = "Find the observation distance between two observations",
-        alias = "dob"
+        about = "Find the population of any given observation or abstraction",
+        alias = "pop"
     )]
-    ObsDistance {
+    Population {
         #[arg(required = true)]
-        obs1: String,
+        target: String,
+    },
+
+    #[command(
+        about = "Find the centrality of any given observation or abstraction",
+        alias = "ctr"
+    )]
+    Centrality {
         #[arg(required = true)]
-        obs2: String,
+        target: String,
+    },
+
+    #[command(
+        about = "Find the histogram of any given observation or abstraction",
+        alias = "hst"
+    )]
+    Densities {
+        #[arg(required = true)]
+        target: String,
     },
 }
