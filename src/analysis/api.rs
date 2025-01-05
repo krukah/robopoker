@@ -10,8 +10,7 @@ use crate::transport::coupling::Coupling;
 use crate::Energy;
 use crate::Probability;
 use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
@@ -35,7 +34,7 @@ impl API {
     }
 
     // global lookups
-    pub async fn encode(&self, obs: Observation) -> Result<Abstraction, E> {
+    pub async fn abstraction(&self, obs: Observation) -> Result<Abstraction, E> {
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
             SELECT abs
@@ -74,7 +73,7 @@ impl API {
             .collect::<BTreeMap<Pair, Energy>>()
             .into())
     }
-    pub async fn basis(&self, street: Street) -> Result<HashSet<Abstraction>, E> {
+    pub async fn basis(&self, street: Street) -> Result<BTreeSet<Abstraction>, E> {
         let street = street as i16;
         const SQL: &'static str = r#"
             SELECT a2.abs
@@ -118,7 +117,7 @@ impl API {
             "#
         } else {
             r#"
-                SELECT SUM(abstraction.dx * abstraction.equity)
+                SELECT SUM(transitions.dx * abstraction.equity)
                 FROM abstraction
                 JOIN transitions ON transitions.next = abstraction.abs
                 WHERE transitions.prev = $1
@@ -133,26 +132,20 @@ impl API {
     }
 
     // distance calculations
-    pub async fn abs_distance(&self, x: Observation, y: Observation) -> Result<Energy, E> {
-        // dab Qh6s~QdTc6c QhQs~QdQcAc
+    pub async fn abs_distance(&self, x: Abstraction, y: Abstraction) -> Result<Energy, E> {
         if x.street() != y.street() {
             return Err(E::__private_api_timeout());
         }
         if x == y {
             return Ok(0 as Energy);
         }
-        let x = i64::from(Observation::from(Isomorphism::from(x)));
-        let y = i64::from(Observation::from(Isomorphism::from(y)));
+        let xor = i64::from(Pair::from((&x, &y)));
         const SQL: &'static str = r#"
             SELECT m.dx
-            FROM encoder e1
-            JOIN encoder e2
-                ON  e1.obs = $1
-                AND e2.obs = $2
-            JOIN metric m
-                ON (e1.abs # e2.abs) = m.xor;
+            FROM metric m
+            WHERE $1 = m.xor;
         "#;
-        Ok(self.0.query_one(SQL, &[&x, &y]).await?.get::<_, Energy>(0))
+        Ok(self.0.query_one(SQL, &[&xor]).await?.get::<_, Energy>(0))
     }
     pub async fn obs_distance(&self, x: Observation, y: Observation) -> Result<Energy, E> {
         // dob Kd8s~6dJsAc QhQs~QdQcAc
@@ -265,8 +258,8 @@ impl API {
             .into())
     }
 
-    // proximity lookups
-    pub async fn isomorphisms(&self, obs: Observation) -> Result<HashSet<Observation>, E> {
+    // observation similarity lookups
+    pub async fn obs_similar(&self, obs: Observation) -> Result<BTreeSet<Observation>, E> {
         // 8d8s~6dJs7c
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
@@ -290,7 +283,7 @@ impl API {
             .map(Observation::from)
             .collect())
     }
-    pub async fn constituents(&self, abs: Abstraction) -> Result<HashSet<Observation>, E> {
+    pub async fn abs_similar(&self, abs: Abstraction) -> Result<BTreeSet<Observation>, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT obs
@@ -308,7 +301,9 @@ impl API {
             .map(Observation::from)
             .collect())
     }
-    pub async fn neighborhood(&self, abs: Abstraction) -> Result<HashMap<Abstraction, Energy>, E> {
+
+    // proximity lookups
+    pub async fn abs_nearby(&self, abs: Abstraction) -> Result<BTreeMap<Abstraction, Energy>, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT a1.abs, m.dx
@@ -324,6 +319,29 @@ impl API {
         Ok(self
             .0
             .query(SQL, &[&abs])
+            .await?
+            .iter()
+            .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
+            .map(|(abs, distance)| (Abstraction::from(abs), distance))
+            .collect())
+    }
+    pub async fn obs_nearby(&self, obs: Observation) -> Result<BTreeMap<Abstraction, Energy>, E> {
+        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
+        const SQL: &'static str = r#"
+            SELECT a1.abs, m.dx
+            FROM encoder e
+            JOIN abstraction a2 ON e.abs = a2.abs
+            JOIN abstraction a1 ON a1.street = a2.street
+            JOIN metric m ON (a1.abs # e.abs) = m.xor
+            WHERE
+                e.obs   = $1 AND
+                a1.abs != e.abs
+            ORDER BY m.dx
+            LIMIT 5;
+        "#;
+        Ok(self
+            .0
+            .query(SQL, &[&iso])
             .await?
             .iter()
             .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))

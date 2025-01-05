@@ -83,6 +83,17 @@ impl Histogram {
             .map(|(k, v)| (Equity::from(k), Probability::from(v)))
             .collect()
     }
+
+    /// owned vector of Abstractions and their densities
+    pub fn distribution(&self) -> Vec<(Abstraction, Probability)> {
+        let mut distribution = self
+            .support()
+            .copied()
+            .map(|abs| (abs, self.density(&abs)))
+            .collect::<Vec<_>>();
+        distribution.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        distribution
+    }
 }
 
 impl From<Observation> for Histogram {
