@@ -85,13 +85,14 @@ impl Histogram {
     }
 
     /// owned vector of Abstractions and their densities
+    /// sorted by density in descending order (most likely first)
     pub fn distribution(&self) -> Vec<(Abstraction, Probability)> {
         let mut distribution = self
             .support()
             .copied()
             .map(|abs| (abs, self.density(&abs)))
             .collect::<Vec<_>>();
-        distribution.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        distribution.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         distribution
     }
 }

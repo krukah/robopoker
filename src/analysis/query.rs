@@ -72,7 +72,7 @@ pub enum Query {
         about = "Find the histogram of any given observation or abstraction",
         alias = "hst"
     )]
-    Densities {
+    Composition {
         #[arg(required = true)]
         target: String,
     },
