@@ -44,7 +44,7 @@ impl Upload {
     async fn done(&self) -> Result<bool, E> {
         let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
         for table in ["street", "metric", "encoder", "abstraction", "transitions"] {
-            if 0 == self.0.query_one(count, &[&table]).await?.get::<_, i8>(0) {
+            if 0 == self.0.query_one(count, &[&table]).await?.get::<_, i64>(0) {
                 return Ok(false);
             }
         }
@@ -249,17 +249,14 @@ impl Upload {
         self.get_equity().await?;
         self.get_population().await?;
         self.get_centrality().await?;
+        self.get_abstracted().await?;
         self.0
             .batch_execute(
                 r#"
-            INSERT INTO abstraction (abs, street, equity, population, centrality)
-            SELECT DISTINCT ON (e.abs)
-                e.abs,
-                get_street(e.abs),
-                get_equity(e.abs),
-                get_population(e.abs),
-                get_centrality(e.abs)
-            FROM encoder e;
+            SELECT get_abstracted(3);
+            SELECT get_abstracted(2);
+            SELECT get_abstracted(1);
+            SELECT get_abstracted(0);
             CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
             CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
             CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
@@ -286,7 +283,33 @@ impl Upload {
             .await?;
         Ok(())
     }
-
+    async fn get_equity(&self) -> Result<(), E> {
+        self.0
+            .batch_execute(
+                r#"
+            CREATE OR REPLACE FUNCTION
+                get_equity(abs BIGINT) RETURNS REAL AS
+                $$
+                BEGIN
+                    RETURN CASE 
+                        WHEN get_street(abs) = 3
+                        THEN 
+                            (abs & 255)::REAL / 100
+                        ELSE (
+                            SELECT COALESCE(SUM(t.dx * r.equity) / NULLIF(SUM(t.dx), 0), 0)
+                            FROM transitions t
+                            JOIN abstraction r ON t.next = r.abs
+                            WHERE t.prev = abs
+                        )
+                    END;
+                END;
+                $$
+                LANGUAGE plpgsql;
+        "#,
+            )
+            .await?;
+        Ok(())
+    }
     async fn get_population(&self) -> Result<(), E> {
         self.0
             .batch_execute(
@@ -302,7 +325,6 @@ impl Upload {
             .await?;
         Ok(())
     }
-
     async fn get_centrality(&self) -> Result<(), E> {
         self.0
             .batch_execute(
@@ -315,14 +337,14 @@ impl Upload {
                     denom INTEGER;
                 BEGIN
                     SELECT
-                        SUM(get_population(a2.abs) * m.dx),
-                        SUM(get_population(a2.abs))
+                        SUM(get_population(a1.abs) * m.dx),
+                        SUM(get_population(a1.abs))
                     INTO
                         numer,
                         denom
                     FROM abstraction a1
-                    JOIN abstraction a2  ON get_street(a1.abs) = get_street(a2.abs)
-                    JOIN metric m        ON (a1.abs # a2.abs)  = m.xor
+                    JOIN abstraction a2  ON a1.street = a2.street
+                    JOIN metric m        ON (a1.abs # a2.abs) = m.xor
                     WHERE a1.abs = xxx   AND a1.abs != a2.abs;
                     RETURN CASE
                         WHEN denom IS NULL OR denom = 0
@@ -337,34 +359,23 @@ impl Upload {
             .await?;
         Ok(())
     }
-
-    async fn get_equity(&self) -> Result<(), E> {
+    async fn get_abstracted(&self) -> Result<(), E> {
         self.0
             .batch_execute(
                 r#"
             CREATE OR REPLACE FUNCTION
-                get_equity(abs BIGINT) RETURNS REAL AS
+            get_abstracted(xxx SMALLINT) RETURNS VOID AS 
                 $$
-                DECLARE
-                    street  SMALLINT;
-                    numer   REAL;
-                    denom   REAL;
                 BEGIN
-                    street   := get_street(abs);
-                    IF street = 3 THEN RETURN (abs & 255)::REAL / 100; END IF;
-                    SELECT
-                        SUM(t.dx * get_equity(t.next)),
-                        SUM(t.dx)
-                    INTO
-                        numer,
-                        denom
-                    FROM transitions t
-                    WHERE t.prev = abs;
-                    RETURN CASE
-                        WHEN denom IS NULL OR denom = 0
-                        THEN 0
-                        ELSE numer / denom
-                    END;
+                    INSERT INTO abstraction (abs, street, equity, population, centrality)
+                    SELECT DISTINCT ON (e.abs)
+                        e.abs,
+                        get_street(e.abs),
+                        get_equity(e.abs),
+                        get_population(e.abs),
+                        get_centrality(e.abs)
+                    FROM encoder e
+                    WHERE get_street(e.abs) = xxx;
                 END;
                 $$
                 LANGUAGE plpgsql;

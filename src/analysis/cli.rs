@@ -51,17 +51,20 @@ impl CLI {
                 let distance = self.0.abs_distance(o1, o2).await?;
                 Ok(println!("abstraction distance: {:.4}", distance))
             }
+
             Query::ObsDistance { obs1, obs2 } => {
                 let o1 = Observation::try_from(obs1.as_str())?;
                 let o2 = Observation::try_from(obs2.as_str())?;
                 let distance = self.0.obs_distance(o1, o2).await?;
                 Ok(println!("observation distance: {:.4}", distance))
             }
+
             Query::Abstraction { observation } => {
                 let obs = Observation::try_from(observation.as_str())?;
                 let abstraction = self.0.encode(obs).await?;
                 Ok(println!("abstraction: {}", abstraction))
             }
+
             Query::Isomorphisms { observation } => {
                 let obs = Observation::try_from(observation.as_str())?;
                 let equivalents = self
@@ -74,6 +77,7 @@ impl CLI {
                     .join("");
                 Ok(println!("equivalents:\n{}", equivalents))
             }
+
             Query::Constituents { abstraction } => {
                 let abs = Abstraction::try_from(abstraction.as_str())?;
                 let memberships = self
@@ -86,8 +90,9 @@ impl CLI {
                     .map(|(i, o, s)| format!("\n{:>2}. {:<18} {}", i, o, s))
                     .collect::<Vec<String>>()
                     .join("");
-                Ok(println!("membership: {}", memberships))
+                Ok(println!("constituents: {}", memberships))
             }
+
             Query::Neighborhood { abstraction } => {
                 let abs = Abstraction::try_from(abstraction.as_str())?;
                 let neighborhood = self

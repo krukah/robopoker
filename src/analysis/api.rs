@@ -57,12 +57,12 @@ impl API {
                 m.dx            AS dx
             FROM abstraction a1
             JOIN abstraction a2
-                ON a1.st = a2.st
+                ON a1.street = a2.street
             JOIN metric m
                 ON (a1.abs # a2.abs) = m.xor
             WHERE
-                a1.st   = $1 AND
-                a1.abs != a2.abs;
+                a1.street   = $1 AND
+                a1.abs     != a2.abs;
         "#;
         Ok(self
             .0
@@ -79,7 +79,7 @@ impl API {
         const SQL: &'static str = r#"
             SELECT a2.abs
             FROM abstraction a2
-            JOIN abstraction a1 ON a2.st = a1.st
+            JOIN abstraction a1 ON a2.street = a1.street
             WHERE a1.abs = $1;
         "#;
         Ok(self
@@ -313,7 +313,7 @@ impl API {
         const SQL: &'static str = r#"
             SELECT a1.abs, m.dx
             FROM abstraction a1
-            JOIN abstraction a2 ON a1.st = a2.st
+            JOIN abstraction a2 ON a1.street = a2.street
             JOIN metric m ON (a1.abs # $1) = m.xor
             WHERE
                 a2.abs  = $1 AND
