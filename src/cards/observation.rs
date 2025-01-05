@@ -4,6 +4,7 @@ use super::hand::Hand;
 use super::hands::HandIterator;
 use super::street::Street;
 use super::strength::Strength;
+use crate::Arbitrary;
 use crate::Probability;
 use std::cmp::Ordering;
 
@@ -148,7 +149,7 @@ impl TryFrom<&str> for Observation {
     }
 }
 
-impl crate::Arbitrary for Observation {
+impl Arbitrary for Observation {
     fn random() -> Self {
         Self::from(Street::random())
     }
@@ -164,7 +165,6 @@ impl std::fmt::Display for Observation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Arbitrary;
 
     #[test]
     fn bijective_i64() {
