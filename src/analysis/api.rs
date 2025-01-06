@@ -213,8 +213,8 @@ impl API {
 
     // histogram aggregation via join
     pub async fn abs_histogram(&self, abs: Abstraction) -> Result<Histogram, E> {
+        let idx = i64::from(abs);
         let mass = abs.street().n_children() as f32;
-        let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT next, dx
             FROM transitions
@@ -222,7 +222,7 @@ impl API {
         "#;
         Ok(self
             .0
-            .query(SQL, &[&abs])
+            .query(SQL, &[&idx])
             .await?
             .iter()
             .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
@@ -235,26 +235,26 @@ impl API {
     }
     pub async fn obs_histogram(&self, obs: Observation) -> Result<Histogram, E> {
         // Kd8s~6dJsAc
-        let isos = obs
-            .children()
-            .map(Isomorphism::from)
-            .map(Observation::from)
-            .map(i64::from)
-            .collect::<Vec<i64>>();
+        let idx = i64::from(Observation::from(Isomorphism::from(obs)));
+        let mass = obs.street().n_children() as f32;
         const SQL: &'static str = r#"
-            SELECT abs
-            FROM encoder
-            WHERE obs = ANY($1)
+            SELECT next, dx
+            FROM transitions
+            JOIN encoder ON encoder.abs = transitions.prev
+            WHERE encoder.obs = $1
         "#;
         Ok(self
             .0
-            .query(SQL, &[&isos])
+            .query(SQL, &[&idx])
             .await?
             .iter()
-            .map(|row| row.get::<_, i64>(0))
-            .map(Abstraction::from)
-            .collect::<Vec<Abstraction>>()
-            .into())
+            .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
+            .map(|(next, dx)| (next, (dx * mass).round() as usize))
+            .map(|(next, dx)| (Abstraction::from(next), dx))
+            .fold(Histogram::default(), |mut h, (next, dx)| {
+                h.set(next, dx);
+                h
+            }))
     }
 
     // observation similarity lookups
