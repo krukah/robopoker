@@ -349,28 +349,24 @@ impl API {
             .collect())
     }
 
-    // No-context endpoints
+    // HTTP endpoints
     pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
-        todo!()
+        todo!("take a random observation from the same abstraction")
     }
     pub async fn replace_abs(&self, abs: Abstraction) -> Result<Row, E> {
-        todo!()
+        todo!("take a random abstraction from the same street and make calculations wrt abs")
     }
-
-    // Neighborhood endpoints
+    pub async fn get_distribution(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!("take histogram of abs and make lookup joins")
+    }
     pub async fn get_knn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        todo!()
+        todo!("lookup keighbors of abs and make calculations wrt abs")
     }
     pub async fn get_kfn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        todo!()
+        todo!("lookup keighbors of abs and make calculations wrt abs")
     }
-    pub async fn get_obs_wrt_abs(&self, abs: Abstraction, obs: Observation) -> Result<Row, E> {
-        todo!()
-    }
-
-    // Distribution endpoint
-    pub async fn get_distributio(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        todo!()
+    pub async fn get_one(&self, abs: Abstraction, obs: Observation) -> Result<Row, E> {
+        todo!("join observation to abstraction and make calculations wrt abs")
     }
 }
 

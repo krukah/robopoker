@@ -44,9 +44,9 @@ impl Server {
 async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
     match Observation::try_from(req.obs.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
-        Ok(obs) => match api.replace_obs(obs).await {
+        Ok(old) => match api.replace_obs(old).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(new_obs) => HttpResponse::Ok().json(new_obs.to_string()),
+            Ok(new) => HttpResponse::Ok().json(new.to_string()),
         },
     }
 }
@@ -55,8 +55,8 @@ async fn replace_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
     match Abstraction::try_from(req.wrt.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.replace_abs(abs).await {
-            Ok(response) => HttpResponse::Ok().json(response),
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(row) => HttpResponse::Ok().json(row),
         },
     }
 }
@@ -64,9 +64,9 @@ async fn replace_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
 async fn get_distributio(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
     match Abstraction::try_from(req.wrt.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
-        Ok(abs) => match api.get_distributio(abs).await {
+        Ok(abs) => match api.get_distribution(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(responses) => HttpResponse::Ok().json(responses),
+            Ok(rows) => HttpResponse::Ok().json(rows),
         },
     }
 }
@@ -76,7 +76,7 @@ async fn get_kfn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> imp
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.get_kfn(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(responses) => HttpResponse::Ok().json(responses),
+            Ok(rows) => HttpResponse::Ok().json(rows),
         },
     }
 }
@@ -86,7 +86,7 @@ async fn get_knn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> imp
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.get_knn(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(responses) => HttpResponse::Ok().json(responses),
+            Ok(rows) => HttpResponse::Ok().json(rows),
         },
     }
 }
@@ -98,9 +98,9 @@ async fn get_any_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> imp
     ) {
         (Err(_), _) => HttpResponse::BadRequest().body("invalid abstraction format"),
         (_, Err(_)) => HttpResponse::BadRequest().body("invalid observation format"),
-        (Ok(abs), Ok(obs)) => match api.get_obs_wrt_abs(abs, obs).await {
+        (Ok(abs), Ok(obs)) => match api.get_one(abs, obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(response) => HttpResponse::Ok().json(response),
+            Ok(rows) => HttpResponse::Ok().json(rows),
         },
     }
 }
