@@ -1,6 +1,11 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+pub struct SetStreets {
+    pub street: String,
+}
+
+#[derive(Deserialize)]
 pub struct ReplaceObs {
     pub obs: String,
 }

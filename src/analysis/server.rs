@@ -2,7 +2,9 @@ use super::api::API;
 use super::request::ReplaceAbs;
 use super::request::ReplaceObs;
 use super::request::ReplaceRow;
+use super::request::SetStreets;
 use crate::cards::observation::Observation;
+use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use actix_cors::Cors;
 use actix_web::web;
@@ -27,6 +29,7 @@ impl Server {
                         .allow_any_header(),
                 )
                 .app_data(api.clone())
+                .route("/set-streets", web::post().to(set_streets))
                 .route("/replace-obs", web::post().to(replace_obs))
                 .route("/replace-abs", web::post().to(replace_abs))
                 .route("/kfn-wrt-abs", web::post().to(get_kfn_wrt_abs))
@@ -41,6 +44,16 @@ impl Server {
 }
 
 // Route handlers
+async fn set_streets(api: web::Data<API>, req: web::Json<SetStreets>) -> impl Responder {
+    match Street::try_from(req.street.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid street format"),
+        Ok(street) => match api.set_streets(street).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(row) => HttpResponse::Ok().json(row),
+        },
+    }
+}
+
 async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
     match Observation::try_from(req.obs.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
