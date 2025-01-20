@@ -350,26 +350,47 @@ impl API {
     }
 
     // HTTP endpoints
-    pub async fn set_streets(&self, street: Street) -> Result<Row, E> {
-        todo!("take random street abs and make lookup joins")
+    pub async fn any_row_wrt_street(&self, street: Street) -> Result<Row, E> {
+        let obs = Observation::from(street);
+        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
+        let n = street.n_observations() as f32;
+        const SQL: &'static str = r#"
+            SELECT 
+                e.obs,
+                a.abs,
+                a.equity,
+                a.population::REAL / $2 as density,   
+                a.centrality
+            FROM encoder e
+            JOIN abstraction a ON e.abs = a.abs
+            WHERE e.obs = $1;
+        "#;
+        let row = self.0.query_one(SQL, &[&iso, &n]).await?;
+        Ok(Row {
+            obs: Observation::from(row.get::<_, i64>(0)).to_string(),
+            abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
+            equity: row.get::<_, f32>(2).into(),
+            density: row.get::<_, f32>(3).into(),
+            distance: row.get::<_, f32>(4).into(),
+        })
     }
-    pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
-        todo!("take a random observation from the same abstraction")
-    }
-    pub async fn replace_abs(&self, abs: Abstraction) -> Result<Row, E> {
+    pub async fn any_row_wrt_abs(&self, abs: Abstraction) -> Result<Row, E> {
         todo!("take a random abstraction from the same street and make calculations wrt abs")
     }
-    pub async fn get_distribution(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        todo!("take histogram of abs and make lookup joins")
-    }
-    pub async fn get_knn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        todo!("lookup keighbors of abs and make calculations wrt abs")
-    }
-    pub async fn get_kfn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        todo!("lookup keighbors of abs and make calculations wrt abs")
-    }
-    pub async fn get_one(&self, abs: Abstraction, obs: Observation) -> Result<Row, E> {
+    pub async fn obs_row_wrt_abs(&self, abs: Abstraction, obs: Observation) -> Result<Row, E> {
         todo!("join observation to abstraction and make calculations wrt abs")
+    }
+    pub async fn any_obs_wrt_obs(&self, obs: Observation) -> Result<Observation, E> {
+        todo!("take a random observation from the same abstraction")
+    }
+    pub async fn table_neighborhood_knn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!("lookup keighbors of abs and make calculations wrt abs")
+    }
+    pub async fn table_neighborhood_kfn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!("lookup keighbors of abs and make calculations wrt abs")
+    }
+    pub async fn table_distribution(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!("take histogram of abs and make lookup joins")
     }
 }
 
