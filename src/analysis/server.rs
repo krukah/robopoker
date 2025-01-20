@@ -1,12 +1,14 @@
 use super::api::API;
-use super::request::ObsAbsWrtRequest;
-use super::request::ReplaceAbsRequest;
-use super::request::ReplaceObsRequest;
-use super::response::ObsAbsResponse;
+use super::request::ReplaceAbs;
+use super::request::ReplaceObs;
+use super::request::ReplaceRow;
+use crate::cards::observation::Observation;
+use crate::clustering::abstraction::Abstraction;
 use actix_cors::Cors;
 use actix_web::web;
 use actix_web::App;
 use actix_web::HttpResponse;
+
 use actix_web::HttpServer;
 use actix_web::Responder;
 
@@ -39,26 +41,66 @@ impl Server {
 }
 
 // Route handlers
-async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObsRequest>) -> impl Responder {
-    HttpResponse::Ok().json({})
+async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
+    match Observation::try_from(req.obs.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
+        Ok(obs) => match api.replace_obs(obs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(new_obs) => HttpResponse::Ok().json(new_obs.to_string()),
+        },
+    }
 }
 
-async fn replace_abs(api: web::Data<API>, req: web::Json<ReplaceAbsRequest>) -> impl Responder {
-    HttpResponse::Ok().json({})
+async fn replace_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
+    match Abstraction::try_from(req.wrt.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
+        Ok(abs) => match api.replace_abs(abs).await {
+            Ok(response) => HttpResponse::Ok().json(response),
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        },
+    }
 }
 
-async fn get_any_wrt_abs(api: web::Data<API>, req: web::Json<ObsAbsWrtRequest>) -> impl Responder {
-    HttpResponse::Ok().json({})
+async fn get_distributio(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
+    match Abstraction::try_from(req.wrt.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
+        Ok(abs) => match api.get_distributio(abs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(responses) => HttpResponse::Ok().json(responses),
+        },
+    }
 }
 
-async fn get_kfn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbsRequest>) -> impl Responder {
-    HttpResponse::Ok().json(Vec::<ObsAbsResponse>::new())
+async fn get_kfn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
+    match Abstraction::try_from(req.wrt.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
+        Ok(abs) => match api.get_kfn(abs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(responses) => HttpResponse::Ok().json(responses),
+        },
+    }
 }
 
-async fn get_knn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbsRequest>) -> impl Responder {
-    HttpResponse::Ok().json(Vec::<ObsAbsResponse>::new())
+async fn get_knn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
+    match Abstraction::try_from(req.wrt.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
+        Ok(abs) => match api.get_knn(abs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(responses) => HttpResponse::Ok().json(responses),
+        },
+    }
 }
 
-async fn get_distributio(api: web::Data<API>, req: web::Json<ReplaceAbsRequest>) -> impl Responder {
-    HttpResponse::Ok().json(Vec::<ObsAbsResponse>::new())
+async fn get_any_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> impl Responder {
+    match (
+        Abstraction::try_from(req.wrt.as_str()),
+        Observation::try_from(req.obs.as_str()),
+    ) {
+        (Err(_), _) => HttpResponse::BadRequest().body("invalid abstraction format"),
+        (_, Err(_)) => HttpResponse::BadRequest().body("invalid observation format"),
+        (Ok(abs), Ok(obs)) => match api.get_obs_wrt_abs(abs, obs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(response) => HttpResponse::Ok().json(response),
+        },
+    }
 }

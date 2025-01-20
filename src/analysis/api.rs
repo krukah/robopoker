@@ -1,3 +1,4 @@
+use super::response::Row;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
@@ -346,6 +347,30 @@ impl API {
             .map(|row| (row.get::<_, i64>(0), row.get::<_, Energy>(1)))
             .map(|(abs, distance)| (Abstraction::from(abs), distance))
             .collect())
+    }
+
+    // No-context endpoints
+    pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
+        todo!()
+    }
+    pub async fn replace_abs(&self, abs: Abstraction) -> Result<Row, E> {
+        todo!()
+    }
+
+    // Neighborhood endpoints
+    pub async fn get_knn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!()
+    }
+    pub async fn get_kfn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!()
+    }
+    pub async fn get_obs_wrt_abs(&self, abs: Abstraction, obs: Observation) -> Result<Row, E> {
+        todo!()
+    }
+
+    // Distribution endpoint
+    pub async fn get_distributio(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
+        todo!()
     }
 }
 
