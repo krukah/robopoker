@@ -51,14 +51,14 @@ use robopoker::*;
 async fn main() {
     // Boring stuff
     crate::logs();
-    // The k-means earth mover's distance hand-clustering algorithm.
-    crate::clustering::kmeans::Layer::learn();
-    // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    crate::mccfr::blueprint::Solver::train();
-    // Let's upload the data to the database.
-    crate::analysis::upload::Upload::upload().await.unwrap();
-    // Let's see what we've learned.
-    crate::analysis::cli::CLI::new().await.run().await;
+    // // The k-means earth mover's distance hand-clustering algorithm.
+    // crate::clustering::kmeans::Layer::learn();
+    // // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
+    // crate::mccfr::blueprint::Solver::train();
+    // // Let's upload the data to the database.
+    // crate::analysis::upload::Upload::upload().await.unwrap();
+    // // Let's see what we've learned.
+    // crate::analysis::cli::CLI::new().await.run().await;
     // Let's suppot our frontend.
     crate::analysis::server::Server::run().await.unwrap();
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
