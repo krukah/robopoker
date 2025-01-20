@@ -350,6 +350,9 @@ impl API {
     }
 
     // HTTP endpoints
+    pub async fn set_streets(&self, street: Street) -> Result<Row, E> {
+        todo!("take random street abs and make lookup joins")
+    }
     pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
         todo!("take a random observation from the same abstraction")
     }
