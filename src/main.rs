@@ -59,6 +59,8 @@ async fn main() {
     crate::analysis::upload::Upload::upload().await.unwrap();
     // Let's see what we've learned.
     crate::analysis::cli::CLI::new().await.run().await;
+    // Let's suppot our frontend.
+    crate::analysis::server::Server::run().await.unwrap();
     // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
     crate::gameplay::game::Game::play();
 }
