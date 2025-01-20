@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct ObsAbsResponse {
+pub struct Row {
     pub obs: String,
     pub abs: String,
     pub equity: f32,
