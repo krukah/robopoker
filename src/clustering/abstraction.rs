@@ -54,7 +54,13 @@ impl Abstraction {
             }
         }
     }
-
+    pub fn all(street: Street) -> Vec<Self> {
+        if street == Street::Rive {
+            Self::range().collect()
+        } else {
+            (0..street.k()).map(|i| Self::from((street, i))).collect()
+        }
+    }
     fn signature(street: Street, index: usize) -> usize {
         let bits = L & index as u64;
         let bits = bits | (street as u8 as u64) << L.count_ones();
