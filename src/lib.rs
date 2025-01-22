@@ -1,3 +1,5 @@
+use cards::street::Street;
+
 pub mod analysis;
 pub mod cards;
 pub mod clustering;
@@ -51,7 +53,6 @@ pub trait Arbitrary {
     fn random() -> Self;
 }
 
-use cards::street::Street;
 /// street-level properties that can be written to and read from disk,
 /// may or may not be dependent on other entities being written/in memory.
 /// or in the case of River Abstractions, we can just generate it from scratch
@@ -104,4 +105,15 @@ pub fn logs() {
         simplelog::ColorChoice::Auto,
     );
     simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
+}
+
+pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
+    log::info!("connecting to database");
+    let tls = tokio_postgres::tls::NoTls;
+    let ref url = std::env::var("DATABASE_URL").expect("set database url in environment");
+    let (client, connection) = tokio_postgres::connect(url, tls)
+        .await
+        .expect("database connection failed");
+    tokio::spawn(connection);
+    std::sync::Arc::new(client)
 }
