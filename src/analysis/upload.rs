@@ -4,13 +4,19 @@ use tokio_postgres::Error as E;
 
 pub struct Upload(Arc<Client>);
 
+impl From<Arc<Client>> for Upload {
+    fn from(client: Arc<Client>) -> Self {
+        Self(client)
+    }
+}
+
 impl Upload {
     pub async fn new() -> Self {
         Self(crate::db().await)
     }
 
     pub async fn upload() -> Result<(), E> {
-        let db = Self::new().await;
+        let db = Self::from(crate::db().await);
         if db.done().await? {
             log::info!("data already uploaded");
             Ok(())
@@ -48,6 +54,7 @@ impl Upload {
     }
 
     async fn nuke(&self) -> Result<(), E> {
+        log::info!("nuking database schema (not really)");
         return Ok(());
         #[allow(unreachable_code)]
         Ok(self
@@ -62,6 +69,7 @@ impl Upload {
     }
 
     async fn recreate(&self) -> Result<(), E> {
+        log::info!("recreating tables");
         Ok(self
             .0
             .batch_execute(
@@ -106,6 +114,7 @@ impl Upload {
     }
 
     async fn truncate(&self) -> Result<(), E> {
+        log::info!("truncating all tables");
         Ok(self
             .0
             .batch_execute(
@@ -122,6 +131,7 @@ impl Upload {
     }
 
     async fn unlogged(&self) -> Result<(), E> {
+        log::info!("setting tables to unlogged");
         Ok(self
             .0
             .batch_execute(
@@ -138,6 +148,7 @@ impl Upload {
     }
 
     async fn copy_metric(&self) -> Result<(), E> {
+        log::info!("copying metric data");
         let path = self.path();
         Ok(self
             .0
@@ -160,6 +171,7 @@ impl Upload {
     }
 
     async fn copy_encoder(&self) -> Result<(), E> {
+        log::info!("copying encoder data");
         let path = self.path();
         self.get_street_obs().await?;
         Ok(self
@@ -184,6 +196,7 @@ impl Upload {
     }
 
     async fn copy_streets(&self) -> Result<(), E> {
+        log::info!("copying street data");
         Ok(self
             .0
             .batch_execute(
