@@ -267,18 +267,18 @@ impl Upload {
     }
 
     async fn copy_abstraction(&self) -> Result<(), E> {
-        self.get_street_abs().await?;
         self.get_equity().await?;
+        self.get_street_abs().await?;
         self.get_population().await?;
         self.get_centrality().await?;
-        self.get_abstracted().await?;
+        self.set_abstracted().await?;
         self.0
             .batch_execute(
                 r#"
-    SELECT get_abstracted(3);
-    SELECT get_abstracted(2);
-    SELECT get_abstracted(1);
-    SELECT get_abstracted(0);
+    SELECT set_abstracted(3);
+    SELECT set_abstracted(2);
+    SELECT set_abstracted(1);
+    SELECT set_abstracted(0);
     CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
     CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
     CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
@@ -298,10 +298,10 @@ impl Upload {
     get_street_obs(obs BIGINT) RETURNS SMALLINT AS
     $$
     DECLARE
-        card_count INTEGER;
+        ncards INTEGER;
     BEGIN
         SELECT COUNT(*)
-        INTO card_count
+        INTO ncards
         FROM (
             SELECT UNNEST(ARRAY[
                 (obs >> 0)  & 255,
@@ -312,13 +312,12 @@ impl Upload {
                 (obs >> 40) & 255,
                 (obs >> 48) & 255
             ]) AS byte
-        ) AS bytes
-        WHERE byte > 0;
+        ) AS bytes;
         RETURN CASE
-            WHEN card_count = 2 THEN 0  -- preflop
-            WHEN card_count = 5 THEN 1  -- flop
-            WHEN card_count = 6 THEN 2  -- turn
-            WHEN card_count = 7 THEN 3  -- river
+            WHEN ncards = 2 THEN 0  -- preflop
+            WHEN ncards = 5 THEN 1  -- flop
+            WHEN ncards = 6 THEN 2  -- turn
+            WHEN ncards = 7 THEN 3  -- river
             ELSE NULL
         END;
     END;
@@ -352,9 +351,9 @@ impl Upload {
     get_equity(abs BIGINT) RETURNS REAL AS
     $$
     BEGIN
-        RETURN CASE 
+        RETURN CASE
             WHEN get_street_abs(abs) = 3
-            THEN 
+            THEN
                 (abs & 255)::REAL / 100
             ELSE (
                 SELECT COALESCE(SUM(t.dx * r.equity) / NULLIF(SUM(t.dx), 0), 0)
@@ -420,12 +419,13 @@ impl Upload {
             .await?;
         Ok(())
     }
-    async fn get_abstracted(&self) -> Result<(), E> {
+    async fn set_abstracted(&self) -> Result<(), E> {
+        log::info!("calculating abstractions");
         self.0
             .batch_execute(
                 r#"
     CREATE OR REPLACE FUNCTION
-            get_abstracted(xxx SMALLINT) RETURNS VOID AS 
+            set_abstracted(xxx SMALLINT) RETURNS VOID AS
     $$
     BEGIN
         INSERT INTO abstraction (abs, street, equity, population, centrality)

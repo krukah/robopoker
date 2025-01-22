@@ -361,7 +361,7 @@ impl API {
         "#;
         let row = self.0.query_one(SQL, &[&iso, &n]).await?;
         Ok(Row {
-            obs: Observation::from(row.get::<_, i64>(0)).to_string(),
+            obs: Observation::from(row.get::<_, i64>(0)).equivalent(),
             abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
             equity: row.get::<_, f32>(2).into(),
             density: row.get::<_, f32>(3).into(),
@@ -390,7 +390,7 @@ impl API {
         "#;
         let row = self.0.query_one(SQL, &[&iso, &n, &wrt]).await?;
         Ok(Row {
-            obs: Observation::from(row.get::<_, i64>(0)).to_string(),
+            obs: Observation::from(row.get::<_, i64>(0)).equivalent(),
             abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
             equity: row.get::<_, f32>(2).into(),
             density: row.get::<_, f32>(3).into(),
@@ -425,7 +425,7 @@ impl API {
         "#;
         let row = self.0.query_one(SQL, &[&abs, &n, &wrt]).await?;
         Ok(Row {
-            obs: Observation::from(row.get::<_, i64>(0)).to_string(),
+            obs: Observation::from(row.get::<_, i64>(0)).equivalent(),
             abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
             equity: row.get::<_, f32>(2).into(),
             density: row.get::<_, f32>(3).into(),
@@ -480,7 +480,7 @@ impl API {
         let s = wrt.street() as i16;
         let wrt = i64::from(wrt);
         const SQL: &'static str = r#"
-            SELECT 
+            SELECT
                 a.abs,
                 c.obs,
                 a.equity::REAL          as equity,
@@ -489,7 +489,7 @@ impl API {
             FROM abstraction a
             JOIN metric m ON m.xor = (a.abs # $2)
             CROSS JOIN LATERAL (
-                SELECT c.obs 
+                SELECT c.obs
                 FROM encoder c
                 WHERE c.abs = a.abs
                 OFFSET FLOOR(RANDOM() * a.population)::INT
@@ -504,7 +504,7 @@ impl API {
             .iter()
             .map(|row| Row {
                 abs: Abstraction::from(row.get::<_, i64>(0)).to_string(),
-                obs: Observation::from(row.get::<_, i64>(1)).to_string(),
+                obs: Observation::from(row.get::<_, i64>(1)).equivalent(),
                 equity: row.get::<_, f32>(2).into(),
                 density: row.get::<_, f32>(3).into(),
                 distance: row.get::<_, f32>(4).into(),
@@ -522,16 +522,16 @@ impl API {
     async fn table_distribution_river(&self, abs: i64) -> Result<Vec<Row>, E> {
         let n = Street::Rive.n_isomorphisms() as f32;
         const SQL: &'static str = r#"
-            SELECT 
-                c.obs                   as obs,
+            SELECT
+                p.obs                   as obs,
                 p.abs                   as abs,
-                p.equity::REAL          as equity,
-                p.population::REAL / $1 as density,
-                p.centrality::REAL      as distance
+                g.equity::REAL          as equity,  -- redundant
+                g.population::REAL / $1 as density, -- redundant
+                g.centrality::REAL      as distance -- redundant, ill-defined on turn
             FROM abstraction g
             JOIN encoder     p ON p.abs = g.abs
             CROSS JOIN LATERAL (
-                SELECT c.obs 
+                SELECT c.obs
                 FROM encoder c
                 WHERE c.abs = p.abs
                 OFFSET FLOOR(RANDOM() * p.population)::INT
@@ -544,7 +544,7 @@ impl API {
         Ok(rows
             .iter()
             .map(|row| Row {
-                obs: Observation::from(row.get::<_, i64>(0)).to_string(),
+                obs: Observation::from(row.get::<_, i64>(0)).equivalent(),
                 abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
                 equity: Probability::from(Abstraction::from(row.get::<_, i64>(1))),
                 density: row.get::<_, f32>(3).into(),
@@ -554,7 +554,7 @@ impl API {
     }
     async fn table_distribution_other(&self, abs: i64) -> Result<Vec<Row>, E> {
         const SQL: &'static str = r#"
-            SELECT 
+            SELECT
                 c.obs               as obs,
                 p.abs               as abs,
                 p.equity::REAL      as equity,
@@ -563,7 +563,7 @@ impl API {
             FROM transitions g
             JOIN abstraction p ON p.abs = g.next
             CROSS JOIN LATERAL (
-                SELECT c.obs 
+                SELECT c.obs
                 FROM encoder c
                 WHERE c.abs = p.abs
                 OFFSET FLOOR(RANDOM() * p.population)::INT
@@ -576,7 +576,7 @@ impl API {
         Ok(rows
             .iter()
             .map(|row| Row {
-                obs: Observation::from(row.get::<_, i64>(0)).to_string(),
+                obs: Observation::from(row.get::<_, i64>(0)).equivalent(),
                 abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
                 equity: row.get::<_, f32>(2).into(),
                 density: row.get::<_, f32>(3).into(),
