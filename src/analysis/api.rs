@@ -520,13 +520,14 @@ impl API {
         }
     }
     async fn table_distribution_river(&self, abs: i64) -> Result<Vec<Row>, E> {
+        let n = Street::Rive.n_isomorphisms() as f32;
         const SQL: &'static str = r#"
             SELECT 
-                c.obs               as obs,
-                p.abs               as abs,
-                p.equity::REAL      as equity,
-                p.dx::REAL          as density,
-                p.centrality::REAL  as distance
+                c.obs                   as obs,
+                p.abs                   as abs,
+                p.equity::REAL          as equity,
+                p.population::REAL / $1 as density,
+                p.centrality::REAL      as distance
             FROM abstraction g
             JOIN encoder     p ON p.abs = g.abs
             CROSS JOIN LATERAL (
@@ -536,10 +537,10 @@ impl API {
                 OFFSET FLOOR(RANDOM() * p.population)::INT
                 LIMIT 1
             ) c
-            WHERE g.abs = $1
+            WHERE g.abs = $2
             LIMIT 5;
         "#;
-        let rows = self.0.query(SQL, &[&abs]).await?;
+        let rows = self.0.query(SQL, &[&n, &abs]).await?;
         Ok(rows
             .iter()
             .map(|row| Row {
@@ -557,7 +558,7 @@ impl API {
                 c.obs               as obs,
                 p.abs               as abs,
                 p.equity::REAL      as equity,
-                p.dx::REAL          as density,
+                g.dx::REAL          as density,
                 p.centrality::REAL  as distance
             FROM transitions g
             JOIN abstraction p ON p.abs = g.next
@@ -571,13 +572,6 @@ impl API {
             WHERE g.prev = $1
             LIMIT 128;
         "#;
-        println!(
-            "{}",
-            SQL.replace("$1", &abs.to_string())
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" ")
-        );
         let rows = self.0.query(SQL, &[&abs]).await?;
         Ok(rows
             .iter()

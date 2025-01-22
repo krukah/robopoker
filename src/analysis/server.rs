@@ -120,7 +120,10 @@ async fn get_any_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> imp
         (Err(_), _) => HttpResponse::BadRequest().body("invalid abstraction format"),
         (_, Err(_)) => HttpResponse::BadRequest().body("invalid observation format"),
         (Ok(abs), Ok(obs)) => match api.calculate_obs(abs, obs).await {
-            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Err(e) => {
+                log::error!("Internal server error: {}", e);
+                HttpResponse::InternalServerError().body(e.to_string())
+            }
             Ok(rows) => HttpResponse::Ok().json(rows),
         },
     }
