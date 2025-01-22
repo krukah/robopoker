@@ -22,7 +22,7 @@ impl Server {
         log::info!("starting HTTP server");
         HttpServer::new(move || {
             App::new()
-                .wrap(Logger::new("%r %s %Dms"))
+                .wrap(Logger::new("%r %s %Ts"))
                 .wrap(
                     Cors::default()
                         .allow_any_origin()

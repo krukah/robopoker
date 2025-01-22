@@ -57,6 +57,28 @@ impl Observation {
     pub fn public(&self) -> &Hand {
         &self.public
     }
+    fn shuffle(hand: String) -> String {
+        use rand::seq::SliceRandom;
+        let ref mut rng = rand::thread_rng();
+        let mut cards = hand
+            .chars()
+            .collect::<Vec<char>>()
+            .chunks(2)
+            .map(|c| c.iter().collect::<String>())
+            .collect::<Vec<String>>();
+        cards.shuffle(rng);
+        cards.join("")
+    }
+    pub fn equivalent(&self) -> String {
+        super::permutation::Permutation::random()
+            .permute(self)
+            .to_string()
+            .split(Self::SEPARATOR)
+            .map(|s| s.to_string())
+            .map(|s| Self::shuffle(s))
+            .collect::<Vec<String>>()
+            .join(Self::SEPARATOR)
+    }
 
     const SEPARATOR: &'static str = "~";
 }
