@@ -9,13 +9,16 @@ use std::io::Write;
 
 pub struct CLI(API);
 
-impl CLI {
-    pub async fn new() -> Self {
-        Self(API::from(crate::db().await))
+impl From<API> for CLI {
+    fn from(api: API) -> Self {
+        Self(api)
     }
+}
 
-    pub async fn run(&self) -> () {
+impl CLI {
+    pub async fn run() -> () {
         log::info!("entering analysis");
+        let cli = Self(API::from(crate::db().await));
         loop {
             print!("> ");
             let ref mut input = String::new();
@@ -24,7 +27,7 @@ impl CLI {
             match input.trim() {
                 "quit" => break,
                 "exit" => break,
-                _ => match self.handle(input).await {
+                _ => match cli.handle(input).await {
                     Err(e) => eprintln!("{}", e),
                     Ok(_) => continue,
                 },

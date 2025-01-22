@@ -110,7 +110,7 @@ pub fn logs() {
 pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
     log::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
-    let ref url = std::env::var("DATABASE_URL").expect("set database url in environment");
+    let ref url = std::env::var("DB_URL").expect("set database url in environment");
     let (client, connection) = tokio_postgres::connect(url, tls)
         .await
         .expect("database connection failed");
