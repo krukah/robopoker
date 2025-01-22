@@ -1,3 +1,5 @@
+use crate::clustering::abstraction::Abstraction;
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Street {
     Pref = 0isize,
@@ -56,6 +58,13 @@ impl Street {
             Self::Flop => 1,
             Self::Turn => 1,
             Self::Rive => panic!("terminal"),
+        }
+    }
+
+    pub const fn n_abstractions(&self) -> usize {
+        match self {
+            Self::Rive => Abstraction::size(),
+            _ => self.k(),
         }
     }
 

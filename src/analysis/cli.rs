@@ -11,18 +11,7 @@ pub struct CLI(API);
 
 impl CLI {
     pub async fn new() -> Self {
-        log::info!("connecting to db (CLI)");
-        let (client, connection) = tokio_postgres::Config::default()
-            .port(5432)
-            .host("localhost")
-            .user("postgres")
-            .dbname("robopoker")
-            .password("postgrespassword")
-            .connect(tokio_postgres::NoTls)
-            .await
-            .expect("db connection");
-        tokio::spawn(connection);
-        Self(API::from(client))
+        Self(API::from(crate::db().await))
     }
 
     pub async fn run(&self) -> () {

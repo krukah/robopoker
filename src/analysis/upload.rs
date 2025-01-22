@@ -6,18 +6,7 @@ pub struct Upload(Arc<Client>);
 
 impl Upload {
     pub async fn new() -> Self {
-        log::info!("connecting to db (Upload)");
-        let (client, connection) = tokio_postgres::Config::default()
-            .port(5432)
-            .host("localhost")
-            .user("postgres")
-            .dbname("robopoker")
-            .password("postgrespassword")
-            .connect(tokio_postgres::NoTls)
-            .await
-            .expect("db connection");
-        tokio::spawn(connection);
-        Self(Arc::new(client))
+        Self(crate::db().await)
     }
 
     pub async fn upload() -> Result<(), E> {
@@ -77,7 +66,8 @@ impl Upload {
             );
             CREATE TABLE IF NOT EXISTS encoder     (
                 obs        BIGINT,
-                abs        BIGINT
+                abs        BIGINT,
+                street     SMALLINT
             );
             CREATE TABLE IF NOT EXISTS metric      (
                 xor        BIGINT,
@@ -164,6 +154,7 @@ impl Upload {
 
     async fn copy_encoder(&self) -> Result<(), E> {
         let path = self.path();
+        self.get_obs_street().await?;
         Ok(self
             .0
             .batch_execute(
@@ -173,8 +164,10 @@ impl Upload {
             COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
             COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
+            UPDATE encoder SET street = get_obs_street(obs);
             CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
             CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
+            CREATE INDEX IF NOT EXISTS idx_encoder_street ON encoder (street);
         "#,
                     path, path, path, path
                 )
@@ -245,7 +238,7 @@ impl Upload {
     }
 
     async fn copy_abstraction(&self) -> Result<(), E> {
-        self.get_street().await?;
+        self.get_abs_street().await?;
         self.get_equity().await?;
         self.get_population().await?;
         self.get_centrality().await?;
@@ -268,12 +261,51 @@ impl Upload {
         Ok(())
     }
 
-    async fn get_street(&self) -> Result<(), E> {
+    async fn get_obs_street(&self) -> Result<(), E> {
         self.0
             .batch_execute(
                 r#"
             CREATE OR REPLACE FUNCTION
-                get_street(abs BIGINT) RETURNS SMALLINT AS
+                get_obs_street(obs BIGINT) RETURNS SMALLINT AS
+                $$
+                DECLARE
+                    card_count INTEGER;
+                BEGIN
+                    SELECT COUNT(*)
+                    INTO card_count
+                    FROM (
+                        SELECT UNNEST(ARRAY[
+                            (obs >> 0)  & 255,
+                            (obs >> 8)  & 255,
+                            (obs >> 16) & 255,
+                            (obs >> 24) & 255,
+                            (obs >> 32) & 255,
+                            (obs >> 40) & 255,
+                            (obs >> 48) & 255
+                        ]) AS byte
+                    ) AS bytes
+                    WHERE byte > 0;
+                    RETURN CASE
+                        WHEN card_count = 2 THEN 0  -- preflop
+                        WHEN card_count = 5 THEN 1  -- flop
+                        WHEN card_count = 6 THEN 2  -- turn
+                        WHEN card_count = 7 THEN 3  -- river
+                        ELSE NULL
+                    END;
+                END;
+                $$
+                LANGUAGE plpgsql;
+        "#,
+            )
+            .await?;
+        Ok(())
+    }
+    async fn get_abs_street(&self) -> Result<(), E> {
+        self.0
+            .batch_execute(
+                r#"
+            CREATE OR REPLACE FUNCTION
+                get_abs_street(abs BIGINT) RETURNS SMALLINT AS
                 $$
                 BEGIN RETURN (abs >> 56)::SMALLINT; END;
                 $$
@@ -292,7 +324,7 @@ impl Upload {
                 $$
                 BEGIN
                     RETURN CASE 
-                        WHEN get_street(abs) = 3
+                        WHEN get_abs_street(abs) = 3
                         THEN 
                             (abs & 255)::REAL / 100
                         ELSE (
@@ -370,12 +402,12 @@ impl Upload {
                     INSERT INTO abstraction (abs, street, equity, population, centrality)
                     SELECT DISTINCT ON (e.abs)
                         e.abs,
-                        get_street(e.abs),
+                        get_abs_street(e.abs),
                         get_equity(e.abs),
                         get_population(e.abs),
                         get_centrality(e.abs)
                     FROM encoder e
-                    WHERE get_street(e.abs) = xxx;
+                    WHERE get_abs_street(e.abs) = xxx;
                 END;
                 $$
                 LANGUAGE plpgsql;
