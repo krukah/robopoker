@@ -17,20 +17,15 @@ use tokio_postgres::Error as E;
 
 pub struct API(Arc<Client>);
 
+impl From<Arc<Client>> for API {
+    fn from(client: Arc<Client>) -> Self {
+        Self(client)
+    }
+}
+
 impl API {
     pub async fn new() -> Self {
-        log::info!("connecting to db (API)");
-        let (client, connection) = tokio_postgres::Config::default()
-            .port(5432)
-            .host("localhost")
-            .user("postgres")
-            .dbname("robopoker")
-            .password("postgrespassword")
-            .connect(tokio_postgres::NoTls)
-            .await
-            .expect("db connection");
-        tokio::spawn(connection);
-        Self(Arc::new(client))
+        Self(crate::db().await)
     }
 
     // global lookups
@@ -148,7 +143,6 @@ impl API {
         Ok(self.0.query_one(SQL, &[&xor]).await?.get::<_, Energy>(0))
     }
     pub async fn obs_distance(&self, obs1: Observation, obs2: Observation) -> Result<Energy, E> {
-        // dob Kd8s~6dJsAc QhQs~QdQcAc
         if obs1.street() != obs2.street() {
             return Err(E::__private_api_timeout());
         }
@@ -307,9 +301,9 @@ impl API {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
             SELECT a1.abs, m.dx
-            FROM abstraction a1
-            JOIN abstraction a2 ON a1.street = a2.street
-            JOIN metric m ON (a1.abs # $1) = m.xor
+            FROM abstraction    a1
+            JOIN abstraction    a2 ON a1.street = a2.street
+            JOIN metric         m  ON (a1.abs # $1) = m.xor
             WHERE
                 a2.abs  = $1 AND
                 a1.abs != $1
@@ -329,10 +323,10 @@ impl API {
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
             SELECT a1.abs, m.dx
-            FROM encoder e
-            JOIN abstraction a2 ON e.abs = a2.abs
-            JOIN abstraction a1 ON a1.street = a2.street
-            JOIN metric m ON (a1.abs # e.abs) = m.xor
+            FROM encoder        e
+            JOIN abstraction    a2 ON e.abs = a2.abs
+            JOIN abstraction    a1 ON a1.street = a2.street
+            JOIN metric         m  ON (a1.abs # e.abs) = m.xor
             WHERE
                 e.obs   = $1 AND
                 a1.abs != e.abs
@@ -350,17 +344,17 @@ impl API {
     }
 
     // HTTP endpoints
-    pub async fn row_wrt_street(&self, street: Street) -> Result<Row, E> {
+    pub async fn exploration_row(&self, street: Street) -> Result<Row, E> {
         let obs = Observation::from(street);
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         let n = street.n_observations() as f32;
         const SQL: &'static str = r#"
-            SELECT 
+            SELECT
                 e.obs,
                 a.abs,
-                a.equity,
-                a.population::REAL / $2 as density,   
-                a.centrality
+                a.equity::REAL          as equity,
+                a.population::REAL / $2 as density,
+                a.centrality::REAL      as centrality
             FROM encoder e
             JOIN abstraction a ON e.abs = a.abs
             WHERE e.obs = $1;
@@ -374,40 +368,27 @@ impl API {
             distance: row.get::<_, f32>(4).into(),
         })
     }
-    pub async fn row_wrt_abs_via_abs(&self, abs: Abstraction) -> Result<Row, E> {
-        let street = abs.street();
-        // Get all abstractions for this street except the input abs
-        let all = Abstraction::all(street)
-            .into_iter()
-            .filter(|&x| x != abs)
-            .map(i64::from)
-            .collect::<Vec<i64>>();
-        let abs = i64::from(abs);
-        let n = street.n_observations() as f32;
+
+    // neighborhood row replacements
+    pub async fn calculate_obs(&self, wrt: Abstraction, obs: Observation) -> Result<Row, E> {
+        // uniform within cluster
+        let n = wrt.street().n_isomorphisms() as f32;
+        let wrt = i64::from(wrt);
+        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
         const SQL: &'static str = r#"
-            WITH randabs AS (
-                SELECT abs 
-                FROM (
-                    SELECT DISTINCT abs
-                    FROM abstraction 
-                    WHERE abs = ANY($3)
-                ) sub
-                ORDER BY random()
-                LIMIT 1
-            )
-            SELECT 
-                e.obs                   as obs,
-                a.abs                   as abs,
-                a.equity                as equity,
-                a.population::REAL / $2 as density,
-                COALESCE(m.dx, 0)      as distance
-            FROM randabs ra
-            JOIN abstraction a ON a.abs = ra.abs
-            JOIN encoder e ON e.abs = a.abs
-            JOIN metric m ON (a.abs # $1) = m.xor
+            SELECT
+                e.obs,
+                e.abs,
+                r.equity::REAL                      as equity,
+                r.population::REAL / $2             as density,
+                COALESCE(m.dx, 0)::REAL             as distance
+            FROM encoder        e
+            JOIN abstraction    r ON e.abs = r.abs
+            JOIN metric         m ON m.xor = (e.abs # $3)
+            WHERE e.obs = $1
             LIMIT 1;
         "#;
-        let row = self.0.query_one(SQL, &[&abs, &n, &all]).await?;
+        let row = self.0.query_one(SQL, &[&iso, &n, &wrt]).await?;
         Ok(Row {
             obs: Observation::from(row.get::<_, i64>(0)).to_string(),
             abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
@@ -416,39 +397,33 @@ impl API {
             distance: row.get::<_, f32>(4).into(),
         })
     }
-    pub async fn row_wrt_abs_via_obs(&self, abs: Abstraction, obs: Observation) -> Result<Row, E> {
-        let street = abs.street();
-        // Get all abstractions for this street
-        let all = Abstraction::all(street)
-            .into_iter()
-            .map(i64::from)
-            .collect::<Vec<i64>>();
-        let abs_i64 = i64::from(abs);
-        let iso = i64::from(Observation::from(Isomorphism::from(obs)));
-        let n = obs.street().n_observations() as f32;
+    pub async fn calculate_abs(&self, wrt: Abstraction, abs: Abstraction) -> Result<Row, E> {
+        // direct calculation, no sampling
+        let n = wrt.street().n_isomorphisms() as f32;
+        let abs = i64::from(abs);
+        let wrt = i64::from(wrt);
         const SQL: &'static str = r#"
-            WITH target AS (
-                SELECT 
-                    e.obs,
-                    a.abs,
-                    a.equity,
-                    a.population::REAL / $3 as density
-                FROM encoder e
-                JOIN abstraction a ON e.abs = a.abs
-                WHERE e.obs = $2
-                  AND a.abs = ANY($4)
+            WITH
+            sample AS (
+                SELECT  abs,
+                        FLOOR(RANDOM() * a.population)::INT as choice
+                FROM abstraction a
+                WHERE a.abs = $1
             )
-            SELECT 
-                t.obs,
-                t.abs,
-                t.equity,
-                t.density,
-                COALESCE(m.dx, 0) as distance
-            FROM target t
-            INNER JOIN metric m ON (t.abs # $1) = m.xor
+            SELECT
+                e.obs                               as obs,
+                r.abs                               as abs,
+                r.equity::REAL                      as equity,
+                r.population::REAL / $2             as density,
+                COALESCE(m.dx, 0)::REAL             as distance
+            FROM sample         s
+            JOIN abstraction    r ON s.abs = r.abs
+            JOIN metric         m ON m.xor = (s.abs # $3)
+            JOIN encoder        e ON e.abs = (s.abs)
+            OFFSET (SELECT choice FROM sample)
             LIMIT 1;
         "#;
-        let row = self.0.query_one(SQL, &[&abs_i64, &iso, &n, &all]).await?;
+        let row = self.0.query_one(SQL, &[&abs, &n, &wrt]).await?;
         Ok(Row {
             obs: Observation::from(row.get::<_, i64>(0)).to_string(),
             abs: Abstraction::from(row.get::<_, i64>(1)).to_string(),
@@ -456,60 +431,76 @@ impl API {
             density: row.get::<_, f32>(3).into(),
             distance: row.get::<_, f32>(4).into(),
         })
+    }
+    pub async fn calculate_any(&self, wrt: Abstraction) -> Result<Row, E> {
+        // uniform over abstraction space
+        use rand::seq::SliceRandom;
+        let ref mut rng = rand::thread_rng();
+        let abs = Abstraction::all(wrt.street())
+            .into_iter()
+            .filter(|&x| x != wrt)
+            .collect::<Vec<_>>()
+            .choose(rng)
+            .copied()
+            .unwrap();
+        self.calculate_abs(wrt, abs).await
     }
 
-    pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
+    // dice roll within same cluster
+    pub async fn obs_swap(&self, obs: Observation) -> Result<Observation, E> {
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
-        // First get the abstraction for this observation
         const SQL: &'static str = r#"
-            WITH t AS (
-                SELECT a.abs,
+            WITH
+            sample AS (
+                SELECT e.abs,
                        a.population,
-                       FLOOR(RANDOM() * (a.population - 1))::INT AS rando
+                       FLOOR(RANDOM() * (a.population - 1))::INT AS choice
                 FROM abstraction a
                 JOIN encoder e ON e.abs = a.abs
                 WHERE e.obs = $1
                 LIMIT 1
             )
-            SELECT e2.obs
-            FROM encoder e2
-            JOIN t ON e2.abs = t.abs
-            WHERE e2.obs != $1
-            OFFSET (SELECT rando FROM t)
+            SELECT e.obs
+            FROM sample
+            JOIN encoder e ON   e.abs  = sample.abs
+            WHERE               e.obs != $1
+            OFFSET (SELECT choice FROM sample)
             LIMIT 1;
         "#;
         let row = self.0.query_one(SQL, &[&iso]).await?;
         Ok(Observation::from(row.get::<_, i64>(0)))
     }
 
-    pub async fn table_neighborhood_knn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        let street = abs.street();
-        let all = Abstraction::all(street)
-            .into_iter()
-            .filter(|&x| x != abs)
-            .map(i64::from)
-            .collect::<Vec<i64>>();
-        let n = street.n_observations() as f32;
-        let abs = i64::from(abs);
-        let street = street as i16;
+    pub async fn table_neighborhood_kfn(&self, wrt: Abstraction) -> Result<Vec<Row>, E> {
+        self.table_neighborhood_knn(wrt).await
+    }
+
+    pub async fn table_neighborhood_knn(&self, wrt: Abstraction) -> Result<Vec<Row>, E> {
+        let n = wrt.street().n_isomorphisms() as f32;
+        let s = wrt.street() as i16;
+        let wrt = i64::from(wrt);
         const SQL: &'static str = r#"
             SELECT 
                 a.abs,
-                (SELECT obs FROM encoder e2 WHERE e2.abs = a.abs LIMIT 1) as obs,
-                a.equity,
-                a.population::REAL / $3 as density,
-                m.dx as distance
+                c.obs,
+                a.equity::REAL          as equity,
+                a.population::REAL / $1 as density,
+                m.dx::REAL              as distance
             FROM abstraction a
-            JOIN metric m ON m.xor = (a.abs # $1)
-            WHERE a.street = $2
-              AND a.abs = ANY($4)
+            JOIN metric m ON m.xor = (a.abs # $2)
+            CROSS JOIN LATERAL (
+                SELECT c.obs 
+                FROM encoder c
+                WHERE c.abs = a.abs
+                OFFSET FLOOR(RANDOM() * a.population)::INT
+                LIMIT 1
+            ) c
+            WHERE a.street = $3
             ORDER BY m.dx ASC
             LIMIT 5;
         "#;
-        Ok(self
-            .0
-            .query(SQL, &[&abs, &street, &n, &all])
-            .await?
+        let rows = self.0.query(SQL, &[&n, &wrt, &s]).await?;
+        Ok(rows
             .iter()
             .map(|row| Row {
                 abs: Abstraction::from(row.get::<_, i64>(0)).to_string(),
@@ -520,45 +511,6 @@ impl API {
             })
             .collect())
     }
-    pub async fn table_neighborhood_kfn(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
-        let street = abs.street();
-        let all = Abstraction::all(street)
-            .into_iter()
-            .filter(|&x| x != abs)
-            .map(i64::from)
-            .collect::<Vec<i64>>();
-        let n = street.n_observations() as f32;
-        let abs = i64::from(abs);
-        let street = street as i16;
-        const SQL: &'static str = r#"
-            SELECT 
-                a.abs,
-                (SELECT obs FROM encoder e2 WHERE e2.abs = a.abs LIMIT 1) as obs,
-                a.equity,
-                a.population::REAL / $3 as density,
-                m.dx as distance
-            FROM abstraction a
-            JOIN metric m ON m.xor = (a.abs # $1)
-            WHERE a.street = $2
-              AND a.abs = ANY($4)
-            ORDER BY m.dx DESC
-            LIMIT 5;
-        "#;
-        Ok(self
-            .0
-            .query(SQL, &[&abs, &street, &n, &all])
-            .await?
-            .iter()
-            .map(|row| Row {
-                abs: Abstraction::from(row.get::<_, i64>(0)).to_string(),
-                obs: Observation::from(row.get::<_, i64>(1)).to_string(),
-                equity: row.get::<_, f32>(2).into(),
-                density: row.get::<_, f32>(3).into(),
-                distance: row.get::<_, f32>(4).into(),
-            })
-            .collect())
-    }
-
     pub async fn table_distribution(&self, abs: Abstraction) -> Result<Vec<Row>, E> {
         let abs_i64 = i64::from(abs);
         if abs.street() == Street::Rive {
@@ -570,14 +522,21 @@ impl API {
     async fn table_distribution_river(&self, abs: i64) -> Result<Vec<Row>, E> {
         const SQL: &'static str = r#"
             SELECT 
-                e.obs               as obs,
-                a.abs               as abs,
-                1.0::REAL           as equity,
-                1.0::REAL           as density,
-                a.centrality::REAL  as centrality
-            FROM abstraction a
-            JOIN encoder e ON e.abs = a.abs 
-            WHERE a.abs = $1
+                c.obs               as obs,
+                p.abs               as abs,
+                p.equity::REAL      as equity,
+                p.dx::REAL          as density,
+                p.centrality::REAL  as distance
+            FROM abstraction g
+            JOIN encoder     p ON p.abs = g.abs
+            CROSS JOIN LATERAL (
+                SELECT c.obs 
+                FROM encoder c
+                WHERE c.abs = p.abs
+                OFFSET FLOOR(RANDOM() * p.population)::INT
+                LIMIT 1
+            ) c
+            WHERE g.abs = $1
             LIMIT 5;
         "#;
         let rows = self.0.query(SQL, &[&abs]).await?;
@@ -595,23 +554,30 @@ impl API {
     async fn table_distribution_other(&self, abs: i64) -> Result<Vec<Row>, E> {
         const SQL: &'static str = r#"
             SELECT 
-                e.obs           as obs,
-                t.next          as abs,
-                a.equity        as equity,
-                t.dx            as density,
-                a.centrality    as centrality
-            FROM transitions t
-            JOIN abstraction a ON a.abs = t.next
+                c.obs               as obs,
+                p.abs               as abs,
+                p.equity::REAL      as equity,
+                p.dx::REAL          as density,
+                p.centrality::REAL  as distance
+            FROM transitions g
+            JOIN abstraction p ON p.abs = g.next
             CROSS JOIN LATERAL (
-                SELECT obs 
-                FROM encoder e2
-                WHERE e2.abs = t.next
+                SELECT c.obs 
+                FROM encoder c
+                WHERE c.abs = p.abs
+                OFFSET FLOOR(RANDOM() * p.population)::INT
                 LIMIT 1
-            ) e
-            WHERE t.prev = $1
-            ORDER BY t.dx DESC;
+            ) c
+            WHERE g.prev = $1
+            LIMIT 128;
         "#;
-
+        println!(
+            "{}",
+            SQL.replace("$1", &abs.to_string())
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
         let rows = self.0.query(SQL, &[&abs]).await?;
         Ok(rows
             .iter()
@@ -623,11 +589,5 @@ impl API {
                 distance: row.get::<_, f32>(4).into(),
             })
             .collect())
-    }
-}
-
-impl From<Client> for API {
-    fn from(client: Client) -> Self {
-        Self(Arc::new(client))
     }
 }

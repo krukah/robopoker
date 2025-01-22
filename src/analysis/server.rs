@@ -18,7 +18,7 @@ pub struct Server;
 
 impl Server {
     pub async fn run() -> Result<(), std::io::Error> {
-        let api = web::Data::new(API::new().await);
+        let api = web::Data::new(API::from(crate::db().await));
         log::info!("starting HTTP server");
         HttpServer::new(move || {
             App::new()
@@ -49,7 +49,7 @@ impl Server {
 async fn set_streets(api: web::Data<API>, req: web::Json<SetStreets>) -> impl Responder {
     match Street::try_from(req.street.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid street format"),
-        Ok(street) => match api.row_wrt_street(street).await {
+        Ok(street) => match api.exploration_row(street).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             Ok(row) => HttpResponse::Ok().json(row),
         },
@@ -59,7 +59,7 @@ async fn set_streets(api: web::Data<API>, req: web::Json<SetStreets>) -> impl Re
 async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
     match Observation::try_from(req.obs.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
-        Ok(old) => match api.replace_obs(old).await {
+        Ok(old) => match api.obs_swap(old).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             Ok(new) => HttpResponse::Ok().json(new.to_string()),
         },
@@ -69,8 +69,11 @@ async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Re
 async fn replace_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
     match Abstraction::try_from(req.wrt.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
-        Ok(abs) => match api.row_wrt_abs_via_abs(abs).await {
-            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Ok(abs) => match api.calculate_any(abs).await {
+            Err(e) => {
+                log::error!("Internal server error: {}", e);
+                HttpResponse::InternalServerError().body(e.to_string())
+            }
             Ok(row) => HttpResponse::Ok().json(row),
         },
     }
@@ -100,7 +103,10 @@ async fn get_knn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> imp
     match Abstraction::try_from(req.wrt.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.table_neighborhood_knn(abs).await {
-            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Err(e) => {
+                log::error!("Internal server error: {}", e);
+                HttpResponse::InternalServerError().body(e.to_string())
+            }
             Ok(rows) => HttpResponse::Ok().json(rows),
         },
     }
@@ -113,7 +119,7 @@ async fn get_any_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> imp
     ) {
         (Err(_), _) => HttpResponse::BadRequest().body("invalid abstraction format"),
         (_, Err(_)) => HttpResponse::BadRequest().body("invalid observation format"),
-        (Ok(abs), Ok(obs)) => match api.row_wrt_abs_via_obs(abs, obs).await {
+        (Ok(abs), Ok(obs)) => match api.calculate_obs(abs, obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             Ok(rows) => HttpResponse::Ok().json(rows),
         },
