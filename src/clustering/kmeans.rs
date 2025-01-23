@@ -163,7 +163,7 @@ impl Layer {
     fn street(&self) -> Street {
         self.street
     }
-    /// take outer product of current learned kmeans
+    /// take outer triangular product of current learned kmeans
     /// Histograms, using whatever is stored as the future metric
     fn metric(&self) -> Metric {
         log::info!("{:<32}{:<32}", "calculating metric", self.street());

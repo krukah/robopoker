@@ -81,9 +81,9 @@ impl Street {
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
             Self::Pref => 0_________169,
-            Self::Flop => 0___3_769_920,
-            Self::Turn => 0__29_216_880,
-            Self::Rive => 0_175_301_280,
+            Self::Flop => 0___1_286_792,
+            Self::Turn => 0__13_960_050,
+            Self::Rive => 0_123_156_254,
         }
     }
     #[cfg(not(feature = "shortdeck"))]
