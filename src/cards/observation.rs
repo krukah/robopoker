@@ -75,6 +75,7 @@ impl Observation {
             .to_string()
             .split(Self::SEPARATOR)
             .map(|s| s.to_string())
+            .map(|s| s.trim().to_string())
             .map(|s| Self::shuffle(s))
             .collect::<Vec<String>>()
             .join(Self::SEPARATOR)
@@ -186,11 +187,20 @@ impl std::fmt::Display for Observation {
 
 #[cfg(test)]
 mod tests {
+    use crate::cards::isomorphism::Isomorphism;
+
     use super::*;
 
     #[test]
     fn bijective_i64() {
         let random = Observation::random();
         assert!(random == Observation::from(i64::from(random)));
+    }
+
+    #[test]
+    fn shuffle() {
+        let random = Observation::random();
+        let swappy = Observation::try_from(random.equivalent().as_str()).unwrap();
+        assert!(Isomorphism::from(random) == Isomorphism::from(swappy));
     }
 }

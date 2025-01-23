@@ -44,6 +44,12 @@ impl From<i64> for Isomorphism {
     }
 }
 
+impl From<Isomorphism> for i64 {
+    fn from(isomorphism: Isomorphism) -> i64 {
+        isomorphism.0.into()
+    }
+}
+
 impl Arbitrary for Isomorphism {
     fn random() -> Self {
         Self::from(Observation::random())
