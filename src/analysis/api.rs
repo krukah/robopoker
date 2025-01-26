@@ -345,9 +345,11 @@ impl API {
 
     // HTTP endpoints
     pub async fn exploration_row(&self, street: Street) -> Result<Row, E> {
-        let obs = Observation::from(street);
+        self.row_wrt_obs(Observation::from(street)).await
+    }
+    pub async fn row_wrt_obs(&self, obs: Observation) -> Result<Row, E> {
         let iso = i64::from(Observation::from(Isomorphism::from(obs)));
-        let n = street.n_observations() as f32;
+        let n = obs.street().n_observations() as f32;
         const SQL: &'static str = r#"
             SELECT
                 e.obs,
@@ -455,8 +457,8 @@ impl API {
                 SELECT e.abs,
                        a.population,
                        FLOOR(RANDOM() * a.population)::INT AS choice
-                FROM abstraction a
-                JOIN encoder e ON e.abs = a.abs
+                FROM encoder e
+                JOIN abstraction a ON e.abs = a.abs
                 WHERE e.obs = $1
                 LIMIT 1
             )
@@ -471,7 +473,40 @@ impl API {
     }
 
     pub async fn table_neighborhood_kfn(&self, wrt: Abstraction) -> Result<Vec<Row>, E> {
-        self.table_neighborhood_knn(wrt).await
+        let n = wrt.street().n_isomorphisms() as f32;
+        let s = wrt.street() as i16;
+        let wrt = i64::from(wrt);
+        const SQL: &'static str = r#"
+            SELECT
+                a.abs,
+                c.obs,
+                a.equity::REAL          as equity,
+                a.population::REAL / $1 as density,
+                m.dx::REAL              as distance
+            FROM abstraction a
+            JOIN metric m ON m.xor = (a.abs # $2)
+            CROSS JOIN LATERAL (
+                SELECT c.obs
+                FROM encoder c
+                WHERE c.abs = a.abs
+                OFFSET FLOOR(RANDOM() * a.population)::INT
+                LIMIT 1
+            ) c
+            WHERE a.street = $3
+            ORDER BY m.dx DESC
+            LIMIT 5;
+        "#;
+        let rows = self.0.query(SQL, &[&n, &wrt, &s]).await?;
+        Ok(rows
+            .iter()
+            .map(|row| Row {
+                abs: Abstraction::from(row.get::<_, i64>(0)).to_string(),
+                obs: Observation::from(row.get::<_, i64>(1)).equivalent(),
+                equity: row.get::<_, f32>(2).into(),
+                density: row.get::<_, f32>(3).into(),
+                distance: row.get::<_, f32>(4).into(),
+            })
+            .collect())
     }
     pub async fn table_neighborhood_knn(&self, wrt: Abstraction) -> Result<Vec<Row>, E> {
         let n = wrt.street().n_isomorphisms() as f32;
@@ -535,7 +570,7 @@ impl API {
             FROM abstraction    a
             JOIN encoder        e ON e.abs = (a.abs)
             JOIN metric         m ON m.xor = (a.abs # $2)
-            WHERE e.obs = ANY($3)
+            WHERE                    e.obs = ANY($3)
             "#;
         let rows = self.0.query(SQL, &[&n, &wrt, &isos]).await?;
         let rows = rows
@@ -573,7 +608,7 @@ impl API {
                 SELECT c.obs
                 FROM encoder c
                 WHERE c.abs = p.abs
-                OFFSET FLOOR(RANDOM() * p.population)::INT
+                OFFSET FLOOR(RANDOM() * g.population)::INT
                 LIMIT 1
             ) c
             WHERE g.abs = $2
