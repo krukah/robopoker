@@ -461,19 +461,23 @@ impl API {
                     FLOOR(RANDOM() * r.population)::INTEGER as i,
                     COALESCE(m.dx, 0)                       as distance
                 FROM abstraction    r
-                JOIN metric         m ON m.xor = ($1 # $3)
+                LEFT JOIN metric    m ON m.xor = ($1::BIGINT # $3::BIGINT)
                 WHERE               r.abs = $1
+            ),
+            random_encoder AS (
+                SELECT e.obs, e.abs, s.equity, s.population, s.distance
+                FROM sample s
+                JOIN encoder e ON e.abs = s.abs AND e.position = s.i
+                WHERE e.abs = $1
+                LIMIT 1
             )
             SELECT
-                e.obs                               as obs,
-                s.abs                               as abs,
-                s.equity::REAL                      as equity,
-                s.population::REAL / $2             as density,
-                s.distance::REAL                    as distance
-            FROM sample     s
-            JOIN encoder    e ON e.abs = s.abs 
-            AND             e.position = s.i
-            LIMIT 1;
+                obs,
+                abs,
+                equity::REAL                      as equity,
+                population::REAL / $2             as density,
+                distance::REAL                    as distance
+            FROM random_encoder;
         "#;
         //
         let n = wrt.street().n_isomorphisms() as f32;
