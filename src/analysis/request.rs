@@ -27,6 +27,12 @@ pub struct ReplaceRow {
 }
 
 #[derive(Deserialize)]
+pub struct ReplaceOne {
+    pub wrt: String,
+    pub abs: String,
+}
+
+#[derive(Deserialize)]
 pub struct ReplaceAll {
     pub wrt: String,
     pub neighbors: Vec<String>,

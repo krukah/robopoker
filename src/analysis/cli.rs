@@ -39,7 +39,7 @@ impl CLI {
         match Query::try_parse_from(std::iter::once("> ").chain(input.split_whitespace()))? {
             Query::Abstraction { target } => {
                 if let Ok(obs) = Observation::try_from(target.as_str()) {
-                    return Ok(println!("{}", self.0.encode(obs).await?));
+                    return Ok(println!("{}", self.0.obs_to_abs(obs).await?));
                 }
                 Err("invalid abstraction target".into())
             }

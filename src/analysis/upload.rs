@@ -1,11 +1,15 @@
 #![allow(unused)]
 
+use crate::cards::street::Street;
+use crate::clustering::abstraction::Abstraction;
 use std::sync::Arc;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
 
-use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
+// encoder      ~ 140M,
+// transition   ~ 10K,
+// metric       ~ 40K,
+// abstraction  ~ 500,
 
 pub struct Upload(Arc<Client>);
 
@@ -42,6 +46,7 @@ impl Upload {
     }
 
     async fn done(&self) -> Result<bool, E> {
+        return Ok(true);
         log::info!("checking if data is uploaded");
         for table in [
             "street",
@@ -75,7 +80,6 @@ impl Upload {
     }
 
     async fn recreate(&self) -> Result<(), E> {
-        return Ok(());
         log::info!("creating tables");
         Ok(self
             .0
@@ -88,7 +92,8 @@ impl Upload {
                     );
                     CREATE TABLE IF NOT EXISTS encoder     (
                         obs        BIGINT,
-                        abs        BIGINT
+                        abs        BIGINT,
+                        position   INTEGER
                     );
                     CREATE TABLE IF NOT EXISTS metric      (
                         xor        BIGINT,
@@ -119,7 +124,6 @@ impl Upload {
     }
 
     async fn truncate(&self) -> Result<(), E> {
-        return Ok(());
         log::info!("truncating all tables");
         Ok(self
             .0
@@ -137,7 +141,6 @@ impl Upload {
     }
 
     async fn unlogged(&self) -> Result<(), E> {
-        return Ok(());
         log::info!("setting tables to unlogged");
         Ok(self
             .0
@@ -191,8 +194,23 @@ impl Upload {
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
+
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_obs ON encoder (abs, obs);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_position ON encoder(abs, position);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs); -- drop ?
                         CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
-                        CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
+                        
+                        WITH numbered AS (
+                            SELECT obs,
+                                   abs,
+                                   row_number() OVER (PARTITION BY abs ORDER BY obs) - 1 as rn
+                            FROM encoder
+                        )
+                        UPDATE encoder
+                        SET    position = numbered.rn
+                        FROM   numbered
+                        WHERE  encoder.obs = numbered.obs
+                        AND    encoder.abs = numbered.abs;
     "#,
                     path, path, path, path
                 )
@@ -228,9 +246,11 @@ impl Upload {
                         COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.turn'    WITH (FORMAT BINARY);
                         COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.flop'    WITH (FORMAT BINARY);
                         COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.preflop' WITH (FORMAT BINARY);
-                        CREATE INDEX IF NOT EXISTS idx_transitions_prev ON transitions (prev);
-                        CREATE INDEX IF NOT EXISTS idx_transitions_next ON transitions (next);
-                        CREATE INDEX IF NOT EXISTS idx_transitions_dx   ON transitions (dx);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_dx           ON transitions(dx);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_prev_dx      ON transitions(prev, dx);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_next_dx      ON transitions(next, dx);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_prev_next    ON transitions(prev, next);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_next_prev    ON transitions(next, prev);
     "#,
                     path, path, path, path
                 )
