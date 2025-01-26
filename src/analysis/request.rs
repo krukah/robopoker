@@ -11,6 +11,11 @@ pub struct ReplaceObs {
 }
 
 #[derive(Deserialize)]
+pub struct RowWrtObs {
+    pub obs: String,
+}
+
+#[derive(Deserialize)]
 pub struct ReplaceAbs {
     pub wrt: String,
 }

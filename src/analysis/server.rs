@@ -3,6 +3,7 @@ use super::request::ReplaceAbs;
 use super::request::ReplaceAll;
 use super::request::ReplaceObs;
 use super::request::ReplaceRow;
+use super::request::RowWrtObs;
 use super::request::SetStreets;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
@@ -38,6 +39,7 @@ impl Server {
                 .route("/knn-wrt-abs", web::post().to(get_knn_wrt_abs))
                 .route("/kgn-wrt-abs", web::post().to(get_kgn_wrt_abs))
                 .route("/row-wrt-abs", web::post().to(get_row_wrt_abs))
+                .route("/row-wrt-obs", web::post().to(get_row_wrt_obs))
                 .route("/distributio", web::post().to(get_distributio))
         })
         .workers(6)
@@ -98,6 +100,16 @@ async fn get_row_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> imp
         (Ok(abs), Ok(obs)) => match api.calculate_obs(abs, obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             Ok(rows) => HttpResponse::Ok().json(rows),
+        },
+    }
+}
+
+async fn get_row_wrt_obs(api: web::Data<API>, req: web::Json<RowWrtObs>) -> impl Responder {
+    match Observation::try_from(req.obs.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
+        Ok(obs) => match api.row_wrt_obs(obs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(row) => HttpResponse::Ok().json(row),
         },
     }
 }

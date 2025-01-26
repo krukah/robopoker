@@ -1,6 +1,11 @@
+#![allow(unused)]
+
 use std::sync::Arc;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
+
+use crate::cards::street::Street;
+use crate::clustering::abstraction::Abstraction;
 
 pub struct Upload(Arc<Client>);
 
@@ -37,7 +42,7 @@ impl Upload {
     }
 
     async fn done(&self) -> Result<bool, E> {
-        let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
+        log::info!("checking if data is uploaded");
         for table in [
             "street",
             "metric",
@@ -46,6 +51,7 @@ impl Upload {
             "transitions",
             // blueprint,
         ] {
+            let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
             if 0 == self.0.query_one(count, &[&table]).await?.get::<_, i64>(0) {
                 return Ok(false);
             }
@@ -61,91 +67,95 @@ impl Upload {
             .0
             .batch_execute(
                 r#"
-    DROP SCHEMA public CASCADE;
-    CREATE SCHEMA public;
+                    DROP SCHEMA public CASCADE;
+                    CREATE SCHEMA public;
     "#,
             )
             .await?)
     }
 
     async fn recreate(&self) -> Result<(), E> {
+        return Ok(());
         log::info!("creating tables");
         Ok(self
             .0
             .batch_execute(
                 r#"
-    CREATE TABLE IF NOT EXISTS street      (
-        street     SMALLINT,
-        nobs       INTEGER,
-        nabs       INTEGER
-    );
-    CREATE TABLE IF NOT EXISTS encoder     (
-        obs        BIGINT,
-        abs        BIGINT
-    );
-    CREATE TABLE IF NOT EXISTS metric      (
-        xor        BIGINT,
-        dx         REAL
-    );
-    CREATE TABLE IF NOT EXISTS abstraction (
-        abs        BIGINT,
-        street     SMALLINT,
-        population INTEGER,
-        centrality REAL,
-        equity     REAL
-    );
-    CREATE TABLE IF NOT EXISTS transitions (
-        prev       BIGINT,
-        next       BIGINT,
-        dx         REAL
-    );
-    CREATE TABLE IF NOT EXISTS blueprint   (
-        edge       BIGINT,
-        past       BIGINT,
-        present    BIGINT,
-        future     BIGINT,
-        policy     REAL,
-        regret     REAL
-    );"#,
+                    CREATE TABLE IF NOT EXISTS street      (
+                        street     SMALLINT,
+                        nobs       INTEGER,
+                        nabs       INTEGER
+                    );
+                    CREATE TABLE IF NOT EXISTS encoder     (
+                        obs        BIGINT,
+                        abs        BIGINT
+                    );
+                    CREATE TABLE IF NOT EXISTS metric      (
+                        xor        BIGINT,
+                        dx         REAL
+                    );
+                    CREATE TABLE IF NOT EXISTS abstraction (
+                        abs        BIGINT,
+                        street     SMALLINT,
+                        population INTEGER,
+                        centrality REAL,
+                        equity     REAL
+                    );
+                    CREATE TABLE IF NOT EXISTS transitions (
+                        prev       BIGINT,
+                        next       BIGINT,
+                        dx         REAL
+                    );
+                    CREATE TABLE IF NOT EXISTS blueprint   (
+                        edge       BIGINT,
+                        past       BIGINT,
+                        present    BIGINT,
+                        future     BIGINT,
+                        policy     REAL,
+                        regret     REAL
+                    );"#,
             )
             .await?)
     }
 
     async fn truncate(&self) -> Result<(), E> {
+        return Ok(());
         log::info!("truncating all tables");
         Ok(self
             .0
             .batch_execute(
                 r#"
-    TRUNCATE TABLE encoder;
-    TRUNCATE TABLE metric;
-    TRUNCATE TABLE abstraction;
-    TRUNCATE TABLE transitions;
-    TRUNCATE TABLE street;
-    TRUNCATE TABLE blueprint;
+                    TRUNCATE TABLE encoder;
+                    TRUNCATE TABLE metric;
+                    TRUNCATE TABLE abstraction;
+                    TRUNCATE TABLE transitions;
+                    TRUNCATE TABLE street;
+                    TRUNCATE TABLE blueprint;
     "#,
             )
             .await?)
     }
 
     async fn unlogged(&self) -> Result<(), E> {
+        return Ok(());
         log::info!("setting tables to unlogged");
         Ok(self
             .0
             .batch_execute(
                 r#"
-    ALTER TABLE encoder      SET UNLOGGED;
-    ALTER TABLE metric       SET UNLOGGED;
-    ALTER TABLE abstraction  SET UNLOGGED;
-    ALTER TABLE transitions  SET UNLOGGED;
-    ALTER TABLE street       SET UNLOGGED;
-    ALTER TABLE blueprint    SET UNLOGGED;
+                    ALTER TABLE encoder      SET UNLOGGED;
+                    ALTER TABLE metric       SET UNLOGGED;
+                    ALTER TABLE abstraction  SET UNLOGGED;
+                    ALTER TABLE transitions  SET UNLOGGED;
+                    ALTER TABLE street       SET UNLOGGED;
+                    ALTER TABLE blueprint    SET UNLOGGED;
     "#,
             )
             .await?)
     }
 
     async fn copy_metric(&self) -> Result<(), E> {
+        return Ok(());
         log::info!("copying metric data");
         let path = self.path();
         Ok(self
@@ -153,13 +163,13 @@ impl Upload {
             .batch_execute(
                 format!(
                     r#"
-    INSERT INTO metric (xor, dx) VALUES (0, 0);
-    COPY        metric (xor, dx) FROM '{}/pgcopy.metric.river'      WITH (FORMAT BINARY);
-    COPY        metric (xor, dx) FROM '{}/pgcopy.metric.turn'       WITH (FORMAT BINARY);
-    COPY        metric (xor, dx) FROM '{}/pgcopy.metric.flop'       WITH (FORMAT BINARY);
-    COPY        metric (xor, dx) FROM '{}/pgcopy.metric.preflop'    WITH (FORMAT BINARY);
-    CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
-    CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
+                        INSERT INTO metric (xor, dx) VALUES (0, 0);
+                        COPY        metric (xor, dx) FROM '{}/pgcopy.metric.river'      WITH (FORMAT BINARY);
+                        COPY        metric (xor, dx) FROM '{}/pgcopy.metric.turn'       WITH (FORMAT BINARY);
+                        COPY        metric (xor, dx) FROM '{}/pgcopy.metric.flop'       WITH (FORMAT BINARY);
+                        COPY        metric (xor, dx) FROM '{}/pgcopy.metric.preflop'    WITH (FORMAT BINARY);
+                        CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
+                        CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
     "#,
                     path, path, path, path
                 )
@@ -169,6 +179,7 @@ impl Upload {
     }
 
     async fn copy_encoder(&self) -> Result<(), E> {
+        return Ok(());
         log::info!("copying observation data");
         let path = self.path();
         Ok(self
@@ -176,72 +187,12 @@ impl Upload {
             .batch_execute(
                 format!(
                     r#"
-    COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.river'   WITH (FORMAT BINARY);
-    COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
-    COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
-    COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
-    CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
-    CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
-    "#,
-                    path, path, path, path
-                )
-                .as_str(),
-            )
-            .await?)
-    }
-
-    async fn copy_streets(&self) -> Result<(), E> {
-        log::info!("copying street data");
-        Ok(self
-            .0
-            .batch_execute(
-                r#"
-    INSERT INTO street (street, nobs, nabs) VALUES
-    (0,
-        (SELECT COUNT(*) FROM encoder e
-        JOIN abstraction a ON e.abs = a.abs
-        WHERE a.street = 0),
-        (SELECT COUNT(*) FROM abstraction a
-        WHERE a.street = 0)),
-    (1,
-        (SELECT COUNT(*) FROM encoder e
-        JOIN abstraction a ON e.abs = a.abs
-        WHERE a.street = 1),
-        (SELECT COUNT(*) FROM abstraction a
-        WHERE a.street = 1)),
-    (2,
-        (SELECT COUNT(*) FROM encoder e
-        JOIN abstraction a ON e.abs = a.abs
-        WHERE a.street = 2),
-        (SELECT COUNT(*) FROM abstraction a
-        WHERE a.street = 2)),
-    (3,
-        (SELECT COUNT(*) FROM encoder e
-        JOIN abstraction a ON e.abs = a.abs
-        WHERE a.street = 3),
-        (SELECT COUNT(*) FROM abstraction a
-        WHERE a.street = 3));
-    CREATE INDEX IF NOT EXISTS idx_street_st ON street (street);
-    "#,
-            )
-            .await?)
-    }
-
-    async fn copy_transitions(&self) -> Result<(), E> {
-        log::info!("copying transition data");
-        let path = self.path();
-        Ok(self
-            .0
-            .batch_execute(
-                format!(
-                    r#"
-    COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.river'   WITH (FORMAT BINARY);
-    COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.turn'    WITH (FORMAT BINARY);
-    COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.flop'    WITH (FORMAT BINARY);
-    COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.preflop' WITH (FORMAT BINARY);
-    CREATE INDEX IF NOT EXISTS idx_transitions_prev ON transitions (prev);
-    CREATE INDEX IF NOT EXISTS idx_transitions_next ON transitions (next);
-    CREATE INDEX IF NOT EXISTS idx_transitions_dx   ON transitions (dx);
+                        COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.river'   WITH (FORMAT BINARY);
+                        COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
+                        COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
+                        COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs);
     "#,
                     path, path, path, path
                 )
@@ -251,20 +202,46 @@ impl Upload {
     }
 
     async fn copy_blueprint(&self) -> Result<(), E> {
+        return Ok(());
         log::info!("copying blueprint data");
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"
-    COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/pgcopy.profile.blueprint' WITH (FORMAT BINARY);
-    CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
-    CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
-    CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
-    CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
-    CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
+            COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/pgcopy.profile.blueprint' WITH (FORMAT BINARY);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
+            CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
     "#, path).as_str()).await?)
     }
 
+    async fn copy_transitions(&self) -> Result<(), E> {
+        return Ok(());
+        log::info!("copying transition data");
+        let path = self.path();
+        Ok(self
+            .0
+            .batch_execute(
+                format!(
+                    r#"
+                        COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.river'   WITH (FORMAT BINARY);
+                        COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.turn'    WITH (FORMAT BINARY);
+                        COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.flop'    WITH (FORMAT BINARY);
+                        COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.preflop' WITH (FORMAT BINARY);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_prev ON transitions (prev);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_next ON transitions (next);
+                        CREATE INDEX IF NOT EXISTS idx_transitions_dx   ON transitions (dx);
+    "#,
+                    path, path, path, path
+                )
+                .as_str(),
+            )
+            .await?)
+    }
+
     async fn copy_abstraction(&self) -> Result<(), E> {
-        log::info!("copying abstraction data");
+        return Ok(());
+        log::info!("deriving abstraction data");
         self.get_equity().await?;
         self.get_street_abs().await?;
         self.get_population().await?;
@@ -273,44 +250,84 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-    SELECT set_abstracted(3::SMALLINT);
-    SELECT set_abstracted(2::SMALLINT);
-    SELECT set_abstracted(1::SMALLINT);
-    SELECT set_abstracted(0::SMALLINT);
-    CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
-    CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
-    CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
-    CREATE INDEX IF NOT EXISTS idx_abstraction_pop ON abstraction (population);
-    CREATE INDEX IF NOT EXISTS idx_abstraction_cen ON abstraction (centrality);
+                    CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
+                    CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
+                    CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
+                    CREATE INDEX IF NOT EXISTS idx_abstraction_pop ON abstraction (population);
+                    CREATE INDEX IF NOT EXISTS idx_abstraction_cen ON abstraction (centrality);
     "#,
             )
             .await?;
         Ok(())
     }
-    async fn set_abstracted(&self) -> Result<(), E> {
-        log::info!("deriving abstraction fields");
-        self.0
+
+    async fn copy_streets(&self) -> Result<(), E> {
+        return Ok(());
+        log::info!("copying street data");
+        Ok(self
+            .0
             .batch_execute(
                 r#"
-    CREATE OR REPLACE FUNCTION
-            set_abstracted(xxx SMALLINT) RETURNS VOID AS
-    $$
-    BEGIN
-        INSERT INTO abstraction (abs, street, equity, population, centrality)
-        SELECT DISTINCT ON (e.abs)
-            e.abs,
-            get_street_abs(e.abs),
-            get_equity(e.abs),
-            get_population(e.abs),
-            get_centrality(e.abs)
-        FROM encoder e
-        WHERE get_street_abs(e.abs) = xxx;
-    END;
-    $$
-    LANGUAGE plpgsql;
+                    INSERT INTO street (street, nobs, nabs) VALUES
+                    (0,
+                        (SELECT COUNT(*) FROM encoder e
+                        JOIN abstraction a ON e.abs = a.abs
+                        WHERE a.street = 0),
+                        (SELECT COUNT(*) FROM abstraction a
+                        WHERE a.street = 0)),
+                    (1,
+                        (SELECT COUNT(*) FROM encoder e
+                        JOIN abstraction a ON e.abs = a.abs
+                        WHERE a.street = 1),
+                        (SELECT COUNT(*) FROM abstraction a
+                        WHERE a.street = 1)),
+                    (2,
+                        (SELECT COUNT(*) FROM encoder e
+                        JOIN abstraction a ON e.abs = a.abs
+                        WHERE a.street = 2),
+                        (SELECT COUNT(*) FROM abstraction a
+                        WHERE a.street = 2)),
+                    (3,
+                        (SELECT COUNT(*) FROM encoder e
+                        JOIN abstraction a ON e.abs = a.abs
+                        WHERE a.street = 3),
+                        (SELECT COUNT(*) FROM abstraction a
+                        WHERE a.street = 3));
+                    CREATE INDEX IF NOT EXISTS idx_street_st ON street (street);
     "#,
             )
-            .await?;
+            .await?)
+    }
+
+    async fn set_abstracted(&self) -> Result<(), E> {
+        for (abs, street) in Street::all()
+            .into_iter()
+            .rev()
+            .map(|&s| Abstraction::all(s).into_iter().map(move |a| (a, s)))
+            .flatten()
+            .map(|(abs, s)| (i64::from(abs), s as i16))
+        {
+            self.0
+                .execute(
+                    r#"
+                        INSERT INTO abstraction (
+                            abs,
+                            street,
+                            equity,
+                            population,
+                            centrality
+                        ) VALUES (
+                                            ($1),
+                                            ($2),
+                            get_equity      ($1),
+                            get_population  ($1),
+                            get_centrality  ($1)
+                        )
+                    "#,
+                    &[&abs, &street],
+                )
+                .await?;
+        }
         Ok(())
     }
 
@@ -319,6 +336,10 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
+
+    -- get the street from an observation
+    -- by counting the number of cards
+
     CREATE OR REPLACE FUNCTION
     get_street_obs(obs BIGINT) RETURNS SMALLINT AS
     $$
@@ -357,6 +378,10 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
+
+    -- get the street from an abstraction
+    -- by extracting highest 8 MSBs
+
     CREATE OR REPLACE FUNCTION
     get_street_abs(abs BIGINT) RETURNS SMALLINT AS
     $$
@@ -372,6 +397,11 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
+
+    -- reucrsively calculate equity
+    -- by integrating over the
+    -- transition density matrix
+
     CREATE OR REPLACE FUNCTION
     get_equity(parent BIGINT) RETURNS REAL AS
     $$
@@ -399,6 +429,10 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
+
+    -- get the population of an abstraction
+    -- by counting the number of observations
+
     CREATE OR REPLACE FUNCTION
     get_population(xxx BIGINT) RETURNS INTEGER AS
     $$
@@ -414,6 +448,11 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
+
+    -- get the absolute mean distance
+    -- of a given abstraction to all others
+    -- as a measure of outlierhood
+
     CREATE OR REPLACE FUNCTION
     get_centrality(xxx BIGINT) RETURNS REAL AS
     $$
