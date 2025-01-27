@@ -59,7 +59,7 @@ async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Re
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
         Ok(obs) => match api.replace_obs(obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(new) => HttpResponse::Ok().json(new.to_string()),
+            Ok(new) => HttpResponse::Ok().json(new.equivalent()),
         },
     }
 }
