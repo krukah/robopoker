@@ -4,15 +4,15 @@ use serde::Serialize;
 use tokio_postgres::Row;
 
 #[derive(Serialize)]
-pub struct Neighbor {
-    obs: String,
-    abs: String,
-    equity: f32,
-    density: f32,
-    distance: f32,
+pub struct Sample {
+    pub obs: String,
+    pub abs: String,
+    pub equity: f32,
+    pub density: f32,
+    pub distance: f32,
 }
 
-impl From<Row> for Neighbor {
+impl From<Row> for Sample {
     fn from(row: Row) -> Self {
         Self {
             obs: Observation::from(row.get::<_, i64>(0)).equivalent(),
