@@ -195,11 +195,12 @@ impl Upload {
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
 
-                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_obs ON encoder (abs, obs);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_covering ON encoder (obs, abs) INCLUDE (abs);
                         CREATE INDEX IF NOT EXISTS idx_encoder_abs_position ON encoder(abs, position);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_obs ON encoder (abs, obs);
                         CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs); -- drop ?
                         CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
-                        
+
                         WITH numbered AS (
                             SELECT obs,
                                    abs,

@@ -1,4 +1,4 @@
-use super::response::Neighbor;
+use super::response::Sample;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
@@ -11,6 +11,7 @@ use crate::transport::coupling::Coupling;
 use crate::Energy;
 use crate::Probability;
 use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
@@ -301,6 +302,30 @@ impl API {
             .map(Observation::from)
             .collect())
     }
+    pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
+        const SQL: &'static str = r#"
+            -- OBS SWAP
+            WITH sample AS (
+                SELECT
+                    e.abs,
+                    a.population,
+                    FLOOR(RANDOM() * a.population)::INTEGER as i
+                FROM encoder        e
+                JOIN abstraction    a ON e.abs = a.abs
+                WHERE               e.obs = $1
+            )
+            SELECT          e.obs
+            FROM sample     t
+            JOIN encoder    e ON e.abs = t.abs
+            AND             e.position = t.i
+            LIMIT 1;
+        "#;
+        //
+        let iso = i64::from(Isomorphism::from(obs));
+        //
+        let row = self.0.query_one(SQL, &[&iso]).await?;
+        Ok(Observation::from(row.get::<_, i64>(0)))
+    }
 
     // proximity lookups
     pub async fn abs_nearby(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
@@ -352,11 +377,10 @@ impl API {
 
 // exploration panel
 impl API {
-    // HTTP endpoints
-    pub async fn exp_wrt_str(&self, street: Street) -> Result<Neighbor, E> {
-        self.exp_wrt_obs(Observation::from(street)).await
+    pub async fn exp_wrt_str(&self, str: Street) -> Result<Sample, E> {
+        self.exp_wrt_obs(Observation::from(str)).await
     }
-    pub async fn exp_wrt_obs(&self, obs: Observation) -> Result<Neighbor, E> {
+    pub async fn exp_wrt_obs(&self, obs: Observation) -> Result<Sample, E> {
         const SQL: &'static str = r#"
             -- EXP WRT OBS
             SELECT
@@ -374,13 +398,13 @@ impl API {
         let iso = i64::from(Isomorphism::from(obs));
         //
         let row = self.0.query_one(SQL, &[&iso, &n]).await?;
-        Ok(Neighbor::from(row))
+        Ok(Sample::from(row))
     }
-    pub async fn exp_wrt_abs(&self, abs: Abstraction) -> Result<Neighbor, E> {
+    pub async fn exp_wrt_abs(&self, abs: Abstraction) -> Result<Sample, E> {
         const SQL: &'static str = r#"
             -- EXP WRT ABS
             WITH sample AS (
-                SELECT 
+                SELECT
                     a.abs,
                     a.population,
                     a.equity,
@@ -396,7 +420,7 @@ impl API {
                 s.population::REAL / $2 as density,
                 s.centrality::REAL      as centrality
             FROM sample     s
-            JOIN encoder    e ON e.abs = s.abs 
+            JOIN encoder    e ON e.abs = s.abs
             AND             e.position = s.i
             LIMIT 1;
         "#;
@@ -405,39 +429,13 @@ impl API {
         let abs = i64::from(abs);
         //
         let row = self.0.query_one(SQL, &[&abs, &n]).await?;
-        Ok(Neighbor::from(row))
-    }
-
-    // dice roll within same cluster
-    pub async fn replace_obs(&self, obs: Observation) -> Result<Observation, E> {
-        const SQL: &'static str = r#"
-            -- OBS SWAP
-            WITH sample AS (
-                SELECT 
-                    e.abs, 
-                    a.population,
-                    FLOOR(RANDOM() * a.population)::INTEGER as i
-                FROM encoder        e
-                JOIN abstraction    a ON e.abs = a.abs
-                WHERE               e.obs = $1
-            )
-            SELECT          e.obs
-            FROM sample     t
-            JOIN encoder    e ON e.abs = t.abs 
-            AND             e.position = t.i
-            LIMIT 1;
-        "#;
-        //
-        let iso = i64::from(Isomorphism::from(obs));
-        //
-        let row = self.0.query_one(SQL, &[&iso]).await?;
-        Ok(Observation::from(row.get::<_, i64>(0)))
+        Ok(Sample::from(row))
     }
 }
 
 // neighborhood lookups
 impl API {
-    pub async fn nbr_any_wrt_abs(&self, wrt: Abstraction) -> Result<Neighbor, E> {
+    pub async fn nbr_any_wrt_abs(&self, wrt: Abstraction) -> Result<Sample, E> {
         // uniform over abstraction space
         use rand::seq::SliceRandom;
         let ref mut rng = rand::thread_rng();
@@ -450,11 +448,11 @@ impl API {
             .unwrap();
         self.nbr_abs_wrt_abs(wrt, abs).await
     }
-    pub async fn nbr_abs_wrt_abs(&self, wrt: Abstraction, abs: Abstraction) -> Result<Neighbor, E> {
+    pub async fn nbr_abs_wrt_abs(&self, wrt: Abstraction, abs: Abstraction) -> Result<Sample, E> {
         const SQL: &'static str = r#"
             -- NBR ABS WRT ABS
             WITH sample AS (
-                SELECT 
+                SELECT
                     r.abs                                   as abs,
                     r.population                            as population,
                     r.equity                                as equity,
@@ -485,21 +483,28 @@ impl API {
         let wrt = i64::from(wrt);
         //
         let row = self.0.query_one(SQL, &[&abs, &n, &wrt]).await?;
-        Ok(Neighbor::from(row))
+        Ok(Sample::from(row))
     }
-    pub async fn nbr_obs_wrt_abs(&self, wrt: Abstraction, obs: Observation) -> Result<Neighbor, E> {
+    pub async fn nbr_obs_wrt_abs(&self, wrt: Abstraction, obs: Observation) -> Result<Sample, E> {
         const SQL: &'static str = r#"
             -- NBR OBS WRT ABS
+            WITH given AS (
+                SELECT
+                    (obs),
+                    (abs),
+                    (abs # $3) as xor
+                FROM    encoder
+                WHERE   obs = $1
+            )
             SELECT
-                e.obs,
-                e.abs,
-                r.equity::REAL                      as equity,
-                r.population::REAL / $2             as density,
+                g.obs,
+                g.abs,
+                a.equity::REAL                      as equity,
+                a.population::REAL / $2             as density,
                 COALESCE(m.dx, 0)::REAL             as distance
-            FROM encoder        e
-            JOIN abstraction    r ON r.abs = (e.abs)
-            JOIN metric         m ON m.xor = (e.abs # $3)
-            WHERE               e.obs = $1
+            FROM given          g
+            JOIN metric         m ON m.xor = g.xor
+            JOIN abstraction    a ON a.abs = g.abs
             LIMIT 1;
         "#;
         //
@@ -508,13 +513,13 @@ impl API {
         let wrt = i64::from(wrt);
         //
         let row = self.0.query_one(SQL, &[&iso, &n, &wrt]).await?;
-        Ok(Neighbor::from(row))
+        Ok(Sample::from(row))
     }
 
-    pub async fn kfn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Neighbor>, E> {
+    pub async fn kfn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Sample>, E> {
         self.knn_wrt_abs(wrt).await
     }
-    pub async fn knn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Neighbor>, E> {
+    pub async fn knn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- KNN WRT ABS
             WITH nearest AS (
@@ -525,7 +530,7 @@ impl API {
                     FLOOR(RANDOM() * population)::INTEGER       as sample
                 FROM abstraction    a
                 JOIN metric         m ON m.xor = (a.abs # $1)
-                WHERE               a.street = $2 
+                WHERE               a.street = $2
                 AND                 a.abs   != $1
                 ORDER BY            m.dx ASC
                 LIMIT 5
@@ -538,7 +543,7 @@ impl API {
                 n.distance::REAL        as distance
             FROM nearest n
             JOIN abstraction    a ON a.abs = n.abs
-            JOIN encoder        e ON e.abs = n.abs 
+            JOIN encoder        e ON e.abs = n.abs
             AND                 e.position = n.sample
             ORDER BY            n.distance ASC;
         "#;
@@ -548,13 +553,13 @@ impl API {
         let wrt = i64::from(wrt);
         //
         let rows = self.0.query(SQL, &[&wrt, &s, &n]).await?;
-        Ok(rows.into_iter().map(Neighbor::from).collect())
+        Ok(rows.into_iter().map(Sample::from).collect())
     }
     pub async fn kgn_wrt_abs(
         &self,
         wrt: Abstraction,
         nbr: Vec<Observation>,
-    ) -> Result<Vec<Neighbor>, E> {
+    ) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- KGN WRT ABS
             SELECT
@@ -579,20 +584,77 @@ impl API {
         let wrt = i64::from(wrt);
         //
         let rows = self.0.query(SQL, &[&n, &wrt, &isos]).await?;
-        Ok(rows.into_iter().map(Neighbor::from).collect())
+        Ok(rows.into_iter().map(Sample::from).collect())
     }
 }
 
 // distribution lookups
 impl API {
-    pub async fn hst_wrt_abs(&self, abs: Abstraction) -> Result<Vec<Neighbor>, E> {
+    pub async fn hst_wrt_obs(&self, obs: Observation) -> Result<Vec<Sample>, E> {
+        const SQL: &'static str = r#"
+        -- OBS DISTRIBUTION
+            SELECT
+                e.obs, e.abs, a.equity
+            FROM encoder        e
+            JOIN abstraction    a ON e.abs = a.abs
+            WHERE                    e.obs = ANY($1);
+        "#;
+        let n = obs.street().n_children();
+        let children = obs
+            .children()
+            .map(Isomorphism::from)
+            .map(Observation::from)
+            .collect::<Vec<_>>();
+        let distinct = children
+            .iter()
+            .copied()
+            .map(i64::from)
+            .fold(HashSet::<i64>::new(), |mut set, x| {
+                set.insert(x);
+                set
+            })
+            .into_iter()
+            .collect::<Vec<_>>();
+        let rows = self
+            .0
+            .query(SQL, &[&distinct])
+            .await?
+            .into_iter()
+            .map(|row| {
+                (
+                    Observation::from(row.get::<_, i64>(0)),
+                    Abstraction::from(row.get::<_, i64>(1)),
+                    Probability::from(row.get::<_, f32>(2)),
+                )
+            })
+            .map(|(obs, abs, equity)| (obs, (abs, equity)))
+            .collect::<BTreeMap<_, _>>();
+        let hist = children
+            .iter()
+            .map(|child| (child, rows.get(child).expect("lookup in db")))
+            .fold(BTreeMap::<_, _>::new(), |mut btree, (obs, (abs, eqy))| {
+                btree.entry(abs).or_insert((obs, eqy, 0)).2 += 1;
+                btree
+            })
+            .into_iter()
+            .map(|(abs, (obs, eqy, pop))| Sample {
+                obs: obs.equivalent(),
+                abs: abs.to_string(),
+                equity: eqy.clone(),
+                density: pop as Probability / n as Probability,
+                distance: 0.,
+            })
+            .collect::<Vec<_>>();
+        Ok(hist)
+    }
+    pub async fn hst_wrt_abs(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
         if abs.street() == Street::Rive {
-            self.hst_wrt_abs_river(abs).await
+            self.hst_wrt_abs_on_river(abs).await
         } else {
-            self.hst_wrt_abs_other(abs).await
+            self.hst_wrt_abs_on_other(abs).await
         }
     }
-    async fn hst_wrt_abs_river(&self, abs: Abstraction) -> Result<Vec<Neighbor>, E> {
+    async fn hst_wrt_abs_on_river(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- RIVER DISTRIBUTION
             WITH sample AS (
@@ -613,7 +675,7 @@ impl API {
                 s.population::REAL / $1 as density,
                 s.centrality::REAL      as distance
             FROM sample     s
-            JOIN encoder    e ON e.abs = s.abs 
+            JOIN encoder    e ON e.abs = s.abs
             AND             e.position = s.position;
         "#;
         //
@@ -621,9 +683,9 @@ impl API {
         let abs = i64::from(abs);
         //
         let rows = self.0.query(SQL, &[&n, &abs]).await?;
-        Ok(rows.into_iter().map(Neighbor::from).collect())
+        Ok(rows.into_iter().map(Sample::from).collect())
     }
-    async fn hst_wrt_abs_other(&self, abs: Abstraction) -> Result<Vec<Neighbor>, E> {
+    async fn hst_wrt_abs_on_other(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- OTHER DISTRIBUTION
             WITH histogram AS (
@@ -646,7 +708,7 @@ impl API {
                 t.probability      as density,
                 t.centrality::REAL as distance
             FROM histogram  t
-            JOIN encoder    e ON e.abs = t.abs 
+            JOIN encoder    e ON e.abs = t.abs
             AND             e.position = t.i
             ORDER BY        t.probability DESC;
         "#;
@@ -654,6 +716,6 @@ impl API {
         let abs = i64::from(abs);
         //
         let rows = self.0.query(SQL, &[&abs]).await?;
-        Ok(rows.into_iter().map(Neighbor::from).collect())
+        Ok(rows.into_iter().map(Sample::from).collect())
     }
 }
