@@ -44,9 +44,10 @@ impl Server {
                 .route("/exp-wrt-abs", web::post().to(exp_wrt_abs))
                 .route("/exp-wrt-obs", web::post().to(exp_wrt_obs))
                 .route("/hst-wrt-abs", web::post().to(hst_wrt_abs))
+                .route("/hst-wrt-obs", web::post().to(hst_wrt_obs))
         })
         .workers(6)
-        .bind("127.0.0.1:8080")?
+        .bind("127.0.0.1:8888")?
         .run()
         .await
     }
@@ -172,6 +173,16 @@ async fn hst_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
     match Abstraction::try_from(req.wrt.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.hst_wrt_abs(abs).await {
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+            Ok(rows) => HttpResponse::Ok().json(rows),
+        },
+    }
+}
+
+async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
+    match Observation::try_from(req.obs.as_str()) {
+        Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
+        Ok(obs) => match api.hst_wrt_obs(obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             Ok(rows) => HttpResponse::Ok().json(rows),
         },
