@@ -81,9 +81,14 @@ pub fn progress(n: usize) -> indicatif::ProgressBar {
     progress
 }
 
-/// initialize logging
-pub fn logs() {
+/// initialize logging and exit on ctrl-c
+pub fn init() {
     std::fs::create_dir_all("logs").expect("create logs directory");
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.unwrap();
+        println!("\nForcing exit...");
+        std::process::exit(0);
+    });
     let config = simplelog::ConfigBuilder::new()
         .set_location_level(log::LevelFilter::Off)
         .set_target_level(log::LevelFilter::Off)
