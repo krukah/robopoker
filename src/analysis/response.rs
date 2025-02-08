@@ -23,12 +23,3 @@ impl From<Row> for Sample {
         }
     }
 }
-
-#[derive(Serialize)]
-struct Explorer {
-    pub abs: String,
-    pub obs: String,
-    pub equity: f32,
-    pub density: f32,
-    pub centrality: f32,
-}

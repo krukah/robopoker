@@ -591,8 +591,53 @@ impl API {
 // distribution lookups
 impl API {
     pub async fn hst_wrt_obs(&self, obs: Observation) -> Result<Vec<Sample>, E> {
+        if obs.street() == Street::Rive {
+            self.hst_wrt_obs_on_river(obs).await
+        } else {
+            self.hst_wrt_obs_on_other(obs).await
+        }
+    }
+    pub async fn hst_wrt_abs(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
+        if abs.street() == Street::Rive {
+            self.hst_wrt_abs_on_river(abs).await
+        } else {
+            self.hst_wrt_abs_on_other(abs).await
+        }
+    }
+
+    async fn hst_wrt_obs_on_river(&self, obs: Observation) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
-        -- OBS DISTRIBUTION
+            -- RIVER OBS DISTRIBUTION
+            WITH sample AS (
+                SELECT
+                    e.obs,
+                    e.abs,
+                    a.equity,
+                    a.population,
+                    a.centrality,
+                    FLOOR(RANDOM() * a.population)::INTEGER as position
+                FROM encoder        e
+                JOIN abstraction    a ON e.abs = a.abs
+                WHERE               e.abs = (SELECT abs FROM encoder WHERE obs = $2)
+                LIMIT 5
+            )
+            SELECT
+                s.obs                   as obs,
+                s.abs                   as abs,
+                s.equity::REAL          as equity,
+                s.population::REAL / $1 as density,
+                s.centrality::REAL      as distance
+            FROM sample s;
+        "#;
+        let n = Street::Rive.n_isomorphisms() as f32;
+        let iso = i64::from(Isomorphism::from(obs));
+        let rows = self.0.query(SQL, &[&n, &iso]).await?;
+        Ok(rows.into_iter().map(Sample::from).collect())
+    }
+
+    async fn hst_wrt_obs_on_other(&self, obs: Observation) -> Result<Vec<Sample>, E> {
+        const SQL: &'static str = r#"
+        -- OTHER OBS DISTRIBUTION
             SELECT
                 e.obs, e.abs, a.equity
             FROM encoder        e
@@ -647,16 +692,10 @@ impl API {
             .collect::<Vec<_>>();
         Ok(hist)
     }
-    pub async fn hst_wrt_abs(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
-        if abs.street() == Street::Rive {
-            self.hst_wrt_abs_on_river(abs).await
-        } else {
-            self.hst_wrt_abs_on_other(abs).await
-        }
-    }
+
     async fn hst_wrt_abs_on_river(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
-            -- RIVER DISTRIBUTION
+            -- RIVER ABS DISTRIBUTION
             WITH sample AS (
                 SELECT
                     a.abs,
@@ -687,7 +726,7 @@ impl API {
     }
     async fn hst_wrt_abs_on_other(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
-            -- OTHER DISTRIBUTION
+            -- OTHER ABS DISTRIBUTION
             WITH histogram AS (
                 SELECT
                     p.abs                                   as abs,

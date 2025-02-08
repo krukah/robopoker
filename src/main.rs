@@ -50,7 +50,7 @@ use robopoker::*;
 #[tokio::main]
 async fn main() {
     // Behold!
-    crate::logs();
+    crate::init();
     // The k-means earth mover's distance hand-clustering algorithm.
     crate::clustering::kmeans::Layer::learn();
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
