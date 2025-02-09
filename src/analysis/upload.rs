@@ -36,6 +36,11 @@ impl Upload {
         Ok(())
     }
 
+    async fn done(&self, table: &str) -> Result<bool, E> {
+        let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
+        Ok(0 != self.0.query_one(count, &[&table]).await?.get::<_, i64>(0))
+    }
+
     async fn none(&self) -> Result<bool, E> {
         Ok(true
             && !self.done("street").await?
@@ -44,11 +49,6 @@ impl Upload {
             && !self.done("abstraction").await?
             && !self.done("transitions").await?
             && !self.done("blueprint").await?)
-    }
-
-    async fn done(&self, table: &str) -> Result<bool, E> {
-        let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
-        Ok(0 != self.0.query_one(count, &[&table]).await?.get::<_, i64>(0))
     }
 
     async fn recreate(&self) -> Result<(), E> {
