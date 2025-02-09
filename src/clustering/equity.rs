@@ -1,7 +1,7 @@
 use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use crate::transport::measure::Measure;
-use crate::Energy;
+use crate::{Energy, Probability};
 
 /// useful struct for grouping methods that help in calculating
 /// optimal transport between two Equity Histograms.
@@ -18,10 +18,7 @@ impl Measure for Equity {
     type X = Abstraction; //::Equity(i8) variant
     type Y = Abstraction; //::Equity(i8) variant
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
-        match (x, y) {
-            (Self::X::Percent(x), Self::Y::Percent(y)) => (*x as f32 - *y as f32).abs() / Abstraction::size() as f32,
-            _ => unreachable!("should make Abstraction::distance a thing. perhaps Self::X should be f32 to avoid this pattern match"),
-        }
+        (Probability::from(*x) - Probability::from(*y)).abs()
     }
 }
 
@@ -30,19 +27,17 @@ impl Measure for Equity {
 #[allow(dead_code)]
 impl Equity {
     pub fn variation(x: &Histogram, y: &Histogram) -> Energy {
+        let mut cdf_x = 0.0;
+        let mut cdf_y = 0.0;
         Abstraction::range()
-            .map(|abstraction| (x.density(&abstraction), y.density(&abstraction)))
-            .scan((0., 0.), |cdf, (px, py)| {
-                Some({
-                    cdf.0 += px;
-                    cdf.1 += py;
-                    cdf.clone()
-                })
+            .map(|abstraction| {
+                cdf_x += x.density(&abstraction);
+                cdf_y += y.density(&abstraction);
+                cdf_x - cdf_y
             })
-            .map(|(x, y)| (x - y).abs())
+            .map(|delta| delta.abs())
             .sum::<Energy>()
             / Abstraction::size() as Energy
-            / 2.
     }
     pub fn euclidean(x: &Histogram, y: &Histogram) -> Energy {
         Abstraction::range()
