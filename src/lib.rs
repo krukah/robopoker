@@ -86,7 +86,7 @@ pub fn init() {
     std::fs::create_dir_all("logs").expect("create logs directory");
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
-        log::warn!("forcing exit");
+        log::warn!("\nforcing exit");
         std::process::exit(0);
     });
     let config = simplelog::ConfigBuilder::new()
