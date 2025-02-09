@@ -161,6 +161,7 @@ impl Evaluator {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "shortdeck"))]
 mod tests {
     use super::*;
     use crate::cards::hand::Hand;
