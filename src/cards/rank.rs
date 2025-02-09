@@ -20,6 +20,14 @@ impl Rank {
     const fn mask() -> u16 {
         0b1111111111111
     }
+    pub fn lo(bits: u64) -> Self {
+        let rank = (00 + 0 + bits.trailing_zeros()) as u8 / 4;
+        Rank::from(rank)
+    }
+    pub fn hi(bits: u64) -> Self {
+        let rank = (64 - 1 - bits.leading_zeros()) as u8 / 4;
+        Rank::from(rank)
+    }
 }
 
 /// u8 isomorphism
