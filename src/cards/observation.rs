@@ -5,14 +5,14 @@ use super::hands::HandIterator;
 use super::street::Street;
 use super::strength::Strength;
 use crate::Arbitrary;
-use crate::Probability;
+use crate::Equity;
 use std::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
 ///
 /// We store each set of cards as a Hand which does not preserve dealing order. We can
 /// generate successors by considering all possible cards that can be dealt. We can calculate
-/// the equity of a given hand by comparing strength all possible opponent hands.
+/// the equity of a given hand by comparing strength all possible villain hands.
 /// This could be more memory efficient by using [Card; 2] for pocket Hands,
 /// then impl From<[Card; 2]> for Hand. But the convenience of having the same Hand type is worth it.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
@@ -29,14 +29,14 @@ impl Observation {
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Self::from((self.pocket, public)))
     }
-    pub fn equity(&self) -> Probability {
+    pub fn equity(&self) -> Equity {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
         let hero = Strength::from(hand);
         let (won, sum) = HandIterator::from((2, hand))
-            .map(|opponent| Hand::add(self.public, opponent))
-            .map(|opponent| Strength::from(opponent))
-            .map(|opponent| hero.cmp(&opponent))
+            .map(|villain| Hand::add(self.public, villain))
+            .map(|villain| Strength::from(villain))
+            .map(|villain| hero.cmp(&villain))
             .filter(|&ord| ord != Ordering::Equal)
             .fold((0u32, 0u32), |(wins, total), ord| match ord {
                 Ordering::Greater => (wins + 1, total + 1),
@@ -45,8 +45,11 @@ impl Observation {
             });
         match sum {
             0 => 0.5, // all draw edge case
-            _ => won as Probability / sum as Probability,
+            _ => won as Equity / sum as Equity,
         }
+    }
+    pub fn estimate(&self) -> Equity {
+        todo!()
     }
     pub fn street(&self) -> Street {
         Street::from(self.public.size())
@@ -187,9 +190,8 @@ impl std::fmt::Display for Observation {
 
 #[cfg(test)]
 mod tests {
-    use crate::cards::isomorphism::Isomorphism;
-
     use super::*;
+    use crate::cards::isomorphism::Isomorphism;
 
     #[test]
     fn bijective_i64() {

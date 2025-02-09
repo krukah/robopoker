@@ -13,7 +13,7 @@ impl Hand {
     }
 
     pub fn add(lhs: Self, rhs: Self) -> Self {
-        assert!(u64::from(lhs) & u64::from(rhs) == 0);
+        assert!((lhs.0 & rhs.0) == 0);
         Self(lhs.0 | rhs.0)
     }
 
@@ -24,19 +24,20 @@ impl Hand {
         self.0.count_ones() as usize
     }
     pub fn of(&self, suit: &Suit) -> Hand {
-        let ranks = u64::from(*self) & u64::from(*suit);
-        Self::from(ranks)
+        let this = u64::from(*self);
+        let mask = u64::from(*suit);
+        Self::from(this & mask)
     }
     pub fn min_rank(&self) -> Option<Rank> {
         match self.size() {
             0 => None,
-            _ => Some(Rank::from(self.0.trailing_zeros() as u8 / 4)),
+            _ => Some(Rank::lo(self.0)),
         }
     }
     pub fn max_rank(&self) -> Option<Rank> {
         match self.size() {
             0 => None,
-            _ => Some(Rank::from((64 - 1 - self.0.leading_zeros()) as u8 / 4)),
+            _ => Some(Rank::hi(self.0)),
         }
     }
     pub fn remove(&mut self, card: Card) {
@@ -60,13 +61,14 @@ impl Hand {
 impl Iterator for Hand {
     type Item = Card;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.size() == 0 {
-            None
-        } else {
-            let card = self.0.trailing_zeros() as u8;
-            let card = Card::from(card);
-            self.remove(card);
-            Some(card)
+        match self.size() {
+            0 => None,
+            _ => {
+                let card = self.0.trailing_zeros() as u8;
+                let card = Card::from(card);
+                self.remove(card);
+                Some(card)
+            }
         }
     }
 }
@@ -213,9 +215,9 @@ mod tests {
     #[cfg(not(feature = "shortdeck"))]
     fn ranks_in_suit() {
         let hand = Hand::try_from("2c 3d 4h 5s 6c 7d 8h 9s Tc Jd Qh Ks Ac").unwrap();
-        assert_eq!(u16::from(hand.of(&Suit::C)), 0b_1000100010001); // C (2c, 6c, Tc, Ac)
-        assert_eq!(u16::from(hand.of(&Suit::D)), 0b_0001000100010); // D (3d, 7d, Jd)
-        assert_eq!(u16::from(hand.of(&Suit::H)), 0b_0010001000100); // H (4h, 8h, Qh)
-        assert_eq!(u16::from(hand.of(&Suit::S)), 0b_0100010001000); // S (5s, 9s, Ks)
+        assert_eq!(u16::from(hand.of(&Suit::C)), 0b000_1000100010001); // C (2c, 6c, Tc, Ac)
+        assert_eq!(u16::from(hand.of(&Suit::D)), 0b000_0001000100010); // D (3d, 7d, Jd)
+        assert_eq!(u16::from(hand.of(&Suit::H)), 0b000_0010001000100); // H (4h, 8h, Qh)
+        assert_eq!(u16::from(hand.of(&Suit::S)), 0b000_0100010001000); // S (5s, 9s, Ks)
     }
 }

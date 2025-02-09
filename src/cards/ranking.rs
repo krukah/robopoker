@@ -33,6 +33,19 @@ pub enum Ranking {
     MAX,                   // useful for showdown implementation
 }
 
+impl Ranking {
+    pub fn n_kickers(&self) -> usize {
+        let n = match self {
+            Ranking::HighCard(_) => 4,
+            Ranking::OnePair(_) => 3,
+            Ranking::ThreeOAK(_) => 2,
+            Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
+            _ => 0,
+        };
+        n
+    }
+}
+
 impl std::fmt::Display for Ranking {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

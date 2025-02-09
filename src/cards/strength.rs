@@ -11,7 +11,7 @@ use super::ranking::Ranking;
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Strength {
     value: Ranking,
-    kicks: Kickers,
+    pub kicks: Kickers,
 }
 
 impl From<Hand> for Strength {
@@ -36,6 +36,6 @@ impl From<(Ranking, Kickers)> for Strength {
 
 impl std::fmt::Display for Strength {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:<18}", self.value)
+        write!(f, "{:<18}{:>5}", self.value, self.kicks)
     }
 }
