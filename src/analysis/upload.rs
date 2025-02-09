@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use std::sync::Arc;
@@ -26,61 +24,40 @@ impl Upload {
 
     pub async fn upload() -> Result<(), E> {
         let this = Self::from(crate::db().await);
-        if this.done().await? {
-            log::info!("data already uploaded");
-            Ok(())
-        } else {
-            log::info!("uploading data");
-            this.nuke().await?;
-            this.recreate().await?;
-            this.truncate().await?;
-            this.unlogged().await?;
-            this.copy_metric().await?;
-            this.copy_encoder().await?;
-            this.copy_blueprint().await?;
-            this.copy_transitions().await?;
-            this.copy_abstraction().await?;
-            this.copy_streets().await?;
-            Ok(())
-        }
+        this.recreate().await?;
+        this.truncate().await?;
+        this.unlogged().await?;
+        this.copy_metric().await?;
+        this.copy_encoder().await?;
+        this.copy_blueprint().await?;
+        this.copy_transitions().await?;
+        this.copy_abstraction().await?;
+        this.copy_streets().await?;
+        Ok(())
     }
 
-    async fn done(&self) -> Result<bool, E> {
-        return Ok(true);
-        log::info!("checking if data is uploaded");
-        for table in [
-            "street",
-            "metric",
-            "encoder",
-            "abstraction",
-            "transitions",
-            // blueprint,
-        ] {
-            let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
-            if 0 == self.0.query_one(count, &[&table]).await?.get::<_, i64>(0) {
-                return Ok(false);
-            }
-        }
-        Ok(true)
+    async fn none(&self) -> Result<bool, E> {
+        Ok(true
+            && !self.done("street").await?
+            && !self.done("metric").await?
+            && !self.done("encoder").await?
+            && !self.done("abstraction").await?
+            && !self.done("transitions").await?
+            && !self.done("blueprint").await?)
     }
 
-    async fn nuke(&self) -> Result<(), E> {
-        log::info!("nuking database schema (not really)");
-        return Ok(());
-        #[allow(unreachable_code)]
-        Ok(self
-            .0
-            .batch_execute(
-                r#"
-                    DROP SCHEMA public CASCADE;
-                    CREATE SCHEMA public;
-    "#,
-            )
-            .await?)
+    async fn done(&self, table: &str) -> Result<bool, E> {
+        let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
+        Ok(0 != self.0.query_one(count, &[&table]).await?.get::<_, i64>(0))
     }
 
     async fn recreate(&self) -> Result<(), E> {
-        log::info!("creating tables");
+        if !self.none().await? {
+            log::info!("tables already exist");
+            return Ok(());
+        } else {
+            log::info!("creating tables");
+        }
         Ok(self
             .0
             .batch_execute(
@@ -124,7 +101,12 @@ impl Upload {
     }
 
     async fn truncate(&self) -> Result<(), E> {
-        log::info!("truncating all tables");
+        if !self.none().await? {
+            log::info!("tables already truncated");
+            return Ok(());
+        } else {
+            log::info!("truncating all tables");
+        }
         Ok(self
             .0
             .batch_execute(
@@ -141,7 +123,12 @@ impl Upload {
     }
 
     async fn unlogged(&self) -> Result<(), E> {
-        log::info!("setting tables to unlogged");
+        if !self.none().await? {
+            log::info!("tables already unlogged");
+            return Ok(());
+        } else {
+            log::info!("setting tables to unlogged");
+        }
         Ok(self
             .0
             .batch_execute(
@@ -158,8 +145,12 @@ impl Upload {
     }
 
     async fn copy_metric(&self) -> Result<(), E> {
-        return Ok(());
-        log::info!("copying metric data");
+        if self.done("metric").await? {
+            log::info!("tables data already uploaded (metric)");
+            return Ok(());
+        } else {
+            log::info!("copying metric data");
+        }
         let path = self.path();
         Ok(self
             .0
@@ -173,7 +164,7 @@ impl Upload {
                         COPY        metric (xor, dx) FROM '{}/pgcopy.metric.preflop'    WITH (FORMAT BINARY);
                         CREATE INDEX IF NOT EXISTS idx_metric_xor  ON metric (xor);
                         CREATE INDEX IF NOT EXISTS idx_metric_dx   ON metric (dx);
-    "#,
+            "#,
                     path, path, path, path
                 )
                 .as_str(),
@@ -182,8 +173,12 @@ impl Upload {
     }
 
     async fn copy_encoder(&self) -> Result<(), E> {
-        return Ok(());
-        log::info!("copying observation data");
+        if self.done("encoder").await? {
+            log::info!("tables data already uploaded (encoder)");
+            return Ok(());
+        } else {
+            log::info!("copying observation data");
+        }
         let path = self.path();
         Ok(self
             .0
@@ -194,25 +189,25 @@ impl Upload {
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.preflop' WITH (FORMAT BINARY);
-
-                        CREATE INDEX IF NOT EXISTS idx_encoder_covering ON encoder (obs, abs) INCLUDE (abs);
-                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_position ON encoder(abs, position);
-                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_obs ON encoder (abs, obs);
-                        CREATE INDEX IF NOT EXISTS idx_encoder_abs ON encoder (abs); -- drop ?
-                        CREATE INDEX IF NOT EXISTS idx_encoder_obs ON encoder (obs);
-
+                        CREATE INDEX IF NOT EXISTS idx_encoder_covering     ON encoder  (obs, abs) INCLUDE (abs);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_position ON encoder  (abs, position);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs_obs      ON encoder  (abs, obs);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_abs          ON encoder  (abs);
+                        CREATE INDEX IF NOT EXISTS idx_encoder_obs          ON encoder  (obs);
+                        -- assign order to the isomorphisms
+                        -- to optimize uniform sampling
                         WITH numbered AS (
                             SELECT obs,
                                    abs,
                                    row_number() OVER (PARTITION BY abs ORDER BY obs) - 1 as rn
                             FROM encoder
                         )
-                        UPDATE encoder
-                        SET    position = numbered.rn
-                        FROM   numbered
-                        WHERE  encoder.obs = numbered.obs
-                        AND    encoder.abs = numbered.abs;
-    "#,
+                            UPDATE encoder
+                            SET    position = numbered.rn
+                            FROM   numbered
+                            WHERE  encoder.obs = numbered.obs
+                            AND    encoder.abs = numbered.abs;
+                "#,
                     path, path, path, path
                 )
                 .as_str(),
@@ -221,8 +216,12 @@ impl Upload {
     }
 
     async fn copy_blueprint(&self) -> Result<(), E> {
-        return Ok(());
-        log::info!("copying blueprint data");
+        if self.done("blueprint").await? {
+            log::info!("tables data already uploaded (blueprint)");
+            return Ok(());
+        } else {
+            log::info!("copying blueprint data");
+        }
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"
             COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/pgcopy.profile.blueprint' WITH (FORMAT BINARY);
@@ -235,8 +234,12 @@ impl Upload {
     }
 
     async fn copy_transitions(&self) -> Result<(), E> {
-        return Ok(());
-        log::info!("copying transition data");
+        if self.done("transitions").await? {
+            log::info!("tables data already uploaded (transition)");
+            return Ok(());
+        } else {
+            log::info!("copying transition data");
+        }
         let path = self.path();
         Ok(self
             .0
@@ -252,7 +255,7 @@ impl Upload {
                         CREATE INDEX IF NOT EXISTS idx_transitions_next_dx      ON transitions(next, dx);
                         CREATE INDEX IF NOT EXISTS idx_transitions_prev_next    ON transitions(prev, next);
                         CREATE INDEX IF NOT EXISTS idx_transitions_next_prev    ON transitions(next, prev);
-    "#,
+                "#,
                     path, path, path, path
                 )
                 .as_str(),
@@ -261,8 +264,12 @@ impl Upload {
     }
 
     async fn copy_abstraction(&self) -> Result<(), E> {
-        return Ok(());
-        log::info!("deriving abstraction data");
+        if self.done("abstraction").await? {
+            log::info!("tables data already uploaded (abstraction)");
+            return Ok(());
+        } else {
+            log::info!("deriving abstraction data");
+        }
         self.get_equity().await?;
         self.get_street_abs().await?;
         self.get_population().await?;
@@ -276,15 +283,19 @@ impl Upload {
                     CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
                     CREATE INDEX IF NOT EXISTS idx_abstraction_pop ON abstraction (population);
                     CREATE INDEX IF NOT EXISTS idx_abstraction_cen ON abstraction (centrality);
-    "#,
+            "#,
             )
             .await?;
         Ok(())
     }
 
     async fn copy_streets(&self) -> Result<(), E> {
-        return Ok(());
-        log::info!("copying street data");
+        if self.done("street").await? {
+            log::info!("tables data already uploaded (street)");
+            return Ok(());
+        } else {
+            log::info!("copying street data");
+        }
         Ok(self
             .0
             .batch_execute(
@@ -315,7 +326,7 @@ impl Upload {
                         (SELECT COUNT(*) FROM abstraction a
                         WHERE a.street = 3));
                     CREATE INDEX IF NOT EXISTS idx_street_st ON street (street);
-    "#,
+            "#,
             )
             .await?)
     }
@@ -324,6 +335,7 @@ impl Upload {
         for (abs, street) in Street::all()
             .into_iter()
             .rev()
+            .inspect(|s| log::info!("deriving abstractions for {}", s))
             .map(|&s| Abstraction::all(s).into_iter().map(move |a| (a, s)))
             .flatten()
             .map(|(abs, s)| (i64::from(abs), s as i16))
@@ -357,39 +369,37 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-
-    -- get the street from an observation
-    -- by counting the number of cards
-
-    CREATE OR REPLACE FUNCTION
-    get_street_obs(obs BIGINT) RETURNS SMALLINT AS
-    $$
-    DECLARE
-        ncards INTEGER;
-    BEGIN
-        SELECT COUNT(*)
-        INTO ncards
-        FROM (
-            SELECT UNNEST(ARRAY[
-                (obs >> 0)  & 255,
-                (obs >> 8)  & 255,
-                (obs >> 16) & 255,
-                (obs >> 24) & 255,
-                (obs >> 32) & 255,
-                (obs >> 40) & 255,
-                (obs >> 48) & 255
-            ]) AS byte
-        ) AS bytes;
-        RETURN CASE
-            WHEN ncards = 2 THEN 0  -- preflop
-            WHEN ncards = 5 THEN 1  -- flop
-            WHEN ncards = 6 THEN 2  -- turn
-            WHEN ncards = 7 THEN 3  -- river
-            ELSE NULL
-        END;
-    END;
-    $$
-    LANGUAGE plpgsql;
+                -- get the street from an observation
+                -- by counting the number of cards
+                CREATE OR REPLACE FUNCTION
+                get_street_obs(obs BIGINT) RETURNS SMALLINT AS
+                $$
+                DECLARE
+                    ncards INTEGER;
+                BEGIN
+                    SELECT COUNT(*)
+                    INTO ncards
+                    FROM (
+                        SELECT UNNEST(ARRAY[
+                            (obs >> 0)  & 255,
+                            (obs >> 8)  & 255,
+                            (obs >> 16) & 255,
+                            (obs >> 24) & 255,
+                            (obs >> 32) & 255,
+                            (obs >> 40) & 255,
+                            (obs >> 48) & 255
+                        ]) AS byte
+                    ) AS bytes;
+                    RETURN CASE
+                        WHEN ncards = 2 THEN 0  -- preflop
+                        WHEN ncards = 5 THEN 1  -- flop
+                        WHEN ncards = 6 THEN 2  -- turn
+                        WHEN ncards = 7 THEN 3  -- river
+                        ELSE NULL
+                    END;
+                END;
+                $$
+                LANGUAGE plpgsql;
     "#,
             )
             .await?;
@@ -399,16 +409,14 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-
-    -- get the street from an abstraction
-    -- by extracting highest 8 MSBs
-
-    CREATE OR REPLACE FUNCTION
-    get_street_abs(abs BIGINT) RETURNS SMALLINT AS
-    $$
-    BEGIN RETURN (abs >> 56)::SMALLINT; END;
-    $$
-    LANGUAGE plpgsql;
+                -- get the street from an abstraction
+                -- by extracting highest 8 MSBs
+                CREATE OR REPLACE FUNCTION
+                get_street_abs(abs BIGINT) RETURNS SMALLINT AS
+                $$
+                BEGIN RETURN (abs >> 56)::SMALLINT; END;
+                $$
+                LANGUAGE plpgsql;
     "#,
             )
             .await?;
@@ -418,29 +426,27 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-
-    -- reucrsively calculate equity
-    -- by integrating over the
-    -- transition density matrix
-
-    CREATE OR REPLACE FUNCTION
-    get_equity(parent BIGINT) RETURNS REAL AS
-    $$
-    BEGIN
-        RETURN CASE
-            WHEN get_street_abs(parent) = 3
-            THEN
-                (parent & 255)::REAL / 100
-            ELSE (
-                SELECT COALESCE(SUM(t.dx * r.equity) / NULLIF(SUM(t.dx), 0), 0)
-                FROM transitions t
-                JOIN abstraction r ON t.next = r.abs
-                WHERE t.prev = parent
-            )
-        END;
-    END;
-    $$
-    LANGUAGE plpgsql;
+                -- reucrsively calculate equity
+                -- by integrating over the
+                -- transition density matrix
+                CREATE OR REPLACE FUNCTION
+                get_equity(parent BIGINT) RETURNS REAL AS
+                $$
+                BEGIN
+                    RETURN CASE
+                        WHEN get_street_abs(parent) = 3
+                        THEN
+                            (parent & 255)::REAL / 100
+                        ELSE (
+                            SELECT COALESCE(SUM(t.dx * r.equity) / NULLIF(SUM(t.dx), 0), 0)
+                            FROM transitions t
+                            JOIN abstraction r ON t.next = r.abs
+                            WHERE t.prev = parent
+                        )
+                    END;
+                END;
+                $$
+                LANGUAGE plpgsql;
     "#,
             )
             .await?;
@@ -450,16 +456,14 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-
-    -- get the population of an abstraction
-    -- by counting the number of observations
-
-    CREATE OR REPLACE FUNCTION
-    get_population(xxx BIGINT) RETURNS INTEGER AS
-    $$
-    BEGIN RETURN ( SELECT COUNT(*) FROM encoder e WHERE e.abs = xxx ); END;
-    $$
-    LANGUAGE plpgsql;
+                -- get the population of an abstraction
+                -- by counting the number of observations
+                CREATE OR REPLACE FUNCTION
+                get_population(xxx BIGINT) RETURNS INTEGER AS
+                $$
+                BEGIN RETURN ( SELECT COUNT(*) FROM encoder e WHERE e.abs = xxx ); END;
+                $$
+                LANGUAGE plpgsql;
     "#,
             )
             .await?;
@@ -469,36 +473,34 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
-
-    -- get the absolute mean distance
-    -- of a given abstraction to all others
-    -- as a measure of outlierhood
-
-    CREATE OR REPLACE FUNCTION
-    get_centrality(xxx BIGINT) RETURNS REAL AS
-    $$
-    DECLARE
-        numer REAL;
-        denom INTEGER;
-    BEGIN
-        SELECT
-            SUM(get_population(a1.abs) * m.dx),
-            SUM(get_population(a1.abs))
-        INTO
-            numer,
-            denom
-        FROM abstraction a1
-        JOIN abstraction a2  ON a1.street = a2.street
-        JOIN metric m        ON (a1.abs # a2.abs) = m.xor
-        WHERE a1.abs = xxx   AND a1.abs != a2.abs;
-        RETURN CASE
-            WHEN denom IS NULL OR denom = 0
-            THEN 0
-            ELSE numer / denom
-        END;
-    END;
-    $$
-    LANGUAGE plpgsql;
+                -- get the absolute mean distance
+                -- of a given abstraction to all others
+                -- as a measure of outlierhood
+                CREATE OR REPLACE FUNCTION
+                get_centrality(xxx BIGINT) RETURNS REAL AS
+                $$
+                DECLARE
+                    numer REAL;
+                    denom INTEGER;
+                BEGIN
+                    SELECT
+                        SUM(get_population(a1.abs) * m.dx),
+                        SUM(get_population(a1.abs))
+                    INTO
+                        numer,
+                        denom
+                    FROM abstraction a1
+                    JOIN abstraction a2  ON a1.street = a2.street
+                    JOIN metric m        ON (a1.abs # a2.abs) = m.xor
+                    WHERE a1.abs = xxx   AND a1.abs != a2.abs;
+                    RETURN CASE
+                        WHEN denom IS NULL OR denom = 0
+                        THEN 0
+                        ELSE numer / denom
+                    END;
+                END;
+                $$
+                LANGUAGE plpgsql;
     "#,
             )
             .await?;
