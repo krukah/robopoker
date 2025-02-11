@@ -53,7 +53,7 @@ impl Layer {
         self
     }
 
-    /// reference to the observed points
+    /// reference to the all points up to isomorphism
     fn points(&self) -> &Vec<Histogram> /* N */ {
         &self.points
     }
@@ -74,15 +74,21 @@ impl Layer {
         use std::hash::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
+        // deterministic pseudo-random clustering
         let ref mut hasher = DefaultHasher::default();
         self.street().hash(hasher);
-        self.street().hash(hasher);
         let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
+        // don't do any abstraction on preflop
         let k = self.street().k();
         let n = self.points().len();
-        let mut histograms = Vec::new();
-        let mut potentials = vec![1.; n];
+        if self.street() == Street::Pref {
+            assert!(n == k);
+            return self.points().clone();
+        }
+        // kmeans++ initialization
         let progress = crate::progress(k * n);
+        let mut potentials = vec![1.; n];
+        let mut histograms = Vec::new();
         while histograms.len() < k {
             let i = WeightedIndex::new(potentials.iter())
                 .expect("valid weights array")
@@ -121,7 +127,7 @@ impl Layer {
         for (point, (neighbor, distance)) in self
             .points()
             .par_iter()
-            .map(|h| (h, self.neighboring(h)))
+            .map(|h| (h, self.neighborhood(h)))
             .collect::<Vec<_>>()
             .into_iter()
         {
@@ -145,11 +151,11 @@ impl Layer {
     }
     /// because we have fixed-order Abstractions that are determined by
     /// street and K-index, we should encapsulate the self.street depenency
-    fn abstracting(&self, i: usize) -> Abstraction {
+    fn abstraction(&self, i: usize) -> Abstraction {
         Abstraction::from((self.street(), i))
     }
     /// calculates nearest neighbor and separation distance for a Histogram
-    fn neighboring(&self, x: &Histogram) -> Neighbor {
+    fn neighborhood(&self, x: &Histogram) -> Neighbor {
         self.kmeans()
             .iter()
             .enumerate()
@@ -171,8 +177,8 @@ impl Layer {
         for (i, x) in self.kmeans.iter().enumerate() {
             for (j, y) in self.kmeans.iter().enumerate() {
                 if i > j {
-                    let ref a = self.abstracting(i);
-                    let ref b = self.abstracting(j);
+                    let ref a = self.abstraction(i);
+                    let ref b = self.abstraction(j);
                     let index = Pair::from((a, b));
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.;
@@ -194,10 +200,10 @@ impl Layer {
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
-                .map(|h| self.neighboring(h))
+                .map(|h| self.neighborhood(h))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
-                .map(|(k, _)| self.abstracting(k))
+                .map(|(k, _)| self.abstraction(k))
                 .zip(IsomorphismIterator::from(street))
                 .map(|(abs, iso)| (iso, abs))
                 .collect::<BTreeMap<Isomorphism, Abstraction>>()
@@ -213,7 +219,7 @@ impl Layer {
             .iter()
             .cloned()
             .enumerate()
-            .map(|(k, mean)| (self.abstracting(k), mean))
+            .map(|(k, mean)| (self.abstraction(k), mean))
             .collect::<BTreeMap<Abstraction, Histogram>>()
             .into()
     }

@@ -3,7 +3,7 @@ pub mod emd;
 pub mod equity;
 pub mod heuristic;
 pub mod histogram;
-pub mod kmeans;
+pub mod layer;
 pub mod lookup;
 pub mod metric;
 pub mod pair;
