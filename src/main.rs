@@ -52,7 +52,7 @@ async fn main() {
     // Behold!
     crate::init();
     // The k-means earth mover's distance hand-clustering algorithm.
-    crate::clustering::kmeans::Layer::learn();
+    crate::clustering::layer::Layer::learn();
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Solver::train();
     // Let's upload the data to the database.

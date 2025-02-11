@@ -5,7 +5,13 @@ use crate::Save;
 use std::collections::BTreeMap;
 
 pub struct Decomp(BTreeMap<Abstraction, Histogram>);
-impl Decomp {}
+
+impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
+    fn from(map: BTreeMap<Abstraction, Histogram>) -> Self {
+        Self(map)
+    }
+}
+
 impl Save for Decomp {
     fn name() -> &'static str {
         "pgcopy.transitions."
@@ -22,6 +28,7 @@ impl Save for Decomp {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
+        let ref mass = street.n_children() as f32;
         let ref path = Self::path(street);
         let ref file = File::open(path).expect(&format!("open {}", path));
         let mut transitions = BTreeMap::new();
@@ -36,7 +43,6 @@ impl Save for Decomp {
                 let into = reader.read_i64::<BE>().expect("read into abstraction");
                 reader.read_u32::<BE>().expect("weight");
                 let weight = reader.read_f32::<BE>().expect("read weight");
-                let mass = street.n_children() as f32;
                 transitions
                     .entry(Abstraction::from(from))
                     .or_insert_with(Histogram::default)
@@ -54,7 +60,7 @@ impl Save for Decomp {
             .keys()
             .next()
             .copied()
-            .unwrap_or_else(|| Abstraction::from(0.)) // coerce to River equity Abstraction if empty
+            .unwrap_or_else(|| Abstraction::from(0f32)) // coerce to River equity Abstraction if empty
             .street();
         log::info!("{:<32}{:<32}", "saving      transition", street);
         use byteorder::WriteBytesExt;
@@ -79,10 +85,5 @@ impl Save for Decomp {
             }
         }
         file.write_u16::<BE>(0xFFFF).expect("trailer");
-    }
-}
-impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
-    fn from(map: BTreeMap<Abstraction, Histogram>) -> Self {
-        Self(map)
     }
 }
