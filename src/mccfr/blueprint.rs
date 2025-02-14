@@ -28,12 +28,12 @@ use rayon::iter::ParallelIterator;
 /// - Regret & Policy vector evaluations are pure.
 /// - Profile updates mutates Profile for obvious reasons.
 #[derive(Default)]
-pub struct Solver {
+pub struct Blueprint {
     profile: Profile,
     sampler: Encoding,
 }
 
-impl Solver {
+impl Blueprint {
     /// after training, use the learned Profile to advise
     /// a Spot on how to play.
     #[allow(unused)]
@@ -145,7 +145,7 @@ impl Solver {
     }
 }
 
-impl Save for Solver {
+impl Save for Blueprint {
     fn name() -> &'static str {
         unreachable!()
     }

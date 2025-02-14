@@ -57,7 +57,7 @@ pub trait Arbitrary {
 /// may or may not be dependent on other entities being written/in memory.
 /// or in the case of River Abstractions, we can just generate it from scratch
 /// on the fly if we need to.
-pub trait Save: Sized {
+pub trait Save {
     fn name() -> &'static str;
     fn save(&self);
     fn load(street: Street) -> Self;
@@ -83,13 +83,13 @@ pub fn progress(n: usize) -> indicatif::ProgressBar {
 
 /// initialize logging and exit on ctrl-c
 pub fn init() {
-    std::fs::create_dir_all("logs").expect("create logs directory");
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
         println!();
         log::warn!("forcing exit");
         std::process::exit(0);
     });
+    std::fs::create_dir_all("logs").expect("create logs directory");
     let config = simplelog::ConfigBuilder::new()
         .set_location_level(log::LevelFilter::Off)
         .set_target_level(log::LevelFilter::Off)
