@@ -34,6 +34,15 @@ impl Layer {
             .count();
     }
 
+    /// reference to the all points up to isomorphism
+    fn points(&self) -> &Vec<Histogram> /* N */ {
+        &self.points
+    }
+    /// reference to the current kmeans centorid histograms
+    fn kmeans(&self) -> &Vec<Histogram> /* K */ {
+        &self.kmeans
+    }
+
     /// primary clustering algorithm loop
     fn cluster(mut self) -> Self {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
@@ -50,16 +59,8 @@ impl Layer {
             progress.inc(1);
         }
         progress.finish();
+        println!();
         self
-    }
-
-    /// reference to the all points up to isomorphism
-    fn points(&self) -> &Vec<Histogram> /* N */ {
-        &self.points
-    }
-    /// reference to the current kmeans centorid histograms
-    fn kmeans(&self) -> &Vec<Histogram> /* K */ {
-        &self.kmeans
     }
 
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
@@ -112,6 +113,7 @@ impl Layer {
                 .collect::<Vec<Energy>>();
         }
         progress.finish();
+        println!();
         histograms
     }
     /// calculates the next step of the kmeans iteration by
