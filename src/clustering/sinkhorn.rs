@@ -22,17 +22,18 @@ pub struct Sinkhorn<'a> {
 impl Sinkhorn<'_> {
     /// calculate ε-minimizing coupling by scaling potentials
     fn sinkhorn(&mut self) {
-        for _ in 0..self.iterations() {
+        #[allow(unused)]
+        for t in 0..self.iterations() {
             let ref mut next = self.lhs();
             let ref mut prev = self.lhs;
-            let lhs = Self::error(prev, next);
+            let lhs_err = Self::delta(prev, next);
             std::mem::swap(prev, next);
             let ref mut next = self.rhs();
             let ref mut prev = self.rhs;
-            let rhs = Self::error(prev, next);
+            let rhs_err = Self::delta(prev, next);
             std::mem::swap(prev, next);
-            if (lhs + rhs) < self.tolerance() {
-                return;
+            if lhs_err + rhs_err < self.tolerance() {
+                break;
             }
         }
     }
@@ -83,11 +84,11 @@ impl Sinkhorn<'_> {
         self.metric.distance(x, y) / self.temperature()
     }
     /// stopping criteria
-    fn error(last: &Potential, next: &Potential) -> Energy {
-        next.support()
-            .map(|x| next.density(x).exp() - last.density(x).exp())
+    fn delta(prev: &Potential, next: &Potential) -> Energy {
+        prev.support()
+            .map(|x| next.density(x).exp() - prev.density(x).exp())
             .map(|e| e.abs())
-            .fold(0f32, f32::max)
+            .sum::<Energy>()
     }
     /// hyperparameter that determines strength of entropic regularization. incorrect units but whatever
     const fn temperature(&self) -> Entropy {
