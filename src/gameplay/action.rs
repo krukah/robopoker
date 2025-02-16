@@ -18,6 +18,12 @@ pub enum Action {
 }
 
 impl Action {
+    pub fn is_choice(&self) -> bool {
+        !self.is_chance()
+    }
+    pub fn is_chance(&self) -> bool {
+        matches!(self, Action::Draw(_))
+    }
     pub fn is_aggro(&self) -> bool {
         matches!(self, Action::Raise(_) | Action::Shove(_))
     }
@@ -27,11 +33,8 @@ impl Action {
     pub fn is_raise(&self) -> bool {
         matches!(self, Action::Raise(_))
     }
-    pub fn is_chance(&self) -> bool {
-        matches!(self, Action::Draw(_))
-    }
-    pub fn is_choice(&self) -> bool {
-        !self.is_chance()
+    pub fn is_blind(&self) -> bool {
+        matches!(self, Action::Blind(_))
     }
 }
 

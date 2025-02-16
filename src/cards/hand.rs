@@ -46,6 +46,10 @@ impl Hand {
         self.0 &= mask;
     }
 
+    pub fn contains(&self, card: &Card) -> bool {
+        self.0 & (1 << u8::from(*card)) != 0
+    }
+
     #[cfg(not(feature = "shortdeck"))]
     pub const fn mask() -> u64 {
         0x000FFFFFFFFFFFFF

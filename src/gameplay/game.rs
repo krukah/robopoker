@@ -83,9 +83,9 @@ impl Game {
         self.board
     }
     pub fn player(&self) -> Ply {
-        if self.is_terminal() {
+        if self.must_stop() {
             Ply::Terminal
-        } else if self.is_sampling() {
+        } else if self.must_deal() {
             Ply::Chance
         } else {
             Ply::Choice(self.actor_idx())
@@ -99,34 +99,49 @@ impl Game {
     }
     pub fn legal(&self) -> Vec<Action> {
         let mut options = Vec::new();
-        if self.is_terminal() {
+        if self.must_stop() {
             return options;
         }
-        if self.is_sampling() {
+        if self.must_deal() {
             options.push(Action::Draw(self.deck().deal(self.board.street())));
             return options;
         }
-        if self.is_blinding() {
+        if self.must_post() {
             options.push(Action::Blind(Self::sblind()));
             return options;
         }
-        if self.can_raise() {
+        if self.may_raise() {
             options.push(Action::Raise(self.to_raise()));
         }
-        if self.can_shove() {
+        if self.may_shove() {
             options.push(Action::Shove(self.to_shove()));
         }
-        if self.can_call() {
+        if self.may_call() {
             options.push(Action::Call(self.to_call()));
         }
-        if self.can_fold() {
+        if self.may_fold() {
             options.push(Action::Fold);
         }
-        if self.can_check() {
+        if self.may_check() {
             options.push(Action::Check);
         }
         assert!(options.len() > 0);
         options
+    }
+    pub fn is_legal(&self, action: &Action) -> bool {
+        if self.must_stop() {
+            false
+        } else if let Action::Raise(raise) = action {
+            self.may_raise()
+                && raise.clone() >= self.to_raise()
+                && raise.clone() <= self.to_shove() - 1
+        } else if let Action::Draw(cards) = action {
+            self.must_deal()
+                && cards.clone().all(|c| self.deck().contains(&c))
+                && cards.count() == self.board().street().n_revealed()
+        } else {
+            self.legal().iter().any(|a| a == action)
+        }
     }
 
     //
@@ -190,7 +205,7 @@ impl Game {
     //
     fn act(&mut self, ref a: Action) {
         log::trace!("acting {} {}", self.actor_idx(), a);
-        assert!(self.is_terminal() == false);
+        assert!(self.must_stop() == false);
         assert!(self
             .legal()
             .iter()
@@ -249,7 +264,7 @@ impl Game {
     }
 
     /// we're waiting for showdown
-    fn is_terminal(&self) -> bool {
+    fn must_stop(&self) -> bool {
         if self.board.street() == Street::Rive {
             self.is_everyone_alright()
         } else {
@@ -257,7 +272,7 @@ impl Game {
         }
     }
     /// we're waiting for a card to be revealed
-    fn is_sampling(&self) -> bool {
+    fn must_deal(&self) -> bool {
         if self.board.street() == Street::Rive {
             false
         } else {
@@ -265,7 +280,7 @@ impl Game {
         }
     }
     /// blinds have not yet been posted // TODO some edge case of all in blinds
-    fn is_blinding(&self) -> bool {
+    fn must_post(&self) -> bool {
         if self.board.street() == Street::Pref {
             self.pot() < Self::sblind() + Self::bblind()
         } else {
@@ -314,19 +329,19 @@ impl Game {
     }
 
     //
-    fn can_fold(&self) -> bool {
+    fn may_fold(&self) -> bool {
         self.to_call() > 0
     }
-    fn can_call(&self) -> bool {
-        self.can_fold() && self.to_call() < self.to_shove()
+    fn may_call(&self) -> bool {
+        self.may_fold() && self.to_call() < self.to_shove()
     }
-    fn can_check(&self) -> bool {
+    fn may_check(&self) -> bool {
         self.effective_stake() == self.actor_ref().stake()
     }
-    fn can_raise(&self) -> bool {
+    fn may_raise(&self) -> bool {
         self.to_raise() < self.to_shove()
     }
-    fn can_shove(&self) -> bool {
+    fn may_shove(&self) -> bool {
         self.to_shove() > 0
     }
 
@@ -360,7 +375,7 @@ impl Game {
 
     //
     pub fn settlements(&self) -> Vec<Settlement> {
-        assert!(self.is_terminal(), "non terminal game state:\n{}", self);
+        assert!(self.must_stop(), "non terminal game state:\n{}", self);
         Showdown::from(self.ledger()).settle()
     }
     fn ledger(&self) -> Vec<Settlement> {
@@ -484,8 +499,8 @@ mod tests {
         assert!(game.is_everyone_folding() == true);
         assert!(game.is_everyone_alright() == true);
         assert!(game.is_everyone_calling() == false);
-        assert!(game.is_sampling() == true); // ambiguous
-        assert!(game.is_terminal() == true);
+        assert!(game.must_deal() == true); // ambiguous
+        assert!(game.must_stop() == true);
     }
     #[test]
     fn everyone_folds_flop() {
@@ -499,8 +514,8 @@ mod tests {
         assert!(game.is_everyone_folding() == true);
         assert!(game.is_everyone_alright() == true); // fail
         assert!(game.is_everyone_calling() == false);
-        assert!(game.is_sampling() == true); // ambiguous
-        assert!(game.is_terminal() == true);
+        assert!(game.must_deal() == true); // ambiguous
+        assert!(game.must_stop() == true);
     }
     #[test]
     fn history_of_checks() {
@@ -508,9 +523,9 @@ mod tests {
         let game = Game::root();
         assert!(game.board().street() == Street::Pref);
         assert!(game.pot() == 3);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == false);
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
@@ -520,9 +535,9 @@ mod tests {
         let game = game.apply(Action::Call(1));
         assert!(game.board().street() == Street::Pref);
         assert!(game.pot() == 4); //
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == false);
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
@@ -532,9 +547,9 @@ mod tests {
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Pref);
         assert!(game.pot() == 4);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == true); //
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == true); //
         assert!(game.is_everyone_alright() == true); //
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
@@ -545,9 +560,9 @@ mod tests {
         let game = game.apply(Action::Draw(flop));
         assert!(game.board().street() == Street::Flop); //
         assert!(game.pot() == 4);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false); //
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false); //
         assert!(game.is_everyone_alright() == false); //
         assert!(game.is_everyone_calling() == false); //
         assert!(game.is_everyone_touched() == false); //
@@ -557,9 +572,9 @@ mod tests {
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
         assert!(game.pot() == 4);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == false);
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
@@ -569,9 +584,9 @@ mod tests {
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
         assert!(game.pot() == 4);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == true); //
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == true); //
         assert!(game.is_everyone_alright() == true); //
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
@@ -582,9 +597,9 @@ mod tests {
         let game = game.apply(Action::Draw(turn));
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 4);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false); //
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false); //
         assert!(game.is_everyone_alright() == false); //
         assert!(game.is_everyone_calling() == false); //
         assert!(game.is_everyone_touched() == false); //
@@ -594,9 +609,9 @@ mod tests {
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 4);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == false);
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
@@ -606,9 +621,9 @@ mod tests {
         let game = game.apply(Action::Raise(4));
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 8);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == false);
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == true); //
@@ -618,9 +633,9 @@ mod tests {
         let game = game.apply(Action::Call(4));
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 12); //
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == true); //
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == true); //
         assert!(game.is_everyone_alright() == true); //
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true);
@@ -631,9 +646,9 @@ mod tests {
         let game = game.apply(Action::Draw(rive));
         assert!(game.board().street() == Street::Rive); //
         assert!(game.pot() == 12);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false); //
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false); //
         assert!(game.is_everyone_alright() == false); //
         assert!(game.is_everyone_calling() == false); //
         assert!(game.is_everyone_touched() == false); //
@@ -643,9 +658,9 @@ mod tests {
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
         assert!(game.pot() == 12);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == false);
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == false);
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == false);
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
@@ -655,9 +670,9 @@ mod tests {
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
         assert!(game.pot() == 12);
-        assert!(game.is_blinding() == false);
-        assert!(game.is_terminal() == true); //
-        assert!(game.is_sampling() == false);
+        assert!(game.must_post() == false);
+        assert!(game.must_stop() == true); //
+        assert!(game.must_deal() == false);
         assert!(game.is_everyone_alright() == true); //
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
