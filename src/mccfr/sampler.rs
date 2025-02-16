@@ -5,7 +5,6 @@ use super::spot::Spot;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::isomorphism::Isomorphism;
-use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::lookup::Lookup;
@@ -25,7 +24,7 @@ impl Encoding {
     }
     pub fn abstraction(&self, game: &Game) -> Abstraction {
         self.0
-            .get(&Isomorphism::from(Observation::from(game)))
+            .get(&Isomorphism::from(game.sweat()))
             .cloned()
             .expect(&format!("precomputed abstraction missing for {game}"))
     }

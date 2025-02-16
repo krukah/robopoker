@@ -6,7 +6,7 @@ use crate::gameplay::action::Action;
 use crate::gameplay::game::Game;
 
 pub struct Spot {
-    root: Game, // only used for starting stacks (hopefully)
+    root: Game, // only used for starting stacks and dealer and villainy (hopefully)
     past: Vec<Action>,
     hole: Hole,
 }
