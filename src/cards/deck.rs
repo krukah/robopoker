@@ -12,6 +12,10 @@ impl Deck {
         Self(Hand::from(Hand::mask()))
     }
 
+    pub fn contains(&self, card: &Card) -> bool {
+        self.0.contains(card)
+    }
+
     /// remove a random card from the deck.
     /// different from Hand::draw() since that removes
     /// highest card deterministically
