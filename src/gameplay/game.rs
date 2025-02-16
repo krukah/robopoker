@@ -94,6 +94,12 @@ impl Game {
     pub fn actor(&self) -> &Seat {
         self.actor_ref()
     }
+    pub fn sweat(&self) -> Observation {
+        Observation::from((
+            Hand::from(self.actor().cards()), //
+            Hand::from(self.board()),         //
+        ))
+    }
     pub fn street(&self) -> Street {
         self.board.street()
     }
@@ -416,12 +422,14 @@ impl Game {
         (self.dealer + self.ticker) % N
     }
     fn actor_ref(&self) -> &Seat {
+        assert!(self.must_stop());
         let index = self.actor_idx();
         self.seats
             .get(index)
             .expect("index should be in bounds bc modulo")
     }
     fn actor_mut(&mut self) -> &mut Seat {
+        assert!(self.must_stop());
         let index = self.actor_idx();
         self.seats
             .get_mut(index)
@@ -468,15 +476,6 @@ impl std::fmt::Display for Game {
             format!(" @ {:>6} {} {}", self.pot, self.board, self.street()).bright_green()
         )?;
         Ok(())
-    }
-}
-
-impl From<&Game> for Observation {
-    fn from(game: &Game) -> Self {
-        Observation::from((
-            Hand::from(game.actor().cards()), //
-            Hand::from(game.board()),         //
-        ))
     }
 }
 
