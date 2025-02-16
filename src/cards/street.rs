@@ -1,6 +1,6 @@
 use crate::clustering::abstraction::Abstraction;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Street {
     Pref = 0isize,
     Flop = 1isize,
