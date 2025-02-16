@@ -5,10 +5,11 @@ use super::settlement::Settlement;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
+use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
-use crate::gameplay::ply::Ply;
+use crate::gameplay::ply::Next;
 use crate::gameplay::showdown::Showdown;
 use crate::players::human::Human;
 use crate::Chips;
@@ -32,24 +33,40 @@ pub struct Game {
 }
 
 impl Game {
+    pub fn base() -> Self {
+        Self {
+            pot: 0 as Chips,
+            dealer: 0usize,
+            ticker: 1usize,
+            board: Board::empty(),
+            seats: [Seat::from(STACK); N],
+        }
+    }
+    pub fn deal(mut self) -> Self {
+        self.deal_cards();
+        self
+    }
+    pub fn post(mut self) -> Self {
+        self.post_blinds(Self::sblind());
+        self.post_blinds(Self::bblind());
+        self
+    }
+    pub fn wipe(mut self, hole: Hole) -> Self {
+        for seat in self.seats.iter_mut() {
+            seat.reset_cards(hole);
+        }
+        self
+    }
     /// this will start the game at the first decision
     /// NOT the first action, which are blinds and hole cards dealt.
     /// stack size is always 100 and P1 is always dealer.
     /// these should not matter too much in the MCCFR algorithm,
     /// as long as we alternate the traverser/paths explored
     pub fn root() -> Self {
-        let mut root = Self {
-            pot: 0 as Chips,
-            dealer: 0usize,
-            ticker: 0usize,
-            board: Board::empty(),
-            seats: [Seat::from(STACK); N],
-        };
-        root.next_player();
-        root.deal_cards();
-        root.post_blinds(Self::sblind());
-        root.post_blinds(Self::bblind());
-        root
+        Self::base().deal().post()
+    }
+    pub fn blinds() -> Vec<Action> {
+        vec![Action::Blind(Self::sblind()), Action::Blind(Self::bblind())]
     }
     pub fn n(&self) -> usize {
         self.seats.len()
@@ -63,11 +80,11 @@ impl Game {
         let mut node = Self::root();
         loop {
             match node.player() {
-                Ply::Chance => todo!(), // node.show_revealed(),
-                Ply::Choice(_) => {
+                Next::Chance => todo!(), // node.show_revealed(),
+                Next::Choice(_) => {
                     node.act(Human::decide(&node));
                 }
-                Ply::Terminal => {
+                Next::Terminal => {
                     node.conclude();
                     node.commence();
                 }
@@ -82,13 +99,13 @@ impl Game {
     pub fn board(&self) -> Board {
         self.board
     }
-    pub fn player(&self) -> Ply {
+    pub fn player(&self) -> Next {
         if self.must_stop() {
-            Ply::Terminal
+            Next::Terminal
         } else if self.must_deal() {
-            Ply::Chance
+            Next::Chance
         } else {
-            Ply::Choice(self.actor_idx())
+            Next::Choice(self.actor_idx())
         }
     }
     pub fn actor(&self) -> &Seat {
@@ -134,7 +151,9 @@ impl Game {
         assert!(options.len() > 0);
         options
     }
-    pub fn is_legal(&self, action: &Action) -> bool {
+
+    //
+    pub fn is_allowed(&self, action: &Action) -> bool {
         if self.must_stop() {
             false
         } else if let Action::Raise(raise) = action {
@@ -210,13 +229,7 @@ impl Game {
 
     //
     fn act(&mut self, ref a: Action) {
-        log::trace!("acting {} {}", self.actor_idx(), a);
-        assert!(self.must_stop() == false);
-        assert!(self
-            .legal()
-            .iter()
-            .map(|o| std::mem::discriminant(o))
-            .any(|o| std::mem::discriminant(a) == o));
+        assert!(self.is_allowed(&a));
         match a {
             &Action::Draw(cards) => {
                 self.reveal(cards);
@@ -456,10 +469,10 @@ impl Game {
             .expect("non-empty seats")
     }
 
-    const fn bblind() -> Chips {
+    pub const fn bblind() -> Chips {
         crate::B_BLIND
     }
-    const fn sblind() -> Chips {
+    pub const fn sblind() -> Chips {
         crate::S_BLIND
     }
 }

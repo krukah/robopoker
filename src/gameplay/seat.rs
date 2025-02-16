@@ -4,11 +4,15 @@ use colored::Colorize;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Seat {
-    cards: Hole,
     state: State,
     stack: Chips,
     stake: Chips,
     spent: Chips,
+    /// this field is the only non-public state, but if we're
+    /// client-side then we can just fill it with clones of our own private cards.
+    /// with this very natural method of obfuscation,
+    /// we can use Game struct as normal
+    cards: Hole,
 }
 
 impl From<Chips> for Seat {

@@ -5,7 +5,7 @@ use super::player::Player;
 use crate::cards::street::Street;
 use crate::gameplay::action::Action;
 use crate::gameplay::game::Game;
-use crate::gameplay::ply::Ply;
+use crate::gameplay::ply::Next;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
 use crate::Chips;
@@ -52,9 +52,8 @@ impl<'tree> Node<'tree> {
     }
     pub fn payoff(&self, player: &Player) -> Utility {
         match player {
-            Player(Ply::Terminal) => unreachable!(),
-            Player(Ply::Chance) => unreachable!(),
-            Player(Ply::Choice(x)) => self
+            Player(Next::Terminal) | Player(Next::Chance) => unreachable!(),
+            Player(Next::Choice(x)) => self
                 .data()
                 .game()
                 .settlements()
