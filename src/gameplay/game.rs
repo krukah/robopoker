@@ -263,7 +263,7 @@ impl Game {
         }
     }
 
-    /// we're waiting for showdown
+    /// we're waiting for showdown or everyone folded
     fn must_stop(&self) -> bool {
         if self.board.street() == Street::Rive {
             self.is_everyone_alright()
@@ -287,6 +287,7 @@ impl Game {
             false
         }
     }
+
     /// all players have acted, the pot is right.
     fn is_everyone_alright(&self) -> bool {
         self.is_everyone_calling() || self.is_everyone_folding() || self.is_everyone_shoving()
