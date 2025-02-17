@@ -3,7 +3,7 @@ use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
 use crate::gameplay::action::Action;
 use crate::gameplay::game::Game;
-use crate::gameplay::ply::Next;
+use crate::gameplay::ply::Turn;
 
 /// a complete representation of perfect recall game history
 /// from the perspective of the hero. intended use is for
@@ -18,13 +18,13 @@ use crate::gameplay::ply::Next;
 /// - unordered private and community cards
 #[derive(Debug, Clone)]
 pub struct Recall {
-    hero: Next,
-    seen: Observation, // could be replaced by Hole + BetHistory(Vec<Action>)
+    hero: Turn,
+    seen: Observation, // could be replaced by Hole + Board + BetHistory(Vec<Action>)
     path: Vec<Action>,
 }
 
 impl Recall {
-    pub fn from(seen: Observation, hero: Next) -> Self {
+    pub fn from(seen: Observation, hero: Turn) -> Self {
         Self {
             seen,
             hero,
@@ -76,16 +76,14 @@ impl Recall {
         self.path.iter().any(|a| !a.is_blind())
     }
     pub fn can_lookup(&self) -> bool {
-        let game = self.game();
         true
-            && game.player() == self.hero //             are we deciding right now?
-            && game.street() == self.seen.street() //    have we exhausted info from Obs?
+            && self.game().turn() == self.hero //               is it our turn right now?
+            && self.game().street() == self.seen.street() //    have we exhausted info from Obs?
     }
     pub fn can_reveal(&self) -> bool {
-        let game = self.game();
         true
-            && game.player() == Next::Chance //          is it time to reveal?
-            && game.street() < self.seen.street() //     would revealing double-deal?
+            && self.game().turn() == Turn::Chance //            is it time to reveal the next card?
+            && self.game().street() < self.seen.street() //     would revealing double-deal?
     }
     pub fn can_revoke(&self) -> bool {
         matches!(self.path.last().expect("empty path"), Action::Draw(_))

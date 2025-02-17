@@ -7,7 +7,7 @@ use super::regret::Regret;
 use super::strategy::Strategy;
 use super::tree::Branch;
 use crate::cards::street::Street;
-use crate::gameplay::ply::Next;
+use crate::gameplay::ply::Turn;
 use crate::mccfr::bucket::Bucket;
 use crate::mccfr::edge::Edge;
 use crate::mccfr::info::Info;
@@ -198,8 +198,8 @@ impl Profile {
     /// used extensively in assertions and utility calculations
     pub fn walker(&self) -> Player {
         match self.iterations % 2 {
-            0 => Player(Next::Choice(0)),
-            _ => Player(Next::Choice(1)),
+            0 => Player(Turn::Choice(0)),
+            _ => Player(Turn::Choice(1)),
         }
     }
     /// full set of available actions and their weights (not Probabilities)

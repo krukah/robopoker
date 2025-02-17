@@ -19,7 +19,7 @@ use rayon::iter::ParallelIterator;
 /// the abstracted game. with the learned Encoder
 /// to abstract all Action and Game objects, we
 /// populate and use a Profile to sample Trees, calculate
-/// regret and policy updates, then apply the upddates to
+/// regret and policy updates, then apply the updates to
 /// Profile strategies. it's useful to think about the
 /// 3 steps of Exploration, RegretEvaluation, and PolicyUpdate.
 ///
