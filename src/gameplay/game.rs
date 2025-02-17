@@ -9,7 +9,7 @@ use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
-use crate::gameplay::ply::Next;
+use crate::gameplay::ply::Turn;
 use crate::gameplay::showdown::Showdown;
 use crate::players::human::Human;
 use crate::Chips;
@@ -27,7 +27,7 @@ type Position = usize;
 pub struct Game {
     seats: [Seat; N],
     pot: Chips,
-    board: Board,
+    board: Board, // could be [Card; N]
     dealer: Position,
     ticker: Position,
 }
@@ -79,12 +79,14 @@ impl Game {
     pub fn play() -> ! {
         let mut node = Self::root();
         loop {
-            match node.player() {
-                Next::Chance => todo!(), // node.show_revealed(),
-                Next::Choice(_) => {
+            match node.turn() {
+                Turn::Chance => {
+                    node.act(Action::Draw(node.draw()));
+                }
+                Turn::Choice(_) => {
                     node.act(Human::decide(&node));
                 }
-                Next::Terminal => {
+                Turn::Terminal => {
                     node.conclude();
                     node.commence();
                 }
@@ -99,13 +101,13 @@ impl Game {
     pub fn board(&self) -> Board {
         self.board
     }
-    pub fn player(&self) -> Next {
+    pub fn turn(&self) -> Turn {
         if self.must_stop() {
-            Next::Terminal
+            Turn::Terminal
         } else if self.must_deal() {
-            Next::Chance
+            Turn::Chance
         } else {
-            Next::Choice(self.actor_idx())
+            Turn::Choice(self.actor_idx())
         }
     }
     pub fn actor(&self) -> &Seat {
@@ -156,6 +158,8 @@ impl Game {
     pub fn is_allowed(&self, action: &Action) -> bool {
         if self.must_stop() {
             false
+        } else if let Action::Blind(blind) = action {
+            self.must_post()
         } else if let Action::Raise(raise) = action {
             self.may_raise()
                 && raise.clone() >= self.to_raise()
@@ -165,7 +169,7 @@ impl Game {
                 && cards.clone().all(|c| self.deck().contains(&c))
                 && cards.count() == self.board().street().n_revealed()
         } else {
-            self.legal().iter().any(|a| a == action)
+            self.legal().contains(action)
         }
     }
 
@@ -422,9 +426,9 @@ impl Game {
 
     //
     pub fn draw(&self) -> Hand {
-        self.deck().deal(self.board().street())
+        self.deck().deal(self.street())
     }
-    fn deck(&self) -> Deck {
+    pub fn deck(&self) -> Deck {
         let mut removed = Hand::from(self.board);
         for seat in self.seats.iter() {
             let hole = Hand::from(seat.cards());
@@ -436,14 +440,12 @@ impl Game {
         (self.dealer + self.ticker) % self.n()
     }
     fn actor_ref(&self) -> &Seat {
-        assert!(self.must_stop());
         let index = self.actor_idx();
         self.seats
             .get(index)
             .expect("index should be in bounds bc modulo")
     }
     fn actor_mut(&mut self) -> &mut Seat {
-        assert!(self.must_stop());
         let index = self.actor_idx();
         self.seats
             .get_mut(index)

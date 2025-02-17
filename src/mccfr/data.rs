@@ -28,7 +28,7 @@ impl Data {
         &self.game
     }
     pub fn player(&self) -> Player {
-        Player(self.game().player())
+        Player(self.game().turn())
     }
     pub fn bucket(&self) -> &Bucket {
         self.partition.as_ref().expect("bucket assigned")
