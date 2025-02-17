@@ -20,13 +20,7 @@ impl Board {
     }
     /// what street is this board on?
     pub fn street(&self) -> Street {
-        match self.0.size() {
-            0 => Street::Pref,
-            3 => Street::Flop,
-            4 => Street::Turn,
-            5 => Street::Rive,
-            _ => panic!("Invalid board size"),
-        }
+        Street::from(self.0.size())
     }
 }
 

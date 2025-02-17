@@ -6,7 +6,7 @@ use super::player::Player;
 use super::policy::Policy;
 use super::profile::Profile;
 use super::sampler::Encoding;
-use super::spot::Spot;
+use super::spot::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::street::Street;
@@ -37,7 +37,7 @@ impl Blueprint {
     /// after training, use the learned Profile to advise
     /// a Spot on how to play.
     #[allow(unused)]
-    fn advise(&self, spot: Spot) -> Policy {
+    fn advise(&self, spot: Recall) -> Policy {
         let bucket = self.sampler.bucket(&spot);
         let policy = self.profile.policy(&bucket);
         Policy::from(policy)

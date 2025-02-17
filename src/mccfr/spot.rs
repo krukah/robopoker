@@ -16,13 +16,13 @@ use crate::gameplay::ply::Next;
 /// - default blinds
 /// - default dealer position
 #[derive(Debug, Clone)]
-pub struct Spot {
+pub struct Recall {
     hero: Next,
     seen: Observation, // could be replaced by Hole + BetHistory(Vec<Action>)
     path: Vec<Action>,
 }
 
-impl Spot {
+impl Recall {
     pub fn from(seen: Observation, hero: Next) -> Self {
         Self {
             seen,

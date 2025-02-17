@@ -1,7 +1,7 @@
 use super::bucket::Bucket;
 use super::data::Data;
 use super::node::Node;
-use super::spot::Spot;
+use super::spot::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::isomorphism::Isomorphism;
@@ -28,10 +28,10 @@ impl Encoding {
             .cloned()
             .expect(&format!("precomputed abstraction missing for {game}"))
     }
-    pub fn replay(&self, recall: &Spot) -> Tree {
+    pub fn replay(&self, recall: &Recall) -> Tree {
         todo!("create a Tree from the vector of Actions in the Spot")
     }
-    pub fn bucket(&self, recall: &Spot) -> Bucket {
+    pub fn bucket(&self, recall: &Recall) -> Bucket {
         todo!("use some Spot-level function to get the list of Edge's by mapping (pseudoharmonically?) Actions -> Edges , w.r.t. Game::pot(). and then map over potential future actions w.r.t. Game::legal() to get another list of Edges. then use self.abstraction() to get the cluster lookup.");
     }
 
