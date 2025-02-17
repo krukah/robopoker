@@ -40,7 +40,6 @@ impl Blueprint {
     fn advise(&self, spot: Spot) -> Policy {
         let bucket = self.sampler.bucket(&spot);
         let policy = self.profile.policy(&bucket);
-        let policy = spot.coalesce(policy);
         Policy::from(policy)
     }
 
