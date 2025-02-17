@@ -28,11 +28,11 @@ impl Encoding {
             .cloned()
             .expect(&format!("precomputed abstraction missing for {game}"))
     }
-    pub fn replay(&self, _: &Spot) -> Tree {
-        todo!()
+    pub fn replay(&self, recall: &Spot) -> Tree {
+        todo!("create a Tree from the vector of Actions in the Spot")
     }
-    pub fn bucket(&self, _: &Spot) -> Bucket {
-        todo!();
+    pub fn bucket(&self, recall: &Spot) -> Bucket {
+        todo!("use some Spot-level function to get the list of Edge's by mapping (pseudoharmonically?) Actions -> Edges , w.r.t. Game::pot(). and then map over potential future actions w.r.t. Game::legal() to get another list of Edges. then use self.abstraction() to get the cluster lookup.");
     }
 
     /// unfiltered set of possible children of a Node,

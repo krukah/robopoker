@@ -39,9 +39,8 @@ impl From<(Card, Card)> for Hole {
     fn from(cards: (Card, Card)) -> Self {
         let a = u64::from(cards.0);
         let b = u64::from(cards.1);
-        let hand = Hand::from(a | b);
         assert!(a != b);
-        Self(hand)
+        Self(Hand::from(a | b))
     }
 }
 
@@ -51,7 +50,7 @@ impl TryFrom<&str> for Hole {
         let hand = Hand::try_from(s)?;
         match hand.size() {
             2 => Ok(Self(hand)),
-            _ => Err("Hand must contain exactly two cards".into()),
+            _ => Err("hand must contain exactly two cards".into()),
         }
     }
 }

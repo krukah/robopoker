@@ -4,7 +4,6 @@ pub mod counterfactual;
 pub mod data;
 pub mod discount;
 pub mod edge;
-pub mod history;
 pub mod info;
 pub mod memory;
 pub mod node;

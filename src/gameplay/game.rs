@@ -35,11 +35,11 @@ pub struct Game {
 impl Game {
     pub fn base() -> Self {
         Self {
-            pot: 0 as Chips,
-            dealer: 0usize,
-            ticker: 1usize,
+            pot: Chips::from(0i16),
             board: Board::empty(),
             seats: [Seat::from(STACK); N],
+            dealer: 0usize,
+            ticker: 1usize,
         }
     }
     pub fn deal(mut self) -> Self {
