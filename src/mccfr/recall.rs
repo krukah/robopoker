@@ -15,6 +15,7 @@ use crate::gameplay::ply::Next;
 /// - default stacks
 /// - default blinds
 /// - default dealer position
+/// - unordered private and community cards
 #[derive(Debug, Clone)]
 pub struct Recall {
     hero: Next,

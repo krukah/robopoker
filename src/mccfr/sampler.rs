@@ -1,7 +1,7 @@
 use super::bucket::Bucket;
 use super::data::Data;
 use super::node::Node;
-use super::spot::Recall;
+use super::recall::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::isomorphism::Isomorphism;
