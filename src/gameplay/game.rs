@@ -69,7 +69,7 @@ impl Game {
         vec![Action::Blind(Self::sblind()), Action::Blind(Self::bblind())]
     }
     pub fn n(&self) -> usize {
-        self.seats.len()
+        N
     }
     pub fn apply(&self, action: Action) -> Self {
         let mut child = self.clone();
@@ -210,10 +210,10 @@ impl Game {
         }
     }
     fn move_button(&mut self) {
-        assert!(self.seats.len() == N);
+        assert!(self.seats.len() == self.n());
         assert!(self.board.street() == Street::Pref);
         self.dealer += 1;
-        self.dealer %= N;
+        self.dealer %= self.n();
         self.ticker = self.dealer;
         self.next_player();
     }
@@ -318,11 +318,12 @@ impl Game {
     /// all players have acted at least once
     fn is_everyone_touched(&self) -> bool {
         self.ticker
-            > if self.board.street() == Street::Pref {
-                N + 2
-            } else {
-                N
-            }
+            > self.n()
+                + if self.board.street() == Street::Pref {
+                    2
+                } else {
+                    0
+                }
     }
     /// all players betting are in for the effective stake
     fn is_everyone_matched(&self) -> bool {
@@ -432,7 +433,7 @@ impl Game {
         Deck::from(removed.complement())
     }
     fn actor_idx(&self) -> Position {
-        (self.dealer + self.ticker) % N
+        (self.dealer + self.ticker) % self.n()
     }
     fn actor_ref(&self) -> &Seat {
         assert!(self.must_stop());
