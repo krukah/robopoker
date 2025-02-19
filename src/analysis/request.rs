@@ -37,3 +37,13 @@ pub struct ReplaceAll {
     pub wrt: String,
     pub neighbors: Vec<String>,
 }
+
+#[derive(Deserialize)]
+pub struct ObsHist {
+    pub obs: String,
+}
+
+#[derive(Deserialize)]
+pub struct AbsHist {
+    pub abs: String,
+}

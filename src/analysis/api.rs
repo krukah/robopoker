@@ -517,7 +517,40 @@ impl API {
     }
 
     pub async fn kfn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Sample>, E> {
-        self.knn_wrt_abs(wrt).await
+        const SQL: &'static str = r#"
+                -- KNN WRT ABS
+                WITH nearest AS (
+                    SELECT
+                        a.abs                                       as abs,
+                        a.population                                as population,
+                        m.dx                                        as distance,
+                        FLOOR(RANDOM() * population)::INTEGER       as sample
+                    FROM abstraction    a
+                    JOIN metric         m ON m.xor = (a.abs # $1)
+                    WHERE               a.street = $2
+                    AND                 a.abs   != $1
+                    ORDER BY            m.dx DESC
+                    LIMIT 5
+                )
+                SELECT
+                    e.obs,
+                    n.abs,
+                    a.equity::REAL          as equity,
+                    a.population::REAL / $3 as density,
+                    n.distance::REAL        as distance
+                FROM nearest n
+                JOIN abstraction    a ON a.abs = n.abs
+                JOIN encoder        e ON e.abs = n.abs
+                AND                 e.position = n.sample
+                ORDER BY            n.distance DESC;
+            "#;
+        //
+        let n = wrt.street().n_isomorphisms() as f32;
+        let s = wrt.street() as i16;
+        let wrt = i64::from(wrt);
+        //
+        let rows = self.0.query(SQL, &[&wrt, &s, &n]).await?;
+        Ok(rows.into_iter().map(Sample::from).collect())
     }
     pub async fn knn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
@@ -562,19 +595,23 @@ impl API {
     ) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- KGN WRT ABS
+            WITH input(obs, ord) AS (
+              SELECT unnest($3::BIGINT[])                   AS obs,
+                     generate_series(1, array_length($3,1)) AS ord
+            )
             SELECT
-                e.obs                   as obs,
-                e.abs                   as abs,
-                a.equity::REAL          as equity,
-                a.population::REAL / $1 as density,
-                m.dx::REAL              as distance
-            FROM encoder        e
-            JOIN abstraction    a ON e.abs = (a.abs)
-            JOIN metric         m ON m.xor = (a.abs # $2)
-            WHERE                    e.obs = ANY($3)
+              e.obs AS obs,
+              e.abs AS abs,
+              a.equity::REAL AS equity,
+              a.population::REAL / $1 AS density,
+              m.dx::REAL AS distance
+            FROM input i
+            JOIN encoder     e ON e.obs = i.obs
+            JOIN abstraction a ON e.abs = a.abs
+            JOIN metric      m ON m.xor = (a.abs # $2)
+            ORDER BY i.ord
+            LIMIT 5;
         "#;
-        //
-        // TODO preserve order of given neighbors in return dong something replacey
         let isos = nbr
             .into_iter()
             .map(Isomorphism::from)
@@ -583,7 +620,7 @@ impl API {
         let n = wrt.street().n_isomorphisms() as f32;
         let wrt = i64::from(wrt);
         //
-        let rows = self.0.query(SQL, &[&n, &wrt, &isos]).await?;
+        let rows = self.0.query(SQL, &[&n, &wrt, &&isos]).await?;
         Ok(rows.into_iter().map(Sample::from).collect())
     }
 }
@@ -660,10 +697,8 @@ impl API {
             })
             .into_iter()
             .collect::<Vec<_>>();
-        let rows = self
-            .0
-            .query(SQL, &[&distinct])
-            .await?
+        let rows = self.0.query(SQL, &[&distinct]).await?;
+        let rows = rows
             .into_iter()
             .map(|row| {
                 (
