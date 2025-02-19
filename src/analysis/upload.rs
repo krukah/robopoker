@@ -33,7 +33,12 @@ impl Upload {
         this.copy_transitions().await?;
         this.copy_abstraction().await?;
         this.copy_streets().await?;
+        this.vacuum().await?;
         Ok(())
+    }
+
+    async fn vacuum(&self) -> Result<(), E> {
+        self.0.batch_execute(r#"VACUUM ANALYZE;"#).await
     }
 
     async fn done(&self, table: &str) -> Result<bool, E> {
