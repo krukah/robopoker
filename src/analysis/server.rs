@@ -1,4 +1,6 @@
 use super::api::API;
+use super::request::AbsHist;
+use super::request::ObsHist;
 use super::request::ReplaceAbs;
 use super::request::ReplaceAll;
 use super::request::ReplaceObs;
@@ -169,8 +171,8 @@ async fn kgn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAll>) -> impl Re
     }
 }
 
-async fn hst_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
-    match Abstraction::try_from(req.wrt.as_str()) {
+async fn hst_wrt_abs(api: web::Data<API>, req: web::Json<AbsHist>) -> impl Responder {
+    match Abstraction::try_from(req.abs.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.hst_wrt_abs(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -179,7 +181,7 @@ async fn hst_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
     }
 }
 
-async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
+async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ObsHist>) -> impl Responder {
     match Observation::try_from(req.obs.as_str()) {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
         Ok(obs) => match api.hst_wrt_obs(obs).await {
