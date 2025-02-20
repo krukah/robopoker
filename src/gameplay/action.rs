@@ -62,7 +62,7 @@ impl From<u32> for Action {
                     .map(|c| Hand::from(c))
                     .fold(Hand::empty(), Hand::add),
             ),
-            _ => panic!("at this disco"),
+            _ => panic!("at the disco"),
         }
     }
 }

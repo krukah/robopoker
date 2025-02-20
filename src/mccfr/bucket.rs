@@ -3,7 +3,11 @@ use crate::clustering::abstraction::Abstraction;
 use crate::Arbitrary;
 use std::hash::Hash;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
+/// can't tell whether default bucket makes sense.
+/// it requires default absttraction, for one, which
+/// i guess would just be P::00, but it can't be derived in [Abstraction]
+/// because of the Middle bit hashing we do in [Abstraction]
+#[derive(Debug, /* Default, */ Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Bucket(pub Path, pub Abstraction, pub Path);
 
 impl From<(Path, Abstraction, Path)> for Bucket {
@@ -13,14 +17,7 @@ impl From<(Path, Abstraction, Path)> for Bucket {
 }
 impl std::fmt::Display for Bucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use colored::Colorize;
-        write!(
-            f,
-            "{}{}{}",
-            format!("{}>>", self.0).bright_cyan(),
-            self.1,
-            format!("<<{}", self.2).bright_cyan()
-        )
+        write!(f, "{}>>{}<<{}", self.0, self.1, self.2)
     }
 }
 

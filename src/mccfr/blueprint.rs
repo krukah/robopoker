@@ -135,7 +135,7 @@ impl Blueprint {
                 self.profile.witness(node, &branches);
                 self.profile.explore_one(branches, node)
             }
-            _ => panic!("kyle walker"),
+            _ => panic!("at the disco"),
         }
     }
 }
