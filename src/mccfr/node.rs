@@ -63,7 +63,7 @@ impl<'tree> Node<'tree> {
         }
     }
 
-    // Navigational methods
+    /// navigation methods
 
     pub fn history(&self) -> Vec<&'tree Edge> {
         if let (Some(edge), Some(head)) = (self.incoming(), self.parent()) {
@@ -117,37 +117,41 @@ impl<'tree> Node<'tree> {
     pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
         self.graph
     }
-    pub fn localization(&self) -> Bucket {
+
+    /// this is the bucket that we use to lookup the Policy
+    /// it is the product of the present abstraction, the
+    /// history of choices leading up to the node, and the
+    /// set of available continuations from the node.
+    pub fn realize(&self) -> Bucket {
         let present = self.data().abstraction().clone();
-        let subgame = Path::from(self.subgame()); // could be from &'tree [Edge]
-        let choices = Path::from(self.fresh_continuations()); // could be from &'tree [Edge]
-        Bucket::from((subgame, present, choices))
+        let history = Path::from(self.recall()); //              TODO: zero copy
+        let choices = Path::from(self.calculate_continuations()); // TODO: zero copy
+        Bucket::from((history, present, choices))
     }
 
     /// determine the set of branches that could be taken from this node
     /// this determines what Bucket we end up in since Tree::attach()
     /// uses this to assign Buckets to Data upon insertion
     pub fn branches(&self) -> Vec<(Edge, Game)> {
-        self.stale_continuations()
+        self.reference_continuations()
             .into_iter()
-            .map(|e| (e, self.actionization(&e)))
+            .map(|e| (e, self.actionize(&e)))
             .map(|(e, a)| (e.clone(), self.data().game().apply(a)))
             .collect()
     }
-    /// what if we got the node continuations FROM the node data path bucket ?
-    ///
-    fn stale_continuations(&self) -> Vec<Edge> {
+    /// lookup precomputed continuations from the node data
+    fn reference_continuations(&self) -> Vec<Edge> {
         Vec::<Edge>::from(self.data().bucket().2.clone())
     }
     /// returns the set of all possible actions from the current node
     /// this is useful for generating a set of children for a given node
     /// broadly goes from Node -> Game -> Action -> Edge
-    fn fresh_continuations(&self) -> Vec<Edge> {
+    fn calculate_continuations(&self) -> Vec<Edge> {
         self.data()
             .game()
             .legal()
             .into_iter()
-            .flat_map(|a| self.edgifications(a))
+            .flat_map(|a| self.edgeifies(a))
             .collect()
     }
     /// convert an Edge into an Action by using Game state to
@@ -158,7 +162,7 @@ impl<'tree> Node<'tree> {
     /// represent the same action. moreover, we "snap" raises to be
     /// within range of legal bet sizes, so sometimes Raise(5:1) yields
     /// an identical Game node as Raise(1:1) or Shove.
-    fn actionization(&self, edge: &Edge) -> Action {
+    fn actionize(&self, edge: &Edge) -> Action {
         let game = self.data().game();
         match &edge {
             Edge::Check => Action::Check,
@@ -166,10 +170,12 @@ impl<'tree> Node<'tree> {
             Edge::Draw => Action::Draw(game.draw()),
             Edge::Call => Action::Call(game.to_call()),
             Edge::Shove => Action::Shove(game.to_shove()),
-            Edge::Raise(o) => {
+            Edge::Raise(odds) => {
                 let min = game.to_raise();
                 let max = game.to_shove();
-                let bet = (game.pot() as Utility * Utility::from(*o)) as Chips;
+                let pot = game.pot() as Utility;
+                let odd = Utility::from(*odds);
+                let bet = (pot * odd) as Chips;
                 match bet {
                     bet if bet >= max => Action::Shove(max),
                     bet if bet <= min => Action::Raise(min),
@@ -183,7 +189,7 @@ impl<'tree> Node<'tree> {
     /// which can be generated however.
     /// the contract is that the Actions returned by Game are legal,
     /// but the Raise amount can take any value >= the minimum provided by Game.
-    fn edgifications(&self, action: Action) -> Vec<Edge> {
+    fn edgeifies(&self, action: Action) -> Vec<Edge> {
         if let Action::Raise(_) = action {
             self.raises().into_iter().map(Edge::from).collect()
         } else {
@@ -197,7 +203,7 @@ impl<'tree> Node<'tree> {
     /// - on the last street, restrict raise amounts so smaller grid
     fn raises(&self) -> Vec<Odds> {
         let n = self.subgame().iter().filter(|e| e.is_raise()).count();
-        if n > crate::N_RAISE {
+        if n > crate::MAX_RAISE_REPEATS {
             vec![]
         } else {
             match self.data().game().board().street() {
@@ -217,9 +223,21 @@ impl<'tree> Node<'tree> {
         self.history()
             .into_iter()
             .take_while(|e| e.is_choice())
+            .take(crate::MAX_DEPTH_SUBGAME)
             .copied()
             .collect()
     }
+    /// we filter out the Draw actions from history
+    /// and use it to lookup into our big policy
+    /// lookup table, indexed by Bucket := (Path, Abs, Path)
+    fn recall(&self) -> Vec<Edge> {
+        self.history()
+            .into_iter()
+            .take(crate::MAX_DEPTH_SUBGAME)
+            .copied()
+            .collect()
+    }
+
     /// if we were to play this edge, what would the
     /// history: Vec<Edge> of the resulting Node be?
     ///
@@ -232,13 +250,14 @@ impl<'tree> Node<'tree> {
     /// different types for pre-post insertion, but this works
     /// well-enough to have Data own an Option<Bucket>.
     #[allow(unused)]
-    fn chained(&self, edge: &Edge) -> Vec<Edge> {
+    fn extend(&self, edge: &Edge) -> Vec<Edge> {
         self.history()
             .into_iter()
             .rev()
             .chain(std::iter::once(edge))
             .rev()
             .take_while(|e| e.is_choice())
+            .take(crate::MAX_DEPTH_SUBGAME)
             .copied()
             .collect()
     }

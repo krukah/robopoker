@@ -53,10 +53,9 @@ impl From<Path> for u64 {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "--")?;
         Vec::<Edge>::from(self.clone())
             .iter()
-            .try_for_each(|e| write!(f, "+{}", e))
+            .try_for_each(|e| write!(f, ".{}", e))
     }
 }
 

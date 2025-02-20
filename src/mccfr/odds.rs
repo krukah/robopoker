@@ -66,7 +66,12 @@ impl Odds {
 
 impl std::fmt::Display for Odds {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}:{}", self.0, self.1)
+        let p = Probability::from(*self);
+        if p > 1.0 {
+            write!(f, "-{}", (p * 1.0).round() as i32)
+        } else {
+            write!(f, "+{}", (1.0 / p).round() as i32)
+        }
     }
 }
 

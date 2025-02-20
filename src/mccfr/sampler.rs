@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 pub struct Encoding(BTreeMap<Isomorphism, Abstraction>);
 
 impl Encoding {
-    pub fn root(&self) -> Data {
+    pub fn seed(&self) -> Data {
         let game = Game::root();
         let info = self.abstraction(&game);
         Data::from((game, info))

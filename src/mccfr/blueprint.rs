@@ -62,7 +62,7 @@ impl Blueprint {
         log::info!("beginning training loop");
         let progress = crate::progress(crate::CFR_ITERATIONS);
         while self.profile.next() <= crate::CFR_ITERATIONS {
-            for counterfactual in self.updates() {
+            for counterfactual in self.simulations() {
                 let ref regret = counterfactual.regret();
                 let ref policy = counterfactual.policy();
                 let ref bucket = counterfactual.info().node().bucket().clone();
@@ -78,8 +78,8 @@ impl Blueprint {
     }
 
     /// compute regret and policy updates for a batch of Trees.
-    fn updates(&mut self) -> Vec<Counterfactual> {
-        self.batch()
+    fn simulations(&mut self) -> Vec<Counterfactual> {
+        self.forest()
             .into_par_iter()
             .map(Partition::from)
             .map(Vec::<Info>::from)
@@ -91,31 +91,33 @@ impl Blueprint {
     /// sample a batch of Trees. mutates because we must
     /// Profile::witness all the decision points of the newly
     /// sample Tree.
-    fn batch(&mut self) -> Vec<Tree> {
+    fn forest(&mut self) -> Vec<Tree> {
         (0..crate::CFR_BATCH_SIZE)
-            .map(|_| self.sample())
-            .inspect(|t| log::trace!("{}", t))
+            .map(|_| self.search())
+            .inspect(|tree| log::trace!("{}", tree))
             .collect::<Vec<Tree>>()
     }
 
     /// Build the Tree iteratively starting from the root node.
     /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
-    fn sample(&mut self) -> Tree {
+    fn search(&mut self) -> Tree {
         let mut tree = Tree::empty(self.profile.walker());
-        let ref root = tree.insert(self.sampler.root());
+        let ref root = tree.plant(self.sampler.seed());
         let mut todo = self.explore(root);
         while let Some(branch) = todo.pop() {
-            let ref root = tree.attach(branch);
-            let children = self.explore(root);
+            let ref node = tree.fork(branch);
+            let children = self.explore(node);
             todo.extend(children);
         }
         tree
     }
 
-    /// could make this more mut so that we can populate Data::partition : Bucket
-    /// by using the self.branches() return to inform the set of possible
-    /// continuing Edge Actions.
-    /// fn explore(&mut self, tree: &mut Tree,node: &Node) -> Vec<Branch> {
+    /// the Node is already attached to the Tree.
+    /// here, we calculate, what Branches
+    /// would we like to sample from this Node,
+    /// conditional on its History and on our sampling
+    /// rules? (i.e. external sampling, probing, full  
+    /// exploration, etc.)
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
         let chance = Player::chance();
         let walker = self.profile.walker();
