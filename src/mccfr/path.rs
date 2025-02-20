@@ -56,9 +56,7 @@ impl std::fmt::Display for Path {
         write!(f, "--")?;
         Vec::<Edge>::from(self.clone())
             .iter()
-            .map(|e| write!(f, "+{}", e))
-            .count();
-        Ok(())
+            .try_for_each(|e| write!(f, "+{}", e))
     }
 }
 

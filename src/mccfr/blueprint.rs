@@ -49,17 +49,14 @@ impl Blueprint {
     /// encapsulated by Profile, but we are yet to impose
     /// a learning schedule for regret or policy.
     pub fn train() {
-        if Self::done() {
+        if Self::done(Street::random()) {
             log::info!("skipping regret minimization");
         } else {
             log::info!("starting regret minimization");
             Self::make(Street::random()).solve();
         }
     }
-    /// check (by filename) if a blueprint solver has been saved to disk.
-    fn done() -> bool {
-        Encoding::done(Street::random()) && Profile::done(Street::random())
-    }
+
     /// the main training loop.
     fn solve(&mut self) {
         log::info!("beginning training loop");
@@ -120,11 +117,10 @@ impl Blueprint {
     /// continuing Edge Actions.
     /// fn explore(&mut self, tree: &mut Tree,node: &Node) -> Vec<Branch> {
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
-        let branches = self.sampler.branches(node);
-        let walker = self.profile.walker();
         let chance = Player::chance();
-        let player = node.player();
-        match (branches.len(), player) {
+        let walker = self.profile.walker();
+        let branches = self.sampler.branches(node);
+        match (branches.len(), node.player()) {
             (0, _) => {
                 vec![] //
             }
@@ -148,22 +144,22 @@ impl Save for Blueprint {
     fn name() -> &'static str {
         unreachable!()
     }
-    fn make(street: Street) -> Self {
-        Self {
-            profile: Profile::default(),
-            sampler: Encoding::load(street),
-        }
-    }
     fn save(&self) {
         self.profile.save();
     }
     fn done(street: Street) -> bool {
         Encoding::done(street) && Profile::done(street)
     }
+    fn make(street: Street) -> Self {
+        Self {
+            profile: Profile::default(),
+            sampler: Encoding::load(street),
+        }
+    }
     fn load(street: Street) -> Self {
         Self {
-            sampler: Encoding::load(street),
             profile: Profile::load(street),
+            sampler: Encoding::load(street),
         }
     }
 }
