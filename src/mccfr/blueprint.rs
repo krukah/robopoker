@@ -12,8 +12,6 @@ use super::tree::Tree;
 use crate::cards::street::Street;
 use crate::Arbitrary;
 use crate::Save;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
 
 /// this is how we learn the optimal strategy of
 /// the abstracted game. with the learned Encoder
@@ -78,6 +76,8 @@ impl Blueprint {
 
     /// compute regret and policy updates for a batch of Trees.
     fn simulations(&mut self) -> Vec<Counterfactual> {
+        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
         self.forest()
             .into_par_iter()
             .map(Partition::from)

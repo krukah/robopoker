@@ -105,9 +105,14 @@ Monte Carlo Counterfactual Regret Minimization solver:
 - **Linear Strategy Weighting**: Efficient strategy updates using iterative weighting and discount schemes<sup>5</sup>
 - **Persistence**: Efficient serialization and deserialization of blueprint results to/from disk using Postgres binary formats
 
-## `api`
+## `analysis`
 
-Coming soon. A distributed and scalable single-binary WebSocket-based HTTP server that allows players to play, learn, analyze, and track hands remotely.
+Tools for analyzing and querying results yielded from our training pipeline using PostgreSQL.
+
+- **Data Upload**: Copies Postgres binary files into a database with extensive indexing for efficient lookups.
+- **SQL Optimization**: Enables querying all isomorphisms, abstractions, EMD metrics, potential distributions, and blueprint strategies learned during prior training steps.
+- **CLI Tool**: A command-line interface to perform basic queries, such as equity and distance calculations.
+- **Server Struct**: Actix web instance serving HTTP requests to support an analysis frontend client (coming soon).
 
 # References
 
