@@ -32,7 +32,12 @@ impl Encoding {
         todo!("create a Tree from the vector of Actions in the Spot")
     }
     pub fn bucket(&self, recall: &Recall) -> Bucket {
-        todo!("use some Spot-level function to get the list of Edge's by mapping (pseudoharmonically?) Actions -> Edges , w.r.t. Game::pot(). and then map over potential future actions w.r.t. Game::legal() to get another list of Edges. then use self.abstraction() to get the cluster lookup.");
+        todo!("use some Recall-level function to get the list of Edge's by mapping (pseudoharmonically?) Actions -> Edges , w.r.t. Game::pot(). and then map over potential future actions w.r.t. Game::legal() to get another list of Edges. then use self.abstraction() to get the cluster lookup.
+            impl From<Recall> for Path (history)
+            impl From<Recall> for Path (choices)
+            ...
+            impl From<Recall> for (Path, Path)
+            ");
     }
 
     /// unfiltered set of possible children of a Node,

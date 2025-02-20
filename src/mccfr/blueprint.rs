@@ -36,7 +36,6 @@ pub struct Blueprint {
 impl Blueprint {
     /// after training, use the learned Profile to advise
     /// a Spot on how to play.
-    #[allow(unused)]
     fn advise(&self, spot: Recall) -> Policy {
         let bucket = self.sampler.bucket(&spot);
         let policy = self.profile.policy(&bucket);
@@ -116,7 +115,7 @@ impl Blueprint {
     /// here, we calculate, what Branches
     /// would we like to sample from this Node,
     /// conditional on its History and on our sampling
-    /// rules? (i.e. external sampling, probing, full  
+    /// rules? (i.e. external sampling, probing, full
     /// exploration, etc.)
     fn explore(&mut self, node: &Node) -> Vec<Branch> {
         let chance = Player::chance();
