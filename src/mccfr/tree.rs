@@ -38,23 +38,40 @@ impl Tree {
     pub fn graph(&self) -> &DiGraph<Data, Edge> {
         &self.0
     }
-    pub fn insert(&mut self, data: Data) -> Node {
-        let index = self.0.add_node(data);
-        let bucket = self.at(index).localization();
+
+    /// special insertion logic for the root node
+    /// which, without a parent Branch, has slightly different
+    /// bucket calculation logic.
+    pub fn plant(&mut self, seed: Data) -> Node {
+        let i = self.0.add_node(seed);
+        let bucket = self.at(i).realize();
         self.0
-            .node_weight_mut(index)
+            .node_weight_mut(i)
             .map(|data| data.assign(bucket))
-            .expect("node index in tree");
-        self.at(index)
+            .inspect(|_| log::trace!("SEED {}", bucket))
+            .expect("root index in tree");
+        self.at(i)
     }
-    pub fn attach(&mut self, branch: Branch) -> Node {
-        let leaf = self.insert(branch.0).index();
+
+    /// attach a Branch to the Tree
+    /// assuming that the Node has already been ::inserted()
+    pub fn fork(&mut self, branch: Branch) -> Node {
+        let leaf = self.0.add_node(branch.0);
         let edge = branch.1;
         let root = branch.2;
         self.0.add_edge(root, leaf, edge);
+        let bucket = self.at(leaf).realize();
+        self.0
+            .node_weight_mut(leaf)
+            .map(|data| data.assign(bucket))
+            .inspect(|_| log::trace!("{}", bucket))
+            .expect("node index in tree");
         self.at(leaf)
     }
-    pub fn draw(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
+
+    /// display the Tree in a human-readable format
+    /// be careful because it's really big and recursive
+    fn display(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
         if index == NodeIndex::new(0) {
             writeln!(f, "\nROOT   {}", self.at(index).bucket())?;
         }
@@ -75,7 +92,7 @@ impl Tree {
                 .edge_weight(self.0.find_edge(index, child).unwrap())
                 .unwrap();
             writeln!(f, "{}{}──{} → {}", prefix, stem, edge, head)?;
-            self.draw(f, child, &format!("{}{}", prefix, gaps))?;
+            self.display(f, child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
     }
@@ -83,6 +100,6 @@ impl Tree {
 
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.draw(f, NodeIndex::new(0), "")
+        self.display(f, NodeIndex::new(0), "")
     }
 }
