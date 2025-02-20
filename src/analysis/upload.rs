@@ -4,10 +4,39 @@ use std::sync::Arc;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
 
+// counts for full deck:
 // encoder      ~ 140M,
 // transition   ~ 10K,
 // metric       ~ 40K,
 // abstraction  ~ 500,
+// blueprint    ~ TBD,
+
+/*
+TODO:
+
+- the way that we resume progress isn't ideal. i think there's a way to accidentally
+truncate existing progress, for one. a better approach might be to
+declare some Table struct that encapsulates shared logic between our different tables.
+
+- the COPY FROM will only work if the Postgres process is running on the same machine
+and with access to the same filesystem. there may be a way to stream files from the
+robopoker process into an arbitrary Postgres server. it might involve some CLI installation
+of pgsql or similar, which is a dependency i'd rather not introduce to the project. perhaps
+we can use tokio_postgrs::copy_in() to stream data.
+
+- not sure if this ::path() resolution is correct in the context of a Docker container.
+
+- repetitive SQL statements might be better encapsulated by string templates + format!().
+same with first point, it might be good to have a struct or trait or enum for all the
+table names and associated population logic.
+
+- i'd rather define a series of const &'static str for all the SQL commands, so the
+rust functions are very chill and readable.
+
+- my OCD ass wants to rename encoder to isomorphism, so i just gotta global grep. references
+in api.rs need to be updated.
+
+*/
 
 pub struct Upload(Arc<Client>);
 
@@ -37,27 +66,49 @@ impl Upload {
         Ok(())
     }
 
+    async fn is_uninitialized(&self) -> Result<bool, E> {
+        Ok(true
+            && !self.is_populated("street").await?
+            && !self.is_populated("metric").await?
+            && !self.is_populated("encoder").await?
+            && !self.is_populated("abstraction").await?
+            && !self.is_populated("transitions").await?
+            && !self.is_populated("blueprint").await?)
+    }
+
+    async fn is_populated(&self, table: &str) -> Result<bool, E> {
+        if self.is_created(table).await? {
+            Ok(0 != self
+                .0
+                .query_one("SELECT COUNT(*) FROM $1", &[&table])
+                .await?
+                .get::<_, i64>(0))
+        } else {
+            Ok(false)
+        }
+    }
+
+    async fn is_created(&self, table: &str) -> Result<bool, E> {
+        Ok(1 == self
+            .0
+            .query_one(
+                "
+                SELECT COUNT(*)
+                FROM    information_schema.tables
+                WHERE   table_name = $1
+                ",
+                &[&table],
+            )
+            .await?
+            .get::<_, i64>(0))
+    }
+
     async fn vacuum(&self) -> Result<(), E> {
         self.0.batch_execute(r#"VACUUM ANALYZE;"#).await
     }
 
-    async fn done(&self, table: &str) -> Result<bool, E> {
-        let count = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = $1";
-        Ok(0 != self.0.query_one(count, &[&table]).await?.get::<_, i64>(0))
-    }
-
-    async fn none(&self) -> Result<bool, E> {
-        Ok(true
-            && !self.done("street").await?
-            && !self.done("metric").await?
-            && !self.done("encoder").await?
-            && !self.done("abstraction").await?
-            && !self.done("transitions").await?
-            && !self.done("blueprint").await?)
-    }
-
     async fn recreate(&self) -> Result<(), E> {
-        if !self.none().await? {
+        if !self.is_uninitialized().await? {
             log::info!("tables already exist");
             return Ok(());
         } else {
@@ -106,7 +157,7 @@ impl Upload {
     }
 
     async fn truncate(&self) -> Result<(), E> {
-        if !self.none().await? {
+        if !self.is_uninitialized().await? {
             log::info!("tables already truncated");
             return Ok(());
         } else {
@@ -128,7 +179,7 @@ impl Upload {
     }
 
     async fn unlogged(&self) -> Result<(), E> {
-        if !self.none().await? {
+        if !self.is_uninitialized().await? {
             log::info!("tables already unlogged");
             return Ok(());
         } else {
@@ -150,7 +201,7 @@ impl Upload {
     }
 
     async fn copy_metric(&self) -> Result<(), E> {
-        if self.done("metric").await? {
+        if self.is_populated("metric").await? {
             log::info!("tables data already uploaded (metric)");
             return Ok(());
         } else {
@@ -178,7 +229,7 @@ impl Upload {
     }
 
     async fn copy_encoder(&self) -> Result<(), E> {
-        if self.done("encoder").await? {
+        if self.is_populated("encoder").await? {
             log::info!("tables data already uploaded (encoder)");
             return Ok(());
         } else {
@@ -221,7 +272,7 @@ impl Upload {
     }
 
     async fn copy_blueprint(&self) -> Result<(), E> {
-        if self.done("blueprint").await? {
+        if self.is_populated("blueprint").await? {
             log::info!("tables data already uploaded (blueprint)");
             return Ok(());
         } else {
@@ -239,7 +290,7 @@ impl Upload {
     }
 
     async fn copy_transitions(&self) -> Result<(), E> {
-        if self.done("transitions").await? {
+        if self.is_populated("transitions").await? {
             log::info!("tables data already uploaded (transition)");
             return Ok(());
         } else {
@@ -269,7 +320,7 @@ impl Upload {
     }
 
     async fn copy_abstraction(&self) -> Result<(), E> {
-        if self.done("abstraction").await? {
+        if self.is_populated("abstraction").await? {
             log::info!("tables data already uploaded (abstraction)");
             return Ok(());
         } else {
@@ -295,7 +346,7 @@ impl Upload {
     }
 
     async fn copy_streets(&self) -> Result<(), E> {
-        if self.done("street").await? {
+        if self.is_populated("street").await? {
             log::info!("tables data already uploaded (street)");
             return Ok(());
         } else {
