@@ -1,7 +1,6 @@
 use super::bucket::Bucket;
 use super::data::Data;
 use super::node::Node;
-use super::path::Path;
 use super::recall::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
@@ -73,7 +72,8 @@ impl Encoder {
     /// keep in mind that the Recall object is *not* omniscient,
     /// so some of the assumptions about the transparent self-play
     /// nature of Tree may not hold.
-    fn replay(&self, _: &Recall) -> Tree {
+    #[allow(unused)]
+    fn replay(&self, recall: &Recall) -> Tree {
         todo!("maybe useful during test-time search?")
     }
 }
