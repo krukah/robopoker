@@ -1,3 +1,4 @@
+use super::edge::Edge;
 use crate::cards::card::Card;
 use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
@@ -36,7 +37,7 @@ impl Recall {
         Game::root().wipe(Hole::from(self.seen))
     }
 
-    pub fn game(&self) -> Game {
+    pub fn head(&self) -> Game {
         self.path
             .iter()
             .cloned()
@@ -56,7 +57,7 @@ impl Recall {
             self.path.push(action);
         }
         while self.can_reveal() {
-            let street = self.game().street();
+            let street = self.head().street();
             let reveal = self
                 .seen
                 .public()
@@ -70,22 +71,47 @@ impl Recall {
     }
 
     pub fn can_extend(&self, action: &Action) -> bool {
-        self.game().is_allowed(action)
+        self.head().is_allowed(action)
     }
     pub fn can_rewind(&self) -> bool {
         self.path.iter().any(|a| !a.is_blind())
     }
     pub fn can_lookup(&self) -> bool {
         true
-            && self.game().turn() == self.hero //               is it our turn right now?
-            && self.game().street() == self.seen.street() //    have we exhausted info from Obs?
+            && self.head().turn() == self.hero //               is it our turn right now?
+            && self.head().street() == self.seen.street() //    have we exhausted info from Obs?
     }
     pub fn can_reveal(&self) -> bool {
         true
-            && self.game().turn() == Turn::Chance //            is it time to reveal the next card?
-            && self.game().street() < self.seen.street() //     would revealing double-deal?
+            && self.head().turn() == Turn::Chance //            is it time to reveal the next card?
+            && self.head().street() < self.seen.street() //     would revealing double-deal?
     }
     pub fn can_revoke(&self) -> bool {
         matches!(self.path.last().expect("empty path"), Action::Draw(_))
+    }
+
+    pub fn pseudoharmonics(&self) -> Vec<Edge> {
+        todo!(
+            "use pseudo-harmonic
+mapping to
+                    convert history:
+        Recall -> Vec<(Game, Action)> -> Vec<Edge> -> Path"
+        )
+    }
+    pub fn choices(&self) -> Vec<Edge> {
+        let head = self.head();
+        let raises = self.path.iter().filter(|a| a.is_aggro()).count();
+        head.legal()
+            .into_iter()
+            .map(|a| match a {
+                Action::Raise(_) => head
+                    .raises(raises)
+                    .into_iter()
+                    .map(Edge::from)
+                    .collect::<Vec<_>>(),
+                _ => vec![Edge::from(a)],
+            })
+            .flatten()
+            .collect()
     }
 }
