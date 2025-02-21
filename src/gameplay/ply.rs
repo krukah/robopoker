@@ -14,3 +14,23 @@ impl std::fmt::Display for Turn {
         }
     }
 }
+
+impl TryFrom<&str> for Turn {
+    type Error = &'static str;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "XX" => Ok(Self::Terminal),
+            "??" => Ok(Self::Chance),
+            turn => {
+                if turn.starts_with('P') {
+                    turn[1..]
+                        .parse::<usize>()
+                        .map(Self::Choice)
+                        .map_err(|_| "invalid player turn")
+                } else {
+                    Err("invalid ply input")
+                }
+            }
+        }
+    }
+}

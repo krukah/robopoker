@@ -1,5 +1,7 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
+use crate::mccfr::edge::Edge;
+use crate::Probability;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -11,6 +13,12 @@ pub struct Sample {
     pub distance: f32,
 }
 
+#[derive(Serialize)]
+pub struct Decision {
+    pub edge: String,
+    pub prob: Probability,
+}
+
 impl From<tokio_postgres::Row> for Sample {
     fn from(row: tokio_postgres::Row) -> Self {
         Self {
@@ -19,6 +27,15 @@ impl From<tokio_postgres::Row> for Sample {
             equity: row.get::<_, f32>(2).into(),
             density: row.get::<_, f32>(3).into(),
             distance: row.get::<_, f32>(4).into(),
+        }
+    }
+}
+
+impl From<tokio_postgres::Row> for Decision {
+    fn from(row: tokio_postgres::Row) -> Self {
+        Self {
+            edge: Edge::from(row.get::<_, i64>("edge") as u64).to_string(),
+            prob: Probability::from(row.get::<_, f32>("policy")),
         }
     }
 }

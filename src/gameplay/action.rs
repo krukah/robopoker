@@ -90,6 +90,40 @@ impl From<Action> for u32 {
         }
     }
 }
+impl TryFrom<&str> for Action {
+    type Error = &'static str;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let parts: Vec<&str> = s.split_whitespace().collect();
+        match parts[0].to_uppercase().as_str() {
+            "CHECK" => Ok(Action::Check),
+            "FOLD" => Ok(Action::Fold),
+            "CALL" => parts
+                .get(1)
+                .and_then(|n| n.parse().ok())
+                .map(Action::Call)
+                .ok_or("Invalid call amount"),
+            "RAISE" => parts
+                .get(1)
+                .and_then(|n| n.parse().ok())
+                .map(Action::Raise)
+                .ok_or("Invalid raise amount"),
+            "SHOVE" => parts
+                .get(1)
+                .and_then(|n| n.parse().ok())
+                .map(Action::Shove)
+                .ok_or("Invalid shove amount"),
+            "BLIND" => parts
+                .get(1)
+                .and_then(|n| n.parse().ok())
+                .map(Action::Blind)
+                .ok_or("Invalid blind amount"),
+            "DEAL" => Hand::try_from(parts[1..].join(" ").as_str())
+                .map(Action::Draw)
+                .map_err(|_| "Invalid deal cards"),
+            _ => Err("Invalid action type"),
+        }
+    }
+}
 
 impl std::fmt::Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

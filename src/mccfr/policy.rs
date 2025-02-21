@@ -18,21 +18,6 @@ impl From<BTreeMap<Edge, Probability>> for Policy {
     }
 }
 
-impl From<Vec<tokio_postgres::Row>> for Policy {
-    fn from(rows: Vec<tokio_postgres::Row>) -> Self {
-        Self(
-            rows.into_iter()
-                .map(|row| {
-                    (
-                        Edge::from(row.get::<_, i64>("edge") as u64),
-                        Probability::from(row.get::<_, f32>("policy")),
-                    )
-                })
-                .collect(),
-        )
-    }
-}
-
 impl Arbitrary for Policy {
     fn random() -> Self {
         use rand::Rng;
