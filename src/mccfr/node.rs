@@ -135,7 +135,7 @@ impl<'tree> Node<'tree> {
     pub fn branches(&self) -> Vec<(Edge, Game)> {
         self.reference_continuations()
             .into_iter()
-            .map(|e| (e, self.actionize(&e)))
+            .map(|e| (e, self.data().game().actionize(&e)))
             .map(|(e, a)| (e.clone(), self.data().game().apply(a)))
             .collect()
     }
@@ -154,36 +154,7 @@ impl<'tree> Node<'tree> {
             .flat_map(|a| self.edgeifies(a))
             .collect()
     }
-    /// convert an Edge into an Action by using Game state to
-    /// determine free parameters (stack size, pot size, etc)
-    ///
-    /// NOTE
-    /// this conversion is not injective, as multiple edges may
-    /// represent the same action. moreover, we "snap" raises to be
-    /// within range of legal bet sizes, so sometimes Raise(5:1) yields
-    /// an identical Game node as Raise(1:1) or Shove.
-    fn actionize(&self, edge: &Edge) -> Action {
-        let game = self.data().game();
-        match &edge {
-            Edge::Check => Action::Check,
-            Edge::Fold => Action::Fold,
-            Edge::Draw => Action::Draw(game.draw()),
-            Edge::Call => Action::Call(game.to_call()),
-            Edge::Shove => Action::Shove(game.to_shove()),
-            Edge::Raise(odds) => {
-                let min = game.to_raise();
-                let max = game.to_shove();
-                let pot = game.pot() as Utility;
-                let odd = Utility::from(*odds);
-                let bet = (pot * odd) as Chips;
-                match bet {
-                    bet if bet >= max => Action::Shove(max),
-                    bet if bet <= min => Action::Raise(min),
-                    _ => Action::Raise(bet),
-                }
-            }
-        }
-    }
+
     /// generalization of mapping a concrete Action into a set of abstract Vec<Edge>
     /// this is mostly useful for enumerating a set of desired Raises
     /// which can be generated however.
@@ -191,29 +162,15 @@ impl<'tree> Node<'tree> {
     /// but the Raise amount can take any value >= the minimum provided by Game.
     fn edgeifies(&self, action: Action) -> Vec<Edge> {
         if let Action::Raise(_) = action {
-            self.raises().into_iter().map(Edge::from).collect()
+            let n_bets = self.subgame().iter().filter(|e| e.is_aggro()).count();
+            self.data()
+                .game()
+                .raises(n_bets)
+                .into_iter()
+                .map(Edge::from)
+                .collect()
         } else {
             vec![Edge::from(action)]
-        }
-    }
-    /// returns a set of possible raises given the current history
-    /// we truncate in a few cases:
-    /// - prevent N-betting explosion of raises
-    /// - allow for finer-grained exploration in early streets
-    /// - on the last street, restrict raise amounts so smaller grid
-    fn raises(&self) -> Vec<Odds> {
-        let n = self.subgame().iter().filter(|e| e.is_raise()).count();
-        if n > crate::MAX_RAISE_REPEATS {
-            vec![]
-        } else {
-            match self.data().game().board().street() {
-                Street::Pref => Odds::PREF_RAISES.to_vec(),
-                Street::Flop => Odds::FLOP_RAISES.to_vec(),
-                _ => match n {
-                    0 => Odds::LATE_RAISES.to_vec(),
-                    _ => Odds::LAST_RAISES.to_vec(),
-                },
-            }
         }
     }
     /// returns the subgame history of the current node
