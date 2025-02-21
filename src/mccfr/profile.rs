@@ -457,65 +457,65 @@ impl Save for Profile {
         use std::io::SeekFrom;
         let ref path = Self::name();
         let file = File::open(path).expect("open file");
-        let mut strategies = BTreeMap::new();
+        let mut strats = BTreeMap::new();
         let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
+
         let mut buffer = [0u8; 2];
-        reader.seek(SeekFrom::Start(11)).expect("seek to flags");
-        let epochs_hi = reader.read_u32::<BE>().expect("read flags") as usize;
-        let epochs_lo = reader.read_u32::<BE>().expect("read extension") as usize;
-        let iterations = (epochs_hi << 32) | epochs_lo;
         while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) == 6 {
-                // we expect 6 fields per record
-                // 4 indexed fields
-                reader.read_u32::<BE>().expect("past path length");
-                let past = Path::from(reader.read_u64::<BE>().expect("read past path"));
-                reader.read_u32::<BE>().expect("abstraction length");
-                let abs = Abstraction::from(reader.read_u64::<BE>().expect("read abstraction"));
-                reader.read_u32::<BE>().expect("future path length");
-                let future = Path::from(reader.read_u64::<BE>().expect("read future path"));
-                reader.read_u32::<BE>().expect("edge length");
-                let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
-                // 2 unindexed fields
-                reader.read_u32::<BE>().expect("regret length");
-                let regret = reader.read_f32::<BE>().expect("read regret");
-                reader.read_u32::<BE>().expect("policy length");
-                let policy = reader.read_f32::<BE>().expect("read policy");
-                // idempotent insert
-                let bucket = Bucket::from((past, abs, future));
-                let memory = strategies
-                    .entry(bucket)
-                    .or_insert_with(Strategy::default)
-                    .entry(edge)
-                    .or_insert_with(Memory::default);
-                memory.set_regret(regret);
-                memory.set_policy(policy);
-                continue;
-            } else {
-                break;
+            match u16::from_be_bytes(buffer) {
+                6 => {
+                    // we expect 6 fields per record
+                    // 4 indexed fields
+                    reader.read_u32::<BE>().expect("past path length");
+                    let past = Path::from(reader.read_u64::<BE>().expect("read past path"));
+                    reader.read_u32::<BE>().expect("abstraction length");
+                    let abs = Abstraction::from(reader.read_u64::<BE>().expect("read abstraction"));
+                    reader.read_u32::<BE>().expect("future path length");
+                    let future = Path::from(reader.read_u64::<BE>().expect("read future path"));
+                    reader.read_u32::<BE>().expect("edge length");
+                    let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
+                    // 2 unindexed fields
+                    reader.read_u32::<BE>().expect("regret length");
+                    let regret = reader.read_f32::<BE>().expect("read regret");
+                    reader.read_u32::<BE>().expect("policy length");
+                    let policy = reader.read_f32::<BE>().expect("read policy");
+                    // idempotent insert
+                    let bucket = Bucket::from((past, abs, future));
+                    let memory = strats
+                        .entry(bucket)
+                        .or_insert_with(Strategy::default)
+                        .entry(edge)
+                        .or_insert_with(Memory::default);
+                    memory.set_regret(regret);
+                    memory.set_policy(policy);
+                    continue;
+                }
+                n => panic!("unexpected number of fields: {}", n),
             }
         }
         Self {
-            iterations,
-            strategies,
+            strategies: strats,
+            // it would be nice if this came from file
+            // but idk where to put it in the binary format.
+            // the header flags are a no-go apparently, since postgres reserves those
+            iterations: 0,
         }
     }
     fn save(&self) {
-        log::info!("saving blueprint");
+        const N_FIELDS: u16 = 6;
+        let ref path = Self::name();
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = Self::name();
-        let ref mut file = File::create(path).expect(&format!("touch {}", path));
+        log::info!("{:<32}{:<32}", "saving      blueprint", path);
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
-        let epochs_hi = (self.iterations >> 32) as u32;
-        let epochs_lo = self.iterations as u32;
-        file.write_u32::<BE>(epochs_hi).expect("flags");
-        file.write_u32::<BE>(epochs_lo).expect("extension");
+        file.write_u32::<BE>(0).expect("flags");
+        file.write_u32::<BE>(0).expect("extension");
         for (bucket, strategy) in self.strategies.iter() {
             for (edge, memory) in strategy.iter() {
-                const N_FIELDS: u16 = 6;
                 file.write_u16::<BE>(N_FIELDS).unwrap();
                 // 4 indexed fields
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
