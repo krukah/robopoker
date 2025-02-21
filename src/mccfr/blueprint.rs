@@ -1,4 +1,5 @@
 use super::counterfactual::Counterfactual;
+use super::encoder::Encoder;
 use super::info::Info;
 use super::node::Node;
 use super::partition::Partition;
@@ -6,7 +7,6 @@ use super::player::Player;
 use super::policy::Policy;
 use super::profile::Profile;
 use super::recall::Recall;
-use super::sampler::Encoding;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::street::Street;
@@ -28,16 +28,17 @@ use crate::Save;
 #[derive(Default)]
 pub struct Blueprint {
     profile: Profile,
-    sampler: Encoding,
+    encoder: Encoder,
 }
 
 impl Blueprint {
     /// after training, use the learned Profile to advise
     /// a Spot on how to play.
-    fn advise(&self, spot: Recall) -> Policy {
-        let bucket = self.sampler.bucket(&spot);
-        let policy = self.profile.policy(&bucket);
-        Policy::from(policy)
+    /// TODO: expose this as a database operation
+    pub fn policy(&self, recall: &Recall) -> Policy {
+        let bucket = self.encoder.bucket(&recall); // this becomes database lookup on recall.game().sweat(), and the Path's are constructed in memory infalliably
+        let policy = self.profile.policy(&bucket); // expand into Result chained calls to database, trying perfect match but weakening index upon every failure
+        policy
     }
 
     /// here's the training loop. infosets might be generated
@@ -101,11 +102,11 @@ impl Blueprint {
     /// This function uses a stack to simulate recursion and builds the tree in a depth-first manner.
     fn search(&mut self) -> Tree {
         let mut tree = Tree::empty(self.profile.walker());
-        let ref root = tree.plant(self.sampler.seed());
-        let mut todo = self.explore(root);
+        let ref root = tree.plant(self.encoder.seed());
+        let mut todo = self.sample(root);
         while let Some(branch) = todo.pop() {
             let ref node = tree.fork(branch);
-            let children = self.explore(node);
+            let children = self.sample(node);
             todo.extend(children);
         }
         tree
@@ -117,10 +118,10 @@ impl Blueprint {
     /// conditional on its History and on our sampling
     /// rules? (i.e. external sampling, probing, full
     /// exploration, etc.)
-    fn explore(&mut self, node: &Node) -> Vec<Branch> {
+    fn sample(&mut self, node: &Node) -> Vec<Branch> {
         let chance = Player::chance();
         let walker = self.profile.walker();
-        let branches = self.sampler.branches(node);
+        let branches = self.encoder.branches(node);
         match (branches.len(), node.player()) {
             (0, _) => {
                 vec![] //
@@ -149,18 +150,18 @@ impl Save for Blueprint {
         self.profile.save();
     }
     fn done(street: Street) -> bool {
-        Encoding::done(street) && Profile::done(street)
+        Encoder::done(street) && Profile::done(street)
     }
     fn make(street: Street) -> Self {
         Self {
             profile: Profile::default(),
-            sampler: Encoding::load(street),
+            encoder: Encoder::load(street),
         }
     }
     fn load(street: Street) -> Self {
         Self {
             profile: Profile::load(street),
-            sampler: Encoding::load(street),
+            encoder: Encoder::load(street),
         }
     }
 }

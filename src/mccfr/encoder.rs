@@ -1,6 +1,7 @@
 use super::bucket::Bucket;
 use super::data::Data;
 use super::node::Node;
+use super::path::Path;
 use super::recall::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
@@ -14,30 +15,66 @@ use crate::Save;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
-pub struct Encoding(BTreeMap<Isomorphism, Abstraction>);
+pub struct Encoder(BTreeMap<Isomorphism, Abstraction>);
 
-impl Encoding {
+impl Encoder {
+    /// generate a random root Game and use our learned
+    /// clustering to lookup the corresponding Abstraction.
+    /// then embed them together into a Data. note that we don't
+    /// generate the Bucket yet, that happens in Tree, but maybe
+    /// we should do it here.
     pub fn seed(&self) -> Data {
         let game = Game::root();
         let info = self.abstraction(&game);
         Data::from((game, info))
     }
+
+    /// - use pseudo-harmonic mapping to convert Vec<Action> -> Vec<Edge> -> Path
+    /// - use learned encoder lookup to convert Game -> Abstraction.
+    /// - use variant of Node::continuations() to get Vec<Edge> -> Path
+    pub fn bucket(&self, recall: &Recall) -> Bucket {
+        let history = self.pseudoharmonics(recall);
+        let present = self.abstraction(&recall.game());
+        let choices = self.choices(recall);
+        Bucket::from((history, present, choices))
+    }
+
+    /// lookup the Abstraction for a given Game. convert
+    /// ( Game -> Observation -> Isomorphism ) -> Abstraction
     pub fn abstraction(&self, game: &Game) -> Abstraction {
         self.0
             .get(&Isomorphism::from(game.sweat()))
             .cloned()
-            .expect(&format!("precomputed abstraction missing for {game}"))
+            .expect(&format!("precomputed abstraction missing {}", game.sweat()))
     }
-    pub fn replay(&self, recall: &Recall) -> Tree {
+
+    /// use encoder lookup to convert an unabstracted
+    /// Recall of a game history into an abstracted Tree.
+    /// each Game in the sequence converts to a Node, and
+    /// each Action converts to an Edge.
+    ///
+    /// keep in mind that the Recall object is *not* omniscient,
+    /// so some of the assumptions about the transparent self-play
+    /// nature of Tree may not hold.
+    fn replay(&self, recall: &Recall) -> Tree {
         todo!("create a Tree from the vector of Actions in the Spot")
     }
-    pub fn bucket(&self, recall: &Recall) -> Bucket {
-        todo!("use some Recall-level function to get the list of Edge's by mapping (pseudoharmonically?) Actions -> Edges , w.r.t. Game::pot(). and then map over potential future actions w.r.t. Game::legal() to get another list of Edges. then use self.abstraction() to get the cluster lookup.
-            impl From<Recall> for Path (history)
-            impl From<Recall> for Path (choices)
-            ...
-            impl From<Recall> for (Path, Path)
-            ");
+
+    /// lossy conversion from granular Action to coarse Edge.
+    /// we depend on the pot size as of the Game state where
+    /// the Action is applied, and always compare the size of the
+    /// Action::Raise(_) to the pot to yield an [Odds] value.
+    fn pseudoharmonics(&self, recall: &Recall) -> Path {
+        todo!("use pseudo-harmonic mapping to convert Recall -> Vec<(Game, Action)> -> Vec<Edge> -> Path")
+    }
+
+    /// under the game tree constraints parametrized in lib.rs,
+    /// what are the possible continuations of the Game given its
+    /// full history? i.e. can we raise, and by how much.
+    fn choices(&self, recall: &Recall) -> Path {
+        todo!("use variant of Node::continuations() to get Vec<Edge> -> Path.
+            note: Node::edgifies, Node::actionize, Node::continuations
+                              these could kinda move to Game, there's just a ::subgame() dependency in ::raises()")
     }
 
     /// unfiltered set of possible children of a Node,
@@ -59,7 +96,7 @@ impl Encoding {
     }
 }
 
-impl Save for Encoding {
+impl Save for Encoder {
     fn name() -> &'static str {
         unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
     }
@@ -91,7 +128,7 @@ impl Save for Encoding {
     }
 }
 
-impl Arbitrary for Encoding {
+impl Arbitrary for Encoder {
     fn random() -> Self {
         const S: usize = 128;
         Self(
