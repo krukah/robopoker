@@ -110,38 +110,40 @@ impl Save for Metric {
         use std::io::SeekFrom;
         let ref path = Self::path(street);
         let ref file = File::open(path).expect(&format!("open {}", path));
-        let mut buffer = [0u8; 2];
         let mut metric = BTreeMap::new();
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
+
+        let mut buffer = [0u8; 2];
         while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) == 2 {
-                reader.read_u32::<BE>().expect("pair length");
-                let pair = reader.read_i64::<BE>().expect("read pair");
-                reader.read_u32::<BE>().expect("distance length");
-                let dist = reader.read_f32::<BE>().expect("read distance");
-                metric.insert(Pair::from(pair), dist);
-                continue;
-            } else {
-                break;
+            match u16::from_be_bytes(buffer) {
+                2 => {
+                    reader.read_u32::<BE>().expect("pair length");
+                    let pair = reader.read_i64::<BE>().expect("read pair");
+                    reader.read_u32::<BE>().expect("distance length");
+                    let dist = reader.read_f32::<BE>().expect("read distance");
+                    metric.insert(Pair::from(pair), dist);
+                    continue;
+                }
+                n => panic!("unexpected number of fields: {}", n),
             }
         }
         Self(metric)
     }
     fn save(&self) {
+        const N_FIELDS: u16 = 2;
         let street = self.street();
-        log::info!("{:<32}{:<32}", "saving      metric", street);
+        let ref path = Self::path(street);
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = Self::path(street);
-        let ref mut file = File::create(path).expect(&format!("touch {}", path));
+        log::info!("{:<32}{:<32}", "saving      metric", path);
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
         for (pair, distance) in self.0.iter() {
-            const N_FIELDS: u16 = 2;
             file.write_u16::<BE>(N_FIELDS).unwrap();
             file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
             file.write_i64::<BE>(i64::from(*pair)).unwrap();

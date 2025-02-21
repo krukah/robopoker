@@ -31,30 +31,33 @@ impl Save for Decomp {
         let ref mass = street.n_children() as f32;
         let ref path = Self::path(street);
         let ref file = File::open(path).expect(&format!("open {}", path));
-        let mut transitions = BTreeMap::new();
+        let mut decomp = BTreeMap::new();
         let mut reader = BufReader::new(file);
-        let mut buffer = [0u8; 2];
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
+
+        let mut buffer = [0u8; 2];
         while reader.read_exact(&mut buffer).is_ok() {
-            if u16::from_be_bytes(buffer) == 3 {
-                reader.read_u32::<BE>().expect("from abstraction");
-                let from = reader.read_i64::<BE>().expect("read from abstraction");
-                reader.read_u32::<BE>().expect("into abstraction");
-                let into = reader.read_i64::<BE>().expect("read into abstraction");
-                reader.read_u32::<BE>().expect("weight");
-                let weight = reader.read_f32::<BE>().expect("read weight");
-                transitions
-                    .entry(Abstraction::from(from))
-                    .or_insert_with(Histogram::default)
-                    .set(Abstraction::from(into), (weight * mass) as usize);
-                continue;
-            } else {
-                break;
+            match u16::from_be_bytes(buffer) {
+                3 => {
+                    reader.read_u32::<BE>().expect("from abstraction");
+                    let from = reader.read_i64::<BE>().expect("read from abstraction");
+                    reader.read_u32::<BE>().expect("into abstraction");
+                    let into = reader.read_i64::<BE>().expect("read into abstraction");
+                    reader.read_u32::<BE>().expect("weight");
+                    let weight = reader.read_f32::<BE>().expect("read weight");
+                    decomp
+                        .entry(Abstraction::from(from))
+                        .or_insert_with(Histogram::default)
+                        .set(Abstraction::from(into), (weight * mass) as usize);
+                    continue;
+                }
+                n => panic!("unexpected number of fields: {}", n),
             }
         }
-        Self(transitions)
+        Self(decomp)
     }
     fn save(&self) {
+        const N_FIELDS: u16 = 3;
         let street = self
             .0
             .keys()
@@ -62,19 +65,18 @@ impl Save for Decomp {
             .copied()
             .unwrap_or_else(|| Abstraction::from(0f32)) // coerce to River equity Abstraction if empty
             .street();
-        log::info!("{:<32}{:<32}", "saving      transition", street);
+        let ref path = Self::path(street);
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        let ref path = Self::path(street);
-        let ref mut file = File::create(path).expect(&format!("touch {}", path));
+        log::info!("{:<32}{:<32}", "saving      transition", path);
         file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
         file.write_u32::<BE>(0).expect("flags");
         file.write_u32::<BE>(0).expect("extension");
         for (from, histogram) in self.0.iter() {
             for into in histogram.support() {
-                const N_FIELDS: u16 = 3;
                 file.write_u16::<BE>(N_FIELDS).unwrap();
                 file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
                 file.write_i64::<BE>(i64::from(*from)).unwrap();
