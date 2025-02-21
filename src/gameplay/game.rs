@@ -47,8 +47,8 @@ impl Game {
         self
     }
     pub fn post(mut self) -> Self {
-        self.post_blinds(Self::sblind());
-        self.post_blinds(Self::bblind());
+        self.act(Action::Blind(self.to_post()));
+        self.act(Action::Blind(self.to_post()));
         self
     }
     pub fn wipe(mut self, hole: Hole) -> Self {
@@ -128,7 +128,7 @@ impl Game {
             return options;
         }
         if self.must_deal() {
-            options.push(Action::Draw(self.deck().deal(self.board.street())));
+            options.push(Action::Draw(self.deck().deal(self.street())));
             return options;
         }
         if self.must_post() {
@@ -157,19 +157,21 @@ impl Game {
     //
     pub fn is_allowed(&self, action: &Action) -> bool {
         if self.must_stop() {
-            false
-        } else if let Action::Blind(blind) = action {
-            self.must_post()
-        } else if let Action::Raise(raise) = action {
-            self.may_raise()
-                && raise.clone() >= self.to_raise()
-                && raise.clone() <= self.to_shove() - 1
-        } else if let Action::Draw(cards) = action {
-            self.must_deal()
-                && cards.clone().all(|c| self.deck().contains(&c))
-                && cards.count() == self.board().street().n_revealed()
-        } else {
-            self.legal().contains(action)
+            return false;
+        }
+        match action {
+            Action::Raise(raise) => {
+                self.may_raise()
+                    && raise.clone() >= self.to_raise()
+                    && raise.clone() <= self.to_shove() - 1
+            }
+            Action::Draw(cards) => {
+                self.must_deal()
+                    && cards.clone().all(|c| self.deck().contains(&c))
+                    && cards.count() == self.board().street().n_revealed()
+            }
+            Action::Blind(_) => self.must_post(),
+            _ => self.legal().contains(action),
         }
     }
 
@@ -182,8 +184,8 @@ impl Game {
         self.wipe_board();
         self.deal_cards();
         self.move_button();
-        self.post_blinds(Self::sblind());
-        self.post_blinds(Self::bblind());
+        self.act(Action::Blind(self.to_post()));
+        self.act(Action::Blind(self.to_post()));
     }
     fn give_chips(&mut self) {
         log::trace!("::::::::::::::");
@@ -201,10 +203,10 @@ impl Game {
     fn wipe_board(&mut self) {
         self.pot = 0;
         self.board.clear();
-        assert!(self.board.street() == Street::Pref);
+        assert!(self.street() == Street::Pref);
     }
     fn deal_cards(&mut self) {
-        assert!(self.board.street() == Street::Pref);
+        assert!(self.street() == Street::Pref);
         let mut deck = Deck::new();
         for seat in self.seats.iter_mut() {
             seat.reset_state(State::Betting);
@@ -215,56 +217,53 @@ impl Game {
     }
     fn move_button(&mut self) {
         assert!(self.seats.len() == self.n());
-        assert!(self.board.street() == Street::Pref);
+        assert!(self.street() == Street::Pref);
         self.dealer += 1;
         self.dealer %= self.n();
         self.ticker = self.dealer;
         self.next_player();
     }
-    fn post_blinds(&mut self, blind: Chips) {
-        assert!(self.board.street() == Street::Pref);
-        let stack = self.actor_ref().stack();
-        if blind < stack {
-            self.act(Action::Blind(blind))
-        } else {
-            self.act(Action::Shove(stack))
-        }
-    }
 
     //
-    fn act(&mut self, ref a: Action) {
+    fn act(&mut self, a: Action) {
         assert!(self.is_allowed(&a));
         match a {
-            &Action::Draw(cards) => {
-                self.reveal(cards);
+            Action::Check => {
+                self.next_player();
+            }
+            Action::Fold => {
+                self.fold();
+                self.next_player();
+            }
+            Action::Call(chips)
+            | Action::Blind(chips)
+            | Action::Raise(chips)
+            | Action::Shove(chips) => {
+                self.bet(chips);
+                self.next_player();
+            }
+            Action::Draw(cards) => {
+                self.show(cards);
                 self.next_player();
                 self.next_street();
-            }
-            &Action::Check => {
-                self.next_player();
-            }
-            &Action::Fold => {
-                self.actor_mut().reset_state(State::Folding);
-                self.next_player();
-            }
-            &Action::Blind(chips) | &Action::Raise(chips) | &Action::Call(chips) => {
-                self.bet(chips);
-                self.next_player();
-            }
-            &Action::Shove(chips) => {
-                self.bet(chips);
-                self.actor_mut().reset_state(State::Shoving);
-                self.next_player();
             }
         }
     }
     fn bet(&mut self, bet: Chips) {
         assert!(self.actor_ref().stack() >= bet);
-        self.actor_mut().bet(bet);
         self.pot += bet;
+        self.actor_mut().bet(bet);
+        if self.actor_ref().stack() == 0 {
+            self.shove();
+        }
     }
-    fn reveal(&mut self, hand: Hand) {
-        // tightly coupled with next_street?
+    fn shove(&mut self) {
+        self.actor_mut().reset_state(State::Shoving);
+    }
+    fn fold(&mut self) {
+        self.actor_mut().reset_state(State::Folding);
+    }
+    fn show(&mut self, hand: Hand) {
         self.ticker = self.dealer;
         self.board.add(hand);
     }
@@ -288,7 +287,7 @@ impl Game {
 
     /// we're waiting for showdown or everyone folded
     fn must_stop(&self) -> bool {
-        if self.board.street() == Street::Rive {
+        if self.street() == Street::Rive {
             self.is_everyone_alright()
         } else {
             self.is_everyone_folding()
@@ -296,7 +295,7 @@ impl Game {
     }
     /// we're waiting for a card to be revealed
     fn must_deal(&self) -> bool {
-        if self.board.street() == Street::Rive {
+        if self.street() == Street::Rive {
             false
         } else {
             self.is_everyone_alright()
@@ -304,7 +303,7 @@ impl Game {
     }
     /// blinds have not yet been posted // TODO some edge case of all in blinds
     fn must_post(&self) -> bool {
-        if self.board.street() == Street::Pref {
+        if self.street() == Street::Pref {
             self.pot() < Self::sblind() + Self::bblind()
         } else {
             false
@@ -321,13 +320,7 @@ impl Game {
     }
     /// all players have acted at least once
     fn is_everyone_touched(&self) -> bool {
-        self.ticker
-            > self.n()
-                + if self.board.street() == Street::Pref {
-                    2
-                } else {
-                    0
-                }
+        self.ticker > self.n() + if self.street() == Street::Pref { 2 } else { 0 }
     }
     /// all players betting are in for the effective stake
     fn is_everyone_matched(&self) -> bool {
@@ -373,6 +366,14 @@ impl Game {
     //
     pub fn to_call(&self) -> Chips {
         self.effective_stake() - self.actor_ref().stake()
+    }
+    pub fn to_post(&self) -> Chips {
+        assert!(self.street() == Street::Pref);
+        match (self.ticker as isize - self.dealer as isize) % self.n() as isize {
+            1 => Self::sblind().min(self.actor_ref().stack()),
+            2 => Self::bblind().min(self.actor_ref().stack()),
+            _ => panic!("invalid blind position"),
+        }
     }
     pub fn to_shove(&self) -> Chips {
         self.actor_ref().stack()
@@ -693,5 +694,63 @@ mod tests {
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
         assert!(game.is_everyone_matched() == true); //
+    }
+}
+
+// odds and tree building stuff
+use crate::mccfr::edge::Edge;
+use crate::mccfr::odds::Odds;
+use crate::Utility;
+
+impl Game {
+    /// convert an Edge into an Action by using Game state to
+    /// determine free parameters (stack size, pot size, etc)
+    ///
+    /// NOTE
+    /// this conversion is not injective, as multiple edges may
+    /// represent the same action. moreover, we "snap" raises to be
+    /// within range of legal bet sizes, so sometimes Raise(5:1) yields
+    /// an identical Game node as Raise(1:1) or Shove.
+    pub fn actionize(&self, edge: &Edge) -> Action {
+        let game = self;
+        match &edge {
+            Edge::Check => Action::Check,
+            Edge::Fold => Action::Fold,
+            Edge::Draw => Action::Draw(game.draw()),
+            Edge::Call => Action::Call(game.to_call()),
+            Edge::Shove => Action::Shove(game.to_shove()),
+            Edge::Raise(odds) => {
+                let min = game.to_raise();
+                let max = game.to_shove();
+                let pot = game.pot() as Utility;
+                let odd = Utility::from(*odds);
+                let bet = (pot * odd) as Chips;
+                match bet {
+                    bet if bet >= max => Action::Shove(max),
+                    bet if bet <= min => Action::Raise(min),
+                    _ => Action::Raise(bet),
+                }
+            }
+        }
+    }
+
+    /// returns the set of "allowed" raises given the current history
+    /// we truncate in a few cases:
+    /// - prevent N-betting explosion of raises
+    /// - allow for finer-grained exploration in early streets
+    /// - on the last street, restrict raise amounts so smaller grid
+    pub fn raises(&self, n: usize) -> Vec<Odds> {
+        if n > crate::MAX_RAISE_REPEATS {
+            vec![]
+        } else {
+            match self.street() {
+                Street::Pref => Odds::PREF_RAISES.to_vec(),
+                Street::Flop => Odds::FLOP_RAISES.to_vec(),
+                _ => match n {
+                    0 => Odds::LATE_RAISES.to_vec(),
+                    _ => Odds::LAST_RAISES.to_vec(),
+                },
+            }
+        }
     }
 }
