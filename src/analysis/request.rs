@@ -47,3 +47,10 @@ pub struct ObsHist {
 pub struct AbsHist {
     pub abs: String,
 }
+
+#[derive(Deserialize)]
+pub struct PolicyLookup {
+    pub hero: String,
+    pub seen: String,
+    pub path: Vec<String>,
+}

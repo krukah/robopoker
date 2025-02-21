@@ -1,6 +1,7 @@
 use super::api::API;
 use super::request::AbsHist;
 use super::request::ObsHist;
+use super::request::PolicyLookup;
 use super::request::ReplaceAbs;
 use super::request::ReplaceAll;
 use super::request::ReplaceObs;
@@ -11,6 +12,9 @@ use super::request::SetStreets;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::action::Action;
+use crate::gameplay::ply::Turn;
+use crate::mccfr::recall::Recall;
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::web;
@@ -38,7 +42,7 @@ impl Server {
                 .route("/replace-obs", web::post().to(replace_obs))
                 .route("/nbr-any-abs", web::post().to(nbr_any_wrt_abs))
                 .route("/nbr-obs-abs", web::post().to(nbr_obs_wrt_abs))
-                .route("/nbr-abs-wrt-abs", web::post().to(nbr_abs_wrt_abs))
+                .route("/nbr-abs-abs", web::post().to(nbr_abs_wrt_abs))
                 .route("/nbr-kfn-abs", web::post().to(kfn_wrt_abs))
                 .route("/nbr-knn-abs", web::post().to(knn_wrt_abs))
                 .route("/nbr-kgn-abs", web::post().to(kgn_wrt_abs))
@@ -47,6 +51,7 @@ impl Server {
                 .route("/exp-wrt-obs", web::post().to(exp_wrt_obs))
                 .route("/hst-wrt-abs", web::post().to(hst_wrt_abs))
                 .route("/hst-wrt-obs", web::post().to(hst_wrt_obs))
+                .route("/policy-lookup", web::post().to(lookup_policy))
         })
         .workers(6)
         .bind("127.0.0.1:8888")?
@@ -188,5 +193,24 @@ async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ObsHist>) -> impl Respo
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
             Ok(rows) => HttpResponse::Ok().json(rows),
         },
+    }
+}
+
+async fn lookup_policy(api: web::Data<API>, req: web::Json<PolicyLookup>) -> impl Responder {
+    let hero = Turn::try_from(req.hero.as_str());
+    let seen = Observation::try_from(req.seen.as_str());
+    let path = req
+        .path
+        .iter()
+        .map(|s| Action::try_from(s.as_str()))
+        .collect::<Result<Vec<_>, _>>();
+    match (hero, seen, path) {
+        (Ok(hero), Ok(seen), Ok(path)) => {
+            match api.policy(Recall::from((hero, seen, path))).await {
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+                Ok(rows) => HttpResponse::Ok().json(rows),
+            }
+        }
+        _ => HttpResponse::BadRequest().body("invalid recall format"),
     }
 }

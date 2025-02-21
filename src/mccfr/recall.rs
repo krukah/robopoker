@@ -23,8 +23,14 @@ pub struct Recall {
     path: Vec<Action>,
 }
 
+impl From<(Turn, Observation, Vec<Action>)> for Recall {
+    fn from((hero, seen, path): (Turn, Observation, Vec<Action>)) -> Self {
+        Self { hero, seen, path }
+    }
+}
+
 impl Recall {
-    pub fn from(seen: Observation, hero: Turn) -> Self {
+    pub fn new(seen: Observation, hero: Turn) -> Self {
         Self {
             seen,
             hero,

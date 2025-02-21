@@ -161,7 +161,7 @@ impl Profile {
         }
     }
     /// update policy vector for a given Bucket
-    pub fn add_policy(&mut self, bucket: &Bucket, policys: &Policy) {
+    pub fn add_policy(&mut self, bucket: &Bucket, policy: &Policy) {
         log::trace!("update policy @ {}", bucket);
         let t = self.epochs();
         let discount = Discount::default();
@@ -169,7 +169,7 @@ impl Profile {
             .strategies
             .get_mut(bucket)
             .expect("bucket been witnessed");
-        for (action, &policy) in policys.inner() {
+        for (action, &policy) in policy.inner() {
             let discount = discount.policy(t);
             let decision = strategy.get_mut(action).expect("action been witnessed");
             decision.add_policy(discount, policy);

@@ -794,13 +794,13 @@ impl API {
     }
 }
 
+use crate::analysis::response::Decision;
 use crate::mccfr::bucket::Bucket;
-use crate::mccfr::policy::Policy;
 use crate::mccfr::recall::Recall;
 
 // blueprint lookups
 impl API {
-    pub async fn policy(&self, recall: &Recall) -> Result<Policy, E> {
+    pub async fn policy(&self, recall: Recall) -> Result<Vec<Decision>, E> {
         const SQL: &'static str = r#"
         -- policy is indexed by present, past, future
         -- and it returns a vector of decision probabilities
@@ -820,6 +820,6 @@ impl API {
         let present = i64::from(present);
         let choices = i64::from(choices);
         let rows = self.0.query(SQL, &[&history, &present, &choices]).await?;
-        Ok(Policy::from(rows))
+        Ok(rows.into_iter().map(Decision::from).collect())
     }
 }
