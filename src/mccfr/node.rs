@@ -1,14 +1,11 @@
 use super::bucket::Bucket;
-use super::odds::Odds;
 use super::path::Path;
 use super::player::Player;
-use crate::cards::street::Street;
 use crate::gameplay::action::Action;
 use crate::gameplay::game::Game;
 use crate::gameplay::ply::Turn;
 use crate::mccfr::data::Data;
 use crate::mccfr::edge::Edge;
-use crate::Chips;
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
@@ -151,7 +148,8 @@ impl<'tree> Node<'tree> {
             .game()
             .legal()
             .into_iter()
-            .flat_map(|a| self.edgeifies(a))
+            .map(|a| self.expand(a))
+            .flatten()
             .collect()
     }
 
@@ -160,17 +158,16 @@ impl<'tree> Node<'tree> {
     /// which can be generated however.
     /// the contract is that the Actions returned by Game are legal,
     /// but the Raise amount can take any value >= the minimum provided by Game.
-    fn edgeifies(&self, action: Action) -> Vec<Edge> {
-        if let Action::Raise(_) = action {
-            let n_bets = self.subgame().iter().filter(|e| e.is_aggro()).count();
-            self.data()
+    fn expand(&self, action: Action) -> Vec<Edge> {
+        match action {
+            Action::Raise(_) => self
+                .data()
                 .game()
-                .raises(n_bets)
+                .raises(self.subgame().iter().filter(|e| e.is_aggro()).count())
                 .into_iter()
                 .map(Edge::from)
-                .collect()
-        } else {
-            vec![Edge::from(action)]
+                .collect(),
+            _ => vec![Edge::from(action)],
         }
     }
     /// returns the subgame history of the current node

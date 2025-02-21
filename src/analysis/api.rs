@@ -793,3 +793,33 @@ impl API {
         Ok(rows.into_iter().map(Sample::from).collect())
     }
 }
+
+use crate::mccfr::bucket::Bucket;
+use crate::mccfr::policy::Policy;
+use crate::mccfr::recall::Recall;
+
+// blueprint lookups
+impl API {
+    pub async fn policy(&self, recall: &Recall) -> Result<Policy, E> {
+        const SQL: &'static str = r#"
+        -- policy is indexed by present, past, future
+        -- and it returns a vector of decision probabilities
+        -- over the set of "choices" we can continue toward
+
+            SELECT edge, policy
+            FROM blueprint
+            WHERE past    = $1
+            AND   present = $2
+            AND   future  = $3
+        "#;
+        let game = recall.head();
+        let observation = game.sweat();
+        let abstraction = self.obs_to_abs(observation).await?;
+        let Bucket(history, present, choices) = recall.bucket(abstraction);
+        let history = i64::from(history);
+        let present = i64::from(present);
+        let choices = i64::from(choices);
+        let rows = self.0.query(SQL, &[&history, &present, &choices]).await?;
+        Ok(Policy::from(rows))
+    }
+}
