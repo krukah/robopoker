@@ -734,12 +734,23 @@ impl Game {
         }
     }
 
+    /// under the game tree constraints parametrized in lib.rs,
+    /// what are the possible continuations of the Game given its
+    /// full history? i.e. can we raise, and by how much.
+    pub fn choices(&self, n: usize) -> Vec<Edge> {
+        self.legal()
+            .into_iter()
+            .map(|a| self.expand(a, n))
+            .flatten()
+            .collect::<Vec<Edge>>()
+    }
+
     /// returns the set of "allowed" raises given the current history
     /// we truncate in a few cases:
     /// - prevent N-betting explosion of raises
     /// - allow for finer-grained exploration in early streets
     /// - on the last street, restrict raise amounts so smaller grid
-    pub fn raises(&self, n: usize) -> Vec<Odds> {
+    fn raises(&self, n: usize) -> Vec<Odds> {
         if n > crate::MAX_RAISE_REPEATS {
             vec![]
         } else {
@@ -751,6 +762,22 @@ impl Game {
                     _ => Odds::LAST_RAISES.to_vec(),
                 },
             }
+        }
+    }
+
+    /// generalization of mapping a concrete Action into a set of abstract Vec<Edge>
+    /// this is mostly useful for enumerating a set of desired Raises
+    /// which can be generated however.
+    /// the contract is that the Actions returned by Game are legal,
+    /// but the Raise amount can take any value >= the minimum provided by Game.
+    fn expand(&self, action: Action, n: usize) -> Vec<Edge> {
+        match action {
+            Action::Raise(_) => self
+                .raises(n)
+                .into_iter()
+                .map(Edge::from)
+                .collect::<Vec<Edge>>(),
+            _ => vec![Edge::from(action)],
         }
     }
 }
