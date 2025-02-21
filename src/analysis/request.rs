@@ -49,7 +49,7 @@ pub struct AbsHist {
 }
 
 #[derive(Deserialize)]
-pub struct PolicyLookup {
+pub struct GetPolicy {
     pub hero: String,
     pub seen: String,
     pub path: Vec<String>,

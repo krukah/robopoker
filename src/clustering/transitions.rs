@@ -35,9 +35,9 @@ impl Save for Decomp {
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
 
-        let mut buffer = [0u8; 2];
-        while reader.read_exact(&mut buffer).is_ok() {
-            match u16::from_be_bytes(buffer) {
+        let ref mut buffer = [0u8; 2];
+        while reader.read_exact(buffer).is_ok() {
+            match u16::from_be_bytes(buffer.clone()) {
                 3 => {
                     reader.read_u32::<BE>().expect("from abstraction");
                     let from = reader.read_i64::<BE>().expect("read from abstraction");
