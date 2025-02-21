@@ -66,21 +66,21 @@ impl Upload {
         Ok(())
     }
 
-    async fn is_uninitialized(&self) -> Result<bool, E> {
-        Ok(true
-            && !self.is_populated("street").await?
-            && !self.is_populated("metric").await?
-            && !self.is_populated("encoder").await?
-            && !self.is_populated("abstraction").await?
-            && !self.is_populated("transitions").await?
-            && !self.is_populated("blueprint").await?)
+    async fn has_data(&self) -> Result<bool, E> {
+        Ok(false
+            || self.has_rows("street").await?
+            || self.has_rows("metric").await?
+            || self.has_rows("encoder").await?
+            || self.has_rows("blueprint").await?
+            || self.has_rows("abstraction").await?
+            || self.has_rows("transitions").await?)
     }
 
-    async fn is_populated(&self, table: &str) -> Result<bool, E> {
-        if self.is_created(table).await? {
+    async fn has_rows(&self, table: &str) -> Result<bool, E> {
+        if self.does_exist(table).await? {
             Ok(0 != self
                 .0
-                .query_one("SELECT COUNT(*) FROM $1", &[&table])
+                .query_one("SELECT COUNT(*) FROM $1;", &[&table])
                 .await?
                 .get::<_, i64>(0))
         } else {
@@ -88,14 +88,14 @@ impl Upload {
         }
     }
 
-    async fn is_created(&self, table: &str) -> Result<bool, E> {
+    async fn does_exist(&self, table: &str) -> Result<bool, E> {
         Ok(1 == self
             .0
             .query_one(
                 "
-                SELECT COUNT(*)
+                SELECT  COUNT(*)
                 FROM    information_schema.tables
-                WHERE   table_name = $1
+                WHERE   table_name = $1;
                 ",
                 &[&table],
             )
@@ -104,11 +104,11 @@ impl Upload {
     }
 
     async fn vacuum(&self) -> Result<(), E> {
-        self.0.batch_execute(r#"VACUUM ANALYZE;"#).await
+        self.0.batch_execute("VACUUM ANALYZE;").await
     }
 
     async fn recreate(&self) -> Result<(), E> {
-        if !self.is_uninitialized().await? {
+        if self.has_data().await? {
             log::info!("tables already exist");
             return Ok(());
         } else {
@@ -157,7 +157,7 @@ impl Upload {
     }
 
     async fn truncate(&self) -> Result<(), E> {
-        if !self.is_uninitialized().await? {
+        if self.has_data().await? {
             log::info!("tables already truncated");
             return Ok(());
         } else {
@@ -179,7 +179,7 @@ impl Upload {
     }
 
     async fn unlogged(&self) -> Result<(), E> {
-        if !self.is_uninitialized().await? {
+        if self.has_data().await? {
             log::info!("tables already unlogged");
             return Ok(());
         } else {
@@ -201,7 +201,7 @@ impl Upload {
     }
 
     async fn copy_metric(&self) -> Result<(), E> {
-        if self.is_populated("metric").await? {
+        if self.has_rows("metric").await? {
             log::info!("tables data already uploaded (metric)");
             return Ok(());
         } else {
@@ -229,7 +229,7 @@ impl Upload {
     }
 
     async fn copy_encoder(&self) -> Result<(), E> {
-        if self.is_populated("encoder").await? {
+        if self.has_rows("encoder").await? {
             log::info!("tables data already uploaded (encoder)");
             return Ok(());
         } else {
@@ -272,7 +272,7 @@ impl Upload {
     }
 
     async fn copy_blueprint(&self) -> Result<(), E> {
-        if self.is_populated("blueprint").await? {
+        if self.has_rows("blueprint").await? {
             log::info!("tables data already uploaded (blueprint)");
             return Ok(());
         } else {
@@ -290,7 +290,7 @@ impl Upload {
     }
 
     async fn copy_transitions(&self) -> Result<(), E> {
-        if self.is_populated("transitions").await? {
+        if self.has_rows("transitions").await? {
             log::info!("tables data already uploaded (transition)");
             return Ok(());
         } else {
@@ -320,7 +320,7 @@ impl Upload {
     }
 
     async fn copy_abstraction(&self) -> Result<(), E> {
-        if self.is_populated("abstraction").await? {
+        if self.has_rows("abstraction").await? {
             log::info!("tables data already uploaded (abstraction)");
             return Ok(());
         } else {
@@ -346,7 +346,7 @@ impl Upload {
     }
 
     async fn copy_streets(&self) -> Result<(), E> {
-        if self.is_populated("street").await? {
+        if self.has_rows("street").await? {
             log::info!("tables data already uploaded (street)");
             return Ok(());
         } else {
