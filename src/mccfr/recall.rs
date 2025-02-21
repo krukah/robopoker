@@ -90,7 +90,11 @@ impl Recall {
         matches!(self.path.last().expect("empty path"), Action::Draw(_))
     }
 
-    pub fn pseudoharmonics(&self) -> Vec<Edge> {
+    /// lossy conversion from granular Action to coarse Edge.
+    /// we depend on the pot size as of the Game state where
+    /// the Action is applied, and always compare the size of the
+    /// Action::Raise(_) to the pot to yield an [Odds] value.
+    fn pseudoharmonics(&self) -> Path {
         todo!(
             "use pseudo-harmonic
 mapping to
@@ -98,7 +102,11 @@ mapping to
         Recall -> Vec<(Game, Action)> -> Vec<Edge> -> Path"
         )
     }
-    pub fn choices(&self) -> Vec<Edge> {
+
+    /// under the game tree constraints parametrized in lib.rs,
+    /// what are the possible continuations of the Game given its
+    /// full history? i.e. can we raise, and by how much.
+    fn choices(&self) -> Path {
         let head = self.head();
         let raises = self.path.iter().filter(|a| a.is_aggro()).count();
         head.legal()
@@ -112,6 +120,17 @@ mapping to
                 _ => vec![Edge::from(a)],
             })
             .flatten()
-            .collect()
+            .collect::<Vec<_>>()
+            .into()
+    }
+    pub fn bucket(&self, abstraction: Abstraction) -> Bucket {
+        let present = abstraction;
+        let history = Path::from(self.pseudoharmonics());
+        let choices = Path::from(self.choices());
+        Bucket::from((history, present, choices))
     }
 }
+
+use crate::clustering::abstraction::Abstraction;
+use crate::mccfr::bucket::Bucket;
+use crate::mccfr::path::Path;

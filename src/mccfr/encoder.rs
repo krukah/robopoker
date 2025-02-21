@@ -33,10 +33,10 @@ impl Encoder {
     /// - use learned encoder lookup to convert Game -> Abstraction.
     /// - use variant of Node::continuations() to get Vec<Edge> -> Path
     pub fn bucket(&self, recall: &Recall) -> Bucket {
-        let history = self.pseudoharmonics(recall);
-        let present = self.abstraction(&recall.game());
-        let choices = self.choices(recall);
-        Bucket::from((history, present, choices))
+        let game = recall.head();
+        let abstraction = self.abstraction(&game);
+        let bucket = recall.bucket(abstraction);
+        bucket
     }
 
     /// lookup the Abstraction for a given Game. convert
@@ -47,36 +47,6 @@ impl Encoder {
             .cloned()
             .expect(&format!("precomputed abstraction missing {}", game.sweat()))
     }
-
-    /// use encoder lookup to convert an unabstracted
-    /// Recall of a game history into an abstracted Tree.
-    /// each Game in the sequence converts to a Node, and
-    /// each Action converts to an Edge.
-    ///
-    /// keep in mind that the Recall object is *not* omniscient,
-    /// so some of the assumptions about the transparent self-play
-    /// nature of Tree may not hold.
-    fn replay(&self, recall: &Recall) -> Tree {
-        todo!("create a Tree from the vector of Actions in the Spot")
-    }
-
-    /// lossy conversion from granular Action to coarse Edge.
-    /// we depend on the pot size as of the Game state where
-    /// the Action is applied, and always compare the size of the
-    /// Action::Raise(_) to the pot to yield an [Odds] value.
-    fn pseudoharmonics(&self, recall: &Recall) -> Path {
-        todo!("use pseudo-harmonic mapping to convert Recall -> Vec<(Game, Action)> -> Vec<Edge> -> Path")
-    }
-
-    /// under the game tree constraints parametrized in lib.rs,
-    /// what are the possible continuations of the Game given its
-    /// full history? i.e. can we raise, and by how much.
-    fn choices(&self, recall: &Recall) -> Path {
-        todo!("use variant of Node::continuations() to get Vec<Edge> -> Path.
-            note: Node::edgifies, Node::actionize, Node::continuations
-                              these could kinda move to Game, there's just a ::subgame() dependency in ::raises()")
-    }
-
     /// unfiltered set of possible children of a Node,
     /// conditional on its History (# raises, street granularity).
     /// the head Node is attached to the Tree stack-recursively,
@@ -93,6 +63,18 @@ impl Encoder {
             .map(|(e, d)| (e, d, node.index()))
             .map(|(e, d, n)| Branch(d, e, n))
             .collect()
+    }
+
+    /// use encoder lookup to convert an unabstracted
+    /// Recall of a game history into an abstracted Tree.
+    /// each Game in the sequence converts to a Node, and
+    /// each Action converts to an Edge.
+    ///
+    /// keep in mind that the Recall object is *not* omniscient,
+    /// so some of the assumptions about the transparent self-play
+    /// nature of Tree may not hold.
+    fn replay(&self, _: &Recall) -> Tree {
+        todo!("maybe useful during test-time search?")
     }
 }
 
