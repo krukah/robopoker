@@ -5,18 +5,16 @@ use tokio_postgres::Client;
 use tokio_postgres::Error as E;
 
 // counts for full deck:
-// encoder      ~ 140M,
-// transition   ~ 10K,
+// blueprint    ~ 154M,
+// encoder      ~ 139M,
+// transition   ~ 29K,
 // metric       ~ 40K,
 // abstraction  ~ 500,
-// blueprint    ~ TBD,
 
 /*
 TODO:
 
-- the way that we resume progress isn't ideal. i think there's a way to accidentally
-truncate existing progress, for one. a better approach might be to
-declare some Table struct that encapsulates shared logic between our different tables.
+- not sure if this ::path() resolution is correct in the context of a Docker container.
 
 - the COPY FROM will only work if the Postgres process is running on the same machine
 and with access to the same filesystem. there may be a way to stream files from the
@@ -24,17 +22,12 @@ robopoker process into an arbitrary Postgres server. it might involve some CLI i
 of pgsql or similar, which is a dependency i'd rather not introduce to the project. perhaps
 we can use tokio_postgrs::copy_in() to stream data.
 
-- not sure if this ::path() resolution is correct in the context of a Docker container.
-
 - repetitive SQL statements might be better encapsulated by string templates + format!().
-same with first point, it might be good to have a struct or trait or enum for all the
-table names and associated population logic.
+it might be good to have a struct or trait or enum for all the table names and associated
+population logic. but maybe overkill.
 
 - i'd rather define a series of const &'static str for all the SQL commands, so the
 rust functions are very chill and readable.
-
-- my OCD ass wants to rename encoder to isomorphism, so i just gotta global grep. references
-in api.rs need to be updated.
 
 */
 
@@ -54,8 +47,6 @@ impl Upload {
     pub async fn upload() -> Result<(), E> {
         let this = Self::from(crate::db().await);
         this.recreate().await?;
-        this.truncate().await?;
-        this.unlogged().await?;
         this.copy_metric().await?;
         this.copy_encoder().await?;
         this.copy_transitions().await?;
@@ -64,16 +55,6 @@ impl Upload {
         this.copy_streets().await?;
         this.vacuum().await?;
         Ok(())
-    }
-
-    async fn has_data(&self) -> Result<bool, E> {
-        Ok(false
-            || self.has_rows("street").await?
-            || self.has_rows("metric").await?
-            || self.has_rows("encoder").await?
-            || self.has_rows("blueprint").await?
-            || self.has_rows("abstraction").await?
-            || self.has_rows("transitions").await?)
     }
 
     async fn has_rows(&self, table: &str) -> Result<bool, E> {
@@ -104,16 +85,11 @@ impl Upload {
     }
 
     async fn vacuum(&self) -> Result<(), E> {
+        log::info!("vacuuming table stats");
         self.0.batch_execute("VACUUM ANALYZE;").await
     }
 
     async fn recreate(&self) -> Result<(), E> {
-        if self.has_data().await? {
-            log::info!("tables already exist");
-            return Ok(());
-        } else {
-            log::info!("creating tables");
-        }
         Ok(self
             .0
             .batch_execute(
@@ -156,63 +132,20 @@ impl Upload {
             .await?)
     }
 
-    async fn truncate(&self) -> Result<(), E> {
-        if self.has_data().await? {
-            log::info!("tables already truncated");
-            return Ok(());
-        } else {
-            log::info!("truncating all tables");
-        }
-        Ok(self
-            .0
-            .batch_execute(
-                r#"
-                    TRUNCATE TABLE encoder;
-                    TRUNCATE TABLE metric;
-                    TRUNCATE TABLE abstraction;
-                    TRUNCATE TABLE transitions;
-                    TRUNCATE TABLE street;
-                    TRUNCATE TABLE blueprint;
-    "#,
-            )
-            .await?)
-    }
-
-    async fn unlogged(&self) -> Result<(), E> {
-        if self.has_data().await? {
-            log::info!("tables already unlogged");
-            return Ok(());
-        } else {
-            log::info!("setting tables to unlogged");
-        }
-        Ok(self
-            .0
-            .batch_execute(
-                r#"
-                    ALTER TABLE encoder      SET UNLOGGED;
-                    ALTER TABLE metric       SET UNLOGGED;
-                    ALTER TABLE abstraction  SET UNLOGGED;
-                    ALTER TABLE transitions  SET UNLOGGED;
-                    ALTER TABLE street       SET UNLOGGED;
-                    ALTER TABLE blueprint    SET UNLOGGED;
-    "#,
-            )
-            .await?)
-    }
-
     async fn copy_metric(&self) -> Result<(), E> {
         if self.has_rows("metric").await? {
             log::info!("tables data already uploaded (metric)");
             return Ok(());
-        } else {
-            log::info!("copying metric data");
         }
+        log::info!("copying metric data");
         let path = self.path();
         Ok(self
             .0
             .batch_execute(
                 format!(
                     r#"
+                        TRUNCATE TABLE metric;
+                        ALTER TABLE metric SET UNLOGGED;
                         INSERT INTO metric (xor, dx) VALUES (0, 0);
                         COPY        metric (xor, dx) FROM '{}/pgcopy.metric.river'      WITH (FORMAT BINARY);
                         COPY        metric (xor, dx) FROM '{}/pgcopy.metric.turn'       WITH (FORMAT BINARY);
@@ -232,15 +165,16 @@ impl Upload {
         if self.has_rows("encoder").await? {
             log::info!("tables data already uploaded (encoder)");
             return Ok(());
-        } else {
-            log::info!("copying observation data");
         }
+        log::info!("copying observation data");
         let path = self.path();
         Ok(self
             .0
             .batch_execute(
                 format!(
                     r#"
+                        TRUNCATE TABLE encoder;
+                        ALTER TABLE encoder SET UNLOGGED;
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.river'   WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.turn'    WITH (FORMAT BINARY);
                         COPY encoder (obs, abs) FROM '{}/pgcopy.encoder.flop'    WITH (FORMAT BINARY);
@@ -275,11 +209,12 @@ impl Upload {
         if self.has_rows("blueprint").await? {
             log::info!("tables data already uploaded (blueprint)");
             return Ok(());
-        } else {
-            log::info!("copying blueprint data");
         }
+        log::info!("copying blueprint data");
         let path = self.path();
         Ok(self.0.batch_execute(format!(r#"
+            TRUNCATE TABLE blueprint;
+            ALTER TABLE blueprint SET UNLOGGED;
             COPY blueprint (past, present, future, edge, policy, regret) FROM '{}/pgcopy.profile.blueprint' WITH (FORMAT BINARY);
             CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
             CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
@@ -293,15 +228,16 @@ impl Upload {
         if self.has_rows("transitions").await? {
             log::info!("tables data already uploaded (transition)");
             return Ok(());
-        } else {
-            log::info!("copying transition data");
         }
+        log::info!("copying transition data");
         let path = self.path();
         Ok(self
             .0
             .batch_execute(
                 format!(
                     r#"
+                        TRUNCATE TABLE transitions;
+                        ALTER TABLE transitions SET UNLOGGED;
                         COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.river'   WITH (FORMAT BINARY);
                         COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.turn'    WITH (FORMAT BINARY);
                         COPY transitions (prev, next, dx) FROM '{}/pgcopy.transitions.flop'    WITH (FORMAT BINARY);
@@ -323,9 +259,8 @@ impl Upload {
         if self.has_rows("abstraction").await? {
             log::info!("tables data already uploaded (abstraction)");
             return Ok(());
-        } else {
-            log::info!("deriving abstraction data");
         }
+        log::info!("deriving abstraction data");
         self.get_equity().await?;
         self.get_street_abs().await?;
         self.get_population().await?;
@@ -334,6 +269,8 @@ impl Upload {
         self.0
             .batch_execute(
                 r#"
+                    TRUNCATE TABLE abstraction;
+                    ALTER TABLE abstraction SET UNLOGGED;
                     CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
                     CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
                     CREATE INDEX IF NOT EXISTS idx_abstraction_eq  ON abstraction (equity);
@@ -349,13 +286,14 @@ impl Upload {
         if self.has_rows("street").await? {
             log::info!("tables data already uploaded (street)");
             return Ok(());
-        } else {
-            log::info!("copying street data");
         }
+        log::info!("copying street data");
         Ok(self
             .0
             .batch_execute(
                 r#"
+                    TRUNCATE TABLE street;
+                    ALTER TABLE street SET UNLOGGED;
                     INSERT INTO street (street, nobs, nabs) VALUES
                     (0,
                         (SELECT COUNT(*) FROM encoder e
