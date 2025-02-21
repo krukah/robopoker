@@ -72,6 +72,7 @@ impl Blueprint {
             let epoch = self.profile.epochs();
             log::debug!("epochs {:<10} buckets {:<10}", epoch, count);
         }
+        progress.finish();
         self.save();
     }
 

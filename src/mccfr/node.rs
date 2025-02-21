@@ -1,7 +1,6 @@
 use super::bucket::Bucket;
 use super::path::Path;
 use super::player::Player;
-use crate::gameplay::action::Action;
 use crate::gameplay::game::Game;
 use crate::gameplay::ply::Turn;
 use crate::mccfr::data::Data;
@@ -120,9 +119,9 @@ impl<'tree> Node<'tree> {
     /// history of choices leading up to the node, and the
     /// set of available continuations from the node.
     pub fn realize(&self) -> Bucket {
+        let history = Path::from(self.recall());
         let present = self.data().abstraction().clone();
-        let history = Path::from(self.recall()); //              TODO: zero copy
-        let choices = Path::from(self.calculate_continuations()); // TODO: zero copy
+        let choices = self.choices();
         Bucket::from((history, present, choices))
     }
 
@@ -130,46 +129,22 @@ impl<'tree> Node<'tree> {
     /// this determines what Bucket we end up in since Tree::attach()
     /// uses this to assign Buckets to Data upon insertion
     pub fn branches(&self) -> Vec<(Edge, Game)> {
-        self.reference_continuations()
+        Vec::<Edge>::from(self.data().bucket().2.clone())
             .into_iter()
             .map(|e| (e, self.data().game().actionize(&e)))
             .map(|(e, a)| (e.clone(), self.data().game().apply(a)))
             .collect()
     }
-    /// lookup precomputed continuations from the node data
-    fn reference_continuations(&self) -> Vec<Edge> {
-        Vec::<Edge>::from(self.data().bucket().2.clone())
-    }
     /// returns the set of all possible actions from the current node
     /// this is useful for generating a set of children for a given node
     /// broadly goes from Node -> Game -> Action -> Edge
-    fn calculate_continuations(&self) -> Vec<Edge> {
+    fn choices(&self) -> Path {
         self.data()
             .game()
-            .legal()
-            .into_iter()
-            .map(|a| self.expand(a))
-            .flatten()
-            .collect()
+            .choices(self.subgame().iter().filter(|e| e.is_aggro()).count())
+            .into()
     }
 
-    /// generalization of mapping a concrete Action into a set of abstract Vec<Edge>
-    /// this is mostly useful for enumerating a set of desired Raises
-    /// which can be generated however.
-    /// the contract is that the Actions returned by Game are legal,
-    /// but the Raise amount can take any value >= the minimum provided by Game.
-    fn expand(&self, action: Action) -> Vec<Edge> {
-        match action {
-            Action::Raise(_) => self
-                .data()
-                .game()
-                .raises(self.subgame().iter().filter(|e| e.is_aggro()).count())
-                .into_iter()
-                .map(Edge::from)
-                .collect(),
-            _ => vec![Edge::from(action)],
-        }
-    }
     /// returns the subgame history of the current node
     /// within the same Street of action.
     /// this should be made lazily in the future

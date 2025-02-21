@@ -1,4 +1,3 @@
-use super::edge::Edge;
 use crate::cards::card::Card;
 use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
@@ -103,25 +102,11 @@ mapping to
         )
     }
 
-    /// under the game tree constraints parametrized in lib.rs,
-    /// what are the possible continuations of the Game given its
-    /// full history? i.e. can we raise, and by how much.
     fn choices(&self) -> Path {
-        let head = self.head();
-        let raises = self.path.iter().filter(|a| a.is_aggro()).count();
-        head.legal()
-            .into_iter()
-            .map(|a| match a {
-                Action::Raise(_) => head
-                    .raises(raises)
-                    .into_iter()
-                    .map(Edge::from)
-                    .collect::<Vec<_>>(),
-                _ => vec![Edge::from(a)],
-            })
-            .flatten()
-            .collect::<Vec<_>>()
-            .into()
+        Path::from(
+            self.head()
+                .choices(self.path.iter().filter(|a| a.is_aggro()).count()),
+        )
     }
     pub fn bucket(&self, abstraction: Abstraction) -> Bucket {
         let present = abstraction;
