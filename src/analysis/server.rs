@@ -1,7 +1,7 @@
 use super::api::API;
 use super::request::AbsHist;
 use super::request::ObsHist;
-use super::request::PolicyLookup;
+use super::request::GetPolicy;
 use super::request::ReplaceAbs;
 use super::request::ReplaceAll;
 use super::request::ReplaceObs;
@@ -196,7 +196,7 @@ async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ObsHist>) -> impl Respo
     }
 }
 
-async fn lookup_policy(api: web::Data<API>, req: web::Json<PolicyLookup>) -> impl Responder {
+async fn lookup_policy(api: web::Data<API>, req: web::Json<GetPolicy>) -> impl Responder {
     let hero = Turn::try_from(req.hero.as_str());
     let seen = Observation::try_from(req.seen.as_str());
     let path = req

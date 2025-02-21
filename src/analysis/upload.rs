@@ -26,9 +26,6 @@ we can use tokio_postgrs::copy_in() to stream data.
 it might be good to have a struct or trait or enum for all the table names and associated
 population logic. but maybe overkill.
 
-- i'd rather define a series of const &'static str for all the SQL commands, so the
-rust functions are very chill and readable.
-
 */
 
 pub struct Upload(Arc<Client>);

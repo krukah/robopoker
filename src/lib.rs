@@ -113,10 +113,12 @@ pub fn init() {
     );
     simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
 }
+
+/// get a database connection and return the client
 pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
     log::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
-    let ref url = String::from("postgres://localhost:5432/postgres");
+    let ref url = std::env::var("DB_URL").expect("DB_URL not set");
     let (client, connection) = tokio_postgres::connect(url, tls)
         .await
         .expect("database connection failed");

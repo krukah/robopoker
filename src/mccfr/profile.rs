@@ -457,22 +457,22 @@ impl Save for Profile {
         use std::io::SeekFrom;
         let ref path = Self::name();
         let file = File::open(path).expect("open file");
-        let mut strats = BTreeMap::new();
+        let mut strategies = BTreeMap::new();
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
 
-        let mut buffer = [0u8; 2];
-        while reader.read_exact(&mut buffer).is_ok() {
-            match u16::from_be_bytes(buffer) {
+        let ref mut buffer = [0u8; 2];
+        while reader.read_exact(buffer).is_ok() {
+            match u16::from_be_bytes(buffer.clone()) {
                 6 => {
                     // we expect 6 fields per record
                     // 4 indexed fields
                     reader.read_u32::<BE>().expect("past path length");
-                    let past = Path::from(reader.read_u64::<BE>().expect("read past path"));
+                    let history = Path::from(reader.read_u64::<BE>().expect("history"));
                     reader.read_u32::<BE>().expect("abstraction length");
-                    let abs = Abstraction::from(reader.read_u64::<BE>().expect("read abstraction"));
+                    let present = Abstraction::from(reader.read_u64::<BE>().expect("abstraction"));
                     reader.read_u32::<BE>().expect("future path length");
-                    let future = Path::from(reader.read_u64::<BE>().expect("read future path"));
+                    let choices = Path::from(reader.read_u64::<BE>().expect("choices"));
                     reader.read_u32::<BE>().expect("edge length");
                     let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
                     // 2 unindexed fields
@@ -481,8 +481,8 @@ impl Save for Profile {
                     reader.read_u32::<BE>().expect("policy length");
                     let policy = reader.read_f32::<BE>().expect("read policy");
                     // idempotent insert
-                    let bucket = Bucket::from((past, abs, future));
-                    let memory = strats
+                    let bucket = Bucket::from((history, present, choices));
+                    let memory = strategies
                         .entry(bucket)
                         .or_insert_with(Strategy::default)
                         .entry(edge)
@@ -495,7 +495,7 @@ impl Save for Profile {
             }
         }
         Self {
-            strategies: strats,
+            strategies,
             // it would be nice if this came from file
             // but idk where to put it in the binary format.
             // the header flags are a no-go apparently, since postgres reserves those
