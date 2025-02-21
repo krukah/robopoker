@@ -58,9 +58,9 @@ impl Upload {
         this.unlogged().await?;
         this.copy_metric().await?;
         this.copy_encoder().await?;
-        this.copy_blueprint().await?;
         this.copy_transitions().await?;
         this.copy_abstraction().await?;
+        this.copy_blueprint().await?;
         this.copy_streets().await?;
         this.vacuum().await?;
         Ok(())
@@ -80,7 +80,7 @@ impl Upload {
         if self.does_exist(table).await? {
             Ok(0 != self
                 .0
-                .query_one("SELECT COUNT(*) FROM $1;", &[&table])
+                .query_one(&format!("SELECT COUNT(*) FROM {};", table), &[])
                 .await?
                 .get::<_, i64>(0))
         } else {
