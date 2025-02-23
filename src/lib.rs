@@ -1,11 +1,10 @@
-use cards::street::Street;
-
 pub mod analysis;
 pub mod cards;
 pub mod clustering;
 pub mod gameplay;
 pub mod mccfr;
 pub mod players;
+pub mod save;
 pub mod search;
 pub mod transport;
 
@@ -52,23 +51,6 @@ const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {
     fn random() -> Self;
-}
-
-/// street-level properties that can be written to and read from disk,
-/// may or may not be dependent on other entities being written/in memory.
-/// or in the case of River Abstractions, we can just generate it from scratch
-/// on the fly if we need to.
-pub trait Save {
-    fn name() -> &'static str;
-    fn save(&self);
-    fn load(street: Street) -> Self;
-    fn make(street: Street) -> Self;
-    fn done(street: Street) -> bool {
-        std::fs::metadata(Self::path(street)).is_ok()
-    }
-    fn path(street: Street) -> String {
-        format!("{}.{}", Self::name(), street)
-    }
 }
 
 /// progress bar

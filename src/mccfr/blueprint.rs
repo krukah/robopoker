@@ -10,8 +10,8 @@ use super::recall::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::street::Street;
+use crate::save::upload::Upload;
 use crate::Arbitrary;
-use crate::Save;
 
 /// this is how we learn the optimal strategy of
 /// the abstracted game. with the learned Encoder
@@ -34,7 +34,6 @@ pub struct Blueprint {
 impl Blueprint {
     /// after training, use the learned Profile to advise
     /// a Spot on how to play.
-    /// TODO: expose this as a database operation
     pub fn policy(&self, recall: &Recall) -> Policy {
         let bucket = self.encoder.bucket(&recall); // this becomes database lookup on recall.game().sweat(), and the Path's are constructed in memory infalliably
         let policy = self.profile.policy(&bucket); // expand into Result chained calls to database, trying perfect match but weakening index upon every failure
@@ -51,7 +50,7 @@ impl Blueprint {
             log::info!("skipping regret minimization");
         } else {
             log::info!("starting regret minimization");
-            Self::make(Street::random()).solve();
+            Self::grow(Street::random()).solve();
         }
     }
 
@@ -73,7 +72,7 @@ impl Blueprint {
             log::debug!("epochs {:<10} buckets {:<10}", epoch, count);
         }
         progress.finish();
-        self.save();
+        self.profile.save();
     }
 
     /// compute regret and policy updates for a batch of Trees.
@@ -143,26 +142,42 @@ impl Blueprint {
     }
 }
 
-impl Save for Blueprint {
-    fn name() -> &'static str {
-        unreachable!()
+impl Upload for Blueprint {
+    fn name() -> String {
+        Profile::name()
+    }
+    fn done(street: Street) -> bool {
+        Profile::done(street) && Encoder::done(street)
+    }
+    fn grow(street: Street) -> Self {
+        Self {
+            profile: Profile::grow(street),
+            encoder: Encoder::grow(street),
+        }
+    }
+    fn copy() -> String {
+        Profile::copy()
+    }
+    fn prepare() -> String {
+        Profile::prepare()
+    }
+    fn indices() -> String {
+        Profile::indices()
+    }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        Profile::columns()
+    }
+    fn sources() -> Vec<String> {
+        Profile::sources()
+    }
+    fn load(_: Street) -> Self {
+        Self {
+            profile: Profile::load(Street::random()),
+            encoder: Encoder::load(Street::random()),
+        }
     }
     fn save(&self) {
         self.profile.save();
-    }
-    fn done(street: Street) -> bool {
-        Encoder::done(street) && Profile::done(street)
-    }
-    fn make(street: Street) -> Self {
-        Self {
-            profile: Profile::default(),
-            encoder: Encoder::load(street),
-        }
-    }
-    fn load(street: Street) -> Self {
-        Self {
-            profile: Profile::load(street),
-            encoder: Encoder::load(street),
-        }
+        self.encoder.save();
     }
 }

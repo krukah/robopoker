@@ -60,7 +60,7 @@ async fn main() {
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
     crate::mccfr::blueprint::Blueprint::train();
     // Let's upload the data to the database.
-    crate::analysis::upload::Upload::upload().await.unwrap();
+    crate::save::writer::Writer::save().await.unwrap();
     // Let's support our frontend.
     crate::analysis::server::Server::run().await.unwrap();
     // Let's see what we've learned.

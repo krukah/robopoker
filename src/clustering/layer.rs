@@ -7,8 +7,8 @@ use super::transitions::Decomp;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::street::Street;
+use crate::save::upload::Upload;
 use crate::Energy;
-use crate::Save;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
 use std::collections::BTreeMap;
@@ -27,10 +27,10 @@ impl Layer {
     /// writing to disk in pgcopy
     pub fn learn() {
         Street::all()
-            .iter()
+            .into_iter()
             .rev()
-            .filter(|s| !Self::done(**s))
-            .map(|s| Self::make(*s).save())
+            .filter(|&&s| !Self::done(s))
+            .map(|&s| Self::grow(s).save())
             .count();
     }
 
@@ -198,7 +198,7 @@ impl Layer {
         use rayon::iter::ParallelIterator;
         let street = self.street();
         match street {
-            Street::Pref | Street::Rive => Lookup::make(street),
+            Street::Pref | Street::Rive => Lookup::grow(street),
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
@@ -221,21 +221,22 @@ impl Layer {
             .iter()
             .cloned()
             .enumerate()
-            .map(|(k, mean)| (self.abstraction(k), mean))
+            .map(|(k, centroid)| (self.abstraction(k), centroid))
             .collect::<BTreeMap<Abstraction, Histogram>>()
             .into()
     }
 }
-
-impl Save for Layer {
-    fn name() -> &'static str {
-        unreachable!("save lookups and transitions and metrics, not higher level layer")
-    }
+impl Upload for Layer {
     fn done(street: Street) -> bool {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)
     }
-    fn load(street: Street) -> Self {
-        match street {
+    fn save(&self) {
+        self.metric().save();
+        self.lookup().save();
+        self.decomp().save();
+    }
+    fn grow(street: Street) -> Self {
+        let layer = match street {
             Street::Rive => Self {
                 street,
                 kmeans: Vec::default(),
@@ -248,14 +249,29 @@ impl Save for Layer {
                 points: Lookup::load(street.next()).projections(),
                 metric: Metric::load(street.next()),
             },
-        }
+        };
+        layer.cluster()
     }
-    fn save(&self) {
-        self.metric().save();
-        self.lookup().save();
-        self.decomp().save();
+
+    fn name() -> String {
+        panic!("at the disco")
     }
-    fn make(street: Street) -> Self {
-        Self::load(street).cluster()
+    fn copy() -> String {
+        panic!("at the disco")
+    }
+    fn load(_: Street) -> Self {
+        panic!("at the disco")
+    }
+    fn prepare() -> String {
+        panic!("at the disco")
+    }
+    fn indices() -> String {
+        panic!("at the disco")
+    }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        panic!("at the disco")
+    }
+    fn sources() -> Vec<String> {
+        panic!("at the disco")
     }
 }
