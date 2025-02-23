@@ -1,4 +1,5 @@
 /target
+/pgcopy
 /data
 /analysis
 /.vscode
@@ -9,7 +10,6 @@
 .env
 .swp
 
-pgcopy.*
 *.log
 *.png
 *.gif

@@ -10,5 +10,5 @@ RUN apt-get update && \
     apt-get install -y libssl3 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/src/robopoker/target/release/robopoker .
-COPY pgcopy.* .
+COPY pgcopy/ pgcopy/
 ENTRYPOINT ["/robopoker"]

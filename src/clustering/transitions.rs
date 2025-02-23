@@ -14,7 +14,7 @@ impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
 
 impl Save for Decomp {
     fn name() -> &'static str {
-        "pgcopy.transitions."
+        "pgcopy/transitions"
     }
     fn make(street: Street) -> Self {
         unreachable!("you have no business making transition table from scratch {street}")
