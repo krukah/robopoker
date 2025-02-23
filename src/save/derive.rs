@@ -6,8 +6,8 @@ pub trait Derive: Sized {
     fn name() -> String;
     fn exhaust() -> Vec<Self>;
     fn prepare() -> String;
-    fn indices() -> String;
-    fn queries(&self) -> String;
+    fn indexes() -> String;
+    fn inserts(&self) -> String;
 }
 
 impl Derive for Abstraction {
@@ -54,7 +54,7 @@ impl Derive for Abstraction {
         .into()
     }
 
-    fn indices() -> String {
+    fn indexes() -> String {
         "
         CREATE INDEX IF NOT EXISTS idx_abstraction_abs ON abstraction (abs);
         CREATE INDEX IF NOT EXISTS idx_abstraction_st  ON abstraction (street);
@@ -64,7 +64,7 @@ impl Derive for Abstraction {
         .into()
     }
 
-    fn queries(&self) -> String {
+    fn inserts(&self) -> String {
         let abs = i64::from(self.clone());
         format!(
             "INSERT INTO abstraction (
@@ -110,11 +110,11 @@ impl Derive for Street {
             .into()
     }
 
-    fn indices() -> String {
+    fn indexes() -> String {
         "CREATE INDEX IF NOT EXISTS idx_street_st ON street (street);".into()
     }
 
-    fn queries(&self) -> String {
+    fn inserts(&self) -> String {
         let street = self.clone() as i16;
         format!(
             "INSERT INTO street (

@@ -87,10 +87,10 @@ impl Writer {
         } else {
             log::info!("deriving {}", name);
             let truncate = D::prepare();
-            let index = D::indices();
+            let index = D::indexes();
             let rows = D::exhaust()
                 .into_iter()
-                .map(|r| r.queries())
+                .map(|r| r.inserts())
                 .collect::<Vec<_>>();
             let ref statement = std::iter::empty()
                 .chain(std::iter::once(truncate))

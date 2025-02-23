@@ -513,6 +513,16 @@ impl Upload for Profile {
     fn sources() -> Vec<String> {
         vec![Self::path(Street::random())]
     }
+    fn path(_: Street) -> String {
+        format!(
+            "{}/pgcopy/{}",
+            std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+            Self::name()
+        )
+    }
     fn grow(_: Street) -> Self {
         unreachable!("must be learned in MCCFR minimization")
     }
