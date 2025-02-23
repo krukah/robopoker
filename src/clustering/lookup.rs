@@ -45,7 +45,7 @@ impl Lookup {
 
 impl Save for Lookup {
     fn name() -> &'static str {
-        "pgcopy.encoder."
+        "pgcopy/isomorphism"
     }
     fn make(street: Street) -> Self {
         use rayon::iter::IntoParallelIterator;

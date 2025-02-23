@@ -435,7 +435,7 @@ impl Profile {
 
 impl Save for Profile {
     fn name() -> &'static str {
-        "pgcopy.profile.blueprint"
+        "pgcopy/blueprint"
     }
     fn make(_: crate::cards::street::Street) -> Self {
         unreachable!("must be learned in MCCFR minimization")
@@ -443,7 +443,6 @@ impl Save for Profile {
     fn path(_: Street) -> String {
         Self::name().to_string()
     }
-
     fn load(_: crate::cards::street::Street) -> Self {
         log::info!("{:<32}{:<32}", "loading     blueprint", Self::name());
         use crate::clustering::abstraction::Abstraction;

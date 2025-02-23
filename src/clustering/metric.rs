@@ -94,7 +94,7 @@ impl Measure for Metric {
 
 impl Save for Metric {
     fn name() -> &'static str {
-        "pgcopy.metric."
+        "pgcopy/metric"
     }
     fn make(street: Street) -> Self {
         unreachable!("you have no business being calculated from scratch, rather than from default {street} ")

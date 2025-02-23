@@ -34,7 +34,7 @@ impl API {
         let iso = i64::from(Isomorphism::from(obs));
         const SQL: &'static str = r#"
             SELECT abs
-            FROM encoder
+            FROM isomorphism
             WHERE obs = $1
         "#;
         Ok(self
@@ -107,14 +107,14 @@ impl API {
         let sql = if obs.street() == Street::Rive {
             r#"
                 SELECT equity
-                FROM encoder
+                FROM isomorphism
                 WHERE obs = $1
             "#
         } else {
             r#"
                 SELECT SUM(t.dx * a.equity)
                 FROM transitions t
-                JOIN encoder     e ON e.abs = t.prev
+                JOIN isomorphism     e ON e.abs = t.prev
                 JOIN abstraction a ON a.abs = t.next
                 WHERE e.obs = $1
             "#
@@ -170,7 +170,7 @@ impl API {
         const SQL: &'static str = r#"
             SELECT population
             FROM abstraction
-            JOIN encoder ON encoder.abs = abstraction.abs
+            JOIN isomorphism ON isomorphism.abs = abstraction.abs
             WHERE obs = $1
         "#;
         Ok(self.0.query_one(SQL, &[&iso]).await?.get::<_, i64>(0) as usize)
@@ -196,7 +196,7 @@ impl API {
         const SQL: &'static str = r#"
             SELECT centrality
             FROM abstraction
-            JOIN encoder ON encoder.abs = abstraction.abs
+            JOIN isomorphism ON isomorphism.abs = abstraction.abs
             WHERE obs = $1
         "#;
         Ok(self
@@ -236,8 +236,8 @@ impl API {
         const SQL: &'static str = r#"
             SELECT next, dx
             FROM transitions
-            JOIN encoder ON encoder.abs = transitions.prev
-            WHERE encoder.obs = $1
+            JOIN isomorphism ON isomorphism.abs = transitions.prev
+            WHERE isomorphism.obs = $1
         "#;
         Ok(self
             .0
@@ -259,12 +259,12 @@ impl API {
         const SQL: &'static str = r#"
             WITH target AS (
                 SELECT abs, population
-                FROM encoder e
+                FROM isomorphism e
                 JOIN abstraction a ON e.abs = a.abs
                 WHERE obs = $1
             )
             SELECT e.obs
-            FROM encoder e
+            FROM isomorphism e
             JOIN target t ON e.abs = t.abs
             WHERE e.obs != $1
                 AND e.position < LEAST(5, t.population)  -- Sample from available positions
@@ -287,7 +287,7 @@ impl API {
                 SELECT population FROM abstraction WHERE abs = $1
             )
             SELECT obs
-            FROM encoder e, target t
+            FROM isomorphism e, target t
             WHERE abs = $1
                 AND position < LEAST(5, t.population)  -- Sample from available positions
                 AND position >= FLOOR(RANDOM() * GREATEST(t.population - 5, 1))  -- Random starting point
@@ -310,13 +310,13 @@ impl API {
                     e.abs,
                     a.population,
                     FLOOR(RANDOM() * a.population)::INTEGER as i
-                FROM encoder        e
+                FROM isomorphism    e
                 JOIN abstraction    a ON e.abs = a.abs
                 WHERE               e.obs = $1
             )
             SELECT          e.obs
             FROM sample     t
-            JOIN encoder    e ON e.abs = t.abs
+            JOIN isomorphism e ON e.abs = t.abs
             AND             e.position = t.i
             LIMIT 1;
         "#;
@@ -355,7 +355,7 @@ impl API {
         const SQL: &'static str = r#"
             -- OBS NEARBY
             SELECT a.abs, m.dx
-            FROM encoder        e
+            FROM isomorphism        e
             JOIN abstraction    a ON e.abs = a.abs
             JOIN metric         m  ON (a.abs # e.abs) = m.xor
             WHERE
@@ -389,7 +389,7 @@ impl API {
                 a.equity::REAL          as equity,
                 a.population::REAL / $2 as density,
                 a.centrality::REAL      as centrality
-            FROM encoder e
+            FROM isomorphism e
             JOIN abstraction a ON e.abs = a.abs
             WHERE e.obs = $1;
         "#;
@@ -420,7 +420,7 @@ impl API {
                 s.population::REAL / $2 as density,
                 s.centrality::REAL      as centrality
             FROM sample     s
-            JOIN encoder    e ON e.abs = s.abs
+            JOIN isomorphism    e ON e.abs = s.abs
             AND             e.position = s.i
             LIMIT 1;
         "#;
@@ -462,10 +462,10 @@ impl API {
                 LEFT JOIN metric    m ON m.xor = ($1::BIGINT # $3::BIGINT)
                 WHERE               r.abs = $1
             ),
-            random_encoder AS (
+            random_isomorphism AS (
                 SELECT e.obs, e.abs, s.equity, s.population, s.distance
                 FROM sample s
-                JOIN encoder e ON e.abs = s.abs AND e.position = s.i
+                JOIN isomorphism e ON e.abs = s.abs AND e.position = s.i
                 WHERE e.abs = $1
                 LIMIT 1
             )
@@ -475,7 +475,7 @@ impl API {
                 equity::REAL                      as equity,
                 population::REAL / $2             as density,
                 distance::REAL                    as distance
-            FROM random_encoder;
+            FROM random_isomorphism;
         "#;
         //
         let n = wrt.street().n_isomorphisms() as f32;
@@ -493,7 +493,7 @@ impl API {
                     (obs),
                     (abs),
                     (abs # $3) as xor
-                FROM    encoder
+                FROM    isomorphism
                 WHERE   obs = $1
             )
             SELECT
@@ -540,7 +540,7 @@ impl API {
                     n.distance::REAL        as distance
                 FROM nearest n
                 JOIN abstraction    a ON a.abs = n.abs
-                JOIN encoder        e ON e.abs = n.abs
+                JOIN isomorphism        e ON e.abs = n.abs
                 AND                 e.position = n.sample
                 ORDER BY            n.distance DESC;
             "#;
@@ -576,7 +576,7 @@ impl API {
                 n.distance::REAL        as distance
             FROM nearest n
             JOIN abstraction    a ON a.abs = n.abs
-            JOIN encoder        e ON e.abs = n.abs
+            JOIN isomorphism        e ON e.abs = n.abs
             AND                 e.position = n.sample
             ORDER BY            n.distance ASC;
         "#;
@@ -606,7 +606,7 @@ impl API {
               a.population::REAL / $1 AS density,
               m.dx::REAL AS distance
             FROM input i
-            JOIN encoder     e ON e.obs = i.obs
+            JOIN isomorphism     e ON e.obs = i.obs
             JOIN abstraction a ON e.abs = a.abs
             JOIN metric      m ON m.xor = (a.abs # $2)
             ORDER BY i.ord
@@ -653,9 +653,9 @@ impl API {
                     a.population,
                     a.centrality,
                     FLOOR(RANDOM() * a.population)::INTEGER as position
-                FROM encoder        e
+                FROM isomorphism        e
                 JOIN abstraction    a ON e.abs = a.abs
-                WHERE               e.abs = (SELECT abs FROM encoder WHERE obs = $2)
+                WHERE               e.abs = (SELECT abs FROM isomorphism WHERE obs = $2)
                 LIMIT 5
             )
             SELECT
@@ -677,7 +677,7 @@ impl API {
         -- OTHER OBS DISTRIBUTION
             SELECT
                 e.obs, e.abs, a.equity
-            FROM encoder        e
+            FROM isomorphism        e
             JOIN abstraction    a ON e.abs = a.abs
             WHERE                    e.obs = ANY($1);
         "#;
@@ -749,7 +749,7 @@ impl API {
                 s.population::REAL / $1 as density,
                 s.centrality::REAL      as distance
             FROM sample     s
-            JOIN encoder    e ON e.abs = s.abs
+            JOIN isomorphism    e ON e.abs = s.abs
             AND             e.position = s.position;
         "#;
         //
@@ -782,7 +782,7 @@ impl API {
                 t.probability      as density,
                 t.centrality::REAL as distance
             FROM histogram  t
-            JOIN encoder    e ON e.abs = t.abs
+            JOIN isomorphism    e ON e.abs = t.abs
             AND             e.position = t.i
             ORDER BY        t.probability DESC;
         "#;

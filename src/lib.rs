@@ -67,7 +67,7 @@ pub trait Save {
         std::fs::metadata(Self::path(street)).is_ok()
     }
     fn path(street: Street) -> String {
-        format!("{}{}", Self::name(), street)
+        format!("{}.{}", Self::name(), street)
     }
 }
 
