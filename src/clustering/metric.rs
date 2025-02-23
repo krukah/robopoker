@@ -4,10 +4,10 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::pair::Pair;
+use crate::save::upload::Upload;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Energy;
-use crate::Save;
 use std::collections::BTreeMap;
 
 /// Distance metric for kmeans clustering.
@@ -15,6 +15,23 @@ use std::collections::BTreeMap;
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
 #[derive(Default)]
 pub struct Metric(BTreeMap<Pair, Energy>);
+
+impl Measure for Metric {
+    type X = Abstraction;
+    type Y = Abstraction;
+    fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
+        if x == y {
+            0.
+        } else {
+            match (x, y) {
+                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
+                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
+                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
+                _ => unreachable!(),
+            }
+        }
+    }
+}
 
 impl Metric {
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
@@ -75,32 +92,60 @@ impl Metric {
         }
     }
 }
-impl Measure for Metric {
-    type X = Abstraction;
-    type Y = Abstraction;
-    fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        if x == y {
-            0.
-        } else {
-            match (x, y) {
-                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
-                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
-                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
-                _ => unreachable!(),
-            }
-        }
-    }
-}
 
-impl Save for Metric {
-    fn name() -> &'static str {
-        "pgcopy/metric"
+impl Upload for Metric {
+    fn name() -> String {
+        "metric".to_string()
     }
-    fn make(street: Street) -> Self {
-        unreachable!("you have no business being calculated from scratch, rather than from default {street} ")
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        &[
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::FLOAT4,
+        ]
+    }
+    fn sources() -> Vec<String> {
+        Street::all()
+            .iter()
+            .rev()
+            .copied()
+            .map(Self::path)
+            .collect()
+    }
+    fn copy() -> String {
+        "COPY metric (
+            xor,
+            dx
+        )
+        FROM STDIN BINARY
+        "
+        .to_string()
+    }
+    fn prepare() -> String {
+        "
+        CREATE TABLE IF NOT EXISTS metric (
+            xor        BIGINT,
+            dx         REAL
+        );
+        "
+        .to_string()
+    }
+    fn indices() -> String {
+        "
+        INSERT INTO metric (
+            xor,
+            dx
+        ) VALUES (
+            0,
+            0
+        );
+        CREATE INDEX IF NOT EXISTS idx_metric_xor ON metric (xor);
+        CREATE INDEX IF NOT EXISTS idx_metric_dx  ON metric (dx);
+        "
+        .to_string()
     }
     fn load(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading     metric", street);
+        let ref path = Self::path(street);
+        log::info!("{:<32}{:<32}", "loading     metric", path);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -108,13 +153,11 @@ impl Save for Metric {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref path = Self::path(street);
         let ref file = File::open(path).expect(&format!("open {}", path));
         let mut metric = BTreeMap::new();
         let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(19)).expect("seek past header");
-
         let ref mut buffer = [0u8; 2];
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(buffer).is_ok() {
             match u16::from_be_bytes(buffer.clone()) {
                 2 => {
@@ -125,6 +168,7 @@ impl Save for Metric {
                     metric.insert(Pair::from(pair), dist);
                     continue;
                 }
+                0xFFFF => break,
                 n => panic!("unexpected number of fields: {}", n),
             }
         }
@@ -140,9 +184,7 @@ impl Save for Metric {
         use std::fs::File;
         use std::io::Write;
         log::info!("{:<32}{:<32}", "saving      metric", path);
-        file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
-        file.write_u32::<BE>(0).expect("flags");
-        file.write_u32::<BE>(0).expect("extension");
+        file.write_all(Self::header()).expect("header");
         for (pair, distance) in self.0.iter() {
             file.write_u16::<BE>(N_FIELDS).unwrap();
             file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
@@ -150,10 +192,12 @@ impl Save for Metric {
             file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
             file.write_f32::<BE>(*distance).unwrap();
         }
-        file.write_u16::<BE>(0xFFFF).expect("trailer");
+        file.write_u16::<BE>(Self::footer()).expect("trailer");
+    }
+    fn grow(_: Street) -> Self {
+        unreachable!("metric must be learned from kmeans clustering")
     }
 }
-
 impl From<BTreeMap<Pair, Energy>> for Metric {
     fn from(metric: BTreeMap<Pair, Energy>) -> Self {
         let max = metric.values().copied().fold(f32::MIN_POSITIVE, f32::max);
@@ -171,7 +215,8 @@ mod tests {
     use super::*;
     use crate::cards::street::Street;
     use crate::clustering::emd::EMD;
-    use crate::{Arbitrary, Save};
+    use crate::save::upload::Upload;
+    use crate::Arbitrary;
 
     #[test]
     fn persistence() {

@@ -10,7 +10,6 @@ use crate::clustering::abstraction::Abstraction;
 use crate::clustering::lookup::Lookup;
 use crate::gameplay::game::Game;
 use crate::Arbitrary;
-use crate::Save;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -78,21 +77,41 @@ impl Encoder {
     }
 }
 
-impl Save for Encoder {
-    fn name() -> &'static str {
-        unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
+impl Arbitrary for Encoder {
+    fn random() -> Self {
+        const S: usize = 128;
+        Self(
+            (0..)
+                .map(|_| Isomorphism::random())
+                .map(|i| (i, Abstraction::random()))
+                .filter(|(i, a)| i.0.street() == a.street())
+                .take(S)
+                .collect::<BTreeMap<_, _>>()
+                .into(),
+        )
     }
-    fn save(&self) {
-        unreachable!("saving happens at a lower level, composed of 4 street-level Lookup saves")
+}
+
+use crate::save::upload::Upload;
+
+impl Upload for Encoder {
+    fn name() -> String {
+        Lookup::name()
     }
-    fn make(_: Street) -> Self {
-        unreachable!("you have no buisiness making an encoding from scratch")
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        Lookup::columns()
     }
-    fn done(_: Street) -> bool {
-        Street::all()
-            .iter()
-            .copied()
-            .all(|street| Lookup::done(street))
+    fn sources() -> Vec<String> {
+        Lookup::sources()
+    }
+    fn prepare() -> String {
+        Lookup::prepare()
+    }
+    fn indices() -> String {
+        Lookup::indices()
+    }
+    fn copy() -> String {
+        Lookup::copy()
     }
     fn load(_: Street) -> Self {
         Self(
@@ -108,19 +127,10 @@ impl Save for Encoder {
                 .into(),
         )
     }
-}
-
-impl Arbitrary for Encoder {
-    fn random() -> Self {
-        const S: usize = 128;
-        Self(
-            (0..)
-                .map(|_| Isomorphism::random())
-                .map(|i| (i, Abstraction::random()))
-                .filter(|(i, a)| i.0.street() == a.street())
-                .take(S)
-                .collect::<BTreeMap<_, _>>()
-                .into(),
-        )
+    fn save(&self) {
+        unreachable!("saving happens at Lookup level. composed of 4 street-level Lookup saves")
+    }
+    fn grow(_: Street) -> Self {
+        unreachable!("you have no business making an encoding from scratch, learn from kmeans")
     }
 }

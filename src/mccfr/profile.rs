@@ -15,7 +15,6 @@ use crate::mccfr::node::Node;
 use crate::mccfr::player::Player;
 use crate::Arbitrary;
 use crate::Probability;
-use crate::Save;
 use crate::Utility;
 use rand::rngs::SmallRng;
 use rand::Rng;
@@ -433,109 +432,6 @@ impl Profile {
     }
 }
 
-impl Save for Profile {
-    fn name() -> &'static str {
-        "pgcopy/blueprint"
-    }
-    fn make(_: crate::cards::street::Street) -> Self {
-        unreachable!("must be learned in MCCFR minimization")
-    }
-    fn path(_: Street) -> String {
-        Self::name().to_string()
-    }
-    fn load(_: crate::cards::street::Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading     blueprint", Self::name());
-        use crate::clustering::abstraction::Abstraction;
-        use crate::mccfr::path::Path;
-        use byteorder::ReadBytesExt;
-        use byteorder::BE;
-        use std::fs::File;
-        use std::io::BufReader;
-        use std::io::Read;
-        use std::io::Seek;
-        use std::io::SeekFrom;
-        let ref path = Self::name();
-        let file = File::open(path).expect("open file");
-        let mut strategies = BTreeMap::new();
-        let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(19)).expect("seek past header");
-
-        let ref mut buffer = [0u8; 2];
-        while reader.read_exact(buffer).is_ok() {
-            match u16::from_be_bytes(buffer.clone()) {
-                6 => {
-                    // we expect 6 fields per record
-                    // 4 indexed fields
-                    reader.read_u32::<BE>().expect("past path length");
-                    let history = Path::from(reader.read_u64::<BE>().expect("history"));
-                    reader.read_u32::<BE>().expect("abstraction length");
-                    let present = Abstraction::from(reader.read_u64::<BE>().expect("abstraction"));
-                    reader.read_u32::<BE>().expect("future path length");
-                    let choices = Path::from(reader.read_u64::<BE>().expect("choices"));
-                    reader.read_u32::<BE>().expect("edge length");
-                    let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
-                    // 2 unindexed fields
-                    reader.read_u32::<BE>().expect("regret length");
-                    let regret = reader.read_f32::<BE>().expect("read regret");
-                    reader.read_u32::<BE>().expect("policy length");
-                    let policy = reader.read_f32::<BE>().expect("read policy");
-                    // idempotent insert
-                    let bucket = Bucket::from((history, present, choices));
-                    let memory = strategies
-                        .entry(bucket)
-                        .or_insert_with(Strategy::default)
-                        .entry(edge)
-                        .or_insert_with(Memory::default);
-                    memory.set_regret(regret);
-                    memory.set_policy(policy);
-                    continue;
-                }
-                n => panic!("unexpected number of fields: {}", n),
-            }
-        }
-        Self {
-            strategies,
-            // it would be nice if this came from file
-            // but idk where to put it in the binary format.
-            // the header flags are a no-go apparently, since postgres reserves those
-            iterations: 0,
-        }
-    }
-    fn save(&self) {
-        const N_FIELDS: u16 = 6;
-        let ref path = Self::name();
-        let ref mut file = File::create(path).expect(&format!("touch {}", path));
-        use byteorder::WriteBytesExt;
-        use byteorder::BE;
-        use std::fs::File;
-        use std::io::Write;
-        log::info!("{:<32}{:<32}", "saving      blueprint", path);
-        file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
-        file.write_u32::<BE>(0).expect("flags");
-        file.write_u32::<BE>(0).expect("extension");
-        for (bucket, strategy) in self.strategies.iter() {
-            for (edge, memory) in strategy.iter() {
-                file.write_u16::<BE>(N_FIELDS).unwrap();
-                // 4 indexed fields
-                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(bucket.0)).unwrap();
-                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(bucket.1)).unwrap();
-                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(bucket.2)).unwrap();
-                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
-                file.write_u64::<BE>(u64::from(edge.clone())).unwrap();
-                // 2 unindexed fields
-                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-                file.write_f32::<BE>(memory.regret()).unwrap();
-                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-                file.write_f32::<BE>(memory.policy()).unwrap();
-            }
-        }
-        file.write_u16::<BE>(0xFFFF).expect("trailer");
-    }
-}
-
 impl Arbitrary for Profile {
     fn random() -> Self {
         Self {
@@ -579,8 +475,8 @@ impl std::fmt::Display for Profile {
 mod tests {
     use super::*;
     use crate::cards::street::Street;
+    use crate::save::upload::Upload;
     use crate::Arbitrary;
-    use crate::Save;
 
     #[test]
     #[ignore]
@@ -595,5 +491,144 @@ mod tests {
             .chain(save.strategies.iter().zip(load.strategies.iter()))
             .chain(load.strategies.iter().zip(save.strategies.iter()))
             .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2));
+    }
+}
+
+use crate::save::upload::Upload;
+
+impl Upload for Profile {
+    fn name() -> String {
+        "blueprint".to_string()
+    }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        &[
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::FLOAT4,
+            tokio_postgres::types::Type::FLOAT4,
+        ]
+    }
+    fn sources() -> Vec<String> {
+        vec![Self::path(Street::random())]
+    }
+    fn grow(_: Street) -> Self {
+        unreachable!("must be learned in MCCFR minimization")
+    }
+    fn copy() -> String {
+        "COPY blueprint (
+            past,
+            present,
+            future,
+            edge,
+            policy,
+            regret
+        )
+        FROM STDIN BINARY
+        "
+        .to_string()
+    }
+    fn prepare() -> String {
+        "CREATE TABLE IF NOT EXISTS blueprint (
+            edge       BIGINT,
+            past       BIGINT,
+            present    BIGINT,
+            future     BIGINT,
+            policy     REAL,
+            regret     REAL
+        );
+        "
+        .to_string()
+    }
+    fn indices() -> String {
+        "
+        CREATE INDEX IF NOT EXISTS idx_blueprint_bucket  ON blueprint (present, past, future);
+        CREATE INDEX IF NOT EXISTS idx_blueprint_future  ON blueprint (future);
+        CREATE INDEX IF NOT EXISTS idx_blueprint_present ON blueprint (present);
+        CREATE INDEX IF NOT EXISTS idx_blueprint_edge    ON blueprint (edge);
+        CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
+        "
+        .to_string()
+    }
+    fn load(_: Street) -> Self {
+        let ref path = Self::path(Street::random());
+        log::info!("{:<32}{:<32}", "loading     blueprint", path);
+        use crate::clustering::abstraction::Abstraction;
+        use crate::mccfr::path::Path;
+        use byteorder::ReadBytesExt;
+        use byteorder::BE;
+        use std::fs::File;
+        use std::io::BufReader;
+        use std::io::Read;
+        use std::io::Seek;
+        use std::io::SeekFrom;
+        let file = File::open(path).expect("open file");
+        let mut strategies = BTreeMap::new();
+        let mut reader = BufReader::new(file);
+        let ref mut buffer = [0u8; 2];
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
+        while reader.read_exact(buffer).is_ok() {
+            match u16::from_be_bytes(buffer.clone()) {
+                6 => {
+                    reader.read_u32::<BE>().expect("past path length");
+                    let history = Path::from(reader.read_u64::<BE>().expect("history"));
+                    reader.read_u32::<BE>().expect("abstraction length");
+                    let present = Abstraction::from(reader.read_u64::<BE>().expect("abstraction"));
+                    reader.read_u32::<BE>().expect("future path length");
+                    let choices = Path::from(reader.read_u64::<BE>().expect("choices"));
+                    reader.read_u32::<BE>().expect("edge length");
+                    let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
+                    reader.read_u32::<BE>().expect("regret length");
+                    let regret = reader.read_f32::<BE>().expect("read regret");
+                    reader.read_u32::<BE>().expect("policy length");
+                    let policy = reader.read_f32::<BE>().expect("read policy");
+                    let bucket = Bucket::from((history, present, choices));
+                    let memory = strategies
+                        .entry(bucket)
+                        .or_insert_with(Strategy::default)
+                        .entry(edge)
+                        .or_insert_with(Memory::default);
+                    memory.set_regret(regret);
+                    memory.set_policy(policy);
+                    continue;
+                }
+                0xFFFF => break,
+                n => panic!("unexpected number of fields: {}", n),
+            }
+        }
+        Self {
+            strategies,
+            iterations: 0,
+        }
+    }
+    fn save(&self) {
+        const N_FIELDS: u16 = 6;
+        let ref path = Self::path(Street::random());
+        let ref mut file = File::create(path).expect(&format!("touch {}", path));
+        use byteorder::WriteBytesExt;
+        use byteorder::BE;
+        use std::fs::File;
+        use std::io::Write;
+        log::info!("{:<32}{:<32}", "saving      blueprint", path);
+        file.write_all(Self::header()).expect("header");
+        for (bucket, strategy) in self.strategies.iter() {
+            for (edge, memory) in strategy.iter() {
+                file.write_u16::<BE>(N_FIELDS).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(bucket.0)).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(bucket.1)).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(bucket.2)).unwrap();
+                file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
+                file.write_u64::<BE>(u64::from(edge.clone())).unwrap();
+                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
+                file.write_f32::<BE>(memory.regret()).unwrap();
+                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
+                file.write_f32::<BE>(memory.policy()).unwrap();
+            }
+        }
+        file.write_u16::<BE>(Self::footer()).expect("trailer");
     }
 }

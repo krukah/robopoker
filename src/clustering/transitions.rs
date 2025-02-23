@@ -1,8 +1,10 @@
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::Save;
+use crate::save::upload::Upload;
 use std::collections::BTreeMap;
+use std::mem::size_of;
+use std::u16;
 
 pub struct Decomp(BTreeMap<Abstraction, Histogram>);
 
@@ -11,16 +13,60 @@ impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
         Self(map)
     }
 }
-
-impl Save for Decomp {
-    fn name() -> &'static str {
-        "pgcopy/transitions"
+impl Upload for Decomp {
+    fn name() -> String {
+        "transitions".to_string()
     }
-    fn make(street: Street) -> Self {
+    fn grow(street: Street) -> Self {
         unreachable!("you have no business making transition table from scratch {street}")
     }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        &[
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::FLOAT4,
+        ]
+    }
+    fn sources() -> Vec<String> {
+        Street::all()
+            .iter()
+            .rev()
+            .copied()
+            .map(Self::path)
+            .collect()
+    }
+    fn prepare() -> String {
+        "
+        CREATE TABLE IF NOT EXISTS transitions (
+            prev       BIGINT,
+            next       BIGINT,
+            dx         REAL
+        );"
+        .to_string()
+    }
+    fn indices() -> String {
+        "
+        CREATE INDEX IF NOT EXISTS idx_transitions_dx        ON transitions(dx);
+        CREATE INDEX IF NOT EXISTS idx_transitions_prev_dx   ON transitions(prev, dx);
+        CREATE INDEX IF NOT EXISTS idx_transitions_next_dx   ON transitions(next, dx);
+        CREATE INDEX IF NOT EXISTS idx_transitions_prev_next ON transitions(prev, next);
+        CREATE INDEX IF NOT EXISTS idx_transitions_next_prev ON transitions(next, prev);
+        "
+        .to_string()
+    }
+    fn copy() -> String {
+        "
+        COPY transitions (
+            prev,
+            next,
+            dx
+        ) FROM STDIN BINARY
+        "
+        .to_string()
+    }
     fn load(street: Street) -> Self {
-        log::info!("{:<32}{:<32}", "loading     transitions", street);
+        let ref path = Self::path(street);
+        log::info!("{:<32}{:<32}", "loading     transitions", path);
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -29,13 +75,11 @@ impl Save for Decomp {
         use std::io::Seek;
         use std::io::SeekFrom;
         let ref mass = street.n_children() as f32;
-        let ref path = Self::path(street);
         let ref file = File::open(path).expect(&format!("open {}", path));
         let mut decomp = BTreeMap::new();
         let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(19)).expect("seek past header");
-
         let ref mut buffer = [0u8; 2];
+        reader.seek(SeekFrom::Start(19)).expect("seek past header");
         while reader.read_exact(buffer).is_ok() {
             match u16::from_be_bytes(buffer.clone()) {
                 3 => {
@@ -51,6 +95,7 @@ impl Save for Decomp {
                         .set(Abstraction::from(into), (weight * mass) as usize);
                     continue;
                 }
+                0xFFFF => break,
                 n => panic!("unexpected number of fields: {}", n),
             }
         }
@@ -63,7 +108,7 @@ impl Save for Decomp {
             .keys()
             .next()
             .copied()
-            .unwrap_or_else(|| Abstraction::from(0f32)) // coerce to River equity Abstraction if empty
+            .unwrap_or_else(|| Abstraction::from(0f32))
             .street();
         let ref path = Self::path(street);
         let ref mut file = File::create(path).expect(&format!("touch {}", path));
@@ -72,9 +117,7 @@ impl Save for Decomp {
         use std::fs::File;
         use std::io::Write;
         log::info!("{:<32}{:<32}", "saving      transition", path);
-        file.write_all(b"PGCOPY\n\xFF\r\n\0").expect("header");
-        file.write_u32::<BE>(0).expect("flags");
-        file.write_u32::<BE>(0).expect("extension");
+        file.write_all(Self::header()).expect("header");
         for (from, histogram) in self.0.iter() {
             for into in histogram.support() {
                 file.write_u16::<BE>(N_FIELDS).unwrap();
@@ -86,6 +129,6 @@ impl Save for Decomp {
                 file.write_f32::<BE>(histogram.density(into)).unwrap();
             }
         }
-        file.write_u16::<BE>(0xFFFF).expect("trailer");
+        file.write_u16::<BE>(Self::footer()).expect("trailer");
     }
 }
