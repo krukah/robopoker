@@ -126,11 +126,11 @@ mod tests {
         let d22 = Sinkhorn::from((&h2, &h2, &metric)).minimize().cost();
         assert!(
             d11 <= TOLERANCE,
-            "consider increasing temperature or decreasing tolerance\n{d11} {TOLERANCE}",
+            "consider decreasing temp or tolerance\n{d11} {TOLERANCE}",
         );
         assert!(
             d22 <= TOLERANCE,
-            "consider increasing temperature or decreasing tolerance\n{d22} {TOLERANCE}",
+            "consider decreasing temp or tolerance\n{d22} {TOLERANCE}",
         );
     }
 
