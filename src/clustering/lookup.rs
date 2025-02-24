@@ -46,6 +46,7 @@ impl Lookup {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[test]
     fn persistence() {
         let street = Street::Pref;

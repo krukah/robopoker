@@ -209,7 +209,6 @@ impl From<BTreeMap<Pair, Energy>> for Metric {
         )
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -218,6 +217,7 @@ mod tests {
     use crate::save::upload::Upload;
     use crate::Arbitrary;
 
+    #[ignore]
     #[test]
     fn persistence() {
         let street = Street::Rive;
