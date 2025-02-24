@@ -25,7 +25,7 @@ const MAX_RAISE_REPEATS: usize = 3;
 const MAX_DEPTH_SUBGAME: usize = 16;
 
 /// sinkhorn optimal transport parameters
-const SINKHORN_TEMPERATURE: Entropy = 0.05;
+const SINKHORN_TEMPERATURE: Entropy = 0.03;
 const SINKHORN_ITERATIONS: usize = 128;
 const SINKHORN_TOLERANCE: Energy = 0.001;
 
