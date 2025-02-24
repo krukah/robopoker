@@ -164,9 +164,9 @@ impl Upload for Lookup {
         while reader.read_exact(buffer).is_ok() {
             match u16::from_be_bytes(buffer.clone()) {
                 2 => {
-                    reader.read_u32::<BE>().expect("observation length");
+                    assert!(8 == reader.read_u32::<BE>().expect("observation length"));
                     let iso = reader.read_i64::<BE>().expect("read observation");
-                    reader.read_u32::<BE>().expect("abstraction length");
+                    assert!(8 == reader.read_u32::<BE>().expect("abstraction length"));
                     let abs = reader.read_i64::<BE>().expect("read abstraction");
                     let observation = Isomorphism::from(iso);
                     let abstraction = Abstraction::from(abs);
