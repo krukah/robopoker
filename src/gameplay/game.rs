@@ -371,8 +371,7 @@ impl Game {
         assert!(self.street() == Street::Pref);
         match (self.ticker as isize - self.dealer as isize) % self.n() as isize {
             1 => Self::sblind().min(self.actor_ref().stack()),
-            2 => Self::bblind().min(self.actor_ref().stack()),
-            _ => panic!("invalid blind position"),
+            _ => Self::bblind().min(self.actor_ref().stack()),
         }
     }
     pub fn to_shove(&self) -> Chips {
