@@ -1,9 +1,4 @@
 use crate::cards::street::Street;
-use byteorder::ReadBytesExt;
-use byteorder::BE;
-use std::fs::File;
-use std::io::BufReader;
-use tokio_postgres::types::ToSql;
 use tokio_postgres::types::Type;
 
 // blueprint    ~ 154M, (grows with number of CFR iterations)
@@ -35,18 +30,6 @@ pub trait Upload {
     fn load(street: Street) -> Self;
     /// write to disk
     fn save(&self);
-    /// given a BufReader<File>, read a row according to Self::columns()
-    fn read(reader: &mut BufReader<File>) -> Vec<Box<dyn ToSql + Sync>> {
-        Self::columns()
-            .iter()
-            .cloned()
-            .map(|ty| match ty {
-                Type::FLOAT4 => Box::new(reader.read_f32::<BE>().unwrap()) as Box<dyn ToSql + Sync>,
-                Type::INT8 => Box::new(reader.read_i64::<BE>().unwrap()) as Box<dyn ToSql + Sync>,
-                _ => panic!("unsupported type: {}", ty),
-            })
-            .collect::<Vec<Box<dyn ToSql + Sync>>>()
-    }
 
     /// query to nuke table in Postgres
     fn nuke() -> String {
