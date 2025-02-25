@@ -144,7 +144,7 @@ impl Blueprint {
 
 impl Upload for Blueprint {
     fn name() -> String {
-        Profile::name()
+        unimplemented!()
     }
     fn done(street: Street) -> bool {
         Profile::done(street) && Encoder::done(street)
@@ -156,19 +156,19 @@ impl Upload for Blueprint {
         }
     }
     fn copy() -> String {
-        Profile::copy()
+        unimplemented!()
     }
-    fn prepare() -> String {
-        Profile::prepare()
+    fn create() -> String {
+        unimplemented!()
     }
     fn indices() -> String {
-        Profile::indices()
+        unimplemented!()
     }
     fn columns() -> &'static [tokio_postgres::types::Type] {
-        Profile::columns()
+        unimplemented!()
     }
     fn sources() -> Vec<String> {
-        Profile::sources()
+        unimplemented!()
     }
     fn load(_: Street) -> Self {
         Self {

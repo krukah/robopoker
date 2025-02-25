@@ -539,8 +539,9 @@ impl Upload for Profile {
         "
         .to_string()
     }
-    fn prepare() -> String {
-        "CREATE TABLE IF NOT EXISTS blueprint (
+    fn create() -> String {
+        "
+        CREATE TABLE IF NOT EXISTS blueprint (
             edge       BIGINT,
             past       BIGINT,
             present    BIGINT,
