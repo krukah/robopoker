@@ -254,24 +254,24 @@ impl Upload for Layer {
     }
 
     fn name() -> String {
-        panic!("at the disco")
+        unimplemented!()
     }
     fn copy() -> String {
-        panic!("at the disco")
+        unimplemented!()
     }
     fn load(_: Street) -> Self {
-        panic!("at the disco")
+        unimplemented!()
     }
-    fn prepare() -> String {
-        panic!("at the disco")
+    fn create() -> String {
+        unimplemented!()
     }
     fn indices() -> String {
-        panic!("at the disco")
+        unimplemented!()
     }
     fn columns() -> &'static [tokio_postgres::types::Type] {
-        panic!("at the disco")
+        unimplemented!()
     }
     fn sources() -> Vec<String> {
-        panic!("at the disco")
+        unimplemented!()
     }
 }

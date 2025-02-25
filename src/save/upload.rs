@@ -17,7 +17,7 @@ pub trait Upload {
     /// Returns the COPY command used to load data into the database
     fn copy() -> String;
     /// Returns the SQL to prepare the table schema
-    fn prepare() -> String;
+    fn create() -> String;
     /// Returns the SQL to create indices on the table
     fn indices() -> String;
     /// Returns the column types for the table

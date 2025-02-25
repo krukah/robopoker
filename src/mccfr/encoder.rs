@@ -104,8 +104,8 @@ impl Upload for Encoder {
     fn sources() -> Vec<String> {
         Lookup::sources()
     }
-    fn prepare() -> String {
-        Lookup::prepare()
+    fn create() -> String {
+        Lookup::create()
     }
     fn indices() -> String {
         Lookup::indices()
@@ -128,9 +128,9 @@ impl Upload for Encoder {
         )
     }
     fn save(&self) {
-        unreachable!("saving happens at Lookup level. composed of 4 street-level Lookup saves")
+        unimplemented!("saving happens at Lookup level. composed of 4 street-level Lookup saves")
     }
     fn grow(_: Street) -> Self {
-        unreachable!("you have no business making an encoding from scratch, learn from kmeans")
+        unimplemented!("you have no business making an encoding from scratch, learn from kmeans")
     }
 }

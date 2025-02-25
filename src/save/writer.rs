@@ -33,41 +33,11 @@ impl Writer {
         postgres.upload::<Metric>().await?;
         postgres.upload::<Decomp>().await?;
         postgres.upload::<Encoder>().await?; // Lookup ?
-        postgres.upload::<Profile>().await?;
+        postgres.upload::<Profile>().await?; // Blueprint ?
         postgres.derive::<Abstraction>().await?;
         postgres.derive::<Street>().await?;
-        postgres.vacuum().await?;
+        postgres.0.batch_execute("VACUUM ANALYZE;").await?;
         Ok(())
-    }
-
-    async fn derive<D>(&self) -> Result<(), E>
-    where
-        D: Derive,
-    {
-        let ref name = D::name();
-        // if !does_exist(name).await? {
-        // create
-        // }
-        if self.has_rows(name).await? {
-            log::info!("tables data already uploaded ({})", name);
-            Ok(())
-        } else {
-            log::info!("deriving {}", name);
-            let truncate = D::prepare();
-            let index = D::indexes();
-            let rows = D::exhaust()
-                .into_iter()
-                .map(|r| r.inserts())
-                .collect::<Vec<_>>();
-            let ref statement = std::iter::empty()
-                .chain(std::iter::once(truncate))
-                .chain(std::iter::once(index))
-                .chain(rows)
-                .collect::<Vec<_>>()
-                .join("\n;");
-            self.0.batch_execute(statement).await?;
-            Ok(())
-        }
     }
 
     async fn upload<U>(&self) -> Result<(), E>
@@ -75,38 +45,41 @@ impl Writer {
         U: Upload,
     {
         let ref name = U::name();
-        // if !does_exist(name).await? {
-        // create
-        // }
-        if self.has_rows(name).await? {
-            log::info!("tables data already uploaded ({})", name);
+        if self.absent(name).await? {
+            log::info!("creating table ({})", name);
+            self.0.batch_execute(&U::create()).await?;
+            self.0.batch_execute(&U::nuke()).await?;
+        }
+        if self.vacant(name).await? {
+            log::info!("copying {}", name);
+            self.stream::<U>().await?;
+            self.0.batch_execute(&U::indices()).await?;
             Ok(())
         } else {
-            log::info!("copying {}", name);
-            self.prepare::<U>().await?;
-            self.stream::<U>().await?;
-            self.index::<U>().await?;
+            log::info!("tables data already uploaded ({})", name);
             Ok(())
         }
     }
 
-    async fn prepare<T>(&self) -> Result<(), E>
+    async fn derive<D>(&self) -> Result<(), E>
     where
-        T: Upload,
+        D: Derive,
     {
-        self.0.batch_execute(&T::prepare()).await?;
-        self.0.batch_execute(&T::nuke()).await?;
-        Ok(())
+        let ref name = D::name();
+        if self.absent(name).await? {
+            log::info!("creating table ({})", name);
+            self.0.batch_execute(&D::create()).await?;
+        }
+        if self.vacant(name).await? {
+            log::info!("deriving {}", name);
+            self.0.batch_execute(&D::indexes()).await?;
+            self.0.batch_execute(&D::derived()).await?;
+            Ok(())
+        } else {
+            log::info!("tables data already uploaded ({})", name);
+            Ok(())
+        }
     }
-
-    async fn index<T>(&self) -> Result<(), E>
-    where
-        T: Upload,
-    {
-        self.0.batch_execute(&T::indices()).await?;
-        Ok(())
-    }
-
     async fn stream<T>(&self) -> Result<(), E>
     where
         T: Upload,
@@ -137,25 +110,38 @@ impl Writer {
         Ok(())
     }
 
-    async fn vacuum(&self) -> Result<(), E> {
-        self.0.batch_execute("VACUUM ANALYZE;").await
+    fn read<T>(reader: &mut BufReader<File>) -> Vec<Box<dyn ToSql + Sync>>
+    where
+        T: Upload,
+    {
+        T::columns()
+            .iter()
+            .map(|ty| match *ty {
+                Type::FLOAT4 => {
+                    assert_eq!(reader.read_u32::<BE>().expect("length"), 4);
+                    Box::new(reader.read_f32::<BE>().expect("data")) as Box<dyn ToSql + Sync>
+                }
+                Type::INT8 => {
+                    assert_eq!(reader.read_u32::<BE>().expect("length"), 8);
+                    Box::new(reader.read_i64::<BE>().expect("data")) as Box<dyn ToSql + Sync>
+                }
+                _ => panic!("unsupported type: {}", ty),
+            })
+            .collect::<Vec<Box<dyn ToSql + Sync>>>()
     }
-    async fn has_rows(&self, table: &str) -> Result<bool, E> {
-        if self.does_exist(table).await? {
-            let ref sql = format!(
-                "
-                SELECT 1
-                FROM   {}
-                LIMIT  1;
-                ",
-                table
-            );
-            Ok(!self.0.query(sql, &[]).await?.is_empty())
-        } else {
-            Ok(false)
-        }
+
+    async fn vacant(&self, table: &str) -> Result<bool, E> {
+        let ref sql = format!(
+            "
+            SELECT 1
+            FROM   {}
+            LIMIT  1;
+            ",
+            table
+        );
+        Ok(self.0.query(sql, &[]).await?.is_empty())
     }
-    async fn does_exist(&self, table: &str) -> Result<bool, E> {
+    async fn absent(&self, table: &str) -> Result<bool, E> {
         let ref sql = format!(
             "
             SELECT  1
@@ -164,27 +150,6 @@ impl Writer {
             ",
             table
         );
-        Ok(!self.0.query(sql, &[]).await?.is_empty())
-    }
-
-    fn read<T>(reader: &mut BufReader<File>) -> Vec<Box<dyn ToSql + Sync>>
-    where
-        T: Upload,
-    {
-        T::columns()
-            .iter()
-            .cloned()
-            .map(|ty| match ty {
-                Type::FLOAT4 => {
-                    assert!(reader.read_u32::<BE>().expect("length") == 4);
-                    Box::new(reader.read_f32::<BE>().expect("data")) as Box<dyn ToSql + Sync>
-                }
-                Type::INT8 => {
-                    assert!(reader.read_u32::<BE>().expect("length") == 8);
-                    Box::new(reader.read_i64::<BE>().expect("data")) as Box<dyn ToSql + Sync>
-                }
-                _ => panic!("unsupported type: {}", ty),
-            })
-            .collect::<Vec<Box<dyn ToSql + Sync>>>()
+        Ok(self.0.query(sql, &[]).await?.is_empty())
     }
 }

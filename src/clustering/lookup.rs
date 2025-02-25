@@ -89,7 +89,7 @@ impl Upload for Lookup {
             .map(Self::path)
             .collect()
     }
-    fn prepare() -> String {
+    fn create() -> String {
         "
         CREATE TABLE IF NOT EXISTS isomorphism (
             obs        BIGINT,
