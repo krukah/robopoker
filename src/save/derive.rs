@@ -5,7 +5,7 @@ use crate::clustering::abstraction::Abstraction;
 pub trait Derive: Sized {
     fn name() -> String;
     fn exhaust() -> Vec<Self>;
-    fn create() -> String;
+    fn creates() -> String;
     fn indexes() -> String;
     fn inserts(&self) -> String;
     fn derived() -> String {
@@ -30,7 +30,7 @@ impl Derive for Abstraction {
         "abstraction".to_string()
     }
 
-    fn create() -> String {
+    fn creates() -> String {
         "CREATE TABLE IF NOT EXISTS abstraction (
             abs         BIGINT,
             street      SMALLINT,
@@ -97,7 +97,7 @@ impl Derive for Street {
         "street".to_string()
     }
 
-    fn create() -> String {
+    fn creates() -> String {
         "CREATE TABLE IF NOT EXISTS street (
             street     SMALLINT,
             nobs       INTEGER,
