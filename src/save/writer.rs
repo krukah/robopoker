@@ -68,7 +68,7 @@ impl Writer {
         let ref name = D::name();
         if self.absent(name).await? {
             log::info!("creating table ({})", name);
-            self.0.batch_execute(&D::create()).await?;
+            self.0.batch_execute(&D::creates()).await?;
         }
         if self.vacant(name).await? {
             log::info!("deriving {}", name);
@@ -99,7 +99,16 @@ impl Writer {
                     0xFFFF => break,
                     length => {
                         assert!(length == T::columns().len() as u16);
-                        let row = Self::read::<T>(reader);
+                        let row = T::columns()
+                            .iter()
+                            .map(|_| match reader.read_u32::<BE>().expect("length") {
+                                4 => Box::new(reader.read_f32::<BE>().unwrap())
+                                    as Box<dyn ToSql + Sync>,
+                                8 => Box::new(reader.read_i64::<BE>().unwrap())
+                                    as Box<dyn ToSql + Sync>,
+                                x => panic!("unsupported type: {}", x),
+                            })
+                            .collect::<Vec<Box<dyn ToSql + Sync>>>();
                         let row = row.iter().map(|b| &**b).collect::<Vec<_>>();
                         writer.as_mut().write(&row).await?;
                     }
@@ -108,26 +117,6 @@ impl Writer {
         }
         writer.finish().await?;
         Ok(())
-    }
-
-    fn read<T>(reader: &mut BufReader<File>) -> Vec<Box<dyn ToSql + Sync>>
-    where
-        T: Upload,
-    {
-        T::columns()
-            .iter()
-            .map(|ty| match *ty {
-                Type::FLOAT4 => {
-                    assert_eq!(reader.read_u32::<BE>().expect("length"), 4);
-                    Box::new(reader.read_f32::<BE>().expect("data")) as Box<dyn ToSql + Sync>
-                }
-                Type::INT8 => {
-                    assert_eq!(reader.read_u32::<BE>().expect("length"), 8);
-                    Box::new(reader.read_i64::<BE>().expect("data")) as Box<dyn ToSql + Sync>
-                }
-                _ => panic!("unsupported type: {}", ty),
-            })
-            .collect::<Vec<Box<dyn ToSql + Sync>>>()
     }
 
     async fn vacant(&self, table: &str) -> Result<bool, E> {
