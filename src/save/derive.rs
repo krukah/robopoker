@@ -8,7 +8,7 @@ pub trait Derive: Sized {
     fn creates() -> String;
     fn indexes() -> String;
     fn inserts(&self) -> String;
-    fn derived() -> String {
+    fn derives() -> String {
         Self::exhaust()
             .into_iter()
             .map(|r| r.inserts())

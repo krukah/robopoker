@@ -120,7 +120,7 @@ impl Upload for Metric {
         "
         .to_string()
     }
-    fn create() -> String {
+    fn creates() -> String {
         "
         CREATE TABLE IF NOT EXISTS metric (
             xor        BIGINT,
