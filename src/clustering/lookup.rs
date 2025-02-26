@@ -9,6 +9,9 @@ use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
+/// this is the grand lookup table for all the Isomorphism -> Abstraction
+/// mappings. we spend a lot of compute over a lot of hands (all of them!)
+/// to precompute this mapping.
 pub struct Lookup(BTreeMap<Isomorphism, Abstraction>);
 
 impl Lookup {
@@ -89,7 +92,7 @@ impl Upload for Lookup {
             .map(Self::path)
             .collect()
     }
-    fn create() -> String {
+    fn creates() -> String {
         "
         CREATE TABLE IF NOT EXISTS isomorphism (
             obs        BIGINT,

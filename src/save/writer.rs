@@ -15,7 +15,6 @@ use std::io::Seek;
 use std::sync::Arc;
 use tokio_postgres::binary_copy::BinaryCopyInWriter;
 use tokio_postgres::types::ToSql;
-use tokio_postgres::types::Type;
 use tokio_postgres::Client;
 use tokio_postgres::Error as E;
 
@@ -47,8 +46,8 @@ impl Writer {
         let ref name = U::name();
         if self.absent(name).await? {
             log::info!("creating table ({})", name);
-            self.0.batch_execute(&U::create()).await?;
-            self.0.batch_execute(&U::nuke()).await?;
+            self.0.batch_execute(&U::creates()).await?;
+            self.0.batch_execute(&U::truncates()).await?;
         }
         if self.vacant(name).await? {
             log::info!("copying {}", name);
@@ -73,13 +72,14 @@ impl Writer {
         if self.vacant(name).await? {
             log::info!("deriving {}", name);
             self.0.batch_execute(&D::indexes()).await?;
-            self.0.batch_execute(&D::derived()).await?;
+            self.0.batch_execute(&D::derives()).await?;
             Ok(())
         } else {
             log::info!("tables data already uploaded ({})", name);
             Ok(())
         }
     }
+
     async fn stream<T>(&self) -> Result<(), E>
     where
         T: Upload,
@@ -87,30 +87,26 @@ impl Writer {
         let sink = self.0.copy_in(&T::copy()).await?;
         let writer = BinaryCopyInWriter::new(sink, T::columns());
         futures::pin_mut!(writer);
-        let ref mut count = [0u8; 2];
+        let ref mut fields = [0u8; 2];
         for ref mut reader in T::sources()
             .iter()
             .map(|s| File::open(s).expect("file not found"))
             .map(|f| BufReader::new(f))
         {
             reader.seek(std::io::SeekFrom::Start(19)).unwrap();
-            while let Ok(_) = reader.read_exact(count) {
-                match u16::from_be_bytes(count.clone()) {
+            while let Ok(()) = reader.read_exact(fields) {
+                match u16::from_be_bytes(*fields) {
                     0xFFFF => break,
                     length => {
-                        assert!(length == T::columns().len() as u16);
-                        let row = T::columns()
-                            .iter()
-                            .map(|_| match reader.read_u32::<BE>().expect("length") {
-                                4 => Box::new(reader.read_f32::<BE>().unwrap())
-                                    as Box<dyn ToSql + Sync>,
-                                8 => Box::new(reader.read_i64::<BE>().unwrap())
-                                    as Box<dyn ToSql + Sync>,
+                        assert!(T::columns().len() == length as usize);
+                        let row = T::columns().into_iter().map(|_| {
+                            match reader.read_u32::<BE>().expect("field size (bytes)") {
+                                4 => Field::F32(reader.read_f32::<BE>().unwrap()),
+                                8 => Field::I64(reader.read_i64::<BE>().unwrap()),
                                 x => panic!("unsupported type: {}", x),
-                            })
-                            .collect::<Vec<Box<dyn ToSql + Sync>>>();
-                        let row = row.iter().map(|b| &**b).collect::<Vec<_>>();
-                        writer.as_mut().write(&row).await?;
+                            }
+                        });
+                        writer.as_mut().write_raw(row).await?;
                     }
                 }
             }
@@ -140,5 +136,47 @@ impl Writer {
             table
         );
         Ok(self.0.query(sql, &[]).await?.is_empty())
+    }
+}
+
+/// doing this for zero copy reasons
+/// it was impossible to achieve polymorphism between column types
+/// without allocating a ton since writer.as_mut().write()
+/// required &[&dyn ToSql]
+/// which would have required collection into a Vec<&dyn ToSql>
+/// because of lifetime reasons. now, we only need an Iterator<Item = T: ToSql>
+/// which is much more flexible, so we can map T::columns() to dynamically
+/// iterate over table columns.
+#[derive(Debug)]
+enum Field {
+    F32(f32),
+    I64(i64),
+}
+
+impl tokio_postgres::types::ToSql for Field {
+    fn to_sql(
+        &self,
+        ty: &tokio_postgres::types::Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        match self {
+            Field::F32(val) => val.to_sql(ty, out),
+            Field::I64(val) => val.to_sql(ty, out),
+        }
+    }
+
+    fn accepts(ty: &tokio_postgres::types::Type) -> bool {
+        <f32 as ToSql>::accepts(ty) || <i64 as ToSql>::accepts(ty)
+    }
+
+    fn to_sql_checked(
+        &self,
+        ty: &tokio_postgres::types::Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        match self {
+            Field::F32(val) => val.to_sql_checked(ty, out),
+            Field::I64(val) => val.to_sql_checked(ty, out),
+        }
     }
 }

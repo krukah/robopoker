@@ -158,7 +158,7 @@ impl Upload for Blueprint {
     fn copy() -> String {
         unimplemented!()
     }
-    fn create() -> String {
+    fn creates() -> String {
         unimplemented!()
     }
     fn indices() -> String {

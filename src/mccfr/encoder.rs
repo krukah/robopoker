@@ -104,8 +104,8 @@ impl Upload for Encoder {
     fn sources() -> Vec<String> {
         Lookup::sources()
     }
-    fn create() -> String {
-        Lookup::create()
+    fn creates() -> String {
+        Lookup::creates()
     }
     fn indices() -> String {
         Lookup::indices()

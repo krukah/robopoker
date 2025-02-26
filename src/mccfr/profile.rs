@@ -539,7 +539,7 @@ impl Upload for Profile {
         "
         .to_string()
     }
-    fn create() -> String {
+    fn creates() -> String {
         "
         CREATE TABLE IF NOT EXISTS blueprint (
             edge       BIGINT,
