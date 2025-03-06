@@ -52,7 +52,7 @@ use robopoker::*;
 */
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ! {
     // Behold!
     crate::init();
     // The k-means earth mover's distance hand-clustering algorithm.

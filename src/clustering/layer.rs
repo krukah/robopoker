@@ -7,7 +7,7 @@ use super::transitions::Decomp;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::street::Street;
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 use crate::Energy;
 use rand::distributions::Distribution;
 use rand::distributions::WeightedIndex;
@@ -226,7 +226,7 @@ impl Layer {
             .into()
     }
 }
-impl Upload for Layer {
+impl Table for Layer {
     fn done(street: Street) -> bool {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)
     }

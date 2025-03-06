@@ -4,7 +4,7 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::pair::Pair;
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Energy;
@@ -93,7 +93,7 @@ impl Metric {
     }
 }
 
-impl Upload for Metric {
+impl Table for Metric {
     fn name() -> String {
         "metric".to_string()
     }
@@ -214,7 +214,7 @@ mod tests {
     use super::*;
     use crate::cards::street::Street;
     use crate::clustering::emd::EMD;
-    use crate::save::upload::Upload;
+    use crate::save::upload::Table;
     use crate::Arbitrary;
 
     #[ignore]

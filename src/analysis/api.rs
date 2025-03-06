@@ -677,9 +677,9 @@ impl API {
         -- OTHER OBS DISTRIBUTION
             SELECT
                 e.obs, e.abs, a.equity
-            FROM isomorphism        e
+            FROM isomorphism    e
             JOIN abstraction    a ON e.abs = a.abs
-            WHERE                    e.obs = ANY($1);
+            WHERE               e.obs = ANY($1);
         "#;
         let n = obs.street().n_children();
         let children = obs
@@ -748,15 +748,15 @@ impl API {
                 s.equity::REAL          as equity,
                 s.population::REAL / $1 as density,
                 s.centrality::REAL      as distance
-            FROM sample     s
+            FROM sample         s
             JOIN isomorphism    e ON e.abs = s.abs
-            AND             e.position = s.position;
+            AND                 e.position = s.position;
         "#;
         //
-        let n = Street::Rive.n_isomorphisms() as f32;
-        let abs = i64::from(abs);
+        let ref n = Street::Rive.n_isomorphisms() as f32;
+        let ref abs = i64::from(abs);
         //
-        let rows = self.0.query(SQL, &[&n, &abs]).await?;
+        let rows = self.0.query(SQL, &[n, abs]).await?;
         Ok(rows.into_iter().map(Sample::from).collect())
     }
     async fn hst_wrt_abs_on_other(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
@@ -772,7 +772,7 @@ impl API {
                     FLOOR(RANDOM() * p.population)::INTEGER as i
                 FROM transitions g
                 JOIN abstraction p ON p.abs = g.next
-                WHERE g.prev = $1
+                WHERE            g.prev = $1
                 LIMIT 64
             )
             SELECT
@@ -781,15 +781,15 @@ impl API {
                 t.equity::REAL     as equity,
                 t.probability      as density,
                 t.centrality::REAL as distance
-            FROM histogram  t
+            FROM histogram      t
             JOIN isomorphism    e ON e.abs = t.abs
-            AND             e.position = t.i
-            ORDER BY        t.probability DESC;
+            AND                 e.position = t.i
+            ORDER BY            t.probability DESC;
         "#;
         //
-        let abs = i64::from(abs);
+        let ref abs = i64::from(abs);
         //
-        let rows = self.0.query(SQL, &[&abs]).await?;
+        let rows = self.0.query(SQL, &[abs]).await?;
         Ok(rows.into_iter().map(Sample::from).collect())
     }
 }
@@ -816,10 +816,10 @@ impl API {
         let observation = game.sweat();
         let abstraction = self.obs_to_abs(observation).await?;
         let Bucket(history, present, choices) = recall.bucket(abstraction);
-        let history = i64::from(history);
-        let present = i64::from(present);
-        let choices = i64::from(choices);
-        let rows = self.0.query(SQL, &[&history, &present, &choices]).await?;
+        let ref history = i64::from(history);
+        let ref present = i64::from(present);
+        let ref choices = i64::from(choices);
+        let rows = self.0.query(SQL, &[history, present, choices]).await?;
         Ok(rows.into_iter().map(Decision::from).collect())
     }
 }

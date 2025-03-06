@@ -475,7 +475,7 @@ impl std::fmt::Display for Profile {
 mod tests {
     use super::*;
     use crate::cards::street::Street;
-    use crate::save::upload::Upload;
+    use crate::save::upload::Table;
     use crate::Arbitrary;
 
     #[test]
@@ -494,9 +494,9 @@ mod tests {
     }
 }
 
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 
-impl Upload for Profile {
+impl Table for Profile {
     fn name() -> String {
         "blueprint".to_string()
     }

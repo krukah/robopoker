@@ -1,5 +1,5 @@
 use super::derive::Derive;
-use super::upload::Upload;
+use super::upload::Table;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::metric::Metric;
@@ -31,31 +31,31 @@ impl Writer {
         let postgres = Self(crate::db().await);
         postgres.upload::<Metric>().await?;
         postgres.upload::<Decomp>().await?;
-        postgres.upload::<Encoder>().await?; // Lookup ?
-        postgres.upload::<Profile>().await?; // Blueprint ?
+        postgres.upload::<Encoder>().await?;
+        postgres.upload::<Profile>().await?;
         postgres.derive::<Abstraction>().await?;
         postgres.derive::<Street>().await?;
         postgres.0.batch_execute("VACUUM ANALYZE;").await?;
         Ok(())
     }
 
-    async fn upload<U>(&self) -> Result<(), E>
+    async fn upload<T>(&self) -> Result<(), E>
     where
-        U: Upload,
+        T: Table,
     {
-        let ref name = U::name();
+        let ref name = T::name();
         if self.absent(name).await? {
             log::info!("creating table ({})", name);
-            self.0.batch_execute(&U::creates()).await?;
-            self.0.batch_execute(&U::truncates()).await?;
+            self.0.batch_execute(&T::creates()).await?;
+            self.0.batch_execute(&T::truncates()).await?;
         }
         if self.vacant(name).await? {
             log::info!("copying {}", name);
-            self.stream::<U>().await?;
-            self.0.batch_execute(&U::indices()).await?;
+            self.stream::<T>().await?;
+            self.0.batch_execute(&T::indices()).await?;
             Ok(())
         } else {
-            log::info!("tables data already uploaded ({})", name);
+            log::info!("table data already uploaded ({})", name);
             Ok(())
         }
     }
@@ -75,14 +75,14 @@ impl Writer {
             self.0.batch_execute(&D::derives()).await?;
             Ok(())
         } else {
-            log::info!("tables data already uploaded ({})", name);
+            log::info!("table data already derived  ({})", name);
             Ok(())
         }
     }
 
     async fn stream<T>(&self) -> Result<(), E>
     where
-        T: Upload,
+        T: Table,
     {
         let sink = self.0.copy_in(&T::copy()).await?;
         let writer = BinaryCopyInWriter::new(sink, T::columns());
@@ -99,7 +99,7 @@ impl Writer {
                     0xFFFF => break,
                     length => {
                         assert!(T::columns().len() == length as usize);
-                        let row = T::columns().into_iter().map(|_| {
+                        let row = (0..length).map(|_| {
                             match reader.read_u32::<BE>().expect("field size (bytes)") {
                                 4 => Field::F32(reader.read_f32::<BE>().unwrap()),
                                 8 => Field::I64(reader.read_i64::<BE>().unwrap()),
@@ -126,6 +126,7 @@ impl Writer {
         );
         Ok(self.0.query(sql, &[]).await?.is_empty())
     }
+
     async fn absent(&self, table: &str) -> Result<bool, E> {
         let ref sql = format!(
             "

@@ -10,7 +10,7 @@ use super::recall::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::street::Street;
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 use crate::Arbitrary;
 
 /// this is how we learn the optimal strategy of
@@ -142,7 +142,7 @@ impl Blueprint {
     }
 }
 
-impl Upload for Blueprint {
+impl Table for Blueprint {
     fn name() -> String {
         unimplemented!()
     }

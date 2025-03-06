@@ -4,7 +4,7 @@ use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
@@ -74,7 +74,7 @@ impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
     }
 }
 
-impl Upload for Lookup {
+impl Table for Lookup {
     fn name() -> String {
         "isomorphism".to_string()
     }

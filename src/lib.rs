@@ -25,20 +25,20 @@ const MAX_RAISE_REPEATS: usize = 3;
 const MAX_DEPTH_SUBGAME: usize = 16;
 
 /// sinkhorn optimal transport parameters
-const SINKHORN_TEMPERATURE: Entropy = 0.03;
+const SINKHORN_TEMPERATURE: Entropy = 0.02;
 const SINKHORN_ITERATIONS: usize = 128;
 const SINKHORN_TOLERANCE: Energy = 0.001;
 
 // kmeans clustering parameters
-const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 32; // eyeball test seems to converge around here for K = 128
-const KMEANS_TURN_TRAINING_ITERATIONS: usize = 32; // eyeball test seems to converge around here for K = 144
+const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 20;
+const KMEANS_TURN_TRAINING_ITERATIONS: usize = 24;
 const KMEANS_FLOP_CLUSTER_COUNT: usize = 128;
 const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
 const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 // mccfr parameters
 const CFR_BATCH_SIZE: usize = 256;
-const CFR_TREE_COUNT: usize = 131072;
+const CFR_TREE_COUNT: usize = 1_073_741_824;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
