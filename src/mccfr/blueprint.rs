@@ -47,18 +47,19 @@ impl Blueprint {
     /// a learning schedule for regret or policy.
     pub fn train() {
         if Self::done(Street::random()) {
-            log::info!("skipping regret minimization");
+            log::info!("refining regret minimization");
+            Self::load(Street::random()).solve(crate::FINE_TRAINING_ITERATIONS);
         } else {
             log::info!("starting regret minimization");
-            Self::grow(Street::random()).solve();
+            Self::grow(Street::random()).solve(crate::MAIN_TRAINING_ITERATIONS);
         }
     }
 
     /// the main training loop.
-    fn solve(&mut self) {
+    fn solve(&mut self, t: usize) {
         log::info!("beginning training loop");
-        let progress = crate::progress(crate::CFR_ITERATIONS);
-        while self.profile.next() <= crate::CFR_ITERATIONS {
+        let progress = crate::progress(t);
+        while self.profile.next() <= t {
             for counterfactual in self.simulations() {
                 let ref regret = counterfactual.regret();
                 let ref policy = counterfactual.policy();
@@ -143,17 +144,31 @@ impl Blueprint {
 }
 
 impl Table for Blueprint {
-    fn name() -> String {
-        unimplemented!()
-    }
     fn done(street: Street) -> bool {
         Profile::done(street) && Encoder::done(street)
     }
-    fn grow(street: Street) -> Self {
+    fn save(&self) {
+        self.profile.save();
+        self.encoder.save();
+    }
+    fn grow(_: Street) -> Self {
+        // we require an encoder to be trained & loaded
+        // but not necessarily a profile
         Self {
-            profile: Profile::grow(street),
-            encoder: Encoder::grow(street),
+            profile: Profile::default(),
+            encoder: Encoder::load(Street::random()),
         }
+    }
+    fn load(_: Street) -> Self {
+        // basically the same as grow but w the expectation
+        // that profile is trained & loaded
+        Self {
+            profile: Profile::load(Street::random()),
+            encoder: Encoder::load(Street::random()),
+        }
+    }
+    fn name() -> String {
+        unimplemented!()
     }
     fn copy() -> String {
         unimplemented!()
@@ -169,15 +184,5 @@ impl Table for Blueprint {
     }
     fn sources() -> Vec<String> {
         unimplemented!()
-    }
-    fn load(_: Street) -> Self {
-        Self {
-            profile: Profile::load(Street::random()),
-            encoder: Encoder::load(Street::random()),
-        }
-    }
-    fn save(&self) {
-        self.profile.save();
-        self.encoder.save();
     }
 }
