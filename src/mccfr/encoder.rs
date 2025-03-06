@@ -92,9 +92,9 @@ impl Arbitrary for Encoder {
     }
 }
 
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 
-impl Upload for Encoder {
+impl Table for Encoder {
     fn name() -> String {
         Lookup::name()
     }

@@ -1,7 +1,7 @@
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::save::upload::Upload;
+use crate::save::upload::Table;
 use std::collections::BTreeMap;
 use std::mem::size_of;
 use std::u16;
@@ -13,7 +13,7 @@ impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
         Self(map)
     }
 }
-impl Upload for Decomp {
+impl Table for Decomp {
     fn name() -> String {
         "transitions".to_string()
     }

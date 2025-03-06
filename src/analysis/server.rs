@@ -1,7 +1,7 @@
 use super::api::API;
 use super::request::AbsHist;
-use super::request::ObsHist;
 use super::request::GetPolicy;
+use super::request::ObsHist;
 use super::request::ReplaceAbs;
 use super::request::ReplaceAll;
 use super::request::ReplaceObs;
