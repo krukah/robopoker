@@ -242,12 +242,11 @@ impl Profile {
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
-    pub fn explore_one(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
+    pub fn explore_one(&self, mut choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
         use rand::distributions::WeightedIndex;
         use rand::prelude::Distribution;
         let ref mut rng = self.rng(head);
         let ref bucket = head.bucket();
-        let mut choices = choices;
         let policy = choices
             .iter()
             .map(|Branch(_, edge, _)| self.weight(bucket, edge))
