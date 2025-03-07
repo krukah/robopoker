@@ -62,17 +62,17 @@ impl Blueprint {
         log::info!("beginning training loop");
         let progress = crate::progress(t * crate::CFR_BATCH_SIZE);
         for _ in 0..t {
-            for counterfactual in self.simulations() {
+            let counterfactuals = self.simulations();
+            let mut profile = self.profile.write().unwrap();
+            for counterfactual in counterfactuals {
                 let ref regret = counterfactual.regret();
                 let ref policy = counterfactual.policy();
                 let ref bucket = counterfactual.info().node().bucket().clone();
-                let mut profile = self.profile.write().unwrap();
                 profile.add_regret(bucket, regret);
                 profile.add_policy(bucket, policy);
                 progress.inc(1);
             }
             {
-                let mut profile = self.profile.write().unwrap();
                 log::debug!(
                     "epoch {:<10} touched {:<10}",
                     profile.next(),
