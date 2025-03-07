@@ -37,13 +37,13 @@ const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
 const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 // mccfr parameters
-const CFR_BATCH_SIZE: usize = 256;
-const CFR_TREE_COUNT: usize = 1_048_576;
+const CFR_BATCH_SIZE: usize = 0x100;
+const CFR_TREE_COUNT: usize = 0x400000;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
 const MAIN_TRAINING_ITERATIONS: usize = CFR_ITERATIONS;
-const FINE_TRAINING_ITERATIONS: usize = 1;
+const FINE_TRAINING_ITERATIONS: usize = 0x4000;
 
 // regret matching parameters
 const REGRET_MIN: Utility = -3e5;
@@ -102,8 +102,7 @@ pub fn init() {
 pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
     log::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
-    let ref url =
-        std::env::var("DB_URL").unwrap_or("postgresql://localhost:5432/postgres".to_string());
+    let ref url = std::env::var("DB_URL").expect("DB_URL must be set");
     let (client, connection) = tokio_postgres::connect(url, tls)
         .await
         .expect("database connection failed");
