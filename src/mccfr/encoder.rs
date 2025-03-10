@@ -92,9 +92,8 @@ impl Arbitrary for Encoder {
     }
 }
 
-use crate::save::upload::Table;
-
-impl Table for Encoder {
+#[cfg(feature = "native")]
+impl crate::save::upload::Table for Encoder {
     fn name() -> String {
         Lookup::name()
     }

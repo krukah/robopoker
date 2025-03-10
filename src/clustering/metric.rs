@@ -4,7 +4,6 @@ use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::pair::Pair;
-use crate::save::upload::Table;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Energy;
@@ -48,20 +47,6 @@ impl Metric {
             Abstraction::Preflop(_) => unreachable!("no preflop emd"),
         }
     }
-    pub fn read() -> Self {
-        log::info!("loading     metric");
-        Self(
-            Street::all()
-                .into_iter()
-                .filter(|street| Self::done(**street))
-                .map(|street| Self::load(*street))
-                .map(|metric| metric.0)
-                .fold(BTreeMap::default(), |mut map, street| {
-                    map.extend(street);
-                    map
-                }),
-        )
-    }
 
     /// we're assuming tht the street is being generated AFTER the learned kmeans
     /// cluster distance calculation. so we should have (Street::K() choose 2)
@@ -93,7 +78,8 @@ impl Metric {
     }
 }
 
-impl Table for Metric {
+#[cfg(feature = "native")]
+impl crate::save::upload::Table for Metric {
     fn name() -> String {
         "metric".to_string()
     }

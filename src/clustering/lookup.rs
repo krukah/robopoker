@@ -4,8 +4,6 @@ use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
-use crate::save::upload::Table;
-use rayon::iter::ParallelIterator;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -13,6 +11,17 @@ use std::collections::BTreeMap;
 /// mappings. we spend a lot of compute over a lot of hands (all of them!)
 /// to precompute this mapping.
 pub struct Lookup(BTreeMap<Isomorphism, Abstraction>);
+
+impl From<Lookup> for BTreeMap<Isomorphism, Abstraction> {
+    fn from(lookup: Lookup) -> BTreeMap<Isomorphism, Abstraction> {
+        lookup.0
+    }
+}
+impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
+    fn from(map: BTreeMap<Isomorphism, Abstraction>) -> Self {
+        Self(map)
+    }
+}
 
 impl Lookup {
     /// lookup the pre-computed abstraction for the outer observation
@@ -22,9 +31,11 @@ impl Lookup {
             .cloned()
             .expect(&format!("precomputed abstraction missing for {obs}"))
     }
+    #[cfg(feature = "native")]
     /// generate the entire space of inner layers
     pub fn projections(&self) -> Vec<Histogram> {
         use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
         IsomorphismIterator::from(self.street().prev())
             .collect::<Vec<Isomorphism>>()
             .into_par_iter()
@@ -45,6 +56,7 @@ impl Lookup {
         self.0.keys().next().expect("non empty").0.street()
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,6 +64,7 @@ mod tests {
     #[ignore]
     #[test]
     fn persistence() {
+        use crate::save::upload::Table;
         let street = Street::Pref;
         let lookup = Lookup::grow(street);
         lookup.save();
@@ -63,18 +76,8 @@ mod tests {
     }
 }
 
-impl From<Lookup> for BTreeMap<Isomorphism, Abstraction> {
-    fn from(lookup: Lookup) -> BTreeMap<Isomorphism, Abstraction> {
-        lookup.0
-    }
-}
-impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
-    fn from(map: BTreeMap<Isomorphism, Abstraction>) -> Self {
-        Self(map)
-    }
-}
-
-impl Table for Lookup {
+#[cfg(feature = "native")]
+impl crate::save::upload::Table for Lookup {
     fn name() -> String {
         "isomorphism".to_string()
     }
@@ -135,6 +138,7 @@ impl Table for Lookup {
     /// abstractions for Preflop are cequivalent to just enumerating isomorphisms
     fn grow(street: Street) -> Self {
         use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
         match street {
             Street::Rive => IsomorphismIterator::from(Street::Rive)
                 .collect::<Vec<_>>()
