@@ -116,14 +116,13 @@ impl From<Edge> for u64 {
 
 impl std::fmt::Display for Edge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use colored::*;
         match self {
-            Edge::Draw => write!(f, "{}", "?".dimmed()),
-            Edge::Fold => write!(f, "{}", "F".red()),
-            Edge::Call => write!(f, "{}", "*".bright_blue()),
-            Edge::Check => write!(f, "{}", "O".green()),
-            Edge::Shove => write!(f, "{}", "!".magenta()),
-            Edge::Raise(odds) => write!(f, "{}", format!("{}", odds).yellow()),
+            Edge::Draw => write!(f, "{}", "?"),
+            Edge::Fold => write!(f, "{}", "F"),
+            Edge::Call => write!(f, "{}", "*"),
+            Edge::Check => write!(f, "{}", "O"),
+            Edge::Shove => write!(f, "{}", "!"),
+            Edge::Raise(odds) => write!(f, "{}", odds),
         }
     }
 }

@@ -1,12 +1,17 @@
+#[cfg(feature = "native")]
 pub mod analysis;
+#[cfg(feature = "native")]
+pub mod players;
+#[cfg(feature = "native")]
+pub mod save;
+
 pub mod cards;
 pub mod clustering;
 pub mod gameplay;
 pub mod mccfr;
-pub mod players;
-pub mod save;
 pub mod search;
 pub mod transport;
+pub mod wasm;
 
 /// dimensional analysis types
 type Chips = i16;
@@ -25,7 +30,7 @@ const MAX_RAISE_REPEATS: usize = 3;
 const MAX_DEPTH_SUBGAME: usize = 16;
 
 /// sinkhorn optimal transport parameters
-const SINKHORN_TEMPERATURE: Entropy = 0.02;
+const SINKHORN_TEMPERATURE: Entropy = 0.025;
 const SINKHORN_ITERATIONS: usize = 128;
 const SINKHORN_TOLERANCE: Energy = 0.001;
 
@@ -56,6 +61,7 @@ pub trait Arbitrary {
 }
 
 /// progress bar
+#[cfg(feature = "native")]
 pub fn progress(n: usize) -> indicatif::ProgressBar {
     let tick = std::time::Duration::from_secs(60);
     let style = "{spinner:.cyan} {elapsed} ~ {percent:>3}% {wide_bar:.cyan}";
@@ -67,6 +73,7 @@ pub fn progress(n: usize) -> indicatif::ProgressBar {
 }
 
 /// initialize logging and exit on ctrl-c
+#[cfg(feature = "native")]
 pub fn init() {
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
@@ -99,6 +106,7 @@ pub fn init() {
 }
 
 /// get a database connection and return the client
+#[cfg(feature = "native")]
 pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
     log::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;

@@ -10,9 +10,9 @@ use super::recall::Recall;
 use super::tree::Branch;
 use super::tree::Tree;
 use crate::cards::street::Street;
-use crate::save::upload::Table;
 use crate::Arbitrary;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use std::sync::RwLock;
 
 /// this is how we learn the optimal strategy of
 /// the abstracted game. with the learned Encoder
@@ -47,7 +47,9 @@ impl Blueprint {
     /// for the traverser. regret and policy updates are
     /// encapsulated by Profile, but we are yet to impose
     /// a learning schedule for regret or policy.
+    #[cfg(feature = "native")]
     pub fn train() {
+        use crate::save::upload::Table;
         if Self::done(Street::random()) {
             log::info!("resuming regret minimization");
             Self::load(Street::random()).solve(crate::FINE_TRAINING_ITERATIONS);
@@ -58,8 +60,10 @@ impl Blueprint {
     }
 
     /// the main training loop.
+    #[cfg(feature = "native")]
     fn solve(self, t: usize) -> Self {
         log::info!("beginning training loop");
+        use crate::save::upload::Table;
         let progress = crate::progress(t * crate::CFR_BATCH_SIZE);
         for _ in 0..t {
             let counterfactuals = self.simulations();
@@ -86,6 +90,7 @@ impl Blueprint {
     }
 
     /// compute regret and policy updates for a batch of Trees.
+    #[cfg(feature = "native")]
     fn simulations(&self) -> Vec<Counterfactual> {
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
@@ -149,7 +154,8 @@ impl Blueprint {
     }
 }
 
-impl Table for Blueprint {
+#[cfg(feature = "native")]
+impl crate::save::upload::Table for Blueprint {
     fn done(street: Street) -> bool {
         Profile::done(street) && Encoder::done(street)
     }

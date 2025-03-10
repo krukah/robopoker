@@ -1,7 +1,6 @@
 use crate::cards::strength::Strength;
 use crate::gameplay::seat::State;
 use crate::Chips;
-use colored::Colorize;
 
 #[derive(Debug, Clone)]
 pub struct Settlement {
@@ -31,8 +30,7 @@ impl From<(Chips, State, Strength)> for Settlement {
 impl std::fmt::Display for Settlement {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.reward > 0 {
-            let reward = format!("+{}", self.reward).green();
-            write!(f, "{:<5}{}", reward, self.strength)
+            write!(f, "{:<5}{}", format!("+{}", self.reward), self.strength)
         } else {
             write!(f, "     {}", self.strength)
         }

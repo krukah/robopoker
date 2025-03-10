@@ -1,7 +1,6 @@
 use crate::cards::card::Card;
 use crate::cards::hand::Hand;
 use crate::Chips;
-use colored::*;
 
 const MASK: u32 = 0xFF;
 const BITS: u32 = MASK.count_ones();
@@ -35,6 +34,19 @@ impl Action {
     }
     pub fn is_blind(&self) -> bool {
         matches!(self, Action::Blind(_))
+    }
+}
+impl From<Action> for String {
+    fn from(action: Action) -> Self {
+        match action {
+            Action::Fold => format!("FOLD"),
+            Action::Check => format!("CHECK"),
+            Action::Draw(card) => format!("DEAL  {}", card),
+            Action::Call(amount) => format!("CALL  {}", amount),
+            Action::Blind(amount) => format!("BLIND {}", amount),
+            Action::Raise(amount) => format!("RAISE {}", amount),
+            Action::Shove(amount) => format!("SHOVE {}", amount),
+        }
     }
 }
 
@@ -101,40 +113,46 @@ impl TryFrom<&str> for Action {
                 .get(1)
                 .and_then(|n| n.parse().ok())
                 .map(Action::Call)
-                .ok_or("Invalid call amount"),
+                .ok_or("invalid call amount"),
             "RAISE" => parts
                 .get(1)
                 .and_then(|n| n.parse().ok())
                 .map(Action::Raise)
-                .ok_or("Invalid raise amount"),
+                .ok_or("invalid raise amount"),
             "SHOVE" => parts
                 .get(1)
                 .and_then(|n| n.parse().ok())
                 .map(Action::Shove)
-                .ok_or("Invalid shove amount"),
+                .ok_or("invalid shove amount"),
             "BLIND" => parts
                 .get(1)
                 .and_then(|n| n.parse().ok())
                 .map(Action::Blind)
-                .ok_or("Invalid blind amount"),
+                .ok_or("invalid blind amount"),
             "DEAL" => Hand::try_from(parts[1..].join(" ").as_str())
                 .map(Action::Draw)
-                .map_err(|_| "Invalid deal cards"),
-            _ => Err("Invalid action type"),
+                .map_err(|_| "invalid deal cards"),
+            _ => Err("invalid action type"),
         }
     }
 }
-
 impl std::fmt::Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Action::Draw(card) => write!(f, "{}", format!("DEAL  {}", card).white()),
-            Action::Check => write!(f, "{}", "CHECK".cyan()),
-            Action::Fold => write!(f, "{}", "FOLD".red()),
-            Action::Blind(amount) => write!(f, "{}", format!("BLIND {}", amount).white()),
-            Action::Call(amount) => write!(f, "{}", format!("CALL  {}", amount).yellow()),
-            Action::Raise(amount) => write!(f, "{}", format!("RAISE {}", amount).green()),
-            Action::Shove(amount) => write!(f, "{}", format!("SHOVE {}", amount).magenta()),
+        String::from(*self).fmt(f)
+    }
+}
+
+#[cfg(feature = "native")]
+impl From<Action> for colored::Color {
+    fn from(action: Action) -> Self {
+        match action {
+            Action::Fold => colored::Color::Red,
+            Action::Check => colored::Color::Yellow,
+            Action::Call(_) => colored::Color::Green,
+            Action::Raise(_) => colored::Color::Green,
+            Action::Shove(_) => colored::Color::Green,
+            Action::Blind(_) => colored::Color::White,
+            Action::Draw(_) => colored::Color::White,
         }
     }
 }

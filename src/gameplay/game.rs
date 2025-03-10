@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::action::Action;
 use super::seat::Seat;
 use super::seat::State;
@@ -11,7 +13,6 @@ use crate::cards::street::Street;
 use crate::cards::strength::Strength;
 use crate::gameplay::ply::Turn;
 use crate::gameplay::showdown::Showdown;
-use crate::players::human::Human;
 use crate::Chips;
 use crate::N;
 use crate::STACK;
@@ -76,24 +77,6 @@ impl Game {
         child.act(action);
         child
     }
-    pub fn play() -> ! {
-        let mut node = Self::root();
-        loop {
-            match node.turn() {
-                Turn::Chance => {
-                    node.act(Action::Draw(node.draw()));
-                }
-                Turn::Choice(_) => {
-                    node.act(Human::decide(&node));
-                }
-                Turn::Terminal => {
-                    node.conclude();
-                    node.commence();
-                }
-            }
-        }
-    }
-
     //
     pub fn pot(&self) -> Chips {
         self.pot
@@ -205,6 +188,14 @@ impl Game {
         self.board.clear();
         assert!(self.street() == Street::Pref);
     }
+    fn move_button(&mut self) {
+        assert!(self.seats.len() == self.n());
+        assert!(self.street() == Street::Pref);
+        self.dealer += 1;
+        self.dealer %= self.n();
+        self.ticker = self.dealer;
+        self.next_player();
+    }
     fn deal_cards(&mut self) {
         assert!(self.street() == Street::Pref);
         let mut deck = Deck::new();
@@ -214,14 +205,6 @@ impl Game {
             seat.reset_stake();
             seat.reset_spent();
         }
-    }
-    fn move_button(&mut self) {
-        assert!(self.seats.len() == self.n());
-        assert!(self.street() == Street::Pref);
-        self.dealer += 1;
-        self.dealer %= self.n();
-        self.ticker = self.dealer;
-        self.next_player();
     }
 
     //
@@ -480,18 +463,26 @@ impl Game {
     }
 }
 
+impl From<Game> for String {
+    fn from(game: Game) -> Self {
+        format!(" @ {:>6} {} {}", game.pot, game.board, game.street())
+    }
+}
+
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use colored::Colorize;
         for seat in self.seats.iter() {
             write!(f, "{}{:<6}", seat.state(), seat.stack())?;
         }
-        write!(
-            f,
-            "{}",
-            format!(" @ {:>6} {} {}", self.pot, self.board, self.street()).bright_green()
-        )?;
-        Ok(())
+        #[cfg(feature = "native")]
+        {
+            use colored::Colorize;
+            write!(f, "{}", String::from(*self).bright_green())
+        }
+        #[cfg(not(feature = "native"))]
+        {
+            write!(f, "{}", String::from(*self))
+        }
     }
 }
 

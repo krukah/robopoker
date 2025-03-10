@@ -52,7 +52,7 @@ use robopoker::*;
 */
 
 #[tokio::main]
-async fn main() -> ! {
+async fn main() {
     // Behold!
     crate::init();
     // The k-means earth mover's distance hand-clustering algorithm.
@@ -65,6 +65,4 @@ async fn main() -> ! {
     crate::analysis::server::Server::run().await.unwrap();
     // Let's see what we've learned.
     crate::analysis::cli::CLI::run().await;
-    // After 100s of CPU-days of training in the arena, the CPU is ready to see you.
-    crate::gameplay::game::Game::play();
 }

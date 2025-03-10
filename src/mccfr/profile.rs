@@ -493,9 +493,8 @@ mod tests {
     }
 }
 
-use crate::save::upload::Table;
-
-impl Table for Profile {
+#[cfg(feature = "native")]
+impl crate::save::upload::Table for Profile {
     fn name() -> String {
         "blueprint".to_string()
     }
