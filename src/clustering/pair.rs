@@ -1,5 +1,4 @@
 use crate::clustering::abstraction::Abstraction;
-use crate::transport::support::Support;
 
 /// A unique identifier for a pair of abstractions.
 #[derive(Default, Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Debug)]
@@ -20,5 +19,3 @@ impl From<i64> for Pair {
         Self(i as u64)
     }
 }
-
-impl Support for Pair {}

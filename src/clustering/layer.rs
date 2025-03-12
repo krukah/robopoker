@@ -22,9 +22,18 @@ pub struct Layer {
 }
 
 impl Layer {
-    #[cfg(feature = "native")]
+    /// reference to the all points up to isomorphism
+    fn points(&self) -> &Vec<Histogram> /* N */ {
+        &self.points
+    }
+    /// reference to the current kmeans centorid histograms
+    fn kmeans(&self) -> &Vec<Histogram> /* K */ {
+        &self.kmeans
+    }
+
     /// all-in-one entry point for learning the kmeans abstraction and
     /// writing to disk in pgcopy
+    #[cfg(feature = "native")]
     pub fn learn() {
         use crate::save::upload::Table;
         Street::all()
@@ -35,17 +44,8 @@ impl Layer {
             .count();
     }
 
-    /// reference to the all points up to isomorphism
-    fn points(&self) -> &Vec<Histogram> /* N */ {
-        &self.points
-    }
-    /// reference to the current kmeans centorid histograms
-    fn kmeans(&self) -> &Vec<Histogram> /* K */ {
-        &self.kmeans
-    }
-
-    #[cfg(feature = "native")]
     /// primary clustering algorithm loop
+    #[cfg(feature = "native")]
     fn cluster(mut self) -> Self {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
         let ref mut init = self.init();
@@ -65,11 +65,11 @@ impl Layer {
         self
     }
 
-    #[cfg(feature = "native")]
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
+    #[cfg(feature = "native")]
     fn init(&self) -> Vec<Histogram> /* K */ {
         use rand::rngs::SmallRng;
         use rand::SeedableRng;
@@ -120,10 +120,10 @@ impl Layer {
         histograms
     }
 
-    #[cfg(feature = "native")]
     /// calculates the next step of the kmeans iteration by
     /// determining K * N optimal transport calculations and
     /// taking the nearest neighbor
+    #[cfg(feature = "native")]
     fn next(&self) -> Vec<Histogram> /* K */ {
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
@@ -150,6 +150,31 @@ impl Layer {
             (loss / self.points().len() as f32).sqrt()
         );
         centroids
+    }
+
+    /// in ObsIterator order, get a mapping of
+    /// Isomorphism -> Abstraction
+    #[cfg(feature = "native")]
+    fn lookup(&self) -> Lookup {
+        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
+        use crate::save::upload::Table;
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
+        let street = self.street();
+        match street {
+            Street::Pref | Street::Rive => Lookup::grow(street),
+            Street::Flop | Street::Turn => self
+                .points()
+                .par_iter()
+                .map(|h| self.neighborhood(h))
+                .collect::<Vec<Neighbor>>()
+                .into_iter()
+                .map(|(k, _)| self.abstraction(k))
+                .zip(IsomorphismIterator::from(street))
+                .map(|(abs, iso)| (iso, abs))
+                .collect::<BTreeMap<Isomorphism, Abstraction>>()
+                .into(),
+        }
     }
 
     /// wrawpper for distance metric calculations
@@ -194,30 +219,6 @@ impl Layer {
             }
         }
         Metric::from(metric)
-    }
-    /// in ObsIterator order, get a mapping of
-    /// Isomorphism -> Abstraction
-    #[cfg(feature = "native")]
-    fn lookup(&self) -> Lookup {
-        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
-        use crate::save::upload::Table;
-        use rayon::iter::IntoParallelRefIterator;
-        use rayon::iter::ParallelIterator;
-        let street = self.street();
-        match street {
-            Street::Pref | Street::Rive => Lookup::grow(street),
-            Street::Flop | Street::Turn => self
-                .points()
-                .par_iter()
-                .map(|h| self.neighborhood(h))
-                .collect::<Vec<Neighbor>>()
-                .into_iter()
-                .map(|(k, _)| self.abstraction(k))
-                .zip(IsomorphismIterator::from(street))
-                .map(|(abs, iso)| (iso, abs))
-                .collect::<BTreeMap<Isomorphism, Abstraction>>()
-                .into(),
-        }
     }
     /// in AbsIterator order, get a mapping of
     /// Abstraction -> Histogram

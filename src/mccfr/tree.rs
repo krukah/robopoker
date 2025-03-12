@@ -1,7 +1,7 @@
 use super::data::Data;
+use super::edge::Edge;
+use super::node::Node;
 use super::player::Player;
-use crate::mccfr::edge::Edge;
-use crate::mccfr::node::Node;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 use std::fmt::Formatter;

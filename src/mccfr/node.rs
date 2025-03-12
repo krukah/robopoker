@@ -1,10 +1,10 @@
 use super::bucket::Bucket;
+use super::data::Data;
+use super::edge::Edge;
 use super::path::Path;
 use super::player::Player;
-use crate::gameplay::game::Game;
-use crate::gameplay::ply::Turn;
-use crate::mccfr::data::Data;
-use crate::mccfr::edge::Edge;
+use crate::gameplay::game::Game; // referenced in ::branches()
+use crate::gameplay::ply::Turn; // referenced in ::payoff()
 use crate::Utility;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
