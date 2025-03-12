@@ -1,3 +1,7 @@
+// todo
+// impl From<u8> for Player
+// eliminate pub visibility
+
 use crate::gameplay::ply::Turn;
 use std::hash::Hash;
 
@@ -7,6 +11,12 @@ pub struct Player(pub Turn);
 impl Player {
     pub const fn chance() -> Self {
         Self(Turn::Chance)
+    }
+    pub const fn terminal() -> Self {
+        Self(Turn::Terminal)
+    }
+    pub const fn n(i: u8) -> Self {
+        Self(Turn::Choice(i as usize))
     }
 }
 

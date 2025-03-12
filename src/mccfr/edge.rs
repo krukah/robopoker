@@ -1,5 +1,5 @@
+use super::odds::Odds;
 use crate::gameplay::action::Action;
-use crate::mccfr::odds::Odds;
 use crate::Arbitrary;
 use crate::Chips;
 use std::hash::Hash;
@@ -108,7 +108,7 @@ impl From<Edge> for u64 {
             Edge::Fold => 1,
             Edge::Check => 2,
             Edge::Call => 3,
-            Edge::Raise(Odds(num, den)) => 4 | ((num as u64) << 3) | ((den as u64) << 11),
+            Edge::Raise(Odds(numer, denom)) => 4 | ((numer as u64) << 3) | ((denom as u64) << 11),
             Edge::Shove => 5,
         }
     }

@@ -79,13 +79,13 @@ impl Encoder {
 
 impl Arbitrary for Encoder {
     fn random() -> Self {
-        const S: usize = 128;
+        const N: usize = 128;
         Self(
             (0..)
                 .map(|_| Isomorphism::random())
                 .map(|i| (i, Abstraction::random()))
                 .filter(|(i, a)| i.0.street() == a.street())
-                .take(S)
+                .take(N)
                 .collect::<BTreeMap<_, _>>()
                 .into(),
         )

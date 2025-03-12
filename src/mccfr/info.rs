@@ -1,8 +1,6 @@
-use super::data::Data;
-use super::edge::Edge;
+use super::node::Node;
 use super::tree::Tree;
-use crate::mccfr::node::Node;
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::graph::NodeIndex;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -38,9 +36,5 @@ impl Info {
             .copied()
             .map(|i| self.nodes.at(i))
             .expect("non-empty infoset")
-    }
-    #[allow(dead_code)]
-    fn graph(&self) -> &DiGraph<Data, Edge> {
-        self.nodes.graph()
     }
 }

@@ -8,6 +8,5 @@ pub mod lookup;
 pub mod metric;
 pub mod pair;
 pub mod potential;
-pub mod progress;
 pub mod sinkhorn;
 pub mod transitions;
