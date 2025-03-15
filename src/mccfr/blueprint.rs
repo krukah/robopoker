@@ -1,13 +1,13 @@
 use super::counterfactual::Counterfactual;
 use super::encoder::Encoder;
-use super::info::Info;
+use super::info::InfoSet;
 use super::node::Node;
 use super::partition::Partition;
 use super::player::Player;
 use super::policy::Policy;
 use super::profile::Profile;
 use super::recall::Recall;
-use super::tree::Branch;
+use super::tree::Leaf;
 use super::tree::Tree;
 use crate::cards::street::Street;
 use crate::Arbitrary;
@@ -99,7 +99,7 @@ impl Blueprint {
             .map(|_| self.tree())
             .inspect(|tree| log::trace!("{}", tree))
             .map(Partition::from)
-            .map(Vec::<Info>::from)
+            .map(Vec::<InfoSet>::from)
             .flatten()
             .map(|info| self.profile.read().unwrap().counterfactual(info))
             .collect::<Vec<Counterfactual>>()
@@ -126,10 +126,10 @@ impl Blueprint {
     /// conditional on its History and on our sampling
     /// rules? (i.e. external sampling, probing, full
     /// exploration, etc.)
-    fn sample(&self, node: &Node) -> Vec<Branch> {
+    fn sample(&self, node: &Node) -> Vec<Leaf> {
         let chance = Player::chance();
         let walker = { self.profile.read().unwrap().walker() };
-        let branches = self.encoder.branches(node);
+        let branches = self.encoder.sample(node);
         match (branches.len(), node.player()) {
             (0, _) => vec![],
             (_, p) if p == chance => self.touch_any(branches, node),
@@ -139,16 +139,16 @@ impl Blueprint {
         }
     }
 
-    fn touch_any(&self, branches: Vec<Branch>, node: &Node) -> Vec<Branch> {
+    fn touch_any(&self, branches: Vec<Leaf>, node: &Node) -> Vec<Leaf> {
         self.profile.read().unwrap().explore_any(branches, node)
     }
 
-    fn touch_all(&self, branches: Vec<Branch>, node: &Node) -> Vec<Branch> {
+    fn touch_all(&self, branches: Vec<Leaf>, node: &Node) -> Vec<Leaf> {
         let _ = { self.profile.write().unwrap().witness(node, &branches) };
         self.profile.read().unwrap().explore_all(branches, node)
     }
 
-    fn touch_one(&self, branches: Vec<Branch>, node: &Node) -> Vec<Branch> {
+    fn touch_one(&self, branches: Vec<Leaf>, node: &Node) -> Vec<Leaf> {
         let _ = { self.profile.write().unwrap().witness(node, &branches) };
         self.profile.read().unwrap().explore_one(branches, node)
     }

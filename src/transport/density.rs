@@ -4,8 +4,8 @@ use crate::Probability;
 /// generalization of any probability distribution over
 /// arbitrary Support.
 pub trait Density {
-    type S: Support;
+    type Support: Support;
 
-    fn density(&self, x: &Self::S) -> Probability;
-    fn support(&self) -> impl Iterator<Item = &Self::S>;
+    fn density(&self, x: &Self::Support) -> Probability;
+    fn support(&self) -> impl Iterator<Item = &Self::Support>;
 }

@@ -6,8 +6,8 @@ pub trait Coupling {
     type X: Support;
     type Y: Support;
     type M: Measure<X = Self::X, Y = Self::Y>;
-    type P: Density<S = Self::X>;
-    type Q: Density<S = Self::Y>;
+    type P: Density<Support = Self::X>;
+    type Q: Density<Support = Self::Y>;
 
     /// minimize the coupling using whatever algorithm
     /// the implementor sees fit. the contract is that

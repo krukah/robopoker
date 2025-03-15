@@ -67,15 +67,15 @@ impl From<BTreeMap<Abstraction, Entropy>> for Potential {
 }
 
 impl Density for Potential {
-    type S = Abstraction;
-    fn density(&self, x: &Self::S) -> Entropy {
+    type Support = Abstraction;
+    fn density(&self, x: &Self::Support) -> Entropy {
         self.0
             .get(x)
             .copied()
             .inspect(|p| assert!(p.is_finite(), "density overflow"))
             .expect("abstraction in potential")
     }
-    fn support(&self) -> impl Iterator<Item = &Self::S> {
+    fn support(&self) -> impl Iterator<Item = &Self::Support> {
         self.0.keys()
     }
 }
