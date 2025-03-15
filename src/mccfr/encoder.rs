@@ -2,7 +2,7 @@ use super::bucket::Bucket;
 use super::data::Data;
 use super::node::Node;
 use super::recall::Recall;
-use super::tree::Branch;
+use super::tree::Leaf;
 use super::tree::Tree;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::street::Street;
@@ -52,14 +52,13 @@ impl Encoder {
     /// Rust's ownership makes this a bit awkward but for very good reason!
     /// It has forced me to decouple global (Path) from local (Data)
     /// properties of Tree sampling, which makes lots of sense and is stronger model.
-    /// broadly goes from Edge -> Action -> Game -> Abstraction
-    pub fn branches(&self, node: &Node) -> Vec<Branch> {
+    pub fn sample(&self, node: &Node) -> Vec<Leaf> {
         node.branches()
             .into_iter()
             .map(|(e, g)| (e, g, self.abstraction(&g)))
-            .map(|(e, g, x)| (e, Data::from((g, x))))
+            .map(|(e, g, a)| (e, Data::from((g, a))))
             .map(|(e, d)| (e, d, node.index()))
-            .map(|(e, d, n)| Branch(d, e, n))
+            .map(|(e, d, n)| Leaf(d, e, n))
             .collect()
     }
 

@@ -28,9 +28,6 @@ impl<'tree> From<(NodeIndex, &'tree DiGraph<Data, Edge>)> for Node<'tree> {
 }
 
 impl<'tree> Node<'tree> {
-    pub fn spawn(&self, index: NodeIndex) -> Node<'tree> {
-        Self::from((index, self.graph()))
-    }
     pub fn data(&self) -> &Data {
         &self
             .graph
@@ -70,13 +67,21 @@ impl<'tree> Node<'tree> {
             vec![]
         }
     }
+    pub fn previous(&self) -> Option<(Node<'tree>, &'tree Edge)> {
+        match (self.parent(), self.incoming()) {
+            (Some(parent), Some(incoming)) => Some((parent, incoming)),
+            (Some(_), _) => unreachable!("live by the ship die by the ship"),
+            (_, Some(_)) => unreachable!("live by the ship die by the ship"),
+            (None, None) => None,
+        }
+    }
     pub fn outgoing(&self) -> Vec<&'tree Edge> {
         self.graph()
             .edges_directed(self.index(), Outgoing)
             .map(|edge| edge.weight())
             .collect()
     }
-    pub fn incoming(&self) -> Option<&'tree Edge> {
+    fn incoming(&self) -> Option<&'tree Edge> {
         self.graph()
             .edges_directed(self.index(), Incoming)
             .next()
@@ -112,6 +117,10 @@ impl<'tree> Node<'tree> {
     }
     pub fn graph(&self) -> &'tree DiGraph<Data, Edge> {
         self.graph
+    }
+
+    fn spawn(&self, index: NodeIndex) -> Node<'tree> {
+        Self::from((index, self.graph()))
     }
 
     /// this is the bucket that we use to lookup the Policy

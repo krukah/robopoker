@@ -4,11 +4,9 @@ use super::node::Node;
 use super::player::Player;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
-use std::fmt::Formatter;
-use std::fmt::Result;
 
-pub struct Branch(pub Data, pub Edge, pub NodeIndex);
-impl Branch {
+pub struct Leaf(pub Data, pub Edge, pub NodeIndex);
+impl Leaf {
     pub fn edge(&self) -> &Edge {
         &self.1
     }
@@ -32,7 +30,7 @@ impl Tree {
     pub fn empty(player: Player) -> Self {
         Self(DiGraph::with_capacity(0, 0), player)
     }
-    pub fn walker(&self) -> Player {
+    pub fn walker_onlyinpartition(&self) -> Player {
         self.1
     }
     pub fn graph(&self) -> &DiGraph<Data, Edge> {
@@ -55,7 +53,7 @@ impl Tree {
 
     /// attach a Branch to the Tree
     /// assuming that the Node has already been ::inserted()
-    pub fn fork(&mut self, branch: Branch) -> Node {
+    pub fn fork(&mut self, branch: Leaf) -> Node {
         let leaf = self.0.add_node(branch.0);
         let edge = branch.1;
         let root = branch.2;
@@ -71,13 +69,13 @@ impl Tree {
 
     /// display the Tree in a human-readable format
     /// be careful because it's really big and recursive
-    fn display(&self, f: &mut Formatter, index: NodeIndex, prefix: &str) -> Result {
-        if index == NodeIndex::new(0) {
-            writeln!(f, "\nROOT   {}", self.at(index).bucket())?;
+    fn show(&self, f: &mut std::fmt::Formatter, x: NodeIndex, prefix: &str) -> std::fmt::Result {
+        if x == NodeIndex::new(0) {
+            writeln!(f, "\nROOT   {}", self.at(x).bucket())?;
         }
         let mut children = self
             .0
-            .neighbors_directed(index, petgraph::Outgoing)
+            .neighbors_directed(x, petgraph::Outgoing)
             .collect::<Vec<_>>();
         let n = children.len();
         children.sort();
@@ -89,10 +87,10 @@ impl Tree {
             let head = node.bucket();
             let edge = self
                 .0
-                .edge_weight(self.0.find_edge(index, child).unwrap())
+                .edge_weight(self.0.find_edge(x, child).unwrap())
                 .unwrap();
             writeln!(f, "{}{}──{} → {}", prefix, stem, edge, head)?;
-            self.display(f, child, &format!("{}{}", prefix, gaps))?;
+            self.show(f, child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
     }
@@ -100,6 +98,6 @@ impl Tree {
 
 impl std::fmt::Display for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.display(f, NodeIndex::new(0), "")
+        self.show(f, NodeIndex::new(0), "")
     }
 }

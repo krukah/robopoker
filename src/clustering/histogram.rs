@@ -114,11 +114,11 @@ impl From<Vec<Abstraction>> for Histogram {
 }
 
 impl Density for Histogram {
-    type S = Abstraction;
-    fn density(&self, x: &Self::S) -> f32 {
+    type Support = Abstraction;
+    fn density(&self, x: &Self::Support) -> f32 {
         self.density(x)
     }
-    fn support(&self) -> impl Iterator<Item = &Self::S> {
+    fn support(&self) -> impl Iterator<Item = &Self::Support> {
         self.support()
     }
 }

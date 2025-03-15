@@ -2,7 +2,7 @@ use super::bucket::Bucket;
 use super::counterfactual::Counterfactual;
 use super::discount::Discount;
 use super::edge::Edge;
-use super::info::Info;
+use super::info::InfoSet;
 use super::memory::Memory;
 use super::node::Node;
 use super::phase::Phase;
@@ -10,7 +10,7 @@ use super::player::Player;
 use super::policy::Policy;
 use super::regret::Regret;
 use super::strategy::Strategy;
-use super::tree::Branch;
+use super::tree::Leaf;
 use crate::cards::street::Street; // effectively unused
 use crate::Arbitrary;
 use crate::Probability;
@@ -59,7 +59,7 @@ impl Profile {
     /// otherwise, we initialize the strategy
     /// at this Node with uniform distribution
     /// over its outgoing Edges .
-    pub fn witness(&mut self, node: &Node, children: &Vec<Branch>) {
+    pub fn witness(&mut self, node: &Node, children: &Vec<Leaf>) {
         let bucket = node.bucket();
         let n = children.len();
         let uniform = 1. / n as Probability;
@@ -96,14 +96,14 @@ impl Profile {
     /// by calculating the marginal Utitlity
     /// missed out on for not having followed
     /// every walkable Edge at this Infoset/Node/Bucket
-    pub fn regret_vector(&self, infoset: &Info) -> BTreeMap<Edge, Utility> {
+    pub fn regret_vector(&self, infoset: &InfoSet) -> BTreeMap<Edge, Utility> {
         assert!(infoset.node().player() == self.walker());
         log::trace!("regret vector @ {}", infoset.node().bucket());
         infoset
-            .node()
+            .node() //.info().choices()
             .outgoing()
             .into_iter()
-            .map(|a| (a.clone(), self.immediate_regret(infoset, a)))
+            .map(|a| (a.clone(), self.instant_regret(infoset, a)))
             .map(|(a, r)| (a, r.max(crate::REGRET_MIN)))
             .map(|(a, r)| (a, r.min(crate::REGRET_MAX)))
             .inspect(|(a, r)| log::trace!("{:16} ! {:>10 }", format!("{:?}", a), r))
@@ -116,14 +116,14 @@ impl Profile {
     /// by following a given Edge
     /// proportionally to how much regret we felt
     /// for not having followed that Edge in the past.
-    pub fn policy_vector(&self, infoset: &Info) -> BTreeMap<Edge, Probability> {
+    pub fn policy_vector(&self, infoset: &InfoSet) -> BTreeMap<Edge, Probability> {
         assert!(infoset.node().player() == self.walker());
         log::trace!("policy vector @ {}", infoset.node().bucket());
         let regrets = infoset
-            .node()
+            .node() //.info().choices()
             .outgoing()
             .into_iter()
-            .map(|action| (action.clone(), self.cumulated_regret(infoset, action)))
+            .map(|action| (action.clone(), self.rolling_regret(infoset, action)))
             .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<BTreeMap<Edge, Utility>>();
         let sum = regrets.values().sum::<Utility>();
@@ -221,14 +221,14 @@ impl Profile {
     }
 
     /// full exploration of my decision space Edges
-    pub fn explore_all(&self, choices: Vec<Branch>, _: &Node) -> Vec<Branch> {
+    pub fn explore_all(&self, choices: Vec<Leaf>, _: &Node) -> Vec<Leaf> {
         choices
             .into_iter()
-            .inspect(|Branch(_, edge, _)| assert!(edge.is_choice()))
+            .inspect(|Leaf(_, edge, _)| assert!(edge.is_choice()))
             .collect()
     }
     /// uniform sampling of chance Edge
-    pub fn explore_any(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
+    pub fn explore_any(&self, choices: Vec<Leaf>, head: &Node) -> Vec<Leaf> {
         let n = choices.len();
         let mut choices = choices;
         let ref mut rng = self.rng(head);
@@ -238,14 +238,15 @@ impl Profile {
         vec![chosen]
     }
     /// Profile-weighted sampling of opponent Edge
-    pub fn explore_one(&self, mut choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
+    pub fn explore_one(&self, choices: Vec<Leaf>, head: &Node) -> Vec<Leaf> {
         use rand::distributions::WeightedIndex;
         use rand::prelude::Distribution;
         let ref mut rng = self.rng(head);
         let ref bucket = head.bucket();
+        let mut choices = choices;
         let policy = choices
             .iter()
-            .map(|Branch(_, edge, _)| self.weight(bucket, edge))
+            .map(|Leaf(_, edge, _)| self.weight(bucket, edge))
             .collect::<Vec<Probability>>();
         let choice = WeightedIndex::new(policy)
             .expect("at least one policy > 0")
@@ -258,7 +259,7 @@ impl Profile {
     /// counterfactual regret calculations
 
     /// compute regret and policy vectors for a given infoset
-    pub fn counterfactual(&self, info: Info) -> Counterfactual {
+    pub fn counterfactual(&self, info: InfoSet) -> Counterfactual {
         let regret = Regret::from(self.regret_vector(&info));
         let policy = Policy::from(self.policy_vector(&info));
         Counterfactual::from((info, regret, policy))
@@ -268,7 +269,7 @@ impl Profile {
     /// upon visiting any Node inthis Infoset,
     /// how much cumulative Utility have we missed out on
     /// for not having followed this Edge?
-    fn cumulated_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+    fn rolling_regret(&self, infoset: &InfoSet, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
         let node = infoset.node();
         let bucket = node.bucket();
@@ -285,7 +286,7 @@ impl Profile {
     /// with paths weighted according to our Profile:
     /// if we follow this Edge 100% of the time,
     /// what is the expected marginal increase in Utility?
-    fn immediate_regret(&self, infoset: &Info, edge: &Edge) -> Utility {
+    fn instant_regret(&self, infoset: &InfoSet, edge: &Edge) -> Utility {
         assert!(infoset.node().player() == self.walker());
         infoset
             .roots()
@@ -330,8 +331,7 @@ impl Profile {
                 .map(|leaf| self.terminal_value(head, leaf))
                 .sum::<Utility>()
     }
-    /// if,
-    /// counterfactually,
+    /// if, counterfactually,
     /// we had intended to get ourselves in this infoset,
     /// then what would be the expected Utility of this leaf?
     fn cfactual_value(&self, head: &Node, edge: &Edge) -> Utility {
@@ -392,7 +392,7 @@ impl Profile {
     /// regret calculation to account for the under- and over-sampling
     /// of regret across different Infosets.
     fn external_reach(&self, node: &Node) -> Probability {
-        if let (Some(parent), Some(incoming)) = (node.parent(), node.incoming()) {
+        if let Some((parent, incoming)) = node.previous() {
             if parent.player() == self.walker() {
                 self.external_reach(&parent)
             } else {
@@ -406,7 +406,7 @@ impl Profile {
     /// up to this Node in the Tree,
     /// then what is the probability of visiting this Node?
     fn profiled_reach(&self, node: &Node) -> Probability {
-        if let (Some(parent), Some(incoming)) = (node.parent(), node.incoming()) {
+        if let Some((parent, incoming)) = node.previous() {
             self.profiled_reach(&parent) * self.reach(&parent, incoming)
         } else {
             1.
@@ -419,7 +419,7 @@ impl Profile {
     fn relative_reach(&self, root: &Node, leaf: &Node) -> Probability {
         if root.bucket() == leaf.bucket() {
             1.
-        } else if let (Some(parent), Some(incoming)) = (leaf.parent(), leaf.incoming()) {
+        } else if let Some((parent, incoming)) = leaf.previous() {
             self.relative_reach(root, &parent) * self.reach(&parent, incoming)
         } else {
             unreachable!("tail must have parent")

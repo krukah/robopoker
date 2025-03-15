@@ -1,10 +1,10 @@
 use super::bucket::Bucket;
-use super::info::Info;
+use super::info::InfoSet;
 use super::tree::Tree;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-pub struct Partition(BTreeMap<Bucket, Info>);
+pub struct Partition(BTreeMap<Bucket, InfoSet>);
 
 impl From<Tree> for Partition {
     fn from(tree: Tree) -> Self {
@@ -14,17 +14,17 @@ impl From<Tree> for Partition {
             .all()
             .iter()
             .filter(|n| n.children().len() > 0)
-            .filter(|n| n.player() == tree.walker())
+            .filter(|n| n.player() == tree.walker_onlyinpartition())
         {
             info.entry(node.bucket().clone())
-                .or_insert_with(|| Info::from(tree.clone()))
+                .or_insert_with(|| InfoSet::from(tree.clone()))
                 .add(node.index());
         }
         Self(info)
     }
 }
 
-impl From<Partition> for Vec<Info> {
+impl From<Partition> for Vec<InfoSet> {
     fn from(infosets: Partition) -> Self {
         infosets.0.into_values().collect()
     }
