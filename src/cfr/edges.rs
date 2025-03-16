@@ -4,7 +4,7 @@ use super::edge::Edge;
 /// It's just the copyable struct. It is NOT the
 /// collection of Nodes that share the same Bucket.
 /// That is going to be something else, part of the Partition.
-pub trait EdgeSet<E>: Iterator<Item = E> + Clone + Copy + PartialEq + Eq
+pub trait Decision<E>: Iterator<Item = E> + Clone + Copy + PartialEq + Eq
 where
     E: Edge,
 {

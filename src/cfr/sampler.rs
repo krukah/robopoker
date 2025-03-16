@@ -1,4 +1,5 @@
 use super::encoder::Encoder;
+use super::game::Game;
 use super::leaf::Leaf;
 use super::node::Node;
 use super::profile::Profile;
@@ -11,9 +12,12 @@ use super::turn::Turn;
 /// the mutability constraints of profile witnessing.
 pub trait Sampler {
     /// Just grow a tree from the ground up
-    fn sample<T>(&self) -> T
+    fn sample<G, T>(&self, game: G) -> T
     where
+        G: Game,
         T: Tree;
+
+    /// To support different sampling schemes, we need
 
     /// To support different sampling schemes, we need
     /// to assign a Player to be the "traverser" of the

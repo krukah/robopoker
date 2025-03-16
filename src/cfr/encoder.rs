@@ -1,5 +1,5 @@
 use super::edge::Edge;
-use super::edges::EdgeSet;
+use super::edges::Decision;
 use super::game::Game;
 use super::leaf::Leaf;
 use super::tree::Tree;
@@ -12,19 +12,19 @@ pub trait Encoder {
     /// will become the root of the Tree. You don't
     /// need a Tree because you know the topology of the
     /// empty Tree you're going to grow later.
-    fn root<I, E, G>(&self, game: &G) -> I
+    fn root<D, E, G>(&self, game: &G) -> D
     where
         E: Edge,
-        I: EdgeSet<E>,
+        D: Decision<E>,
         G: Game;
 
     /// For non-root Nodes, we should look at *where* we are
     /// attaching to the Tree to decide *how* we should attach it.
     /// (if depth-limited, or action-constrained, etc.)
-    fn info<I, T, E, L>(&self, tree: &T, leaf: &L) -> I
+    fn info<D, T, E, L>(&self, tree: &T, leaf: &L) -> D
     where
         E: Edge,
-        I: EdgeSet<E>,
+        D: Decision<E>,
         T: Tree,
         L: Leaf;
 }

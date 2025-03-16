@@ -1,10 +1,12 @@
 use super::edge::Edge;
-use super::edges::EdgeSet;
+use super::edges::Decision;
 use super::node::Node;
-use super::nodes::NodeSet;
+use super::nodes::Position;
+use super::policy::Policy;
 use super::turn::Turn;
 use crate::transport::density::Density;
-use crate::{Probability, Utility};
+use crate::Probability;
+use crate::Utility;
 
 /// To get weights for edges under certain
 /// information sets, we need to be able to map
@@ -12,10 +14,10 @@ use crate::{Probability, Utility};
 /// Bucket -> Policy -> Edge -> Probability
 pub trait Profile {
     /// lookup policy at this infoset (assume you have one)
-    fn policy<P, I, E>(&self, info: &I) -> P
+    fn policy<P, D, E>(&self, info: &D) -> P
     where
         E: Edge,
-        I: EdgeSet<E>,
+        D: Decision<E>,
         P: Density<Support = E>;
 
     /// decide who's walking the tree rn
@@ -209,27 +211,26 @@ pub trait Profile {
     /// by calculating the marginal Utitlity
     /// missed out on for not having followed
     /// every walkable Edge at this Infoset/Node/Bucket
-    fn regret_vector<N, R, I, J, E, T>(&self, infoset: I) -> R
+    fn regret_vector<N, P, I, D, E, T>(&self, infoset: I) -> P
     where
         N: Node,
         E: Edge,
         T: Turn,
-        I: NodeSet<N>,
-        J: Iterator<Item = E>,
-        R: Density<Support = E> + From<Vec<(E, Utility)>>,
+        I: Position<N>,
+        D: Decision<E>,
+        P: Policy<E>,
     {
         infoset
             .clone()
             .next()
             .expect("non-empty infoset")
-            .outgoing::<E, J>()
+            .outgoing::<E, D>()
             .map(|edge| (edge, self.info_gain::<N, E, T, I>(infoset.clone(), &edge)))
             .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
             .map(|(e, r)| (e, r.min(crate::REGRET_MAX)))
             .inspect(|(e, r)| log::trace!("{:16} ! {:>10}", format!("{:?}", e), r))
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
-            .collect::<Vec<(E, Utility)>>()
-            .into()
+            .collect::<P>()
     }
 }

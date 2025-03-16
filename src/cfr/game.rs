@@ -5,6 +5,8 @@ pub trait Game: Clone + Copy {
     fn player<T>(&self) -> T
     where
         T: Turn;
+
+    fn root() -> Self;
 }
 
 impl Game for crate::gameplay::game::Game {
@@ -12,6 +14,9 @@ impl Game for crate::gameplay::game::Game {
     where
         T: Turn,
     {
+        todo!()
+    }
+    fn root() -> Self {
         todo!()
     }
 }
