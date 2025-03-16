@@ -111,10 +111,10 @@ impl Blueprint {
         let walker = { self.profile.read().unwrap().walker() };
         let mut tree = Tree::empty(walker);
         let ref root = tree.plant(self.encoder.seed());
-        let mut todo = self.sample(root);
+        let mut todo = self.expand(root);
         while let Some(branch) = todo.pop() {
             let ref node = tree.fork(branch);
-            let children = self.sample(node);
+            let children = self.expand(node);
             todo.extend(children);
         }
         tree
@@ -126,7 +126,7 @@ impl Blueprint {
     /// conditional on its History and on our sampling
     /// rules? (i.e. external sampling, probing, full
     /// exploration, etc.)
-    fn sample(&self, node: &Node) -> Vec<Leaf> {
+    fn expand(&self, node: &Node) -> Vec<Leaf> {
         let chance = Player::chance();
         let walker = { self.profile.read().unwrap().walker() };
         let branches = self.encoder.sample(node);

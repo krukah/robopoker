@@ -6,6 +6,7 @@ pub mod players;
 pub mod save;
 
 pub mod cards;
+pub mod cfr;
 pub mod clustering;
 pub mod gameplay;
 pub mod mccfr;
