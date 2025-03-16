@@ -1,9 +1,9 @@
 use super::edge::Edge;
-use super::edges::EdgeSet;
+use super::edges::Decision;
 use super::game::Game;
 use super::leaf::Leaf;
 use super::node::Node;
-use super::nodes::NodeSet;
+use super::nodes::Position;
 
 /// Trees handle the recursive growth of their
 /// underlying graph data structure. All we need
@@ -20,7 +20,7 @@ pub trait Tree: Clone + Copy + Default {
     fn partition<N, I, J>(self) -> J
     where
         N: Node,
-        I: NodeSet<N>,
+        I: Position<N>,
         J: Iterator<Item = I>;
 
     /// Initial insertion of root node
@@ -29,7 +29,7 @@ pub trait Tree: Clone + Copy + Default {
     fn seed<N, I, G, E>(&mut self, info: I, seed: G) -> N
     where
         E: Edge,
-        I: EdgeSet<E>,
+        I: Decision<E>,
         G: Game,
         N: Node;
 
@@ -41,7 +41,7 @@ pub trait Tree: Clone + Copy + Default {
     fn grow<N, I, L, E>(&mut self, info: I, leaf: L) -> N
     where
         E: Edge,
-        I: EdgeSet<E>,
+        I: Decision<E>,
         L: Leaf,
         N: Node;
 }

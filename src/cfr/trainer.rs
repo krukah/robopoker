@@ -1,7 +1,8 @@
 use super::edge::Edge;
-use super::edges::EdgeSet;
+use super::edges::Decision;
 use super::node::Node;
-use super::nodes::NodeSet;
+use super::nodes::Position;
+use super::policy::Policy;
 use super::profile::Profile;
 use super::turn::Turn;
 use crate::transport::density::Density;
@@ -28,24 +29,37 @@ pub trait Trainer {
     /// upon visiting any Node in this Infoset,
     /// how much cumulative Utility have we missed out on
     /// for not having followed this Edge?
-    fn regret<I, E>(&self, info: &I, edge: &E) -> Utility
+    fn regret<D, E>(&self, info: &D, edge: &E) -> Utility
     where
         E: Edge,
-        I: EdgeSet<E>;
+        D: Decision<E>;
 
     /// Update myself
-    fn update_regret<P, I, E>(&mut self, info: &I, update: &P)
+    fn update_regret<P, D, E>(&mut self, info: &D, update: &P)
     where
         E: Edge,
-        I: EdgeSet<E>,
+        D: Decision<E>,
         P: Density<Support = E>;
 
     /// Update myself
-    fn update_policy<P, I, E>(&mut self, info: &I, update: &P)
+    fn update_policy<P, D, E>(&mut self, info: &D, update: &P)
     where
         E: Edge,
-        I: EdgeSet<E>,
+        D: Decision<E>,
         P: Density<Support = E>;
+
+    /// Using our current regret Profile,
+    /// compute a new strategy vector
+    /// by following a given Edge
+    /// proportionally to how much regret we felt
+    /// for not having followed that Edge in the past.
+    fn policy_vector<N, P, I, D, E>(&self, infoset: I) -> P
+    where
+        N: Node,
+        E: Edge,
+        I: Position<N>,
+        D: Decision<E>,
+        P: Policy<E>;
 
     /*
 
@@ -62,44 +76,42 @@ pub trait Trainer {
         N: Node,
         T: Turn,
         Y: Profile,
-        X: EdgeSet<E>,
-        I: NodeSet<N>,
-        P: Density<Support = E> + From<Vec<(E, Utility)>>, // Policy trait ??
+        X: Decision<E>,
+        I: Position<N>,
+        P: Policy<E>,
     {
+        let ref prof = self.profile::<Y>();
+        let regret = prof.regret_vector::<N, P, I, X, E, T>(infoset.clone());
         let policy = self.policy_vector::<N, P, I, X, E>(infoset.clone());
-        let regret = self
-            .profile::<Y>()
-            .regret_vector::<N, P, I, X, E, T>(infoset.clone());
-        self.update_regret::<P, X, E>(&infoset.info::<E, X>(), &regret);
-        self.update_policy::<P, X, E>(&infoset.info::<E, X>(), &policy);
+        self.update_regret::<P, X, E>(&infoset.decision::<E, X>(), &regret);
+        self.update_policy::<P, X, E>(&infoset.decision::<E, X>(), &policy);
     }
 
-    /// Using our current regret Profile,
-    /// compute a new strategy vector
-    /// by following a given Edge
-    /// proportionally to how much regret we felt
-    /// for not having followed that Edge in the past.
-    fn policy_vector<N, P, I, J, E>(&self, infoset: I) -> P
+    /// select policy for a single Edge at this InfoSet
+    fn policy<N, I, J, E>(&self, infoset: I, edge: &E) -> Probability
     where
         N: Node,
         E: Edge,
-        I: NodeSet<N>,
-        J: EdgeSet<E>,
-        P: Density<Support = E> + From<Vec<(E, Probability)>>,
+        I: Position<N>,
+        J: Decision<E>,
     {
-        let info = infoset.info::<E, J>();
+        let info = infoset.decision::<E, J>();
         let regrets = info
             .map(|edge| (edge, self.regret(info, &edge)))
-            .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<Vec<(E, Utility)>>();
-        let denom = regrets.iter().map(|(_, r)| r).sum::<Utility>();
-        let policy = regrets
+        let denominator = regrets
+            .iter()
+            .map(|(_, r)| r.max(crate::POLICY_MIN))
+            .sum::<Utility>();
+        regrets
             .into_iter()
-            .map(|(a, r)| (a, r / denom))
+            .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
+            .map(|(a, r)| (a, r / denominator))
             .inspect(|(a, p)| log::trace!("{:16} ~ {:>5.03}", format!("{:?}", a), p))
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
-            .collect::<Vec<(E, Probability)>>();
-        policy.into()
+            .find(|(a, _)| a == edge)
+            .map(|(_, p)| p)
+            .unwrap_or(0.)
     }
 }

@@ -1,5 +1,4 @@
 use super::edge::Edge;
-use super::edges::EdgeSet;
 use super::game::Game;
 use super::tree::Tree;
 use super::turn::Turn;
@@ -13,7 +12,7 @@ pub trait Node: Clone + Copy + PartialEq + Eq {
     fn info<E, I>(&self) -> &I
     where
         E: Edge,
-        I: EdgeSet<E>;
+        I: Iterator<Item = E>;
 
     /// Reveal interior data storage
     /// by reference, assuming it cannot
