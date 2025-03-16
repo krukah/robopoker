@@ -1,5 +1,6 @@
 use super::support::Support;
 use crate::Probability;
+use std::collections::BTreeMap;
 
 /// generalization of any probability distribution over
 /// arbitrary Support.
@@ -8,4 +9,38 @@ pub trait Density {
 
     fn density(&self, x: &Self::Support) -> Probability;
     fn support(&self) -> impl Iterator<Item = &Self::Support>;
+}
+
+impl<T> Density for BTreeMap<T, Probability>
+where
+    T: Ord + Support,
+{
+    type Support = T;
+
+    fn density(&self, x: &Self::Support) -> Probability {
+        self.get(x).cloned().unwrap_or(0.)
+    }
+
+    fn support(&self) -> impl Iterator<Item = &Self::Support> {
+        self.keys()
+    }
+}
+
+impl<T> Density for Vec<(T, Probability)>
+where
+    T: Eq + Support,
+{
+    type Support = T;
+
+    fn density(&self, x: &Self::Support) -> Probability {
+        self.iter()
+            .find(|(a, _)| a == x)
+            .map(|(_, p)| p)
+            .copied()
+            .unwrap_or(0.)
+    }
+
+    fn support(&self) -> impl Iterator<Item = &Self::Support> {
+        self.iter().map(|(a, _)| a)
+    }
 }
