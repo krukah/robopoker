@@ -1,5 +1,6 @@
-use super::edge::Edge;
+use crate::gameplay::edge::Edge;
 use crate::Arbitrary;
+use std::iter::FromIterator;
 
 #[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path(u64);
@@ -15,26 +16,13 @@ impl Arbitrary for Path {
 /// we (un)pack the byte representation of the edges in a Path(u64) sequence
 impl From<Path> for Vec<Edge> {
     fn from(path: Path) -> Self {
-        (0..16)
-            .map(|i| i * 4)
-            .map(|b| 0xF & (path.0 >> b))
-            .map(|bits| bits as u8)
-            .take_while(|bits| bits != &0)
-            .map(Edge::from)
-            .collect()
+        path.into_iter().collect()
     }
 }
+
 impl From<Vec<Edge>> for Path {
     fn from(edges: Vec<Edge>) -> Self {
-        assert!(edges.len() <= 16);
-        edges
-            .into_iter()
-            .map(u8::from)
-            .map(|byte| byte as u64)
-            .enumerate()
-            .map(|(i, byte)| byte << (i * 4))
-            .fold(0u64, |acc, bits| acc | bits)
-            .into()
+        edges.into_iter().collect()
     }
 }
 
@@ -63,9 +51,40 @@ impl From<i64> for Path {
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Vec::<Edge>::from(self.clone())
-            .iter()
+        self.clone()
+            .into_iter()
             .try_for_each(|e| write!(f, ".{}", e))
+    }
+}
+
+impl Iterator for Path {
+    type Item = Edge;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 == 0 {
+            return None;
+        }
+        let byte = (self.0 & 0xF) as u8;
+        if byte == 0 {
+            return None;
+        }
+        self.0 >>= 4;
+        Some(Edge::from(byte))
+    }
+}
+
+impl FromIterator<Edge> for Path {
+    fn from_iter<T: IntoIterator<Item = Edge>>(iter: T) -> Self {
+        let mut edges = iter.into_iter().collect::<Vec<_>>();
+        assert!(edges.len() <= 16, "path can only store up to 16 edges");
+        edges.reverse(); // Reverse to maintain the original order when iterating
+        edges
+            .into_iter()
+            .map(u8::from)
+            .map(|byte| byte as u64)
+            .enumerate()
+            .map(|(i, byte)| byte << (i * 4))
+            .fold(0u64, |acc, bits| acc | bits)
+            .into()
     }
 }
 
@@ -88,5 +107,13 @@ mod tests {
             .collect::<Vec<Edge>>();
         let paths = Vec::<Edge>::from(Path::from(edges.clone()));
         assert_eq!(edges, paths);
+    }
+
+    #[test]
+    fn iterator() {
+        let edges = (0..).map(|_| Edge::random()).take(5).collect::<Vec<Edge>>();
+        let path = Path::from(edges.clone());
+        let collected = path.into_iter().collect::<Vec<Edge>>();
+        assert_eq!(edges, collected);
     }
 }

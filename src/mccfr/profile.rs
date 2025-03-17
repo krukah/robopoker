@@ -1,7 +1,6 @@
 use super::bucket::Bucket;
 use super::counterfactual::Counterfactual;
 use super::discount::Discount;
-use super::edge::Edge;
 use super::info::InfoSet;
 use super::memory::Memory;
 use super::node::Node;
@@ -12,6 +11,7 @@ use super::regret::Regret;
 use super::strategy::Strategy;
 use super::tree::Leaf;
 use crate::cards::street::Street; // effectively unused
+use crate::gameplay::edge::Edge;
 use crate::Arbitrary;
 use crate::Probability;
 use crate::Utility;

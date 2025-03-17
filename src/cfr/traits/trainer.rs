@@ -1,12 +1,11 @@
 use super::edge::Edge;
-use super::edges::Decision;
+use super::edge::EdgeSet;
 use super::node::Node;
-use super::nodes::Position;
+use super::node::NodeSet;
 use super::policy::Policy;
 use super::profile::Profile;
 use super::turn::Turn;
 use crate::transport::density::Density;
-use crate::Probability;
 use crate::Utility;
 
 /// This trait is used to evaluate the Utility of
@@ -17,14 +16,26 @@ use crate::Utility;
 /// and so don't need ownership of anything other than our profile reference.
 /// So consider this a wrapper around Profile.
 pub trait Trainer {
+    // type E: Edge;
+    // type D: EdgeSet<Self::E>;
+    // type N: Node;
+    // type I: NodeSet<Self::N>;
+    // type P: Policy<Self::E>;
+    // type T: Tree;
+    // type W: Turn;
+
     fn train<P>(&self) -> P
     where
-        P: Profile;
-
+        P: Profile,
+    {
+        todo!("seed, recursively expandm, return profile after some number of iterations")
+    }
     fn profile<P>(&self) -> &P
     where
-        P: Profile;
-
+        P: Profile,
+    {
+        todo!("reference profile")
+    }
     /// Historically,
     /// upon visiting any Node in this Infoset,
     /// how much cumulative Utility have we missed out on
@@ -32,21 +43,55 @@ pub trait Trainer {
     fn regret<D, E>(&self, info: &D, edge: &E) -> Utility
     where
         E: Edge,
-        D: Decision<E>;
-
+        D: EdgeSet<E>,
+    {
+        todo!("lookup historical regret value")
+    }
     /// Update myself
     fn update_regret<P, D, E>(&mut self, info: &D, update: &P)
     where
         E: Edge,
-        D: Decision<E>,
-        P: Density<Support = E>;
-
+        D: EdgeSet<E>,
+        P: Density<Support = E>,
+    {
+        todo!("update regret memory, applying discount factor.")
+    }
     /// Update myself
     fn update_policy<P, D, E>(&mut self, info: &D, update: &P)
     where
         E: Edge,
-        D: Decision<E>,
-        P: Density<Support = E>;
+        D: EdgeSet<E>,
+        P: Density<Support = E>,
+    {
+        todo!("update policy memory, applying discount factor.")
+    }
+
+    /// take one iteration of CFR. not parallelized yet.
+    /// need to think about whether this should actually return a
+    /// set of Counterfactual results from which we can apply
+    /// updates in a single-threaded manner, after generating them
+    /// in parallel.
+    /// Iterator<Item = (D, P, R)>
+    /// where
+    ///     D: DecisionSet<E>,
+    ///     P: Policy<E>,
+    ///     R: Regret<E>
+    fn counterfactual<Y, D, E, N, P, I, T>(&mut self, infoset: I) -> (D, P, P)
+    where
+        E: Edge,
+        N: Node,
+        T: Turn,
+        Y: Profile,
+        D: EdgeSet<E>,
+        I: NodeSet<N>,
+        P: Policy<E>,
+    {
+        let ref prof = self.profile::<Y>();
+        let regret = prof.regret_vector::<N, P, I, D, E, T>(infoset.clone());
+        let policy = self.policy_vector::<N, P, I, D, E>(infoset.clone());
+        let bucket = infoset.decision::<E, D>().clone();
+        (bucket, policy, regret)
+    }
 
     /// Using our current regret Profile,
     /// compute a new strategy vector
@@ -57,45 +102,11 @@ pub trait Trainer {
     where
         N: Node,
         E: Edge,
-        I: Position<N>,
-        D: Decision<E>,
-        P: Policy<E>;
-
-    /*
-
-
-
-     * default implemenation
-
-
-    */
-
-    fn step<Y, X, E, N, P, I, T>(&mut self, infoset: I)
-    where
-        E: Edge,
-        N: Node,
-        T: Turn,
-        Y: Profile,
-        X: Decision<E>,
-        I: Position<N>,
+        I: NodeSet<N>,
+        D: EdgeSet<E>,
         P: Policy<E>,
     {
-        let ref prof = self.profile::<Y>();
-        let regret = prof.regret_vector::<N, P, I, X, E, T>(infoset.clone());
-        let policy = self.policy_vector::<N, P, I, X, E>(infoset.clone());
-        self.update_regret::<P, X, E>(&infoset.decision::<E, X>(), &regret);
-        self.update_policy::<P, X, E>(&infoset.decision::<E, X>(), &policy);
-    }
-
-    /// select policy for a single Edge at this InfoSet
-    fn policy<N, I, J, E>(&self, infoset: I, edge: &E) -> Probability
-    where
-        N: Node,
-        E: Edge,
-        I: Position<N>,
-        J: Decision<E>,
-    {
-        let info = infoset.decision::<E, J>();
+        let info = infoset.decision::<E, D>();
         let regrets = info
             .map(|edge| (edge, self.regret(info, &edge)))
             .collect::<Vec<(E, Utility)>>();
@@ -110,8 +121,6 @@ pub trait Trainer {
             .inspect(|(a, p)| log::trace!("{:16} ~ {:>5.03}", format!("{:?}", a), p))
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
-            .find(|(a, _)| a == edge)
-            .map(|(_, p)| p)
-            .unwrap_or(0.)
+            .collect::<P>()
     }
 }

@@ -1,5 +1,5 @@
 use super::edge::Edge;
-use super::edges::Decision;
+use super::edge::EdgeSet;
 use super::game::Game;
 use super::leaf::Leaf;
 use super::tree::Tree;
@@ -15,8 +15,11 @@ pub trait Encoder {
     fn root<D, E, G>(&self, game: &G) -> D
     where
         E: Edge,
-        D: Decision<E>,
-        G: Game;
+        D: EdgeSet<E>,
+        G: Game,
+    {
+        todo!("lookup root infoset")
+    }
 
     /// For non-root Nodes, we should look at *where* we are
     /// attaching to the Tree to decide *how* we should attach it.
@@ -24,7 +27,10 @@ pub trait Encoder {
     fn info<D, T, E, L>(&self, tree: &T, leaf: &L) -> D
     where
         E: Edge,
-        D: Decision<E>,
+        D: EdgeSet<E>,
         T: Tree,
-        L: Leaf;
+        L: Leaf,
+    {
+        todo!("create infoset conditional on local topology at leaf.head(). depending on depth-limit, we might truncate edge space / EdgeSet<E>")
+    }
 }

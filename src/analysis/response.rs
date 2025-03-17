@@ -1,6 +1,6 @@
 use crate::cards::observation::Observation;
 use crate::clustering::abstraction::Abstraction;
-use crate::mccfr::edge::Edge;
+use crate::gameplay::edge::Edge;
 use crate::Probability;
 use serde::Serialize;
 

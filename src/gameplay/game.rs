@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
 use super::action::Action;
+use super::ply::Turn;
 use super::seat::Seat;
 use super::seat::State;
 use super::settlement::Settlement;
+use super::showdown::Showdown;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
@@ -11,8 +13,6 @@ use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
 use crate::cards::strength::Strength;
-use crate::gameplay::ply::Turn;
-use crate::gameplay::showdown::Showdown;
 use crate::Chips;
 use crate::N;
 use crate::STACK;
@@ -688,8 +688,8 @@ mod tests {
 }
 
 // odds and tree building stuff
-use crate::mccfr::edge::Edge;
-use crate::mccfr::odds::Odds;
+use super::edge::Edge;
+use super::odds::Odds;
 use crate::Utility;
 
 impl Game {

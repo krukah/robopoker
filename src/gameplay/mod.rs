@@ -1,6 +1,8 @@
 pub mod action;
 pub mod deal;
+pub mod edge;
 pub mod game;
+pub mod odds;
 pub mod ply;
 pub mod seat;
 pub mod settlement;
