@@ -12,7 +12,7 @@ pub trait Encoder {
     /// will become the root of the Tree. You don't
     /// need a Tree because you know the topology of the
     /// empty Tree you're going to grow later.
-    fn root<D, E, G>(&self, game: &G) -> D
+    fn seed<D, E, G>(&self, game: &G) -> D
     where
         E: Edge,
         D: EdgeSet<E>,

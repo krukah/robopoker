@@ -5,6 +5,15 @@ pub enum Turn {
     Choice(usize),
 }
 
+impl Turn {
+    pub fn player(&self) -> usize {
+        match self {
+            Self::Choice(c) => *c,
+            _ => panic!("don't ask"),
+        }
+    }
+}
+
 impl std::fmt::Display for Turn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

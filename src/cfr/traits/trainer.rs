@@ -52,7 +52,7 @@ pub trait Trainer {
     where
         E: Edge,
         D: EdgeSet<E>,
-        P: Density<Support = E>,
+        P: Policy<E>,
     {
         todo!("update regret memory, applying discount factor.")
     }
@@ -61,7 +61,7 @@ pub trait Trainer {
     where
         E: Edge,
         D: EdgeSet<E>,
-        P: Density<Support = E>,
+        P: Policy<E>,
     {
         todo!("update policy memory, applying discount factor.")
     }

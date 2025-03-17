@@ -37,7 +37,8 @@ pub trait Profile {
         N: Node,
         E: Edge,
     {
-        todo!("lookup policy via self.get(node.info::<D>().decision::<E, D>()).expect(edge)")
+        todo!("if we haven't run into this infoset before, we should return uniformly over node.info().choices().
+        otherwise, lookup policy via self.get(node.info::<D>().decision::<E, D>()).expect(edge)")
     }
     /// assuming we start at a given head Node,
     /// and that that node is our walker,
@@ -51,7 +52,6 @@ pub trait Profile {
     {
         todo!("ferry game.payouts, w.r.t. player whose turn it is at root");
     }
-
     /// Conditional on being in a given Infoset,
     /// what is the Probability of
     /// visiting this particular leaf Node,
@@ -73,7 +73,6 @@ pub trait Profile {
             }
         }
     }
-
     /// If we were to play by the Profile,
     /// up to this Node in the Tree,
     /// then what is the probability of visiting this Node?
@@ -90,7 +89,6 @@ pub trait Profile {
             }
         }
     }
-
     /// If, counterfactually, we had played toward this infoset,
     /// then what would be the Probability of us being in this infoset?
     /// i.e. assuming our opponents played according to distributions from Profile, but we did not.
@@ -117,7 +115,6 @@ pub trait Profile {
             }
         }
     }
-
     /// Assuming we start at root Node,
     /// and that we sample the Tree according to Profile,
     /// how much Utility do we expect upon
@@ -136,7 +133,6 @@ pub trait Profile {
                 .map(|leaf| self.terminal_value::<N, E, T, I>(root, leaf))
                 .sum::<Utility>()
     }
-
     /// assuming we start at a given head Node,
     /// and that we sample the tree according to Profile,
     /// how much Utility does
@@ -156,7 +152,6 @@ pub trait Profile {
             * self.relative_reach::<N, E>(root, leaf)
             / self.cfactual_reach::<N, E, T>(leaf)
     }
-
     /// If, counterfactually,
     /// we had intended to get ourselves in this infoset,
     /// then what would be the expected Utility of this leaf?
@@ -177,7 +172,6 @@ pub trait Profile {
                 .map(|leaf| self.intended_value::<N, E, T, I>(root, leaf))
                 .sum::<Utility>()
     }
-
     /// Conditional on being in this Infoset,
     /// distributed across all its head Nodes,
     /// with paths weighted according to our Profile:
@@ -204,7 +198,6 @@ pub trait Profile {
     {
         self.cfactual_value::<N, E, T, I>(root, edge) - self.expected_value::<N, E, T, I>(root)
     }
-
     /// Using our current strategy Profile,
     /// compute the regret vector
     /// by calculating the marginal Utitlity
@@ -227,9 +220,9 @@ pub trait Profile {
             .map(|edge| (edge, self.info_gain::<N, E, T, I>(infoset.clone(), &edge)))
             .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
             .map(|(e, r)| (e, r.min(crate::REGRET_MAX)))
-            .inspect(|(e, r)| log::trace!("{:16} ! {:>10}", format!("{:?}", e), r))
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
+            .inspect(|(e, r)| log::trace!("{:16} ! {:>10}", format!("{:?}", e), r))
             .collect::<P>()
     }
 }
