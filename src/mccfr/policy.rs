@@ -1,4 +1,4 @@
-use super::edge::Edge;
+use crate::gameplay::edge::Edge;
 use crate::Arbitrary;
 use crate::Probability;
 use std::collections::BTreeMap;

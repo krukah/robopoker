@@ -1,8 +1,8 @@
 use super::bucket::Bucket;
 use super::data::Data;
-use super::edge::Edge;
 use super::path::Path;
 use super::player::Player;
+use crate::gameplay::edge::Edge;
 use crate::gameplay::game::Game; // referenced in ::branches()
 use crate::gameplay::ply::Turn; // referenced in ::payoff()
 use crate::Utility;

@@ -1,10 +1,9 @@
 use super::edge::Edge;
-use super::edges::Decision;
+use super::edge::EdgeSet;
 use super::node::Node;
-use super::nodes::Position;
+use super::node::NodeSet;
 use super::policy::Policy;
 use super::turn::Turn;
-use crate::transport::density::Density;
 use crate::Probability;
 use crate::Utility;
 
@@ -17,14 +16,18 @@ pub trait Profile {
     fn policy<P, D, E>(&self, info: &D) -> P
     where
         E: Edge,
-        D: Decision<E>,
-        P: Density<Support = E>;
-
+        D: EdgeSet<E>,
+        P: Policy<E>,
+    {
+        todo!("self.get(info.decision::<E, D>()).expect('policy)")
+    }
     /// decide who's walking the tree rn
     fn walker<T>(&self) -> &T
     where
-        T: Turn;
-
+        T: Turn,
+    {
+        todo!("iterations % 2")
+    }
     /// local transition probability. if we don't have a policy
     /// lookup for this Info, we will take the uniform distribution
     /// over node.info::<I>().choices::<J, E>(). i'll leave the
@@ -32,8 +35,10 @@ pub trait Profile {
     fn outgoing_reach<N, E>(&self, node: N, edge: E) -> Probability
     where
         N: Node,
-        E: Edge;
-
+        E: Edge,
+    {
+        todo!("lookup policy via self.get(node.info::<D>().decision::<E, D>()).expect(edge)")
+    }
     /// assuming we start at a given head Node,
     /// and that that node is our walker,
     /// then what is the Utility of this leaf Node?
@@ -42,16 +47,10 @@ pub trait Profile {
         N: Node,
         E: Edge,
         T: Turn,
-        I: Iterator<Item = N>;
-
-    /*
-
-
-
-     * default implemenation
-
-
-    */
+        I: Iterator<Item = N>,
+    {
+        todo!("ferry game.payouts, w.r.t. player whose turn it is at root");
+    }
 
     /// Conditional on being in a given Infoset,
     /// what is the Probability of
@@ -216,8 +215,8 @@ pub trait Profile {
         N: Node,
         E: Edge,
         T: Turn,
-        I: Position<N>,
-        D: Decision<E>,
+        I: NodeSet<N>,
+        D: EdgeSet<E>,
         P: Policy<E>,
     {
         infoset

@@ -1,5 +1,5 @@
+use super::action::Action;
 use super::odds::Odds;
-use crate::gameplay::action::Action;
 use crate::Arbitrary;
 use crate::Chips;
 use std::hash::Hash;
@@ -161,7 +161,7 @@ impl Arbitrary for Edge {
             2 => Self::Check,
             3 => Self::Call,
             4 => Self::Shove,
-            5 => Self::Raise(crate::mccfr::odds::Odds::random()),
+            5 => Self::Raise(super::odds::Odds::random()),
             _ => unreachable!(),
         }
     }

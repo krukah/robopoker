@@ -1,5 +1,4 @@
 use super::encoder::Encoder;
-use super::game::Game;
 use super::leaf::Leaf;
 use super::node::Node;
 use super::profile::Profile;
@@ -12,32 +11,41 @@ use super::turn::Turn;
 /// the mutability constraints of profile witnessing.
 pub trait Sampler {
     /// Just grow a tree from the ground up
-    fn sample<G, T>(&self, game: G) -> T
+    fn sample<T>(&self) -> T
     where
-        G: Game,
-        T: Tree;
-
-    /// To support different sampling schemes, we need
+        T: Tree,
+    {
+        todo!("get default tree. get game root. lookup info abstraction in table. root DecisionSet. empty history. insert into tree.")
+    }
 
     /// To support different sampling schemes, we need
     /// to assign a Player to be the "traverser" of the
     /// Tree that we are harvesting.
     fn walker<W>(&self) -> &W
     where
-        W: Turn;
+        W: Turn,
+    {
+        todo!("iteration % 2..if we bind W: From<usize> we can implement without generics by iteration() -> usize")
+    }
 
     /// Roughly static reference to the massive lookup table
     /// of Observation -> Abstraction
     fn encoder<E>(&self) -> &E
     where
-        E: Encoder;
+        E: Encoder,
+    {
+        todo!("reference encoder")
+    }
 
     /// We'll probably need to have a Profile
     /// to correctly sample Node, Edge pairs
     /// based on different sampling schemes
     fn profile<P>(&self) -> &P
     where
-        P: Profile;
+        P: Profile,
+    {
+        todo!("reference profile")
+    }
 
     /// Encapsulation of [external, internal, probing]
     /// sampling strategies. In practice, we will use
@@ -50,5 +58,8 @@ pub trait Sampler {
     where
         N: Node,
         L: Leaf,
-        I: Iterator<Item = L>;
+        I: Iterator<Item = L>,
+    {
+        todo!("if chance, touch any (uniform). if walker, touch all. else, touch one (policy-weighted).")
+    }
 }

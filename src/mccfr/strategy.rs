@@ -1,6 +1,6 @@
-use super::edge::Edge;
 use super::memory::Memory;
 use super::policy::Policy;
+use crate::gameplay::edge::Edge;
 use crate::Arbitrary;
 use crate::Probability;
 use std::collections::BTreeMap;

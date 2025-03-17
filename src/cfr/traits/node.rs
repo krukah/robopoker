@@ -1,7 +1,27 @@
 use super::edge::Edge;
+use super::edge::EdgeSet;
 use super::game::Game;
 use super::tree::Tree;
 use super::turn::Turn;
+
+/// InfoSet represents a collection of nodes that share the same information state.
+/// It combines the properties of being an iterator over nodes with the Info trait.
+pub trait NodeSet<N>: Iterator<Item = N> + Clone
+where
+    N: Node,
+{
+    // type W: Turn;
+    // type E: Edge;
+    // type I: EdgeSet<Self::E>;
+    // type G: Game;
+    // type H: Head;
+    // type T: Tree;
+
+    fn decision<E, I>(&self) -> &I
+    where
+        E: Edge,
+        I: EdgeSet<E>;
+}
 
 /// Local topology accessible via walkable tree functions.
 /// Interior data is exposed via game reference. Topology is

@@ -1,7 +1,7 @@
 use super::data::Data;
-use super::edge::Edge;
 use super::node::Node;
 use super::player::Player;
+use crate::gameplay::edge::Edge;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 

@@ -1,4 +1,4 @@
-use super::edge::Edge;
+use crate::gameplay::edge::Edge;
 use crate::Utility;
 use std::collections::BTreeMap;
 

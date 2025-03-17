@@ -13,7 +13,6 @@ pub mod mccfr;
 pub mod search;
 pub mod transport;
 pub mod wasm;
-
 /// dimensional analysis types
 type Chips = i16;
 type Equity = f32;
