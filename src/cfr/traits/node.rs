@@ -10,12 +10,9 @@ pub trait NodeSet<N>: Iterator<Item = N> + Clone
 where
     N: Node,
 {
-    // type W: Turn;
+    // type N: Node;
     // type E: Edge;
-    // type I: EdgeSet<Self::E>;
-    // type G: Game;
-    // type H: Head;
-    // type T: Tree;
+    // type D: EdgeSet<Self::E>;
 
     fn decision<E, I>(&self) -> &I
     where
@@ -28,11 +25,18 @@ where
 /// exposed via tree reference. This trait only handles
 /// navigation methods.
 pub trait Node: Clone + Copy + PartialEq + Eq {
+    // type W: Turn;
+    // type E: Edge;
+    // type I: EdgeSet<Self::E>;
+    // type G: Game<Self::W>;
+    // type H: Head;
+    // type T: Tree;
+
     /// Lookup the pre-computed information
-    fn info<E, I>(&self) -> &I
+    fn info<E, D>(&self) -> &D
     where
         E: Edge,
-        I: Iterator<Item = E>;
+        D: EdgeSet<E>;
 
     /// Reveal interior data storage
     /// by reference, assuming it cannot
@@ -67,10 +71,10 @@ pub trait Node: Clone + Copy + PartialEq + Eq {
         E: Edge;
 
     /// outgoing edges
-    fn outgoing<E, I>(&self) -> I
+    fn outgoing<E, D>(&self) -> D
     where
         E: Edge,
-        I: Iterator<Item = E>;
+        D: EdgeSet<E>;
 
     /// incoming edge optinoal
     fn incoming<E>(&self) -> Option<E>
