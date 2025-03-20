@@ -1,17 +1,42 @@
-/// Represents an edge in the game tree
-pub trait Edge: Clone + Copy + PartialEq + Eq + std::fmt::Debug {}
+impl Turn for petgraph::graph::EdgeIndex {}
+impl Turn for crate::gameplay::action::Action {}
+impl Turn for crate::gameplay::edge::Edge {}
 
-impl Edge for petgraph::graph::EdgeIndex {}
-impl Edge for crate::gameplay::edge::Edge {}
-
-/// This is more like Bucket than it is InfoSet.
-/// It's just the copyable struct. It is NOT the
-/// collection of Nodes that share the same Bucket.
-/// That is going to be something else, part of the Partition.
-pub trait EdgeSet<E>: Iterator<Item = E> + Clone + Copy + PartialEq + Eq
-where
-    E: Edge,
-{
+impl Decision<crate::gameplay::edge::Edge> for crate::mccfr::path::Path {
+    fn choices(&self) -> impl Iterator<Item = crate::gameplay::edge::Edge> {
+        self.into_iter()
+    }
 }
 
-impl EdgeSet<crate::gameplay::edge::Edge> for crate::mccfr::path::Path {}
+/// marker trait for things that can happen between games
+pub trait Turn: Copy + Clone + PartialEq + Eq + std::fmt::Debug {}
+
+trait Player: Clone + Copy + PartialEq + Eq {
+    fn chance() -> Self;
+}
+
+trait Game: Clone + Copy {
+    type E: Turn;
+    type W: Player;
+    fn root() -> Self;
+    fn turn(&self) -> Self::W;
+    fn payoff(&self, player: Self::W) -> crate::Utility;
+}
+
+pub trait Decision<E>: Clone + Copy + PartialEq + Eq
+where
+    E: Turn,
+{
+    fn choices(&self) -> impl Iterator<Item = E>;
+}
+
+struct Tree<'tree, G, T, P>
+where
+    G: Game,
+    T: Turn,
+    P: Player,
+{
+    index: petgraph::graph::NodeIndex,
+    graph: &'tree petgraph::graph::DiGraph<G, T>,
+    phantom: std::marker::PhantomData<P>,
+}

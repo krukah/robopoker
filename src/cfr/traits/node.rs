@@ -1,8 +1,8 @@
-use super::edge::Edge;
-use super::edge::EdgeSet;
+use super::edge::Decision;
+use super::edge::Turn;
 use super::game::Game;
 use super::tree::Tree;
-use super::turn::Turn;
+use super::turn::Playee;
 
 /// InfoSet represents a collection of nodes that share the same information state.
 /// It combines the properties of being an iterator over nodes with the Info trait.
@@ -16,8 +16,8 @@ where
 
     fn decision<E, I>(&self) -> &I
     where
-        E: Edge,
-        I: EdgeSet<E>;
+        E: Turn,
+        I: Decision<E>;
 }
 
 /// Local topology accessible via walkable tree functions.
@@ -35,8 +35,8 @@ pub trait Node: Clone + Copy + PartialEq + Eq {
     /// Lookup the pre-computed information
     fn info<E, D>(&self) -> &D
     where
-        E: Edge,
-        D: EdgeSet<E>;
+        E: Turn,
+        D: Decision<E>;
 
     /// Reveal interior data storage
     /// by reference, assuming it cannot
@@ -56,30 +56,30 @@ pub trait Node: Clone + Copy + PartialEq + Eq {
     /// exposing through self.game implicitly
     fn turn<T>(&self) -> &T
     where
-        T: Turn;
+        T: Playee;
 
     /// This will go one step down in the tree
     /// w.r.t. another Edge AND another Node
     fn follow<E>(&self, edge: &E) -> Option<Self>
     where
-        E: Edge;
+        E: Turn;
 
     /// This will go one step up in the tree
     /// w.r.t. another Edge AND another Node
     fn parent<E>(&self) -> Option<(Self, E)>
     where
-        E: Edge;
+        E: Turn;
 
     /// outgoing edges
     fn outgoing<E, D>(&self) -> D
     where
-        E: Edge,
-        D: EdgeSet<E>;
+        E: Turn,
+        D: Decision<E>;
 
     /// incoming edge optinoal
     fn incoming<E>(&self) -> Option<E>
     where
-        E: Edge;
+        E: Turn;
 
     /// This will go one step down in the tree
     /// w.r.t. all other Nodes
@@ -97,6 +97,6 @@ pub trait Node: Clone + Copy + PartialEq + Eq {
     /// recursing through parents until we reach the root node
     fn ancestors<E, I>(&self) -> I
     where
-        E: Edge,
+        E: Turn,
         I: Iterator<Item = (Self, E)>;
 }

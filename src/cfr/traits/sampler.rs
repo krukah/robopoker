@@ -3,7 +3,7 @@ use super::leaf::Leaf;
 use super::node::Node;
 use super::profile::Profile;
 use super::tree::Tree;
-use super::turn::Turn;
+use super::turn::Playee;
 
 /// The Sampler will encapsulate all the massive objects
 /// that we need to generate Trees in memory
@@ -23,7 +23,7 @@ pub trait Sampler {
     /// Tree that we are harvesting.
     fn walker<W>(&self) -> &W
     where
-        W: Turn,
+        W: Playee,
     {
         todo!("iteration % 2..if we bind W: From<usize> we can implement without generics by iteration() -> usize")
     }

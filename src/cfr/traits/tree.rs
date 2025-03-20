@@ -1,5 +1,5 @@
-use super::edge::Edge;
-use super::edge::EdgeSet;
+use super::edge::Decision;
+use super::edge::Turn;
 use super::game::Game;
 use super::head::Head;
 use super::leaf::Leaf;
@@ -46,15 +46,15 @@ pub trait Tree: Default {
     /// topology.
     fn seed<N, D, G, E>(&mut self, info: D, seed: G) -> N
     where
-        E: Edge,
+        E: Turn,
         N: Node,
-        D: EdgeSet<E>,
+        D: Decision<E>,
         G: Game,
     {
         todo!(
             "
             DiGraph holds (Game, DecisionSet) tuples.
-    
+
             let seed = self.0.add_node((seed, info));
             self.at(seed)"
         )
@@ -67,15 +67,15 @@ pub trait Tree: Default {
     /// what Edge to connect it with
     fn grow<N, D, L, E>(&mut self, info: D, leaf: L) -> N
     where
-        E: Edge,
+        E: Turn,
         N: Node,
-        D: EdgeSet<E>,
+        D: Decision<E>,
         L: Leaf,
     {
         todo!(
             "
             DiGraph holds (Game, DecisionSet) tuples.
-            
+
             let head = leaf.head().clone();
             let into = leaf.edge().clone();
             let tail = self.0.add_node(leaf.game().clone());

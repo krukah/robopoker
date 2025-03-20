@@ -1,23 +1,26 @@
-use crate::cfr::traits::turn::Turn;
+use super::edge::{Decision, Turn};
+use crate::cfr::traits::turn::Playee;
 use crate::Utility;
 
 /// Represents a game state
 pub trait Game: Clone + Copy {
-    type T: Turn;
+    type E: Turn;
+    type W: Playee;
     fn root() -> Self;
-    fn turn(&self) -> Self::T;
-    fn payoff(&self, player: Self::T) -> Utility;
+    fn turn(&self) -> Self::W;
+    fn payoff(&self, player: Self::W) -> Utility;
 }
 
 impl Game for crate::gameplay::game::Game {
-    type T = crate::gameplay::ply::Turn;
-    fn turn(&self) -> Self::T {
-        self.turn()
-    }
+    type E = crate::gameplay::action::Action;
+    type W = crate::gameplay::ply::Turn;
     fn root() -> Self {
         Self::root()
     }
-    fn payoff(&self, turn: Self::T) -> Utility {
+    fn turn(&self) -> Self::W {
+        self.turn()
+    }
+    fn payoff(&self, turn: Self::W) -> Utility {
         self.settlements()
             .get(turn.player())
             .map(|settlement| settlement.pnl() as f32)
