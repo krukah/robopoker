@@ -1,5 +1,5 @@
-use super::edge::Edge;
-use super::edge::EdgeSet;
+use super::edge::Decision;
+use super::edge::Turn;
 use super::game::Game;
 use super::leaf::Leaf;
 use super::tree::Tree;
@@ -14,8 +14,8 @@ pub trait Encoder {
     /// empty Tree you're going to grow later.
     fn seed<D, E, G>(&self, game: &G) -> D
     where
-        E: Edge,
-        D: EdgeSet<E>,
+        E: Turn,
+        D: Decision<E>,
         G: Game,
     {
         todo!("lookup root infoset")
@@ -26,8 +26,8 @@ pub trait Encoder {
     /// (if depth-limited, or action-constrained, etc.)
     fn info<D, T, E, L>(&self, tree: &T, leaf: &L) -> D
     where
-        E: Edge,
-        D: EdgeSet<E>,
+        E: Turn,
+        D: Decision<E>,
         T: Tree,
         L: Leaf,
     {

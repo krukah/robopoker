@@ -1,9 +1,9 @@
-use super::edge::Edge;
-use super::edge::EdgeSet;
+use super::edge::Decision;
+use super::edge::Turn;
 use super::node::Node;
 use super::node::NodeSet;
 use super::policy::Policy;
-use super::turn::Turn;
+use super::turn::Playee;
 use crate::Probability;
 use crate::Utility;
 
@@ -15,8 +15,8 @@ pub trait Profile {
     /// lookup policy at this infoset (assume you have one)
     fn policy<P, D, E>(&self, info: &D) -> P
     where
-        E: Edge,
-        D: EdgeSet<E>,
+        E: Turn,
+        D: Decision<E>,
         P: Policy<E>,
     {
         todo!("self.get(info.decision::<E, D>()).expect('policy)")
@@ -24,7 +24,7 @@ pub trait Profile {
     /// decide who's walking the tree rn
     fn walker<T>(&self) -> &T
     where
-        T: Turn,
+        T: Playee,
     {
         todo!("iterations % 2")
     }
@@ -35,7 +35,7 @@ pub trait Profile {
     fn outgoing_reach<N, E>(&self, node: N, edge: E) -> Probability
     where
         N: Node,
-        E: Edge,
+        E: Turn,
     {
         todo!("if we haven't run into this infoset before, we should return uniformly over node.info().choices().
         otherwise, lookup policy via self.get(node.info::<D>().decision::<E, D>()).expect(edge)")
@@ -46,8 +46,8 @@ pub trait Profile {
     fn terminal_value<N, E, T, I>(&self, root: N, leaf: N) -> Utility
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: Iterator<Item = N>,
     {
         todo!("ferry game.payouts, w.r.t. player whose turn it is at root");
@@ -59,7 +59,7 @@ pub trait Profile {
     fn relative_reach<N, E>(&self, root: N, leaf: N) -> Probability
     where
         N: Node,
-        E: Edge,
+        E: Turn,
     {
         if root == leaf {
             1.0
@@ -79,7 +79,7 @@ pub trait Profile {
     fn expected_reach<N, E>(&self, root: N) -> Probability
     where
         N: Node,
-        E: Edge,
+        E: Turn,
     {
         match root.parent::<E>() {
             None => 1.0,
@@ -100,8 +100,8 @@ pub trait Profile {
     fn cfactual_reach<N, E, T>(&self, node: N) -> Probability
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
     {
         match node.parent::<E>() {
             None => 1.0,
@@ -122,8 +122,8 @@ pub trait Profile {
     fn expected_value<N, E, T, I>(&self, root: N) -> Utility
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: Iterator<Item = N>,
     {
         assert!(self.walker::<T>() == root.turn::<T>());
@@ -140,8 +140,8 @@ pub trait Profile {
     fn intended_value<N, E, T, I>(&self, root: N, leaf: N) -> Utility
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: Iterator<Item = N>,
     {
         // should the relative reach calculation use head at all? may be double counted at self.cfactual.profile.cfactual_reach(head). maybe use expected_reach instead?
@@ -158,8 +158,8 @@ pub trait Profile {
     fn cfactual_value<N, E, T, I>(&self, root: N, edge: &E) -> Utility
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: Iterator<Item = N>,
     {
         // maybe use expected_reach instead? cfactual_reach may double count at bayesian_value in numerator
@@ -180,8 +180,8 @@ pub trait Profile {
     fn info_gain<N, E, T, I>(&self, roots: I, edge: &E) -> Utility
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: Iterator<Item = N>,
     {
         roots
@@ -192,8 +192,8 @@ pub trait Profile {
     fn node_gain<N, E, T, I>(&self, root: N, edge: &E) -> Utility
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: Iterator<Item = N>,
     {
         self.cfactual_value::<N, E, T, I>(root, edge) - self.expected_value::<N, E, T, I>(root)
@@ -206,10 +206,10 @@ pub trait Profile {
     fn regret_vector<N, P, I, D, E, T>(&self, infoset: I) -> P
     where
         N: Node,
-        E: Edge,
-        T: Turn,
+        E: Turn,
+        T: Playee,
         I: NodeSet<N>,
-        D: EdgeSet<E>,
+        D: Decision<E>,
         P: Policy<E>,
     {
         infoset
@@ -217,6 +217,7 @@ pub trait Profile {
             .next()
             .expect("non-empty infoset")
             .outgoing::<E, D>()
+            .choices()
             .map(|edge| (edge, self.info_gain::<N, E, T, I>(infoset.clone(), &edge)))
             .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
             .map(|(e, r)| (e, r.min(crate::REGRET_MAX)))

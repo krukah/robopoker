@@ -33,9 +33,6 @@ impl Tree {
     pub fn walker_onlyinpartition(&self) -> Player {
         self.1
     }
-    pub fn graph(&self) -> &DiGraph<Data, Edge> {
-        &self.0
-    }
 
     /// special insertion logic for the root node
     /// which, without a parent Branch, has slightly different

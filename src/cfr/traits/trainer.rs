@@ -1,10 +1,10 @@
-use super::edge::Edge;
-use super::edge::EdgeSet;
+use super::edge::Decision;
+use super::edge::Turn;
 use super::node::Node;
 use super::node::NodeSet;
 use super::policy::Policy;
 use super::profile::Profile;
-use super::turn::Turn;
+use super::turn::Playee;
 use crate::transport::density::Density;
 use crate::Utility;
 
@@ -42,16 +42,16 @@ pub trait Trainer {
     /// for not having followed this Edge?
     fn regret<D, E>(&self, info: &D, edge: &E) -> Utility
     where
-        E: Edge,
-        D: EdgeSet<E>,
+        E: Turn,
+        D: Decision<E>,
     {
         todo!("lookup historical regret value")
     }
     /// Update myself
     fn update_regret<P, D, E>(&mut self, info: &D, update: &P)
     where
-        E: Edge,
-        D: EdgeSet<E>,
+        E: Turn,
+        D: Decision<E>,
         P: Policy<E>,
     {
         todo!("update regret memory, applying discount factor.")
@@ -59,8 +59,8 @@ pub trait Trainer {
     /// Update myself
     fn update_policy<P, D, E>(&mut self, info: &D, update: &P)
     where
-        E: Edge,
-        D: EdgeSet<E>,
+        E: Turn,
+        D: Decision<E>,
         P: Policy<E>,
     {
         todo!("update policy memory, applying discount factor.")
@@ -78,11 +78,11 @@ pub trait Trainer {
     ///     R: Regret<E>
     fn counterfactual<Y, D, E, N, P, I, T>(&mut self, infoset: I) -> (D, P, P)
     where
-        E: Edge,
+        E: Turn,
         N: Node,
-        T: Turn,
+        T: Playee,
         Y: Profile,
-        D: EdgeSet<E>,
+        D: Decision<E>,
         I: NodeSet<N>,
         P: Policy<E>,
     {
@@ -101,13 +101,15 @@ pub trait Trainer {
     fn policy_vector<N, P, I, D, E>(&self, infoset: I) -> P
     where
         N: Node,
-        E: Edge,
+        E: Turn,
         I: NodeSet<N>,
-        D: EdgeSet<E>,
+        D: Decision<E>,
         P: Policy<E>,
     {
         let info = infoset.decision::<E, D>();
         let regrets = info
+            .clone()
+            .choices()
             .map(|edge| (edge, self.regret(info, &edge)))
             .collect::<Vec<(E, Utility)>>();
         let denominator = regrets

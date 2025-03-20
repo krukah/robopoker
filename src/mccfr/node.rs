@@ -91,19 +91,19 @@ impl<'tree> Node<'tree> {
         self.graph()
             .neighbors_directed(self.index(), Incoming)
             .next()
-            .map(|index| self.spawn(index))
+            .map(|index| self.at(index))
     }
     pub fn children(&self) -> Vec<Node<'tree>> {
         self.graph()
             .neighbors_directed(self.index(), Outgoing)
-            .map(|index| self.spawn(index))
+            .map(|index| self.at(index))
             .collect()
     }
     pub fn follow(&self, edge: &Edge) -> Option<Node<'tree>> {
         self.children()
             .iter()
             .find(|child| edge == child.incoming().unwrap())
-            .map(|child| self.spawn(child.index()))
+            .map(|child| self.at(child.index()))
     }
     pub fn leaves(&self) -> Vec<Node<'tree>> {
         if self.children().is_empty() {
@@ -119,7 +119,7 @@ impl<'tree> Node<'tree> {
         self.graph
     }
 
-    fn spawn(&self, index: NodeIndex) -> Node<'tree> {
+    fn at(&self, index: NodeIndex) -> Node<'tree> {
         Self::from((index, self.graph()))
     }
 
