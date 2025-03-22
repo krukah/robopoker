@@ -11,7 +11,9 @@
 ///
 /// # Panics
 /// * TODO
-pub fn translate_action(opponent_bet: i64, pot_size: i64) -> f64 {
+use crate::Chips;
+
+pub fn translate_action(opponent_bet: Chips, pot_size: Chips) -> f64 {
     if pot_size <= 1 {
         panic!("pot_size must be at least 1")
     }
@@ -68,6 +70,24 @@ mod tests {
 
     #[test]
     fn deliberate_fail() {
-        assert_eq!(translate_action(4, 1000), 0.5)
+        assert_eq!(translate_action(4, 1000), 0.5);
+    }
+
+    // See "Table 1: Effect of increasing A while holding B = 1 and x = 0.25 fixed."
+    // in the paper.
+    #[test]
+    fn replicate_paper_table_1_results() {
+        let b = 1.0;
+        let x = 0.25;
+
+        // The results table only listed results out to 3 decimal places.
+        let precision = 0.001;
+
+        // Follows the table row horizontally: "A" (smaller bet ratio) moves from 0 -> 0.1.
+        assert_eq!(calc_pseudo_harmonic_mapping(0.000, b, x), 0.6);
+        assert!((calc_pseudo_harmonic_mapping(0.001, b, x) - 0.601).abs() < precision);
+        assert!((calc_pseudo_harmonic_mapping(0.010, b, x) - 0.612).abs() < precision);
+        assert!((calc_pseudo_harmonic_mapping(0.050, b, x) - 0.663).abs() < precision);
+        assert!((calc_pseudo_harmonic_mapping(0.100, b, x) - 0.733).abs() < precision);
     }
 }
