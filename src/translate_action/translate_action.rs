@@ -1,8 +1,8 @@
 /// Translates an incoming bet size to a randomized choice of a smaller and larger bet size.
 ///
 /// # Arguments TODO
-/// * `opponent_bet` - The actual bet made by the opponent as an integer
-/// * `pot_size` - The current size of the pot as an integer
+/// * `opponent_bet` - The actual bet (in chips) made by the opponent
+/// * `pot_size` - The current size of the pot (in chips)
 /// * TODO figure out the manner in which we want to accept the action abstraction
 ///   (e.g. min and max allowed bets + pot ratios vs something simpler)
 ///
@@ -43,10 +43,11 @@ pub fn translate_action(opponent_bet: Chips, pot_size: Chips) -> f64 {
 
 /// Calculates psuedo-harmonic mapping percentage to use the smaller bet.
 ///
+/// NOTE: INPUTS MUST ALL BE NORMALIZED RELATIVE TO THE POT SIZE (ie pot = 1.0).
+/// (Hence the '_ratio' in each name.)
+///
 /// Formula: f_A,B (x) = ((B - x) * (1 + A) / ((B - A) * (1 + x))
 /// Where: A=smaller_bet/pot, B=larger_bet/pot, x=opponent_bet/pot
-///
-/// Note: All inputs are assumed to already be normalized the pot size (ie pot = 1). Hence the '_ratio' in each name.
 fn calc_pseudo_harmonic_mapping(
     smaller_bet_ratio: f64,
     larger_bet_ratio: f64,
@@ -80,11 +81,9 @@ mod tests {
         let b = 1.0;
         let x = 0.25;
 
-        // The results table only listed results out to 3 decimal places.
-        let precision = 0.001;
-
-        // Follows the table row horizontally: "A" (smaller bet ratio) moves from 0 -> 0.1.
         assert_eq!(calc_pseudo_harmonic_mapping(0.000, b, x), 0.6);
+        // The results table only reported these non-exact results out to 3 decimal places.
+        let precision = 0.001;
         assert!((calc_pseudo_harmonic_mapping(0.001, b, x) - 0.601).abs() < precision);
         assert!((calc_pseudo_harmonic_mapping(0.010, b, x) - 0.612).abs() < precision);
         assert!((calc_pseudo_harmonic_mapping(0.050, b, x) - 0.663).abs() < precision);
