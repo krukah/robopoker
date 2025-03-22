@@ -108,14 +108,14 @@ mod tests {
     }
     #[test]
     fn test_size_larger_than_any_in_abstraction() {
-        translate_action(1000, 37 [10, 20, 30].as_slice());
+        translate_action(1000, 37, [10, 20, 30].as_slice());
         todo!("Add test case once we figure out return type")
     }
 
     #[test]
     #[should_panic]
     fn test_disallows_empty_action_abstraction() {
-        translate_action(1000, 1 [].as_slice());
+        translate_action(1000, 1, [].as_slice());
     }
     #[test]
     #[should_panic]
