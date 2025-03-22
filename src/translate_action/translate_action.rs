@@ -17,7 +17,7 @@ use crate::Chips;
 
 pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction: &[Chips]) -> f64 {
     if pot_size <= 1 || opponent_bet < 1 {
-        panic!("pot_size and opponent_bet must both be at least 1 chip")
+        panic!("pot_size and opponent_bet must both be at least 1 chip.")
     }
     if action_abstraction.len() < 2 {
         panic!("action_abstraction must have at least 2 elements.")
@@ -27,7 +27,7 @@ pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction
         .find(|&&bet_size| bet_size < 1)
         .is_none())
     {
-        panic!("action_abstraction actions must all be at least 1 chip")
+        panic!("action_abstraction actions must all be at least 1 chip.")
     }
 
     for chunk in action_abstraction.windows(2) {
@@ -38,20 +38,20 @@ pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction
 
     // If opponent_bet is itself an option in action_abstraction then no need to randomize!
     if action_abstraction.contains(&opponent_bet) {
-        todo!("Early return: use opponent_bet at 100% frequency")
+        todo!("Early return: use opponent_bet at 100% frequency.")
     }
 
     // If opponent_bet is outside the range of bets in the action_abstraction then there's no
     // point in randomizing. As in the paper, all we can do in such cases is to simply use
     // the closet bet (i.e. smallest or largest size) 100% of the time.
     if opponent_bet < action_abstraction[0] {
-        todo!("Early return: (sadly) use smallest bet in abstraction at 100% frequency")
+        todo!("Early return: (sadly) use smallest bet in abstraction at 100% frequency.")
     }
     if opponent_bet
         > action_abstraction
             .last()
             .copied()
-            .expect("Must contain at least 2 values")
+            .expect("Should never see this; we verified above that it >= 2 elements.")
     {
         todo!("Early return: (sadly) use largest bet in abstraction at 100% frequency ")
     }
@@ -77,7 +77,7 @@ pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction
     );
     let _probability_larger_bet = 1.0 - probabilty_smaller_bet;
 
-    todo!("Return frequency and original Chips size of BOTH actions we found here");
+    todo!("Return frequency and original Chips size of BOTH actions we found here.");
     probabilty_smaller_bet
 }
 
@@ -98,7 +98,7 @@ fn calc_pseudo_harmonic_mapping(
 
     // Prevent effective division by zero from quietly returning bad results.
     if denominator.abs() < f64::EPSILON {
-        panic!("Denominator evaluates to approximately zero for the given inputs");
+        panic!("Denominator evaluates to approximately zero for the given inputs.");
     }
 
     numerator / denominator
@@ -111,18 +111,18 @@ mod tests {
     #[test]
     fn test_size_in_abstraction() {
         translate_action(1000, 6, [2, 6, 9].as_slice());
-        todo!("Add test case once we figure out return type")
+        todo!("Add test case once we figure out return type.")
     }
 
     #[test]
     fn test_size_smaller_than_any_in_abstraction() {
         translate_action(1000, 8, [10, 20, 30].as_slice());
-        todo!("Add test case once we figure out return type")
+        todo!("Add test case once we figure out return type.")
     }
     #[test]
     fn test_size_larger_than_any_in_abstraction() {
         translate_action(1000, 37, [10, 20, 30].as_slice());
-        todo!("Add test case once we figure out return type")
+        todo!("Add test case once we figure out return type.")
     }
 
     #[test]
