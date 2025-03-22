@@ -1,10 +1,9 @@
 /// Translates an incoming bet size to a randomized choice of a smaller and larger bet size.
 ///
 /// # Arguments TODO
-/// * `opponent_bet` - The actual bet (in chips) made by the opponent
-/// * `pot_size` - The current size of the pot (in chips)
-/// * TODO figure out the manner in which we want to accept the action abstraction
-///   (e.g. min and max allowed bets + pot ratios vs something simpler)
+/// * `opponent_bet` - The actual bet made by the opponent
+/// * `pot_size` - The current size of the pot
+/// * `action_abstraction` - The list of allowed sizes to translate to. Is assumed to be sorted in ascending order and contain only unique values.
 ///
 /// # Returns
 /// * TODO create a struct return type
@@ -13,16 +12,27 @@
 /// * TODO
 use crate::Chips;
 
-pub fn translate_action(opponent_bet: Chips, pot_size: Chips) -> f64 {
+pub fn translate_action(opponent_bet: Chips, pot_size: Chips, action_abstraction: &[Chips]) -> f64 {
     if pot_size <= 1 {
         panic!("pot_size must be at least 1")
     }
+    if action_abstraction.len() <= 1 {
+        panic!("action_abstraction must have at least 2 elements.")
+    }
 
-    let smaller_bet_todo = 2;
-    let larger_bet_todo = 5;
+    for chunk in action_abstraction.chunks(2) {
+        if chunk[0] >= chunk[1] {
+            panic!("action_abstraction must be sorted in ascending order and contain no repeated values.")
+        }
+    }
 
-    let smaller_bet_f64 = smaller_bet_todo as f64;
-    let larger_bet_f64 = larger_bet_todo as f64;
+    todo!(
+        r#"Properly iterate throguh action_abstraction and find the two values that are
+respectively smaller and larger than the opponenet bet size that we want to translate."#
+    );
+    let smaller_bet_f64 = action_abstraction[0] as f64;
+    let larger_bet_f64 = action_abstraction[1] as f64;
+
     let opponent_bet_f64 = opponent_bet as f64;
     let pot_size_f64 = pot_size as f64;
 
@@ -70,14 +80,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deliberate_fail() {
-        assert_eq!(translate_action(4, 1000), 0.5);
+    fn test_deliberate_fail() {
+        assert_eq!(translate_action(4, 1000, [2, 5].as_slice()), 0.5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_disallows_empty_action_abstraction() {
+        translate_action(1, 2, [].as_slice());
+    }
+    #[test]
+    #[should_panic]
+    fn test_disallows_unsorted_action_abstraction() {
+        translate_action(1, 2, [2, 5, 4, 6].as_slice());
     }
 
     // See "Table 1: Effect of increasing A while holding B = 1 and x = 0.25 fixed."
     // in the paper.
+    //
+    // NOTE: Tests the internal calc_pseudo_harmonic_mapping, not translate_action.
     #[test]
-    fn replicate_paper_table_1_results() {
+    fn test_replicates_paper_table_1_results() {
         let b = 1.0;
         let x = 0.25;
 
