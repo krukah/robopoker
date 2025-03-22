@@ -1,8 +1,8 @@
 /// Translates an incoming bet size to a randomized choice of a smaller and larger bet size.
 ///
 /// # Arguments TODO
-/// * `opponent_bet` - The actual bet made by the opponent
 /// * `pot_size` - The current size of the pot
+/// * `opponent_bet` - The actual bet made by the opponent
 /// * `action_abstraction` - The list of allowed sizes to translate to. Is assumed to be sorted in ascending order and contain only unique values.
 ///
 /// # Returns
@@ -12,7 +12,7 @@
 /// * TODO
 use crate::Chips;
 
-pub fn translate_action(opponent_bet: Chips, pot_size: Chips, action_abstraction: &[Chips]) -> f64 {
+pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction: &[Chips]) -> f64 {
     if pot_size <= 1 {
         panic!("pot_size must be at least 1")
     }
@@ -97,30 +97,30 @@ mod tests {
 
     #[test]
     fn test_size_in_abstraction() {
-        translate_action(6, 1000, [2, 6, 9].as_slice());
+        translate_action(1000, 6, [2, 6, 9].as_slice());
         todo!("Add test case once we figure out return type")
     }
 
     #[test]
     fn test_size_smaller_than_any_in_abstraction() {
-        translate_action(8, 1000, [10, 20, 30].as_slice());
+        translate_action(1000, 8, [10, 20, 30].as_slice());
         todo!("Add test case once we figure out return type")
     }
     #[test]
     fn test_size_larger_than_any_in_abstraction() {
-        translate_action(37, 1000, [10, 20, 30].as_slice());
+        translate_action(1000, 37 [10, 20, 30].as_slice());
         todo!("Add test case once we figure out return type")
     }
 
     #[test]
     #[should_panic]
     fn test_disallows_empty_action_abstraction() {
-        translate_action(1, 2, [].as_slice());
+        translate_action(1000, 1 [].as_slice());
     }
     #[test]
     #[should_panic]
     fn test_disallows_unsorted_action_abstraction() {
-        translate_action(1, 2, [2, 5, 4, 6].as_slice());
+        translate_action(1000, 3, [2, 5, 4, 6].as_slice());
     }
 
     // See "Table 1: Effect of increasing A while holding B = 1 and x = 0.25 fixed."
