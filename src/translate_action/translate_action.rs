@@ -63,7 +63,7 @@ pub fn translate_action(opponent_bet: Chips, pot_size: Chips, action_abstraction
     );
     let _probability_larger_bet = 1.0 - probabilty_smaller_bet;
 
-    todo!("Return frequency and original Chips size of BOTH actions we found here")
+    todo!("Return frequency and original Chips size of BOTH actions we found here");
     probabilty_smaller_bet
 }
 
