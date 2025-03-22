@@ -56,6 +56,10 @@ pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction
         todo!("Early return: (sadly) use largest bet in abstraction at 100% frequency ")
     }
 
+    // Now we've finally verified the inputs are good and that we cannot short-cirtcuit. Therefore:
+    // we can, an need to, actually choose two actions to translate opponent_bet to, as well as
+    // calculate the percentages we should randomize between them.
+
     let actions_to_randomize_between = action_abstraction
         .windows(2)
         .find(|&chunk| opponent_bet > chunk[0] && opponent_bet < chunk[1])
