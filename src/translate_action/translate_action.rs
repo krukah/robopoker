@@ -90,8 +90,9 @@ fn calc_pseudo_harmonic_mapping(
     opponent_bet_ratio: f64,
 ) -> f64 {
     let numerator = (larger_bet_ratio - opponent_bet_ratio) * (1.0 + smaller_bet_ratio);
-
     let denominator = (larger_bet_ratio - smaller_bet_ratio) * (1.0 + opponent_bet_ratio);
+
+    // Prevent effective division by zero from quietly returning bad results.
     if denominator.abs() < f64::EPSILON {
         panic!("Denominator evaluates to approximately zero for the given inputs");
     }
