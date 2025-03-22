@@ -16,34 +16,50 @@ pub fn translate_action(opponent_bet: Chips, pot_size: Chips, action_abstraction
     if pot_size <= 1 {
         panic!("pot_size must be at least 1")
     }
-    if action_abstraction.len() <= 1 {
+    if action_abstraction.len() < 2 {
         panic!("action_abstraction must have at least 2 elements.")
     }
 
-    for chunk in action_abstraction.chunks(2) {
+    for chunk in action_abstraction.windows(2) {
         if chunk[0] >= chunk[1] {
             panic!("action_abstraction must be sorted in ascending order and contain no repeated values.")
         }
     }
 
-    todo!(
-        r#"Properly iterate throguh action_abstraction and find the two values that are
-respectively smaller and larger than the opponenet bet size that we want to translate."#
-    );
-    let smaller_bet_f64 = action_abstraction[0] as f64;
-    let larger_bet_f64 = action_abstraction[1] as f64;
+    // If opponent_bet is itself an option in action_abstraction then no need to randomize!
+    if action_abstraction.contains(&opponent_bet) {
+        todo!("Early return: use opponent_bet at 100% frequency")
+    }
 
-    let opponent_bet_f64 = opponent_bet as f64;
+    // If opponent_bet is outside the range of bets in the action_abstraction then there's no
+    // point in randomizing. As in the paper, all we can do in such cases is to simply use
+    // the closet bet (i.e. smallest or largest size) 100% of the time.
+    if opponent_bet < action_abstraction[0] {
+        todo!("Early return: (sadly) use smallest bet in abstraction at 100% frequency")
+    }
+    if opponent_bet
+        > action_abstraction
+            .last()
+            .copied()
+            .expect("Must contain at least 2 values")
+    {
+        todo!("Early return: (sadly) use largest bet in abstraction at 100% frequency ")
+    }
+
+    let actions_to_randomize_between = action_abstraction
+        .windows(2)
+        .find(|&chunk| opponent_bet > chunk[0] && opponent_bet < chunk[1])
+        .expect("Early returns above should have made it impossible to not find a match here.");
+
     let pot_size_f64 = pot_size as f64;
-
     let probabilty_smaller_bet = calc_pseudo_harmonic_mapping(
         // Scale down everything by pot to ensure we provide scale
         // invariance. (This is not explained clearly in the paper, but
         // I believe it's actually _why_ they scaled everything down so that it
         // was relative to a pot size of 1
-        smaller_bet_f64 / pot_size_f64,
-        larger_bet_f64 / pot_size_f64,
-        opponent_bet_f64 / pot_size_f64,
+        actions_to_randomize_between[0] as f64 / pot_size_f64,
+        actions_to_randomize_between[1] as f64 / pot_size_f64,
+        opponent_bet as f64 / pot_size_f64,
     );
     let _probability_larger_bet = 1.0 - probabilty_smaller_bet;
     // TODO return both
@@ -80,8 +96,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_deliberate_fail() {
-        assert_eq!(translate_action(4, 1000, [2, 5].as_slice()), 0.5);
+    fn test_size_in_abstraction() {
+        translate_action(6, 1000, [2, 6, 9].as_slice());
+        todo!("Add test case once we figure out return type")
+    }
+
+    #[test]
+    fn test_size_smaller_than_any_in_abstraction() {
+        translate_action(8, 1000, [10, 20, 30].as_slice());
+        todo!("Add test case once we figure out return type")
+    }
+    #[test]
+    fn test_size_larger_than_any_in_abstraction() {
+        translate_action(37, 1000, [10, 20, 30].as_slice());
+        todo!("Add test case once we figure out return type")
     }
 
     #[test]
