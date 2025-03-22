@@ -89,11 +89,10 @@ fn calc_pseudo_harmonic_mapping(
     larger_bet_ratio: f64,
     opponent_bet_ratio: f64,
 ) -> f64 {
-    // Apply the pseudo-harmonic mapping formula with pre-scaled values
     let numerator = (larger_bet_ratio - opponent_bet_ratio) * (1.0 + smaller_bet_ratio);
     let denominator = (larger_bet_ratio - smaller_bet_ratio) * (1.0 + opponent_bet_ratio);
 
-    // Check for division by zero in the final calculation
+    // Check for division by zero in the final calculation.
     if denominator.abs() < f64::EPSILON {
         panic!("Denominator evaluates to approximately zero for the given inputs");
     }
@@ -127,6 +126,7 @@ mod tests {
     fn test_disallows_empty_action_abstraction() {
         translate_action(1000, 1, [].as_slice());
     }
+
     #[test]
     #[should_panic]
     fn test_disallows_unsorted_action_abstraction() {
