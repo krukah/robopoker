@@ -3,21 +3,31 @@
 /// # Arguments TODO
 /// * `pot_size` - The current size of the pot
 /// * `opponent_bet` - The actual bet made by the opponent
-/// * `action_abstraction` - The list of allowed sizes to translate to. Is assumed to be sorted in ascending order and contain only unique values.
+/// * `action_abstraction` - The list of allowed sizes to translate to.
 ///
 /// # Returns
 /// * TODO create a struct return type
 ///
 /// # Panics
-/// * TODO
+/// * When pot_size is less than 1 chip
+/// * When opponent_bet is less than 1 chip
+/// * When action_abstraction isn't sorted in ascending order, doesn't contain only unique values,
+///   contains less than two actions, or contains any actions less than 1 chip.
 use crate::Chips;
 
 pub fn translate_action(pot_size: Chips, opponent_bet: Chips, action_abstraction: &[Chips]) -> f64 {
-    if pot_size <= 1 {
-        panic!("pot_size must be at least 1")
+    if pot_size <= 1 || opponent_bet < 1 {
+        panic!("pot_size and opponent_bet must both be at least 1 chip")
     }
     if action_abstraction.len() < 2 {
         panic!("action_abstraction must have at least 2 elements.")
+    }
+    if !(action_abstraction
+        .into_iter()
+        .find(|&&bet_size| bet_size < 1)
+        .is_none())
+    {
+        panic!("action_abstraction actions must all be at least 1 chip")
     }
 
     for chunk in action_abstraction.windows(2) {
