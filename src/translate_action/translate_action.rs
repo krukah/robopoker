@@ -142,7 +142,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_happy_path_maintains_scale_invariance) {
+    fn test_happy_path_maintains_scale_invariance() {
         // Arbitrarily choosing 5 decimal places.
         let precision = 0.00001;
 
