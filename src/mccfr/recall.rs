@@ -4,9 +4,12 @@
 use crate::cards::card::Card;
 use crate::cards::hole::Hole;
 use crate::cards::observation::Observation;
+use crate::clustering::abstraction::Abstraction;
 use crate::gameplay::action::Action;
 use crate::gameplay::game::Game;
 use crate::gameplay::ply::Turn;
+use crate::mccfr::bucket::Bucket;
+use crate::mccfr::path::Path;
 
 /// a complete representation of perfect recall game history
 /// from the perspective of the hero. intended use is for
@@ -124,7 +127,3 @@ mapping to
         Bucket::from((history, present, choices))
     }
 }
-
-use crate::clustering::abstraction::Abstraction;
-use crate::mccfr::bucket::Bucket;
-use crate::mccfr::path::Path;
