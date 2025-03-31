@@ -727,10 +727,10 @@ impl Game {
     /// under the game tree constraints parametrized in lib.rs,
     /// what are the possible continuations of the Game given its
     /// full history? i.e. can we raise, and by how much.
-    pub fn choices(&self, n: usize) -> Vec<Edge> {
+    pub fn choices(&self, depth: usize) -> Vec<Edge> {
         self.legal()
             .into_iter()
-            .map(|a| self.expand(a, n))
+            .map(|a| self.expand(a, depth))
             .flatten()
             .collect::<Vec<Edge>>()
     }
@@ -740,14 +740,14 @@ impl Game {
     /// - prevent N-betting explosion of raises
     /// - allow for finer-grained exploration in early streets
     /// - on the last street, restrict raise amounts so smaller grid
-    fn raises(&self, n: usize) -> Vec<Odds> {
-        if n > crate::MAX_RAISE_REPEATS {
+    fn raises(&self, depth: usize) -> Vec<Odds> {
+        if depth > crate::MAX_RAISE_REPEATS {
             vec![]
         } else {
             match self.street() {
                 Street::Pref => Odds::PREF_RAISES.to_vec(),
                 Street::Flop => Odds::FLOP_RAISES.to_vec(),
-                _ => match n {
+                _ => match depth {
                     0 => Odds::LATE_RAISES.to_vec(),
                     _ => Odds::LAST_RAISES.to_vec(),
                 },
@@ -760,10 +760,10 @@ impl Game {
     /// which can be generated however.
     /// the contract is that the Actions returned by Game are legal,
     /// but the Raise amount can take any value >= the minimum provided by Game.
-    fn expand(&self, action: Action, n: usize) -> Vec<Edge> {
+    fn expand(&self, action: Action, depth: usize) -> Vec<Edge> {
         match action {
             Action::Raise(_) => self
-                .raises(n)
+                .raises(depth)
                 .into_iter()
                 .map(Edge::from)
                 .collect::<Vec<Edge>>(),
