@@ -262,14 +262,14 @@ impl crate::save::upload::Table for Layer {
         };
         layer.cluster()
     }
+    fn load(_: Street) -> Self {
+        unimplemented!()
+    }
 
     fn name() -> String {
         unimplemented!()
     }
     fn copy() -> String {
-        unimplemented!()
-    }
-    fn load(_: Street) -> Self {
         unimplemented!()
     }
     fn creates() -> String {

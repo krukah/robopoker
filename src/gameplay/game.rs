@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
 use super::action::Action;
-use super::ply::Turn;
 use super::seat::Seat;
 use super::seat::State;
 use super::settlement::Settlement;
 use super::showdown::Showdown;
+use super::turn::Turn;
 use crate::cards::board::Board;
 use crate::cards::deck::Deck;
 use crate::cards::hand::Hand;
@@ -28,9 +28,29 @@ type Position = usize;
 pub struct Game {
     seats: [Seat; N],
     pot: Chips,
-    board: Board, // could be [Card; N]
+    board: Board, // could be [Card; N] to preserve deal order
     dealer: Position,
     ticker: Position,
+}
+
+impl crate::cfr::traits::game::Game for Game {
+    type E = crate::gameplay::edge::Edge;
+    type T = crate::gameplay::turn::Turn;
+    fn root() -> Self {
+        Self::root()
+    }
+    fn turn(&self) -> Self::T {
+        self.turn()
+    }
+    fn apply(&self, edge: Self::E) -> Self {
+        self.apply(self.actionize(&edge))
+    }
+    fn payoff(&self, turn: Self::T) -> crate::Utility {
+        self.settlements()
+            .get(turn.position())
+            .map(|settlement| settlement.pnl() as crate::Utility)
+            .expect("player index in bounds")
+    }
 }
 
 impl Game {
@@ -688,9 +708,6 @@ mod tests {
 }
 
 // odds and tree building stuff
-use super::edge::Edge;
-use super::odds::Odds;
-use crate::Utility;
 
 impl Game {
     /// convert an Edge into an Action by using Game state to
@@ -701,19 +718,19 @@ impl Game {
     /// represent the same action. moreover, we "snap" raises to be
     /// within range of legal bet sizes, so sometimes Raise(5:1) yields
     /// an identical Game node as Raise(1:1) or Shove.
-    pub fn actionize(&self, edge: &Edge) -> Action {
+    pub fn actionize(&self, edge: &crate::gameplay::edge::Edge) -> Action {
         let game = self;
         match &edge {
-            Edge::Check => Action::Check,
-            Edge::Fold => Action::Fold,
-            Edge::Draw => Action::Draw(game.draw()),
-            Edge::Call => Action::Call(game.to_call()),
-            Edge::Shove => Action::Shove(game.to_shove()),
-            Edge::Raise(odds) => {
+            crate::gameplay::edge::Edge::Check => Action::Check,
+            crate::gameplay::edge::Edge::Fold => Action::Fold,
+            crate::gameplay::edge::Edge::Draw => Action::Draw(game.draw()),
+            crate::gameplay::edge::Edge::Call => Action::Call(game.to_call()),
+            crate::gameplay::edge::Edge::Shove => Action::Shove(game.to_shove()),
+            crate::gameplay::edge::Edge::Raise(odds) => {
                 let min = game.to_raise();
                 let max = game.to_shove();
-                let pot = game.pot() as Utility;
-                let odd = Utility::from(*odds);
+                let pot = game.pot() as crate::Utility;
+                let odd = crate::Utility::from(*odds);
                 let bet = (pot * odd) as Chips;
                 match bet {
                     bet if bet >= max => Action::Shove(max),
@@ -724,50 +741,16 @@ impl Game {
         }
     }
 
-    /// under the game tree constraints parametrized in lib.rs,
-    /// what are the possible continuations of the Game given its
-    /// full history? i.e. can we raise, and by how much.
-    pub fn choices(&self, depth: usize) -> Vec<Edge> {
-        self.legal()
-            .into_iter()
-            .map(|a| self.expand(a, depth))
-            .flatten()
-            .collect::<Vec<Edge>>()
-    }
-
-    /// returns the set of "allowed" raises given the current history
-    /// we truncate in a few cases:
-    /// - prevent N-betting explosion of raises
-    /// - allow for finer-grained exploration in early streets
-    /// - on the last street, restrict raise amounts so smaller grid
-    fn raises(&self, depth: usize) -> Vec<Odds> {
-        if depth > crate::MAX_RAISE_REPEATS {
-            vec![]
-        } else {
-            match self.street() {
-                Street::Pref => Odds::PREF_RAISES.to_vec(),
-                Street::Flop => Odds::FLOP_RAISES.to_vec(),
-                _ => match depth {
-                    0 => Odds::LATE_RAISES.to_vec(),
-                    _ => Odds::LAST_RAISES.to_vec(),
-                },
-            }
-        }
-    }
-
-    /// generalization of mapping a concrete Action into a set of abstract Vec<Edge>
-    /// this is mostly useful for enumerating a set of desired Raises
-    /// which can be generated however.
-    /// the contract is that the Actions returned by Game are legal,
-    /// but the Raise amount can take any value >= the minimum provided by Game.
-    fn expand(&self, action: Action, depth: usize) -> Vec<Edge> {
+    pub fn edgify(&self, action: Action) -> crate::gameplay::edge::Edge {
+        use crate::gameplay::edge::Edge;
+        use crate::gameplay::odds::Odds;
         match action {
-            Action::Raise(_) => self
-                .raises(depth)
-                .into_iter()
-                .map(Edge::from)
-                .collect::<Vec<Edge>>(),
-            _ => vec![Edge::from(action)],
+            Action::Fold => Edge::Fold,
+            Action::Check => Edge::Check,
+            Action::Draw(_) => Edge::Draw,
+            Action::Shove(_) => Edge::Shove,
+            Action::Blind(_) | Action::Call(_) => Edge::Call,
+            Action::Raise(amount) => Edge::Raise(Odds::nearest((amount, self.pot()))),
         }
     }
 }

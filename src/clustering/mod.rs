@@ -10,3 +10,16 @@ pub mod pair;
 pub mod potential;
 pub mod sinkhorn;
 pub mod transitions;
+
+pub use abstraction::Abstraction;
+pub use emd::EMD;
+pub use equity::Equity;
+pub use heuristic::Heuristic;
+pub use histogram::Histogram;
+pub use layer::Layer;
+pub use lookup::Lookup;
+pub use metric::Metric;
+pub use pair::Pair;
+pub use potential::Potential;
+pub use sinkhorn::Sinkhorn;
+pub use transitions::Decomp;

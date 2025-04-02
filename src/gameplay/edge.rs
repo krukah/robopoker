@@ -1,5 +1,5 @@
-use super::action::Action;
-use super::odds::Odds;
+use crate::gameplay::action::Action;
+use crate::gameplay::odds::Odds;
 use crate::Arbitrary;
 use crate::Chips;
 use std::hash::Hash;
@@ -13,6 +13,9 @@ pub enum Edge {
     Raise(Odds),
     Shove,
 }
+
+impl crate::cfr::traits::edge::Edge for Edge {}
+impl crate::transport::support::Support for Edge {}
 
 impl Edge {
     pub fn is_shove(&self) -> bool {
@@ -161,7 +164,7 @@ impl Arbitrary for Edge {
             2 => Self::Check,
             3 => Self::Call,
             4 => Self::Shove,
-            5 => Self::Raise(super::odds::Odds::random()),
+            5 => Self::Raise(Odds::random()),
             _ => unreachable!(),
         }
     }
