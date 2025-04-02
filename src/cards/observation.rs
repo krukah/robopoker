@@ -48,8 +48,8 @@ impl Observation {
             _ => won as Equity / sum as Equity,
         }
     }
-    pub fn estimate(&self) -> Equity {
-        todo!()
+    pub fn simulate(&self, _: usize) -> Equity {
+        todo!("run out some number of simulations and take equity as average")
     }
     pub fn street(&self) -> Street {
         Street::from(self.public.size())

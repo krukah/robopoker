@@ -1,5 +1,21 @@
 use robopoker::*;
 
+#[tokio::main]
+async fn main() {
+    // Behold!
+    crate::init();
+    // The k-means earth mover's distance hand-clustering algorithm.
+    crate::clustering::layer::Layer::learn();
+    // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
+    crate::cfr::nlhe::trainer::Trainer::train();
+    // Let's upload the data to the database.
+    crate::save::writer::Writer::save().await.unwrap();
+    // Let's support our frontend.
+    crate::analysis::server::Server::run().await.unwrap();
+    // Let's see what we've learned.
+    crate::analysis::cli::CLI::run().await;
+}
+
 /*
 
 + 2019. Superhuman AI for multiplayer poker. (https://science.sciencemag.org/content/early/2019/07/10/science.aay2400) Science, July 11th.
@@ -50,19 +66,3 @@ use robopoker::*;
   2003. Using the Triangle Inequality to Accelerate-Means (https://cdn.aaai.org/ICML/2003/ICML03-022.pdf) In ICML.
 
 */
-
-#[tokio::main]
-async fn main() {
-    // Behold!
-    crate::init();
-    // The k-means earth mover's distance hand-clustering algorithm.
-    crate::clustering::layer::Layer::learn();
-    // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    crate::mccfr::blueprint::Blueprint::train();
-    // Let's upload the data to the database.
-    crate::save::writer::Writer::save().await.unwrap();
-    // Let's support our frontend.
-    crate::analysis::server::Server::run().await.unwrap();
-    // Let's see what we've learned.
-    crate::analysis::cli::CLI::run().await;
-}

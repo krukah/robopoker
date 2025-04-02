@@ -7,6 +7,7 @@ use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
 use crate::clustering::pair::Pair;
 use crate::clustering::sinkhorn::Sinkhorn;
+use crate::gameplay::path::Path;
 use crate::transport::coupling::Coupling;
 use crate::Energy;
 use crate::Probability;
@@ -795,8 +796,7 @@ impl API {
 }
 
 use crate::analysis::response::Decision;
-use crate::mccfr::bucket::Bucket;
-use crate::mccfr::recall::Recall;
+use crate::gameplay::recall::Recall;
 
 // blueprint lookups
 impl API {
@@ -812,14 +812,16 @@ impl API {
             AND   present = $2
             AND   future  = $3
         "#;
-        let game = recall.head();
+        let ref game = recall.head();
         let observation = game.sweat();
         let abstraction = self.obs_to_abs(observation).await?;
-        let Bucket(history, present, choices) = recall.bucket(abstraction);
+        let history = recall.history();
+        let present = abstraction;
+        let futures = Path::from(crate::cfr::nlhe::sampler::Sampler::choices(game, 0));
         let ref history = i64::from(history);
         let ref present = i64::from(present);
-        let ref choices = i64::from(choices);
-        let rows = self.0.query(SQL, &[history, present, choices]).await?;
+        let ref futures = i64::from(futures);
+        let rows = self.0.query(SQL, &[history, present, futures]).await?;
         Ok(rows.into_iter().map(Decision::from).collect())
     }
 }

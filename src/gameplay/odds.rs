@@ -3,7 +3,7 @@ use crate::Chips;
 use crate::Probability;
 use crate::Utility;
 
-/// pot odds for a given raise size, relative to the pot
+/// pot-normalized odds for a given raise size
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Odds(pub Chips, pub Chips);
 

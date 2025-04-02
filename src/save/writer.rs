@@ -1,11 +1,11 @@
 use super::derive::Derive;
 use super::upload::Table;
 use crate::cards::street::Street;
+use crate::cfr::nlhe::profile::Profile;
+use crate::cfr::nlhe::sampler::Sampler;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::metric::Metric;
 use crate::clustering::transitions::Decomp;
-use crate::mccfr::encoder::Encoder;
-use crate::mccfr::profile::Profile;
 use byteorder::ReadBytesExt;
 use byteorder::BE;
 use std::fs::File;
@@ -31,7 +31,7 @@ impl Writer {
         let postgres = Self(crate::db().await);
         postgres.upload::<Metric>().await?;
         postgres.upload::<Decomp>().await?;
-        postgres.upload::<Encoder>().await?;
+        postgres.upload::<Sampler>().await?;
         postgres.upload::<Profile>().await?;
         postgres.derive::<Abstraction>().await?;
         postgres.derive::<Street>().await?;

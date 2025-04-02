@@ -144,8 +144,8 @@ impl WasmObservation {
     }
 
     #[wasm_bindgen]
-    pub fn estimate(&self) -> f64 {
-        self.0.estimate() as f64
+    pub fn simulate(&self, n: usize) -> f64 {
+        self.0.simulate(n) as f64
     }
 
     #[wasm_bindgen]

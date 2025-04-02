@@ -36,6 +36,7 @@ impl Action {
         matches!(self, Action::Blind(_))
     }
 }
+
 impl From<Action> for String {
     fn from(action: Action) -> Self {
         match action {
