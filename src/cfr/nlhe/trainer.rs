@@ -7,7 +7,7 @@ impl Trainer {
     pub fn train() {
         use crate::cards::street::Street;
         use crate::cfr::traits::trainer::Trainer;
-        use crate::save::upload::Table;
+        use crate::save::disk::Disk;
         use crate::Arbitrary;
         let mut solution = Self::load(Street::random());
         solution.solve();
@@ -78,7 +78,10 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
 }
 
 #[cfg(feature = "native")]
-impl crate::save::upload::Table for Trainer {
+impl crate::save::disk::Disk for Trainer {
+    fn name() -> String {
+        unimplemented!()
+    }
     fn done(street: crate::cards::street::Street) -> bool {
         crate::cfr::nlhe::profile::Profile::done(street)
             && crate::cfr::nlhe::sampler::Sampler::done(street)
@@ -105,29 +108,5 @@ impl crate::save::upload::Table for Trainer {
             profile: crate::cfr::nlhe::profile::Profile::load(Street::random()),
             sampler: crate::cfr::nlhe::sampler::Sampler::load(Street::random()),
         }
-    }
-
-    fn name() -> String {
-        unimplemented!()
-    }
-
-    fn copy() -> String {
-        unimplemented!()
-    }
-
-    fn creates() -> String {
-        unimplemented!()
-    }
-
-    fn indices() -> String {
-        unimplemented!()
-    }
-
-    fn columns() -> &'static [tokio_postgres::types::Type] {
-        unimplemented!()
-    }
-
-    fn sources() -> Vec<String> {
-        unimplemented!()
     }
 }

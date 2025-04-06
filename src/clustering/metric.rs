@@ -76,12 +76,16 @@ impl Metric {
             _ => Street::Rive, // assertion of no-collisions is convenient for tests
         }
     }
+
+    fn name() -> String {
+        "metric".to_string()
+    }
 }
 
 #[cfg(feature = "native")]
 impl crate::save::upload::Table for Metric {
     fn name() -> String {
-        "metric".to_string()
+        Self::name()
     }
     fn columns() -> &'static [tokio_postgres::types::Type] {
         &[
@@ -90,6 +94,7 @@ impl crate::save::upload::Table for Metric {
         ]
     }
     fn sources() -> Vec<String> {
+        use crate::save::disk::Disk;
         Street::all()
             .iter()
             .rev()
@@ -129,6 +134,9 @@ impl crate::save::upload::Table for Metric {
         "
         .to_string()
     }
+}
+
+impl crate::save::disk::Disk for Metric {
     fn load(street: Street) -> Self {
         let ref path = Self::path(street);
         log::info!("{:<32}{:<32}", "loading     metric", path);
@@ -183,7 +191,12 @@ impl crate::save::upload::Table for Metric {
     fn grow(_: Street) -> Self {
         unreachable!("metric must be learned from kmeans clustering")
     }
+
+    fn name() -> String {
+        Self::name()
+    }
 }
+
 impl From<BTreeMap<Pair, Energy>> for Metric {
     fn from(metric: BTreeMap<Pair, Energy>) -> Self {
         let max = metric.values().copied().fold(f32::MIN_POSITIVE, f32::max);
@@ -200,7 +213,7 @@ mod tests {
     use super::*;
     use crate::cards::street::Street;
     use crate::clustering::emd::EMD;
-    use crate::save::upload::Table;
+    use crate::save::disk::Disk;
     use crate::Arbitrary;
 
     #[ignore]

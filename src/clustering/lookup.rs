@@ -55,6 +55,9 @@ impl Lookup {
     fn street(&self) -> Street {
         self.0.keys().next().expect("non empty").0.street()
     }
+    fn name() -> String {
+        "blueprint".to_string()
+    }
 }
 
 #[cfg(test)]
@@ -64,7 +67,7 @@ mod tests {
     #[ignore]
     #[test]
     fn persistence() {
-        use crate::save::upload::Table;
+        use crate::save::disk::Disk;
         let street = Street::Pref;
         let lookup = Lookup::grow(street);
         lookup.save();
@@ -76,63 +79,9 @@ mod tests {
     }
 }
 
-#[cfg(feature = "native")]
-impl crate::save::upload::Table for Lookup {
+impl crate::save::disk::Disk for Lookup {
     fn name() -> String {
-        "isomorphism".to_string()
-    }
-    fn columns() -> &'static [tokio_postgres::types::Type] {
-        &[
-            tokio_postgres::types::Type::INT8,
-            tokio_postgres::types::Type::INT8,
-        ]
-    }
-    fn sources() -> Vec<String> {
-        Street::all()
-            .iter()
-            .rev()
-            .copied()
-            .map(Self::path)
-            .collect()
-    }
-    fn creates() -> String {
-        "
-        CREATE TABLE IF NOT EXISTS isomorphism (
-            obs        BIGINT,
-            abs        BIGINT,
-            position   INTEGER
-        );"
-        .to_string()
-    }
-    fn indices() -> String {
-        "
-        CREATE INDEX IF NOT EXISTS idx_isomorphism_covering     ON isomorphism  (obs, abs) INCLUDE (abs);
-        CREATE INDEX IF NOT EXISTS idx_isomorphism_abs_position ON isomorphism  (abs, position);
-        CREATE INDEX IF NOT EXISTS idx_isomorphism_abs_obs      ON isomorphism  (abs, obs);
-        CREATE INDEX IF NOT EXISTS idx_isomorphism_abs          ON isomorphism  (abs);
-        CREATE INDEX IF NOT EXISTS idx_isomorphism_obs          ON isomorphism  (obs);
-        --
-        WITH numbered AS (
-            SELECT obs, abs, row_number() OVER (PARTITION BY abs ORDER BY obs) - 1 as rn
-            FROM isomorphism
-        )
-            UPDATE isomorphism
-            SET    position = numbered.rn
-            FROM   numbered
-            WHERE  isomorphism.obs = numbered.obs
-            AND    isomorphism.abs = numbered.abs;
-        "
-        .to_string()
-    }
-    fn copy() -> String {
-        "
-        COPY isomorphism (
-            obs,
-            abs
-        )
-        FROM STDIN BINARY
-        "
-        .to_string()
+        Self::name()
     }
     /// abstractions for River are calculated once via obs.equity
     /// abstractions for Preflop are cequivalent to just enumerating isomorphisms

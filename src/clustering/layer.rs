@@ -35,7 +35,7 @@ impl Layer {
     /// writing to disk in pgcopy
     #[cfg(feature = "native")]
     pub fn learn() {
-        use crate::save::upload::Table;
+        use crate::save::disk::Disk;
         Street::all()
             .into_iter()
             .rev()
@@ -157,7 +157,7 @@ impl Layer {
     #[cfg(feature = "native")]
     fn lookup(&self) -> Lookup {
         log::info!("{:<32}{:<32}", "calculating lookup", self.street());
-        use crate::save::upload::Table;
+        use crate::save::disk::Disk;
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
         let street = self.street();
@@ -236,7 +236,10 @@ impl Layer {
 }
 
 #[cfg(feature = "native")]
-impl crate::save::upload::Table for Layer {
+impl crate::save::disk::Disk for Layer {
+    fn name() -> String {
+        unimplemented!()
+    }
     fn done(street: Street) -> bool {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)
     }
@@ -263,25 +266,6 @@ impl crate::save::upload::Table for Layer {
         layer.cluster()
     }
     fn load(_: Street) -> Self {
-        unimplemented!()
-    }
-
-    fn name() -> String {
-        unimplemented!()
-    }
-    fn copy() -> String {
-        unimplemented!()
-    }
-    fn creates() -> String {
-        unimplemented!()
-    }
-    fn indices() -> String {
-        unimplemented!()
-    }
-    fn columns() -> &'static [tokio_postgres::types::Type] {
-        unimplemented!()
-    }
-    fn sources() -> Vec<String> {
         unimplemented!()
     }
 }

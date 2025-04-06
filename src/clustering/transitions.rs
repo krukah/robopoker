@@ -13,57 +13,18 @@ impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
     }
 }
 
-#[cfg(feature = "native")]
-impl crate::save::upload::Table for Decomp {
+impl Decomp {
     fn name() -> String {
         "transitions".to_string()
     }
+}
+
+impl crate::save::disk::Disk for Decomp {
+    fn name() -> String {
+        Self::name()
+    }
     fn grow(street: Street) -> Self {
         unreachable!("you have no business making transition table from scratch {street}")
-    }
-    fn columns() -> &'static [tokio_postgres::types::Type] {
-        &[
-            tokio_postgres::types::Type::INT8,
-            tokio_postgres::types::Type::INT8,
-            tokio_postgres::types::Type::FLOAT4,
-        ]
-    }
-    fn sources() -> Vec<String> {
-        Street::all()
-            .iter()
-            .rev()
-            .copied()
-            .map(Self::path)
-            .collect()
-    }
-    fn creates() -> String {
-        "
-        CREATE TABLE IF NOT EXISTS transitions (
-            prev       BIGINT,
-            next       BIGINT,
-            dx         REAL
-        );"
-        .to_string()
-    }
-    fn indices() -> String {
-        "
-        CREATE INDEX IF NOT EXISTS idx_transitions_dx        ON transitions(dx);
-        CREATE INDEX IF NOT EXISTS idx_transitions_prev_dx   ON transitions(prev, dx);
-        CREATE INDEX IF NOT EXISTS idx_transitions_next_dx   ON transitions(next, dx);
-        CREATE INDEX IF NOT EXISTS idx_transitions_prev_next ON transitions(prev, next);
-        CREATE INDEX IF NOT EXISTS idx_transitions_next_prev ON transitions(next, prev);
-        "
-        .to_string()
-    }
-    fn copy() -> String {
-        "
-        COPY transitions (
-            prev,
-            next,
-            dx
-        ) FROM STDIN BINARY
-        "
-        .to_string()
     }
     fn load(street: Street) -> Self {
         let ref path = Self::path(street);
@@ -131,5 +92,57 @@ impl crate::save::upload::Table for Decomp {
             }
         }
         file.write_u16::<BE>(Self::footer()).expect("trailer");
+    }
+}
+
+#[cfg(feature = "native")]
+impl crate::save::upload::Table for Decomp {
+    fn name() -> String {
+        Self::name()
+    }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        &[
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::FLOAT4,
+        ]
+    }
+    fn sources() -> Vec<String> {
+        use crate::save::disk::Disk;
+        Street::all()
+            .iter()
+            .rev()
+            .copied()
+            .map(Self::path)
+            .collect()
+    }
+    fn creates() -> String {
+        "
+        CREATE TABLE IF NOT EXISTS transitions (
+            prev       BIGINT,
+            next       BIGINT,
+            dx         REAL
+        );"
+        .to_string()
+    }
+    fn indices() -> String {
+        "
+        CREATE INDEX IF NOT EXISTS idx_transitions_dx        ON transitions(dx);
+        CREATE INDEX IF NOT EXISTS idx_transitions_prev_dx   ON transitions(prev, dx);
+        CREATE INDEX IF NOT EXISTS idx_transitions_next_dx   ON transitions(next, dx);
+        CREATE INDEX IF NOT EXISTS idx_transitions_prev_next ON transitions(prev, next);
+        CREATE INDEX IF NOT EXISTS idx_transitions_next_prev ON transitions(next, prev);
+        "
+        .to_string()
+    }
+    fn copy() -> String {
+        "
+        COPY transitions (
+            prev,
+            next,
+            dx
+        ) FROM STDIN BINARY
+        "
+        .to_string()
     }
 }

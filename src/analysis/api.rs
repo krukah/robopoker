@@ -815,7 +815,7 @@ impl API {
         let ref game = recall.head();
         let observation = game.sweat();
         let abstraction = self.obs_to_abs(observation).await?;
-        let history = recall.history();
+        let history = recall.path();
         let present = abstraction;
         let futures = Path::from(crate::cfr::nlhe::sampler::Sampler::choices(game, 0));
         let ref history = i64::from(history);
