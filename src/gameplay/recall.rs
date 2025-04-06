@@ -66,16 +66,16 @@ impl Recall {
             .fold(self.root(), |game, action| game.apply(action))
     }
 
-    pub fn isomorphism(&self) -> Isomorphism {
-        Isomorphism::from(self.seen)
-    }
-
-    pub fn history(&self) -> Path {
+    pub fn path(&self) -> Path {
         self.clone()
             .into_iter()
             .zip(self.path.iter().copied())
             .map(|(g, a)| g.edgify(a))
             .collect::<Path>()
+    }
+
+    pub fn isomorphism(&self) -> Isomorphism {
+        Isomorphism::from(self.seen)
     }
 
     pub fn undo(&mut self) {

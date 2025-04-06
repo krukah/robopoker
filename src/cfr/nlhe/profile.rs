@@ -51,6 +51,10 @@ impl Profile {
         let chosen = choices.remove(choice);
         vec![chosen]
     }
+
+    fn name() -> String {
+        "blueprint".to_string()
+    }
 }
 
 impl crate::cfr::traits::profile::Profile for Profile {
@@ -102,7 +106,7 @@ impl crate::cfr::traits::profile::Profile for Profile {
 #[cfg(feature = "native")]
 impl crate::save::upload::Table for Profile {
     fn name() -> String {
-        "blueprint".to_string()
+        Self::name()
     }
     fn columns() -> &'static [tokio_postgres::types::Type] {
         &[
@@ -115,21 +119,9 @@ impl crate::save::upload::Table for Profile {
         ]
     }
     fn sources() -> Vec<String> {
+        use crate::save::disk::Disk;
         use crate::Arbitrary;
         vec![Self::path(Street::random())]
-    }
-    fn path(_: Street) -> String {
-        format!(
-            "{}/pgcopy/{}",
-            std::env::current_dir()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned(),
-            Self::name()
-        )
-    }
-    fn grow(_: Street) -> Self {
-        unreachable!("must be learned in MCCFR minimization")
     }
     fn copy() -> String {
         "COPY blueprint (
@@ -166,6 +158,25 @@ impl crate::save::upload::Table for Profile {
         CREATE INDEX IF NOT EXISTS idx_blueprint_past    ON blueprint (past);
         "
         .to_string()
+    }
+}
+
+impl crate::save::disk::Disk for Profile {
+    fn name() -> String {
+        Self::name()
+    }
+    fn grow(_: Street) -> Self {
+        unreachable!("must be learned in MCCFR minimization")
+    }
+    fn path(_: Street) -> String {
+        format!(
+            "{}/pgcopy/{}",
+            std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+            Self::name()
+        )
     }
     fn load(_: Street) -> Self {
         let ref path = Self::path(Street::random());
