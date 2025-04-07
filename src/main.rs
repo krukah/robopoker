@@ -4,6 +4,10 @@ use robopoker::*;
 async fn main() {
     // Behold!
     crate::init();
+
+    // interlud
+    crate::cfr::rps::turn::Blueprint::train();
+
     // The k-means earth mover's distance hand-clustering algorithm.
     crate::clustering::layer::Layer::learn();
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
