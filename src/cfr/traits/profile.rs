@@ -37,15 +37,18 @@ pub trait Profile {
 
     /// calculate weighted average decision strategy policy for this information
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.regret(info, edge)
+        let p = self.regret(info, edge)
             / info
                 .choices()
                 .iter()
                 .map(|e| self.regret(info, e))
                 .map(|r| r.max(crate::POLICY_MIN))
-                .inspect(|p| assert!(*p >= 0.))
-                .inspect(|p| assert!(*p <= 1.))
-                .sum::<crate::Utility>()
+                // .inspect(|p| assert!(*p >= 0.))
+                // .inspect(|p| assert!(*p <= 1.))
+                .sum::<crate::Utility>();
+        assert!(p >= 0., "policy must be non-negative {}", p);
+        assert!(p <= 1., "policy must be at most 1 {}", p);
+        p
     }
 
     /// Using our current strategy Profile,
@@ -188,19 +191,27 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.cfactual_reach(root)
-            * root
-                .follow(edge)
-                .expect("edge belongs to outgoing")
-                .descendants()
-                .into_iter()
-                .map(|leaf| {
-                    1.0
-                    * self.relative_value(root, leaf) //.
-                    * self.relative_reach(root, leaf) //.
-                    / self.cfactual_reach(leaf) //.
-                })
-                .sum::<crate::Utility>()
+        let reach = self.cfactual_reach(root);
+        let multiplier = root
+            .follow(edge)
+            .expect("edge belongs to outgoing")
+            .descendants()
+            .into_iter()
+            .map(|leaf| {
+                let relative_value = self.relative_value(root, leaf);
+                let relative_reach = self.relative_reach(root, leaf);
+                let cfactual_reach = self.cfactual_reach(leaf);
+                log::info!(
+                    "cfactual relative relative: {} {} {}",
+                    cfactual_reach,
+                    relative_value,
+                    relative_reach
+                );
+                1.0 * relative_value * relative_reach / cfactual_reach
+            })
+            .sum::<crate::Utility>();
+        log::info!("counterfactual value: {}", reach * multiplier);
+        reach * multiplier
     }
 
     /// Conditional on being in this Infoset,
@@ -227,7 +238,10 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.cfactual_value(root, edge) - self.expected_value(root)
+        let cfactual = self.cfactual_value(root, edge);
+        let expected = self.expected_value(root);
+        log::info!("cfactual: {}, expected: {}", cfactual, expected);
+        cfactual - expected
     }
 
     /// deterministically sampling the same Edge for the same Infoset

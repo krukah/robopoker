@@ -43,6 +43,7 @@ pub trait Trainer {
         for (edge, regret) in cfr.1.iter() {
             *self.regret(info, edge) *= self.discount(Some(regret.clone()));
             *self.regret(info, edge) += regret;
+            log::info!("Regret updated for edge {:?}", regret);
         }
     }
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
