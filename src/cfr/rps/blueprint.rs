@@ -18,17 +18,24 @@ impl Blueprint {
             .or_insert((0., 0.))
     }
 
-    pub fn train() {
+    pub fn train() -> Self {
         use crate::cfr::traits::trainer::Trainer;
         let mut blueprint = Self::default();
-        for _ in 0..crate::CFR_ITERATIONS {
+
+        log::info!(
+            "Starting RPS training for {} iterations",
+            crate::CFR_ITERATIONS
+        );
+        for i in 0..crate::CFR_ITERATIONS {
+            log::info!("\n=== Starting Iteration {} ===", i);
             for ref update in blueprint.batch() {
                 blueprint.update_regret(update);
                 blueprint.update_weight(update);
             }
             blueprint.epochs += 1;
+            log::info!("Current blueprint state:\n{}", blueprint);
         }
-        todo!("Implement training logic");
+        blueprint
     }
 }
 
@@ -79,11 +86,11 @@ impl std::fmt::Display for Blueprint {
         writeln!(f, "Blueprint(epochs: {})", self.epochs)?;
         for (turn, edges) in &self.encounters {
             writeln!(f, "  {:?}:", turn)?;
-            for (edge, (prob, regret)) in edges {
+            for (edge, (weight, regret)) in edges {
                 writeln!(
                     f,
-                    "    {:?} -> (Prob: {:.2}, Regret: {:.2})",
-                    edge, prob, regret
+                    "    {:?} -> (Weight: {:.2}, Regret: {:.2})",
+                    edge, weight, regret
                 )?;
             }
         }

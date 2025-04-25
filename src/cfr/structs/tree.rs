@@ -72,13 +72,9 @@ where
 
     /// display the Tree in a human-readable format
     /// be careful because it's really big and recursive
-    fn show(&self, f: &mut std::fmt::Formatter, x: NodeIndex, prefix: &str) -> std::fmt::Result
-    where
-        I: std::fmt::Display,
-        E: std::fmt::Display,
-    {
+    fn show(&self, f: &mut std::fmt::Formatter, x: NodeIndex, prefix: &str) -> std::fmt::Result {
         if x == NodeIndex::new(0) {
-            writeln!(f, "\nROOT   {}", self.at(x).info())?;
+            writeln!(f, "\nROOT   {:?}", self.at(x).info())?;
         }
         let mut children = self
             .graph
@@ -96,7 +92,7 @@ where
                 .graph
                 .edge_weight(self.graph.find_edge(x, child).unwrap())
                 .unwrap();
-            writeln!(f, "{}{}──{} → {}", prefix, stem, edge, head)?;
+            writeln!(f, "{}{}──{:?} → {:?}", prefix, stem, edge, head)?;
             self.show(f, child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
@@ -106,8 +102,8 @@ where
 impl<T, E, G, I> std::fmt::Display for Tree<T, E, G, I>
 where
     T: Turn,
-    E: Edge + std::fmt::Display,
-    I: Info<E = E, T = T> + std::fmt::Display,
+    E: Edge,
+    I: Info<E = E, T = T>,
     G: Game<E = E, T = T>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

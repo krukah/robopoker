@@ -37,7 +37,7 @@ pub trait Profile {
 
     /// calculate weighted average decision strategy policy for this information
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        let p = self.regret(info, edge)
+        let p = self.regret(info, edge).max(crate::POLICY_MIN)
             / info
                 .choices()
                 .iter()
@@ -65,10 +65,9 @@ pub trait Profile {
             .choices()
             .into_iter()
             .map(|edge| (edge, self.info_gain(infoset, &edge)))
-            .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
-            .map(|(e, r)| (e, r.min(crate::REGRET_MAX)))
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
+            .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
             .collect::<Policy<Self::E>>()
     }
     /// lookup historical policy distribution, given this information
@@ -83,13 +82,40 @@ pub trait Profile {
             .map(|e| (e, self.regret(&infoset.info(), &e)))
             .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<Policy<Self::E>>();
-        let denominator = regrets.iter().map(|(_, r)| r).sum::<crate::Utility>();
+        let denominator = regrets
+            .iter()
+            .map(|(_, r)| r)
+            .inspect(|r| assert!(**r > 0.))
+            .sum::<crate::Utility>();
         let policy = regrets
+            .clone() // -- remove
             .into_iter()
             .map(|(a, r)| (a, r / denominator))
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
             .collect::<Policy<Self::E>>();
+
+        // Log the full policy and regrets in a cleaner format
+        let regrets_str = regrets
+            .iter()
+            .map(|(a, r)| format!("{:?}:{:.4}", a, r))
+            .collect::<Vec<String>>()
+            .join(", ");
+        let policy_str = policy
+            .iter()
+            .map(|(a, p)| format!("{:?}:{:.4}", a, p))
+            .collect::<Vec<String>>()
+            .join(", ");
+        log::info!(
+            "[PRE-UPDATE] Policy for  {:?}: [{}]",
+            infoset.info(),
+            policy_str
+        );
+        log::info!(
+            "[PRE-UPDATE] Regrets for {:?}: [{}]",
+            infoset.info(),
+            regrets_str
+        );
         policy
     }
 
@@ -202,15 +228,16 @@ pub trait Profile {
                 let relative_reach = self.relative_reach(root, leaf);
                 let cfactual_reach = self.cfactual_reach(leaf);
                 log::info!(
-                    "cfactual relative relative: {} {} {}",
+                    "[REACH] {:?} {:?} - cfactual: {:.4}, relative: {:.4}, value: {:.4}",
+                    root,
+                    edge,
                     cfactual_reach,
-                    relative_value,
-                    relative_reach
+                    relative_reach,
+                    relative_value
                 );
                 1.0 * relative_value * relative_reach / cfactual_reach
             })
             .sum::<crate::Utility>();
-        log::info!("counterfactual value: {}", reach * multiplier);
         reach * multiplier
     }
 
@@ -228,6 +255,8 @@ pub trait Profile {
             .into_iter()
             .inspect(|root| assert!(self.walker() == root.game().turn()))
             .map(|root| self.node_gain(root, edge))
+            .inspect(|r| assert!(!r.is_nan()))
+            .inspect(|r| assert!(!r.is_infinite()))
             .sum::<crate::Utility>()
     }
     /// Using our current strategy Profile, how much regret
@@ -240,7 +269,13 @@ pub trait Profile {
         assert!(self.walker() == root.game().turn());
         let cfactual = self.cfactual_value(root, edge);
         let expected = self.expected_value(root);
-        log::info!("cfactual: {}, expected: {}", cfactual, expected);
+        log::info!(
+            "[PRE-UPDATE] {:?} {:?} - cfactual: {:.4}, expected: {:.4}",
+            root,
+            edge,
+            cfactual,
+            expected
+        );
         cfactual - expected
     }
 
