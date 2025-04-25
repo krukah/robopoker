@@ -31,11 +31,13 @@ pub trait Trainer {
     ///
 
     fn solve(&mut self) {
-        for _ in 0..crate::CFR_ITERATIONS {
+        for i in 0..crate::CFR_ITERATIONS {
+            log::info!("\n=== Starting Iteration {} ===", i);
             for ref update in self.batch() {
                 self.update_regret(update);
                 self.update_weight(update);
             }
+            log::info!("=== Completed Iteration {} ===\n", i);
         }
     }
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
@@ -43,8 +45,23 @@ pub trait Trainer {
         for (edge, regret) in cfr.1.iter() {
             *self.regret(info, edge) *= self.discount(Some(regret.clone()));
             *self.regret(info, edge) += regret;
-            log::info!("Regret updated for edge {:?}", regret);
         }
+
+        // Log post-update regret values
+        let post_update_regrets = cfr
+            .1
+            .iter()
+            .map(|(edge, _)| {
+                let r = *self.regret(info, edge);
+                format!("{:?}:{:.4}", edge, r)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+        log::info!(
+            "[POST-UPDATE] Regrets for {:?}: [{}]",
+            info,
+            post_update_regrets
+        );
     }
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
@@ -52,20 +69,50 @@ pub trait Trainer {
             *self.weight(info, edge) *= self.discount(None);
             *self.weight(info, edge) += weight;
         }
+
+        // Log post-update policy values
+        let post_update_weights = cfr
+            .2
+            .iter()
+            .map(|(edge, _)| {
+                let w = *self.weight(info, edge);
+                format!("{:?}:{:.4}", edge, w)
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+        log::info!(
+            "[POST-UPDATE] Policy for {:?}: [{}]",
+            info,
+            post_update_weights
+        );
+        log::info!(""); // Add empty line for better readability
     }
 
     /// LEVEL 4:  turn a bunch of infosets into a bunch of counterfactuals
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
-        self.partition()
+        let batches = self
+            .partition()
             .into_iter()
             .map(|ref i| {
-                (
-                    i.info(),
-                    self.profile().regret_vector(i),
-                    self.profile().policy_vector(i),
-                )
+                let info = i.info();
+                let regrets = self.profile().regret_vector(i);
+                let policy = self.profile().policy_vector(i);
+
+                // Log summary for the batch
+                let regrets_str = regrets
+                    .iter()
+                    .map(|(a, r)| format!("{:?}:{:.4}", a, r))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                log::info!("=== InfoSet {:?} CFR Update Starting ===", info);
+                log::info!("[PRE-UPDATE] Regrets summary: [{}]", regrets_str);
+
+                (info, regrets, policy)
             })
-            .collect()
+            .collect();
+
+        batches
     }
     /// LEVEL 2: turn a bunch of trees into a bunch of infosets
     fn partition(&self) -> Vec<InfoSet<Self::T, Self::E, Self::G, Self::I>> {

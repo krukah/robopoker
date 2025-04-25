@@ -140,3 +140,24 @@ where
             .collect()
     }
 }
+
+/// Debug + Display implementations, which will
+/// treat a Node just as a combination of its
+/// associated Info + its location in the tree
+impl<'tree, T, E, G, I> std::fmt::Debug for Node<'tree, T, E, G, I>
+where
+    T: Turn,
+    E: Edge,
+    G: Game<E = E, T = T>,
+    I: Info<E = E, T = T>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?} ({}/{})",
+            self.info(),
+            self.index().index(),
+            self.graph().node_count()
+        )
+    }
+}
