@@ -44,33 +44,32 @@ pub trait Trainer {
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, regret) in cfr.1.iter() {
-            *self.regret(info, edge) *= self.discount(Some(regret.clone()));
+            let discount = self.discount(Some(regret.clone()));
+            *self.regret(info, edge) *= discount;
             *self.regret(info, edge) += regret;
         }
     }
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
-        for (edge, weight) in cfr.2.iter() {
-            *self.weight(info, edge) *= self.discount(None);
-            *self.weight(info, edge) += weight;
+        for (edge, policy) in cfr.2.iter() {
+            let discount = self.discount(None);
+            *self.weight(info, edge) *= discount;
+            *self.weight(info, edge) += policy;
         }
     }
 
     /// LEVEL 4:  turn a bunch of infosets into a bunch of counterfactuals
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
-        let batches = self
-            .partition()
-            .into_iter()
-            .map(|ref i| {
+        self.partition()
+            .iter()
+            .map(|infoset| {
                 (
-                    i.info(),
-                    self.profile().regret_vector(i),
-                    self.profile().policy_vector(i),
+                    infoset.info(),
+                    self.profile().regret_vector(infoset),
+                    self.profile().policy_vector(infoset),
                 )
             })
-            .collect();
-
-        batches
+            .collect()
     }
     /// LEVEL 2: turn a bunch of trees into a bunch of infosets
     fn partition(&self) -> Vec<InfoSet<Self::T, Self::E, Self::G, Self::I>> {

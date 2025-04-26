@@ -37,20 +37,30 @@ pub trait Profile {
 
     /// automatic
 
-    /// calculate weighted average decision strategy policy for this information
+    /// calculate immediate weighted average decision
+    /// strategy for this information.
+    /// i.e. policy from accumulated REGRET values
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        let p = self.regret(info, edge).max(crate::POLICY_MIN)
+        self.regret(info, edge).max(crate::POLICY_MIN)
             / info
                 .choices()
                 .iter()
                 .map(|e| self.regret(info, e))
                 .map(|r| r.max(crate::POLICY_MIN))
-                // .inspect(|p| assert!(*p >= 0.))
-                // .inspect(|p| assert!(*p <= 1.))
-                .sum::<crate::Utility>();
-        assert!(p >= 0., "policy must be non-negative {}", p);
-        assert!(p <= 1., "policy must be at most 1 {}", p);
-        p
+                .sum::<crate::Utility>()
+    }
+
+    /// calculate the long-run weighted average decision
+    /// strategy for this information.
+    /// i.e. policy from accumulated POLICY values
+    fn advice(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+        self.weight(info, edge).max(crate::POLICY_MIN)
+            / info
+                .choices()
+                .iter()
+                .map(|e| self.weight(info, e))
+                .map(|r| r.max(crate::POLICY_MIN))
+                .sum::<crate::Probability>()
     }
 
     /// Using our current strategy Profile,
@@ -62,7 +72,7 @@ pub trait Profile {
         &self,
         infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
     ) -> Policy<Self::E> {
-        infoset
+        let regrets = infoset
             .info()
             .choices()
             .into_iter()
@@ -70,9 +80,11 @@ pub trait Profile {
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
             .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
-            .collect::<Policy<Self::E>>()
+            .collect::<Policy<Self::E>>();
+        log::info!("regret vector @ {:?}: {:?}", infoset.info(), regrets);
+        regrets
     }
-    /// lookup historical policy distribution, given this information
+    /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies
     fn policy_vector(
         &self,
         infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
@@ -95,6 +107,7 @@ pub trait Profile {
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
             .collect::<Policy<Self::E>>();
+        log::info!("policy vector @ {:?}: {:?}", infoset.info(), policy);
         policy
     }
 
