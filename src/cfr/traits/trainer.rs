@@ -46,8 +46,12 @@ pub trait Trainer: std::fmt::Display {
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, regret) in cfr.1.iter() {
-            // let discount = self.discount(Some(regret.clone()));
-            // *self.mut_regret(info, edge) *= discount;
+            println!(
+                "{:?}, Action: {:?}, Regret: {:+>5.3}",
+                self.profile().walker(),
+                edge,
+                regret
+            );
             *self.mut_regret(info, edge) = *regret;
         }
     }
