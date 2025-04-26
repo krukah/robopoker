@@ -1,23 +1,26 @@
 use super::edge::Edge;
-use super::game::Game;
-use super::rules::Rules;
 use super::turn::Turn;
-use crate::cfr::structs::node::Node;
 use crate::cfr::traits::profile::Profile;
 use crate::cfr::traits::trainer::Trainer;
-use crate::cfr::types::branch::Branch;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
+/// Blueprint represents the complete solution for the Rock Paper Scissors game,
+/// storing accumulated regret and policy values that are built up during training.
+/// It implements both Profile (for tracking historical regrets and policies) and
+/// Trainer (for using those values to optimize strategy through counterfactual regret minimization).
+/// As a Profile, it provides access to the current state. As a Trainer, it updates that state
+/// to converge toward Nash equilibrium.
 pub struct Blueprint {
-    epochs: usize,
-    encounters: BTreeMap<Turn, BTreeMap<Edge, (crate::Probability, crate::Utility)>>,
+    pub(super) epochs: usize,
+    pub(super) encounters: BTreeMap<Turn, BTreeMap<Edge, (crate::Probability, crate::Utility)>>,
 }
 
 impl Blueprint {
     pub fn train() -> Self {
         let mut blueprint = Self::default();
         blueprint.solve();
+        log::info!("{}", blueprint);
         todo!()
     }
 
@@ -28,84 +31,24 @@ impl Blueprint {
             .entry(edge.clone())
             .or_insert((0., 0.))
     }
-}
 
-impl Trainer for Blueprint {
-    type T = Turn;
-    type E = Edge;
-    type G = Game;
-    type I = Turn;
-    type P = Blueprint;
-    type S = Rules;
-
-    fn encoder(&self) -> &Self::S {
-        &Rules
+    /// Discount parameters for the training process.
+    /// These values control how quickly the algorithm converges
+    /// and how much weight is given to recent updates versus historical data.
+    ///
+    /// - `alpha`: Controls the rate at which recent updates are given more weight.
+    /// - `omega`: Controls the rate at which historical updates are given more weight.
+    pub(super) const fn alpha(&self) -> f32 {
+        1.5
     }
-
-    fn profile(&self) -> &Self::P {
-        self
+    pub(super) const fn omega(&self) -> f32 {
+        0.5
     }
-
-    fn discount(&self, _: Option<crate::Utility>) -> f32 {
-        1.
+    pub(super) const fn gamma(&self) -> f32 {
+        1.5
     }
-
-    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
-        &mut self.at(info, edge).0
-    }
-
-    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
-        &mut self.at(info, edge).1
-    }
-
-    fn increment(&mut self) {
-        Profile::increment(self);
-    }
-}
-
-impl Profile for Blueprint {
-    type T = Turn;
-    type E = Edge;
-    type G = Game;
-    type I = Turn;
-
-    fn increment(&mut self) {
-        self.epochs += 1;
-    }
-
-    fn walker(&self) -> Self::T {
-        match self.epochs % 2 {
-            0 => Turn::P1,
-            _ => Turn::P2,
-        }
-    }
-
-    fn epochs(&self) -> usize {
-        self.epochs
-    }
-
-    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.encounters
-            .get(info)
-            .and_then(|memory| memory.get(edge))
-            .map(|(w, _)| *w)
-            .unwrap_or(crate::Probability::default())
-    }
-
-    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
-        self.encounters
-            .get(info)
-            .and_then(|memory| memory.get(edge))
-            .map(|(_, r)| *r)
-            .unwrap_or(crate::Utility::default())
-    }
-
-    fn sample(
-        &self,
-        _: &Node<Self::T, Self::E, Self::G, Self::I>,
-        branches: Vec<Branch<Self::E, Self::G>>,
-    ) -> Vec<Branch<Self::E, Self::G>> {
-        branches
+    pub(super) const fn period(&self) -> usize {
+        1
     }
 }
 

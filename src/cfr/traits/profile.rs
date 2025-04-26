@@ -37,6 +37,51 @@ pub trait Profile {
 
     /// automatic
 
+    /// Using our current strategy Profile,
+    /// compute the regret vector
+    /// by calculating the marginal Utitlity
+    /// missed out on for not having followed
+    /// every walkable Edge at this Infoset/Node/Bucket
+    fn regret_vector(
+        &self,
+        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Policy<Self::E> {
+        let regrets = infoset
+            .info()
+            .choices()
+            .into_iter()
+            .map(|e| (e, self.info_gain(infoset, &e)))
+            .inspect(|(_, r)| assert!(!r.is_nan()))
+            .inspect(|(_, r)| assert!(!r.is_infinite()))
+            .collect::<Policy<Self::E>>();
+        regrets
+    }
+    /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies
+    fn policy_vector(
+        &self,
+        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Policy<Self::E> {
+        let info = infoset.info();
+        let regrets = info
+            .choices()
+            .into_iter()
+            .map(|e| (e, self.net_regret(&info, &e)))
+            .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
+            .collect::<Policy<Self::E>>();
+        let denominator = regrets
+            .iter()
+            .map(|(_, r)| r)
+            .inspect(|r| assert!(**r > 0.))
+            .sum::<crate::Utility>();
+        let policy = regrets
+            .into_iter()
+            .map(|(a, r)| (a, r / denominator))
+            .inspect(|(_, p)| assert!(*p >= 0.))
+            .inspect(|(_, p)| assert!(*p <= 1.))
+            .collect::<Policy<Self::E>>();
+        policy
+    }
+
     /// calculate immediate weighted average decision
     /// strategy for this information.
     /// i.e. policy from accumulated REGRET values
@@ -66,51 +111,6 @@ pub trait Profile {
                 .inspect(|r| assert!(*r >= 0.))
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Probability>()
-    }
-
-    /// Using our current strategy Profile,
-    /// compute the regret vector
-    /// by calculating the marginal Utitlity
-    /// missed out on for not having followed
-    /// every walkable Edge at this Infoset/Node/Bucket
-    fn regret_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
-        let regrets = infoset
-            .info()
-            .choices()
-            .into_iter()
-            .map(|e| (e, self.info_gain(infoset, &e)))
-            .inspect(|(_, r)| assert!(!r.is_nan()))
-            .inspect(|(_, r)| assert!(!r.is_infinite()))
-            .collect::<Policy<Self::E>>();
-        regrets
-    }
-    /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies
-    fn policy_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
-        let regrets = infoset
-            .info()
-            .choices()
-            .into_iter()
-            .map(|e| (e, self.net_regret(&infoset.info(), &e)))
-            .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
-            .collect::<Policy<Self::E>>();
-        let denominator = regrets
-            .iter()
-            .map(|(_, r)| r)
-            .inspect(|r| assert!(**r > 0.))
-            .sum::<crate::Utility>();
-        let policy = regrets
-            .into_iter()
-            .map(|(a, r)| (a, r / denominator))
-            .inspect(|(_, p)| assert!(*p >= 0.))
-            .inspect(|(_, p)| assert!(*p <= 1.))
-            .collect::<Policy<Self::E>>();
-        policy
     }
 
     /// at the immediate location of this Node,
