@@ -76,7 +76,7 @@ impl crate::cfr::traits::profile::Profile for Profile {
     fn epochs(&self) -> usize {
         self.iterations
     }
-    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
             .expect("info not found")
@@ -84,7 +84,7 @@ impl crate::cfr::traits::profile::Profile for Profile {
             .expect("edge not found")
             .0
     }
-    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
             .expect("info not found")
@@ -104,6 +104,12 @@ impl crate::cfr::traits::profile::Profile for Profile {
             (_, p) if p != walker => self.explore_one(branches, node),
             _ => panic!("at the disco"),
         }
+    }
+}
+
+impl std::fmt::Display for Profile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
     }
 }
 

@@ -17,19 +17,7 @@ pub struct Blueprint {
 impl Blueprint {
     pub fn train() -> Self {
         let mut blueprint = Self::default();
-        // use crate::cfr::traits::trainer::Trainer;
-        // blueprint.solve();
-        // blueprint
-        for i in 0..crate::CFR_ITERATIONS {
-            log::trace!("training iteration {}", i);
-            for ref update in blueprint.batch() {
-                blueprint.update_regret(update);
-                blueprint.update_weight(update);
-            }
-            log::info!("{}", blueprint);
-            Profile::increment(&mut blueprint);
-            std::thread::sleep(std::time::Duration::from_millis(500));
-        }
+        blueprint.solve();
         blueprint
     }
 
@@ -62,12 +50,12 @@ impl Trainer for Blueprint {
         1.
     }
 
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
-        &mut self.at(info, edge).1
+    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+        &mut self.at(info, edge).0
     }
 
-    fn weight(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
-        &mut self.at(info, edge).0
+    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+        &mut self.at(info, edge).1
     }
 
     fn increment(&mut self) {
@@ -96,20 +84,20 @@ impl Profile for Blueprint {
         self.epochs
     }
 
-    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
-            .and_then(|encounters| encounters.get(edge))
+            .and_then(|memory| memory.get(edge))
             .map(|(w, _)| *w)
-            .unwrap_or(0.)
+            .unwrap_or(crate::Probability::default())
     }
 
-    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))
             .map(|(_, r)| *r)
-            .unwrap_or(0.0)
+            .unwrap_or(crate::Utility::default())
     }
 
     fn sample(
@@ -131,10 +119,10 @@ impl std::fmt::Display for Blueprint {
                     f,
                     "    {:?}    W: {:.2}, A: {:.2}, P: {:.2}, R: {:+.2}",
                     edge,
-                    self.profile().weight(turn, edge),
+                    self.profile().net_weight(turn, edge),
                     self.profile().advice(turn, edge),
                     self.profile().policy(turn, edge),
-                    self.profile().regret(turn, edge)
+                    self.profile().net_regret(turn, edge)
                 )?;
             }
         }
