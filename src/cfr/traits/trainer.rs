@@ -14,7 +14,7 @@ use crate::cfr::types::counterfactual::Counterfactual;
 /// 2) computing Counterfactual vectors at each InfoSet
 /// 3) updating the Profile after each Counterfactual batch
 /// 4) [optional] apply Discount scheduling to updates
-pub trait Trainer: std::fmt::Display {
+pub trait Trainer {
     type T: Turn;
     type E: Edge;
     type G: Game<E = Self::E, T = Self::T>;
@@ -25,22 +25,20 @@ pub trait Trainer: std::fmt::Display {
     fn encoder(&self) -> &Self::S;
     fn profile(&self) -> &Self::P;
     fn discount(&self, regret: Option<crate::Utility>) -> f32;
-    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-    fn increment(&mut self);
+
+    fn advance(&mut self);
+    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
+    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
     ///
 
     fn solve(&mut self) {
-        for i in 0..crate::CFR_ITERATIONS {
+        for _ in 0..crate::CFR_ITERATIONS {
+            self.advance();
             for ref update in self.batch() {
                 self.update_regret(update);
                 self.update_weight(update);
             }
-            log::trace!("training iteration {}", i);
-            log::info!("{}", self);
-            std::thread::sleep(std::time::Duration::from_millis(250));
-            self.increment();
         }
     }
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
@@ -52,15 +50,15 @@ pub trait Trainer: std::fmt::Display {
                 edge,
                 regret
             );
-            *self.mut_regret(info, edge) = *regret;
+            *self.regret(info, edge) = regret.max(crate::POLICY_MIN);
         }
     }
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, policy) in cfr.2.iter() {
             let discount = self.discount(None);
-            *self.mut_policy(info, edge) *= discount;
-            *self.mut_policy(info, edge) += policy;
+            *self.policy(info, edge) *= discount;
+            *self.policy(info, edge) += policy;
         }
     }
 

@@ -35,7 +35,7 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     type P = crate::cfr::nlhe::profile::Profile;
     type S = crate::cfr::nlhe::sampler::Sampler;
 
-    fn increment(&mut self) {
+    fn advance(&mut self) {
         use crate::cfr::traits::profile::Profile;
         self.profile.increment();
     }
@@ -45,10 +45,10 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     fn profile(&self) -> &Self::P {
         &self.profile
     }
-    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).0
     }
-    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).1
     }
     fn discount(&self, regret: Option<crate::Utility>) -> f32 {
