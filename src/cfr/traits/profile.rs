@@ -25,9 +25,9 @@ pub trait Profile {
     /// how many iterations
     fn epochs(&self) -> usize;
     /// lookup accumulated policy for this information
-    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
+    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
     /// lookup accumulated regret for this information
-    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
+    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
     /// topology-based sampling. i.e. external, probing, targeted, uniform, etc.
     fn sample(
         &self,
@@ -41,11 +41,14 @@ pub trait Profile {
     /// strategy for this information.
     /// i.e. policy from accumulated REGRET values
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.regret(info, edge).max(crate::POLICY_MIN)
+        self.net_regret(info, edge).max(crate::POLICY_MIN)
             / info
                 .choices()
                 .iter()
-                .map(|e| self.regret(info, e))
+                .map(|e| self.net_regret(info, e))
+                .inspect(|r| assert!(!r.is_nan()))
+                .inspect(|r| assert!(!r.is_infinite()))
+                .inspect(|r| assert!(*r >= 0.))
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Utility>()
     }
@@ -54,11 +57,14 @@ pub trait Profile {
     /// strategy for this information.
     /// i.e. policy from accumulated POLICY values
     fn advice(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.weight(info, edge).max(crate::POLICY_MIN)
+        self.net_weight(info, edge).max(crate::POLICY_MIN)
             / info
                 .choices()
                 .iter()
-                .map(|e| self.weight(info, e))
+                .map(|e| self.net_weight(info, e))
+                .inspect(|r| assert!(!r.is_nan()))
+                .inspect(|r| assert!(!r.is_infinite()))
+                .inspect(|r| assert!(*r >= 0.))
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Probability>()
     }
@@ -76,10 +82,12 @@ pub trait Profile {
             .info()
             .choices()
             .into_iter()
-            .map(|edge| (edge, self.info_gain(infoset, &edge)))
+            .map(|e| (e, self.net_regret(&infoset.info(), &e)))
+            .map(|(e, r)| (e, r + self.info_gain(infoset, &e)))
+            .map(|(e, r)| (e, r.max(crate::POLICY_MIN)))
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
-            .map(|(e, r)| (e, r.max(crate::REGRET_MIN)))
+            .inspect(|(_, r)| assert!(*r >= 0.))
             .collect::<Policy<Self::E>>();
         log::info!("regret vector @ {:?}: {:?}", infoset.info(), regrets);
         regrets
@@ -93,7 +101,7 @@ pub trait Profile {
             .info()
             .choices()
             .into_iter()
-            .map(|e| (e, self.regret(&infoset.info(), &e)))
+            .map(|e| (e, self.net_regret(&infoset.info(), &e)))
             .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<Policy<Self::E>>();
         let denominator = regrets

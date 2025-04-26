@@ -45,10 +45,10 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     fn profile(&self) -> &Self::P {
         &self.profile
     }
-    fn weight(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).0
     }
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).1
     }
     fn discount(&self, regret: Option<crate::Utility>) -> f32 {
@@ -78,6 +78,12 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
                 }
             }
         }
+    }
+}
+
+impl std::fmt::Display for Trainer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.profile)
     }
 }
 
