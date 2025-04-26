@@ -1,6 +1,8 @@
 use super::edge::Edge;
 use super::game::Game;
 use super::turn::Turn;
+use crate::cfr::traits::profile::Profile;
+use crate::cfr::traits::trainer::Trainer;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -19,27 +21,21 @@ impl Blueprint {
     }
 
     pub fn train() -> Self {
-        use crate::cfr::traits::trainer::Trainer;
         let mut blueprint = Self::default();
-
-        log::info!(
-            "Starting RPS training for {} iterations",
-            crate::CFR_ITERATIONS
-        );
         for i in 0..crate::CFR_ITERATIONS {
-            log::info!("\n=== Starting Iteration {} ===", i);
             for ref update in blueprint.batch() {
                 blueprint.update_regret(update);
                 blueprint.update_weight(update);
             }
             blueprint.epochs += 1;
-            log::info!("Current blueprint state:\n{}", blueprint);
+            log::info!("{}", blueprint);
+            std::thread::sleep(std::time::Duration::from_millis(500));
         }
         blueprint
     }
 }
 
-impl crate::cfr::traits::profile::Profile for Blueprint {
+impl Profile for Blueprint {
     type T = Turn;
     type E = Edge;
     type G = Game;
@@ -86,11 +82,13 @@ impl std::fmt::Display for Blueprint {
         writeln!(f, "Blueprint(epochs: {})", self.epochs)?;
         for (turn, edges) in &self.encounters {
             writeln!(f, "  {:?}:", turn)?;
-            for (edge, (weight, regret)) in edges {
+            for (edge, (_, regret)) in edges {
                 writeln!(
                     f,
-                    "    {:?} -> (Weight: {:.2}, Regret: {:.2})",
-                    edge, weight, regret
+                    "    {:?} -> (Policy: {:.2}, Regret: {:+.2})",
+                    edge,
+                    self.profile().policy(turn, edge),
+                    regret
                 )?;
             }
         }
