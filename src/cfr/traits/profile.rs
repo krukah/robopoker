@@ -48,7 +48,6 @@ pub trait Profile {
                 .map(|e| self.net_regret(info, e))
                 .inspect(|r| assert!(!r.is_nan()))
                 .inspect(|r| assert!(!r.is_infinite()))
-                .inspect(|r| assert!(*r >= 0.))
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Utility>()
     }
@@ -82,14 +81,19 @@ pub trait Profile {
             .info()
             .choices()
             .into_iter()
-            .map(|e| (e, self.net_regret(&infoset.info(), &e)))
-            .map(|(e, r)| (e, r + self.info_gain(infoset, &e)))
-            .map(|(e, r)| (e, r.max(crate::POLICY_MIN)))
+            .map(|e| (e, self.info_gain(infoset, &e)))
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
-            .inspect(|(_, r)| assert!(*r >= 0.))
             .collect::<Policy<Self::E>>();
-        log::info!("regret vector @ {:?}: {:?}", infoset.info(), regrets);
+        log::info!(
+            "regret vector @ {:?}: {:?}",
+            infoset.info(),
+            regrets
+                .clone()
+                .into_iter()
+                .map(|(e, r)| (e, format!("{:+6.3}", r)))
+                .collect::<Vec<_>>()
+        );
         regrets
     }
     /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies
@@ -115,7 +119,15 @@ pub trait Profile {
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
             .collect::<Policy<Self::E>>();
-        log::info!("policy vector @ {:?}: {:?}", infoset.info(), policy);
+        log::info!(
+            "policy vector @ {:?}: {:?}",
+            infoset.info(),
+            policy
+                .clone()
+                .into_iter()
+                .map(|(e, r)| (e, format!("{:+6.3}", r)))
+                .collect::<Vec<_>>()
+        );
         policy
     }
 
@@ -244,8 +256,6 @@ pub trait Profile {
         assert!(self.walker() == root.game().turn());
         let cfactual = self.cfactual_value(root, edge);
         let expected = self.expected_value(root);
-        log::warn!("node gain @ {:?}: {:?}", root.info(), cfactual - expected);
-        log::warn!("cfactual: {:?}, expected: {:?}", cfactual, expected);
         cfactual - expected
     }
 
