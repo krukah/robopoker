@@ -126,13 +126,15 @@ impl std::fmt::Display for Blueprint {
         writeln!(f, "Turns: {}", self.epochs)?;
         for (turn, edges) in &self.encounters {
             writeln!(f, "  {:?}:", turn)?;
-            for (edge, (_, regret)) in edges {
+            for (edge, _) in edges {
                 writeln!(
                     f,
-                    "    {:?} -> (Policy: {:.2}, Regret: {:+.2})",
+                    "    {:?} -> W: {:.2}, P: {:.2}, A: {:.2}, R: {:+.2}",
                     edge,
+                    self.profile().weight(turn, edge),
                     self.profile().policy(turn, edge),
-                    regret
+                    self.profile().advice(turn, edge),
+                    self.profile().regret(turn, edge)
                 )?;
             }
         }
