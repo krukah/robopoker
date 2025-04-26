@@ -35,6 +35,10 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     type P = crate::cfr::nlhe::profile::Profile;
     type S = crate::cfr::nlhe::sampler::Sampler;
 
+    fn increment(&mut self) {
+        use crate::cfr::traits::profile::Profile;
+        self.profile.increment();
+    }
     fn encoder(&self) -> &Self::S {
         &self.sampler
     }

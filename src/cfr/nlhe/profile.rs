@@ -63,6 +63,10 @@ impl crate::cfr::traits::profile::Profile for Profile {
     type G = Game;
     type I = Info;
 
+    fn increment(&mut self) {
+        self.iterations += 1;
+    }
+
     fn walker(&self) -> Self::T {
         match self.iterations % 2 {
             0 => Turn::Choice(0),

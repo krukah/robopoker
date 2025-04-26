@@ -18,6 +18,8 @@ pub trait Profile {
     type G: Game<E = Self::E, T = Self::T>;
     type I: Info<E = Self::E, T = Self::T>;
 
+    /// increment epoch
+    fn increment(&mut self);
     /// who's turn is it?
     fn walker(&self) -> Self::T;
     /// how many iterations

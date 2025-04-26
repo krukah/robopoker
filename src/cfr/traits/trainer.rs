@@ -27,12 +27,14 @@ pub trait Trainer {
     fn discount(&self, regret: Option<crate::Utility>) -> f32;
     fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
     fn weight(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
+    fn increment(&mut self);
 
     ///
 
     fn solve(&mut self) {
         for i in 0..crate::CFR_ITERATIONS {
             log::trace!("training iteration {}", i);
+            self.increment();
             for ref update in self.batch() {
                 self.update_regret(update);
                 self.update_weight(update);
@@ -52,7 +54,6 @@ pub trait Trainer {
             *self.weight(info, edge) *= self.discount(None);
             *self.weight(info, edge) += weight;
         }
-        log::info!(""); // Add empty line for better readability
     }
 
     /// LEVEL 4:  turn a bunch of infosets into a bunch of counterfactuals
