@@ -18,7 +18,7 @@ impl Blueprint {
     pub fn train() -> Self {
         let mut blueprint = Self::default();
         blueprint.solve();
-        blueprint
+        todo!()
     }
 
     pub fn at(&mut self, info: &Turn, edge: &Edge) -> &mut (crate::Probability, crate::Utility) {
