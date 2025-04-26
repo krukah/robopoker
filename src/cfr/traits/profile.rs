@@ -85,7 +85,7 @@ pub trait Profile {
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
             .collect::<Policy<Self::E>>();
-        log::info!(
+        log::trace!(
             "regret vector @ {:?}: {:?}",
             infoset.info(),
             regrets
@@ -119,7 +119,7 @@ pub trait Profile {
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
             .collect::<Policy<Self::E>>();
-        log::info!(
+        log::trace!(
             "policy vector @ {:?}: {:?}",
             infoset.info(),
             policy
