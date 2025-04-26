@@ -88,34 +88,11 @@ pub trait Profile {
             .inspect(|r| assert!(**r > 0.))
             .sum::<crate::Utility>();
         let policy = regrets
-            .clone() // -- remove
             .into_iter()
             .map(|(a, r)| (a, r / denominator))
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
             .collect::<Policy<Self::E>>();
-
-        // Log the full policy and regrets in a cleaner format
-        let regrets_str = regrets
-            .iter()
-            .map(|(a, r)| format!("{:?}:{:.4}", a, r))
-            .collect::<Vec<String>>()
-            .join(", ");
-        let policy_str = policy
-            .iter()
-            .map(|(a, p)| format!("{:?}:{:.4}", a, p))
-            .collect::<Vec<String>>()
-            .join(", ");
-        log::info!(
-            "[PRE-UPDATE] Policy for  {:?}: [{}]",
-            infoset.info(),
-            policy_str
-        );
-        log::info!(
-            "[PRE-UPDATE] Regrets for {:?}: [{}]",
-            infoset.info(),
-            regrets_str
-        );
         policy
     }
 
@@ -142,10 +119,7 @@ pub trait Profile {
         } else {
             match leaf.up() {
                 None => unreachable!("leaf must be downstream of root"),
-                Some((parent, incoming)) => {
-                    self.relative_reach(root, parent) // .
-                    * self.outgoing_reach(parent, *incoming)
-                }
+                Some((up, edge)) => self.relative_reach(root, up) * self.outgoing_reach(up, *edge),
             }
         }
     }
@@ -155,10 +129,7 @@ pub trait Profile {
     fn expected_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
         match root.up() {
             None => 1.0,
-            Some((parent, incoming)) => {
-                self.expected_reach(parent) // .
-                * self.outgoing_reach(parent, *incoming)
-            }
+            Some((up, edge)) => self.expected_reach(up) * self.outgoing_reach(up, *edge),
         }
     }
     /// If, counterfactually, we had played toward this infoset,
@@ -172,11 +143,11 @@ pub trait Profile {
     fn cfactual_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
         match node.up() {
             None => 1.0,
-            Some((parent, incoming)) => {
-                if self.walker() != parent.game().turn() {
-                    self.cfactual_reach(parent) * self.outgoing_reach(parent, *incoming)
+            Some((up, edge)) => {
+                if self.walker() != up.game().turn() {
+                    self.cfactual_reach(up) * self.outgoing_reach(up, *edge)
                 } else {
-                    self.cfactual_reach(parent)
+                    self.cfactual_reach(up)
                 }
             }
         }
@@ -201,11 +172,7 @@ pub trait Profile {
             * root
                 .descendants()
                 .into_iter()
-                .map(|leaf| {
-                    1.0
-                    * self.relative_value(root, leaf) //.
-                    * self.relative_reach(root, leaf) //.
-                })
+                .map(|leaf| self.relative_value(root, leaf) * self.relative_reach(root, leaf))
                 .sum::<crate::Utility>()
     }
     /// If, counterfactually,
@@ -217,28 +184,13 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        let reach = self.cfactual_reach(root);
-        let multiplier = root
-            .follow(edge)
+        root.follow(edge)
             .expect("edge belongs to outgoing")
             .descendants()
             .into_iter()
-            .map(|leaf| {
-                let relative_value = self.relative_value(root, leaf);
-                let relative_reach = self.relative_reach(root, leaf);
-                let cfactual_reach = self.cfactual_reach(leaf);
-                log::info!(
-                    "[REACH] {:?} {:?} - cfactual: {:.4}, relative: {:.4}, value: {:.4}",
-                    root,
-                    edge,
-                    cfactual_reach,
-                    relative_reach,
-                    relative_value
-                );
-                1.0 * relative_value * relative_reach / cfactual_reach
-            })
-            .sum::<crate::Utility>();
-        reach * multiplier
+            .map(|leaf| self.relative_value(root, leaf) * self.expected_reach(leaf))
+            .sum::<crate::Utility>()
+            / self.cfactual_reach(root)
     }
 
     /// Conditional on being in this Infoset,
@@ -269,13 +221,6 @@ pub trait Profile {
         assert!(self.walker() == root.game().turn());
         let cfactual = self.cfactual_value(root, edge);
         let expected = self.expected_value(root);
-        log::info!(
-            "[PRE-UPDATE] {:?} {:?} - cfactual: {:.4}, expected: {:.4}",
-            root,
-            edge,
-            cfactual,
-            expected
-        );
         cfactual - expected
     }
 
