@@ -1,8 +1,11 @@
 use super::edge::Edge;
 use super::game::Game;
+use super::rules::Rules;
 use super::turn::Turn;
+use crate::cfr::structs::node::Node;
 use crate::cfr::traits::profile::Profile;
 use crate::cfr::traits::trainer::Trainer;
+use crate::cfr::types::branch::Branch;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -12,6 +15,24 @@ pub struct Blueprint {
 }
 
 impl Blueprint {
+    pub fn train() -> Self {
+        let mut blueprint = Self::default();
+        // use crate::cfr::traits::trainer::Trainer;
+        // blueprint.solve();
+        // blueprint
+        for i in 0..crate::CFR_ITERATIONS {
+            log::trace!("training iteration {}", i);
+            for ref update in blueprint.batch() {
+                blueprint.update_regret(update);
+                blueprint.update_weight(update);
+            }
+            log::info!("{}", blueprint);
+            Profile::increment(&mut blueprint);
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        blueprint
+    }
+
     pub fn at(&mut self, info: &Turn, edge: &Edge) -> &mut (crate::Probability, crate::Utility) {
         self.encounters
             .entry(info.clone())
@@ -19,19 +40,38 @@ impl Blueprint {
             .entry(edge.clone())
             .or_insert((0., 0.))
     }
+}
 
-    pub fn train() -> Self {
-        let mut blueprint = Self::default();
-        for i in 0..crate::CFR_ITERATIONS {
-            for ref update in blueprint.batch() {
-                blueprint.update_regret(update);
-                blueprint.update_weight(update);
-            }
-            blueprint.epochs += 1;
-            log::info!("{}", blueprint);
-            std::thread::sleep(std::time::Duration::from_millis(500));
-        }
-        blueprint
+impl Trainer for Blueprint {
+    type T = Turn;
+    type E = Edge;
+    type G = Game;
+    type I = Turn;
+    type P = Blueprint;
+    type S = Rules;
+
+    fn encoder(&self) -> &Self::S {
+        &Rules
+    }
+
+    fn profile(&self) -> &Self::P {
+        self
+    }
+
+    fn discount(&self, _: Option<crate::Utility>) -> f32 {
+        1.
+    }
+
+    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+        &mut self.at(info, edge).1
+    }
+
+    fn weight(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+        &mut self.at(info, edge).0
+    }
+
+    fn increment(&mut self) {
+        Profile::increment(self);
     }
 }
 
@@ -40,6 +80,10 @@ impl Profile for Blueprint {
     type E = Edge;
     type G = Game;
     type I = Turn;
+
+    fn increment(&mut self) {
+        self.epochs += 1;
+    }
 
     fn walker(&self) -> Self::T {
         match self.epochs % 2 {
@@ -70,16 +114,16 @@ impl Profile for Blueprint {
 
     fn sample(
         &self,
-        _: &crate::cfr::structs::node::Node<Self::T, Self::E, Self::G, Self::I>,
-        branches: Vec<crate::cfr::types::branch::Branch<Self::E, Self::G>>,
-    ) -> Vec<crate::cfr::types::branch::Branch<Self::E, Self::G>> {
+        _: &Node<Self::T, Self::E, Self::G, Self::I>,
+        branches: Vec<Branch<Self::E, Self::G>>,
+    ) -> Vec<Branch<Self::E, Self::G>> {
         branches
     }
 }
 
 impl std::fmt::Display for Blueprint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Blueprint(epochs: {})", self.epochs)?;
+        writeln!(f, "Turns: {}", self.epochs)?;
         for (turn, edges) in &self.encounters {
             writeln!(f, "  {:?}:", turn)?;
             for (edge, (_, regret)) in edges {

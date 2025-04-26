@@ -1,10 +1,12 @@
-use super::{edge::Edge, game::Game, turn::Turn};
+use super::edge::Edge;
+use super::game::Game;
+use super::turn::Turn;
 use crate::cfr::structs::tree::Tree;
 use crate::cfr::types::branch::Branch;
 
-pub struct Sampler;
+pub struct Rules;
 
-impl crate::cfr::traits::sampler::Sampler for Sampler {
+impl crate::cfr::traits::sampler::Sampler for Rules {
     type T = Turn;
     type E = Edge;
     type G = Game;
