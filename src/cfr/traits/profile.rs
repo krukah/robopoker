@@ -85,15 +85,6 @@ pub trait Profile {
             .inspect(|(_, r)| assert!(!r.is_nan()))
             .inspect(|(_, r)| assert!(!r.is_infinite()))
             .collect::<Policy<Self::E>>();
-        log::trace!(
-            "regret vector @ {:?}: {:?}",
-            infoset.info(),
-            regrets
-                .clone()
-                .into_iter()
-                .map(|(e, r)| (e, format!("{:+6.3}", r)))
-                .collect::<Vec<_>>()
-        );
         regrets
     }
     /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies
@@ -119,15 +110,6 @@ pub trait Profile {
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
             .collect::<Policy<Self::E>>();
-        log::trace!(
-            "policy vector @ {:?}: {:?}",
-            infoset.info(),
-            policy
-                .clone()
-                .into_iter()
-                .map(|(e, r)| (e, format!("{:+6.3}", r)))
-                .collect::<Vec<_>>()
-        );
         policy
     }
 
