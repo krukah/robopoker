@@ -39,16 +39,16 @@ pub trait Trainer: std::fmt::Display {
             }
             log::trace!("training iteration {}", i);
             log::info!("{}", self);
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_millis(250));
             self.increment();
         }
     }
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, regret) in cfr.1.iter() {
-            let discount = self.discount(Some(regret.clone()));
-            *self.mut_regret(info, edge) *= discount;
-            *self.mut_regret(info, edge) += regret;
+            // let discount = self.discount(Some(regret.clone()));
+            // *self.mut_regret(info, edge) *= discount;
+            *self.mut_regret(info, edge) = *regret;
         }
     }
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
