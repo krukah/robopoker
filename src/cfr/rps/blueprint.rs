@@ -129,11 +129,11 @@ impl std::fmt::Display for Blueprint {
             for (edge, _) in edges {
                 writeln!(
                     f,
-                    "    {:?} -> W: {:.2}, P: {:.2}, A: {:.2}, R: {:+.2}",
+                    "    {:?}    W: {:.2}, A: {:.2}, P: {:.2}, R: {:+.2}",
                     edge,
                     self.profile().weight(turn, edge),
-                    self.profile().policy(turn, edge),
                     self.profile().advice(turn, edge),
+                    self.profile().policy(turn, edge),
                     self.profile().regret(turn, edge)
                 )?;
             }

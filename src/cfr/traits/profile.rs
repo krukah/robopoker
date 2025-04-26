@@ -236,6 +236,8 @@ pub trait Profile {
         assert!(self.walker() == root.game().turn());
         let cfactual = self.cfactual_value(root, edge);
         let expected = self.expected_value(root);
+        log::warn!("node gain @ {:?}: {:?}", root.info(), cfactual - expected);
+        log::warn!("cfactual: {:?}, expected: {:?}", cfactual, expected);
         cfactual - expected
     }
 
