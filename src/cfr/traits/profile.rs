@@ -157,14 +157,30 @@ pub trait Profile {
     /// MCCFR requires we adjust our reach in counterfactual
     /// regret calculation to account for the under- and over-sampling
     /// of regret across different Infosets.
-    fn cfactual_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
+    fn external_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
         match node.up() {
             None => 1.0,
             Some((up, edge)) => {
                 if self.walker() != up.game().turn() {
-                    self.cfactual_reach(up) * self.outgoing_reach(up, *edge)
+                    self.external_reach(up) * self.outgoing_reach(up, *edge)
                 } else {
-                    self.cfactual_reach(up)
+                    self.external_reach(up)
+                }
+            }
+        }
+    }
+
+    /// this is kinda the opposite of external reach, in
+    /// the sense that it only considers the reach probability
+    /// from the current player's actions, ignoring opponent actions
+    fn internal_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
+        match node.up() {
+            None => 1.0,
+            Some((up, edge)) => {
+                if self.walker() == up.game().turn() {
+                    self.internal_reach(up) * self.outgoing_reach(up, *edge)
+                } else {
+                    self.internal_reach(up)
                 }
             }
         }
@@ -207,7 +223,7 @@ pub trait Profile {
             .into_iter()
             .map(|leaf| self.relative_value(root, leaf) * self.expected_reach(leaf))
             .sum::<crate::Utility>()
-            / self.cfactual_reach(root)
+            / self.external_reach(root)
     }
 
     /// Conditional on being in this Infoset,

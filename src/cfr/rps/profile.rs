@@ -18,15 +18,15 @@ impl Profile for Blueprint {
         self.epochs += 1;
     }
 
+    fn epochs(&self) -> usize {
+        self.epochs
+    }
+
     fn walker(&self) -> Self::T {
-        match self.epochs % 2 {
+        match self.epochs() % 2 {
             0 => Turn::P1,
             _ => Turn::P2,
         }
-    }
-
-    fn epochs(&self) -> usize {
-        self.epochs
     }
 
     fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
