@@ -53,11 +53,11 @@ impl Trainer for Blueprint {
         }
     }
 
-    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn policy_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.at(info, edge).0
     }
 
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn regret_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.at(info, edge).1
     }
 

@@ -45,10 +45,10 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     fn profile(&self) -> &Self::P {
         &self.profile
     }
-    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn policy_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).0
     }
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn regret_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).1
     }
     fn discount(&self, regret: Option<crate::Utility>) -> f32 {
