@@ -161,3 +161,24 @@ where
         )
     }
 }
+
+impl<'tree, T, E, G, I> PartialEq for Node<'tree, T, E, G, I>
+where
+    T: Turn,
+    E: Edge,
+    G: Game<E = E, T = T>,
+    I: Info<E = E, T = T>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.index() == other.index()
+    }
+}
+
+impl<'tree, T, E, G, I> Eq for Node<'tree, T, E, G, I>
+where
+    T: Turn,
+    E: Edge,
+    G: Game<E = E, T = T>,
+    I: Info<E = E, T = T>,
+{
+}
