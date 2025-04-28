@@ -43,7 +43,7 @@ const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 // mccfr parameters
 const CFR_BATCH_SIZE: usize = 0x1;
-const CFR_TREE_COUNT: usize = 0x800;
+const CFR_TREE_COUNT: usize = 0x80;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
 const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
 const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;

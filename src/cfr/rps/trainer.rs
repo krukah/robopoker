@@ -1,6 +1,6 @@
 use super::edge::Edge;
+use super::encoder::Encoder;
 use super::game::Game;
-use super::rules::Rules;
 use super::turn::Turn;
 use crate::cfr::rps::blueprint::Blueprint;
 use crate::cfr::traits::profile::Profile;
@@ -15,10 +15,10 @@ impl Trainer for Blueprint {
     type G = Game;
     type I = Turn;
     type P = Blueprint;
-    type S = Rules;
+    type S = Encoder;
 
     fn encoder(&self) -> &Self::S {
-        &Rules
+        &Encoder
     }
 
     fn profile(&self) -> &Self::P {
@@ -53,11 +53,11 @@ impl Trainer for Blueprint {
         }
     }
 
-    fn policy_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.at(info, edge).0
     }
 
-    fn regret_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.at(info, edge).1
     }
 

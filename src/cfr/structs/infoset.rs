@@ -24,7 +24,7 @@ where
     G: Game<E = E, T = T>,
     I: Info<E = E, T = T>,
 {
-    root: Vec<petgraph::graph::NodeIndex>,
+    span: Vec<petgraph::graph::NodeIndex>,
     tree: std::sync::Arc<Tree<T, E, G, I>>,
 }
 impl<T, E, G, I> InfoSet<T, E, G, I>
@@ -36,19 +36,19 @@ where
 {
     pub fn from(tree: std::sync::Arc<Tree<T, E, G, I>>) -> Self {
         Self {
-            root: Vec::new(),
+            span: Vec::new(),
             tree,
         }
     }
     pub fn push(&mut self, index: petgraph::graph::NodeIndex) {
-        self.root.push(index);
+        self.span.push(index);
     }
     pub fn span(&self) -> Vec<Node<T, E, G, I>> {
-        self.root.iter().copied().map(|i| self.tree.at(i)).collect()
+        self.span.iter().copied().map(|i| self.tree.at(i)).collect()
     }
     pub fn head(&self) -> Node<T, E, G, I> {
         self.tree
-            .at(self.root.first().copied().expect("nodes in info"))
+            .at(self.span.first().copied().expect("nodes in info"))
     }
     pub fn info(&self) -> I {
         self.head().info().clone()

@@ -76,7 +76,7 @@ impl crate::cfr::traits::profile::Profile for Profile {
     fn epochs(&self) -> usize {
         self.iterations
     }
-    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
             .expect("info not found")
@@ -84,7 +84,7 @@ impl crate::cfr::traits::profile::Profile for Profile {
             .expect("edge not found")
             .0
     }
-    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
             .expect("info not found")

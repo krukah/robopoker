@@ -62,8 +62,8 @@ impl std::fmt::Display for Blueprint {
                     f,
                     "    {:?}  R {:>+6.2}, W {:>6.2}, P {:>6.2},  A {:>6.2}",
                     edge,
-                    self.profile().net_regret(turn, edge),
-                    self.profile().net_weight(turn, edge),
+                    self.profile().regret(turn, edge),
+                    self.profile().weight(turn, edge),
                     self.profile().policy(turn, edge),
                     self.profile().advice(turn, edge),
                 )?;

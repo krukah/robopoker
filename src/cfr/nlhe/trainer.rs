@@ -1,5 +1,5 @@
 pub struct Trainer {
-    sampler: crate::cfr::nlhe::sampler::Sampler,
+    sampler: crate::cfr::nlhe::encoder::Encoder,
     profile: crate::cfr::nlhe::profile::Profile,
 }
 
@@ -33,7 +33,7 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     type G = crate::cfr::nlhe::game::Game;
     type I = crate::cfr::nlhe::info::Info;
     type P = crate::cfr::nlhe::profile::Profile;
-    type S = crate::cfr::nlhe::sampler::Sampler;
+    type S = crate::cfr::nlhe::encoder::Encoder;
 
     fn advance(&mut self) {
         use crate::cfr::traits::profile::Profile;
@@ -45,10 +45,10 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     fn profile(&self) -> &Self::P {
         &self.profile
     }
-    fn policy_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).0
     }
-    fn regret_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).1
     }
     fn discount(&self, regret: Option<crate::Utility>) -> f32 {
@@ -94,7 +94,7 @@ impl crate::save::disk::Disk for Trainer {
     }
     fn done(street: crate::cards::street::Street) -> bool {
         crate::cfr::nlhe::profile::Profile::done(street)
-            && crate::cfr::nlhe::sampler::Sampler::done(street)
+            && crate::cfr::nlhe::encoder::Encoder::done(street)
     }
 
     fn save(&self) {
@@ -107,7 +107,7 @@ impl crate::save::disk::Disk for Trainer {
         use crate::Arbitrary;
         Self {
             profile: crate::cfr::nlhe::profile::Profile::default(),
-            sampler: crate::cfr::nlhe::sampler::Sampler::load(Street::random()),
+            sampler: crate::cfr::nlhe::encoder::Encoder::load(Street::random()),
         }
     }
 
@@ -116,7 +116,7 @@ impl crate::save::disk::Disk for Trainer {
         use crate::Arbitrary;
         Self {
             profile: crate::cfr::nlhe::profile::Profile::load(Street::random()),
-            sampler: crate::cfr::nlhe::sampler::Sampler::load(Street::random()),
+            sampler: crate::cfr::nlhe::encoder::Encoder::load(Street::random()),
         }
     }
 }
