@@ -4,9 +4,9 @@ use super::turn::Turn;
 use crate::cfr::structs::tree::Tree;
 use crate::cfr::types::branch::Branch;
 
-pub struct Rules;
+pub struct Encoder;
 
-impl crate::cfr::traits::sampler::Sampler for Rules {
+impl crate::cfr::traits::encoder::Encoder for Encoder {
     type T = Turn;
     type E = Edge;
     type G = Game;
@@ -19,9 +19,8 @@ impl crate::cfr::traits::sampler::Sampler for Rules {
     fn info(
         &self,
         _: &Tree<Self::T, Self::E, Self::G, Self::I>,
-        (_, game, _): Branch<Self::E, Self::G>,
+        (_, ref game, _): Branch<Self::E, Self::G>,
     ) -> Self::I {
-        use crate::cfr::traits::game::Game;
-        game.turn()
+        crate::cfr::traits::game::Game::turn(game)
     }
 }

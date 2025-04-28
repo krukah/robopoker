@@ -1,10 +1,10 @@
 use crate::cfr::structs::infoset::InfoSet;
 use crate::cfr::structs::tree::Tree;
 use crate::cfr::traits::edge::Edge;
+use crate::cfr::traits::encoder::Encoder;
 use crate::cfr::traits::game::Game;
 use crate::cfr::traits::info::Info;
 use crate::cfr::traits::profile::Profile;
-use crate::cfr::traits::sampler::Sampler;
 use crate::cfr::traits::turn::Turn;
 use crate::cfr::types::counterfactual::Counterfactual;
 
@@ -20,35 +20,26 @@ pub trait Trainer {
     type G: Game<E = Self::E, T = Self::T>;
     type I: Info<E = Self::E, T = Self::T>;
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
-    type S: Sampler<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
+    type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
     fn encoder(&self) -> &Self::S;
     fn profile(&self) -> &Self::P;
     fn discount(&self, regret: Option<crate::Utility>) -> f32;
 
+    /// Advances the trainer state to the next iteration
     fn advance(&mut self);
-    fn regret_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-    fn policy_mut(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
+
+    /// Returns a mutable reference to the accumulated regret value for the given infoset/edge pair.
+    /// This allows updating the historical regret values that drive strategy updates.
+    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
+
+    /// Returns a mutable reference to the accumulated policy weight for the given infoset/edge pair.
+    /// This allows updating the historical action weights that determine the final strategy.
+    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
     ///
 
     /// Updates trainer state based on regret vectors from Profile.
-    ///
-    /// Several open questions remain about the optimal update strategy:
-    ///
-    /// 1. Discounting: Should we apply discounting to both regrets and policies?
-    ///    Currently we discount both but with different schedules - regrets are
-    ///    discounted based on their accumulated value while policies use a simpler
-    ///    time-based discount.
-    ///
-    /// 2. Player Updates: Should we update both players' regrets/policies on every
-    ///    iteration? Currently we only update the active player but this may lead
-    ///    to slower convergence.
-    ///
-    /// 3. Accumulation: Should we accumulate both regrets and policies over time?
-    ///    The theory suggests accumulating regrets is necessary for convergence,
-    ///    but maintaining historical policies may not be required. Currently we
-    ///    accumulate both.
     fn solve(&mut self) {
         for _ in 0..crate::CFR_ITERATIONS {
             self.advance();
@@ -59,41 +50,22 @@ pub trait Trainer {
         }
     }
     /// Updates accumulated regret values for each edge in the counterfactual.
-    ///
-    /// Uncertainty #1: Currently applies regret-based discounting, but unclear if this
-    /// is optimal compared to simpler time-based discounting used for policies.
-    ///
-    /// Uncertainty #2: Only updates regrets for the active player, which may slow convergence
-    /// compared to updating both players.
-    ///
-    /// Uncertainty #3: Theory suggests accumulating regrets is necessary for convergence,
-    /// so we maintain historical regret values.
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, regret) in cfr.1.iter() {
-            let accumlated = self.profile().net_regret(info, edge);
-            let discount = self.discount(Some(accumlated));
-            *self.regret_mut(info, edge) *= discount;
-            *self.regret_mut(info, edge) += regret;
+            let discount = self.discount(Some(self.profile().regret(info, edge)));
+            *self.regret(info, edge) *= discount;
+            *self.regret(info, edge) += regret;
         }
     }
 
     /// Updates accumulated policy weights for each edge in the counterfactual.
-    ///
-    /// Uncertainty #1: Currently uses simpler time-based discounting compared to
-    /// regret-based discounting used for regrets.
-    ///
-    /// Uncertainty #2: Only updates policies for the active player, which may slow convergence
-    /// compared to updating both players.
-    ///
-    /// Uncertainty #3: Unclear if maintaining historical policy weights is necessary
-    /// for convergence, but we accumulate them anyway.
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, policy) in cfr.2.iter() {
             let discount = self.discount(None);
-            *self.policy_mut(info, edge) *= discount;
-            *self.policy_mut(info, edge) += policy;
+            *self.policy(info, edge) *= discount;
+            *self.policy(info, edge) += policy;
         }
     }
 
@@ -132,13 +104,13 @@ pub trait Trainer {
         let root = Self::G::root();
         let info = self.encoder().seed(&root);
         let node = tree.seed(info, root);
-        let children = self.encoder().grow(&node);
+        let children = self.encoder().branches(&node);
         let children = self.profile().sample(&node, children);
         todo.extend(children);
         while let Some(leaf) = todo.pop() {
             let info = self.encoder().info(&tree, leaf);
             let node = tree.grow(info, leaf);
-            let children = self.encoder().grow(&node);
+            let children = self.encoder().branches(&node);
             let children = self.profile().sample(&node, children);
             todo.extend(children);
         }

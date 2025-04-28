@@ -17,7 +17,7 @@ use crate::cfr::types::branch::Branch;
 /// RPS for example has trivial infoset encoding,
 /// whereas NLHE must learn the massive abstraction from kmeans clustering
 /// over the set of all hands up to strategic isomorphism.
-pub trait Sampler {
+pub trait Encoder {
     type T: Turn;
     type E: Edge;
     type G: Game<E = Self::E, T = Self::T>;
@@ -30,7 +30,12 @@ pub trait Sampler {
         leaf: Branch<Self::E, Self::G>,
     ) -> Self::I;
 
-    fn grow(
+    /// because we assume both that Game's can
+    /// be computed from applying Edge's, and that
+    /// the Node must have access to its Info set,
+    /// we can
+
+    fn branches(
         &self,
         node: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> Vec<Branch<Self::E, Self::G>> {

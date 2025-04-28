@@ -29,7 +29,7 @@ impl Profile for Blueprint {
         }
     }
 
-    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))
@@ -37,7 +37,7 @@ impl Profile for Blueprint {
             .unwrap_or(crate::Probability::default())
     }
 
-    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))

@@ -14,11 +14,11 @@ use std::collections::BTreeMap;
 type Tree = crate::cfr::structs::tree::Tree<Turn, Edge, Game, Info>;
 
 #[derive(Default)]
-pub struct Sampler {
+pub struct Encoder {
     lookup: BTreeMap<Isomorphism, Abstraction>,
 }
 
-impl Sampler {
+impl Encoder {
     fn name() -> String {
         "isomorphism".to_string()
     }
@@ -74,7 +74,7 @@ impl Sampler {
     }
 }
 
-impl crate::cfr::traits::sampler::Sampler for Sampler {
+impl crate::cfr::traits::encoder::Encoder for Encoder {
     type T = crate::cfr::nlhe::turn::Turn;
     type E = crate::cfr::nlhe::edge::Edge;
     type G = crate::cfr::nlhe::game::Game;
@@ -104,7 +104,7 @@ impl crate::cfr::traits::sampler::Sampler for Sampler {
 }
 
 #[cfg(feature = "native")]
-impl crate::save::upload::Table for Sampler {
+impl crate::save::upload::Table for Encoder {
     fn name() -> String {
         Self::name()
     }
@@ -164,7 +164,7 @@ impl crate::save::upload::Table for Sampler {
     }
 }
 
-impl crate::save::disk::Disk for Sampler {
+impl crate::save::disk::Disk for Encoder {
     fn name() -> String {
         Self::name()
     }

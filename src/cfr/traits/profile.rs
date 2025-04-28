@@ -25,9 +25,9 @@ pub trait Profile {
     /// how many iterations
     fn epochs(&self) -> usize;
     /// lookup accumulated policy for this information
-    fn net_weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
+    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
     /// lookup accumulated regret for this information
-    fn net_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
+    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
     /// topology-based sampling. i.e. external, probing, targeted, uniform, etc.
     fn sample(
         &self,
@@ -65,7 +65,7 @@ pub trait Profile {
         let regrets = info
             .choices()
             .into_iter()
-            .map(|e| (e, self.net_regret(&info, &e)))
+            .map(|e| (e, self.regret(&info, &e)))
             .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<Policy<Self::E>>();
         let denominator = regrets
@@ -82,36 +82,39 @@ pub trait Profile {
         policy
     }
 
+    //
+
     /// calculate immediate weighted average decision
     /// strategy for this information.
     /// i.e. policy from accumulated REGRET values
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.net_regret(info, edge).max(crate::POLICY_MIN)
+        self.regret(info, edge).max(crate::POLICY_MIN)
             / info
                 .choices()
                 .iter()
-                .map(|e| self.net_regret(info, e))
+                .map(|e| self.regret(info, e))
                 .inspect(|r| assert!(!r.is_nan()))
                 .inspect(|r| assert!(!r.is_infinite()))
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Utility>()
     }
-
     /// calculate the long-run weighted average decision
     /// strategy for this information.
     /// i.e. policy from accumulated POLICY values
     fn advice(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.net_weight(info, edge).max(crate::POLICY_MIN)
+        self.weight(info, edge).max(crate::POLICY_MIN)
             / info
                 .choices()
                 .iter()
-                .map(|e| self.net_weight(info, e))
+                .map(|e| self.weight(info, e))
                 .inspect(|r| assert!(!r.is_nan()))
                 .inspect(|r| assert!(!r.is_infinite()))
                 .inspect(|r| assert!(*r >= 0.))
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Probability>()
     }
+
+    //
 
     /// at the immediate location of this Node,
     /// what is the Probability of transitioning via this Edge?
@@ -125,13 +128,13 @@ pub trait Profile {
     /// Conditional on being in a given Infoset,
     /// what is the Probability of
     /// visiting this particular leaf Node,
-    /// given the distribution offered by Profile?
+    /// assuming we all follow the distribution offered by Profile?
     fn relative_reach(
         &self,
         root: Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
-        if root.index() == leaf.index() {
+        if root == leaf {
             1.0
         } else {
             match leaf.up() {
@@ -157,34 +160,20 @@ pub trait Profile {
     /// MCCFR requires we adjust our reach in counterfactual
     /// regret calculation to account for the under- and over-sampling
     /// of regret across different Infosets.
-    fn external_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
+    fn cfactual_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
         match node.up() {
             None => 1.0,
             Some((up, edge)) => {
                 if self.walker() != up.game().turn() {
-                    self.external_reach(up) * self.outgoing_reach(up, *edge)
+                    self.cfactual_reach(up) * self.outgoing_reach(up, *edge)
                 } else {
-                    self.external_reach(up)
+                    self.cfactual_reach(up)
                 }
             }
         }
     }
 
-    /// this is kinda the opposite of external reach, in
-    /// the sense that it only considers the reach probability
-    /// from the current player's actions, ignoring opponent actions
-    fn internal_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
-        match node.up() {
-            None => 1.0,
-            Some((up, edge)) => {
-                if self.walker() == up.game().turn() {
-                    self.internal_reach(up) * self.outgoing_reach(up, *edge)
-                } else {
-                    self.internal_reach(up)
-                }
-            }
-        }
-    }
+    //
 
     /// relative to the player at the root Node of this Infoset,
     /// what is the Utility of this leaf Node?
@@ -193,7 +182,7 @@ pub trait Profile {
         root: Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Utility {
-        leaf.game().payoff(root.game().turn())
+        self.relative_reach(root, leaf) * leaf.game().payoff(root.game().turn())
     }
     /// Assuming we start at root Node,
     /// and that we sample the Tree according to Profile,
@@ -205,7 +194,7 @@ pub trait Profile {
             * root
                 .descendants()
                 .into_iter()
-                .map(|leaf| self.relative_value(root, leaf) * self.relative_reach(root, leaf))
+                .map(|leaf| self.relative_value(root, leaf))
                 .sum::<crate::Utility>()
     }
     /// If, counterfactually,
@@ -217,14 +206,17 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        root.follow(edge)
-            .expect("edge belongs to outgoing")
-            .descendants()
-            .into_iter()
-            .map(|leaf| self.relative_value(root, leaf) * self.expected_reach(leaf))
-            .sum::<crate::Utility>()
-            / self.external_reach(root)
+        self.cfactual_reach(root)
+            * root
+                .follow(edge)
+                .expect("edge belongs to outgoing branches")
+                .descendants()
+                .into_iter()
+                .map(|leaf| self.relative_value(root, leaf))
+                .sum::<crate::Utility>()
     }
+
+    //
 
     /// Conditional on being in this Infoset,
     /// distributed across all its head Nodes,
@@ -238,7 +230,6 @@ pub trait Profile {
     ) -> crate::Utility {
         info.span()
             .into_iter()
-            .inspect(|root| assert!(self.walker() == root.game().turn()))
             .map(|root| self.node_gain(root, edge))
             .inspect(|r| assert!(!r.is_nan()))
             .inspect(|r| assert!(!r.is_infinite()))
@@ -256,6 +247,8 @@ pub trait Profile {
         let expected = self.expected_value(root);
         cfactual - expected
     }
+
+    //
 
     /// deterministically sampling the same Edge for the same Infoset
     /// requries decision-making to be Info-level
