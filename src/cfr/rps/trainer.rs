@@ -26,31 +26,7 @@ impl Trainer for Blueprint {
     }
 
     fn discount(&self, regret: Option<crate::Utility>) -> f32 {
-        match regret {
-            None => {
-                let g = self.gamma();
-                let t = self.profile().epochs() as f32;
-                (t / (t + 1.)).powf(g)
-            }
-            Some(r) => {
-                let a = self.alpha();
-                let o = self.omega();
-                let p = self.period() as f32;
-                let t = self.profile().epochs() as f32;
-                if t % p != 0. {
-                    1.
-                } else if r > 0. {
-                    let x = (t / p).powf(a);
-                    x / (x + 1.)
-                } else if r < 0. {
-                    let x = (t / p).powf(o);
-                    x / (x + 1.)
-                } else {
-                    let x = t / p;
-                    x / (x + 1.)
-                }
-            }
-        }
+        self.discount(regret)
     }
 
     fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {

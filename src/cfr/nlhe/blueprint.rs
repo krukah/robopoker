@@ -16,16 +16,51 @@ impl Blueprint {
         solution.solve();
         solution.save();
     }
-    pub const fn alpha(&self) -> f32 {
+    pub fn discount(&self, regret: Option<crate::Utility>) -> f32 {
+        use crate::cfr::traits::profile::Profile;
+        match regret {
+            None => {
+                let g = self.gamma();
+                let t = self.profile().epochs() as f32;
+                (t / (t + 1.)).powf(g)
+            }
+            Some(r) => {
+                let a = self.alpha();
+                let o = self.omega();
+                let p = self.period() as f32;
+                let t = self.profile().epochs() as f32;
+                if t % p != 0. {
+                    1.
+                } else if r > 0. {
+                    let x = (t / p).powf(a);
+                    x / (x + 1.)
+                } else if r < 0. {
+                    let x = (t / p).powf(o);
+                    x / (x + 1.)
+                } else {
+                    let x = t / p;
+                    x / (x + 1.)
+                }
+            }
+        }
+    }
+
+    /// Discount parameters for the training process.
+    /// These values control how quickly the algorithm converges
+    /// and how much weight is given to recent updates versus historical data.
+    ///
+    /// - `alpha`: Controls the rate at which recent updates are given more weight.
+    /// - `omega`: Controls the rate at which historical updates are given more weight.
+    const fn alpha(&self) -> f32 {
         1.5
     }
-    pub const fn omega(&self) -> f32 {
+    const fn omega(&self) -> f32 {
         0.5
     }
-    pub const fn gamma(&self) -> f32 {
+    const fn gamma(&self) -> f32 {
         1.5
     }
-    pub const fn period(&self) -> usize {
+    const fn period(&self) -> usize {
         1
     }
 }
