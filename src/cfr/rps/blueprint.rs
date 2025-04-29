@@ -18,10 +18,9 @@ pub struct Blueprint {
 
 impl Blueprint {
     pub fn train() -> Self {
-        let mut blueprint = Self::default();
-        blueprint.solve();
-        log::info!("{}", blueprint);
-        todo!()
+        let solution = Self::default().solve();
+        log::info!("{}", solution);
+        solution
     }
 
     pub fn at(&mut self, info: &Turn, edge: &Edge) -> &mut (crate::Probability, crate::Utility) {

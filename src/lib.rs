@@ -42,18 +42,16 @@ const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
 const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 // mccfr parameters
-const CFR_BATCH_SIZE: usize = 0x1;
-const CFR_TREE_COUNT: usize = 0x80;
+const CFR_BATCH_SIZE: usize = 16;
+const CFR_TREE_COUNT: usize = 1024;
 const CFR_ITERATIONS: usize = CFR_TREE_COUNT / CFR_BATCH_SIZE;
-const CFR_PRUNNING_PHASE: usize = 100_000_000 / CFR_BATCH_SIZE;
-const CFR_DISCOUNT_PHASE: usize = 100_000 / CFR_BATCH_SIZE;
-const MAIN_TRAINING_ITERATIONS: usize = CFR_ITERATIONS;
-const FINE_TRAINING_ITERATIONS: usize = 0x4000;
 
-// regret matching parameters
-const REGRET_MIN: Utility = -3e5;
-const REGRET_MAX: Utility = Utility::MAX;
+// regret matching parameters, although i haven't implemented regret clamp yet
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
+#[allow(dead_code)]
+const REGRET_MIN: Utility = -3e5;
+#[allow(dead_code)]
+const REGRET_MAX: Utility = Utility::MAX;
 
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {

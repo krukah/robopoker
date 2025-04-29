@@ -74,7 +74,12 @@ impl Iterator for Path {
 impl std::iter::FromIterator<Edge> for Path {
     fn from_iter<T: IntoIterator<Item = Edge>>(iter: T) -> Self {
         let edges = iter.into_iter().collect::<Vec<_>>();
-        assert!(edges.len() <= 16, "path can only store up to 16 edges");
+        assert!(
+            edges.len() <= crate::MAX_DEPTH_SUBGAME,
+            "max depth exceeded: {} {:?}",
+            crate::MAX_DEPTH_SUBGAME,
+            edges,
+        );
         edges
             .into_iter()
             .map(u8::from)
@@ -101,7 +106,7 @@ mod tests {
     fn bijective_path_edges() {
         let edges = (0..)
             .map(|_| Edge::random())
-            .take(16)
+            .take(crate::MAX_DEPTH_SUBGAME)
             .collect::<Vec<Edge>>();
         let paths = Vec::<Edge>::from(Path::from(edges.clone()));
         assert_eq!(edges, paths);

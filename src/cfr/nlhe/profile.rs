@@ -20,7 +20,7 @@ impl Profile {
             .entry(info)
             .or_insert_with(BTreeMap::default)
             .entry(edge)
-            .or_insert((0., 0.))
+            .or_insert_with(|| (0., 0.))
     }
     /// uniform sampling of chance Edge
     fn explore_any(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
@@ -79,18 +79,16 @@ impl crate::cfr::traits::profile::Profile for Profile {
     fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
-            .expect("info not found")
-            .get(edge)
-            .expect("edge not found")
-            .0
+            .and_then(|memory| memory.get(edge))
+            .map(|(w, _)| *w)
+            .unwrap_or_default()
     }
     fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
-            .expect("info not found")
-            .get(edge)
-            .expect("edge not found")
-            .1
+            .and_then(|memory| memory.get(edge))
+            .map(|(_, r)| *r)
+            .unwrap_or_default()
     }
     fn sample(&self, node: &Node, branches: Vec<Branch>) -> Vec<Branch> {
         let n = branches.len();
@@ -104,12 +102,6 @@ impl crate::cfr::traits::profile::Profile for Profile {
             (_, p) if p != walker => self.explore_one(branches, node),
             _ => panic!("at the disco"),
         }
-    }
-}
-
-impl std::fmt::Display for Profile {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
     }
 }
 

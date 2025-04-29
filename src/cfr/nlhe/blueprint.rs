@@ -12,9 +12,13 @@ pub struct Blueprint {
 
 impl Blueprint {
     pub fn train() {
-        let mut solution = Self::load(Street::random());
-        solution.solve();
-        solution.save();
+        if Self::done(Street::random()) {
+            log::info!("resuming regret minimization from checkpoint");
+            Self::load(Street::random()).solve().save();
+        } else {
+            log::info!("starting regret minimization from scratch");
+            Self::grow(Street::random()).solve().save();
+        }
     }
     pub fn discount(&self, regret: Option<crate::Utility>) -> f32 {
         use crate::cfr::traits::profile::Profile;
@@ -75,7 +79,6 @@ impl Disk for Blueprint {
     }
     fn save(&self) {
         self.profile.save();
-        self.sampler.save();
     }
     fn grow(_: Street) -> Self {
         Self {
@@ -88,11 +91,5 @@ impl Disk for Blueprint {
             profile: Profile::load(Street::random()),
             sampler: Encoder::load(Street::random()),
         }
-    }
-}
-
-impl std::fmt::Display for Blueprint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.profile)
     }
 }

@@ -22,7 +22,6 @@ impl Info {
         &self.present
     }
     pub fn futures(&self) -> &Path {
-        unsafe { core::arch::asm!("nop") };
         &self.futures
     }
 }
