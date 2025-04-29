@@ -32,27 +32,6 @@ pub struct Game {
     dealer: Position,
     ticker: Position,
 }
-
-impl crate::cfr::traits::game::Game for Game {
-    type E = crate::gameplay::edge::Edge;
-    type T = crate::gameplay::turn::Turn;
-    fn root() -> Self {
-        Self::root()
-    }
-    fn turn(&self) -> Self::T {
-        self.turn()
-    }
-    fn apply(&self, edge: Self::E) -> Self {
-        self.apply(self.actionize(&edge))
-    }
-    fn payoff(&self, turn: Self::T) -> crate::Utility {
-        self.settlements()
-            .get(turn.position())
-            .map(|settlement| settlement.pnl() as crate::Utility)
-            .expect("player index in bounds")
-    }
-}
-
 impl Game {
     pub fn base() -> Self {
         Self {
@@ -483,25 +462,87 @@ impl Game {
     }
 }
 
-impl From<Game> for String {
-    fn from(game: Game) -> Self {
-        format!(" @ {:>6} {} {}", game.pot, game.board, game.street())
+// odds and tree building stuff
+impl Game {
+    /// convert an Edge into an Action by using Game state to
+    /// determine free parameters (stack size, pot size, etc)
+    ///
+    /// NOTE
+    /// this conversion is not injective, as multiple edges may
+    /// represent the same action. moreover, we "snap" raises to be
+    /// within range of legal bet sizes, so sometimes Raise(5:1) yields
+    /// an identical Game node as Raise(1:1) or Shove.
+    pub fn actionize(&self, edge: &crate::gameplay::edge::Edge) -> Action {
+        let game = self;
+        match &edge {
+            crate::gameplay::edge::Edge::Check => Action::Check,
+            crate::gameplay::edge::Edge::Fold => Action::Fold,
+            crate::gameplay::edge::Edge::Draw => Action::Draw(game.draw()),
+            crate::gameplay::edge::Edge::Call => Action::Call(game.to_call()),
+            crate::gameplay::edge::Edge::Shove => Action::Shove(game.to_shove()),
+            crate::gameplay::edge::Edge::Raise(odds) => {
+                let min = game.to_raise();
+                let max = game.to_shove();
+                let pot = game.pot() as crate::Utility;
+                let odd = crate::Utility::from(*odds);
+                let bet = (pot * odd) as Chips;
+                match bet {
+                    bet if bet >= max => Action::Shove(max),
+                    bet if bet <= min => Action::Raise(min),
+                    _ => Action::Raise(bet),
+                }
+            }
+        }
+    }
+
+    pub fn edgify(&self, action: Action) -> crate::gameplay::edge::Edge {
+        use crate::gameplay::edge::Edge;
+        use crate::gameplay::odds::Odds;
+        match action {
+            Action::Fold => Edge::Fold,
+            Action::Check => Edge::Check,
+            Action::Draw(_) => Edge::Draw,
+            Action::Shove(_) => Edge::Shove,
+            Action::Blind(_) | Action::Call(_) => Edge::Call,
+            Action::Raise(amount) => Edge::Raise(Odds::nearest((amount, self.pot()))),
+        }
+    }
+}
+
+impl crate::cfr::traits::game::Game for Game {
+    type E = crate::gameplay::edge::Edge;
+    type T = crate::gameplay::turn::Turn;
+    fn root() -> Self {
+        Self::root()
+    }
+    fn turn(&self) -> Self::T {
+        self.turn()
+    }
+    fn apply(&self, edge: Self::E) -> Self {
+        self.apply(self.actionize(&edge))
+    }
+    fn payoff(&self, turn: Self::T) -> crate::Utility {
+        self.settlements()
+            .get(turn.position())
+            .map(|settlement| settlement.pnl() as crate::Utility)
+            .expect("player index in bounds")
     }
 }
 
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let string = format!(" @ {:>6} {} {}", self.pot, self.board, self.street());
         for seat in self.seats.iter() {
             write!(f, "{}{:<6}", seat.state(), seat.stack())?;
         }
         #[cfg(feature = "native")]
         {
             use colored::Colorize;
-            write!(f, "{}", String::from(*self).bright_green())
+            write!(f, "{}", string.bright_green())
         }
         #[cfg(not(feature = "native"))]
         {
-            write!(f, "{}", String::from(*self))
+            write!(f, "{}", string)
         }
     }
 }
@@ -704,53 +745,5 @@ mod tests {
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
         assert!(game.is_everyone_matched() == true); //
-    }
-}
-
-// odds and tree building stuff
-
-impl Game {
-    /// convert an Edge into an Action by using Game state to
-    /// determine free parameters (stack size, pot size, etc)
-    ///
-    /// NOTE
-    /// this conversion is not injective, as multiple edges may
-    /// represent the same action. moreover, we "snap" raises to be
-    /// within range of legal bet sizes, so sometimes Raise(5:1) yields
-    /// an identical Game node as Raise(1:1) or Shove.
-    pub fn actionize(&self, edge: &crate::gameplay::edge::Edge) -> Action {
-        let game = self;
-        match &edge {
-            crate::gameplay::edge::Edge::Check => Action::Check,
-            crate::gameplay::edge::Edge::Fold => Action::Fold,
-            crate::gameplay::edge::Edge::Draw => Action::Draw(game.draw()),
-            crate::gameplay::edge::Edge::Call => Action::Call(game.to_call()),
-            crate::gameplay::edge::Edge::Shove => Action::Shove(game.to_shove()),
-            crate::gameplay::edge::Edge::Raise(odds) => {
-                let min = game.to_raise();
-                let max = game.to_shove();
-                let pot = game.pot() as crate::Utility;
-                let odd = crate::Utility::from(*odds);
-                let bet = (pot * odd) as Chips;
-                match bet {
-                    bet if bet >= max => Action::Shove(max),
-                    bet if bet <= min => Action::Raise(min),
-                    _ => Action::Raise(bet),
-                }
-            }
-        }
-    }
-
-    pub fn edgify(&self, action: Action) -> crate::gameplay::edge::Edge {
-        use crate::gameplay::edge::Edge;
-        use crate::gameplay::odds::Odds;
-        match action {
-            Action::Fold => Edge::Fold,
-            Action::Check => Edge::Check,
-            Action::Draw(_) => Edge::Draw,
-            Action::Shove(_) => Edge::Shove,
-            Action::Blind(_) | Action::Call(_) => Edge::Call,
-            Action::Raise(amount) => Edge::Raise(Odds::nearest((amount, self.pot()))),
-        }
     }
 }
