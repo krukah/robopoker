@@ -180,16 +180,16 @@ impl crate::save::disk::Disk for Encoder {
         unimplemented!("you have no business making an encoding from scratch, learn from kmeans")
     }
     fn load(_: Street) -> Self {
-        let lookup = Street::all()
-            .iter()
-            .copied()
-            .map(crate::clustering::lookup::Lookup::load)
-            .map(BTreeMap::from)
-            .fold(BTreeMap::default(), |mut map, l| {
-                map.extend(l);
-                map
-            })
-            .into();
-        Self { lookup }
+        Self {
+            lookup: Street::all()
+                .iter()
+                .copied()
+                .map(crate::clustering::lookup::Lookup::load)
+                .map(BTreeMap::from)
+                .fold(BTreeMap::default(), |mut map, l| {
+                    map.extend(l);
+                    map
+                }),
+        }
     }
 }

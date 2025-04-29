@@ -63,7 +63,6 @@ pub trait Trainer {
             *self.regret(info, edge) += regret;
         }
     }
-
     /// Updates accumulated policy weights for each edge in the counterfactual.
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
