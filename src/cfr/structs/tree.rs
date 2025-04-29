@@ -1,5 +1,5 @@
-use crate::cfr::structs::infoset::InfoSet;
-use crate::cfr::structs::node::Node;
+use super::infoset::InfoSet;
+use super::node::Node;
 use crate::cfr::traits::edge::Edge;
 use crate::cfr::traits::game::Game;
 use crate::cfr::traits::info::Info;
@@ -14,7 +14,7 @@ use petgraph::graph::NodeIndex;
 /// we assume that we are generated recursively from Encoder and Profile.
 /// together, these traits enable "exploring the game space" up to the
 /// rules of the game, i.e. implementation of T, E, G, I, Encoder, Profile.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Tree<T, E, G, I>
 where
     T: Turn,
@@ -25,6 +25,7 @@ where
     graph: petgraph::graph::DiGraph<(G, I), E>,
     danny: std::marker::PhantomData<(T, I)>,
 }
+
 impl<T, E, G, I> Tree<T, E, G, I>
 where
     T: Turn,
@@ -32,12 +33,6 @@ where
     G: Game<E = E, T = T>,
     I: Info<E = E, T = T>,
 {
-    pub fn empty() -> Self {
-        Self {
-            graph: petgraph::graph::DiGraph::new(),
-            danny: std::marker::PhantomData::<(T, I)>,
-        }
-    }
     /// get all Nodes in the Tree
     pub fn all(&self) -> impl Iterator<Item = Node<T, E, G, I>> {
         self.graph.node_indices().map(|n| self.at(n))
@@ -76,16 +71,15 @@ where
         if x == NodeIndex::new(0) {
             writeln!(f, "\nROOT   {:?}", self.at(x).info())?;
         }
-        let mut children = self
+        let children = self
             .graph
             .neighbors_directed(x, petgraph::Outgoing)
             .collect::<Vec<_>>();
         let n = children.len();
-        children.sort();
-        for (i, child) in children.into_iter().enumerate() {
+        for (i, child) in children.into_iter().rev().enumerate() {
             let last = i == n - 1;
-            let stem = if last { "└" } else { "├" };
             let gaps = if last { "    " } else { "│   " };
+            let stem = if last { "└" } else { "├" };
             let node = self.at(child);
             let head = node.info();
             let edge = self
@@ -96,6 +90,21 @@ where
             self.show(f, child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
+    }
+}
+
+impl<T, E, G, I> Default for Tree<T, E, G, I>
+where
+    T: Turn,
+    E: Edge,
+    G: Game<E = E, T = T>,
+    I: Info<E = E, T = T>,
+{
+    fn default() -> Self {
+        Self {
+            graph: petgraph::graph::DiGraph::default(),
+            danny: std::marker::PhantomData::<(T, I)>,
+        }
     }
 }
 

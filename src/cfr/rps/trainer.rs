@@ -22,7 +22,7 @@ impl Trainer for Blueprint {
     }
 
     fn profile(&self) -> &Self::P {
-        self
+        &self
     }
 
     fn discount(&self, regret: Option<crate::Utility>) -> f32 {

@@ -1,14 +1,13 @@
-use super::blueprint::Blueprint;
 use crate::cfr::traits::profile::Profile;
 use crate::cfr::traits::trainer::Trainer;
 
-impl Trainer for Blueprint {
-    type T = crate::cfr::nlhe::turn::Turn;
-    type E = crate::cfr::nlhe::edge::Edge;
-    type G = crate::cfr::nlhe::game::Game;
-    type I = crate::cfr::nlhe::info::Info;
-    type P = crate::cfr::nlhe::profile::Profile;
-    type S = crate::cfr::nlhe::encoder::Encoder;
+impl Trainer for super::blueprint::Blueprint {
+    type T = super::turn::Turn;
+    type E = super::edge::Edge;
+    type G = super::game::Game;
+    type I = super::info::Info;
+    type P = super::profile::Profile;
+    type S = super::encoder::Encoder;
 
     fn advance(&mut self) {
         self.profile.increment();
