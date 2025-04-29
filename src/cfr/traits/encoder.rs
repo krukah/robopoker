@@ -1,9 +1,9 @@
+use super::edge::Edge;
+use super::game::Game;
+use super::info::Info;
+use super::turn::Turn;
 use crate::cfr::structs::node::Node;
 use crate::cfr::structs::tree::Tree;
-use crate::cfr::traits::edge::Edge;
-use crate::cfr::traits::game::Game;
-use crate::cfr::traits::info::Info;
-use crate::cfr::traits::turn::Turn;
 use crate::cfr::types::branch::Branch;
 
 /// infoset encoding is fully abstracted. it must be implemented
@@ -33,8 +33,9 @@ pub trait Encoder {
     /// because we assume both that Game's can
     /// be computed from applying Edge's, and that
     /// the Node must have access to its Info set,
-    /// we can
-
+    /// we can delegate the branching logic to the Node itself,
+    /// which already has all the necessary information to compute
+    /// the valid edges and resulting game states.
     fn branches(
         &self,
         node: &Node<Self::T, Self::E, Self::G, Self::I>,

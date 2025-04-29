@@ -1,5 +1,5 @@
-use crate::cfr::structs::node::Node;
-use crate::cfr::structs::tree::Tree;
+use super::node::Node;
+use super::tree::Tree;
 use crate::cfr::traits::edge::Edge;
 use crate::cfr::traits::game::Game;
 use crate::cfr::traits::info::Info;

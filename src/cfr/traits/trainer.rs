@@ -1,11 +1,11 @@
+use super::edge::Edge;
+use super::encoder::Encoder;
+use super::game::Game;
+use super::info::Info;
+use super::profile::Profile;
+use super::turn::Turn;
 use crate::cfr::structs::infoset::InfoSet;
 use crate::cfr::structs::tree::Tree;
-use crate::cfr::traits::edge::Edge;
-use crate::cfr::traits::encoder::Encoder;
-use crate::cfr::traits::game::Game;
-use crate::cfr::traits::info::Info;
-use crate::cfr::traits::profile::Profile;
-use crate::cfr::traits::turn::Turn;
 use crate::cfr::types::counterfactual::Counterfactual;
 
 /// given access to a Profile and Encoder,

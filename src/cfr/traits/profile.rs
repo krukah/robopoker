@@ -1,17 +1,53 @@
+use super::edge::Edge;
+use super::game::Game;
+use super::info::Info;
+use super::turn::Turn;
 use crate::cfr::structs::infoset::InfoSet;
 use crate::cfr::structs::node::Node;
-use crate::cfr::traits::edge::Edge;
-use crate::cfr::traits::game::Game;
-use crate::cfr::traits::info::Info;
-use crate::cfr::traits::turn::Turn;
 use crate::cfr::types::branch::Branch;
 use crate::cfr::types::policy::Policy;
 
-/// the strategy is fully abstracted. it must be implemented
-/// by the consumer of this MCCFR API.
+/// The `Profile` trait represents a strategy profile in an extensive-form game, implementing core
+/// functionality for Counterfactual Regret Minimization (CFR).
 ///
-/// the implementation must be able to determine:
-///  what is the Density over the Edges
+/// A strategy profile maintains and updates:
+/// - Accumulated regrets for each information set and action
+/// - Accumulated weighted average strategies (policies) over time
+/// - Current iteration/epoch tracking
+///
+/// # Key Concepts
+///
+/// ## Strategy Computation
+/// - `policy_vector`: Computes immediate strategy distribution using regret-matching
+/// - `policy`: Calculates immediate strategy from accumulated regrets
+/// - `advice`: Provides long-run average strategy (Nash equilibrium approximation)
+///
+/// ## Reach Probabilities
+/// - `expected_reach`: Probability of reaching a node following the current strategy
+/// - `cfactual_reach`: Counterfactual reach probability (excluding player's own actions)
+/// - `relative_reach`: Conditional probability of reaching a leaf from a given node
+///
+/// ## Utility and Regret
+/// - `regret_vector`: Computes counterfactual regret for all actions in an information set
+/// - `info_gain`: Immediate regret for not an action in an information set
+/// - `node_gain`: Immediate regret for not an action at a specific node
+///
+/// ## Sampling
+/// - `sample`: Implements various sampling schemes (e.g., external, targeted, uniform)
+/// - `rng`: Provides deterministic random number generation for consistent sampling
+///
+/// # Implementation Notes
+///
+/// Implementors must provide:
+/// - `increment`: Update epoch/iteration counter
+/// - `walker`: Current player's turn
+/// - `epochs`: Number of iterations completed
+/// - `weight`: Access to accumulated action weights/policies
+/// - `regret`: Access to accumulated regrets
+/// - `sample`: Custom sampling strategy
+///
+/// The trait provides automatic implementations for strategy computation, reach probabilities,
+/// and utility calculations based on these core methods.
 pub trait Profile {
     type T: Turn;
     type E: Edge;
@@ -56,7 +92,11 @@ pub trait Profile {
             .collect::<Policy<Self::E>>();
         regrets
     }
-    /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies
+    /// calculate immediate policy distribution from current regrets, ignoring historical weighted policies.
+    /// this uses regret matching, which converts regret values into probabilities by:
+    /// 1. taking the positive portion of each regret (max with 0)
+    /// 2. normalizing these values to sum to 1.0 to form a valid probability distribution
+    /// this ensures actions with higher regret are chosen more frequently to minimize future regret.
     fn policy_vector(
         &self,
         infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
@@ -71,7 +111,7 @@ pub trait Profile {
         let denominator = regrets
             .iter()
             .map(|(_, r)| r)
-            .inspect(|r| assert!(**r > 0.))
+            .inspect(|r| assert!(**r >= 0.))
             .sum::<crate::Utility>();
         let policy = regrets
             .into_iter()
@@ -123,7 +163,7 @@ pub trait Profile {
         node: Node<Self::T, Self::E, Self::G, Self::I>,
         edge: Self::E,
     ) -> crate::Probability {
-        self.policy(&node.info(), &edge)
+        self.policy(node.info(), &edge)
     }
     /// Conditional on being in a given Infoset,
     /// what is the Probability of
@@ -134,23 +174,18 @@ pub trait Profile {
         root: Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
-        if root == leaf {
-            1.0
-        } else {
-            match leaf.up() {
-                None => unreachable!("leaf must be downstream of root"),
-                Some((up, edge)) => self.relative_reach(root, up) * self.outgoing_reach(up, *edge),
-            }
-        }
+        leaf.into_iter()
+            .take_while(|(parent, _)| *parent != root)
+            .map(|(parent, edge)| self.outgoing_reach(parent, edge))
+            .product::<crate::Probability>()
     }
     /// If we were to play by the Profile,
     /// up to this Node in the Tree,
     /// then what is the probability of visiting this Node?
     fn expected_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
-        match root.up() {
-            None => 1.0,
-            Some((up, edge)) => self.expected_reach(up) * self.outgoing_reach(up, *edge),
-        }
+        root.into_iter()
+            .map(|(parent, edge)| self.outgoing_reach(parent, edge))
+            .product::<crate::Probability>()
     }
     /// If, counterfactually, we had played toward this infoset,
     /// then what would be the Probability of us being in this infoset?
@@ -160,17 +195,11 @@ pub trait Profile {
     /// MCCFR requires we adjust our reach in counterfactual
     /// regret calculation to account for the under- and over-sampling
     /// of regret across different Infosets.
-    fn cfactual_reach(&self, node: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
-        match node.up() {
-            None => 1.0,
-            Some((up, edge)) => {
-                if self.walker() != up.game().turn() {
-                    self.cfactual_reach(up) * self.outgoing_reach(up, *edge)
-                } else {
-                    self.cfactual_reach(up)
-                }
-            }
-        }
+    fn cfactual_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
+        root.into_iter()
+            .filter(|(parent, _)| self.walker() != parent.game().turn())
+            .map(|(parent, edge)| self.outgoing_reach(parent, edge))
+            .product::<crate::Probability>()
     }
 
     // utility calculations
@@ -258,8 +287,8 @@ pub trait Profile {
         use std::hash::Hash;
         use std::hash::Hasher;
         let ref mut hasher = DefaultHasher::new();
-        info.hash(hasher);
         self.epochs().hash(hasher);
+        info.hash(hasher);
         rand::rngs::SmallRng::seed_from_u64(hasher.finish())
     }
 }
