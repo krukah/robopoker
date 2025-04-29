@@ -34,7 +34,7 @@ impl Profile for Blueprint {
             .get(info)
             .and_then(|memory| memory.get(edge))
             .map(|(w, _)| *w)
-            .unwrap_or(crate::Probability::default())
+            .unwrap_or_default()
     }
 
     fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
@@ -42,7 +42,7 @@ impl Profile for Blueprint {
             .get(info)
             .and_then(|memory| memory.get(edge))
             .map(|(_, r)| *r)
-            .unwrap_or(crate::Utility::default())
+            .unwrap_or_default()
     }
 
     fn sample(

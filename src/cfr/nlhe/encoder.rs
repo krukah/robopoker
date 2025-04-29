@@ -1,13 +1,14 @@
+use super::edge::Edge;
+use super::game::Game;
+use super::info::Info;
+use super::turn::Turn;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::street::Street;
-use crate::cfr::nlhe::edge::Edge;
-use crate::cfr::nlhe::game::Game;
-use crate::cfr::nlhe::info::Info;
-use crate::cfr::nlhe::turn::Turn;
 use crate::cfr::types::branch::Branch;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::Lookup;
 use crate::gameplay::action::Action;
+use crate::gameplay::odds::Odds;
 use crate::gameplay::path::Path;
 use std::collections::BTreeMap;
 
@@ -30,35 +31,35 @@ impl Encoder {
             .expect("isomorphsim not found in abstraction loookup")
     }
 
-    pub fn choices(game: &Game, depth: usize) -> Vec<crate::cfr::nlhe::edge::Edge> {
+    pub fn choices(game: &Game, depth: usize) -> Vec<Edge> {
         game.legal()
             .into_iter()
             .flat_map(|action| Self::unfold(game, depth, action))
             .collect()
     }
 
-    pub fn raises(game: &Game, depth: usize) -> Vec<crate::gameplay::odds::Odds> {
+    pub fn raises(game: &Game, depth: usize) -> Vec<Odds> {
         if depth > crate::MAX_RAISE_REPEATS {
             vec![]
         } else {
             match game.street() {
-                Street::Pref => crate::gameplay::odds::Odds::PREF_RAISES.to_vec(),
-                Street::Flop => crate::gameplay::odds::Odds::FLOP_RAISES.to_vec(),
+                Street::Pref => Odds::PREF_RAISES.to_vec(),
+                Street::Flop => Odds::FLOP_RAISES.to_vec(),
                 _ => match depth {
-                    0 => crate::gameplay::odds::Odds::LATE_RAISES.to_vec(),
-                    _ => crate::gameplay::odds::Odds::LAST_RAISES.to_vec(),
+                    0 => Odds::LATE_RAISES.to_vec(),
+                    _ => Odds::LAST_RAISES.to_vec(),
                 },
             }
         }
     }
 
-    pub fn unfold(game: &Game, depth: usize, action: Action) -> Vec<crate::cfr::nlhe::edge::Edge> {
+    pub fn unfold(game: &Game, depth: usize, action: Action) -> Vec<Edge> {
         match action {
             Action::Raise(_) => Self::raises(game, depth)
                 .into_iter()
-                .map(crate::cfr::nlhe::edge::Edge::from)
-                .collect::<Vec<crate::cfr::nlhe::edge::Edge>>(),
-            _ => vec![crate::cfr::nlhe::edge::Edge::from(action)],
+                .map(Edge::from)
+                .collect::<Vec<Edge>>(),
+            _ => vec![Edge::from(action)],
         }
     }
 
@@ -75,10 +76,10 @@ impl Encoder {
 }
 
 impl crate::cfr::traits::encoder::Encoder for Encoder {
-    type T = crate::cfr::nlhe::turn::Turn;
-    type E = crate::cfr::nlhe::edge::Edge;
-    type G = crate::cfr::nlhe::game::Game;
-    type I = crate::cfr::nlhe::info::Info;
+    type T = Turn;
+    type E = Edge;
+    type G = Game;
+    type I = Info;
 
     fn seed(&self, root: &Self::G) -> Self::I {
         let ref iso = Isomorphism::from(root.sweat());
@@ -101,6 +102,7 @@ impl crate::cfr::traits::encoder::Encoder for Encoder {
         let futures = Path::from(Self::choices(game, n_raises));
         let history = std::iter::once(edge)
             .chain(tree.at(head).into_iter().map(|(_, e)| e))
+            .take(crate::MAX_DEPTH_SUBGAME)
             .collect::<Path>();
         Self::I::from((history, present, futures))
     }

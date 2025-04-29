@@ -56,7 +56,7 @@ impl Lookup {
         self.0.keys().next().expect("non empty").0.street()
     }
     fn name() -> String {
-        "blueprint".to_string()
+        "isomorphism".to_string()
     }
 }
 

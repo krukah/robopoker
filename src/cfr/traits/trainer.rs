@@ -40,7 +40,11 @@ pub trait Trainer {
     ///
 
     /// Updates trainer state based on regret vectors from Profile.
-    fn solve(&mut self) {
+    fn solve(mut self) -> Self
+    where
+        Self: Sized,
+    {
+        log::info!("beginning training loop ({})", crate::CFR_ITERATIONS);
         for _ in 0..crate::CFR_ITERATIONS {
             self.advance();
             for ref update in self.batch() {
@@ -48,6 +52,7 @@ pub trait Trainer {
                 self.update_weight(update);
             }
         }
+        self
     }
     /// Updates accumulated regret values for each edge in the counterfactual.
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
