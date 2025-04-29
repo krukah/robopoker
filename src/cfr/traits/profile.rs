@@ -82,7 +82,7 @@ pub trait Profile {
         policy
     }
 
-    //
+    // strategy calculations
 
     /// calculate immediate weighted average decision
     /// strategy for this information.
@@ -114,7 +114,7 @@ pub trait Profile {
                 .sum::<crate::Probability>()
     }
 
-    //
+    // reach calculations
 
     /// at the immediate location of this Node,
     /// what is the Probability of transitioning via this Edge?
@@ -173,7 +173,7 @@ pub trait Profile {
         }
     }
 
-    //
+    // utility calculations
 
     /// relative to the player at the root Node of this Infoset,
     /// what is the Utility of this leaf Node?
@@ -216,7 +216,7 @@ pub trait Profile {
                 .sum::<crate::Utility>()
     }
 
-    //
+    // counterfactual gain calculations
 
     /// Conditional on being in this Infoset,
     /// distributed across all its head Nodes,
@@ -248,7 +248,7 @@ pub trait Profile {
         cfactual - expected
     }
 
-    //
+    // deterministic sampling
 
     /// deterministically sampling the same Edge for the same Infoset
     /// requries decision-making to be Info-level
