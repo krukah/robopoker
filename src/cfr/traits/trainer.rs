@@ -100,7 +100,7 @@ pub trait Trainer {
     /// LEVEL 0: generate a single tree by growing it from root to leaves
     fn tree(&self) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let mut todo = Vec::new();
-        let mut tree = Tree::empty();
+        let mut tree = Tree::default();
         let root = Self::G::root();
         let info = self.encoder().seed(&root);
         let node = tree.seed(info, root);

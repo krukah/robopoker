@@ -176,7 +176,7 @@ pub trait Profile {
     ) -> crate::Probability {
         leaf.into_iter()
             .take_while(|(parent, _)| *parent != root)
-            .map(|(parent, edge)| self.outgoing_reach(parent, edge))
+            .map(|(parent, incoming)| self.outgoing_reach(parent, incoming))
             .product::<crate::Probability>()
     }
     /// If we were to play by the Profile,
@@ -184,7 +184,7 @@ pub trait Profile {
     /// then what is the probability of visiting this Node?
     fn expected_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
         root.into_iter()
-            .map(|(parent, edge)| self.outgoing_reach(parent, edge))
+            .map(|(parent, incoming)| self.outgoing_reach(parent, incoming))
             .product::<crate::Probability>()
     }
     /// If, counterfactually, we had played toward this infoset,
@@ -198,7 +198,7 @@ pub trait Profile {
     fn cfactual_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
         root.into_iter()
             .filter(|(parent, _)| self.walker() != parent.game().turn())
-            .map(|(parent, edge)| self.outgoing_reach(parent, edge))
+            .map(|(parent, incoming)| self.outgoing_reach(parent, incoming))
             .product::<crate::Probability>()
     }
 
