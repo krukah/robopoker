@@ -59,23 +59,22 @@ impl std::fmt::Display for Path {
 impl Iterator for Path {
     type Item = Edge;
     fn next(&mut self) -> Option<Self::Item> {
+        let x = (self.0 & 0xF) as u8;
         if self.0 == 0 {
-            return None;
+            None
+        } else if x == 0 {
+            None
+        } else {
+            self.0 >>= 4;
+            Some(Edge::from(x))
         }
-        let byte = (self.0 & 0xF) as u8;
-        if byte == 0 {
-            return None;
-        }
-        self.0 >>= 4;
-        Some(Edge::from(byte))
     }
 }
 
 impl std::iter::FromIterator<Edge> for Path {
     fn from_iter<T: IntoIterator<Item = Edge>>(iter: T) -> Self {
-        let mut edges = iter.into_iter().collect::<Vec<_>>();
+        let edges = iter.into_iter().collect::<Vec<_>>();
         assert!(edges.len() <= 16, "path can only store up to 16 edges");
-        edges.reverse(); // Reverse to maintain the original order when iterating
         edges
             .into_iter()
             .map(u8::from)
@@ -109,10 +108,9 @@ mod tests {
     }
 
     #[test]
-    fn iterator() {
+    fn bijective_path_collect() {
         let edges = (0..).map(|_| Edge::random()).take(5).collect::<Vec<Edge>>();
-        let path = Path::from(edges.clone());
-        let collected = path.into_iter().collect::<Vec<Edge>>();
+        let collected = Path::from(edges.clone()).into_iter().collect::<Vec<Edge>>();
         assert_eq!(edges, collected);
     }
 }
