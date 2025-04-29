@@ -160,10 +160,10 @@ pub trait Profile {
     /// what is the Probability of transitioning via this Edge?
     fn outgoing_reach(
         &self,
-        node: Node<Self::T, Self::E, Self::G, Self::I>,
-        edge: Self::E,
+        node: &Node<Self::T, Self::E, Self::G, Self::I>,
+        edge: &Self::E,
     ) -> crate::Probability {
-        self.policy(node.info(), &edge)
+        self.policy(node.info(), edge)
     }
     /// Conditional on being in a given Infoset,
     /// what is the Probability of
@@ -171,20 +171,23 @@ pub trait Profile {
     /// assuming we all follow the distribution offered by Profile?
     fn relative_reach(
         &self,
-        root: Node<Self::T, Self::E, Self::G, Self::I>,
-        leaf: Node<Self::T, Self::E, Self::G, Self::I>,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+        leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
         leaf.into_iter()
-            .take_while(|(parent, _)| *parent != root)
-            .map(|(parent, incoming)| self.outgoing_reach(parent, incoming))
+            .take_while(|(parent, _)| parent != root)
+            .map(|(parent, incoming)| self.outgoing_reach(&parent, &incoming))
             .product::<crate::Probability>()
     }
     /// If we were to play by the Profile,
     /// up to this Node in the Tree,
     /// then what is the probability of visiting this Node?
-    fn expected_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
+    fn expected_reach(
+        &self,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+    ) -> crate::Probability {
         root.into_iter()
-            .map(|(parent, incoming)| self.outgoing_reach(parent, incoming))
+            .map(|(parent, incoming)| self.outgoing_reach(&parent, &incoming))
             .product::<crate::Probability>()
     }
     /// If, counterfactually, we had played toward this infoset,
@@ -195,11 +198,27 @@ pub trait Profile {
     /// MCCFR requires we adjust our reach in counterfactual
     /// regret calculation to account for the under- and over-sampling
     /// of regret across different Infosets.
-    fn cfactual_reach(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Probability {
+    fn cfactual_reach(
+        &self,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+    ) -> crate::Probability {
         root.into_iter()
             .filter(|(parent, _)| self.walker() != parent.game().turn())
-            .map(|(parent, incoming)| self.outgoing_reach(parent, incoming))
+            .map(|(parent, incoming)| self.outgoing_reach(&parent, &incoming))
             .product::<crate::Probability>()
+    }
+    /// In Monte Carlo CFR variants, we sample actions according to some
+    /// sampling strategy q(a) (possibly in place of the current policy p(a)).
+    /// To correct for this bias, we multiply regrets by p(a)/q(a).
+    /// This function returns q(a), the probability that we sampled
+    /// the actions leading to this node under our sampling scheme.
+    /// For vanilla CFR, q(a) = 1.0 since we explore all actions.
+    #[allow(unused)]
+    fn sampling_reach(
+        &self,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+    ) -> crate::Probability {
+        1.0
     }
 
     // utility calculations
@@ -208,8 +227,8 @@ pub trait Profile {
     /// what is the Utility of this leaf Node?
     fn relative_value(
         &self,
-        root: Node<Self::T, Self::E, Self::G, Self::I>,
-        leaf: Node<Self::T, Self::E, Self::G, Self::I>,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+        leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Utility {
         self.relative_reach(root, leaf) * leaf.game().payoff(root.game().turn())
     }
@@ -217,12 +236,12 @@ pub trait Profile {
     /// and that we sample the Tree according to Profile,
     /// how much Utility do we expect upon
     /// visiting this Node?
-    fn expected_value(&self, root: Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Utility {
+    fn expected_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.expected_reach(root)
+        self.expected_reach(root) / self.sampling_reach(root)
             * root
                 .descendants()
-                .into_iter()
+                .iter()
                 .map(|leaf| self.relative_value(root, leaf))
                 .sum::<crate::Utility>()
     }
@@ -231,16 +250,16 @@ pub trait Profile {
     /// then what would be the expected Utility of this leaf?
     fn cfactual_value(
         &self,
-        root: Node<Self::T, Self::E, Self::G, Self::I>,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.cfactual_reach(root)
+        self.cfactual_reach(root) / self.sampling_reach(root)
             * root
                 .follow(edge)
                 .expect("edge belongs to outgoing branches")
                 .descendants()
-                .into_iter()
+                .iter()
                 .map(|leaf| self.relative_value(root, leaf))
                 .sum::<crate::Utility>()
     }
@@ -258,7 +277,7 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         info.span()
-            .into_iter()
+            .iter()
             .map(|root| self.node_gain(root, edge))
             .inspect(|r| assert!(!r.is_nan()))
             .inspect(|r| assert!(!r.is_infinite()))
@@ -268,7 +287,7 @@ pub trait Profile {
     /// would we gain by following this Edge at this Node?
     fn node_gain(
         &self,
-        root: Node<Self::T, Self::E, Self::G, Self::I>,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
