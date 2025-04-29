@@ -1,33 +1,8 @@
-pub struct Trainer {
-    sampler: crate::cfr::nlhe::encoder::Encoder,
-    profile: crate::cfr::nlhe::profile::Profile,
-}
+use super::blueprint::Blueprint;
+use crate::cfr::traits::profile::Profile;
+use crate::cfr::traits::trainer::Trainer;
 
-impl Trainer {
-    pub fn train() {
-        use crate::cards::street::Street;
-        use crate::cfr::traits::trainer::Trainer;
-        use crate::save::disk::Disk;
-        use crate::Arbitrary;
-        let mut solution = Self::load(Street::random());
-        solution.solve();
-        solution.save();
-    }
-    const fn alpha(&self) -> f32 {
-        1.5
-    }
-    const fn omega(&self) -> f32 {
-        0.5
-    }
-    const fn gamma(&self) -> f32 {
-        1.5
-    }
-    const fn period(&self) -> usize {
-        1
-    }
-}
-
-impl crate::cfr::traits::trainer::Trainer for Trainer {
+impl Trainer for Blueprint {
     type T = crate::cfr::nlhe::turn::Turn;
     type E = crate::cfr::nlhe::edge::Edge;
     type G = crate::cfr::nlhe::game::Game;
@@ -36,7 +11,6 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
     type S = crate::cfr::nlhe::encoder::Encoder;
 
     fn advance(&mut self) {
-        use crate::cfr::traits::profile::Profile;
         self.profile.increment();
     }
     fn encoder(&self) -> &Self::S {
@@ -77,46 +51,6 @@ impl crate::cfr::traits::trainer::Trainer for Trainer {
                     x / (x + 1.)
                 }
             }
-        }
-    }
-}
-
-impl std::fmt::Display for Trainer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.profile)
-    }
-}
-
-#[cfg(feature = "native")]
-impl crate::save::disk::Disk for Trainer {
-    fn name() -> String {
-        unimplemented!()
-    }
-    fn done(street: crate::cards::street::Street) -> bool {
-        crate::cfr::nlhe::profile::Profile::done(street)
-            && crate::cfr::nlhe::encoder::Encoder::done(street)
-    }
-
-    fn save(&self) {
-        self.profile.save();
-        self.sampler.save();
-    }
-
-    fn grow(_: crate::cards::street::Street) -> Self {
-        use crate::cards::street::Street;
-        use crate::Arbitrary;
-        Self {
-            profile: crate::cfr::nlhe::profile::Profile::default(),
-            sampler: crate::cfr::nlhe::encoder::Encoder::load(Street::random()),
-        }
-    }
-
-    fn load(_: crate::cards::street::Street) -> Self {
-        use crate::cards::street::Street;
-        use crate::Arbitrary;
-        Self {
-            profile: crate::cfr::nlhe::profile::Profile::load(Street::random()),
-            sampler: crate::cfr::nlhe::encoder::Encoder::load(Street::random()),
         }
     }
 }

@@ -90,15 +90,18 @@ impl crate::cfr::traits::encoder::Encoder for Encoder {
     }
     fn info(&self, tree: &Tree, leaf: Branch<Self::E, Self::G>) -> Self::I {
         let (edge, ref game, head) = leaf;
-        let head = tree.at(head);
         let ref iso = Isomorphism::from(game.sweat());
-        let n_raises = head
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_aggro())
+        let n_raises = tree
+            .at(head)
+            .into_iter()
+            .take_while(|(_, e)| e.is_choice())
+            .filter(|(_, e)| e.is_aggro())
             .count();
         let present = self.abstraction(iso);
         let futures = Path::from(Self::choices(game, n_raises));
-        let history = std::iter::once(edge).chain(head).collect::<Path>();
+        let history = std::iter::once(edge)
+            .chain(tree.at(head).into_iter().map(|(_, e)| e))
+            .collect::<Path>();
         Self::I::from((history, present, futures))
     }
 }

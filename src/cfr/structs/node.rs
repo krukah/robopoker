@@ -33,11 +33,11 @@ where
     G: Game<E = E, T = T>,
     I: Info<E = E, T = T>,
 {
-    type Item = E;
+    type Item = (Self, E);
     fn next(&mut self) -> Option<Self::Item> {
-        let (ref mut parent, incoming) = self.up()?;
+        let (ref mut parent, edge) = self.up()?;
         std::mem::swap(self, parent);
-        Some(incoming.clone())
+        Some((self.clone(), edge.clone()))
     }
 }
 
@@ -162,6 +162,10 @@ where
     }
 }
 
+/// Eq implementation will assume that any two
+/// Nodes being compared to one another belong
+/// to the same tree/graph. such that, we only
+/// care about comparing indices.
 impl<'tree, T, E, G, I> PartialEq for Node<'tree, T, E, G, I>
 where
     T: Turn,
@@ -173,7 +177,6 @@ where
         self.index() == other.index()
     }
 }
-
 impl<'tree, T, E, G, I> Eq for Node<'tree, T, E, G, I>
 where
     T: Turn,

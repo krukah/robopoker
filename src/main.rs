@@ -5,15 +5,15 @@ async fn main() {
     // Behold!
     crate::init();
     // The k-means earth mover's distance hand-clustering algorithm.
-    crate::clustering::layer::Layer::learn();
+    crate::clustering::Layer::learn();
     // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    crate::cfr::nlhe::trainer::Trainer::train();
+    crate::cfr::nlhe::Blueprint::train();
     // Let's upload the data to the database.
-    crate::save::writer::Writer::save().await.unwrap();
+    crate::save::Writer::save().await.unwrap();
     // Let's support our frontend.
-    crate::analysis::server::Server::run().await.unwrap();
+    crate::analysis::Server::run().await.unwrap();
     // Let's see what we've learned.
-    crate::analysis::cli::CLI::run().await;
+    crate::analysis::CLI::run().await;
 }
 
 /*
