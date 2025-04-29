@@ -26,21 +26,6 @@ where
     danny: std::marker::PhantomData<(T, I)>,
 }
 
-impl<'tree, T, E, G, I> Iterator for Node<'tree, T, E, G, I>
-where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
-{
-    type Item = (Self, E);
-    fn next(&mut self) -> Option<Self::Item> {
-        let (ref mut parent, edge) = self.up()?;
-        std::mem::swap(self, parent);
-        Some((self.clone(), edge.clone()))
-    }
-}
-
 impl<'tree, T, E, G, I> Node<'tree, T, E, G, I>
 where
     T: Turn,
@@ -63,14 +48,14 @@ where
     }
     pub fn game(&self) -> &G {
         &self
-            .graph
+            .graph()
             .node_weight(self.index())
             .expect("valid game index")
             .0
     }
     pub fn info(&self) -> &I {
         &self
-            .graph
+            .graph()
             .node_weight(self.index())
             .expect("valid info index")
             .1
@@ -141,6 +126,25 @@ where
     }
 }
 
+/// Node naturally implements Iterator by recursing upward through its tree.
+/// Each iteration yields a tuple of (Node, Edge) representing the parent node
+/// and the edge taken to reach the current node. This allows traversing
+/// from any node back to the root of the tree.
+impl<'tree, T, E, G, I> Iterator for Node<'tree, T, E, G, I>
+where
+    T: Turn,
+    E: Edge,
+    G: Game<E = E, T = T>,
+    I: Info<E = E, T = T>,
+{
+    type Item = (Self, E);
+    fn next(&mut self) -> Option<Self::Item> {
+        let (ref mut parent, edge) = self.up()?;
+        std::mem::swap(self, parent);
+        Some((self.clone(), edge.clone()))
+    }
+}
+
 /// Debug + Display implementations, which will
 /// treat a Node just as a combination of its
 /// associated Info + its location in the tree
@@ -174,7 +178,7 @@ where
     I: Info<E = E, T = T>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.index() == other.index()
+        self.index() == other.index() && std::ptr::eq(self.graph(), other.graph())
     }
 }
 impl<'tree, T, E, G, I> Eq for Node<'tree, T, E, G, I>

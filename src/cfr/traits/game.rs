@@ -9,7 +9,7 @@
 ///  how much payoff for each player (only must be defined for leaf nodes)
 ///
 /// it is up to the implementation of Encoder to decide how the
-/// game tree is navigated, in a tree-non-local context. this Game
+/// game tree is navigated, in a neighbor-aware context. this Game
 /// structure should only concern itself of local properties.
 pub trait Game: Clone + Copy {
     type E: super::edge::Edge;
