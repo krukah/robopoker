@@ -30,7 +30,9 @@ pub trait Trainer {
 
     fn encoder(&self) -> &Self::S;
     fn profile(&self) -> &Self::P;
-    fn discount(&self, regret: Option<crate::Utility>) -> f32;
+    fn discount(&self, _: Option<crate::Utility>) -> f32 {
+        1.0
+    }
 
     /// Advances the trainer state to the next iteration
     fn advance(&mut self);
@@ -50,9 +52,9 @@ pub trait Trainer {
     where
         Self: Sized,
     {
-        let n = Self::iterations();
-        log::info!("beginning training loop ({})", n);
-        for _ in 0..n {
+        let t = Self::iterations();
+        log::info!("beginning training loop ({})", t);
+        for _ in 0..t {
             self.advance();
             for ref update in self.batch() {
                 self.update_regret(update);
@@ -82,30 +84,15 @@ pub trait Trainer {
 
     /// LEVEL 4:  turn a bunch of infosets into a bunch of counterfactuals
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
-        self.partition()
-            .iter()
-            .map(|infoset| {
-                (
-                    infoset.info(),
-                    self.profile().regret_vector(infoset),
-                    self.profile().policy_vector(infoset),
-                )
-            })
-            .collect()
-    }
-    /// LEVEL 2: turn a bunch of trees into a bunch of infosets
-    fn partition(&self) -> Vec<InfoSet<Self::T, Self::E, Self::G, Self::I>> {
-        self.forest()
-            .into_iter()
-            .map(|tree| tree.partition().into_values())
-            .flatten()
-            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
-            .collect()
-    }
-    /// LEVEL 1: generate a bunch of trees to be partitioned into InfoSets downstream
-    fn forest(&self) -> Vec<Tree<Self::T, Self::E, Self::G, Self::I>> {
-        (0..crate::CFR_BATCH_SIZE_NLHE)
+        (0..Self::batch_size())
             .map(|_| self.tree())
+            // .collect::<Vec<_>>()
+            // .into_iter()
+            .flat_map(|tree| tree.partition().into_values())
+            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
+            // .collect::<Vec<_>>()
+            // .into_iter()
+            .map(|infoset| self.counterfactual(infoset))
             .collect::<Vec<_>>()
     }
     /// LEVEL 0: generate a single tree by growing it from root to leaves
@@ -126,5 +113,15 @@ pub trait Trainer {
             todo.extend(children);
         }
         tree
+    }
+    fn counterfactual(
+        &self,
+        ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Counterfactual<Self::E, Self::I> {
+        (
+            infoset.info(),
+            self.profile().regret_vector(infoset),
+            self.profile().policy_vector(infoset),
+        )
     }
 }

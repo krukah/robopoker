@@ -51,7 +51,7 @@ fn exhausting_flop_isomorphisms(c: &mut criterion::Criterion) {
     c.bench_function("exhaust all Flop Isomorphisms", |b| {
         b.iter(|| {
             ObservationIterator::from(Street::Flop)
-                .filter(|o| Isomorphism::is_canonical(o))
+                .filter(Isomorphism::is_canonical)
                 .count()
         })
     });

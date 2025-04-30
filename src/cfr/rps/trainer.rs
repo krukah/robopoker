@@ -1,21 +1,18 @@
+use super::blueprint::Blueprint;
 use super::edge::Edge;
-use super::encoder::Encoder;
 use super::game::Game;
 use super::turn::Turn;
-use crate::cfr::rps::blueprint::Blueprint;
-use crate::cfr::traits::profile::Profile;
-use crate::cfr::traits::trainer::Trainer;
 
 /// For the Rock Paper Scissors game, Blueprint implements both Trainer and Profile traits.
 /// As a Profile, it tracks regrets and policies over time. As a Trainer, it uses those
 /// values to train an optimal strategy through counterfactual regret minimization.
-impl Trainer for Blueprint {
+impl crate::cfr::traits::trainer::Trainer for Blueprint {
     type T = Turn;
     type E = Edge;
     type G = Game;
     type I = Turn;
-    type P = Blueprint;
-    type S = Encoder;
+    type P = Self;
+    type S = Self;
 
     fn tree_count() -> usize {
         crate::CFR_TREE_COUNT_RPS
@@ -25,7 +22,7 @@ impl Trainer for Blueprint {
     }
 
     fn encoder(&self) -> &Self::S {
-        &Encoder
+        &self
     }
 
     fn profile(&self) -> &Self::P {
@@ -45,6 +42,7 @@ impl Trainer for Blueprint {
     }
 
     fn advance(&mut self) {
-        Profile::increment(self);
+        use crate::cfr::traits::profile::Profile;
+        self.increment()
     }
 }
