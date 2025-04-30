@@ -11,7 +11,7 @@
 /// it is up to the implementation of Encoder to decide how the
 /// game tree is navigated, in a neighbor-aware context. this Game
 /// structure should only concern itself of local properties.
-pub trait Game: Clone + Copy {
+pub trait Game: Clone + Copy + Send + Sync {
     type E: super::edge::Edge;
     type T: super::turn::Turn;
     fn root() -> Self;
