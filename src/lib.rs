@@ -42,9 +42,11 @@ const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
 const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 // mccfr parameters
-const NLHE_CFR_BATCH_SIZE: usize = 16;
-const NLHE_CFR_TREE_COUNT: usize = 1024;
-const NLHE_CFR_ITERATIONS: usize = NLHE_CFR_TREE_COUNT / NLHE_CFR_BATCH_SIZE;
+const CFR_BATCH_SIZE_NLHE: usize = 16;
+const CFR_TREE_COUNT_NLHE: usize = 1024;
+
+const CFR_BATCH_SIZE_RPS: usize = 16;
+const CFR_TREE_COUNT_RPS: usize = 1024;
 
 // regret matching parameters, although i haven't implemented regret clamp yet
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;

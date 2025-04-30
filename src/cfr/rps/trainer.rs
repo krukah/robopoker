@@ -17,6 +17,13 @@ impl Trainer for Blueprint {
     type P = Blueprint;
     type S = Encoder;
 
+    fn tree_count() -> usize {
+        crate::CFR_TREE_COUNT_RPS
+    }
+    fn batch_size() -> usize {
+        crate::CFR_BATCH_SIZE_RPS
+    }
+
     fn encoder(&self) -> &Self::S {
         &Encoder
     }

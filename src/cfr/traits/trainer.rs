@@ -22,6 +22,12 @@ pub trait Trainer {
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
+    fn batch_size() -> usize;
+    fn tree_count() -> usize;
+    fn iterations() -> usize {
+        Self::tree_count() / Self::batch_size()
+    }
+
     fn encoder(&self) -> &Self::S;
     fn profile(&self) -> &Self::P;
     fn discount(&self, regret: Option<crate::Utility>) -> f32;
@@ -44,8 +50,9 @@ pub trait Trainer {
     where
         Self: Sized,
     {
-        log::info!("beginning training loop ({})", crate::NLHE_CFR_ITERATIONS);
-        for _ in 0..crate::NLHE_CFR_ITERATIONS {
+        let n = Self::iterations();
+        log::info!("beginning training loop ({})", n);
+        for _ in 0..n {
             self.advance();
             for ref update in self.batch() {
                 self.update_regret(update);
@@ -97,7 +104,7 @@ pub trait Trainer {
     }
     /// LEVEL 1: generate a bunch of trees to be partitioned into InfoSets downstream
     fn forest(&self) -> Vec<Tree<Self::T, Self::E, Self::G, Self::I>> {
-        (0..crate::NLHE_CFR_BATCH_SIZE)
+        (0..crate::CFR_BATCH_SIZE_NLHE)
             .map(|_| self.tree())
             .collect::<Vec<_>>()
     }
