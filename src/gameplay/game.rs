@@ -32,7 +32,19 @@ pub struct Game {
     dealer: Position,
     ticker: Position,
 }
+
+/// we enable different start points of the game tree,
+/// depending on whether or not blinds should be posted
+/// or cards should be dealt.
 impl Game {
+    /// this will start the game at the first decision
+    /// NOT the first action, which are blinds and hole cards dealt.
+    /// stack size is always 100 and P1 is always dealer.
+    /// these should not matter too much in the MCCFR algorithm,
+    /// as long as we alternate the traverser/paths explored
+    pub fn root() -> Self {
+        Self::base().deal().post()
+    }
     pub fn base() -> Self {
         Self {
             pot: Chips::from(0i16),
@@ -57,26 +69,15 @@ impl Game {
         }
         self
     }
-    /// this will start the game at the first decision
-    /// NOT the first action, which are blinds and hole cards dealt.
-    /// stack size is always 100 and P1 is always dealer.
-    /// these should not matter too much in the MCCFR algorithm,
-    /// as long as we alternate the traverser/paths explored
-    pub fn root() -> Self {
-        Self::base().deal().post()
-    }
-    pub fn blinds() -> Vec<Action> {
-        vec![Action::Blind(Self::sblind()), Action::Blind(Self::bblind())]
-    }
+}
+
+/// read-only state variabes are exposed publicly
+/// so that the plethora of bool fn's that determine
+/// game state are obfuscated from the caller
+impl Game {
     pub fn n(&self) -> usize {
-        N
+        self.seats.len()
     }
-    pub fn apply(&self, action: Action) -> Self {
-        let mut child = self.clone();
-        child.act(action);
-        child
-    }
-    //
     pub fn pot(&self) -> Chips {
         self.pot
     }
@@ -103,6 +104,18 @@ impl Game {
     }
     pub fn street(&self) -> Street {
         self.board.street()
+    }
+}
+
+/// the game rules are encoded in the set of
+/// legal moves available and a bunch of
+/// bool fns that determine action validity from
+/// immutable reference
+impl Game {
+    pub fn apply(&self, action: Action) -> Self {
+        let mut child = self.clone();
+        child.act(action);
+        child
     }
     pub fn legal(&self) -> Vec<Action> {
         let mut options = Vec::new();
@@ -135,8 +148,6 @@ impl Game {
         assert!(options.len() > 0);
         options
     }
-
-    //
     pub fn is_allowed(&self, action: &Action) -> bool {
         if self.must_stop() {
             return false;
@@ -156,8 +167,12 @@ impl Game {
             _ => self.legal().contains(action),
         }
     }
+}
 
-    //
+/// mutating methods modify game state privately
+/// such that we enforce NLHE invariants irrespective
+/// of caller behavior
+impl Game {
     fn conclude(&mut self) {
         self.give_chips();
     }
@@ -170,8 +185,6 @@ impl Game {
         self.act(Action::Blind(self.to_post()));
     }
     fn give_chips(&mut self) {
-        log::trace!("::::::::::::::");
-        log::trace!("{}", self.board());
         for (_, (settlement, seat)) in self
             .settlements()
             .iter()
@@ -205,8 +218,6 @@ impl Game {
             seat.reset_spent();
         }
     }
-
-    //
     fn act(&mut self, a: Action) {
         assert!(self.is_allowed(&a));
         match a {
@@ -249,6 +260,13 @@ impl Game {
         self.ticker = self.dealer;
         self.board.add(hand);
     }
+}
+
+/// advancing to the next street or player
+/// is privatized, since the only public
+/// facing interface is applying actions
+/// to transition the state machine
+impl Game {
     fn next_street(&mut self) {
         for seat in self.seats.iter_mut() {
             seat.reset_stake();
@@ -266,7 +284,11 @@ impl Game {
             }
         }
     }
+}
 
+/// boolean constraints that are composed
+/// from one another
+impl Game {
     /// we're waiting for showdown or everyone folded
     fn must_stop(&self) -> bool {
         if self.street() == Street::Rive {
@@ -344,8 +366,11 @@ impl Game {
     fn may_shove(&self) -> bool {
         self.to_shove() > 0
     }
+}
 
-    //
+/// the chip constraints imposed at a given game state
+/// are calculated and exposed for UI purposes
+impl Game {
     pub fn to_call(&self) -> Chips {
         self.effective_stake() - self.actor_ref().stake()
     }
@@ -379,8 +404,10 @@ impl Game {
         let required_raise = std::cmp::max(marginal_raise, Self::bblind());
         relative_raise + required_raise
     }
+}
 
-    //
+/// payout calculations
+impl Game {
     pub fn settlements(&self) -> Vec<Settlement> {
         assert!(self.must_stop(), "non terminal game state:\n{}", self);
         Showdown::from(self.ledger()).settle()
@@ -405,8 +432,10 @@ impl Game {
             Hand::from(self.board()),
         ))
     }
+}
 
-    //
+/// card calculations
+impl Game {
     pub fn draw(&self) -> Hand {
         self.deck().deal(self.street())
     }
@@ -418,6 +447,10 @@ impl Game {
         }
         Deck::from(removed.complement())
     }
+}
+
+/// current position / actor calculations
+impl Game {
     fn actor_idx(&self) -> Position {
         (self.dealer + self.ticker) % self.n()
     }
@@ -433,8 +466,10 @@ impl Game {
             .get_mut(index)
             .expect("index should be in bounds bc modulo")
     }
+}
 
-    //
+/// effective bet sizes
+impl Game {
     #[allow(dead_code)]
     fn effective_stack(&self) -> Chips {
         let mut totals = self
@@ -453,7 +488,13 @@ impl Game {
             .max()
             .expect("non-empty seats")
     }
+}
 
+/// define blinds
+impl Game {
+    pub fn blinds() -> Vec<Action> {
+        vec![Action::Blind(Self::sblind()), Action::Blind(Self::bblind())]
+    }
     pub const fn bblind() -> Chips {
         crate::B_BLIND
     }
