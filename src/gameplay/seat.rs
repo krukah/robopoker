@@ -16,13 +16,7 @@ pub struct Seat {
 
 impl From<Chips> for Seat {
     fn from(stack: Chips) -> Self {
-        Self::new(stack)
-    }
-}
-
-impl Seat {
-    fn new(stack: Chips) -> Seat {
-        Seat {
+        Self {
             stack,
             spent: 0,
             stake: 0,
@@ -30,6 +24,9 @@ impl Seat {
             cards: Hole::empty(),
         }
     }
+}
+
+impl Seat {
     pub fn stack(&self) -> Chips {
         self.stack
     }
