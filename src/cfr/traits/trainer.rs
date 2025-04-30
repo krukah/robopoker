@@ -15,10 +15,10 @@ use crate::cfr::types::counterfactual::Counterfactual;
 /// 3) updating the Profile after each Counterfactual batch
 /// 4) [optional] apply Discount scheduling to updates
 pub trait Trainer: Send + Sync {
-    type T: Turn + Send + Sync;
-    type E: Edge + Send + Sync;
-    type G: Game<E = Self::E, T = Self::T> + Send + Sync;
-    type I: Info<E = Self::E, T = Self::T> + Send + Sync;
+    type T: Turn;
+    type E: Edge;
+    type G: Game<E = Self::E, T = Self::T>;
+    type I: Info<E = Self::E, T = Self::T>;
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
