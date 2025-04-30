@@ -41,7 +41,7 @@ impl crate::cfr::traits::game::Game for Game {
 
     fn payoff(&self, turn: Self::T) -> crate::Utility {
         const P_WIN: crate::Utility = 1.;
-        const S_WIN: crate::Utility = P_WIN * crate::CFR_ASYMMETRIC_RPS;
+        const S_WIN: crate::Utility = P_WIN * crate::ASYMMETRIC_UTILITY;
         let direction = match turn {
             Turn::P1 => 0. + 1.,
             Turn::P2 => 0. - 1.,

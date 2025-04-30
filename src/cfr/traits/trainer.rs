@@ -45,24 +45,26 @@ pub trait Trainer {
     /// This allows updating the historical action weights that determine the final strategy.
     fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
-    ///
-
     /// Updates trainer state based on regret vectors from Profile.
     fn solve(mut self) -> Self
     where
         Self: Sized,
     {
         let t = Self::iterations();
+        let progress = crate::progress(t);
         log::info!("beginning training loop ({})", t);
         for _ in 0..t {
-            self.advance();
             for ref update in self.batch() {
                 self.update_regret(update);
                 self.update_weight(update);
             }
+            self.advance();
+            progress.inc(1);
         }
+        progress.finish();
         self
     }
+
     /// Updates accumulated regret values for each edge in the counterfactual.
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
@@ -72,6 +74,7 @@ pub trait Trainer {
             *self.regret(info, edge) += regret;
         }
     }
+
     /// Updates accumulated policy weights for each edge in the counterfactual.
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
@@ -82,20 +85,42 @@ pub trait Trainer {
         }
     }
 
-    /// LEVEL 4:  turn a bunch of infosets into a bunch of counterfactuals
+    /// turn a batch of trees into a batch
+    /// of infosets into a batch of counterfactual update vectors.
+    ///
+    /// this encapsulates the largest unit of "update"
+    /// that we can generate in parallel / from immutable reference.
+    /// it is unclear from RPS benchmarks if:
+    /// - what level to parallelize  .collect().into_par_iter()
+    /// - what optimal batch size is given N available CPU cores
+    /// - for small batches, whether overhead is worth it to parallelize at all
+    ///
+    /// it would be nice to do a kind of parameter sweep across
+    /// these different settings. i should checkout if criterion supports.
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
         (0..Self::batch_size())
+            // specify batch size in trait implementation
+            .into_iter()
             .map(|_| self.tree())
-            // .collect::<Vec<_>>()
-            // .into_iter()
+            .collect::<Vec<_>>()
+            // partition tree into infosets, and only update one player regrets at a time
+            .into_iter()
             .flat_map(|tree| tree.partition().into_values())
             .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
-            // .collect::<Vec<_>>()
-            // .into_iter()
+            .collect::<Vec<_>>()
+            // calculate CFR vectors (policy, regret) for each infoset
+            .into_iter()
             .map(|infoset| self.counterfactual(infoset))
             .collect::<Vec<_>>()
     }
-    /// LEVEL 0: generate a single tree by growing it from root to leaves
+
+    /// generate a single tree by growing it DFS from root to leaves
+    ///
+    /// starts at the root node and recursively builds the game tree by:
+    /// - encoding the current node's information
+    /// - sampling valid child branches according to the profile's strategy
+    /// - adding sampled branches to a todo list for further expansion
+    /// - continues until no more unexpanded leaves remain
     fn tree(&self) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let mut todo = Vec::new();
         let mut tree = Tree::default();
@@ -114,6 +139,10 @@ pub trait Trainer {
         }
         tree
     }
+
+    /// generate the update vectors at a given [InfoSet]. specifically,
+    /// calculate the regret and policy for each action, along with
+    /// the associated [Info]
     fn counterfactual(
         &self,
         ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>,
