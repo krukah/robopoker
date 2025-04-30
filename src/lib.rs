@@ -44,9 +44,9 @@ const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 // mccfr parameters
 const CFR_BATCH_SIZE_NLHE: usize = 16;
 const CFR_TREE_COUNT_NLHE: usize = 1024;
-
-const CFR_BATCH_SIZE_RPS: usize = 16;
-const CFR_TREE_COUNT_RPS: usize = 1024;
+const CFR_BATCH_SIZE_RPS: usize = 4;
+const CFR_TREE_COUNT_RPS: usize = 512;
+const CFR_ASYMMETRIC_RPS: f32 = 2.0;
 
 // regret matching parameters, although i haven't implemented regret clamp yet
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
