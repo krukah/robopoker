@@ -18,7 +18,7 @@ criterion::criterion_group! {
         computing_optimal_transport_variation,
         computing_optimal_transport_heuristic,
         computing_optimal_transport_sinkhorns,
-        solving_rps,
+        solving_cfr_rps,
 }
 
 fn sampling_river_evaluation(c: &mut criterion::Criterion) {
@@ -102,7 +102,7 @@ fn computing_optimal_transport_sinkhorns(c: &mut criterion::Criterion) {
      */
 }
 
-fn solving_rps(c: &mut criterion::Criterion) {
+fn solving_cfr_rps(c: &mut criterion::Criterion) {
     c.bench_function("cfr solve rock paper scissors (rps)", |b| {
         b.iter(|| Blueprint::default().solve());
     });

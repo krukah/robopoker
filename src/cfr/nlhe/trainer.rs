@@ -9,6 +9,13 @@ impl Trainer for super::blueprint::Blueprint {
     type P = super::profile::Profile;
     type S = super::encoder::Encoder;
 
+    fn tree_count() -> usize {
+        crate::CFR_TREE_COUNT_NLHE
+    }
+    fn batch_size() -> usize {
+        crate::CFR_BATCH_SIZE_NLHE
+    }
+
     fn advance(&mut self) {
         self.profile.increment();
     }
