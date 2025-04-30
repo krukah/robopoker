@@ -14,11 +14,11 @@ use crate::cfr::types::counterfactual::Counterfactual;
 /// 2) computing Counterfactual vectors at each InfoSet
 /// 3) updating the Profile after each Counterfactual batch
 /// 4) [optional] apply Discount scheduling to updates
-pub trait Trainer {
-    type T: Turn;
-    type E: Edge;
-    type G: Game<E = Self::E, T = Self::T>;
-    type I: Info<E = Self::E, T = Self::T>;
+pub trait Trainer: Send + Sync {
+    type T: Turn + Send + Sync;
+    type E: Edge + Send + Sync;
+    type G: Game<E = Self::E, T = Self::T> + Send + Sync;
+    type I: Info<E = Self::E, T = Self::T> + Send + Sync;
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
@@ -51,7 +51,7 @@ pub trait Trainer {
         Self: Sized,
     {
         let t = Self::iterations();
-        let progress = crate::progress(t);
+        // let progress = crate::progress(t);
         log::info!("beginning training loop ({})", t);
         for _ in 0..t {
             for ref update in self.batch() {
@@ -59,9 +59,9 @@ pub trait Trainer {
                 self.update_weight(update);
             }
             self.advance();
-            progress.inc(1);
+            // progress.inc(1);
         }
-        progress.finish();
+        // progress.finish();
         self
     }
 
@@ -98,9 +98,11 @@ pub trait Trainer {
     /// it would be nice to do a kind of parameter sweep across
     /// these different settings. i should checkout if criterion supports.
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
+        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
         (0..Self::batch_size())
             // specify batch size in trait implementation
-            .into_iter()
+            .into_par_iter()
             .map(|_| self.tree())
             .collect::<Vec<_>>()
             // partition tree into infosets, and only update one player regrets at a time
@@ -109,7 +111,7 @@ pub trait Trainer {
             .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
             .collect::<Vec<_>>()
             // calculate CFR vectors (policy, regret) for each infoset
-            .into_iter()
+            .into_par_iter()
             .map(|infoset| self.counterfactual(infoset))
             .collect::<Vec<_>>()
     }
