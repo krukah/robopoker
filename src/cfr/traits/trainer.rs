@@ -44,8 +44,8 @@ pub trait Trainer {
     where
         Self: Sized,
     {
-        log::info!("beginning training loop ({})", crate::CFR_ITERATIONS);
-        for _ in 0..crate::CFR_ITERATIONS {
+        log::info!("beginning training loop ({})", crate::NLHE_CFR_ITERATIONS);
+        for _ in 0..crate::NLHE_CFR_ITERATIONS {
             self.advance();
             for ref update in self.batch() {
                 self.update_regret(update);
@@ -97,7 +97,7 @@ pub trait Trainer {
     }
     /// LEVEL 1: generate a bunch of trees to be partitioned into InfoSets downstream
     fn forest(&self) -> Vec<Tree<Self::T, Self::E, Self::G, Self::I>> {
-        (0..crate::CFR_BATCH_SIZE)
+        (0..crate::NLHE_CFR_BATCH_SIZE)
             .map(|_| self.tree())
             .collect::<Vec<_>>()
     }

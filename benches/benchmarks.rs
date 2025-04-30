@@ -18,6 +18,7 @@ criterion::criterion_group! {
         computing_optimal_transport_variation,
         computing_optimal_transport_heuristic,
         computing_optimal_transport_sinkhorns,
+        solving_rps,
 }
 
 fn sampling_river_evaluation(c: &mut criterion::Criterion) {
@@ -101,6 +102,12 @@ fn computing_optimal_transport_sinkhorns(c: &mut criterion::Criterion) {
      */
 }
 
+fn solving_rps(c: &mut criterion::Criterion) {
+    c.bench_function("cfr solve rock paper scissors (rps)", |b| {
+        b.iter(|| Blueprint::default().solve());
+    });
+}
+
 use robopoker::cards::evaluator::Evaluator;
 use robopoker::cards::hand::Hand;
 use robopoker::cards::isomorphism::Isomorphism;
@@ -108,6 +115,8 @@ use robopoker::cards::observation::Observation;
 use robopoker::cards::observations::ObservationIterator;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
+use robopoker::cfr::rps::Blueprint;
+use robopoker::cfr::traits::Trainer;
 use robopoker::clustering::emd::EMD;
 use robopoker::clustering::equity::Equity;
 use robopoker::clustering::heuristic::Heuristic;
