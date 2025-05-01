@@ -64,12 +64,32 @@ pub trait Profile {
     fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
     /// lookup accumulated regret for this information
     fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
-    /// topology-based sampling. i.e. external, probing, targeted, uniform, etc.
+    /// Default implementation uses Average Strategy Sampling (AS) which samples actions
+    /// according to the average strategy profile to approximate opponent's Nash equilibrium.
+    /// Other sampling schemes like external sampling, probing, targeted or uniform are possible.
     fn sample(
         &self,
         node: &Node<Self::T, Self::E, Self::G, Self::I>,
         branches: Vec<Branch<Self::E, Self::G>>,
-    ) -> Vec<Branch<Self::E, Self::G>>;
+    ) -> Vec<Branch<Self::E, Self::G>> {
+        if node.game().turn() == self.walker() {
+            branches
+        } else {
+            use rand::distributions::WeightedIndex;
+            use rand::prelude::Distribution;
+            let ref mut rng = self.rng(node.info());
+            let mut branches = branches;
+            let policy = branches
+                .iter()
+                .map(|(edge, _, _)| self.weight(node.info(), edge))
+                .collect::<Vec<_>>();
+            let choice = WeightedIndex::new(policy)
+                .expect("at least one policy > 0")
+                .sample(rng);
+            let chosen = branches.remove(choice);
+            vec![chosen]
+        }
+    }
 
     /// Beta (β) - inertia parameter that stabilizes strategy updates by weighting
     /// historical policies. Set to 0.5 to balance between stability and adaptiveness.
@@ -141,7 +161,7 @@ pub trait Profile {
 
     // strategy calculations
 
-    /// calculate immediate weighted average decision
+    /// calculate IMMEDIATE weighted average decision
     /// strategy for this information.
     /// i.e. policy from accumulated REGRET values
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
@@ -155,7 +175,7 @@ pub trait Profile {
                 .map(|r| r.max(crate::POLICY_MIN))
                 .sum::<crate::Utility>()
     }
-    /// calculate the long-run weighted average decision
+    /// calculate the HISTORICAL WEIGHTED AVERAGE decision
     /// strategy for this information.
     /// i.e. policy from accumulated POLICY values
     fn advice(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
