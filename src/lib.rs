@@ -46,6 +46,10 @@ const CFR_BATCH_SIZE_NLHE: usize = 128;
 const CFR_TREE_COUNT_NLHE: usize = 1048576;
 const CFR_BATCH_SIZE_RPS: usize = 128;
 const CFR_TREE_COUNT_RPS: usize = 2048;
+const EDGE_TEMPERATURE: Entropy = 1_000.0;
+const EDGE_EXPLORATION: Probability = 0.01;
+const EDGE_ACTIVATION: Energy = 0.5;
+/// rps
 const ASYMMETRIC_UTILITY: f32 = 2.0;
 
 // regret matching parameters, although i haven't implemented regret clamp yet

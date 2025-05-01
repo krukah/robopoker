@@ -71,7 +71,24 @@ pub trait Profile {
         branches: Vec<Branch<Self::E, Self::G>>,
     ) -> Vec<Branch<Self::E, Self::G>>;
 
-    /// automatic
+    /// Beta (β) - inertia parameter that stabilizes strategy updates by weighting
+    /// historical policies. Set to 0.5 to balance between stability and adaptiveness.
+    fn inertia(&self) -> crate::Energy {
+        crate::EDGE_ACTIVATION
+    }
+
+    /// Epsilon (ε) - exploration parameter that ensures minimum sampling probability
+    /// for each action to maintain exploration. Set to 0.01 based on empirical testing
+    /// which showed better convergence compared to higher values.
+    fn exploration(&self) -> crate::Probability {
+        crate::EDGE_EXPLORATION
+    }
+    /// Tau (τ) - temperature parameter that controls sampling greediness.
+    /// Set to 0.5 to make sampling more focused on promising actions while
+    /// still maintaining some exploration.
+    fn temperature(&self) -> crate::Entropy {
+        crate::EDGE_TEMPERATURE
+    }
 
     /// Using our current strategy Profile,
     /// compute the regret vector
@@ -154,8 +171,6 @@ pub trait Profile {
                 .sum::<crate::Probability>()
     }
 
-    // reach calculations
-
     /// at the immediate location of this Node,
     /// what is the Probability of transitioning via this Edge?
     fn outgoing_reach(
@@ -211,14 +226,32 @@ pub trait Profile {
     /// sampling strategy q(a) (possibly in place of the current policy p(a)).
     /// To correct for this bias, we multiply regrets by p(a)/q(a).
     /// This function returns q(a), the probability that we sampled
-    /// the actions leading to this node under our sampling scheme.
-    /// For vanilla CFR, q(a) = 1.0 since we explore all actions.
-    #[allow(unused)]
-    fn sampling_reach(
+    /// the actions leading from root to leaf under our sampling scheme (AS).
+    fn terminal_reach(
         &self,
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
+        leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
-        1.0
+        leaf.into_iter()
+            .take_while(|(parent, _)| parent != root)
+            .filter(|(parent, _)| self.walker() != parent.game().turn())
+            .map(|(opponent, incoming)| self.sampling_reach(opponent.info(), &incoming))
+            .product::<crate::Probability>()
+    }
+    /// In Monte Carlo CFR variants, we sample actions according to a sampling strategy q(a).
+    /// This function computes q(a) for a given action in an infoset, which is used for importance sampling.
+    /// The sampling probability is based on the action weights, temperature, inertia, and exploration parameters.
+    /// The formula is: q(a) = max(exploration, (inertia + temperature * weight(a)) / (inertia + sum(weights)))
+    fn sampling_reach(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+        let numer = self.inertia() + self.temperature() * self.weight(&info, &edge);
+        let denom = self.inertia()
+            + info
+                .choices()
+                .iter()
+                .map(|b| self.weight(&info, b))
+                .map(|w| w.max(crate::POLICY_MIN))
+                .sum::<crate::Probability>();
+        (numer / denom).max(self.exploration())
     }
 
     // utility calculations
@@ -230,7 +263,8 @@ pub trait Profile {
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Utility {
-        self.relative_reach(root, leaf) * leaf.game().payoff(root.game().turn())
+        leaf.game().payoff(root.game().turn()) * self.relative_reach(root, leaf)
+            / self.terminal_reach(root, leaf) // importance sampling
     }
     /// Assuming we start at root Node,
     /// and that we sample the Tree according to Profile,
@@ -238,7 +272,7 @@ pub trait Profile {
     /// visiting this Node?
     fn expected_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.expected_reach(root) / self.sampling_reach(root)
+        self.expected_reach(root) // pi(h) - probability using current policy
             * root
                 .descendants()
                 .iter()
@@ -254,7 +288,7 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.cfactual_reach(root) / self.sampling_reach(root)
+        self.cfactual_reach(root) // pi_{-i}(h)
             * root
                 .follow(edge)
                 .expect("edge belongs to outgoing branches")
