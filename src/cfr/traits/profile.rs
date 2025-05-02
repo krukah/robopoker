@@ -75,19 +75,23 @@ pub trait Profile {
         if node.game().turn() == self.walker() {
             branches
         } else {
-            use rand::distributions::WeightedIndex;
-            use rand::prelude::Distribution;
-            let ref mut rng = self.rng(node.info());
-            let mut branches = branches;
-            let policy = branches
-                .iter()
-                .map(|(edge, _, _)| self.weight(node.info(), edge))
-                .collect::<Vec<_>>();
-            let choice = WeightedIndex::new(policy)
-                .expect("at least one policy > 0")
-                .sample(rng);
-            let chosen = branches.remove(choice);
-            vec![chosen]
+            // this code i kinda sorta expect to work but
+            // it doesnt converge to our known solution of RPS
+            //
+            // use rand::distributions::WeightedIndex;
+            // use rand::prelude::Distribution;
+            // let ref mut rng = self.rng(node.info());
+            // let mut branches = branches;
+            // let policy = branches
+            //     .iter()
+            //     .map(|(edge, _, _)| self.sampling_reach(node.info(), edge))
+            //     .collect::<Vec<_>>();
+            // let choice = WeightedIndex::new(policy)
+            //     .expect("at least one policy > 0")
+            //     .sample(rng);
+            // let chosen = branches.remove(choice);
+            // vec![chosen]
+            branches
         }
     }
 
@@ -252,11 +256,15 @@ pub trait Profile {
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
-        leaf.into_iter()
-            .take_while(|(parent, _)| parent != root)
-            .filter(|(parent, _)| self.walker() != parent.game().turn())
-            .map(|(opponent, incoming)| self.sampling_reach(opponent.info(), &incoming))
-            .product::<crate::Probability>()
+        1.
+        // this code i kinda sorta expect to work but
+        // it doesnt converge to our known solution of RPS
+        //
+        // leaf.into_iter()
+        // .take_while(|(parent, _)| parent != root)
+        // .filter(|(parent, _)| self.walker() != parent.game().turn())
+        // .map(|(opponent, incoming)| self.sampling_reach(opponent.info(), &incoming))
+        // .product::<crate::Probability>()
     }
     /// In Monte Carlo CFR variants, we sample actions according to a sampling strategy q(a).
     /// This function computes q(a) for a given action in an infoset, which is used for importance sampling.
