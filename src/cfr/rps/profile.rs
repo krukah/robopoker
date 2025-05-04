@@ -1,14 +1,14 @@
 use super::edge::Edge;
 use super::game::Game;
 use super::turn::Turn;
-use crate::cfr::rps::blueprint::Blueprint;
+use crate::cfr::rps::solver::RPS;
 use crate::cfr::structs::node::Node;
 use crate::cfr::traits::profile::Profile;
 use crate::cfr::types::branch::Branch;
 
 /// For the Rock Paper Scissors game, Blueprint implements the Profile trait.
 /// It tracks regrets and policies over time.
-impl Profile for Blueprint {
+impl Profile for RPS {
     type T = Turn;
     type E = Edge;
     type G = Game;
@@ -45,7 +45,7 @@ impl Profile for Blueprint {
             .unwrap_or_default()
     }
 
-    fn sample(
+    fn explore(
         &self,
         _: &Node<Self::T, Self::E, Self::G, Self::I>,
         branches: Vec<Branch<Self::E, Self::G>>,

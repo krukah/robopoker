@@ -1,11 +1,11 @@
-use super::blueprint::Blueprint;
 use super::edge::Edge;
 use super::game::Game;
+use super::solver::RPS;
 use super::turn::Turn;
 use crate::cfr::structs::tree::Tree;
 use crate::cfr::types::branch::Branch;
 
-impl crate::cfr::traits::encoder::Encoder for Blueprint {
+impl crate::cfr::traits::encoder::Encoder for RPS {
     type T = Turn;
     type E = Edge;
     type G = Game;

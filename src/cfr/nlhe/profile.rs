@@ -90,7 +90,7 @@ impl crate::cfr::traits::profile::Profile for Profile {
             .map(|(_, r)| *r)
             .unwrap_or_default()
     }
-    fn sample(&self, node: &Node, branches: Vec<Branch>) -> Vec<Branch> {
+    fn explore(&self, node: &Node, branches: Vec<Branch>) -> Vec<Branch> {
         let n = branches.len();
         let p = node.game().turn();
         let walker = self.walker();

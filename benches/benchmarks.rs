@@ -104,7 +104,7 @@ fn computing_optimal_transport_sinkhorns(c: &mut criterion::Criterion) {
 
 fn solving_cfr_rps(c: &mut criterion::Criterion) {
     c.bench_function("cfr solve rock paper scissors (rps)", |b| {
-        b.iter(|| Blueprint::default().solve());
+        b.iter(|| RPS::default().solve());
     });
 }
 
@@ -115,7 +115,7 @@ use robopoker::cards::observation::Observation;
 use robopoker::cards::observations::ObservationIterator;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
-use robopoker::cfr::rps::Blueprint;
+use robopoker::cfr::rps::RPS;
 use robopoker::cfr::traits::Trainer;
 use robopoker::clustering::emd::EMD;
 use robopoker::clustering::equity::Equity;
