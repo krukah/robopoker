@@ -220,6 +220,7 @@ pub trait Profile {
     /// The sampling probability is based on the action weights, temperature, inertia, and exploration parameters.
     /// The formula is: q(a) = max(exploration, (inertia + temperature * weight(a)) / (inertia + sum(weights)))
     fn sample(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+        return self.advice(info, edge);
         let numer = self.sum_policy(info, edge).max(crate::POLICY_MIN);
         let denom = info
             .choices()
@@ -312,8 +313,19 @@ pub trait Profile {
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Utility {
-        leaf.game().payoff(root.game().turn()) * self.relative_reach(root, leaf)
+        self.relative_reach(root, leaf) * leaf.game().payoff(root.game().turn())
             / self.sampling_reach(leaf) // importance sampling
+                                        //
+                                        // this could be sped up by not recalculating
+                                        // the "sampling_reach" of root redundantly,
+                                        // since it contributes the same multiplicative
+                                        // reach probability factor to the sampling_reach
+                                        // of each leaf. instead, sampling_reach could get
+                                        // absorbed into relative_reach, while the common
+                                        // sampling_reach(root) distributes.
+                                        //
+                                        // i.e. sampling_reach(Node, Option<Node>) , where
+                                        // None indicates go back to tree root.
     }
     /// Assuming we start at root Node,
     /// and that we sample the Tree according to Profile,
