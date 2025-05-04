@@ -49,24 +49,21 @@ const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
 /// rps mccfr parameteres
 const ASYMMETRIC_UTILITY: f32 = 2.0;
-const CFR_BATCH_SIZE_RPS: usize = 128;
-const CFR_TREE_COUNT_RPS: usize = 20480;
+const CFR_BATCH_SIZE_RPS: usize = 1;
+const CFR_TREE_COUNT_RPS: usize = 8192;
 
 // nlhe mccfr parameters
-const CFR_BATCH_SIZE_NLHE: usize = 1;
-const CFR_TREE_COUNT_NLHE: usize = 8192;
+const CFR_BATCH_SIZE_NLHE: usize = 64;
+const CFR_TREE_COUNT_NLHE: usize = 0x10000;
 
 /// profile average sampling parameters
-const EDGE_TEMPERATURE: Entropy = 1.0;
-const EDGE_EXPLORATION: Probability = 0.01;
-const EDGE_ACTIVATION: Energy = 10.;
+const SAMPLING_THRESHOLD: Entropy = 1.0;
+const SAMPLING_ACTIVATION: Energy = 0.0;
+const SAMPLING_EXPLORATION: Probability = 0.01;
 
 // regret matching parameters, although i haven't implemented regret clamp yet
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
-#[allow(dead_code)]
 const REGRET_MIN: Utility = -3e5;
-#[allow(dead_code)]
-const REGRET_MAX: Utility = Utility::MAX;
 
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {

@@ -75,8 +75,11 @@ pub trait Blueprint: Send + Sync {
         let ref info = cfr.0.clone();
         for (edge, regret) in cfr.1.iter() {
             let discount = self.discount(Some(self.profile().sum_regret(info, edge)));
-            *self.mut_regret(info, edge) *= discount;
-            *self.mut_regret(info, edge) += regret;
+            let accumulated = self.profile().sum_regret(info, edge);
+            let accumulated = accumulated * discount;
+            let accumulated = accumulated + regret;
+            let accumulated = accumulated.max(crate::REGRET_MIN);
+            *self.mut_regret(info, edge) = accumulated;
         }
     }
 
@@ -85,8 +88,11 @@ pub trait Blueprint: Send + Sync {
         let ref info = cfr.0.clone();
         for (edge, policy) in cfr.2.iter() {
             let discount = self.discount(None);
-            *self.mut_policy(info, edge) *= discount;
-            *self.mut_policy(info, edge) += policy;
+            let accumulated = self.profile().sum_policy(info, edge);
+            let accumulated = accumulated * discount;
+            let accumulated = accumulated + policy;
+            let accumulated = accumulated.max(crate::POLICY_MIN);
+            *self.mut_policy(info, edge) = accumulated;
         }
     }
 
