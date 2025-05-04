@@ -54,6 +54,8 @@ pub trait Profile {
     type G: Game<E = Self::E, T = Self::T>;
     type I: Info<E = Self::E, T = Self::T>;
 
+    // unimplemented
+
     /// increment epoch
     fn increment(&mut self);
     /// who's turn is it?
@@ -132,6 +134,8 @@ pub trait Profile {
         let chosen = choices.remove(choice);
         vec![chosen]
     }
+
+    // update vector calculations
 
     /// Using our current strategy Profile,
     /// compute the regret vector
@@ -230,10 +234,12 @@ pub trait Profile {
             .inspect(|r| assert!(*r >= 0.))
             .map(|r| r.max(crate::POLICY_MIN))
             .sum::<crate::Probability>();
-        let numer = self.inertia() + self.threshold() * numer;
-        let denom = self.inertia() + denom;
+        let numer = self.activation() + self.threshold() * numer;
+        let denom = self.activation() + denom;
         (numer / denom).max(self.exploration())
     }
+
+    // reach calculations
 
     /// at the immediate location of this Node,
     /// what is the Probability of transitioning via this Edge?
@@ -407,9 +413,15 @@ pub trait Profile {
 
     // constant fns
 
+    /// Tau (τ) - temperature parameter that controls sampling greediness.
+    /// Set to 0.5 to make sampling more focused on promising actions while
+    /// still maintaining some exploration.
+    fn threshold(&self) -> crate::Entropy {
+        crate::SAMPLING_THRESHOLD
+    }
     /// Beta (β) - inertia parameter that stabilizes strategy updates by weighting
     /// historical policies. Set to 0.5 to balance between stability and adaptiveness.
-    fn inertia(&self) -> crate::Energy {
+    fn activation(&self) -> crate::Energy {
         crate::SAMPLING_ACTIVATION
     }
     /// Epsilon (ε) - exploration parameter that ensures minimum sampling probability
@@ -417,11 +429,5 @@ pub trait Profile {
     /// which showed better convergence compared to higher values.
     fn exploration(&self) -> crate::Probability {
         crate::SAMPLING_EXPLORATION
-    }
-    /// Tau (τ) - temperature parameter that controls sampling greediness.
-    /// Set to 0.5 to make sampling more focused on promising actions while
-    /// still maintaining some exploration.
-    fn threshold(&self) -> crate::Entropy {
-        crate::SAMPLING_THRESHOLD
     }
 }
