@@ -17,3 +17,7 @@ pub mod rps;
 pub mod structs;
 pub mod traits;
 pub mod types;
+
+pub use nlhe::solver::NLHE;
+pub use rps::solver::RPS;
+pub use traits::trainer::Trainer;

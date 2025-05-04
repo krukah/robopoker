@@ -22,17 +22,13 @@ pub trait Trainer: Send + Sync {
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
+    fn train();
+
     fn batch_size() -> usize;
     fn tree_count() -> usize;
-    fn iterations() -> usize {
-        Self::tree_count() / Self::batch_size()
-    }
 
     fn encoder(&self) -> &Self::S;
     fn profile(&self) -> &Self::P;
-    fn discount(&self, _: Option<crate::Utility>) -> f32 {
-        1.0
-    }
 
     /// Advances the trainer state to the next iteration
     fn advance(&mut self);
@@ -45,13 +41,16 @@ pub trait Trainer: Send + Sync {
     /// This allows updating the historical action weights that determine the final strategy.
     fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
+    fn iterations() -> usize {
+        Self::tree_count() / Self::batch_size()
+    }
+
     /// Updates trainer state based on regret vectors from Profile.
     fn solve(mut self) -> Self
     where
         Self: Sized,
     {
         let t = Self::iterations();
-        // let progress = crate::progress(t);
         log::info!("beginning training loop ({})", t);
         for _ in 0..t {
             for ref update in self.batch() {
@@ -59,9 +58,7 @@ pub trait Trainer: Send + Sync {
                 self.update_weight(update);
             }
             self.advance();
-            // progress.inc(1);
         }
-        // progress.finish();
         self
     }
 
@@ -130,13 +127,13 @@ pub trait Trainer: Send + Sync {
         let info = self.encoder().seed(&root);
         let node = tree.seed(info, root);
         let children = self.encoder().branches(&node);
-        let children = self.profile().sample(&node, children);
+        let children = self.profile().explore(&node, children);
         todo.extend(children);
         while let Some(leaf) = todo.pop() {
             let info = self.encoder().info(&tree, leaf);
             let node = tree.grow(info, leaf);
             let children = self.encoder().branches(&node);
-            let children = self.profile().sample(&node, children);
+            let children = self.profile().explore(&node, children);
             todo.extend(children);
         }
         tree
@@ -154,5 +151,55 @@ pub trait Trainer: Send + Sync {
             self.profile().regret_vector(infoset),
             self.profile().policy_vector(infoset),
         )
+    }
+
+    // discount parameterization
+
+    /// Discount parameters for the training process.
+    /// These values control how quickly the algorithm converges
+    /// and how much weight is given to recent updates versus historical data.
+    ///
+    /// - `alpha`: Controls the rate at which recent updates are given more weight.
+    /// - `omega`: Controls the rate at which historical updates are given more weight.
+    /// - `gamma`: Controls the rate at which the discount factor decays over time.
+    /// - `period`: Controls the frequency of discount updates.
+    fn discount(&self, regret: Option<crate::Utility>) -> f32 {
+        match regret {
+            None => {
+                let g = self.gamma();
+                let t = self.profile().epochs() as f32;
+                (t / (t + 1.)).powf(g)
+            }
+            Some(r) => {
+                let a = self.alpha();
+                let o = self.omega();
+                let p = self.period() as f32;
+                let t = self.profile().epochs() as f32;
+                if t % p != 0. {
+                    1.
+                } else if r > 0. {
+                    let x = (t / p).powf(a);
+                    x / (x + 1.)
+                } else if r < 0. {
+                    let x = (t / p).powf(o);
+                    x / (x + 1.)
+                } else {
+                    let x = t / p;
+                    x / (x + 1.)
+                }
+            }
+        }
+    }
+    fn alpha(&self) -> f32 {
+        1.5
+    }
+    fn omega(&self) -> f32 {
+        0.5
+    }
+    fn gamma(&self) -> f32 {
+        1.5
+    }
+    fn period(&self) -> usize {
+        1
     }
 }

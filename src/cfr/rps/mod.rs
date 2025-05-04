@@ -23,13 +23,13 @@
 //! - Different weighting schemes (linear, exponential, etc.)
 //! - Tree search strategies (MCCFR vs vanilla CFR)
 
-pub use blueprint::Blueprint;
+pub use solver::RPS;
 
-pub mod blueprint;
 pub mod edge;
 pub mod encoder;
 pub mod game;
 pub mod info;
 pub mod profile;
+pub mod solver;
 pub mod trainer;
 pub mod turn;

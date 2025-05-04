@@ -1,7 +1,7 @@
 use crate::cfr::traits::profile::Profile;
 use crate::cfr::traits::trainer::Trainer;
 
-impl Trainer for super::blueprint::Blueprint {
+impl Trainer for super::solver::NLHE {
     type T = super::turn::Turn;
     type E = super::edge::Edge;
     type G = super::game::Game;
@@ -14,6 +14,19 @@ impl Trainer for super::blueprint::Blueprint {
     }
     fn batch_size() -> usize {
         crate::CFR_BATCH_SIZE_NLHE
+    }
+
+    fn train() {
+        use crate::cards::street::Street;
+        use crate::save::disk::Disk;
+        use crate::Arbitrary;
+        if Self::done(Street::random()) {
+            log::info!("resuming regret minimization from checkpoint");
+            Self::load(Street::random()).solve().save();
+        } else {
+            log::info!("starting regret minimization from scratch");
+            Self::grow(Street::random()).solve().save();
+        }
     }
 
     fn advance(&mut self) {
@@ -30,8 +43,5 @@ impl Trainer for super::blueprint::Blueprint {
     }
     fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self.profile.at(info.clone(), edge.clone()).1
-    }
-    fn discount(&self, regret: Option<crate::Utility>) -> f32 {
-        self.discount(regret)
     }
 }

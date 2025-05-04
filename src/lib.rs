@@ -13,6 +13,13 @@ pub mod search;
 pub mod transport;
 pub mod wasm;
 
+pub use cards::*;
+pub use cfr::*;
+pub use clustering::*;
+pub use gameplay::*;
+pub use transport::*;
+pub use wasm::*;
+
 /// dimensional analysis types
 type Chips = i16;
 type Equity = f32;

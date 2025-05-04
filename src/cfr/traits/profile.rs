@@ -64,10 +64,13 @@ pub trait Profile {
     fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
     /// lookup accumulated regret for this information
     fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
+
+    // exploration calculations
+
     /// Default implementation uses Average Strategy Sampling (AS) which samples actions
     /// according to the average strategy profile to approximate opponent's Nash equilibrium.
     /// Other sampling schemes like external sampling, probing, targeted or uniform are possible.
-    fn sample(
+    fn explore(
         &self,
         node: &Node<Self::T, Self::E, Self::G, Self::I>,
         branches: Vec<Branch<Self::E, Self::G>>,
@@ -93,25 +96,6 @@ pub trait Profile {
             // vec![chosen]
             branches
         }
-    }
-
-    /// Beta (β) - inertia parameter that stabilizes strategy updates by weighting
-    /// historical policies. Set to 0.5 to balance between stability and adaptiveness.
-    fn inertia(&self) -> crate::Energy {
-        crate::EDGE_ACTIVATION
-    }
-
-    /// Epsilon (ε) - exploration parameter that ensures minimum sampling probability
-    /// for each action to maintain exploration. Set to 0.01 based on empirical testing
-    /// which showed better convergence compared to higher values.
-    fn exploration(&self) -> crate::Probability {
-        crate::EDGE_EXPLORATION
-    }
-    /// Tau (τ) - temperature parameter that controls sampling greediness.
-    /// Set to 0.5 to make sampling more focused on promising actions while
-    /// still maintaining some exploration.
-    fn temperature(&self) -> crate::Entropy {
-        crate::EDGE_TEMPERATURE
     }
 
     /// Using our current strategy Profile,
@@ -371,5 +355,26 @@ pub trait Profile {
         self.epochs().hash(hasher);
         info.hash(hasher);
         rand::rngs::SmallRng::seed_from_u64(hasher.finish())
+    }
+
+    // constant fns
+
+    /// Beta (β) - inertia parameter that stabilizes strategy updates by weighting
+    /// historical policies. Set to 0.5 to balance between stability and adaptiveness.
+    fn inertia(&self) -> crate::Energy {
+        crate::EDGE_ACTIVATION
+    }
+
+    /// Epsilon (ε) - exploration parameter that ensures minimum sampling probability
+    /// for each action to maintain exploration. Set to 0.01 based on empirical testing
+    /// which showed better convergence compared to higher values.
+    fn exploration(&self) -> crate::Probability {
+        crate::EDGE_EXPLORATION
+    }
+    /// Tau (τ) - temperature parameter that controls sampling greediness.
+    /// Set to 0.5 to make sampling more focused on promising actions while
+    /// still maintaining some exploration.
+    fn temperature(&self) -> crate::Entropy {
+        crate::EDGE_TEMPERATURE
     }
 }
