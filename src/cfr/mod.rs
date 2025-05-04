@@ -20,4 +20,4 @@ pub mod types;
 
 pub use nlhe::solver::NLHE;
 pub use rps::solver::RPS;
-pub use traits::trainer::Trainer;
+pub use traits::blueprint::Blueprint;

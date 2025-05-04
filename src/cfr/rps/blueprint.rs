@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 /// For the Rock Paper Scissors game, Blueprint implements both Trainer and Profile traits.
 /// As a Profile, it tracks regrets and policies over time. As a Trainer, it uses those
 /// values to train an optimal strategy through counterfactual regret minimization.
-impl crate::cfr::traits::trainer::Trainer for RPS {
+impl crate::cfr::traits::blueprint::Blueprint for RPS {
     type T = Turn;
     type E = Edge;
     type G = Game;
@@ -34,7 +34,7 @@ impl crate::cfr::traits::trainer::Trainer for RPS {
         &self
     }
 
-    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self
             .encounters
             .entry(info.clone())
@@ -44,7 +44,7 @@ impl crate::cfr::traits::trainer::Trainer for RPS {
             .0
     }
 
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
         &mut self
             .encounters
             .entry(info.clone())

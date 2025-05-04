@@ -5,4 +5,5 @@
 pub trait Turn:
     Clone + Copy + PartialEq + Eq + Send + Sync + std::fmt::Debug + std::hash::Hash
 {
+    fn chance() -> Self;
 }

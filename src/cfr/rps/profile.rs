@@ -2,9 +2,7 @@ use super::edge::Edge;
 use super::game::Game;
 use super::turn::Turn;
 use crate::cfr::rps::solver::RPS;
-use crate::cfr::structs::node::Node;
 use crate::cfr::traits::profile::Profile;
-use crate::cfr::types::branch::Branch;
 
 /// For the Rock Paper Scissors game, Blueprint implements the Profile trait.
 /// It tracks regrets and policies over time.
@@ -29,7 +27,7 @@ impl Profile for RPS {
         }
     }
 
-    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+    fn sum_policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))
@@ -37,19 +35,11 @@ impl Profile for RPS {
             .unwrap_or_default()
     }
 
-    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+    fn sum_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))
             .map(|(_, r)| *r)
             .unwrap_or_default()
-    }
-
-    fn explore(
-        &self,
-        _: &Node<Self::T, Self::E, Self::G, Self::I>,
-        branches: Vec<Branch<Self::E, Self::G>>,
-    ) -> Vec<Branch<Self::E, Self::G>> {
-        branches
     }
 }

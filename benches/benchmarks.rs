@@ -116,7 +116,7 @@ use robopoker::cards::observations::ObservationIterator;
 use robopoker::cards::street::Street;
 use robopoker::cards::strength::Strength;
 use robopoker::cfr::rps::RPS;
-use robopoker::cfr::traits::Trainer;
+use robopoker::cfr::traits::Blueprint;
 use robopoker::clustering::emd::EMD;
 use robopoker::clustering::equity::Equity;
 use robopoker::clustering::heuristic::Heuristic;

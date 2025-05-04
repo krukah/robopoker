@@ -1,7 +1,7 @@
 use super::edge::Edge;
 use super::turn::Turn;
+use crate::cfr::traits::blueprint::Blueprint;
 use crate::cfr::traits::profile::Profile;
-use crate::cfr::traits::trainer::Trainer;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -26,8 +26,8 @@ impl std::fmt::Display for RPS {
                     f,
                     "    {:?}  R {:>+6.2}, W {:>6.2}, P {:>6.2},  A {:>6.2}",
                     edge,
-                    self.profile().regret(turn, edge),
-                    self.profile().weight(turn, edge),
+                    self.profile().sum_regret(turn, edge),
+                    self.profile().sum_policy(turn, edge),
                     self.profile().policy(turn, edge),
                     self.profile().advice(turn, edge),
                 )?;

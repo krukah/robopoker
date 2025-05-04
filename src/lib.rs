@@ -15,7 +15,6 @@ pub mod wasm;
 
 pub use cards::*;
 pub use cfr::*;
-pub use clustering::*;
 pub use gameplay::*;
 pub use transport::*;
 pub use wasm::*;
@@ -55,7 +54,7 @@ const CFR_TREE_COUNT_RPS: usize = 20480;
 
 // nlhe mccfr parameters
 const CFR_BATCH_SIZE_NLHE: usize = 1;
-const CFR_TREE_COUNT_NLHE: usize = 1048 * 1024;
+const CFR_TREE_COUNT_NLHE: usize = 8192;
 
 /// profile average sampling parameters
 const EDGE_TEMPERATURE: Entropy = 1.0;

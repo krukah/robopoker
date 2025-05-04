@@ -61,41 +61,76 @@ pub trait Profile {
     /// how many iterations
     fn epochs(&self) -> usize;
     /// lookup accumulated policy for this information
-    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
+    fn sum_policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability;
     /// lookup accumulated regret for this information
-    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
+    fn sum_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility;
 
     // exploration calculations
 
-    /// Default implementation uses Average Strategy Sampling (AS) which samples actions
-    /// according to the average strategy profile to approximate opponent's Nash equilibrium.
-    /// Other sampling schemes like external sampling, probing, targeted or uniform are possible.
+    /// topology-based sampling. i.e. external, probing, targeted, uniform, etc.
+    ///
+    /// this default implementation is opinionated about using
+    /// external average discounted sampling
+    /// - external: only the current traverser's actions are fully explored
+    /// - average: the accumulated policy values are used to weight samples
+    /// - discounted: a discounting schedule can adapt sensitiviy
+    ///
+    /// For vanilla CFR, no-op because we sample all actions
     fn explore(
         &self,
         node: &Node<Self::T, Self::E, Self::G, Self::I>,
         branches: Vec<Branch<Self::E, Self::G>>,
     ) -> Vec<Branch<Self::E, Self::G>> {
-        if node.game().turn() == self.walker() {
-            branches
-        } else {
-            // this code i kinda sorta expect to work but
-            // it doesnt converge to our known solution of RPS
-            //
-            // use rand::distributions::WeightedIndex;
-            // use rand::prelude::Distribution;
-            // let ref mut rng = self.rng(node.info());
-            // let mut branches = branches;
-            // let policy = branches
-            //     .iter()
-            //     .map(|(edge, _, _)| self.sampling_reach(node.info(), edge))
-            //     .collect::<Vec<_>>();
-            // let choice = WeightedIndex::new(policy)
-            //     .expect("at least one policy > 0")
-            //     .sample(rng);
-            // let chosen = branches.remove(choice);
-            // vec![chosen]
-            branches
+        let n = branches.len();
+        let p = node.game().turn();
+        let walker = self.walker();
+        let chance = Self::T::chance();
+        match (n, p) {
+            (0, _) => branches,
+            (_, p) if p == walker => branches,
+            (_, p) if p == chance => self.explore_any(node, branches),
+            (_, p) if p != walker => self.explore_one(node, branches),
+            _ => panic!("at the disco"),
         }
+    }
+    /// uniform sampling of available branches
+    fn explore_any(
+        &self,
+        node: &Node<Self::T, Self::E, Self::G, Self::I>,
+        branches: Vec<Branch<Self::E, Self::G>>,
+    ) -> Vec<Branch<Self::E, Self::G>> {
+        use rand::Rng;
+        use std::ops::Not;
+        assert!(branches.is_empty().not());
+        let n = branches.len();
+        let mut choices = branches;
+        let ref mut rng = self.rng(node.info());
+        let choice = rng.gen_range(0..n);
+        let chosen = choices.remove(choice);
+        vec![chosen]
+    }
+    /// profile-weighted by ACCUMULATED WEIGHTED AVERAGE
+    /// policy policy values. discounting is encapsulated
+    /// by self.discount(_)
+    fn explore_one(
+        &self,
+        node: &Node<Self::T, Self::E, Self::G, Self::I>,
+        branches: Vec<Branch<Self::E, Self::G>>,
+    ) -> Vec<Branch<Self::E, Self::G>> {
+        use rand::distributions::WeightedIndex;
+        use rand::prelude::Distribution;
+        let ref info = node.info();
+        let ref mut rng = self.rng(info);
+        let mut choices = branches;
+        let policy = choices
+            .iter()
+            .map(|(edge, _, _)| self.sample(info, edge))
+            .collect::<Vec<_>>();
+        let choice = WeightedIndex::new(policy)
+            .expect("at least one policy > 0")
+            .sample(rng);
+        let chosen = choices.remove(choice);
+        vec![chosen]
     }
 
     /// Using our current strategy Profile,
@@ -130,7 +165,7 @@ pub trait Profile {
         let regrets = info
             .choices()
             .into_iter()
-            .map(|e| (e, self.regret(&info, &e)))
+            .map(|e| (e, self.sum_regret(&info, &e)))
             .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
             .collect::<Policy<Self::E>>();
         let denominator = regrets
@@ -153,30 +188,51 @@ pub trait Profile {
     /// strategy for this information.
     /// i.e. policy from accumulated REGRET values
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.regret(info, edge).max(crate::POLICY_MIN)
-            / info
-                .choices()
-                .iter()
-                .map(|e| self.regret(info, e))
-                .inspect(|r| assert!(!r.is_nan()))
-                .inspect(|r| assert!(!r.is_infinite()))
-                .map(|r| r.max(crate::POLICY_MIN))
-                .sum::<crate::Utility>()
+        let numer = self.sum_regret(info, edge).max(crate::POLICY_MIN);
+        let denom = info
+            .choices()
+            .iter()
+            .map(|e| self.sum_regret(info, e))
+            .inspect(|r| assert!(!r.is_nan()))
+            .inspect(|r| assert!(!r.is_infinite()))
+            .map(|r| r.max(crate::POLICY_MIN))
+            .sum::<crate::Utility>();
+        numer / denom
     }
     /// calculate the HISTORICAL WEIGHTED AVERAGE decision
     /// strategy for this information.
     /// i.e. policy from accumulated POLICY values
     fn advice(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        self.weight(info, edge).max(crate::POLICY_MIN)
-            / info
-                .choices()
-                .iter()
-                .map(|e| self.weight(info, e))
-                .inspect(|r| assert!(!r.is_nan()))
-                .inspect(|r| assert!(!r.is_infinite()))
-                .inspect(|r| assert!(*r >= 0.))
-                .map(|r| r.max(crate::POLICY_MIN))
-                .sum::<crate::Probability>()
+        let numer = self.sum_policy(info, edge).max(crate::POLICY_MIN);
+        let denom = info
+            .choices()
+            .iter()
+            .map(|e| self.sum_policy(info, e))
+            .inspect(|r| assert!(!r.is_nan()))
+            .inspect(|r| assert!(!r.is_infinite()))
+            .inspect(|r| assert!(*r >= 0.))
+            .map(|r| r.max(crate::POLICY_MIN))
+            .sum::<crate::Probability>();
+        numer / denom
+    }
+    /// In Monte Carlo CFR variants, we sample actions according to a sampling strategy q(a).
+    /// This function computes q(a) for a given action in an infoset, which is used for importance sampling.
+    /// The sampling probability is based on the action weights, temperature, inertia, and exploration parameters.
+    /// The formula is: q(a) = max(exploration, (inertia + temperature * weight(a)) / (inertia + sum(weights)))
+    fn sample(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+        let numer = self.sum_policy(info, edge).max(crate::POLICY_MIN);
+        let denom = info
+            .choices()
+            .iter()
+            .map(|e| self.sum_policy(info, e))
+            .inspect(|r| assert!(!r.is_nan()))
+            .inspect(|r| assert!(!r.is_infinite()))
+            .inspect(|r| assert!(*r >= 0.))
+            .map(|r| r.max(crate::POLICY_MIN))
+            .sum::<crate::Probability>();
+        let numer = self.inertia() + self.temperature() * numer;
+        let denom = self.inertia() + denom;
+        (numer / denom).max(self.exploration())
     }
 
     /// at the immediate location of this Node,
@@ -234,36 +290,17 @@ pub trait Profile {
     /// sampling strategy q(a) (possibly in place of the current policy p(a)).
     /// To correct for this bias, we multiply regrets by p(a)/q(a).
     /// This function returns q(a), the probability that we sampled
-    /// the actions leading from root to leaf under our sampling scheme (AS).
-    fn terminal_reach(
+    /// the actions leading to this node under our sampling scheme.
+    ///
+    /// For vanilla CFR, q(a) = 1.0 since we explore all actions.
+    fn sampling_reach(
         &self,
-        root: &Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
-        1.
-        // this code i kinda sorta expect to work but
-        // it doesnt converge to our known solution of RPS
-        //
-        // leaf.into_iter()
-        // .take_while(|(parent, _)| parent != root)
-        // .filter(|(parent, _)| self.walker() != parent.game().turn())
-        // .map(|(opponent, incoming)| self.sampling_reach(opponent.info(), &incoming))
-        // .product::<crate::Probability>()
-    }
-    /// In Monte Carlo CFR variants, we sample actions according to a sampling strategy q(a).
-    /// This function computes q(a) for a given action in an infoset, which is used for importance sampling.
-    /// The sampling probability is based on the action weights, temperature, inertia, and exploration parameters.
-    /// The formula is: q(a) = max(exploration, (inertia + temperature * weight(a)) / (inertia + sum(weights)))
-    fn sampling_reach(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        let numer = self.inertia() + self.temperature() * self.weight(&info, &edge);
-        let denom = self.inertia()
-            + info
-                .choices()
-                .iter()
-                .map(|b| self.weight(&info, b))
-                .map(|w| w.max(crate::POLICY_MIN))
-                .sum::<crate::Probability>();
-        (numer / denom).max(self.exploration())
+        leaf.into_iter()
+            .filter(|(parent, _)| self.walker() != parent.game().turn())
+            .map(|(parent, incoming)| self.sample(parent.info(), &incoming))
+            .product::<crate::Probability>()
     }
 
     // utility calculations
@@ -276,7 +313,7 @@ pub trait Profile {
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Utility {
         leaf.game().payoff(root.game().turn()) * self.relative_reach(root, leaf)
-            / self.terminal_reach(root, leaf) // importance sampling
+            / self.sampling_reach(leaf) // importance sampling
     }
     /// Assuming we start at root Node,
     /// and that we sample the Tree according to Profile,
@@ -284,7 +321,7 @@ pub trait Profile {
     /// visiting this Node?
     fn expected_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.expected_reach(root) // pi(h) - probability using current policy
+        self.expected_reach(root)
             * root
                 .descendants()
                 .iter()
@@ -300,7 +337,7 @@ pub trait Profile {
         edge: &Self::E,
     ) -> crate::Utility {
         assert!(self.walker() == root.game().turn());
-        self.cfactual_reach(root) // pi_{-i}(h)
+        self.cfactual_reach(root)
             * root
                 .follow(edge)
                 .expect("edge belongs to outgoing branches")
