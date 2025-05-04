@@ -39,6 +39,11 @@ impl Layer {
         Street::all()
             .into_iter()
             .rev()
+            .filter(|&&s| Self::done(s))
+            .for_each(|_| log::info!("{:<32}{:<32}", "using kmeans layer", Self::name()));
+        Street::all()
+            .into_iter()
+            .rev()
             .filter(|&&s| !Self::done(s))
             .map(|&s| Self::grow(s).save())
             .count();
@@ -238,7 +243,12 @@ impl Layer {
 #[cfg(feature = "native")]
 impl crate::save::disk::Disk for Layer {
     fn name() -> String {
-        unimplemented!()
+        format!(
+            "{:<16}{:<16}{:<16}",
+            Lookup::name(),
+            Decomp::name(),
+            Metric::name()
+        )
     }
     fn done(street: Street) -> bool {
         Lookup::done(street) && Decomp::done(street) && Metric::done(street)

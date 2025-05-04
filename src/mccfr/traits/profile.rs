@@ -234,8 +234,8 @@ pub trait Profile {
             .inspect(|r| assert!(*r >= 0.))
             .map(|r| r.max(crate::POLICY_MIN))
             .sum::<crate::Probability>();
-        let numer = self.activation() + self.threshold() * numer;
         let denom = self.activation() + denom;
+        let numer = self.activation() + numer * self.threshold();
         (numer / denom).max(self.exploration())
     }
 
@@ -260,7 +260,7 @@ pub trait Profile {
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> crate::Probability {
         leaf.into_iter()
-            .take_while(|(parent, _)| parent != root)
+            .take_while(|(parent, _)| parent != root) // parent.index() > root.index()
             .map(|(parent, incoming)| self.outgoing_reach(&parent, &incoming))
             .product::<crate::Probability>()
     }
