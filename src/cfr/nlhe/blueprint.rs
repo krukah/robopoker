@@ -10,13 +10,6 @@ impl Blueprint for super::solver::NLHE {
     type P = super::profile::Profile;
     type S = super::encoder::Encoder;
 
-    fn tree_count() -> usize {
-        crate::CFR_TREE_COUNT_NLHE
-    }
-    fn batch_size() -> usize {
-        crate::CFR_BATCH_SIZE_NLHE
-    }
-
     fn train() {
         use crate::cards::street::Street;
         use crate::save::disk::Disk;
@@ -28,6 +21,13 @@ impl Blueprint for super::solver::NLHE {
             log::info!("starting regret minimization from scratch");
             Self::grow(Street::random()).solve().save();
         }
+    }
+
+    fn tree_count() -> usize {
+        crate::CFR_TREE_COUNT_NLHE
+    }
+    fn batch_size() -> usize {
+        crate::CFR_BATCH_SIZE_NLHE
     }
 
     fn advance(&mut self) {
