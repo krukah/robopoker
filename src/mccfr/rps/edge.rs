@@ -6,4 +6,4 @@ pub enum Edge {
 }
 
 impl crate::transport::support::Support for Edge {}
-impl crate::cfr::traits::edge::Edge for Edge {}
+impl crate::mccfr::traits::edge::Edge for Edge {}

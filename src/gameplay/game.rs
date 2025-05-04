@@ -550,7 +550,7 @@ impl Game {
     }
 }
 
-impl crate::cfr::traits::game::Game for Game {
+impl crate::mccfr::traits::game::Game for Game {
     type E = crate::gameplay::edge::Edge;
     type T = crate::gameplay::turn::Turn;
     fn root() -> Self {

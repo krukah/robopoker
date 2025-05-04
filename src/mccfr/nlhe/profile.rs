@@ -17,7 +17,7 @@ impl Profile {
     }
 }
 
-impl crate::cfr::traits::profile::Profile for Profile {
+impl crate::mccfr::traits::profile::Profile for Profile {
     type T = Turn;
     type E = Edge;
     type G = Game;
@@ -110,6 +110,7 @@ impl crate::save::upload::Table for Profile {
     }
 }
 
+#[cfg(feature = "native")]
 impl crate::save::disk::Disk for Profile {
     fn name() -> String {
         Self::name()
@@ -130,9 +131,9 @@ impl crate::save::disk::Disk for Profile {
     fn load(_: Street) -> Self {
         let ref path = Self::path(Street::random());
         log::info!("{:<32}{:<32}", "loading     blueprint", path);
-        use crate::cfr::nlhe::info::Info;
         use crate::clustering::abstraction::Abstraction;
         use crate::gameplay::path::Path;
+        use crate::mccfr::nlhe::info::Info;
         use crate::Arbitrary;
         use byteorder::ReadBytesExt;
         use byteorder::BE;

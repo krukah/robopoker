@@ -4,15 +4,15 @@ use super::info::Info;
 use super::turn::Turn;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::street::Street;
-use crate::cfr::types::branch::Branch;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::Lookup;
 use crate::gameplay::action::Action;
 use crate::gameplay::odds::Odds;
 use crate::gameplay::path::Path;
+use crate::mccfr::types::branch::Branch;
 use std::collections::BTreeMap;
 
-type Tree = crate::cfr::structs::tree::Tree<Turn, Edge, Game, Info>;
+type Tree = crate::mccfr::structs::tree::Tree<Turn, Edge, Game, Info>;
 
 #[derive(Default)]
 pub struct Encoder {
@@ -75,7 +75,7 @@ impl Encoder {
     }
 }
 
-impl crate::cfr::traits::encoder::Encoder for Encoder {
+impl crate::mccfr::traits::encoder::Encoder for Encoder {
     type T = Turn;
     type E = Edge;
     type G = Game;

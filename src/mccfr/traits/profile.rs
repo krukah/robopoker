@@ -2,10 +2,10 @@ use super::edge::Edge;
 use super::game::Game;
 use super::info::Info;
 use super::turn::Turn;
-use crate::cfr::structs::infoset::InfoSet;
-use crate::cfr::structs::node::Node;
-use crate::cfr::types::branch::Branch;
-use crate::cfr::types::policy::Policy;
+use crate::mccfr::structs::infoset::InfoSet;
+use crate::mccfr::structs::node::Node;
+use crate::mccfr::types::branch::Branch;
+use crate::mccfr::types::policy::Policy;
 
 /// The `Profile` trait represents a strategy profile in an extensive-form game, implementing core
 /// functionality for Counterfactual Regret Minimization (CFR).

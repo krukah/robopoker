@@ -2,9 +2,9 @@ use super::edge::Edge;
 use super::game::Game;
 use super::info::Info;
 use super::turn::Turn;
-use crate::cfr::structs::node::Node;
-use crate::cfr::structs::tree::Tree;
-use crate::cfr::types::branch::Branch;
+use crate::mccfr::structs::node::Node;
+use crate::mccfr::structs::tree::Tree;
+use crate::mccfr::types::branch::Branch;
 
 /// infoset encoding is fully abstracted. it must be implemented
 /// by the consumer of this MCCFR API.

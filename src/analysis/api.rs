@@ -817,7 +817,7 @@ impl API {
         let abstraction = self.obs_to_abs(observation).await?;
         let history = recall.path();
         let present = abstraction;
-        let futures = Path::from(crate::cfr::nlhe::encoder::Encoder::choices(game, 0));
+        let futures = Path::from(crate::mccfr::nlhe::encoder::Encoder::choices(game, 0));
         let ref history = i64::from(history);
         let ref present = i64::from(present);
         let ref futures = i64::from(futures);
