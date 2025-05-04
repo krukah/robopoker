@@ -1,11 +1,11 @@
 use super::derive::Derive;
 use super::upload::Table;
 use crate::cards::street::Street;
-use crate::cfr::nlhe::encoder::Encoder;
-use crate::cfr::nlhe::profile::Profile;
 use crate::clustering::abstraction::Abstraction;
 use crate::clustering::metric::Metric;
 use crate::clustering::transitions::Decomp;
+use crate::mccfr::nlhe::encoder::Encoder;
+use crate::mccfr::nlhe::profile::Profile;
 use byteorder::ReadBytesExt;
 use byteorder::BE;
 use std::fs::File;
@@ -27,7 +27,7 @@ impl From<Arc<Client>> for Writer {
 }
 
 impl Writer {
-    pub async fn save() -> Result<(), E> {
+    pub async fn publish() -> Result<(), E> {
         let postgres = Self(crate::db().await);
         postgres.upload::<Metric>().await?;
         postgres.upload::<Decomp>().await?;

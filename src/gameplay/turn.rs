@@ -14,7 +14,7 @@ impl Turn {
     }
 }
 
-impl crate::cfr::traits::turn::Turn for Turn {
+impl crate::mccfr::traits::turn::Turn for Turn {
     fn chance() -> Self {
         Self::Chance
     }

@@ -1,8 +1,8 @@
-use crate::cfr::traits::edge::Edge;
-use crate::cfr::traits::game::Game;
-use crate::cfr::traits::info::Info;
-use crate::cfr::traits::turn::Turn;
-use crate::cfr::types::branch::Branch;
+use crate::mccfr::traits::edge::Edge;
+use crate::mccfr::traits::game::Game;
+use crate::mccfr::traits::info::Info;
+use crate::mccfr::traits::turn::Turn;
+use crate::mccfr::types::branch::Branch;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 

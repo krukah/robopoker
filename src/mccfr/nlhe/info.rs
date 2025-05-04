@@ -26,9 +26,9 @@ impl Info {
     }
 }
 
-impl crate::cfr::traits::info::Info for Info {
-    type E = crate::cfr::nlhe::edge::Edge;
-    type T = crate::cfr::nlhe::turn::Turn;
+impl crate::mccfr::traits::info::Info for Info {
+    type E = crate::mccfr::nlhe::edge::Edge;
+    type T = crate::mccfr::nlhe::turn::Turn;
     fn choices(&self) -> Vec<Self::E> {
         self.futures.into_iter().collect()
     }

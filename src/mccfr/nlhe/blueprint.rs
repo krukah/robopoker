@@ -1,5 +1,5 @@
-use crate::cfr::traits::blueprint::Blueprint;
-use crate::cfr::traits::profile::Profile;
+use crate::mccfr::traits::blueprint::Blueprint;
+use crate::mccfr::traits::profile::Profile;
 use std::collections::BTreeMap;
 
 impl Blueprint for super::solver::NLHE {

@@ -1,9 +1,9 @@
 use super::node::Node;
 use super::tree::Tree;
-use crate::cfr::traits::edge::Edge;
-use crate::cfr::traits::game::Game;
-use crate::cfr::traits::info::Info;
-use crate::cfr::traits::turn::Turn;
+use crate::mccfr::traits::edge::Edge;
+use crate::mccfr::traits::game::Game;
+use crate::mccfr::traits::info::Info;
+use crate::mccfr::traits::turn::Turn;
 
 /// the infoset is pre-implemented. it is an [un]ordered collection of
 /// Node indices, and a thread-safe readonly reference to the Tree

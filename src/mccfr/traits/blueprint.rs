@@ -4,9 +4,9 @@ use super::game::Game;
 use super::info::Info;
 use super::profile::Profile;
 use super::turn::Turn;
-use crate::cfr::structs::infoset::InfoSet;
-use crate::cfr::structs::tree::Tree;
-use crate::cfr::types::counterfactual::Counterfactual;
+use crate::mccfr::structs::infoset::InfoSet;
+use crate::mccfr::structs::tree::Tree;
+use crate::mccfr::types::counterfactual::Counterfactual;
 
 /// given access to a Profile and Encoder,
 /// we enapsulate the process of

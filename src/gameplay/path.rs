@@ -1,4 +1,4 @@
-use crate::cfr::nlhe::edge::Edge;
+use crate::mccfr::nlhe::edge::Edge;
 use crate::Arbitrary;
 
 #[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]

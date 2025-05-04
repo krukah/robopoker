@@ -1,8 +1,8 @@
 use super::edge::Edge;
 use super::game::Game;
 use super::turn::Turn;
-use crate::cfr::rps::solver::RPS;
-use crate::cfr::traits::profile::Profile;
+use crate::mccfr::rps::solver::RPS;
+use crate::mccfr::traits::profile::Profile;
 
 /// For the Rock Paper Scissors game, Blueprint implements the Profile trait.
 /// It tracks regrets and policies over time.

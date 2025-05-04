@@ -1,6 +1,6 @@
 use super::{edge::Edge, turn::Turn};
 
-impl crate::cfr::traits::info::Info for Turn {
+impl crate::mccfr::traits::info::Info for Turn {
     type E = Edge;
     type T = Turn;
 

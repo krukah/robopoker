@@ -4,7 +4,7 @@ use super::turn::Turn;
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Game(u8);
 
-impl crate::cfr::traits::game::Game for Game {
+impl crate::mccfr::traits::game::Game for Game {
     type E = Edge;
     type T = Turn;
 

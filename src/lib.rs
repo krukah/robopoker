@@ -6,16 +6,16 @@ pub mod players;
 pub mod save;
 
 pub mod cards;
-pub mod cfr;
 pub mod clustering;
 pub mod gameplay;
+pub mod mccfr;
 pub mod search;
 pub mod transport;
 pub mod wasm;
 
 pub use cards::*;
-pub use cfr::*;
 pub use gameplay::*;
+pub use mccfr::*;
 pub use transport::*;
 pub use wasm::*;
 
