@@ -220,7 +220,6 @@ pub trait Profile {
     /// The sampling probability is based on the action weights, temperature, inertia, and exploration parameters.
     /// The formula is: q(a) = max(exploration, (inertia + temperature * weight(a)) / (inertia + sum(weights)))
     fn sample(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
-        return self.advice(info, edge);
         let numer = self.sum_policy(info, edge).max(crate::POLICY_MIN);
         let denom = info
             .choices()
@@ -231,7 +230,7 @@ pub trait Profile {
             .inspect(|r| assert!(*r >= 0.))
             .map(|r| r.max(crate::POLICY_MIN))
             .sum::<crate::Probability>();
-        let numer = self.inertia() + self.temperature() * numer;
+        let numer = self.inertia() + self.threshold() * numer;
         let denom = self.inertia() + denom;
         (numer / denom).max(self.exploration())
     }
@@ -411,19 +410,18 @@ pub trait Profile {
     /// Beta (β) - inertia parameter that stabilizes strategy updates by weighting
     /// historical policies. Set to 0.5 to balance between stability and adaptiveness.
     fn inertia(&self) -> crate::Energy {
-        crate::EDGE_ACTIVATION
+        crate::SAMPLING_ACTIVATION
     }
-
     /// Epsilon (ε) - exploration parameter that ensures minimum sampling probability
     /// for each action to maintain exploration. Set to 0.01 based on empirical testing
     /// which showed better convergence compared to higher values.
     fn exploration(&self) -> crate::Probability {
-        crate::EDGE_EXPLORATION
+        crate::SAMPLING_EXPLORATION
     }
     /// Tau (τ) - temperature parameter that controls sampling greediness.
     /// Set to 0.5 to make sampling more focused on promising actions while
     /// still maintaining some exploration.
-    fn temperature(&self) -> crate::Entropy {
-        crate::EDGE_TEMPERATURE
+    fn threshold(&self) -> crate::Entropy {
+        crate::SAMPLING_THRESHOLD
     }
 }
