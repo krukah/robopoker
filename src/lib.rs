@@ -18,7 +18,6 @@ pub use gameplay::*;
 pub use mccfr::*;
 pub use transport::*;
 pub use wasm::*;
-
 /// dimensional analysis types
 type Chips = i16;
 type Equity = f32;
@@ -64,6 +63,25 @@ const SAMPLING_EXPLORATION: Probability = 0.01;
 // regret matching parameters, although i haven't implemented regret clamp yet
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 const REGRET_MIN: Utility = -3e5;
+
+#[derive(clap::Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+#[cfg(feature = "native")]
+/// Simple program to run robopoker routines
+pub struct Args {
+    /// Run the clustering algorithm
+    #[arg(long)]
+    pub cluster: bool,
+    /// Run the MCCFR training
+    #[arg(long)]
+    pub solve: bool,
+    /// Publish results to the database
+    #[arg(long)]
+    pub publish: bool,
+    /// Run the analysis server
+    #[arg(long)]
+    pub analyze: bool,
+}
 
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {

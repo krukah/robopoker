@@ -1,17 +1,21 @@
+use clap::Parser;
 use robopoker::*;
 
 #[tokio::main]
 async fn main() {
-    // Behold!
     crate::init();
-    // The k-means earth mover's distance hand-clustering algorithm.
-    crate::clustering::Layer::learn();
-    // Monte Carlo counter-factual regret minimization. External sampling, alternating regret updates, linear weighting schedules.
-    crate::mccfr::NLHE::train();
-    // Let's upload the data to the database.
-    crate::save::Writer::publish().await.unwrap();
-    // Let's support our api.
-    crate::analysis::Server::run().await.unwrap();
+    if crate::Args::parse().cluster {
+        crate::clustering::Layer::learn();
+    }
+    if crate::Args::parse().solve {
+        crate::mccfr::NLHE::train();
+    }
+    if crate::Args::parse().publish {
+        crate::save::Writer::publish().await.unwrap();
+    }
+    if crate::Args::parse().analyze {
+        crate::analysis::Server::run().await.unwrap();
+    }
 }
 
 /*
@@ -44,12 +48,12 @@ async fn main() {
   2015. Simultaneous Abstraction and Equilibrium Finding in Games. (http://www.cs.cmu.edu/~sandholm/simultaneous.ijcai15.pdf) In IJCAI.
   2015. Limited Lookahead in Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/limited-look-ahead.ijcai15.pdf) IJCAI.
   2015. Faster First-Order Methods for Extensive-Form Game Solving. (http://www.cs.cmu.edu/~sandholm/faster.ec15.pdf) In EC.
-  2015. Hierarchical Abstraction, Distributed Equilibrium Computation, and Post-Processing, with Application to a Champion No-Limit Texas Hold’em Agent. (http://www.cs.cmu.edu/~sandholm/hierarchical.aamas15.pdf) In AAMAS.
+  2015. Hierarchical Abstraction, Distributed Equilibrium Computation, and Post-Processing, with Application to a Champion No-Limit Texas Hold'em Agent. (http://www.cs.cmu.edu/~sandholm/hierarchical.aamas15.pdf) In AAMAS.
   2015. Discretization of Continuous Action Spaces in Extensive-Form Games. (http://www.cs.cmu.edu/~sandholm/discretization.aamas15.fromACM.pdf) In AAMAS.
   2015. Endgame Solving in Large Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/endgame.aamas15.fromACM.pdf) In AAMAS.
   2014. Extensive-Form Game Abstraction With Bounds. (http://www.cs.cmu.edu/~sandholm/extensiveGameAbstraction.ec14.pdf) In EC.
   2014. Regret Transfer and Parameter Optimization. (http://www.cs.cmu.edu/~sandholm/regret_transfer.aaai14.pdf) In AAAI.
-+ 2014. Potential-Aware Imperfect-Recall Abstraction with Earth Mover’s Distance in Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/potential-aware_imperfect-recall.aaai14.pdf) In AAAI.
++ 2014. Potential-Aware Imperfect-Recall Abstraction with Earth Mover's Distance in Imperfect-Information Games. (http://www.cs.cmu.edu/~sandholm/potential-aware_imperfect-recall.aaai14.pdf) In AAAI.
 + 2013. Action Translation in Extensive-Form Games with Large Action Spaces: Axioms, Paradoxes, and the Pseudo-Harmonic Mapping. (http://www.cs.cmu.edu/~sandholm/reverse%20mapping.ijcai13.pdf) In IJCAI.
 + 2013. A Fast and Optimal Hand Isomorphism Algorithm. (https://www.cs.cmu.edu/~waugh/publications/isomorphism13.pdf). In AAAI.
   2012. Lossy Stochastic Game Abstraction with Bounds. (http://www.cs.cmu.edu/~sandholm/lossyStochasticGameAbstractionWBounds.ec12.pdf) In EC.
