@@ -14,7 +14,7 @@ use crate::cfr::types::counterfactual::Counterfactual;
 /// 2) computing Counterfactual vectors at each InfoSet
 /// 3) updating the Profile after each Counterfactual batch
 /// 4) [optional] apply Discount scheduling to updates
-pub trait Trainer: Send + Sync {
+pub trait Blueprint: Send + Sync {
     type T: Turn;
     type E: Edge;
     type G: Game<E = Self::E, T = Self::T>;
@@ -22,12 +22,24 @@ pub trait Trainer: Send + Sync {
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
+    /// Trains the model by running counterfactual regret minimization iterations.
+    /// This is the main training loop that drives strategy optimization.
     fn train();
 
+    /// Returns the number of trees to process in each training batch.
+    /// Batching allows for more efficient parallel processing of game trees.
     fn batch_size() -> usize;
+
+    /// Returns the total number of game trees to generate and process during training.
+    /// More trees generally leads to better strategy convergence.
     fn tree_count() -> usize;
 
+    /// Returns a reference to the encoder used for converting game states to information sets.
+    /// The encoder handles abstraction of game states into trainable buckets.
     fn encoder(&self) -> &Self::S;
+
+    /// Returns a reference to the strategy profile being trained.
+    /// The profile tracks accumulated regrets and policies that define the strategy.
     fn profile(&self) -> &Self::P;
 
     /// Advances the trainer state to the next iteration
@@ -35,15 +47,11 @@ pub trait Trainer: Send + Sync {
 
     /// Returns a mutable reference to the accumulated regret value for the given infoset/edge pair.
     /// This allows updating the historical regret values that drive strategy updates.
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
+    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
     /// Returns a mutable reference to the accumulated policy weight for the given infoset/edge pair.
     /// This allows updating the historical action weights that determine the final strategy.
-    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-
-    fn iterations() -> usize {
-        Self::tree_count() / Self::batch_size()
-    }
+    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
     /// Updates trainer state based on regret vectors from Profile.
     fn solve(mut self) -> Self
@@ -66,9 +74,9 @@ pub trait Trainer: Send + Sync {
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
         let ref info = cfr.0.clone();
         for (edge, regret) in cfr.1.iter() {
-            let discount = self.discount(Some(self.profile().regret(info, edge)));
-            *self.regret(info, edge) *= discount;
-            *self.regret(info, edge) += regret;
+            let discount = self.discount(Some(self.profile().sum_regret(info, edge)));
+            *self.mut_regret(info, edge) *= discount;
+            *self.mut_regret(info, edge) += regret;
         }
     }
 
@@ -77,8 +85,8 @@ pub trait Trainer: Send + Sync {
         let ref info = cfr.0.clone();
         for (edge, policy) in cfr.2.iter() {
             let discount = self.discount(None);
-            *self.policy(info, edge) *= discount;
-            *self.policy(info, edge) += policy;
+            *self.mut_policy(info, edge) *= discount;
+            *self.mut_policy(info, edge) += policy;
         }
     }
 
@@ -123,7 +131,7 @@ pub trait Trainer: Send + Sync {
     fn tree(&self) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let mut todo = Vec::new();
         let mut tree = Tree::default();
-        let root = Self::G::root();
+        let root = self.root();
         let info = self.encoder().seed(&root);
         let node = tree.seed(info, root);
         let children = self.encoder().branches(&node);
@@ -151,6 +159,22 @@ pub trait Trainer: Send + Sync {
             self.profile().regret_vector(infoset),
             self.profile().policy_vector(infoset),
         )
+    }
+
+    /// Returns the root node of the game.
+    /// This is the starting point for tree generation.
+    ///
+    /// we currently require that root generation is
+    /// from Self::G, but that could relax to reference &self: Trainer
+    fn root(&self) -> Self::G {
+        Self::G::root()
+    }
+
+    /// Returns the number of iterations to run the training loop.
+    /// This is calculated as the total number of trees to generate
+    /// divided by the batch size.
+    fn iterations() -> usize {
+        Self::tree_count() / Self::batch_size()
     }
 
     // discount parameterization

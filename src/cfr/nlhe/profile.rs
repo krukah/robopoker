@@ -1,57 +1,17 @@
+use super::edge::Edge;
+use super::game::Game;
+use super::info::Info;
+use super::turn::Turn;
 use crate::cards::street::Street;
-use crate::cfr::nlhe::edge::Edge;
-use crate::cfr::nlhe::game::Game;
-use crate::cfr::nlhe::info::Info;
-use crate::cfr::nlhe::turn::Turn;
 use std::collections::BTreeMap;
-
-type Node<'a> = crate::cfr::structs::node::Node<'a, Turn, Edge, Game, Info>;
-type Branch = crate::cfr::types::branch::Branch<Edge, Game>;
 
 #[derive(Default)]
 pub struct Profile {
-    iterations: usize,
-    encounters: BTreeMap<Info, BTreeMap<Edge, (crate::Probability, crate::Utility)>>,
+    pub(super) iterations: usize,
+    pub(super) encounters: BTreeMap<Info, BTreeMap<Edge, (crate::Probability, crate::Utility)>>,
 }
 
 impl Profile {
-    pub fn at(&mut self, info: Info, edge: Edge) -> &mut (crate::Probability, crate::Utility) {
-        self.encounters
-            .entry(info)
-            .or_insert_with(BTreeMap::default)
-            .entry(edge)
-            .or_insert_with(|| (0., 0.))
-    }
-    /// uniform sampling of chance Edge
-    fn explore_any(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
-        use crate::cfr::traits::profile::Profile;
-        use rand::Rng;
-        let n = choices.len();
-        let mut choices = choices;
-        let ref mut rng = self.rng(head.info());
-        let choice = rng.gen_range(0..n);
-        let chosen = choices.remove(choice);
-        vec![chosen]
-    }
-    /// Profile-weighted sampling of opponent Edge
-    fn explore_one(&self, choices: Vec<Branch>, head: &Node) -> Vec<Branch> {
-        use crate::cfr::traits::profile::Profile;
-        use rand::distributions::WeightedIndex;
-        use rand::prelude::Distribution;
-        let ref info = head.info();
-        let ref mut rng = self.rng(info);
-        let mut choices = choices;
-        let policy = choices
-            .iter()
-            .map(|(edge, _, _)| self.policy(info, edge))
-            .collect::<Vec<_>>();
-        let choice = WeightedIndex::new(policy)
-            .expect("at least one policy > 0")
-            .sample(rng);
-        let chosen = choices.remove(choice);
-        vec![chosen]
-    }
-
     fn name() -> String {
         "blueprint".to_string()
     }
@@ -76,32 +36,19 @@ impl crate::cfr::traits::profile::Profile for Profile {
     fn epochs(&self) -> usize {
         self.iterations
     }
-    fn weight(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+    fn sum_policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))
             .map(|(w, _)| *w)
             .unwrap_or_default()
     }
-    fn regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+    fn sum_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
         self.encounters
             .get(info)
             .and_then(|memory| memory.get(edge))
             .map(|(_, r)| *r)
             .unwrap_or_default()
-    }
-    fn explore(&self, node: &Node, branches: Vec<Branch>) -> Vec<Branch> {
-        let n = branches.len();
-        let p = node.game().turn();
-        let walker = self.walker();
-        let chance = Turn::Chance;
-        match (n, p) {
-            (0, _) => branches,
-            (_, p) if p == walker => branches,
-            (_, p) if p == chance => self.explore_any(branches, node),
-            (_, p) if p != walker => self.explore_one(branches, node),
-            _ => panic!("at the disco"),
-        }
     }
 }
 

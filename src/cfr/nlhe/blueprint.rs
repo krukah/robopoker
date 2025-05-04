@@ -1,7 +1,8 @@
+use crate::cfr::traits::blueprint::Blueprint;
 use crate::cfr::traits::profile::Profile;
-use crate::cfr::traits::trainer::Trainer;
+use std::collections::BTreeMap;
 
-impl Trainer for super::solver::NLHE {
+impl Blueprint for super::solver::NLHE {
     type T = super::turn::Turn;
     type E = super::edge::Edge;
     type G = super::game::Game;
@@ -38,10 +39,24 @@ impl Trainer for super::solver::NLHE {
     fn profile(&self) -> &Self::P {
         &self.profile
     }
-    fn policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
-        &mut self.profile.at(info.clone(), edge.clone()).0
+    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+        &mut self
+            .profile
+            .encounters
+            .entry(*info)
+            .or_insert_with(BTreeMap::default)
+            .entry(*edge)
+            .or_insert_with(|| (0., 0.))
+            .0
     }
-    fn regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
-        &mut self.profile.at(info.clone(), edge.clone()).1
+    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32 {
+        &mut self
+            .profile
+            .encounters
+            .entry(*info)
+            .or_insert_with(BTreeMap::default)
+            .entry(*edge)
+            .or_insert_with(|| (0., 0.))
+            .1
     }
 }
