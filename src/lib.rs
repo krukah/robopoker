@@ -152,12 +152,11 @@ pub fn interrupts() {
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
         println!();
-        log::warn!("Ctrl+C received, exiting immediately");
+        log::warn!("violent interrupt received, exiting immediately");
         std::process::exit(0);
     });
     // handle 'q' input for graceful interrupt
     std::thread::spawn(|| {
-        log::info!("training started. type 'Q + Enter' to gracefully interrupt.");
         let ref mut buffer = String::new();
         loop {
             buffer.clear();
