@@ -61,6 +61,7 @@ pub trait Blueprint: Send + Sync {
     where
         Self: Sized,
     {
+        log::info!("type 'Q + Enter' to gracefully interrupt training loop");
         'training: for _ in 0..Self::iterations() {
             for ref update in self.batch() {
                 self.update_regret(update);
@@ -77,6 +78,7 @@ pub trait Blueprint: Send + Sync {
     fn interrupted(&mut self) -> bool {
         if INTERRUPTED.load(std::sync::atomic::Ordering::Relaxed) {
             let t = self.profile().epochs();
+            println!();
             log::warn!("training interrupted @ {}", t);
             true
         } else {
