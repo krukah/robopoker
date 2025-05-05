@@ -18,6 +18,10 @@ pub use gameplay::*;
 pub use mccfr::*;
 pub use transport::*;
 pub use wasm::*;
+
+#[cfg(feature = "native")]
+static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// dimensional analysis types
 type Chips = i16;
 type Equity = f32;
@@ -53,7 +57,7 @@ const CFR_TREE_COUNT_RPS: usize = 8192;
 
 // nlhe mccfr parameters
 const CFR_BATCH_SIZE_NLHE: usize = 64;
-const CFR_TREE_COUNT_NLHE: usize = 0x10000;
+const CFR_TREE_COUNT_NLHE: usize = 0x1000000;
 
 /// profile average sampling parameters
 const SAMPLING_THRESHOLD: Entropy = 1.0;
@@ -74,7 +78,7 @@ pub struct Args {
     pub cluster: bool,
     /// Run the MCCFR training
     #[arg(long)]
-    pub solve: bool,
+    pub trainer: bool,
     /// Publish results to the database
     #[arg(long)]
     pub publish: bool,
@@ -100,15 +104,9 @@ pub fn progress(n: usize) -> indicatif::ProgressBar {
     progress
 }
 
-/// initialize logging and exit on ctrl-c
+/// initialize logging and setup graceful interrupt listener
 #[cfg(feature = "native")]
-pub fn init() {
-    tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.unwrap();
-        println!();
-        log::warn!("forcing exit");
-        std::process::exit(0);
-    });
+pub fn logs() {
     std::fs::create_dir_all("logs").expect("create logs directory");
     let config = simplelog::ConfigBuilder::new()
         .set_location_level(log::LevelFilter::Off)
@@ -144,4 +142,32 @@ pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
         .expect("database connection failed");
     tokio::spawn(connection);
     std::sync::Arc::new(client)
+}
+
+#[cfg(feature = "native")]
+/// keyboard interruption for training
+/// spawn a thread to listen for 'q' input to gracefully interrupt training
+pub fn interrupts() {
+    // handle ctrl+c for immediate exit
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.unwrap();
+        println!();
+        log::warn!("Ctrl+C received, exiting immediately");
+        std::process::exit(0);
+    });
+    // handle 'q' input for graceful interrupt
+    std::thread::spawn(|| {
+        log::info!("training started. type 'Q + Enter' to gracefully interrupt.");
+        let ref mut buffer = String::new();
+        loop {
+            buffer.clear();
+            if let Ok(_) = std::io::stdin().read_line(buffer) {
+                if buffer.trim().to_uppercase() == "Q" {
+                    log::warn!("graceful interrupt requested, finishing current batch...");
+                    INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);
+                    break;
+                }
+            }
+        }
+    });
 }

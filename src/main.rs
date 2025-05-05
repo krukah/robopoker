@@ -3,17 +3,19 @@ use robopoker::*;
 
 #[tokio::main]
 async fn main() {
-    crate::init();
-    if crate::Args::parse().cluster {
+    crate::logs();
+    crate::interrupts();
+    let ref arguments = crate::Args::parse();
+    if arguments.cluster {
         crate::clustering::Layer::learn();
     }
-    if crate::Args::parse().solve {
+    if arguments.trainer {
         crate::mccfr::NLHE::train();
     }
-    if crate::Args::parse().publish {
+    if arguments.publish {
         crate::save::Writer::publish().await.unwrap();
     }
-    if crate::Args::parse().analyze {
+    if arguments.analyze {
         crate::analysis::Server::run().await.unwrap();
     }
 }
