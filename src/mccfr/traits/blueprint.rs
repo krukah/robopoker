@@ -8,6 +8,9 @@ use crate::mccfr::structs::infoset::InfoSet;
 use crate::mccfr::structs::tree::Tree;
 use crate::mccfr::types::counterfactual::Counterfactual;
 
+#[cfg(feature = "native")]
+use crate::INTERRUPTED;
+
 /// given access to a Profile and Encoder,
 /// we enapsulate the process of
 /// 1) sampling Trees
@@ -58,16 +61,28 @@ pub trait Blueprint: Send + Sync {
     where
         Self: Sized,
     {
-        let t = Self::iterations();
-        log::info!("beginning training loop ({})", t);
-        for _ in 0..t {
+        'training: for _ in 0..Self::iterations() {
             for ref update in self.batch() {
                 self.update_regret(update);
                 self.update_weight(update);
             }
-            self.advance();
+            if self.interrupted() {
+                break 'training;
+            }
         }
         self
+    }
+
+    /// handles interrupt for training process
+    fn interrupted(&mut self) -> bool {
+        if INTERRUPTED.load(std::sync::atomic::Ordering::Relaxed) {
+            let t = self.profile().epochs();
+            log::warn!("training interrupted @ {}", t);
+            true
+        } else {
+            self.advance();
+            false
+        }
     }
 
     /// Updates accumulated regret values for each edge in the counterfactual.
