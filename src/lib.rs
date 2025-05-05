@@ -10,6 +10,7 @@ pub mod clustering;
 pub mod gameplay;
 pub mod mccfr;
 pub mod search;
+pub mod translate_action;
 pub mod transport;
 pub mod wasm;
 
