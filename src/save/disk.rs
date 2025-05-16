@@ -15,9 +15,9 @@ pub trait Disk {
     fn load(street: Street) -> Self;
     /// write to disk
     fn save(&self);
-    /// path to file on disk
-    fn path(street: Street) -> String {
-        format!(
+    /// path to file on disk, which will exist after this is called
+    fn path(street: Street) -> std::path::PathBuf {
+        let ref path = format!(
             "{}/pgcopy/{}.{}",
             std::env::current_dir()
                 .unwrap_or_default()
@@ -25,7 +25,9 @@ pub trait Disk {
                 .into_owned(),
             Self::name(),
             street
-        )
+        );
+        std::path::Path::new(path).parent().map(std::fs::create_dir);
+        std::path::PathBuf::from(path)
     }
     /// check if file exists on disk
     fn done(street: Street) -> bool {

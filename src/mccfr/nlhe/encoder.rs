@@ -119,7 +119,7 @@ impl crate::save::upload::Table for Encoder {
             tokio_postgres::types::Type::INT8,
         ]
     }
-    fn sources() -> Vec<String> {
+    fn sources() -> Vec<std::path::PathBuf> {
         use crate::save::disk::Disk;
         Street::all()
             .iter()
