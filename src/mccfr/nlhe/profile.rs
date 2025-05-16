@@ -158,10 +158,10 @@ impl crate::save::disk::Disk for Profile {
                     let choices = Path::from(reader.read_u64::<BE>().expect("choices"));
                     reader.read_u32::<BE>().expect("edge length");
                     let edge = Edge::from(reader.read_u64::<BE>().expect("read edge"));
-                    reader.read_u32::<BE>().expect("regret length");
-                    let regret = reader.read_f32::<BE>().expect("read regret");
                     reader.read_u32::<BE>().expect("policy length");
                     let policy = reader.read_f32::<BE>().expect("read policy");
+                    reader.read_u32::<BE>().expect("regret length");
+                    let regret = reader.read_f32::<BE>().expect("read regret");
                     let bucket = Info::from((history, present, choices));
                     encounters
                         .entry(bucket)
@@ -201,9 +201,9 @@ impl crate::save::disk::Disk for Profile {
                 file.write_u32::<BE>(size_of::<u64>() as u32).unwrap();
                 file.write_u64::<BE>(u64::from(edge.clone())).unwrap();
                 file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-                file.write_f32::<BE>(memory.1).unwrap();
-                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
                 file.write_f32::<BE>(memory.0).unwrap();
+                file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
+                file.write_f32::<BE>(memory.1).unwrap();
             }
         }
         file.write_u16::<BE>(Self::footer()).expect("trailer");
