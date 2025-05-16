@@ -161,6 +161,7 @@ impl Game {
     }
 }
 
+#[allow(dead_code)]
 /// mutating methods modify game state privately
 /// such that we enforce NLHE invariants irrespective
 /// of caller behavior
