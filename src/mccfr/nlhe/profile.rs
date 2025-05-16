@@ -67,7 +67,7 @@ impl crate::save::upload::Table for Profile {
             tokio_postgres::types::Type::FLOAT4,
         ]
     }
-    fn sources() -> Vec<String> {
+    fn sources() -> Vec<std::path::PathBuf> {
         use crate::save::disk::Disk;
         use crate::Arbitrary;
         vec![Self::path(Street::random())]
@@ -118,19 +118,21 @@ impl crate::save::disk::Disk for Profile {
     fn grow(_: Street) -> Self {
         unreachable!("must be learned in MCCFR minimization")
     }
-    fn path(_: Street) -> String {
-        format!(
+    fn path(_: Street) -> std::path::PathBuf {
+        let ref path = format!(
             "{}/pgcopy/{}",
             std::env::current_dir()
                 .unwrap_or_default()
                 .to_string_lossy()
                 .into_owned(),
             Self::name()
-        )
+        );
+        std::path::Path::new(path).parent().map(std::fs::create_dir);
+        std::path::PathBuf::from(path)
     }
     fn load(_: Street) -> Self {
         let ref path = Self::path(Street::random());
-        log::info!("{:<32}{:<32}", "loading     blueprint", path);
+        log::info!("{:<32}{:<32}", "loading     blueprint", path.display());
         use crate::clustering::abstraction::Abstraction;
         use crate::gameplay::path::Path;
         use crate::mccfr::nlhe::info::Info;
@@ -181,13 +183,13 @@ impl crate::save::disk::Disk for Profile {
     fn save(&self) {
         const N_FIELDS: u16 = 6;
         let ref path = Self::path(Street::random());
-        let ref mut file = File::create(path).expect(&format!("touch {}", path));
+        let ref mut file = File::create(path).expect(&format!("touch {}", path.display()));
         use crate::Arbitrary;
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        log::info!("{:<32}{:<32}", "saving      blueprint", path);
+        log::info!("{:<32}{:<32}", "saving      blueprint", path.display());
         file.write_all(Self::header()).expect("header");
         for (bucket, strategy) in self.encounters.iter() {
             for (edge, memory) in strategy.iter() {

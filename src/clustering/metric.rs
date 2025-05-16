@@ -93,7 +93,7 @@ impl crate::save::upload::Table for Metric {
             tokio_postgres::types::Type::FLOAT4,
         ]
     }
-    fn sources() -> Vec<String> {
+    fn sources() -> Vec<std::path::PathBuf> {
         use crate::save::disk::Disk;
         Street::all()
             .iter()
@@ -139,7 +139,7 @@ impl crate::save::upload::Table for Metric {
 impl crate::save::disk::Disk for Metric {
     fn load(street: Street) -> Self {
         let ref path = Self::path(street);
-        log::info!("{:<32}{:<32}", "loading     metric", path);
+        log::info!("{:<32}{:<32}", "loading     metric", path.display());
         use byteorder::ReadBytesExt;
         use byteorder::BE;
         use std::fs::File;
@@ -147,7 +147,7 @@ impl crate::save::disk::Disk for Metric {
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
-        let ref file = File::open(path).expect(&format!("open {}", path));
+        let ref file = File::open(path).expect(&format!("open {}", path.display()));
         let mut metric = BTreeMap::new();
         let mut reader = BufReader::new(file);
         let ref mut buffer = [0u8; 2];
@@ -172,12 +172,12 @@ impl crate::save::disk::Disk for Metric {
         const N_FIELDS: u16 = 2;
         let street = self.street();
         let ref path = Self::path(street);
-        let ref mut file = File::create(path).expect(&format!("touch {}", path));
+        let ref mut file = File::create(path).expect(&format!("touch {}", path.display()));
         use byteorder::WriteBytesExt;
         use byteorder::BE;
         use std::fs::File;
         use std::io::Write;
-        log::info!("{:<32}{:<32}", "saving      metric", path);
+        log::info!("{:<32}{:<32}", "saving      metric", path.display());
         file.write_all(Self::header()).expect("header");
         for (pair, distance) in self.0.iter() {
             file.write_u16::<BE>(N_FIELDS).unwrap();

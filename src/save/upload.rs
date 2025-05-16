@@ -22,7 +22,7 @@ pub trait Table {
     /// Returns the column types for the table
     fn columns() -> &'static [Type];
     /// Returns the source file paths to load data from
-    fn sources() -> Vec<String>;
+    fn sources() -> Vec<std::path::PathBuf>;
     /// query to nuke table in Postgres
     fn truncates() -> String {
         format!(
