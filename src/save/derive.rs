@@ -1,5 +1,5 @@
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 
 /// trait for deriving database tables from other tables
 pub trait Derive: Sized {

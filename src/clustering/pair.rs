@@ -1,4 +1,4 @@
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 
 /// A unique identifier for a pair of abstractions.
 #[derive(Default, Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Debug)]

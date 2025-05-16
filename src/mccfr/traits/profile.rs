@@ -102,12 +102,11 @@ pub trait Profile {
         branches: Vec<Branch<Self::E, Self::G>>,
     ) -> Vec<Branch<Self::E, Self::G>> {
         use rand::Rng;
-        use std::ops::Not;
-        assert!(branches.is_empty().not());
+        assert!(!branches.is_empty());
         let n = branches.len();
         let mut choices = branches;
         let ref mut rng = self.rng(node.info());
-        let choice = rng.gen_range(0..n);
+        let choice = rng.random_range(0..n);
         let chosen = choices.remove(choice);
         vec![chosen]
     }
@@ -119,8 +118,8 @@ pub trait Profile {
         node: &Node<Self::T, Self::E, Self::G, Self::I>,
         branches: Vec<Branch<Self::E, Self::G>>,
     ) -> Vec<Branch<Self::E, Self::G>> {
-        use rand::distributions::WeightedIndex;
-        use rand::prelude::Distribution;
+        use rand::distr::weighted::WeightedIndex;
+        use rand::distr::Distribution;
         let ref info = node.info();
         let ref mut rng = self.rng(info);
         let mut choices = branches;

@@ -2,7 +2,7 @@ use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use std::collections::BTreeMap;
 
@@ -31,7 +31,6 @@ impl Lookup {
             .cloned()
             .expect(&format!("precomputed abstraction missing for {obs}"))
     }
-    #[cfg(feature = "native")]
     /// generate the entire space of inner layers
     pub fn projections(&self) -> Vec<Histogram> {
         use rayon::iter::IntoParallelIterator;

@@ -3,7 +3,7 @@ use super::query::Query;
 use crate::cards::hand::Hand;
 use crate::cards::observation::Observation;
 use crate::cards::strength::Strength;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use clap::Parser;
 use std::io::Write;
 

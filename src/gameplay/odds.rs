@@ -77,9 +77,10 @@ impl std::fmt::Display for Odds {
 
 impl Arbitrary for Odds {
     fn random() -> Self {
-        use rand::seq::SliceRandom;
+        use rand::prelude::IndexedRandom;
+        let ref mut rng = rand::rng();
         Self::GRID
-            .choose(&mut rand::thread_rng())
+            .choose(rng)
             .copied()
             .expect("GRID is empty")
     }

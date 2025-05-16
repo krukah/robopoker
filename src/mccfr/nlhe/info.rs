@@ -1,4 +1,4 @@
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::gameplay::path::Path;
 use crate::Arbitrary;
 use std::hash::Hash;

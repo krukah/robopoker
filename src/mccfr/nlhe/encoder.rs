@@ -4,8 +4,8 @@ use super::info::Info;
 use super::turn::Turn;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
 use crate::clustering::Lookup;
+use crate::gameplay::abstraction::Abstraction;
 use crate::gameplay::action::Action;
 use crate::gameplay::odds::Odds;
 use crate::gameplay::path::Path;
@@ -108,7 +108,6 @@ impl crate::mccfr::traits::encoder::Encoder for Encoder {
     }
 }
 
-#[cfg(feature = "native")]
 impl crate::save::upload::Table for Encoder {
     fn name() -> String {
         Self::name()

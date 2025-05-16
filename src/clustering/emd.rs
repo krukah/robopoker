@@ -29,8 +29,6 @@ impl EMD {
 impl Arbitrary for EMD {
     fn random() -> Self {
         // construct random metric satisfying symmetric semipositivity
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
         let p = Histogram::random();
         let q = Histogram::random();
         let r = Histogram::random();
@@ -48,7 +46,7 @@ impl Arbitrary for EMD {
                 })
                 .filter(|(x, y)| x > y)
                 .map(|(x, y)| Pair::from((x, y)))
-                .map(|paired| (paired, rng.gen::<f32>()))
+                .map(|paired| (paired, rand::random::<f32>()))
                 .collect::<BTreeMap<_, _>>(),
         );
         Self(m, p, q, r)

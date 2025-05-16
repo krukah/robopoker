@@ -1,18 +1,10 @@
-#![allow(dead_code)]
-
 use super::action::Action;
 use super::seat::Seat;
 use super::seat::State;
 use super::settlement::Settlement;
 use super::showdown::Showdown;
 use super::turn::Turn;
-use crate::cards::board::Board;
-use crate::cards::deck::Deck;
-use crate::cards::hand::Hand;
-use crate::cards::hole::Hole;
-use crate::cards::observation::Observation;
-use crate::cards::street::Street;
-use crate::cards::strength::Strength;
+use crate::cards::*;
 use crate::Chips;
 use crate::N;
 use crate::STACK;
@@ -443,7 +435,7 @@ impl Game {
         let mut removed = Hand::from(self.board);
         for seat in self.seats.iter() {
             let hole = Hand::from(seat.cards());
-            removed = Hand::add(removed, hole);
+            removed = Hand::or(removed, hole);
         }
         Deck::from(removed.complement())
     }
@@ -550,6 +542,7 @@ impl Game {
     }
 }
 
+#[cfg(feature = "native")]
 impl crate::mccfr::traits::game::Game for Game {
     type E = crate::gameplay::edge::Edge;
     type T = crate::gameplay::turn::Turn;
@@ -576,14 +569,14 @@ impl std::fmt::Display for Game {
         for seat in self.seats.iter() {
             write!(f, "{}{:<6}", seat.state(), seat.stack())?;
         }
+        #[cfg(not(feature = "native"))]
+        {
+            write!(f, "{}", string)
+        }
         #[cfg(feature = "native")]
         {
             use colored::Colorize;
             write!(f, "{}", string.bright_green())
-        }
-        #[cfg(not(feature = "native"))]
-        {
-            write!(f, "{}", string)
         }
     }
 }

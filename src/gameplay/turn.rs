@@ -14,6 +14,7 @@ impl Turn {
     }
 }
 
+#[cfg(feature = "native")]
 impl crate::mccfr::traits::turn::Turn for Turn {
     fn chance() -> Self {
         Self::Chance

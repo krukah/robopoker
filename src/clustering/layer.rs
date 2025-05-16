@@ -1,4 +1,3 @@
-use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::lookup::Lookup;
 use super::metric::Metric;
@@ -7,9 +6,8 @@ use super::transitions::Decomp;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::street::Street;
+use crate::gameplay::abstraction::Abstraction;
 use crate::Energy;
-use rand::distributions::Distribution;
-use rand::distributions::WeightedIndex;
 use std::collections::BTreeMap;
 
 type Neighbor = (usize, f32);
@@ -33,14 +31,13 @@ impl Layer {
 
     /// all-in-one entry point for learning the kmeans abstraction and
     /// writing to disk in pgcopy
-    #[cfg(feature = "native")]
     pub fn learn() {
         use crate::save::disk::Disk;
         Street::all()
             .into_iter()
             .rev()
             .filter(|&&s| Self::done(s))
-            .for_each(|_| log::info!("{:<32}{:<32}", "using kmeans layer", Self::name()));
+            .for_each(|s| log::info!("{:<32}{:<16}{:<32}", "using kmeans layer", s, Self::name()));
         Street::all()
             .into_iter()
             .rev()
@@ -50,7 +47,6 @@ impl Layer {
     }
 
     /// primary clustering algorithm loop
-    #[cfg(feature = "native")]
     fn cluster(mut self) -> Self {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
         let ref mut init = self.init();
@@ -74,8 +70,9 @@ impl Layer {
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    #[cfg(feature = "native")]
     fn init(&self) -> Vec<Histogram> /* K */ {
+        use rand::distr::weighted::WeightedIndex;
+        use rand::distr::Distribution;
         use rand::rngs::SmallRng;
         use rand::SeedableRng;
         use rayon::iter::IntoParallelRefIterator;
@@ -128,7 +125,6 @@ impl Layer {
     /// calculates the next step of the kmeans iteration by
     /// determining K * N optimal transport calculations and
     /// taking the nearest neighbor
-    #[cfg(feature = "native")]
     fn next(&self) -> Vec<Histogram> /* K */ {
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
@@ -159,7 +155,6 @@ impl Layer {
 
     /// in ObsIterator order, get a mapping of
     /// Isomorphism -> Abstraction
-    #[cfg(feature = "native")]
     fn lookup(&self) -> Lookup {
         log::info!("{:<32}{:<32}", "calculating lookup", self.street());
         use crate::save::disk::Disk;
@@ -240,7 +235,6 @@ impl Layer {
     }
 }
 
-#[cfg(feature = "native")]
 impl crate::save::disk::Disk for Layer {
     fn name() -> String {
         format!(

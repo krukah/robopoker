@@ -10,15 +10,15 @@ pub struct Human;
 
 impl Human {
     pub fn decide(game: &Game) -> Action {
-        Self::random(game)
+        Self::sample(game)
         // let ref choices = Self::available(game);
         // let choice = Self::selection(choices, game);
         // Self::choose(choices, choice, game)
     }
 
-    fn random(game: &Game) -> Action {
-        use rand::seq::SliceRandom;
-        let ref mut rng = rand::thread_rng();
+    fn sample(game: &Game) -> Action {
+        use rand::prelude::IndexedRandom;
+        let ref mut rng = rand::rng();
         game.legal()
             .choose(rng)
             .copied()

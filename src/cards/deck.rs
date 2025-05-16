@@ -2,7 +2,6 @@ use super::card::Card;
 use super::hand::Hand;
 use super::hole::Hole;
 use super::street::Street;
-use rand::Rng;
 
 /// Deck extends much of Hand functionality, with ability to remove cards from itself. Random selection via ::draw(), or sequential via ::flip().
 #[derive(Debug, Clone, Copy)]
@@ -16,13 +15,13 @@ impl Deck {
         self.0.contains(card)
     }
 
+    // #[cfg(feature = "entropy")]
     /// remove a random card from the deck.
     /// different from Hand::draw() since that removes
     /// highest card deterministically
     pub fn draw(&mut self) -> Card {
-        let ref mut rng = rand::thread_rng();
         let n = self.0.size();
-        let i = rng.gen_range(0..n as u8);
+        let i = rand::random_range(0..n) as u8;
         let mut ones = 0u8;
         let mut deck = u64::from(self.0);
         let mut card = u64::from(self.0).trailing_zeros() as u8;

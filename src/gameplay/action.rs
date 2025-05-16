@@ -37,6 +37,16 @@ impl Action {
     }
 }
 
+impl Action {
+    pub fn hand(&self) -> Option<Hand> {
+        if let Action::Draw(hand) = self {
+            Some(hand.clone())
+        } else {
+            None
+        }
+    }
+}
+
 impl From<Action> for String {
     fn from(action: Action) -> Self {
         match action {

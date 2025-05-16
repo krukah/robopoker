@@ -1,7 +1,7 @@
 use super::equity::Equity;
 use super::sinkhorn::Sinkhorn;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::pair::Pair;
 use crate::transport::coupling::Coupling;
@@ -82,7 +82,6 @@ impl Metric {
     }
 }
 
-#[cfg(feature = "native")]
 impl crate::save::upload::Table for Metric {
     fn name() -> String {
         Self::name()
