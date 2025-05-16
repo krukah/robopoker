@@ -10,9 +10,9 @@ const WHEEL: u16 = 0b_1000000001111;
 const LOWEST_STRAIGHT_RANK: Rank = Rank::Five;
 
 #[cfg(feature = "shortdeck")]
-const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
-#[cfg(feature = "shortdeck")]
 const WHEEL: u16 = 0b_1000011110000;
+#[cfg(feature = "shortdeck")]
+const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
 
 /// A lazy evaluator for a hand's strength.
 ///
@@ -44,19 +44,23 @@ impl Evaluator {
             n => {
                 let hand = u16::from(self.0);
                 let mask = match value {
+                    Ranking::TwoPair(hi, lo) => !(u16::from(hi) | u16::from(lo)),
                     Ranking::HighCard(hi)
                     | Ranking::OnePair(hi)
                     | Ranking::FourOAK(hi)
                     | Ranking::ThreeOAK(hi) => !(u16::from(hi)),
-                    Ranking::TwoPair(hi, lo) => !(u16::from(hi) | u16::from(lo)),
-                    _ => unreachable!(),
+                    Ranking::FullHouse(..)
+                    | Ranking::StraightFlush(..)
+                    | Ranking::Straight(..)
+                    | Ranking::Flush(..)
+                    | Ranking::MAX => unreachable!(),
                 };
                 let mut rank = hand & mask;
                 while n < rank.count_ones() as usize {
                     let last = rank.trailing_zeros();
                     let flip = 1 << last;
                     let skip = !flip;
-                    rank = rank & skip;
+                    rank &= skip;
                 }
                 Kickers::from(rank)
             }

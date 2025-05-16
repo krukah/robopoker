@@ -2,7 +2,6 @@ use super::hand::Hand;
 use super::observation::Observation;
 use super::suit::Suit;
 use crate::Arbitrary;
-use rand::seq::SliceRandom;
 
 /// an array of 4 unique Suits represents
 /// any of the 4! = 24 elements in the Suit permutation group.
@@ -133,7 +132,8 @@ impl Permutation {
 
 impl Arbitrary for Permutation {
     fn random() -> Self {
-        let ref mut rng = rand::thread_rng();
+        use rand::prelude::IndexedRandom;
+        let ref mut rng = rand::rng();
         Self::exhaust().choose(rng).copied().unwrap()
     }
 }

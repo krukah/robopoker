@@ -1,5 +1,5 @@
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use std::collections::BTreeMap;
 use std::mem::size_of;
@@ -95,7 +95,6 @@ impl crate::save::disk::Disk for Decomp {
     }
 }
 
-#[cfg(feature = "native")]
 impl crate::save::upload::Table for Decomp {
     fn name() -> String {
         Self::name()

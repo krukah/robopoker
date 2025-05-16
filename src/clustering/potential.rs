@@ -1,5 +1,5 @@
-use super::abstraction::Abstraction;
 use super::histogram::Histogram;
+use crate::gameplay::abstraction::Abstraction;
 use crate::transport::density::Density;
 use crate::Entropy;
 use crate::Probability;

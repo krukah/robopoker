@@ -1,26 +1,24 @@
+pub mod cards;
+pub use cards::*;
+pub mod gameplay;
+pub use gameplay::*;
+pub mod transport;
+pub use transport::*;
+pub mod wasm;
+pub use wasm::*;
+
 #[cfg(feature = "native")]
 pub mod analysis;
+#[cfg(feature = "native")]
+pub mod clustering;
+#[cfg(feature = "native")]
+pub mod mccfr;
 #[cfg(feature = "native")]
 pub mod players;
 #[cfg(feature = "native")]
 pub mod save;
-
-pub mod cards;
-pub mod clustering;
-pub mod gameplay;
-pub mod mccfr;
-pub mod search;
-pub mod transport;
-pub mod wasm;
-
-pub use cards::*;
-pub use gameplay::*;
-pub use mccfr::*;
-pub use transport::*;
-pub use wasm::*;
-
 #[cfg(feature = "native")]
-static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+pub mod search;
 
 /// dimensional analysis types
 type Chips = i16;
@@ -29,6 +27,9 @@ type Energy = f32;
 type Entropy = f32;
 type Utility = f32;
 type Probability = f32;
+
+#[cfg(feature = "native")]
+static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 // game tree parameters
 const N: usize = 2;
@@ -56,8 +57,8 @@ const CFR_BATCH_SIZE_RPS: usize = 1;
 const CFR_TREE_COUNT_RPS: usize = 8192;
 
 // nlhe mccfr parameters
-const CFR_BATCH_SIZE_NLHE: usize = 64;
-const CFR_TREE_COUNT_NLHE: usize = 0x1000000;
+const CFR_BATCH_SIZE_NLHE: usize = 128;
+const CFR_TREE_COUNT_NLHE: usize = 0x10000000;
 
 /// profile average sampling parameters
 const SAMPLING_THRESHOLD: Entropy = 1.0;
@@ -67,25 +68,6 @@ const SAMPLING_EXPLORATION: Probability = 0.01;
 // regret matching parameters, although i haven't implemented regret clamp yet
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 const REGRET_MIN: Utility = -3e5;
-
-#[derive(clap::Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-#[cfg(feature = "native")]
-/// Simple program to run robopoker routines
-pub struct Args {
-    /// Run the clustering algorithm
-    #[arg(long)]
-    pub cluster: bool,
-    /// Run the MCCFR training
-    #[arg(long)]
-    pub trainer: bool,
-    /// Publish results to the database
-    #[arg(long)]
-    pub publish: bool,
-    /// Run the analysis server
-    #[arg(long)]
-    pub analyze: bool,
-}
 
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {
@@ -106,7 +88,7 @@ pub fn progress(n: usize) -> indicatif::ProgressBar {
 
 /// initialize logging and setup graceful interrupt listener
 #[cfg(feature = "native")]
-pub fn logs() {
+pub fn log() {
     std::fs::create_dir_all("logs").expect("create logs directory");
     let config = simplelog::ConfigBuilder::new()
         .set_location_level(log::LevelFilter::Off)
@@ -145,17 +127,17 @@ pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
 }
 
 #[cfg(feature = "native")]
-/// keyboard interruption for training
-/// spawn a thread to listen for 'q' input to gracefully interrupt training
-pub fn interrupts() {
-    // handle ctrl+c for immediate exit
+pub fn kys() {
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
         println!();
         log::warn!("violent interrupt received, exiting immediately");
         std::process::exit(0);
     });
-    // handle 'q' input for graceful interrupt
+}
+
+#[cfg(feature = "native")]
+pub fn brb() {
     std::thread::spawn(|| {
         let ref mut buffer = String::new();
         loop {

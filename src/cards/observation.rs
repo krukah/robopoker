@@ -60,9 +60,11 @@ impl Observation {
     pub fn public(&self) -> &Hand {
         &self.public
     }
+
+    // #[cfg(feature = "entropy")]
     fn shuffle(hand: String) -> String {
         use rand::seq::SliceRandom;
-        let ref mut rng = rand::thread_rng();
+        let ref mut rng = rand::rng();
         let mut cards = hand
             .chars()
             .collect::<Vec<char>>()

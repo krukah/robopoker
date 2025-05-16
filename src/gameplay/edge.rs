@@ -1,5 +1,5 @@
-use crate::gameplay::action::Action;
-use crate::gameplay::odds::Odds;
+use super::action::Action;
+use super::odds::Odds;
 use crate::Arbitrary;
 use crate::Chips;
 use std::hash::Hash;
@@ -14,6 +14,7 @@ pub enum Edge {
     Shove,
 }
 
+#[cfg(feature = "native")]
 impl crate::mccfr::traits::edge::Edge for Edge {}
 impl crate::transport::support::Support for Edge {}
 
@@ -157,8 +158,7 @@ mod bijection_tests {
 
 impl Arbitrary for Edge {
     fn random() -> Self {
-        use rand::Rng;
-        match rand::thread_rng().gen_range(0..6) {
+        match rand::random_range(0..6) {
             0 => Self::Draw,
             1 => Self::Fold,
             2 => Self::Check,

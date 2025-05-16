@@ -1,5 +1,3 @@
-use crate::clustering::abstraction::Abstraction;
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Street {
     Pref = 0isize,
@@ -63,12 +61,16 @@ impl Street {
 
     pub const fn n_abstractions(&self) -> usize {
         match self {
-            Self::Rive => Abstraction::size(),
-            _ => self.k(),
+            Self::Pref => self.k(),
+            Self::Flop => self.k(),
+            Self::Turn => self.k(),
+            Self::Rive => crate::KMEANS_EQTY_CLUSTER_COUNT,
         }
     }
+}
 
-    #[cfg(not(feature = "shortdeck"))]
+#[cfg(not(feature = "shortdeck"))]
+impl Street {
     pub const fn n_children(&self) -> usize {
         match self {
             Self::Pref => 19_600,
@@ -77,7 +79,7 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
-    #[cfg(not(feature = "shortdeck"))]
+
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
             Self::Pref => 0_________169,
@@ -86,7 +88,7 @@ impl Street {
             Self::Rive => 0_123_156_254,
         }
     }
-    #[cfg(not(feature = "shortdeck"))]
+
     pub const fn n_observations(&self) -> usize {
         match self {
             Self::Pref => 0_______1_326,
@@ -95,7 +97,19 @@ impl Street {
             Self::Rive => 2_809_475_760,
         }
     }
-    #[cfg(feature = "shortdeck")]
+}
+
+#[cfg(feature = "shortdeck")]
+impl Street {
+    pub const fn n_children(&self) -> usize {
+        match self {
+            Self::Pref => 5_984,
+            Self::Flop => 0__31,
+            Self::Turn => 0__30,
+            Self::Rive => panic!("terminal"),
+        }
+    }
+
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
             Self::Pref => 0__________81,
@@ -104,22 +118,13 @@ impl Street {
             Self::Rive => 0___7_723_728,
         }
     }
-    #[cfg(feature = "shortdeck")]
+
     pub const fn n_observations(&self) -> usize {
         match self {
             Self::Pref => 0_________630,
             Self::Flop => 0___3_769_920,
             Self::Turn => 0__29_216_880,
             Self::Rive => 0_175_301_280,
-        }
-    }
-    #[cfg(feature = "shortdeck")]
-    pub const fn n_children(&self) -> usize {
-        match self {
-            Self::Pref => 5_984,
-            Self::Flop => 0__31,
-            Self::Turn => 0__30,
-            Self::Rive => panic!("terminal"),
         }
     }
 }
@@ -176,7 +181,7 @@ impl std::fmt::Display for Street {
 }
 
 impl TryFrom<&str> for Street {
-    type Error = Box<dyn std::error::Error>;
+    type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.to_uppercase().chars().next() {
             Some('P') => Ok(Self::Pref),
@@ -190,8 +195,7 @@ impl TryFrom<&str> for Street {
 
 impl crate::Arbitrary for Street {
     fn random() -> Self {
-        use rand::Rng;
-        match rand::thread_rng().gen_range(0..4) {
+        match rand::random_range(0..4) {
             0 => Self::Pref,
             1 => Self::Flop,
             2 => Self::Turn,

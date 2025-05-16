@@ -22,7 +22,13 @@ pub struct NLHE {
     pub(super) profile: Profile,
 }
 
-#[cfg(feature = "native")]
+impl NLHE {
+    pub fn solve() {
+        use crate::mccfr::traits::blueprint::Blueprint;
+        Self::train();
+    }
+}
+
 impl Disk for NLHE {
     fn name() -> String {
         unimplemented!()

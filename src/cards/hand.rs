@@ -12,9 +12,13 @@ impl Hand {
         Self(0)
     }
 
+    pub fn or(lhs: Self, rhs: Self) -> Self {
+        lhs + rhs
+    }
+
     pub fn add(lhs: Self, rhs: Self) -> Self {
         assert!((lhs.0 & rhs.0) == 0);
-        Self(lhs.0 | rhs.0)
+        lhs + rhs
     }
 
     pub fn complement(&self) -> Self {
@@ -177,6 +181,13 @@ impl TryFrom<&str> for Hand {
     }
 }
 
+impl std::ops::Add<Self> for Hand {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+}
+
 impl std::fmt::Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for card in Vec::<Card>::from(*self) {
@@ -188,8 +199,7 @@ impl std::fmt::Display for Hand {
 
 impl Arbitrary for Hand {
     fn random() -> Self {
-        let ref mut rng = rand::thread_rng();
-        let cards = rand::Rng::gen::<u64>(rng);
+        let cards = rand::random::<u64>();
         let cards = cards & Self::mask();
         Self(cards)
     }

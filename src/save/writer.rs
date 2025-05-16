@@ -1,9 +1,9 @@
 use super::derive::Derive;
 use super::upload::Table;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
 use crate::clustering::metric::Metric;
 use crate::clustering::transitions::Decomp;
+use crate::gameplay::abstraction::Abstraction;
 use crate::mccfr::nlhe::encoder::Encoder;
 use crate::mccfr::nlhe::profile::Profile;
 use byteorder::ReadBytesExt;

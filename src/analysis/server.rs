@@ -1,17 +1,8 @@
 use super::api::API;
-use super::request::AbsHist;
-use super::request::GetPolicy;
-use super::request::ObsHist;
-use super::request::ReplaceAbs;
-use super::request::ReplaceAll;
-use super::request::ReplaceObs;
-use super::request::ReplaceOne;
-use super::request::ReplaceRow;
-use super::request::RowWrtObs;
-use super::request::SetStreets;
+use super::request::*;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::gameplay::action::Action;
 use crate::gameplay::recall::Recall;
 use crate::gameplay::turn::Turn;
@@ -51,7 +42,7 @@ impl Server {
                 .route("/exp-wrt-obs", web::post().to(exp_wrt_obs))
                 .route("/hst-wrt-abs", web::post().to(hst_wrt_abs))
                 .route("/hst-wrt-obs", web::post().to(hst_wrt_obs))
-                .route("/policy-lookup", web::post().to(lookup_policy))
+                .route("/blueprint", web::post().to(blueprint))
         })
         .workers(6)
         .bind("127.0.0.1:8888")?
@@ -63,7 +54,8 @@ impl Server {
 // Route handlers
 
 async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
-    match Observation::try_from(req.obs.as_str()) {
+    let obs = Observation::try_from(req.obs.as_str());
+    match obs {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
         Ok(obs) => match api.replace_obs(obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -73,7 +65,8 @@ async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Re
 }
 
 async fn exp_wrt_str(api: web::Data<API>, req: web::Json<SetStreets>) -> impl Responder {
-    match Street::try_from(req.street.as_str()) {
+    let street = Street::try_from(req.street.as_str());
+    match street {
         Err(_) => HttpResponse::BadRequest().body("invalid street format"),
         Ok(street) => match api.exp_wrt_str(street).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -82,7 +75,8 @@ async fn exp_wrt_str(api: web::Data<API>, req: web::Json<SetStreets>) -> impl Re
     }
 }
 async fn exp_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
-    match Abstraction::try_from(req.wrt.as_str()) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    match wrt {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.exp_wrt_abs(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -91,7 +85,8 @@ async fn exp_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
     }
 }
 async fn exp_wrt_obs(api: web::Data<API>, req: web::Json<RowWrtObs>) -> impl Responder {
-    match Observation::try_from(req.obs.as_str()) {
+    let obs = Observation::try_from(req.obs.as_str());
+    match obs {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
         Ok(obs) => match api.exp_wrt_obs(obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -101,7 +96,8 @@ async fn exp_wrt_obs(api: web::Data<API>, req: web::Json<RowWrtObs>) -> impl Res
 }
 
 async fn nbr_any_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
-    match Abstraction::try_from(req.wrt.as_str()) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    match wrt {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.nbr_any_wrt_abs(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -110,10 +106,9 @@ async fn nbr_any_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> imp
     }
 }
 async fn nbr_abs_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceOne>) -> impl Responder {
-    match (
-        Abstraction::try_from(req.wrt.as_str()),
-        Abstraction::try_from(req.abs.as_str()),
-    ) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    let abs = Abstraction::try_from(req.abs.as_str());
+    match (wrt, abs) {
         (Err(_), _) => HttpResponse::BadRequest().body("invalid abstraction format"),
         (_, Err(_)) => HttpResponse::BadRequest().body("invalid abstraction format"),
         (Ok(wrt), Ok(abs)) => match api.nbr_abs_wrt_abs(wrt, abs).await {
@@ -123,10 +118,9 @@ async fn nbr_abs_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceOne>) -> imp
     }
 }
 async fn nbr_obs_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> impl Responder {
-    match (
-        Abstraction::try_from(req.wrt.as_str()),
-        Observation::try_from(req.obs.as_str()),
-    ) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    let obs = Observation::try_from(req.obs.as_str());
+    match (wrt, obs) {
         (Err(_), _) => HttpResponse::BadRequest().body("invalid abstraction format"),
         (_, Err(_)) => HttpResponse::BadRequest().body("invalid observation format"),
         (Ok(abs), Ok(obs)) => match api.nbr_obs_wrt_abs(abs, obs).await {
@@ -137,7 +131,8 @@ async fn nbr_obs_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceRow>) -> imp
 }
 
 async fn kfn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
-    match Abstraction::try_from(req.wrt.as_str()) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    match wrt {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.kfn_wrt_abs(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -146,7 +141,8 @@ async fn kfn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
     }
 }
 async fn knn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Responder {
-    match Abstraction::try_from(req.wrt.as_str()) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    match wrt {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.knn_wrt_abs(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -155,7 +151,8 @@ async fn knn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAbs>) -> impl Re
     }
 }
 async fn kgn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAll>) -> impl Responder {
-    match Abstraction::try_from(req.wrt.as_str()) {
+    let wrt = Abstraction::try_from(req.wrt.as_str());
+    match wrt {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(wrt) => {
             let obs = req
@@ -177,7 +174,8 @@ async fn kgn_wrt_abs(api: web::Data<API>, req: web::Json<ReplaceAll>) -> impl Re
 }
 
 async fn hst_wrt_abs(api: web::Data<API>, req: web::Json<AbsHist>) -> impl Responder {
-    match Abstraction::try_from(req.abs.as_str()) {
+    let abs = Abstraction::try_from(req.abs.as_str());
+    match abs {
         Err(_) => HttpResponse::BadRequest().body("invalid abstraction format"),
         Ok(abs) => match api.hst_wrt_abs(abs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -187,7 +185,8 @@ async fn hst_wrt_abs(api: web::Data<API>, req: web::Json<AbsHist>) -> impl Respo
 }
 
 async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ObsHist>) -> impl Responder {
-    match Observation::try_from(req.obs.as_str()) {
+    let obs = Observation::try_from(req.obs.as_str());
+    match obs {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
         Ok(obs) => match api.hst_wrt_obs(obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -196,13 +195,14 @@ async fn hst_wrt_obs(api: web::Data<API>, req: web::Json<ObsHist>) -> impl Respo
     }
 }
 
-async fn lookup_policy(api: web::Data<API>, req: web::Json<GetPolicy>) -> impl Responder {
-    let hero = Turn::try_from(req.hero.as_str());
+async fn blueprint(api: web::Data<API>, req: web::Json<GetPolicy>) -> impl Responder {
+    let hero = Turn::try_from(req.turn.as_str());
     let seen = Observation::try_from(req.seen.as_str());
     let path = req
-        .path
+        .past
         .iter()
-        .map(|s| Action::try_from(s.as_str()))
+        .map(|string| string.as_str())
+        .map(Action::try_from)
         .collect::<Result<Vec<_>, _>>();
     match (hero, seen, path) {
         (Ok(hero), Ok(seen), Ok(path)) => {

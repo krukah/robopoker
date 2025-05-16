@@ -1,23 +1,27 @@
-use clap::Parser;
+//! RoboPoker - A No-Limit Texas Hold'em Poker AI Implementation
+//!
+//! Author: Kelechi Ukah <ukahkelechi@gmail.com>
+//! Everything you could ever ask for in a library called robopoker.
+
 use robopoker::*;
 
 #[tokio::main]
 async fn main() {
-    crate::logs();
-    crate::interrupts();
-    let ref arguments = crate::Args::parse();
-    if arguments.cluster {
-        crate::clustering::Layer::learn();
-    }
-    if arguments.trainer {
-        crate::mccfr::NLHE::train();
-    }
-    if arguments.publish {
-        crate::save::Writer::publish().await.unwrap();
-    }
-    if arguments.analyze {
-        crate::analysis::Server::run().await.unwrap();
-    }
+    crate::log();
+    crate::kys();
+    crate::brb();
+
+    #[cfg(feature = "cluster")]
+    crate::clustering::Layer::learn();
+
+    #[cfg(feature = "trainer")]
+    crate::mccfr::NLHE::solve();
+
+    #[cfg(feature = "publish")]
+    crate::save::Writer::publish().await.unwrap();
+
+    #[cfg(feature = "analyze")]
+    crate::analysis::Server::run().await.unwrap();
 }
 
 /*

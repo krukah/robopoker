@@ -1,5 +1,5 @@
 use crate::cards::observation::Observation;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::gameplay::edge::Edge;
 use crate::Probability;
 use serde::Serialize;
@@ -16,9 +16,17 @@ pub struct Sample {
 #[derive(Serialize)]
 pub struct Decision {
     pub edge: String,
-    pub prob: Probability,
+    pub mass: Probability,
 }
 
+impl Decision {
+    pub fn normalize(self, denom: Probability) -> Self {
+        Self {
+            edge: self.edge,
+            mass: self.mass / denom,
+        }
+    }
+}
 impl From<tokio_postgres::Row> for Sample {
     fn from(row: tokio_postgres::Row) -> Self {
         Self {
@@ -35,7 +43,7 @@ impl From<tokio_postgres::Row> for Decision {
     fn from(row: tokio_postgres::Row) -> Self {
         Self {
             edge: Edge::from(row.get::<_, i64>("edge") as u64).to_string(),
-            prob: Probability::from(row.get::<_, f32>("policy")),
+            mass: Probability::from(row.get::<_, f32>("policy")),
         }
     }
 }

@@ -1,8 +1,8 @@
-use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::metric::Metric;
 use super::pair::Pair;
 use super::potential::Potential;
+use crate::gameplay::abstraction::Abstraction;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Probability;

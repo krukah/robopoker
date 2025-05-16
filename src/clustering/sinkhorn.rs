@@ -1,7 +1,7 @@
-use super::abstraction::Abstraction;
 use super::histogram::Histogram;
 use super::metric::Metric;
 use super::potential::Potential;
+use crate::gameplay::abstraction::Abstraction;
 use crate::transport::coupling::Coupling;
 use crate::transport::density::Density;
 use crate::transport::measure::Measure;

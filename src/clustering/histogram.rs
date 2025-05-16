@@ -1,5 +1,5 @@
 use crate::cards::observation::Observation;
-use crate::clustering::abstraction::Abstraction;
+use crate::gameplay::abstraction::Abstraction;
 use crate::transport::density::Density;
 use crate::Arbitrary;
 use crate::Equity;

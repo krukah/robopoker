@@ -1,6 +1,5 @@
 use crate::cards::street::Street;
 
-// #[cfg(feature = "native")]
 /// for types that can be written to
 /// and loaded from disk, which is
 /// not necessarily the same as those

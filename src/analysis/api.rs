@@ -1,13 +1,15 @@
+use super::response::Decision;
 use super::response::Sample;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::clustering::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::metric::Metric;
 use crate::clustering::pair::Pair;
 use crate::clustering::sinkhorn::Sinkhorn;
+use crate::gameplay::abstraction::Abstraction;
 use crate::gameplay::path::Path;
+use crate::gameplay::recall::Recall;
 use crate::transport::coupling::Coupling;
 use crate::Energy;
 use crate::Probability;
@@ -25,12 +27,15 @@ impl From<Arc<Client>> for API {
     }
 }
 
+// constructor
 impl API {
     pub async fn new() -> Self {
         Self(crate::db().await)
     }
+}
 
-    // global lookups
+// global lookups
+impl API {
     pub async fn obs_to_abs(&self, obs: Observation) -> Result<Abstraction, E> {
         let iso = i64::from(Isomorphism::from(obs));
         const SQL: &'static str = r#"
@@ -87,8 +92,10 @@ impl API {
             .map(Abstraction::from)
             .collect())
     }
+}
 
-    // equity calculations
+// equity calculations
+impl API {
     pub async fn abs_equity(&self, abs: Abstraction) -> Result<Probability, E> {
         let iso = i64::from(abs);
         const SQL: &'static str = r#"
@@ -127,8 +134,10 @@ impl API {
             .get::<_, f32>(0)
             .into())
     }
+}
 
-    // distance calculations
+// distance calculations
+impl API {
     pub async fn abs_distance(&self, abs1: Abstraction, abs2: Abstraction) -> Result<Energy, E> {
         if abs1.street() != abs2.street() {
             return Err(E::__private_api_timeout());
@@ -155,8 +164,10 @@ impl API {
         )?;
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
+}
 
-    // population lookups
+// population lookups
+impl API {
     pub async fn abs_population(&self, abs: Abstraction) -> Result<usize, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
@@ -176,8 +187,10 @@ impl API {
         "#;
         Ok(self.0.query_one(SQL, &[&iso]).await?.get::<_, i64>(0) as usize)
     }
+}
 
-    // centrality (mean distance) lookups
+// centrality (mean distance) lookups
+impl API {
     pub async fn abs_centrality(&self, abs: Abstraction) -> Result<Probability, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
@@ -207,8 +220,10 @@ impl API {
             .get::<_, f32>(0)
             .into())
     }
+}
 
-    // histogram aggregation via join
+// histogram aggregation via join
+impl API {
     pub async fn abs_histogram(&self, abs: Abstraction) -> Result<Histogram, E> {
         let idx = i64::from(abs);
         let mass = abs.street().n_children() as f32;
@@ -253,8 +268,10 @@ impl API {
                 h
             }))
     }
+}
 
-    // observation similarity lookups
+// observation similarity lookups
+impl API {
     pub async fn obs_similar(&self, obs: Observation) -> Result<Vec<Observation>, E> {
         let iso = i64::from(Isomorphism::from(obs));
         const SQL: &'static str = r#"
@@ -327,8 +344,10 @@ impl API {
         let row = self.0.query_one(SQL, &[&iso]).await?;
         Ok(Observation::from(row.get::<_, i64>(0)))
     }
+}
 
-    // proximity lookups
+// proximity lookups
+impl API {
     pub async fn abs_nearby(&self, abs: Abstraction) -> Result<Vec<(Abstraction, Energy)>, E> {
         let abs = i64::from(abs);
         const SQL: &'static str = r#"
@@ -438,15 +457,15 @@ impl API {
 impl API {
     pub async fn nbr_any_wrt_abs(&self, wrt: Abstraction) -> Result<Sample, E> {
         // uniform over abstraction space
-        use rand::seq::SliceRandom;
-        let ref mut rng = rand::thread_rng();
+        use rand::prelude::IndexedRandom;
+        let ref mut rng = rand::rng();
         let abs = Abstraction::all(wrt.street())
             .into_iter()
             .filter(|&x| x != wrt)
             .collect::<Vec<_>>()
             .choose(rng)
             .copied()
-            .unwrap();
+            .expect("more than one abstraction option");
         self.nbr_abs_wrt_abs(wrt, abs).await
     }
     pub async fn nbr_abs_wrt_abs(&self, wrt: Abstraction, abs: Abstraction) -> Result<Sample, E> {
@@ -516,7 +535,10 @@ impl API {
         let row = self.0.query_one(SQL, &[&iso, &n, &wrt]).await?;
         Ok(Sample::from(row))
     }
+}
 
+// k-nearest neighbors lookups
+impl API {
     pub async fn kfn_wrt_abs(&self, wrt: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
                 -- KNN WRT ABS
@@ -626,7 +648,7 @@ impl API {
     }
 }
 
-// distribution lookups
+// histogram lookups
 impl API {
     pub async fn hst_wrt_obs(&self, obs: Observation) -> Result<Vec<Sample>, E> {
         if obs.street() == Street::Rive {
@@ -642,7 +664,6 @@ impl API {
             self.hst_wrt_abs_on_other(abs).await
         }
     }
-
     async fn hst_wrt_obs_on_river(&self, obs: Observation) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- RIVER OBS DISTRIBUTION
@@ -672,7 +693,6 @@ impl API {
         let rows = self.0.query(SQL, &[&n, &iso]).await?;
         Ok(rows.into_iter().map(Sample::from).collect())
     }
-
     async fn hst_wrt_obs_on_other(&self, obs: Observation) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
         -- OTHER OBS DISTRIBUTION
@@ -728,7 +748,6 @@ impl API {
             .collect::<Vec<_>>();
         Ok(hist)
     }
-
     async fn hst_wrt_abs_on_river(&self, abs: Abstraction) -> Result<Vec<Sample>, E> {
         const SQL: &'static str = r#"
             -- RIVER ABS DISTRIBUTION
@@ -795,17 +814,17 @@ impl API {
     }
 }
 
-use crate::analysis::response::Decision;
-use crate::gameplay::recall::Recall;
-
 // blueprint lookups
 impl API {
     pub async fn policy(&self, recall: Recall) -> Result<Vec<Decision>, E> {
+        if !recall.consistent() {
+            return Err(E::__private_api_timeout());
+        }
+        use crate::mccfr::nlhe::encoder::Encoder;
         const SQL: &'static str = r#"
         -- policy is indexed by present, past, future
         -- and it returns a vector of decision probabilities
         -- over the set of "choices" we can continue toward
-
             SELECT edge, policy
             FROM blueprint
             WHERE past    = $1
@@ -813,15 +832,22 @@ impl API {
             AND   future  = $3
         "#;
         let ref game = recall.head();
-        let observation = game.sweat();
-        let abstraction = self.obs_to_abs(observation).await?;
         let history = recall.path();
-        let present = abstraction;
-        let futures = Path::from(crate::mccfr::nlhe::encoder::Encoder::choices(game, 0));
+        let present = self.obs_to_abs(game.sweat()).await?;
+        let futures = Path::from(Encoder::choices(game, history.raises()));
         let ref history = i64::from(history);
         let ref present = i64::from(present);
         let ref futures = i64::from(futures);
         let rows = self.0.query(SQL, &[history, present, futures]).await?;
-        Ok(rows.into_iter().map(Decision::from).collect())
+        let decisions = rows.into_iter().map(Decision::from).collect::<Vec<_>>();
+        let denominator = decisions.iter().map(|d| d.mass).sum::<Probability>();
+        if denominator == 0. {
+            Err(E::__private_api_timeout()) // it's so silly i keep doing this, need anyhow
+        } else {
+            Ok(decisions
+                .into_iter()
+                .map(|d| d.normalize(denominator))
+                .collect::<Vec<_>>())
+        }
     }
 }
