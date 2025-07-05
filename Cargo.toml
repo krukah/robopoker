@@ -83,3 +83,11 @@ analyze  = ["native"]
 
 # Optional game variants
 shortdeck = []
+
+# Enable WIP functionality
+kmeans-accel = [] # Use Triangle Inequality-based acceleration in clustering
+
+kmeans-compute-nonfree-rms  = []    # Compute RMS at each step of kmeans
+                                    # clustering even when it's not strictly
+                                    # necessary to perform clustering.
+

@@ -89,10 +89,7 @@ impl Layer {
         }
         let t = self.street().t();
 
-        // TODO: Replace this with something less hacky + controllable
-        // programmatically from outside of this function.
-        let triangle_accelerate_todo_replaceme = true;
-        if !triangle_accelerate_todo_replaceme {
+        if !cfg!(feature = "kmeans-accel") {
             log::info!(
                 "{:<32}{:<32}",
                 "clustering kmeans (unaccelerated)",
@@ -304,9 +301,6 @@ impl Layer {
         use rayon::iter::ParallelIterator;
 
         let k = self.street().k();
-
-        // TODO start tracking loss like in the other approach!
-        // let mut loss = 0f32;
 
         // TODO: refactor / start using some things like this
         // let n = self.points().len();
@@ -558,8 +552,7 @@ impl Layer {
             })
             .collect();
 
-        let perform_extra_loss_calculations = true;
-        if perform_extra_loss_calculations {
+        if cfg!(feature = "kmeans-compute-nonfree-rms") {
             log::debug!(
                 "Performing {} otherwise-unnecessary emd computations to
                  calculate RMS error. This may slow down step 4!",
@@ -586,7 +579,7 @@ impl Layer {
             }
             let next_centroid = mean_of_assigned_points;
 
-            if perform_extra_loss_calculations {
+            if cfg!(feature = "kmeans-compute-nonfree-rms") {
                 // NOTE: Calculating the error with the OLD center (to ensure
                 // that this is consistent with the unaccelerated algorithm).
                 let old_centroid = &(self.kmeans()[centroid_i]);
@@ -611,7 +604,7 @@ impl Layer {
 
             new_centroids.push(next_centroid);
         }
-        if perform_extra_loss_calculations {
+        if cfg!(feature = "kmeans-compute-nonfree-rms") {
             log::debug!(
                 "{:<32}{:<32}",
                 "abstraction cluster RMS error",
