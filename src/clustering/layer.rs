@@ -12,6 +12,7 @@ use indicatif::ProgressIterator;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::SystemTime;
 
 type Neighbor = (usize, f32);
 
@@ -26,12 +27,12 @@ pub struct Layer {
 // in self.points. See Elkan 2003 for more details.
 //
 // Used to accelerate k-means clustering via the paper's Triangle Inequality
-// (abrv. 'TI' here) based optimized algorithm.
+// (abrv. 'TriIneq' here) based optimized algorithm.
 //
 // NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
 // field to help lookup the currently assigned centroid for the point).
 #[derive(Debug, Clone)]
-struct TIBounds {
+struct TriIneqBounds {
     // The index into self.kmeans for the currently assigned centroid "nearest
     // neighbor" (i.e. c(x) in the paper) for this specifed point.
     assigned_centroid_idx: usize,
@@ -76,83 +77,113 @@ impl Layer {
             .count();
     }
 
-    /// primary clustering algorithm loop
     fn cluster(mut self) -> Self {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
         let ref mut init = self.init();
         let ref mut last = self.kmeans;
         std::mem::swap(init, last);
+
         let k = self.street().k();
         if k == 0 {
             return self;
         }
-        log::info!("{:<32}{:<32}", "clustering  kmeans", self.street());
         let t = self.street().t();
 
-        log::debug!("Initializing helpers for triangle-inequality (TI) accelerated of clustering");
-        // """
-        // First, pick initial centers. Set the lower bound l(x,c) for each point x
-        // and center c. Assign each x to its closest initial center c(x) =
-        // argmin_c d(x,c), using Lemma 1 to avoid redundant distance
-        // calculations. Each time d(x,c) is computed, set l(x,c) = d(x,c). Assign
-        // upper bounds u(x) = min_c d(x,c).
-        // """
-        let ti_helpers: Vec<TIBounds> = self
-            .create_centroids_ti_accl()
-            .iter()
-            .map(|nearest_neighbor| TIBounds {
-                // "c(x)"'s index in self.kmeans()
-                assigned_centroid_idx: nearest_neighbor.0,
-                // "l(x,c)"
-                // "Set the lower bound l(x,c) = 0 for each point x and center c"
-                lower_bounds: vec![0.0; self.street().k()],
-                // "u(x)"
-                // "Assign upper bounds u(x) = min_c d(x,c)" (which by
-                //  definition is the distance of the nearest neighbor at
-                //  this point)
-                upper_bound: nearest_neighbor.1,
-                // "r(x)"
-                // (Not explicitly mentioned during the pre-step. But, we know that
-                // when starting out we literally _just_computed all the distances,
-                // so it should theoretically be safe to leave 'false' here.)
-                stale_upper_bound: false,
-            })
-            .collect::<Vec<_>>();
-        log::debug!("Completed TI helper initialization.");
+        // TODO: Replace this with something less hacky + controllable
+        // programmatically from outside of this function.
+        let triangle_accelerate_todo_replaceme = true;
+        if !triangle_accelerate_todo_replaceme {
+            log::info!(
+                "{:<32}{:<32}",
+                "clustering kmeans (unaccelerated)",
+                self.street()
+            );
+            let progress = crate::progress(t);
+            for _ in 0..t {
+                // WARNING: If modifying this code, MAKE SURE THAT THE RMS VALUES ACTUALLY
+                // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
+                // where the code looked fine at casual glance, but in practice it wasn't
+                // actually making progress past the first iteration.)
+                let ref mut next = self.compute_next_kmeans();
+                let ref mut last = self.kmeans;
+                std::mem::swap(next, last);
+                progress.inc(1);
+            }
+            progress.finish();
+            println!();
+        } else {
+            // Use Triangle Inequality (TI) math to accelerate the K-means
+            // clustering, as per Elkan (2003).
 
-        log::info!(
-            "{:<32}{:<32}",
-            "clustering kmeans (*accelerated*)",
-            self.street()
-        );
-        // TODO: Verify results are actually the same from here as in the
-        // pre-existing, non-accelerated algorithm above. As per the paper:
-        // """
-        // We want the accelerated k-means algorithm to be usable wherever the
-        // standard algorithm is used. Therefore, we need the accelerated
-        // algorithm to satisfy three properties. First, it should be able to
-        // start with any initial centers, so that all existing
-        // initialization methods can continue to be used. Second, given the
-        // same initial centers, it should al- ways produce exactly the same
-        // final centers as the standard algorithm. Third, it should be able
-        // to use any black-box distance metric, so it should not rely for
-        // example on optimizations specific to Euclidean distance.
-        //
-        // Our algorithm in fact satisfies a condition stronger than the
-        // second one above: after each iteration, it produces the same set
-        // of center locations as the standard k-means method.
-        // """
-        // TODO: Add styling to progress bar
-        for i in (0..t).progress() {
-            log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
-            let (ref next_kmeans, ref next_helpers) =
-                self.compute_next_centroids_ti_accl(&ti_helpers);
+            log::debug!(
+                "Initializing helpers for triangle-inequality (TI) accelerated of clustering"
+            );
+            // """
+            // First, pick initial centers. Set the lower bound l(x,c) for each point x
+            // and center c. Assign each x to its closest initial center c(x) =
+            // argmin_c d(x,c), using Lemma 1 to avoid redundant distance
+            // calculations. Each time d(x,c) is computed, set l(x,c) = d(x,c). Assign
+            // upper bounds u(x) = min_c d(x,c).
+            // """
+            let mut ti_helpers: Vec<TriIneqBounds> = self
+                // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
+                // (e.g. if we already did that during the init() above)
+                .create_centroids_tri_ineq()
+                .iter()
+                .map(|nearest_neighbor| TriIneqBounds {
+                    // "c(x)"'s index in self.kmeans()
+                    assigned_centroid_idx: nearest_neighbor.0,
+                    // "l(x,c)"
+                    // "Set the lower bound l(x,c) = 0 for each point x and center c"
+                    lower_bounds: vec![0.0; self.street().k()],
+                    // "u(x)"
+                    // "Assign upper bounds u(x) = min_c d(x,c)" (which by
+                    //  definition is the distance of the nearest neighbor at
+                    //  this point)
+                    upper_bound: nearest_neighbor.1,
+                    // "r(x)"
+                    // (Not explicitly mentioned during the pre-step. But, we know that
+                    // when starting out we literally _just_computed all the distances,
+                    // so it should theoretically be safe to leave 'false' here.)
+                    stale_upper_bound: false,
+                })
+                .collect::<Vec<_>>();
+            log::debug!("Completed TI helper initialization.");
 
-            let mut_kmeans = &mut self.kmeans();
-            *mut_kmeans = next_kmeans;
+            log::info!(
+                "{:<32}{:<32}",
+                "clustering kmeans (*accelerated*)",
+                self.street()
+            );
+            // TODO: Verify results are actually the same from here as in the
+            // pre-existing, non-accelerated algorithm above. As per the paper:
+            // """
+            // We want the accelerated k-means algorithm to be usable wherever the
+            // standard algorithm is used. Therefore, we need the accelerated
+            // algorithm to satisfy three properties. First, it should be able to
+            // start with any initial centers, so that all existing
+            // initialization methods can continue to be used. Second, given the
+            // same initial centers, it should al- ways produce exactly the same
+            // final centers as the standard algorithm. Third, it should be able
+            // to use any black-box distance metric, so it should not rely for
+            // example on optimizations specific to Euclidean distance.
+            //
+            // Our algorithm in fact satisfies a condition stronger than the
+            // second one above: after each iteration, it produces the same set
+            // of center locations as the standard k-means method.
+            // """
+            // TODO: Add styling to progress bar
+            for i in (0..t).progress() {
+                log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
+                let (ref mut next_kmeans, ref mut next_helpers) =
+                    self.compute_next_kmeans_tri_ineq(&ti_helpers);
 
-            let mut_helpers = &mut (&ti_helpers);
-            *mut_helpers = next_helpers
+                let ref mut current_kmeans = self.kmeans;
+                std::mem::swap(current_kmeans, next_kmeans);
+
+                let ref mut current_helpers = ti_helpers;
+                std::mem::swap(current_helpers, next_helpers)
+            }
         }
         self
     }
@@ -213,10 +244,11 @@ impl Layer {
         histograms
     }
 
+    #[cfg(feature = "native")]
     /// calculates the next step of the kmeans iteration by
     /// determining K * N optimal transport calculations and
     /// taking the nearest neighbor
-    fn next(&self) -> Vec<Histogram> /* K */ {
+    fn compute_next_kmeans(&self) -> Vec<Histogram> /* K */ {
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
         let k = self.street().k();
@@ -245,27 +277,23 @@ impl Layer {
     }
 
     #[cfg(feature = "native")]
-    /// WIP triangle-accelerated version of the 'next' function.
-    /// Keep separate unless and until we've proven that this is
-    /// going to actually be faster AND still correct
+    /// Triangle(tri)-Inequality(ineq) accelerated version of kmeans.
     ///
-    /// calculates the next step of the kmeans iteration by
-    /// determining up to K * N optimal transport calculations and
-    /// taking the nearest neighbor, using triangle inequalities
-    /// where possible to skip performing calculations
+    /// Calculates the next step of the kmeans iteration by efficiently
+    /// computing (a subset of) K * N optimal transport calculations and
+    /// taking the nearest neighbor, using triangle inequalities where
+    /// possible to skip performing unnecessary calculations.
     ///
-    /// TODO: This is currently entirely untested (aside from a
-    /// couple of manual runs). Before replacing the original code
-    /// we should first prove this works by running it against some
-    /// of the datasets in the paper (Elkan (2003)) and verifying
-    /// that we can replicate its results - as well as just
-    /// generally writing some unit tests.
-    fn compute_next_centroids_ti_accl(
+    /// In theory, the algorithm used here is guaranteed to produce the same
+    /// results as the 'unaccelerated' kmeans at every iteration given the
+    /// same set of inputs, while providing a massive speedup in most
+    /// real-world situations.
+    fn compute_next_kmeans_tri_ineq(
         &self,
-        ti_helpers: &[TIBounds],
+        ti_helpers: &[TriIneqBounds],
     ) -> (
-        Vec<Histogram>, /* K centroids */
-        Vec<TIBounds>,  /* Updated Triangle Inequality Helpers */
+        Vec<Histogram>,     /* K centroids */
+        Vec<TriIneqBounds>, /* Updated Triangle Inequality Helpers */
     ) {
         // TODO: panic if the length of ti_helpers doesn't match the length of
         // self.points
@@ -366,7 +394,7 @@ impl Layer {
             })
             .collect();
 
-        let mut step_3_working_points: HashMap<usize, (&Histogram, TIBounds)> = self
+        let mut step_3_working_points: HashMap<usize, (&Histogram, TriIneqBounds)> = self
             .points()
             .iter()
             .enumerate()
@@ -481,7 +509,7 @@ impl Layer {
         // Merge the updated helper values back with the original vector we got
         // at the start of the function (which has entries for *all* points, not
         // just the ones bieng updated in step 3).
-        let step_4_helpers: Vec<&TIBounds> = ti_helpers
+        let step_4_helpers: Vec<&TriIneqBounds> = ti_helpers
             .iter()
             .enumerate()
             .map(|(point_i, original_helper)| {
@@ -529,19 +557,78 @@ impl Layer {
                     .collect()
             })
             .collect();
-        // let mut loss = 0f32;
+
+        let perform_extra_loss_calculations = true;
+        if perform_extra_loss_calculations {
+            log::debug!(
+                "Performing {} otherwise-unnecessary emd computations to
+                 calculate RMS error. This may slow down step 4!",
+                self.points.len()
+            );
+        }
+        let mut loss = 0f32;
+        let mut rms_calculation_seconds = 0;
+
         let mut new_centroids: Vec<Histogram> = vec![];
-        for points in points_assigned_per_center.iter() {
+
+        // Note: we could optionally parallelize this. In practice though, so long
+        // as `perform_extra_loss_calculations` is false this is so fast that it's
+        // not worth doing.
+        for (centroid_i, points) in points_assigned_per_center.iter().enumerate() {
             let mut mean_of_assigned_points = points[0].clone();
             if points.is_empty() {
                 // TODO: Figure out what to do for the centroid if there's no poitns assigned to it.
                 log::error!("No points assigned to current centroid. This is currently an edge case we are unable to resolve; for more details see https://github.com/krukah/robopoker/issues/34#issuecomment-2860641178")
             }
+
             for point in points.iter().skip(1) {
                 mean_of_assigned_points.absorb(point);
             }
             let next_centroid = mean_of_assigned_points;
+
+            if perform_extra_loss_calculations {
+                // NOTE: Calculating the error with the OLD center (to ensure
+                // that this is consistent with the unaccelerated algorithm).
+                let old_centroid = &(self.kmeans()[centroid_i]);
+                // As mentioned above, this can be expensive; we add extra tracking
+                // here to allow the user to more easily determine if it's worth
+                // disabling or not.
+                let now = SystemTime::now();
+                for point in points.iter() {
+                    let distance_point_to_prior_centroid = self.emd(&old_centroid, &point);
+                    loss += distance_point_to_prior_centroid * distance_point_to_prior_centroid;
+                }
+                match now.elapsed() {
+                    Ok(elapsed) => {
+                        rms_calculation_seconds += elapsed.as_secs();
+                    }
+                    Err(e) => {
+                        log::error!("Error tracking elapsed time for RMS calculations: {e:?}");
+                    }
+                }
+            }
+
+
             new_centroids.push(next_centroid);
+        }
+        if perform_extra_loss_calculations {
+            log::debug!(
+                "{:<32}{:<32}",
+                "abstraction cluster RMS error",
+                (loss / self.points().len() as f32).sqrt()
+            );
+            // Arbitrarily setting a threshold for when it 'affects' performance;
+            // anything under is clearly so small that the reminder message isn't
+            // needed. (Arguably we could set this much higher too.)
+            if rms_calculation_seconds > 2 {
+                log::warn!(
+                    "Calculating RMS error for debug logs required an extra {}
+                    seconds (to perform {} otherwise-unnecessary distance
+                    computations). Consider disabling to improve performance.",
+                    rms_calculation_seconds,
+                    self.points().len()
+                );
+            }
         }
 
         log::debug!("{:<32}", " - Elkan Step 5");
@@ -566,7 +653,7 @@ impl Layer {
             .map(|(old_center, new_center)| self.emd(old_center, new_center))
             .collect();
 
-        let step_5_helpers: Vec<TIBounds> = step_4_helpers
+        let step_5_helpers: Vec<TriIneqBounds> = step_4_helpers
             .into_par_iter()
             .cloned()
             .map(|mut helper| {
@@ -590,7 +677,7 @@ impl Layer {
         // """
         // TODO refactor probably can get away with continuing to borrow here.
         // And/or do using a .map() inside in a .par_iter() etc.
-        let mut step_6_helpers: Vec<TIBounds> = step_5_helpers;
+        let mut step_6_helpers: Vec<TriIneqBounds> = step_5_helpers;
         for helper in &mut step_6_helpers {
             // u(x) = u(x) + d(m(c(x)), c(x))
             // TODO: VERIFY THAT d(m(c(x)), c(x)) = d(c(x), m(c(x))).
@@ -653,10 +740,10 @@ impl Layer {
     }
 
     /// Obtains nearest neighbor and separation distance for a Histogram
-    /// using lemma 1 from Elkan (2003) to aboid redundant distance
-    /// calculations. Allowing us to efficient assign each point to
+    /// using lemma 1 from Elkan (2003) to avoid redundant distance
+    /// calculations. Allowing us to efficiently assign each point to
     /// its initial centroid.
-    fn create_centroids_ti_accl(&self) -> Vec<Neighbor> {
+    fn create_centroids_tri_ineq(&self) -> Vec<Neighbor> {
         use indicatif::ParallelProgressIterator;
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
@@ -691,6 +778,9 @@ impl Layer {
             // TODO: Add styling so that this matches all the other progress bars!
             .progress_count(self.points().len().try_into().unwrap())
             .map(|point| {
+                // As of Jun 8, toggling this gives same results for shortdeck turn clustering.
+                // So if no changes since then can assume that this is doing the correct thing for now.
+                // TODO: ADD A TEST FOR THIS TOO!
                 // Compute min distance d(x, c) efficiently by using
                 // lemma 1 from Elkan (2003):
                 // if d(b, c) >= 2d(x, b) then d(x, c) >= d(x, b)
