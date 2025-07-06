@@ -613,7 +613,6 @@ impl Layer {
                 }
             }
 
-
             new_centroids.push(next_centroid);
         }
         if cfg!(feature = "kmeans-compute-nonfree-rms") {
@@ -874,7 +873,12 @@ impl Clusterable for Layer {
         clusters
             .iter()
             .enumerate()
-            .map(|(k, potential_nearest_h)| (k, Clusterable::distance(m, x, potential_nearest_h)))
+            .map(|(k, potential_nearest_h)| {
+                (
+                    k,
+                    <Layer as Clusterable>::distance(m, x, potential_nearest_h),
+                )
+            })
             .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
             .expect("find nearest neighbor")
             .into()
