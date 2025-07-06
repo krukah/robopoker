@@ -16,6 +16,16 @@ use std::time::SystemTime;
 
 type Neighbor = (usize, f32);
 
+pub trait Clusterable {
+    fn distance(m: &Metric, h1: &Histogram, h2: &Histogram) -> Energy;
+    // Maybe remove this entirely? + remove neighborhood from layer and just have a 'nearest_neighbor' function
+    // inside of the resulting kmeans thingy? ... Can't remove it entirely I think since it's used inside of
+    // the lookup() function in addition to 'compute_next_kmeans'. Could just have two separate implementations
+    // I guess... orrrr even have Layer call .nearest_neighbor from the new *kmeans* struct I'm going to make?
+    fn nearest_neighbor(m: &Metric, clusters: Vec<Histogram>, x: &Histogram) -> Neighbor;
+    fn points(&self) -> &Vec<Histogram>;
+}
+
 pub struct Layer {
     street: Street,
     metric: Metric,
@@ -851,6 +861,24 @@ impl Layer {
             .map(|(k, centroid)| (self.abstraction(k), centroid))
             .collect::<BTreeMap<Abstraction, Histogram>>()
             .into()
+    }
+}
+
+impl Clusterable for Layer {
+    fn distance(m: &Metric, h1: &Histogram, h2: &Histogram) -> Energy {
+        m.emd(h1, h2)
+    }
+    fn nearest_neighbor(m: &Metric, clusters: Vec<Histogram>, x: &Histogram) -> Neighbor {
+        clusters
+            .iter()
+            .enumerate()
+            .map(|(k, potential_nearest_h)| (k, Clusterable::distance(m, x, potential_nearest_h)))
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .expect("find nearest neighbor")
+            .into()
+    }
+    fn points(&self) -> &Vec<Histogram> {
+        self.points()
     }
 }
 
