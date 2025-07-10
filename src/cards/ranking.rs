@@ -35,14 +35,28 @@ pub enum Ranking {
 
 impl Ranking {
     pub fn n_kickers(&self) -> usize {
-        let n = match self {
+        match self {
             Ranking::HighCard(_) => 4,
             Ranking::OnePair(_) => 3,
             Ranking::ThreeOAK(_) => 2,
             Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
             _ => 0,
-        };
-        n
+        }
+    }
+
+    pub fn mask(&self) -> u16 {
+        match *self {
+            Ranking::TwoPair(hi, lo) => !(u16::from(hi) | u16::from(lo)),
+            Ranking::HighCard(hi)
+            | Ranking::OnePair(hi)
+            | Ranking::FourOAK(hi)
+            | Ranking::ThreeOAK(hi) => !(u16::from(hi)),
+            Ranking::FullHouse(..)
+            | Ranking::StraightFlush(..)
+            | Ranking::Straight(..)
+            | Ranking::Flush(..)
+            | Ranking::MAX => unreachable!(),
+        }
     }
 }
 

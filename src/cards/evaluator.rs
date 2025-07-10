@@ -44,18 +44,7 @@ impl Evaluator {
             0 => Kickers::from(0),
             n => {
                 let hand = u16::from(self.0);
-                let mask = match value {
-                    Ranking::TwoPair(hi, lo) => !(u16::from(hi) | u16::from(lo)),
-                    Ranking::HighCard(hi)
-                    | Ranking::OnePair(hi)
-                    | Ranking::FourOAK(hi)
-                    | Ranking::ThreeOAK(hi) => !(u16::from(hi)),
-                    Ranking::FullHouse(..)
-                    | Ranking::StraightFlush(..)
-                    | Ranking::Straight(..)
-                    | Ranking::Flush(..)
-                    | Ranking::MAX => unreachable!(),
-                };
+                let mask = value.mask();
                 let mut rank = hand & mask;
                 while n < rank.count_ones() as usize {
                     let last = rank.trailing_zeros();
