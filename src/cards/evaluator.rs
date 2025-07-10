@@ -28,9 +28,10 @@ impl From<Hand> for Evaluator {
 
 impl Evaluator {
     pub fn find_ranking(&self) -> Ranking {
-        None.or_else(|| self.find_flush())
+        None.or_else(|| self.find_straight_flush())
             .or_else(|| self.find_4_oak())
             .or_else(|| self.find_3_oak_2_oak())
+            .or_else(|| self.find_flush())
             .or_else(|| self.find_straight())
             .or_else(|| self.find_3_oak())
             .or_else(|| self.find_2_oak_2_oak())
@@ -98,14 +99,16 @@ impl Evaluator {
         self.find_rank_of_straight(self.0).map(Ranking::Straight)
     }
     fn find_flush(&self) -> Option<Ranking> {
+        self.find_suit_of_flush().map(|suit| {
+            let bits = u16::from(self.0.of(&suit));
+            let rank = Rank::from(bits);
+            Ranking::Flush(rank)
+        })
+    }
+    fn find_straight_flush(&self) -> Option<Ranking> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
                 .map(Ranking::StraightFlush)
-                .or_else(|| {
-                    let bits = u16::from(self.0.of(&suit));
-                    let rank = Rank::from(bits);
-                    Some(Ranking::Flush(rank))
-                })
         })
     }
 
@@ -291,7 +294,7 @@ mod tests {
 
     #[test]
     fn full_house_over_flush() {
-        let eval = Evaluator::from(Hand::try_from("Kh Ah Ad As Ks Qs Js").unwrap());
+        let eval = Evaluator::from(Hand::try_from("Kh Ah Ad As Ks Qs Js 9s").unwrap());
         let ranking = eval.find_ranking();
         let kickers = eval.find_kickers(ranking);
         assert_eq!(ranking, Ranking::FullHouse(Rank::Ace, Rank::King));
