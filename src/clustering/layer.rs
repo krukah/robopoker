@@ -1,4 +1,5 @@
 use super::histogram::Histogram;
+use super::kmeans;
 use super::kmeans::Clusterable;
 use super::lookup::Lookup;
 use super::metric::Metric;
@@ -19,7 +20,6 @@ pub struct Layer {
     points: Vec<Histogram>, // positioned by Isomorphism
     kmeans: Vec<Histogram>, // positioned by K-means abstraction
 }
-
 
 impl Layer {
     /// reference to the all points up to isomorphism
@@ -248,7 +248,7 @@ impl crate::save::disk::Disk for Layer {
         let init_centers: Vec<Histogram> = layer.init_centers();
         layer.kmeans = init_centers.clone();
 
-        let clustered_centers: Vec<Histogram> = layer.cluster(init_centers);
+        let clustered_centers: Vec<Histogram> = kmeans::cluster(&layer, init_centers);
         layer.kmeans = clustered_centers;
 
         layer
