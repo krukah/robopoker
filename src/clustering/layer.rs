@@ -246,6 +246,8 @@ impl crate::save::disk::Disk for Layer {
         // TODO this is not great :/ but things are all tied together
         // in such a way that we gotta temporarily leave it like this
         let init_centers: Vec<Histogram> = layer.init_centers();
+        layer.kmeans = init_centers.clone();
+
         let clustered_centers: Vec<Histogram> = layer.cluster(init_centers);
         layer.kmeans = clustered_centers;
 
