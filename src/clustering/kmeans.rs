@@ -118,7 +118,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
             // (e.g. if we already did that during the init() above)
             .map(|nearest_neighbor| TriIneqBounds {
-                // "c(x)"'s index in self.centers()
+                // "c(x)"'s index in init_centers and self.centers()
                 assigned_centroid_idx: nearest_neighbor.0,
                 // "l(x,c)"
                 // "Set the lower bound l(x,c) = 0 for each point x and center c"
