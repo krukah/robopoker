@@ -16,8 +16,11 @@ type Neighbor = (usize, f32);
 //
 // NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
 // field to help lookup the currently assigned centroid for the point).
+//
+// TODO: Stop making this public / start hiding away some of the kmeans
+// logic so it's not directly in the trait
 #[derive(Debug, Clone)]
-struct TriIneqBounds {
+pub struct TriIneqBounds {
     // The index into self.kmeans for the currently assigned centroid "nearest
     // neighbor" (i.e. c(x) in the paper) for this specifed point.
     assigned_centroid_idx: usize,
