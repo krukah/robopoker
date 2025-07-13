@@ -58,10 +58,9 @@ pub trait Clusterable {
     // The number of training loop iterations to go through
     fn iterations_t(&self) -> usize;
 
-    // Label for the kmeans operation at the moment it's being used. Soley
-    // intended for logging purposes.
+    // Label for the specific kmeans operation. Used for hashing and logging purposes.
     // (Should probably also be a direct input)
-    fn name(&self) -> String;
+    fn label(&self) -> String;
 
     fn cluster(&self, mut init_centers: Vec<Histogram>) -> Vec<Histogram> where Self:Sync {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.label());
