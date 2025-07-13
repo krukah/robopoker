@@ -206,7 +206,7 @@ impl Clusterable for Layer {
     fn iterations_t(&self) -> usize {
         self.street().t()
     }
-    fn label(&self) -> String {
+    fn name(&self) -> String {
         self.street().to_string()
     }
 }
