@@ -61,7 +61,7 @@ pub trait Clusterable {
 
     fn cluster(&self,
     	mut init_centers: Vec<Histogram>,
-     	mut working_centers: Vec<Histogram>) -> Vec<Histogram> {
+     	mut working_centers: Vec<Histogram>) -> Vec<Histogram> where Self:Sync {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.label());
         let ref mut init = init_centers;
         let ref mut last = working_centers;
@@ -174,7 +174,7 @@ pub trait Clusterable {
     /// calculates the next step of the kmeans iteration by
     /// determining K * N optimal transport calculations and
     /// taking the nearest neighbor
-    fn compute_next_kmeans(&self, centers_start: &Vec<Histogram>) -> Vec<Histogram> /* K */ {
+    fn compute_next_kmeans(&self, centers_start: &Vec<Histogram>) -> Vec<Histogram> where Self: Sync{
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
         let k = self.kmeans_k();
@@ -220,7 +220,7 @@ pub trait Clusterable {
     ) -> (
         Vec<Histogram>,     /* K centroids */
         Vec<TriIneqBounds>, /* Updated Triangle Inequality Helpers */
-    ) {
+    ) where Self:Sync {
         // TODO: panic if the length of ti_helpers doesn't match the length of
         // self.points
 
@@ -621,7 +621,7 @@ pub trait Clusterable {
     /// using lemma 1 from Elkan (2003) to avoid redundant distance
     /// calculations. Allowing us to efficiently assign each point to
     /// its initial centroid.
-    fn create_centroids_tri_ineq(&self) -> Vec<Neighbor> {
+    fn create_centroids_tri_ineq(&self) -> Vec<Neighbor> where Self:Sync {
         use indicatif::ParallelProgressIterator;
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
