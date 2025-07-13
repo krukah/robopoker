@@ -570,7 +570,7 @@ pub trait Clusterable {
         // (If not, would need to e.g. compute a Vec<(f32, f32)> instead.)
         let new_centroid_movements: Vec<f32> = new_centroids
             .par_iter()
-            .zip(&self.kmeans)
+            .zip(self.centers())
             .map(|(old_center, new_center)| self.distance(old_center, new_center))
             .collect();
 
