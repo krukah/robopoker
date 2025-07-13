@@ -62,11 +62,13 @@ pub trait Clusterable {
     // (Should probably also be a direct input)
     fn label(&self) -> String;
 
-    fn cluster(&self,
-    	mut init_centers: Vec<Histogram>,
-     	mut working_centers: Vec<Histogram>) -> Vec<Histogram> where Self:Sync {
+    fn cluster(&self, mut init_centers: Vec<Histogram>) -> Vec<Histogram> where Self:Sync {
         log::info!("{:<32}{:<32}", "initialize  kmeans", self.label());
+
         let ref mut init = init_centers;
+        // TODO: Clean this up once we have unit tests to prevent regression on not properly
+        // replicating std::mem::swap's behavior (since we've already been burned once by it)
+        let mut working_centers: Vec<Histogram> = Vec::default();
         let ref mut last = working_centers;
         std::mem::swap(init, last);
 
