@@ -5,6 +5,31 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::SystemTime;
 
+#[derive(Debug, Clone)]
+pub struct ClusterArgs<'a> {
+    // Center Histograms prior to performing any clustering / the start of the
+    // first training loop.
+    // Length should match kmeans_k below.
+    // TODO: Stop needing to pass ownership for this /
+    // use a different approach to update every iteration
+    // TODO: Determine whether this actually needs to be
+    // passed in in the first place...
+    pub init_centers: Vec<Histogram>,
+
+    // Points to be clustered.
+    pub points: &'a Vec<Histogram>,
+
+    // Number of clusters. Expected to match the length of init_centers.
+    pub kmeans_k: usize,
+
+    // Number of training iterations to perform.
+    pub iterations_t: usize,
+
+    // String intended for tagging any logged messages. Solely for logging and
+    // debugging purposes!
+    pub label: String,
+}
+
 type Neighbor = (usize, f32);
 
 // "Carr[ied]... information" between k-means iterations for a specific point
@@ -35,31 +60,6 @@ struct TriIneqBounds {
     // Whether the upper_bound is out-of-date and needs a 'refresh'
     // (r(x) from the paper).
     stale_upper_bound: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct ClusterArgs<'a> {
-    // Center Histograms prior to performing any clustering / the start of the
-    // first training loop.
-    // Length should match kmeans_k below.
-    // TODO: Stop needing to pass ownership for this /
-    // use a different approach to update every iteration
-    // TODO: Determine whether this actually needs to be
-    // passed in in the first place...
-    pub init_centers: Vec<Histogram>,
-
-    // Points to be clustered.
-    pub points: &'a Vec<Histogram>,
-
-    // Number of clusters. Expected to match the length of init_centers.
-    pub kmeans_k: usize,
-
-    // Number of training iterations to perform.
-    pub iterations_t: usize,
-
-    // String intended for tagging any logged messages. Solely for logging and
-    // debugging purposes!
-    pub label: String,
 }
 
 // TODO MOVE OUT TO OTHER FILE WITH KMEANS CLUSTERING CODE
