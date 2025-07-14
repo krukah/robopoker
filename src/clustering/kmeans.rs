@@ -249,6 +249,7 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 /// results as the 'unaccelerated' kmeans at every iteration given the
 /// same set of inputs, while providing a massive speedup in most
 /// real-world situations.
+// TODO: DOESN'T WORK PROPERLY ATM. RMS is non-decreasing again :(
 fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     ti_helpers: &[TriIneqBounds],
