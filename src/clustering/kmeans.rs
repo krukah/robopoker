@@ -49,7 +49,6 @@ pub trait Clusterable {
     // Probably also remove these in favor of just some direct input for some future
     // kmeans_cluster function...?
     fn points(&self) -> &Vec<Histogram>;
-    fn centers(&self) -> &Vec<Histogram>;
 
     // Literally the 'k'-many centers to cluster to
     fn kmeans_k(&self) -> usize;
@@ -86,7 +85,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     let t = clusterable.iterations_t();
 
     // TODO clean up later
-    const EXPECTED_MIN_IMPROVEMENT:f32 = 0.000001;
+    const EXPECTED_MIN_IMPROVEMENT: f32 = 0.000001;
 
     if !cfg!(feature = "kmeans-accel") {
         log::info!(
@@ -107,8 +106,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 (last_rms - rms).abs() > EXPECTED_MIN_IMPROVEMENT,
                 "RMS was not monotonically increasing enough after
                  clustering - this is almost certainly due to a bug (e.g. not
-                 properly updating the vectors)." 
-                );
+                 properly updating the vectors)."
+            );
             last_rms = rms;
 
             let ref mut c = working_centers;
@@ -129,28 +128,29 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         // calculations. Each time d(x,c) is computed, set l(x,c) = d(x,c). Assign
         // upper bounds u(x) = min_c d(x,c).
         // """
-        let mut ti_helpers: Vec<TriIneqBounds> = create_centroids_tri_ineq(clusterable)
-            .iter()
-            // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
-            // (e.g. if we already did that during the init() above)
-            .map(|nearest_neighbor| TriIneqBounds {
-                // "c(x)"'s index in init_centers and self.centers()
-                assigned_centroid_idx: nearest_neighbor.0,
-                // "l(x,c)"
-                // "Set the lower bound l(x,c) = 0 for each point x and center c"
-                lower_bounds: vec![0.0; clusterable.kmeans_k()],
-                // "u(x)"
-                // "Assign upper bounds u(x) = min_c d(x,c)" (which by
-                //  definition is the distance of the nearest neighbor at
-                //  this point)
-                upper_bound: nearest_neighbor.1,
-                // "r(x)"
-                // (Not explicitly mentioned during the pre-step. But, we know that
-                // when starting out we literally _just_computed all the distances,
-                // so it should theoretically be safe to leave 'false' here.)
-                stale_upper_bound: false,
-            })
-            .collect::<Vec<_>>();
+        let mut ti_helpers: Vec<TriIneqBounds> =
+            create_centroids_tri_ineq(clusterable, &init_centers)
+                .iter()
+                // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
+                // (e.g. if we already did that during the init() above)
+                .map(|nearest_neighbor| TriIneqBounds {
+                    // "c(x)"'s index in init_centers
+                    assigned_centroid_idx: nearest_neighbor.0,
+                    // "l(x,c)"
+                    // "Set the lower bound l(x,c) = 0 for each point x and center c"
+                    lower_bounds: vec![0.0; clusterable.kmeans_k()],
+                    // "u(x)"
+                    // "Assign upper bounds u(x) = min_c d(x,c)" (which by
+                    //  definition is the distance of the nearest neighbor at
+                    //  this point)
+                    upper_bound: nearest_neighbor.1,
+                    // "r(x)"
+                    // (Not explicitly mentioned during the pre-step. But, we know that
+                    // when starting out we literally _just_computed all the distances,
+                    // so it should theoretically be safe to leave 'false' here.)
+                    stale_upper_bound: false,
+                })
+                .collect::<Vec<_>>();
         log::debug!("Completed TI helper initialization.");
 
         log::info!(
@@ -183,7 +183,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // already made a mistake nd introduced a major bug once before
             // in this section.
             let (ref mut next_centers, ref mut next_helpers, rms) =
-                compute_next_kmeans_tri_ineq(clusterable, &ti_helpers);
+                compute_next_kmeans_tri_ineq(clusterable, &init_centers, &ti_helpers);
             match rms {
                 Some(x) => {
                     log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
@@ -192,12 +192,12 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                         "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
                     );
                     last_rms = x;
-                },
+                }
                 _ => (),
             }
 
             let ref mut c = working_centers;
-            std::mem::swap(c, next_centers);
+            std::mem::swap(next_centers, c);
 
             let ref mut h = ti_helpers;
             std::mem::swap(h, next_helpers)
@@ -252,6 +252,7 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 // TODO: DOESN'T WORK PROPERLY ATM. RMS is non-decreasing again :(
 fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
+    centers_start: &Vec<Histogram>,
     ti_helpers: &[TriIneqBounds],
 ) -> (
     Vec<Histogram>,     /* K centroids */
@@ -284,19 +285,13 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // centroid.
     log::debug!("{:<32}", " - Elkan Step 1");
     // Step 1 (first half): d(c, c') for all centers c and c'
-    let centroid_to_centroid_distances: Vec<Vec<f32>> = clusterable
-        .centers()
+    let centroid_to_centroid_distances: Vec<Vec<f32>> = centers_start
         .iter()
         // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into
         // a simple 1-D vector to allow for easily parallelizing the emd
         // calculations.
         // TLDR: effectively just itertools.array_combinations().
-        .flat_map(|c| {
-            clusterable
-                .centers()
-                .iter()
-                .map(move |c_prime| (c, c_prime))
-        })
+        .flat_map(|c| centers_start.iter().map(move |c_prime| (c, c_prime)))
         .collect::<Vec<_>>()
         .par_iter()
         .map(|(center1, center2)| clusterable.distance(center1, center2)) // 1-D vector with length k^2
@@ -390,7 +385,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // distances.
     log::debug!("{:<32}", " - Elkan Step 3");
     use rayon::prelude::*;
-    for (center_c_idx, center_c) in clusterable.centers().iter().enumerate() {
+    for (center_c_idx, center_c) in centers_start.iter().enumerate() {
         step_3_working_points
             .par_iter_mut()
             // As far as we can tell, this progress bar doesn't negatively affect
@@ -418,10 +413,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
                 // STEP 3.a: "If r(x) then compute d(x, c(x)) and assign r(x) = false.
                 //           Otherwise, d(x, c(x)) = u(x)."
                 let current_centroid_dist = if helper.stale_upper_bound {
-                    let dist = clusterable.distance(
-                        point_h,
-                        &clusterable.centers()[helper.assigned_centroid_idx],
-                    );
+                    let dist =
+                        clusterable.distance(point_h, &centers_start[helper.assigned_centroid_idx]);
                     // As discussed above: "each time d(x, c) is
                     // calculated for any x and c, its lower bound is
                     // updated by assigning l(x, c) = d(x, c)" and
@@ -512,8 +505,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     //
     // In this case it's a little weird looking ('aborbing' histograms)
     // since we're using emd instead of Euclidean distance.
-    let points_assigned_per_center: Vec<Vec<&Histogram>> = clusterable
-        .centers()
+    let points_assigned_per_center: Vec<Vec<&Histogram>> = centers_start
         .iter()
         .enumerate()
         .map(|(center_c_idx, _center_c)| {
@@ -556,7 +548,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         if cfg!(feature = "kmeans-compute-nonfree-rms") {
             // NOTE: Calculating the error with the OLD center (to ensure
             // that this is consistent with the unaccelerated algorithm).
-            let old_centroid = &(clusterable.centers()[centroid_i]);
+            let old_centroid = &(centers_start[centroid_i]);
             // As mentioned above, this can be expensive; we add extra tracking
             // here to allow the user to more easily determine if it's worth
             // disabling or not.
@@ -615,7 +607,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // (If not, would need to e.g. compute a Vec<(f32, f32)> instead.)
     let new_centroid_movements: Vec<f32> = new_centroids
         .par_iter()
-        .zip(clusterable.centers())
+        .zip(centers_start)
         .map(|(old_center, new_center)| clusterable.distance(old_center, new_center))
         .collect();
 
@@ -665,7 +657,9 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 /// using lemma 1 from Elkan (2003) to avoid redundant distance
 /// calculations. Allowing us to efficiently assign each point to
 /// its initial centroid.
-fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(clusterable: &T) -> Vec<Neighbor> {
+fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
+    clusterable: &T,
+    centers_start: &Vec<Histogram>) -> Vec<Neighbor> {
     use indicatif::ParallelProgressIterator;
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
@@ -677,19 +671,13 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(clusterable: &T
     // here and in the main triangle accelerated clustering loop)
     let k = clusterable.kmeans_k();
     log::debug!("{:<32}", "precomputing centroid to centroid distances");
-    let centroid_to_centroid_distances: Vec<Vec<f32>> = clusterable
-        .centers()
+    let centroid_to_centroid_distances: Vec<Vec<f32>> = centers_start
         .iter()
         // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into
         // a simple 1-D vector to allow for easily parallelizing the emd
         // calculations.
         // TLDR: effectively just itertools.array_combinations().
-        .flat_map(|c| {
-            clusterable
-                .centers()
-                .iter()
-                .map(move |c_prime| (c, c_prime))
-        })
+        .flat_map(|c| centers_start.iter().map(move |c_prime| (c, c_prime)))
         .collect::<Vec<_>>()
         .par_iter()
         .map(|(center1, center2)| clusterable.distance(center1, center2)) // 1-D vector with length k^2
@@ -712,10 +700,9 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(clusterable: &T
             // lemma 1 from Elkan (2003):
             // if d(b, c) >= 2d(x, b) then d(x, c) >= d(x, b)
             // Initially setting b as the 0-indexed centroid...
-            let (index, initial_distance) =
-                (0, clusterable.distance(point, &(clusterable.centers()[0])));
+            let (index, initial_distance) = (0, clusterable.distance(point, &(centers_start[0])));
             // ... then continuing on for every other c
-            let nearest_neighbor: Neighbor = clusterable.centers().iter().enumerate().skip(1).fold(
+            let nearest_neighbor: Neighbor = centers_start.iter().enumerate().skip(1).fold(
                 (index, initial_distance),
                 |acc, x_enumerated| {
                     // center b index, d(x, b)

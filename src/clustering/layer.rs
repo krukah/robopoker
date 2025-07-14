@@ -197,9 +197,6 @@ impl Clusterable for Layer {
     fn points(&self) -> &Vec<Histogram> {
         self.points()
     }
-    fn centers(&self) -> &Vec<Histogram> {
-        self.kmeans()
-    }
     fn kmeans_k(&self) -> usize {
         self.street().k()
     }
