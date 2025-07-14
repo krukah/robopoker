@@ -92,6 +92,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             clusterable.label()
         );
         let progress = crate::progress(t);
+        let mut last_rms = 0f32;
         for _ in 0..t {
             // WARNING: If modifying this code, MAKE SURE THAT THE RMS VALUES ACTUALLY
             // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
@@ -99,6 +100,13 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // actually making progress past the first iteration.)
             let (ref mut next_centers, rms) = compute_next_kmeans(clusterable, &working_centers);
             log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
+            assert!(
+                (last_rms - rms).abs() >= f32::MIN,
+                "RMS was not monotonically increasing after clustering - this
+                 is almost certainly due to a bug (e.g. not properly updating
+                 the vectors)." 
+            );
+            last_rms = rms;
 
             let ref mut c = working_centers;
             std::mem::swap(next_centers, c);
