@@ -164,6 +164,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         // of center locations as the standard k-means method.
         // """
         // TODO: Add styling to progress bar
+        let mut last_rms = 0f32;
         for i in (0..t).progress() {
             log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
             // TODO refactor this to be more readable (ie stop using ref mut)
@@ -173,7 +174,14 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             let (ref mut next_centers, ref mut next_helpers, rms) =
                 compute_next_kmeans_tri_ineq(clusterable, &ti_helpers);
             match rms {
-                Some(x) => log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x),
+                Some(x) => {
+                    log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
+                    assert!(
+                        (last_rms - x).abs() >= f32::MIN,
+                        "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
+                    );
+                    last_rms = x;
+                },
                 _ => (),
             }
 
