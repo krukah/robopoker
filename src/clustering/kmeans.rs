@@ -191,12 +191,10 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
             // already made a mistake nd introduced a major bug once before
             // in this section.
-            // TODO: I think that this may need to pass in working_centers not init_centers?
-            // (THIS MIGHT BE A CAUSE OF NONDECREASING RMS....)
             let (ref mut next_centers, ref mut next_helpers, rms) = compute_next_kmeans_tri_ineq(
                 clusterable,
                 &cluster_args,
-                &cluster_args.init_centers,
+                &working_centers,
                 &ti_helpers,
             );
             match rms {
