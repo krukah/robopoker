@@ -64,16 +64,19 @@ pub trait Clusterable {
 
 pub fn cluster<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
-    mut init_centers: Vec<Histogram>,
+    init_centers: Vec<Histogram>,
 ) -> Vec<Histogram> {
     log::info!("{:<32}{:<32}", "initialize  kmeans", clusterable.label());
 
-    let ref mut init = init_centers;
-    // TODO: Clean this up once we have unit tests to prevent regression on not properly
-    // replicating std::mem::swap's behavior (since we've already been burned once by it)
+    // TODO: Extract out to a helper function + generally clean it up once we
+    // have unit tests to prevent regressions / not properly replicating
+    // std::mem::swap's behavior. DO NOT DO SO until then - we've already
+    // been burned once by doing a botched refactoring here!
+    let mut init_centers_clone = init_centers.clone();
     let mut working_centers: Vec<Histogram> = Vec::default();
-    let ref mut last = working_centers;
-    std::mem::swap(init, last);
+    let ref mut i = init_centers_clone;
+    let ref mut c = working_centers;
+    std::mem::swap(i, c);
 
     let k = clusterable.kmeans_k();
     if k == 0 {
@@ -94,9 +97,11 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
             // where the code looked fine at casual glance, but in practice it wasn't
             // actually making progress past the first iteration.)
-            let ref mut next = compute_next_kmeans(clusterable, &working_centers);
-            let ref mut last = working_centers;
-            std::mem::swap(next, last);
+            let (ref mut next_centers, rms) = compute_next_kmeans(clusterable, &working_centers);
+            log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
+
+            let ref mut c = working_centers;
+            std::mem::swap(next_centers, c);
             progress.inc(1);
         }
         progress.finish();
@@ -142,8 +147,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             "clustering kmeans (*accelerated*)",
             clusterable.label()
         );
-        // TODO: Verify results are actually the same from here as in the
-        // pre-existing, non-accelerated algorithm above. As per the paper:
+        // As per the paper:
         // """
         // We want the accelerated k-means algorithm to be usable wherever the
         // standard algorithm is used. Therefore, we need the accelerated
@@ -162,14 +166,22 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         // TODO: Add styling to progress bar
         for i in (0..t).progress() {
             log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
-            let (ref mut next_centers, ref mut next_helpers) =
+            // TODO refactor this to be more readable (ie stop using ref mut)
+            // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
+            // already made a mistake nd introduced a major bug once before
+            // in this section.
+            let (ref mut next_centers, ref mut next_helpers, rms) =
                 compute_next_kmeans_tri_ineq(clusterable, &ti_helpers);
+            match rms {
+                Some(x) => log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x),
+                _ => (),
+            }
 
-            let ref mut current_centers = working_centers;
-            std::mem::swap(current_centers, next_centers);
+            let ref mut c = working_centers;
+            std::mem::swap(c, next_centers);
 
-            let ref mut current_helpers = ti_helpers;
-            std::mem::swap(current_helpers, next_helpers)
+            let ref mut h = ti_helpers;
+            std::mem::swap(h, next_helpers)
         }
     }
     working_centers
@@ -182,7 +194,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     centers_start: &Vec<Histogram>,
-) -> Vec<Histogram> {
+) -> (Vec<Histogram>, f32) {
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
     let k = clusterable.kmeans_k();
@@ -202,12 +214,8 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
             .expect("index from neighbor calculation")
             .absorb(point);
     }
-    log::debug!(
-        "{:<32}{:<32}",
-        "abstraction cluster RMS error",
-        (loss / clusterable.points().len() as f32).sqrt()
-    );
-    centers_end
+    let rms = (loss / clusterable.points().len() as f32).sqrt();
+    (centers_end, rms)
 }
 
 #[cfg(feature = "native")]
@@ -228,6 +236,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 ) -> (
     Vec<Histogram>,     /* K centroids */
     Vec<TriIneqBounds>, /* Updated Triangle Inequality Helpers */
+    Option<f32>,        /* RMS error, if the feature is enabled */
 ) {
     // TODO: panic if the length of ti_helpers doesn't match the length of
     // self.points
@@ -548,20 +557,20 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 
         new_centroids.push(next_centroid);
     }
+    let mut optional_rms: Option<f32> = None;
     if cfg!(feature = "kmeans-compute-nonfree-rms") {
-        log::debug!(
-            "{:<32}{:<32}",
-            "abstraction cluster RMS error",
-            (loss / clusterable.points().len() as f32).sqrt()
-        );
+        let rms = (loss / clusterable.points().len() as f32).sqrt();
+        log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
+        optional_rms = Some(rms);
+
         // Arbitrarily setting a threshold for when it 'affects' performance;
         // anything under is clearly so small that the reminder message isn't
         // needed. (Arguably we could set this much higher too.)
         if rms_calculation_seconds > 2 {
             log::warn!(
-                "Calculating RMS error for debug logs required an extra {}
-                seconds (to perform {} otherwise-unnecessary distance
-                computations). Consider disabling to improve performance.",
+                "Calculating RMS error required {} seconds ({} distance
+                 computations). To improve performance,
+                 disable 'kmeans-compute-nonfree-rms'.",
                 rms_calculation_seconds,
                 clusterable.points().len()
             );
@@ -629,7 +638,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // i.e. Step 7:
     // "7. Replace each center c by m(c)"
     log::debug!("{:<32}", " - Elkan Step 7");
-    (new_centroids, step_6_helpers)
+    (new_centroids, step_6_helpers, optional_rms)
 }
 
 /// Obtains nearest neighbor and separation distance for a Histogram
