@@ -37,6 +37,27 @@ struct TriIneqBounds {
     stale_upper_bound: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct ClusterArgs<'a> {
+    // Owned centers vector.
+    // TODO: stop needing to pass ownership for this / use a different
+    // approach to update every iteration
+    pub init_centers: Vec<Histogram>,
+
+    // Points to be clustered
+    pub points: &'a Vec<Histogram>,
+
+    // Number clusters. Expected to match the length of init_centers
+    pub kmeans_k: usize,
+
+    // Number of training iterations
+    pub iterations_t: usize,
+
+    // Relevant string to include in logging messages. Solely for logging and
+    // debugging purposes!
+    pub label: String,
+}
+
 // TODO MOVE OUT TO OTHER FILE WITH KMEANS CLUSTERING CODE
 pub trait Clusterable {
     // Probably have this use generics here if possible, + return a simple f32. E.g. some
@@ -45,44 +66,31 @@ pub trait Clusterable {
     // Probably remove this entirely and just have an implementation of this over in
     // the resulting file defined in terms of the other inputs + the distance function...?
     fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32);
-
-    // Probably also remove these in favor of just some direct input for some future
-    // kmeans_cluster function...?
-    fn points(&self) -> &Vec<Histogram>;
-
-    // Literally the 'k'-many centers to cluster to
-    fn kmeans_k(&self) -> usize;
-
-    // The number of training loop iterations to go through
-    fn iterations_t(&self) -> usize;
-
-    // Label for the specific kmeans operation. Used for hashing and logging purposes.
-    // (Should probably also be a direct input)
-    fn label(&self) -> String;
 }
 
 pub fn cluster<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
-    init_centers: Vec<Histogram>,
+    // TODO stop needing ownership for this
+    cluster_args: ClusterArgs,
 ) -> Vec<Histogram> {
-    log::info!("{:<32}{:<32}", "initialize  kmeans", clusterable.label());
+    log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
     // TODO: Extract out to a helper function + generally clean it up once we
     // have unit tests to prevent regressions / not properly replicating
     // std::mem::swap's behavior. DO NOT DO SO until then - we've already
     // been burned once by doing a botched refactoring here!
-    let mut init_centers_clone = init_centers.clone();
+    let mut init_centers_clone = cluster_args.init_centers.clone();
     let mut working_centers: Vec<Histogram> = Vec::default();
     let ref mut i = init_centers_clone;
     let ref mut c = working_centers;
     std::mem::swap(i, c);
 
-    let k = clusterable.kmeans_k();
+    let k = cluster_args.kmeans_k;
     if k == 0 {
         let empty = Vec::new();
         return empty;
     }
-    let t = clusterable.iterations_t();
+    let t = cluster_args.iterations_t;
 
     // TODO clean up later
     const EXPECTED_MIN_IMPROVEMENT: f32 = 0.000001;
@@ -91,7 +99,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         log::info!(
             "{:<32}{:<32}",
             "clustering kmeans (unaccelerated)",
-            clusterable.label()
+            cluster_args.label
         );
         let progress = crate::progress(t);
         let mut last_rms = 0f32;
@@ -100,7 +108,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
             // where the code looked fine at casual glance, but in practice it wasn't
             // actually making progress past the first iteration.)
-            let (ref mut next_centers, rms) = compute_next_kmeans(clusterable, &working_centers);
+            let (ref mut next_centers, rms) =
+                compute_next_kmeans(clusterable, &cluster_args, &working_centers);
             log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
             assert!(
                 (last_rms - rms).abs() > EXPECTED_MIN_IMPROVEMENT,
@@ -129,7 +138,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         // upper bounds u(x) = min_c d(x,c).
         // """
         let mut ti_helpers: Vec<TriIneqBounds> =
-            create_centroids_tri_ineq(clusterable, &init_centers)
+            create_centroids_tri_ineq(clusterable, &cluster_args)
                 .iter()
                 // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
                 // (e.g. if we already did that during the init() above)
@@ -138,7 +147,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                     assigned_centroid_idx: nearest_neighbor.0,
                     // "l(x,c)"
                     // "Set the lower bound l(x,c) = 0 for each point x and center c"
-                    lower_bounds: vec![0.0; clusterable.kmeans_k()],
+                    lower_bounds: vec![0.0; cluster_args.kmeans_k],
                     // "u(x)"
                     // "Assign upper bounds u(x) = min_c d(x,c)" (which by
                     //  definition is the distance of the nearest neighbor at
@@ -156,7 +165,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         log::info!(
             "{:<32}{:<32}",
             "clustering kmeans (*accelerated*)",
-            clusterable.label()
+            cluster_args.label
         );
         // As per the paper:
         // """
@@ -184,6 +193,12 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // in this section.
             // TODO: I think that this may need to pass in working_centers not init_centers?
             // (THIS MIGHT BE A CAUSE OF NONDECREASING RMS....)
+            let (ref mut next_centers, ref mut next_helpers, rms) = compute_next_kmeans_tri_ineq(
+                clusterable,
+                &cluster_args,
+                &cluster_args.init_centers,
+                &ti_helpers,
+            );
             match rms {
                 Some(x) => {
                     log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
@@ -212,16 +227,17 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 /// taking the nearest neighbor
 fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
+    cluster_args: &ClusterArgs,
     centers_start: &Vec<Histogram>,
 ) -> (Vec<Histogram>, f32) {
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
-    let k = clusterable.kmeans_k();
+    let k = cluster_args.kmeans_k;
     let mut loss = 0f32;
     let mut centers_end = vec![Histogram::default(); k];
     // assign points to nearest neighbors
-    for (point, (neighbor, distance)) in clusterable
-        .points()
+    for (point, (neighbor, distance)) in cluster_args
+        .points
         .par_iter()
         .map(|h| (h, clusterable.nearest_neighbor(centers_start, h)))
         .collect::<Vec<_>>()
@@ -233,7 +249,7 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
             .expect("index from neighbor calculation")
             .absorb(point);
     }
-    let rms = (loss / clusterable.points().len() as f32).sqrt();
+    let rms = (loss / cluster_args.points.len() as f32).sqrt();
     (centers_end, rms)
 }
 
@@ -252,6 +268,7 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 // TODO: DOESN'T WORK PROPERLY ATM. RMS is non-decreasing again :(
 fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
+    cluster_args: &ClusterArgs,
     centers_start: &Vec<Histogram>,
     ti_helpers: &[TriIneqBounds],
 ) -> (
@@ -267,7 +284,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
 
-    let k = clusterable.kmeans_k();
+    let k = cluster_args.kmeans_k;
 
     // TODO: refactor / start using some things like this
     // let n = self.points().len();
@@ -354,8 +371,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    let mut step_3_working_points: HashMap<usize, (&Histogram, TriIneqBounds)> = clusterable
-        .points()
+    let mut step_3_working_points: HashMap<usize, (&Histogram, TriIneqBounds)> = cluster_args
+        .points
         .iter()
         .enumerate()
         .filter(|(point_i, _)| !step_2_excluded_points.contains(point_i))
@@ -392,7 +409,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
             // performance. HOWEVER, it does mess with the other progress bar +
             // doesn't look tidy (due to being unstyled), so we should probably
             // come back and clean it up a bit.
-            .progress_count(clusterable.points().len().try_into().unwrap())
+            .progress_count(cluster_args.points.len().try_into().unwrap())
             // _point_i used later for step 4 lookups but unneeded when mutating here
             .for_each(|(_point_i, (point_h, helper))| {
                 // STEP 3 FILTERING: Apply all three filter conditions with early exits
@@ -513,7 +530,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
                 .iter()
                 .enumerate()
                 .filter(|(_point_i, helper)| helper.assigned_centroid_idx == center_c_idx)
-                .map(|(point_i, _)| &clusterable.points()[point_i])
+                .map(|(point_i, _)| &cluster_args.points[point_i])
                 .collect()
         })
         .collect();
@@ -522,7 +539,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         log::debug!(
             "Performing {} otherwise-unnecessary emd computations to
              calculate RMS error. This may slow down step 4!",
-            clusterable.points().len()
+            cluster_args.points.len()
         );
     }
     let mut loss = 0f32;
@@ -571,7 +588,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     }
     let mut optional_rms: Option<f32> = None;
     if cfg!(feature = "kmeans-compute-nonfree-rms") {
-        let rms = (loss / clusterable.points().len() as f32).sqrt();
+        let rms = (loss / cluster_args.points.len() as f32).sqrt();
         log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
         optional_rms = Some(rms);
 
@@ -584,7 +601,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
                  computations). To improve performance,
                  disable 'kmeans-compute-nonfree-rms'.",
                 rms_calculation_seconds,
-                clusterable.points().len()
+                cluster_args.points.len()
             );
         }
     }
@@ -659,7 +676,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 /// its initial centroid.
 fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
-    centers_start: &Vec<Histogram>) -> Vec<Neighbor> {
+    cluster_args: &ClusterArgs,
+) -> Vec<Neighbor> {
     use indicatif::ParallelProgressIterator;
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
@@ -669,15 +687,21 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
     //
     // TODO: Extract into shared helper function (curently duped
     // here and in the main triangle accelerated clustering loop)
-    let k = clusterable.kmeans_k();
+    let k = cluster_args.kmeans_k;
     log::debug!("{:<32}", "precomputing centroid to centroid distances");
-    let centroid_to_centroid_distances: Vec<Vec<f32>> = centers_start
+    let centroid_to_centroid_distances: Vec<Vec<f32>> = cluster_args
+        .init_centers
         .iter()
         // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into
         // a simple 1-D vector to allow for easily parallelizing the emd
         // calculations.
         // TLDR: effectively just itertools.array_combinations().
-        .flat_map(|c| centers_start.iter().map(move |c_prime| (c, c_prime)))
+        .flat_map(|c| {
+            cluster_args
+                .init_centers
+                .iter()
+                .map(move |c_prime| (c, c_prime))
+        })
         .collect::<Vec<_>>()
         .par_iter()
         .map(|(center1, center2)| clusterable.distance(center1, center2)) // 1-D vector with length k^2
@@ -687,11 +711,11 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
         .collect();
 
     log::debug!("{:<32}", "lemma 1 accelerated par_init of helpers");
-    let nearest_neighbors: Vec<Neighbor> = clusterable
-        .points()
+    let nearest_neighbors: Vec<Neighbor> = cluster_args
+        .points
         .par_iter()
         // TODO: Add styling so that this matches all the other progress bars!
-        .progress_count(clusterable.points().len().try_into().unwrap())
+        .progress_count(cluster_args.points.len().try_into().unwrap())
         .map(|point| {
             // As of Jun 8, toggling this gives same results for shortdeck turn clustering.
             // So if no changes since then can assume that this is doing the correct thing for now.
@@ -700,38 +724,42 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
             // lemma 1 from Elkan (2003):
             // if d(b, c) >= 2d(x, b) then d(x, c) >= d(x, b)
             // Initially setting b as the 0-indexed centroid...
-            let (index, initial_distance) = (0, clusterable.distance(point, &(centers_start[0])));
-            // ... then continuing on for every other c
-            let nearest_neighbor: Neighbor = centers_start.iter().enumerate().skip(1).fold(
-                (index, initial_distance),
-                |acc, x_enumerated| {
-                    // center b index, d(x, b)
-                    let (acc_center_index, acc_center_distance) = acc;
-                    // center c index and histogram
-                    let (next_center_index, next_center) = x_enumerated;
-
-                    // Cheap lookup of precomputed d(b, c)
-                    let distance_acc_centroid_to_next_centroid =
-                        centroid_to_centroid_distances[acc_center_index][next_center_index];
-
-                    // if d(b, c) >= 2d(x, b)...
-                    if distance_acc_centroid_to_next_centroid >= 2.0 * acc_center_distance {
-                        // ... then we definitely know d(x, c) >= d(x, b).
-                        // So no need to do the distance calculation of d
-                        // (x, c), we can just stick with the current
-                        // center in our accumulator!
-                        return acc;
-                    }
-                    // ... then it's not _necessarily_ true that d(x, c) >= d(x, b). So
-                    // we have to actually do the distance calculation d(x, c) to find
-                    // out whether or not this next centroid is in fact closer.
-                    let next_center_distance = clusterable.distance(point, next_center);
-                    if next_center_distance >= acc_center_distance {
-                        return acc; // this centroid was NOT closer when we checked
-                    }
-                    (next_center_index, next_center_distance) // this centroid WAS closer
-                },
+            let (index, initial_distance) = (
+                0,
+                clusterable.distance(point, &(cluster_args.init_centers[0])),
             );
+            // ... then continuing on for every other c
+            let nearest_neighbor: Neighbor =
+                cluster_args.init_centers.iter().enumerate().skip(1).fold(
+                    (index, initial_distance),
+                    |acc, x_enumerated| {
+                        // center b index, d(x, b)
+                        let (acc_center_index, acc_center_distance) = acc;
+                        // center c index and histogram
+                        let (next_center_index, next_center) = x_enumerated;
+
+                        // Cheap lookup of precomputed d(b, c)
+                        let distance_acc_centroid_to_next_centroid =
+                            centroid_to_centroid_distances[acc_center_index][next_center_index];
+
+                        // if d(b, c) >= 2d(x, b)...
+                        if distance_acc_centroid_to_next_centroid >= 2.0 * acc_center_distance {
+                            // ... then we definitely know d(x, c) >= d(x, b).
+                            // So no need to do the distance calculation of d
+                            // (x, c), we can just stick with the current
+                            // center in our accumulator!
+                            return acc;
+                        }
+                        // ... then it's not _necessarily_ true that d(x, c) >= d(x, b). So
+                        // we have to actually do the distance calculation d(x, c) to find
+                        // out whether or not this next centroid is in fact closer.
+                        let next_center_distance = clusterable.distance(point, next_center);
+                        if next_center_distance >= acc_center_distance {
+                            return acc; // this centroid was NOT closer when we checked
+                        }
+                        (next_center_index, next_center_distance) // this centroid WAS closer
+                    },
+                );
             nearest_neighbor
         })
         .collect();

@@ -1,5 +1,6 @@
 use super::histogram::Histogram;
 use super::kmeans;
+use super::kmeans::ClusterArgs;
 use super::kmeans::Clusterable;
 use super::lookup::Lookup;
 use super::metric::Metric;
@@ -117,7 +118,7 @@ impl Layer {
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
-                .map(|h| self.neighborhood(self.kmeans(), h))
+                .map(|h| self.nearest_neighbor(self.kmeans(), h))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstraction(k))
@@ -136,17 +137,6 @@ impl Layer {
     /// street and K-index, we should encapsulate the self.street depenency
     fn abstraction(&self, i: usize) -> Abstraction {
         Abstraction::from((self.street(), i))
-    }
-
-    /// calculates nearest neighbor and separation distance for a Histogram
-    fn neighborhood(&self, centers: &Vec<Histogram>, x: &Histogram) -> Neighbor {
-        centers
-            .iter()
-            .enumerate()
-            .map(|(k, h)| (k, self.emd(x, h)))
-            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
-            .expect("find nearest neighbor")
-            .into()
     }
 
     /// reference to current street
@@ -191,20 +181,16 @@ impl Clusterable for Layer {
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
         self.metric.emd(h1, h2)
     }
+
+    /// calculates nearest neighbor and separation distance for a Histogram
     fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> Neighbor {
-        self.neighborhood(clusters, x)
-    }
-    fn points(&self) -> &Vec<Histogram> {
-        self.points()
-    }
-    fn kmeans_k(&self) -> usize {
-        self.street().k()
-    }
-    fn iterations_t(&self) -> usize {
-        self.street().t()
-    }
-    fn label(&self) -> String {
-        self.street().to_string()
+        clusters
+            .iter()
+            .enumerate()
+            .map(|(k, h)| (k, self.distance(x, h)))
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .expect("find nearest neighbor")
+            .into()
     }
 }
 
@@ -240,12 +226,19 @@ impl crate::save::disk::Disk for Layer {
                 metric: Metric::load(street.next()),
             },
         };
+
         // TODO this is not great :/ but things are all tied together
         // in such a way that we gotta temporarily leave it like this
         let init_centers: Vec<Histogram> = layer.init_centers();
         layer.kmeans = init_centers.clone();
-
-        let clustered_centers: Vec<Histogram> = kmeans::cluster(&layer, init_centers);
+        let cluster_args = ClusterArgs {
+            init_centers: init_centers,
+            points: layer.points(),
+            kmeans_k: layer.street().k(),
+            iterations_t: layer.street().t(),
+            label: layer.street().to_string(),
+        };
+        let clustered_centers: Vec<Histogram> = kmeans::cluster(&layer, cluster_args);
         layer.kmeans = clustered_centers;
 
         layer
