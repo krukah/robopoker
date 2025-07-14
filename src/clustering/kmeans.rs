@@ -62,7 +62,6 @@ struct TriIneqBounds {
     stale_upper_bound: bool,
 }
 
-// TODO MOVE OUT TO OTHER FILE WITH KMEANS CLUSTERING CODE
 pub trait Clusterable {
     // Probably have this use generics here if possible, + return a simple f32. E.g. some
     // function <T1, T2> that does ((T1, T2, T2) -> f32).
