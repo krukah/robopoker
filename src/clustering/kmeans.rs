@@ -587,7 +587,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     let mut optional_rms: Option<f32> = None;
     if cfg!(feature = "kmeans-compute-nonfree-rms") {
         let rms = (loss / cluster_args.points.len() as f32).sqrt();
-        log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
         optional_rms = Some(rms);
 
         // Arbitrarily setting a threshold for when it 'affects' performance;
@@ -595,9 +594,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         // needed. (Arguably we could set this much higher too.)
         if rms_calculation_seconds > 2 {
             log::warn!(
-                "Calculating RMS error required {} seconds ({} distance
-                 computations). To improve performance,
-                 disable 'kmeans-compute-nonfree-rms'.",
+                "Feature 'kmeans-compute-nonfree-rms' required {} seconds
+                of extra work ({} distance computations).",
                 rms_calculation_seconds,
                 cluster_args.points.len()
             );
