@@ -63,7 +63,7 @@ impl Layer {
         use std::hash::Hash;
         use std::hash::Hasher;
         // don't do any abstraction on preflop
-        let k = self.kmeans_k();
+        let k = self.street().k();
         let n = self.points().len();
         if self.street() == Street::Pref {
             assert!(n == k);

@@ -182,8 +182,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
             // already made a mistake nd introduced a major bug once before
             // in this section.
-            let (ref mut next_centers, ref mut next_helpers, rms) =
-                compute_next_kmeans_tri_ineq(clusterable, &init_centers, &ti_helpers);
+            // TODO: I think that this may need to pass in working_centers not init_centers?
+            // (THIS MIGHT BE A CAUSE OF NONDECREASING RMS....)
             match rms {
                 Some(x) => {
                     log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
