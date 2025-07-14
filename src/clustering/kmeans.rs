@@ -101,11 +101,11 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             let (ref mut next_centers, rms) = compute_next_kmeans(clusterable, &working_centers);
             log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
             assert!(
-                (last_rms - rms).abs() >= f32::MIN,
-                "RMS was not monotonically increasing after clustering - this
-                 is almost certainly due to a bug (e.g. not properly updating
-                 the vectors)." 
-            );
+                (last_rms - rms).abs() > 0.000001,
+                "RMS was not monotonically increasing enough after
+                 clustering - this is almost certainly due to a bug (e.g. not
+                 properly updating the vectors)." 
+                );
             last_rms = rms;
 
             let ref mut c = working_centers;
@@ -185,7 +185,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 Some(x) => {
                     log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
                     assert!(
-                        (last_rms - x).abs() >= f32::MIN,
+                        (last_rms - x).abs() > 0.000001,
                         "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
                     );
                     last_rms = x;
