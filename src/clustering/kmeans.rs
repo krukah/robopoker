@@ -39,21 +39,25 @@ struct TriIneqBounds {
 
 #[derive(Debug, Clone)]
 pub struct ClusterArgs<'a> {
-    // Owned centers vector.
-    // TODO: stop needing to pass ownership for this / use a different
-    // approach to update every iteration
+    // Center Histograms prior to performing any clustering / the start of the
+    // first training loop.
+    // Length should match kmeans_k below.
+    // TODO: Stop needing to pass ownership for this /
+    // use a different approach to update every iteration
+    // TODO: Determine whether this actually needs to be
+    // passed in in the first place...
     pub init_centers: Vec<Histogram>,
 
-    // Points to be clustered
+    // Points to be clustered.
     pub points: &'a Vec<Histogram>,
 
-    // Number clusters. Expected to match the length of init_centers
+    // Number of clusters. Expected to match the length of init_centers.
     pub kmeans_k: usize,
 
-    // Number of training iterations
+    // Number of training iterations to perform.
     pub iterations_t: usize,
 
-    // Relevant string to include in logging messages. Solely for logging and
+    // String intended for tagging any logged messages. Solely for logging and
     // debugging purposes!
     pub label: String,
 }
@@ -263,10 +267,11 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 /// results as the 'unaccelerated' kmeans at every iteration given the
 /// same set of inputs, while providing a massive speedup in most
 /// real-world situations.
-// TODO: DOESN'T WORK PROPERLY ATM. RMS is non-decreasing again :(
 fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     cluster_args: &ClusterArgs,
+    // The centers at the start of *this training iteration*.
+    // (WARNING: do not confuse with cluster_args.init_centers!)
     centers_start: &Vec<Histogram>,
     ti_helpers: &[TriIneqBounds],
 ) -> (
