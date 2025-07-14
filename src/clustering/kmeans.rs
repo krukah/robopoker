@@ -85,6 +85,9 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     }
     let t = clusterable.iterations_t();
 
+    // TODO clean up later
+    const EXPECTED_MIN_IMPROVEMENT:f32 = 0.000001;
+
     if !cfg!(feature = "kmeans-accel") {
         log::info!(
             "{:<32}{:<32}",
@@ -101,7 +104,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             let (ref mut next_centers, rms) = compute_next_kmeans(clusterable, &working_centers);
             log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
             assert!(
-                (last_rms - rms).abs() > 0.000001,
+                (last_rms - rms).abs() > EXPECTED_MIN_IMPROVEMENT,
                 "RMS was not monotonically increasing enough after
                  clustering - this is almost certainly due to a bug (e.g. not
                  properly updating the vectors)." 
@@ -185,7 +188,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 Some(x) => {
                     log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
                     assert!(
-                        (last_rms - x).abs() > 0.000001,
+                        (last_rms - x).abs() > EXPECTED_MIN_IMPROVEMENT,
                         "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
                     );
                     last_rms = x;
