@@ -904,7 +904,7 @@ mod tests {
     //         init_centers,
     //         points: &points,
     //         kmeans_k: 2,
-    //         iterations_t: 5,
+    //         iterations_t: 10,
     //         label: "test_original".to_string(),
     //     };
 
@@ -985,8 +985,7 @@ mod tests {
             init_centers,
             points: &points,
             kmeans_k: 2,
-            // TODO lower back down
-            iterations_t: 500,
+            iterations_t: 10,
             label: "test_elkan".to_string(),
         };
 
@@ -1025,7 +1024,7 @@ mod tests {
     //         init_centers: init_centers.clone(),
     //         points: &points,
     //         kmeans_k: 2,
-    //         iterations_t: 3,
+    //         iterations_t: 10,
     //         label: "original_comparison".to_string(),
     //     };
 
@@ -1034,7 +1033,7 @@ mod tests {
     //         init_centers: init_centers.clone(),
     //         points: &points,
     //         kmeans_k: 2,
-    //         iterations_t: 3,
+    //         iterations_t: 10,
     //         label: "elkan_comparison".to_string(),
     //     };
 
