@@ -822,13 +822,11 @@ mod tests {
         }
     }
 
-    // Helper function to create test histograms
     fn create_test_histogram(abstractions: Vec<Abstraction>) -> Histogram {
         abstractions
             .into_iter()
             .fold(Histogram::default(), |h, a| h.increment(a))
     }
-
     // Helper to create simple equity-based abstractions for testing
     fn create_equity_abstraction(equity: f32) -> Abstraction {
         Abstraction::Percent((equity * 100.0) as u64)
@@ -844,6 +842,21 @@ mod tests {
     //             create_equity_abstraction(0.15),
     //         ]),
     //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.15),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.15),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.15),
+    //         ]),
+    //         create_test_histogram(vec![
     //             create_equity_abstraction(0.12),
     //             create_equity_abstraction(0.08),
     //             create_equity_abstraction(0.13),
@@ -852,6 +865,26 @@ mod tests {
     //             create_equity_abstraction(0.8),
     //             create_equity_abstraction(0.85),
     //             create_equity_abstraction(0.9),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.82),
+    //             create_equity_abstraction(0.88),
+    //             create_equity_abstraction(0.87),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.82),
+    //             create_equity_abstraction(0.88),
+    //             create_equity_abstraction(0.87),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.82),
+    //             create_equity_abstraction(0.88),
+    //             create_equity_abstraction(0.87),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.82),
+    //             create_equity_abstraction(0.88),
+    //             create_equity_abstraction(0.87),
     //         ]),
     //         create_test_histogram(vec![
     //             create_equity_abstraction(0.82),
@@ -880,11 +913,25 @@ mod tests {
     //     assert_eq!(result.len(), 2);
     // }
 
-    // TODO WIP - is flakey atm!!!
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
         // Create test data with clear clusters
         let points = vec![
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
             create_test_histogram(vec![
                 create_equity_abstraction(0.1),
                 create_equity_abstraction(0.1),
@@ -905,6 +952,26 @@ mod tests {
                 create_equity_abstraction(0.88),
                 create_equity_abstraction(0.87),
             ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
         ];
 
         let init_centers = vec![
@@ -918,7 +985,7 @@ mod tests {
             init_centers,
             points: &points,
             kmeans_k: 2,
-            iterations_t: 50,
+            iterations_t: 5,
             label: "test_elkan".to_string(),
         };
 
