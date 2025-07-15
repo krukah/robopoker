@@ -571,11 +571,13 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // as `perform_extra_loss_calculations` is false this is so fast that it's
     // not worth doing.
     for (centroid_i, points) in points_assigned_per_center.iter().enumerate() {
-        let mut mean_of_assigned_points = points[0].clone();
         if points.is_empty() {
-            // TODO: Figure out what to do for the centroid if there's no poitns assigned to it.
-            log::error!("No points assigned to current centroid. This is currently an edge case we are unable to resolve; for more details see https://github.com/krukah/robopoker/issues/34#issuecomment-2860641178")
+            log::error!("No points assigned to current centroid. This is currently an edge case we are unable to resolve; for more details see https://github.com/krukah/robopoker/issues/34#issuecomment-2860641178");
+            todo!(
+                "Figure out what to do here for the center - no points assigned to it currently!!"
+            );
         }
+        let mut mean_of_assigned_points = points[0].clone();
 
         for point in points.iter().skip(1) {
             mean_of_assigned_points.absorb(point);
