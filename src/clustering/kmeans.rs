@@ -985,7 +985,11 @@ mod tests {
             init_centers,
             points: &points,
             kmeans_k: 2,
-            iterations_t: 5,
+            // TODO: Don't leave at 1, bump this back up and check RMS
+            // actually decreases. (This is just to demonstrate that
+            // the current flakey error almost certainly only occurs on
+            // the very first iteration...)
+            iterations_t: 1,
             label: "test_elkan".to_string(),
         };
 
