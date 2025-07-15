@@ -13,6 +13,8 @@ use crate::gameplay::abstraction::Abstraction;
 use crate::Energy;
 use std::collections::BTreeMap;
 
+use crate::clustering::ClusterAlgorithm;
+
 type Neighbor = (usize, f32);
 
 pub struct Layer {
@@ -231,7 +233,15 @@ impl crate::save::disk::Disk for Layer {
         // in such a way that we gotta temporarily leave it like this
         let init_centers: Vec<Histogram> = layer.init_centers();
         layer.kmeans = init_centers.clone();
+
+        // TODO clean this up too
+        let mut cluster_alg = ClusterAlgorithm::KmeansOriginal;
+        if cfg!(feature = "kmeans-accel") {
+            cluster_alg = ClusterAlgorithm::KmeansElkan2003;
+        }
+
         let cluster_args = ClusterArgs {
+            algorithm: cluster_alg,
             init_centers: init_centers,
             points: layer.points(),
             kmeans_k: layer.street().k(),

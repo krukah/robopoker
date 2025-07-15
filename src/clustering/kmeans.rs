@@ -5,8 +5,20 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::SystemTime;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ClusterAlgorithm {
+    KmeansOriginal = 0isize,
+
+    // Accelerated via Triangle Inequality math as per paper 'Elkan 2003'.
+    KmeansElkan2003 = 1isize,
+}
+
 #[derive(Debug, Clone)]
 pub struct ClusterArgs<'a> {
+    // Explicitly choose which clustering algorithm to use. Leave the optional
+    // empty to let cluster() choose.
+    pub algorithm: ClusterAlgorithm,
+
     // Center Histograms prior to performing any clustering / the start of the
     // first training loop.
     // Length should match kmeans_k below.
@@ -98,125 +110,131 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     // TODO clean up later
     const EXPECTED_MIN_IMPROVEMENT: f32 = 0.000001;
 
-    if !cfg!(feature = "kmeans-accel") {
-        log::info!(
-            "{:<32}{:<32}",
-            "clustering kmeans (unaccelerated)",
-            cluster_args.label
-        );
-        let progress = crate::progress(t);
-        let mut last_rms = 0f32;
-        for _ in 0..t {
-            // WARNING: If modifying this code, MAKE SURE THAT THE RMS VALUES ACTUALLY
-            // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
-            // where the code looked fine at casual glance, but in practice it wasn't
-            // actually making progress past the first iteration.)
-            let (ref mut next_centers, rms) =
-                compute_next_kmeans(clusterable, &cluster_args, &working_centers);
-            log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
-            assert!(
-                (last_rms - rms).abs() > EXPECTED_MIN_IMPROVEMENT,
-                "RMS was not monotonically increasing enough after
-                 clustering - this is almost certainly due to a bug (e.g. not
-                 properly updating the vectors)."
+    match cluster_args.algorithm {
+        ClusterAlgorithm::KmeansOriginal => {
+            log::info!(
+                "{:<32}{:<32}",
+                "clustering kmeans (unaccelerated)",
+                cluster_args.label
             );
-            last_rms = rms;
+            let progress = crate::progress(t);
+            let mut last_rms = 0f32;
+            for _ in 0..t {
+                // WARNING: If modifying this code, MAKE SURE THAT THE RMS VALUES ACTUALLY
+                // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
+                // where the code looked fine at casual glance, but in practice it wasn't
+                // actually making progress past the first iteration.)
+                let (ref mut next_centers, rms) =
+                    compute_next_kmeans(clusterable, &cluster_args, &working_centers);
+                log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
+                assert!(
+                    (last_rms - rms).abs() > EXPECTED_MIN_IMPROVEMENT,
+                    "RMS was not monotonically increasing enough after
+                     clustering - this is almost certainly due to a bug (e.g. not
+                     properly updating the vectors)."
+                );
+                last_rms = rms;
 
-            let ref mut c = working_centers;
-            std::mem::swap(next_centers, c);
-            progress.inc(1);
-        }
-        progress.finish();
-        println!();
-    } else {
-        // Use Triangle Inequality (TI) math to accelerate the K-means
-        // clustering, as per Elkan (2003).
-
-        log::debug!("Initializing helpers for triangle-inequality (TI) accelerated of clustering");
-        // """
-        // First, pick initial centers. Set the lower bound l(x,c) for each point x
-        // and center c. Assign each x to its closest initial center c(x) =
-        // argmin_c d(x,c), using Lemma 1 to avoid redundant distance
-        // calculations. Each time d(x,c) is computed, set l(x,c) = d(x,c). Assign
-        // upper bounds u(x) = min_c d(x,c).
-        // """
-        let mut ti_helpers: Vec<TriIneqBounds> =
-            create_centroids_tri_ineq(clusterable, &cluster_args)
-                .iter()
-                // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
-                // (e.g. if we already did that during the init() above)
-                .map(|nearest_neighbor| TriIneqBounds {
-                    // "c(x)"'s index in init_centers
-                    assigned_centroid_idx: nearest_neighbor.0,
-                    // "l(x,c)"
-                    // "Set the lower bound l(x,c) = 0 for each point x and center c"
-                    lower_bounds: vec![0.0; cluster_args.kmeans_k],
-                    // "u(x)"
-                    // "Assign upper bounds u(x) = min_c d(x,c)" (which by
-                    //  definition is the distance of the nearest neighbor at
-                    //  this point)
-                    upper_bound: nearest_neighbor.1,
-                    // "r(x)"
-                    // (Not explicitly mentioned during the pre-step. But, we know that
-                    // when starting out we literally _just_computed all the distances,
-                    // so it should theoretically be safe to leave 'false' here.)
-                    stale_upper_bound: false,
-                })
-                .collect::<Vec<_>>();
-        log::debug!("Completed TI helper initialization.");
-
-        log::info!(
-            "{:<32}{:<32}",
-            "clustering kmeans (*accelerated*)",
-            cluster_args.label
-        );
-        // As per the paper:
-        // """
-        // We want the accelerated k-means algorithm to be usable wherever the
-        // standard algorithm is used. Therefore, we need the accelerated
-        // algorithm to satisfy three properties. First, it should be able to
-        // start with any initial centers, so that all existing
-        // initialization methods can continue to be used. Second, given the
-        // same initial centers, it should al- ways produce exactly the same
-        // final centers as the standard algorithm. Third, it should be able
-        // to use any black-box distance metric, so it should not rely for
-        // example on optimizations specific to Euclidean distance.
-        //
-        // Our algorithm in fact satisfies a condition stronger than the
-        // second one above: after each iteration, it produces the same set
-        // of center locations as the standard k-means method.
-        // """
-        // TODO: Add styling to progress bar
-        let mut last_rms = 0f32;
-        for i in (0..t).progress() {
-            log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
-            // TODO refactor this to be more readable (ie stop using ref mut)
-            // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
-            // already made a mistake nd introduced a major bug once before
-            // in this section.
-            let (ref mut next_centers, ref mut next_helpers, rms) = compute_next_kmeans_tri_ineq(
-                clusterable,
-                &cluster_args,
-                &working_centers,
-                &ti_helpers,
-            );
-            match rms {
-                Some(x) => {
-                    log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
-                    assert!(
-                        (last_rms - x).abs() > EXPECTED_MIN_IMPROVEMENT,
-                        "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
-                    );
-                    last_rms = x;
-                }
-                _ => (),
+                let ref mut c = working_centers;
+                std::mem::swap(next_centers, c);
+                progress.inc(1);
             }
+            progress.finish();
+            println!();
+        }
+        ClusterAlgorithm::KmeansElkan2003 => {
+            // Use Triangle Inequality (TI) math to accelerate the K-means
+            // clustering, as per Elkan (2003).
 
-            let ref mut c = working_centers;
-            std::mem::swap(next_centers, c);
+            log::debug!(
+                "Initializing helpers for triangle-inequality (TI) accelerated of clustering"
+            );
+            // """
+            // First, pick initial centers. Set the lower bound l(x,c) for each point x
+            // and center c. Assign each x to its closest initial center c(x) =
+            // argmin_c d(x,c), using Lemma 1 to avoid redundant distance
+            // calculations. Each time d(x,c) is computed, set l(x,c) = d(x,c). Assign
+            // upper bounds u(x) = min_c d(x,c).
+            // """
+            let mut ti_helpers: Vec<TriIneqBounds> =
+                create_centroids_tri_ineq(clusterable, &cluster_args)
+                    .iter()
+                    // TODO: Double check we're not repeating the 'pick initial centers' work here twice.
+                    // (e.g. if we already did that during the init() above)
+                    .map(|nearest_neighbor| TriIneqBounds {
+                        // "c(x)"'s index in init_centers
+                        assigned_centroid_idx: nearest_neighbor.0,
+                        // "l(x,c)"
+                        // "Set the lower bound l(x,c) = 0 for each point x and center c"
+                        lower_bounds: vec![0.0; cluster_args.kmeans_k],
+                        // "u(x)"
+                        // "Assign upper bounds u(x) = min_c d(x,c)" (which by
+                        //  definition is the distance of the nearest neighbor at
+                        //  this point)
+                        upper_bound: nearest_neighbor.1,
+                        // "r(x)"
+                        // (Not explicitly mentioned during the pre-step. But, we know that
+                        // when starting out we literally _just_computed all the distances,
+                        // so it should theoretically be safe to leave 'false' here.)
+                        stale_upper_bound: false,
+                    })
+                    .collect::<Vec<_>>();
+            log::debug!("Completed TI helper initialization.");
 
-            let ref mut h = ti_helpers;
-            std::mem::swap(h, next_helpers)
+            log::info!(
+                "{:<32}{:<32}",
+                "clustering kmeans (*accelerated*)",
+                cluster_args.label
+            );
+            // As per the paper:
+            // """
+            // We want the accelerated k-means algorithm to be usable wherever the
+            // standard algorithm is used. Therefore, we need the accelerated
+            // algorithm to satisfy three properties. First, it should be able to
+            // start with any initial centers, so that all existing
+            // initialization methods can continue to be used. Second, given the
+            // same initial centers, it should al- ways produce exactly the same
+            // final centers as the standard algorithm. Third, it should be able
+            // to use any black-box distance metric, so it should not rely for
+            // example on optimizations specific to Euclidean distance.
+            //
+            // Our algorithm in fact satisfies a condition stronger than the
+            // second one above: after each iteration, it produces the same set
+            // of center locations as the standard k-means method.
+            // """
+            // TODO: Add styling to progress bar
+            let mut last_rms = 0f32;
+            for i in (0..t).progress() {
+                log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
+                // TODO refactor this to be more readable (ie stop using ref mut)
+                // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
+                // already made a mistake nd introduced a major bug once before
+                // in this section.
+                let (ref mut next_centers, ref mut next_helpers, rms) =
+                    compute_next_kmeans_tri_ineq(
+                        clusterable,
+                        &cluster_args,
+                        &working_centers,
+                        &ti_helpers,
+                    );
+                match rms {
+                    Some(x) => {
+                        log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
+                        assert!(
+                            (last_rms - x).abs() > EXPECTED_MIN_IMPROVEMENT,
+                            "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
+                        );
+                        last_rms = x;
+                    }
+                    _ => (),
+                }
+
+                let ref mut c = working_centers;
+                std::mem::swap(next_centers, c);
+
+                let ref mut h = ti_helpers;
+                std::mem::swap(h, next_helpers)
+            }
         }
     }
     working_centers
@@ -764,4 +782,205 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
         })
         .collect();
     nearest_neighbors
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cards::observation::Observation;
+    use crate::gameplay::abstraction::Abstraction;
+    use crate::Energy;
+    use std::sync::Mutex;
+    use std::collections::HashMap;
+
+    #[derive(Debug)]
+    struct MockClusterable {}
+    impl Clusterable for MockClusterable {
+        // Smple Euclidean-like distance for testing
+        fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+            let dist1 = h1.distribution();
+            let dist2 = h2.distribution();
+            
+            // Simple distance calculation based on distribution differences
+            let mut sum = 0.0;
+            let all_keys: std::collections::HashSet<_> = dist1.iter()
+                .chain(dist2.iter())
+                .map(|(k, _)| k)
+                .collect();
+            for &key in &all_keys {
+                let p1 = h1.density(key);
+                let p2 = h2.density(key);
+                sum += (p1 - p2).powi(2);
+            }
+            sum.sqrt()
+        }
+
+        fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32) {
+            clusters.iter()
+                .enumerate()
+                .map(|(i, cluster)| (i, self.distance(x, cluster)))
+                .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
+                .unwrap()
+        }
+    }
+
+    // Helper function to create test histograms
+    fn create_test_histogram(abstractions: Vec<Abstraction>) -> Histogram {
+        abstractions.into_iter()
+            .fold(Histogram::default(), |h, a| h.increment(a))
+    }
+
+    // Helper to create simple equity-based abstractions for testing
+    fn create_equity_abstraction(equity: f32) -> Abstraction {
+        Abstraction::Percent((equity * 100.0) as u64)
+    }
+
+    // #[test]
+    // fn test_kmeans_original_rms_decreases() {
+    //     // Create test data with clear clusters
+    //     let points = vec![
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.15),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.12),
+    //             create_equity_abstraction(0.08),
+    //             create_equity_abstraction(0.13),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.8),
+    //             create_equity_abstraction(0.85),
+    //             create_equity_abstraction(0.9),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.82),
+    //             create_equity_abstraction(0.88),
+    //             create_equity_abstraction(0.87),
+    //         ]),
+    //     ];
+
+    //     let init_centers = vec![
+    //         create_test_histogram(vec![create_equity_abstraction(0.2)]),
+    //         create_test_histogram(vec![create_equity_abstraction(0.7)]),
+    //     ];
+
+    //     let clusterable = MockClusterable {};
+    //     let cluster_args = ClusterArgs {
+    //         algorithm: ClusterAlgorithm::KmeansOriginal,
+    //         init_centers,
+    //         points: &points,
+    //         kmeans_k: 2,
+    //         iterations_t: 5,
+    //         label: "test_original".to_string(),
+    //     };
+
+    //     // This should not panic - the assertion inside should pass
+    //     let result = cluster(&clusterable, cluster_args);
+    //     assert_eq!(result.len(), 2);
+    // }
+
+    #[test]
+    fn test_kmeans_elkan_rms_decreases() {
+        // Create test data with clear clusters
+        let points = vec![
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.12),
+                create_equity_abstraction(0.08),
+                create_equity_abstraction(0.13),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.8),
+                create_equity_abstraction(0.85),
+                create_equity_abstraction(0.9),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+        ];
+
+        let init_centers = vec![
+            create_test_histogram(vec![create_equity_abstraction(0.2)]),
+            create_test_histogram(vec![create_equity_abstraction(0.7)]),
+        ];
+
+        let clusterable = MockClusterable {};
+        let cluster_args = ClusterArgs {
+            algorithm: ClusterAlgorithm::KmeansElkan2003,
+            init_centers,
+            points: &points,
+            kmeans_k: 2,
+            iterations_t: 5,
+            label: "test_elkan".to_string(),
+        };
+
+        // This should not panic - the assertion inside should pass
+        let result = cluster(&clusterable, cluster_args);
+        assert_eq!(result.len(), 2);
+    }
+
+    // #[test]
+    // fn test_both_algorithms_same_result() {
+    //     // Both algorithms should produce the same results given the same input
+    //     let points = vec![
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.1),
+    //             create_equity_abstraction(0.1),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.15),
+    //             create_equity_abstraction(0.12),
+    //         ]),
+    //         create_test_histogram(vec![
+    //             create_equity_abstraction(0.8),
+    //             create_equity_abstraction(0.85),
+    //         ]),
+    //     ];
+
+    //     let init_centers = vec![
+    //         create_test_histogram(vec![create_equity_abstraction(0.2)]),
+    //         create_test_histogram(vec![create_equity_abstraction(0.7)]),
+    //     ];
+
+    //     let clusterable = MockClusterable {};
+        
+    //     let cluster_args_original = ClusterArgs {
+    //         algorithm: ClusterAlgorithm::KmeansOriginal,
+    //         init_centers: init_centers.clone(),
+    //         points: &points,
+    //         kmeans_k: 2,
+    //         iterations_t: 3,
+    //         label: "original_comparison".to_string(),
+    //     };
+
+    //     let cluster_args_elkan = ClusterArgs {
+    //         algorithm: ClusterAlgorithm::KmeansElkan2003,
+    //         init_centers: init_centers.clone(),
+    //         points: &points,
+    //         kmeans_k: 2,
+    //         iterations_t: 3,
+    //         label: "elkan_comparison".to_string(),
+    //     };
+
+    //     let result_original = cluster(&clusterable, cluster_args_original);
+    //     let result_elkan = cluster(&clusterable, cluster_args_elkan);
+
+    //     // Both should produce the same number of clusters
+    //     assert_eq!(result_original.len(), result_elkan.len());
+        
+    //     // Both should complete without panicking (RMS decreasing)
+    //     assert_eq!(result_original.len(), 2);
+    //     assert_eq!(result_elkan.len(), 2);
+    // }
+
 }
