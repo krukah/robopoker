@@ -784,16 +784,11 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
     nearest_neighbors
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::Observation;
     use crate::gameplay::abstraction::Abstraction;
     use crate::Energy;
-    use std::sync::Mutex;
-    use std::collections::HashMap;
 
     #[derive(Debug)]
     struct MockClusterable {}
@@ -802,13 +797,11 @@ mod tests {
         fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
             let dist1 = h1.distribution();
             let dist2 = h2.distribution();
-            
+
             // Simple distance calculation based on distribution differences
             let mut sum = 0.0;
-            let all_keys: std::collections::HashSet<_> = dist1.iter()
-                .chain(dist2.iter())
-                .map(|(k, _)| k)
-                .collect();
+            let all_keys: std::collections::HashSet<_> =
+                dist1.iter().chain(dist2.iter()).map(|(k, _)| k).collect();
             for &key in &all_keys {
                 let p1 = h1.density(key);
                 let p2 = h2.density(key);
@@ -818,7 +811,8 @@ mod tests {
         }
 
         fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32) {
-            clusters.iter()
+            clusters
+                .iter()
                 .enumerate()
                 .map(|(i, cluster)| (i, self.distance(x, cluster)))
                 .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
@@ -828,7 +822,8 @@ mod tests {
 
     // Helper function to create test histograms
     fn create_test_histogram(abstractions: Vec<Abstraction>) -> Histogram {
-        abstractions.into_iter()
+        abstractions
+            .into_iter()
             .fold(Histogram::default(), |h, a| h.increment(a))
     }
 
@@ -883,6 +878,7 @@ mod tests {
     //     assert_eq!(result.len(), 2);
     // }
 
+    // TODO WIP - is flakey atm!!!
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
         // Create test data with clear clusters
@@ -953,7 +949,7 @@ mod tests {
     //     ];
 
     //     let clusterable = MockClusterable {};
-        
+
     //     let cluster_args_original = ClusterArgs {
     //         algorithm: ClusterAlgorithm::KmeansOriginal,
     //         init_centers: init_centers.clone(),
@@ -977,10 +973,9 @@ mod tests {
 
     //     // Both should produce the same number of clusters
     //     assert_eq!(result_original.len(), result_elkan.len());
-        
+
     //     // Both should complete without panicking (RMS decreasing)
     //     assert_eq!(result_original.len(), 2);
     //     assert_eq!(result_elkan.len(), 2);
     // }
-
 }
