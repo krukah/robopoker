@@ -903,11 +903,31 @@ mod tests {
                 create_equity_abstraction(0.88),
                 create_equity_abstraction(0.87),
             ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.111),
+                create_equity_abstraction(0.104),
+                create_equity_abstraction(0.145),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.2),
+                create_equity_abstraction(0.084),
+                create_equity_abstraction(0.1322),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.444),
+                create_equity_abstraction(0.859),
+                create_equity_abstraction(0.984),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.822),
+                create_equity_abstraction(0.881),
+                create_equity_abstraction(0.873),
+            ]),
         ];
 
         let init_centers = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.2)]),
-            create_test_histogram(vec![create_equity_abstraction(0.7)]),
+            create_test_histogram(vec![create_equity_abstraction(0.01)]),
+            create_test_histogram(vec![create_equity_abstraction(0.99)]),
         ];
 
         let clusterable = MockClusterable {};
@@ -916,7 +936,7 @@ mod tests {
             init_centers,
             points: &points,
             kmeans_k: 2,
-            iterations_t: 5,
+            iterations_t: 200,
             label: "test_elkan".to_string(),
         };
 
