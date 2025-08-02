@@ -40,6 +40,8 @@ pub struct ClusterArgs<'a> {
     // String intended for tagging any logged messages. Solely for logging and
     // debugging purposes!
     pub label: String,
+
+    pub compute_rms: bool,
 }
 
 type Neighbor = (usize, f32);
@@ -75,19 +77,27 @@ struct TriIneqBounds {
 }
 
 pub trait Clusterable {
-    // Probably have this use generics here if possible, + return a simple f32. E.g. some
+    // TODO: consider updating this to use generics here if possible, + return a simple f32. E.g. some
     // function <T1, T2> that does ((T1, T2, T2) -> f32).
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy;
-    // Probably remove this entirely and just have an implementation of this over in
-    // the resulting file defined in terms of the other inputs + the distance function...?
+    // TODO: remove this entirely and just have an implementation of this defined in terms
+    // of the distance function... if possible.
     fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32);
 }
 
 pub fn cluster<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
-    // TODO stop needing ownership for this
+    // TODO: update to avoid needing ownership, if possible
     cluster_args: ClusterArgs,
-) -> Vec<Histogram> {
+) -> (
+    // Resulting clusters
+    Vec<Histogram>,
+    // RMS error at each iteration. Will be left empty unless either A.
+    // compute_rms, or B. the RMSs are computed "for free" using the
+    // specified ClusterAlgorithm (i.e. as a byproduct of performing the
+    // clustering).
+    Vec<f32>,
+) {
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
     // TODO: Extract out to a helper function + generally clean it up once we
@@ -102,14 +112,13 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 
     let k = cluster_args.kmeans_k;
     if k == 0 {
-        let empty = Vec::new();
-        return empty;
+        let empty_clusters = Vec::new();
+        let empty_rms = Vec::new();
+        return (empty_clusters, empty_rms);
     }
     let t = cluster_args.iterations_t;
 
-    // TODO clean up later
-    const EXPECTED_MIN_IMPROVEMENT: f32 = 0.000001;
-
+    let mut all_rms: Vec<f32> = Vec::default();
     match cluster_args.algorithm {
         ClusterAlgorithm::KmeansOriginal => {
             log::info!(
@@ -118,7 +127,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 cluster_args.label
             );
             let progress = crate::progress(t);
-            let mut last_rms = 0f32;
             for _ in 0..t {
                 // WARNING: If modifying this code, MAKE SURE THAT THE RMS VALUES ACTUALLY
                 // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
@@ -127,13 +135,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 let (ref mut next_centers, rms) =
                     compute_next_kmeans(clusterable, &cluster_args, &working_centers);
                 log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
-                assert!(
-                    (last_rms - rms).abs() > EXPECTED_MIN_IMPROVEMENT,
-                    "RMS was not monotonically increasing enough after
-                     clustering - this is almost certainly due to a bug (e.g. not
-                     properly updating the vectors)."
-                );
-                last_rms = rms;
+                all_rms.push(rms);
 
                 let ref mut c = working_centers;
                 std::mem::swap(next_centers, c);
@@ -203,7 +205,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // of center locations as the standard k-means method.
             // """
             // TODO: Add styling to progress bar
-            let mut last_rms = 0f32;
             for i in (0..t).progress() {
                 log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
                 // TODO refactor this to be more readable (ie stop using ref mut)
@@ -220,11 +221,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 match rms {
                     Some(x) => {
                         log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
-                        assert!(
-                            (last_rms - x).abs() > EXPECTED_MIN_IMPROVEMENT,
-                            "RMS was not monotonically increasing after clustering - this is almost certainly due to a bug (e.g. not properly updating the vectors)."
-                        );
-                        last_rms = x;
+                        all_rms.push(x);
                     }
                     _ => (),
                 }
@@ -237,7 +234,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             }
         }
     }
-    working_centers
+    (working_centers, all_rms)
 }
 
 #[cfg(feature = "native")]
@@ -555,7 +552,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    if cfg!(feature = "kmeans-compute-nonfree-rms") {
+    if cluster_args.compute_rms {
         log::debug!(
             "Performing {} otherwise-unnecessary emd computations to
              calculate RMS error. This may slow down step 4!",
@@ -584,7 +581,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         }
         let next_centroid = mean_of_assigned_points;
 
-        if cfg!(feature = "kmeans-compute-nonfree-rms") {
+        if cluster_args.compute_rms {
             // NOTE: Calculating the error with the OLD center (to ensure
             // that this is consistent with the unaccelerated algorithm).
             let old_centroid = &(centers_start[centroid_i]);
@@ -609,7 +606,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         new_centroids.push(next_centroid);
     }
     let mut optional_rms: Option<f32> = None;
-    if cfg!(feature = "kmeans-compute-nonfree-rms") {
+    if cluster_args.compute_rms {
         let rms = (loss / cluster_args.points.len() as f32).sqrt();
         optional_rms = Some(rms);
 
@@ -618,7 +615,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         // needed. (Arguably we could set this much higher too.)
         if rms_calculation_seconds > 2 {
             log::warn!(
-                "Feature 'kmeans-compute-nonfree-rms' required {} seconds
+                "Computing RMS values required {} seconds
                 of extra work ({} distance computations).",
                 rms_calculation_seconds,
                 cluster_args.points.len()
@@ -987,11 +984,21 @@ mod tests {
             kmeans_k: 2,
             iterations_t: 10,
             label: "test_elkan".to_string(),
+            compute_rms: true,
         };
 
-        // This should not panic - the assertion inside should pass
-        let result = cluster(&clusterable, cluster_args);
+        let (result, all_rms) = cluster(&clusterable, cluster_args);
         assert_eq!(result.len(), 2);
+        for w in all_rms.windows(2) {
+            let prior_rms = w[0];
+            let next_rms = w[1];
+            assert!(
+                (prior_rms - next_rms).abs() > 0.00000001,
+                "RMS did not actually decrease during an iteration (goes from {} to {})",
+                prior_rms,
+                next_rms
+            )
+        }
     }
 
     // #[test]

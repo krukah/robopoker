@@ -247,8 +247,10 @@ impl crate::save::disk::Disk for Layer {
             kmeans_k: layer.street().k(),
             iterations_t: layer.street().t(),
             label: layer.street().to_string(),
+            compute_rms: cfg!(feature = "kmeans-compute-nonfree-rms"),
         };
-        let clustered_centers: Vec<Histogram> = kmeans::cluster(&layer, cluster_args);
+        let (clustered_centers, _): (Vec<Histogram>, Vec<f32>) =
+            kmeans::cluster(&layer, cluster_args);
         layer.kmeans = clustered_centers;
 
         layer
