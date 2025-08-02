@@ -829,87 +829,6 @@ mod tests {
         Abstraction::Percent((equity * 100.0) as u64)
     }
 
-    // #[test]
-    // fn test_kmeans_original_rms_decreases() {
-    //     // Create test data with clear clusters
-    //     let points = vec![
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.15),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.15),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.15),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.15),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.12),
-    //             create_equity_abstraction(0.08),
-    //             create_equity_abstraction(0.13),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.8),
-    //             create_equity_abstraction(0.85),
-    //             create_equity_abstraction(0.9),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.82),
-    //             create_equity_abstraction(0.88),
-    //             create_equity_abstraction(0.87),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.82),
-    //             create_equity_abstraction(0.88),
-    //             create_equity_abstraction(0.87),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.82),
-    //             create_equity_abstraction(0.88),
-    //             create_equity_abstraction(0.87),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.82),
-    //             create_equity_abstraction(0.88),
-    //             create_equity_abstraction(0.87),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.82),
-    //             create_equity_abstraction(0.88),
-    //             create_equity_abstraction(0.87),
-    //         ]),
-    //     ];
-
-    //     let init_centers = vec![
-    //         create_test_histogram(vec![create_equity_abstraction(0.2)]),
-    //         create_test_histogram(vec![create_equity_abstraction(0.7)]),
-    //     ];
-
-    //     let clusterable = MockClusterable {};
-    //     let cluster_args = ClusterArgs {
-    //         algorithm: ClusterAlgorithm::KmeansOriginal,
-    //         init_centers,
-    //         points: &points,
-    //         kmeans_k: 2,
-    //         iterations_t: 10,
-    //         label: "test_original".to_string(),
-    //     };
-
-    //     // This should not panic - the assertion inside should pass
-    //     let result = cluster(&clusterable, cluster_args);
-    //     assert_eq!(result.len(), 2);
-    // }
-
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
         // Create test data with clear clusters
@@ -1001,57 +920,102 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_both_algorithms_same_result() {
-    //     // Both algorithms should produce the same results given the same input
-    //     let points = vec![
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.1),
-    //             create_equity_abstraction(0.1),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.15),
-    //             create_equity_abstraction(0.12),
-    //         ]),
-    //         create_test_histogram(vec![
-    //             create_equity_abstraction(0.8),
-    //             create_equity_abstraction(0.85),
-    //         ]),
-    //     ];
+    #[test]
+    fn test_kmeans_elkan_original_match() {
+        // Create test data with clear clusters
+        let points = vec![
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.1),
+                create_equity_abstraction(0.15),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.12),
+                create_equity_abstraction(0.08),
+                create_equity_abstraction(0.13),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.8),
+                create_equity_abstraction(0.85),
+                create_equity_abstraction(0.9),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+            create_test_histogram(vec![
+                create_equity_abstraction(0.82),
+                create_equity_abstraction(0.88),
+                create_equity_abstraction(0.87),
+            ]),
+        ];
 
-    //     let init_centers = vec![
-    //         create_test_histogram(vec![create_equity_abstraction(0.2)]),
-    //         create_test_histogram(vec![create_equity_abstraction(0.7)]),
-    //     ];
+        let init_centers_elkan = vec![
+            create_test_histogram(vec![create_equity_abstraction(0.2)]),
+            create_test_histogram(vec![create_equity_abstraction(0.7)]),
+        ];
+        let init_centers_original = init_centers_elkan.clone();
 
-    //     let clusterable = MockClusterable {};
+        let clusterable = MockClusterable {};
+        let cluster_args_elkan = ClusterArgs {
+            algorithm: ClusterAlgorithm::KmeansElkan2003,
+            init_centers: init_centers_elkan,
+            points: &points,
+            kmeans_k: 2,
+            iterations_t: 10,
+            label: "test_elkan".to_string(),
+            compute_rms: true,
+        };
+        let cluster_args_original = ClusterArgs {
+            algorithm: ClusterAlgorithm::KmeansOriginal,
+            init_centers: init_centers_original,
+            label: "test_original".to_string(),
+            ..cluster_args_elkan
+        };
 
-    //     let cluster_args_original = ClusterArgs {
-    //         algorithm: ClusterAlgorithm::KmeansOriginal,
-    //         init_centers: init_centers.clone(),
-    //         points: &points,
-    //         kmeans_k: 2,
-    //         iterations_t: 10,
-    //         label: "original_comparison".to_string(),
-    //     };
+        let (result_elkan, all_rms_elkan) = cluster(&clusterable, cluster_args_elkan);
+        let (result_original, all_rms_original) = cluster(&clusterable, cluster_args_original);
+        assert_eq!(result_elkan.len(), 2);
+        assert_eq!(result_original.len(), 2);
 
-    //     let cluster_args_elkan = ClusterArgs {
-    //         algorithm: ClusterAlgorithm::KmeansElkan2003,
-    //         init_centers: init_centers.clone(),
-    //         points: &points,
-    //         kmeans_k: 2,
-    //         iterations_t: 10,
-    //         label: "elkan_comparison".to_string(),
-    //     };
-
-    //     let result_original = cluster(&clusterable, cluster_args_original);
-    //     let result_elkan = cluster(&clusterable, cluster_args_elkan);
-
-    //     // Both should produce the same number of clusters
-    //     assert_eq!(result_original.len(), result_elkan.len());
-
-    //     // Both should complete without panicking (RMS decreasing)
-    //     assert_eq!(result_original.len(), 2);
-    //     assert_eq!(result_elkan.len(), 2);
-    // }
+        for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
+            assert!(
+                (elkan_rms - original_rms).abs() < 0.00000001,
+                "RMS-es (elkan: {}, original: {}) should match at each step",
+                elkan_rms,
+                original_rms
+            )
+        }
+    }
 }
