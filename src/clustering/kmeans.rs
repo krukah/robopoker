@@ -814,8 +814,8 @@ mod tests {
                 .iter()
                 .enumerate()
                 .map(|(i, cluster)| (i, self.distance(x, cluster)))
-                .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
-                .unwrap()
+                .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap_or(std::cmp::Ordering::Equal))
+                .expect("find nearest neighbor")
         }
     }
 
