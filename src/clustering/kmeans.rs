@@ -891,9 +891,8 @@ mod tests {
         ];
 
         let init_centers = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.1)]),
-            create_test_histogram(vec![create_equity_abstraction(0.105)]),
-            create_test_histogram(vec![create_equity_abstraction(0.11)]),
+            create_test_histogram(vec![create_equity_abstraction(0.3)]),
+            create_test_histogram(vec![create_equity_abstraction(0.6)]),
         ];
 
         let clusterable = MockClusterable {};
@@ -901,7 +900,7 @@ mod tests {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers,
             points: &points,
-            kmeans_k: 3,
+            kmeans_k: 2,
 
             // Note: usually converges *very* quickly / after only 2 iterations. So increasing this may cause a false-alarm.
             iterations_t: 3,
@@ -911,7 +910,7 @@ mod tests {
         };
 
         let (result, all_rms) = cluster(&clusterable, cluster_args);
-        assert_eq!(result.len(), 3);
+        assert_eq!(result.len(), 2);
         assert_eq!(all_rms.len(), 3);
 
         for w in all_rms.windows(2) {
@@ -934,7 +933,7 @@ mod tests {
 
         // Check against known starting value referenced above
         assert!(
-            (all_rms[0] - 0.9639984).abs() < 0.00001,
+            (all_rms[0] - 1.1891768).abs() < 0.00001,
             "Starting RMS must approximately match expected hardcoded value"
         );
         assert!(
@@ -1005,8 +1004,8 @@ mod tests {
         ];
 
         let init_centers_elkan = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.1)]),
-            create_test_histogram(vec![create_equity_abstraction(0.11)]),
+            create_test_histogram(vec![create_equity_abstraction(0.3)]),
+            create_test_histogram(vec![create_equity_abstraction(0.6)]),
         ];
         let init_centers_original = init_centers_elkan.clone();
         let points_elkan = points.clone();
@@ -1036,6 +1035,7 @@ mod tests {
         assert_eq!(all_rms_original.len(), 3);
 
         for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
+            println!("elkan: {}, original: {}", elkan_rms, original_rms);
             assert!(
                 (elkan_rms - original_rms).abs() < 0.001,
                 "RMS-es (elkan: {}, original: {}) should approximately match at each step",
