@@ -826,7 +826,7 @@ mod tests {
     }
     // Helper to create simple equity-based abstractions for testing
     fn create_equity_abstraction(equity: f32) -> Abstraction {
-        Abstraction::Percent((equity * 100.0) as u64)
+        Abstraction::Learned((equity * 100.0) as u64)
     }
 
     #[test]
