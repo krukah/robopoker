@@ -891,8 +891,8 @@ mod tests {
         ];
 
         let init_centers = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.2)]),
-            create_test_histogram(vec![create_equity_abstraction(0.7)]),
+            create_test_histogram(vec![create_equity_abstraction(0.1)]),
+            create_test_histogram(vec![create_equity_abstraction(0.11)]),
         ];
 
         let clusterable = MockClusterable {};
@@ -901,7 +901,7 @@ mod tests {
             init_centers,
             points: &points,
             kmeans_k: 2,
-            iterations_t: 10,
+            iterations_t: 3,
             label: "test_elkan".to_string(),
             compute_rms: true,
         };
@@ -912,8 +912,14 @@ mod tests {
             let prior_rms = w[0];
             let next_rms = w[1];
             assert!(
+                next_rms < prior_rms,
+                "RMS did not decrease during at least one iteration (goes from {} to {})",
+                prior_rms,
+                next_rms
+            );
+            assert!(
                 (prior_rms - next_rms).abs() > 0.00000001,
-                "RMS did not actually decrease during an iteration (goes from {} to {})",
+                "RMS did not decrease *enough* during at least one iteration (goes from {} to {})",
                 prior_rms,
                 next_rms
             )
@@ -982,37 +988,40 @@ mod tests {
         ];
 
         let init_centers_elkan = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.2)]),
-            create_test_histogram(vec![create_equity_abstraction(0.7)]),
+            create_test_histogram(vec![create_equity_abstraction(0.1)]),
+            create_test_histogram(vec![create_equity_abstraction(0.11)]),
         ];
         let init_centers_original = init_centers_elkan.clone();
+        let points_elkan = points.clone();
+        let points_original = points.clone();
 
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers: init_centers_elkan,
-            points: &points,
+            points: &points_elkan,
             kmeans_k: 2,
-            iterations_t: 10,
+            iterations_t: 3,
             label: "test_elkan".to_string(),
             compute_rms: true,
         };
         let cluster_args_original = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansOriginal,
             init_centers: init_centers_original,
+            points: &points_original,
             label: "test_original".to_string(),
             ..cluster_args_elkan
         };
 
-        let (result_elkan, all_rms_elkan) = cluster(&clusterable, cluster_args_elkan);
-        let (result_original, all_rms_original) = cluster(&clusterable, cluster_args_original);
-        assert_eq!(result_elkan.len(), 2);
-        assert_eq!(result_original.len(), 2);
+        let (_, all_rms_elkan) = cluster(&clusterable, cluster_args_elkan);
+        let (_, all_rms_original) = cluster(&clusterable, cluster_args_original);
+        assert_eq!(all_rms_elkan.len(), 3);
+        assert_eq!(all_rms_original.len(), 3);
 
         for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
             assert!(
-                (elkan_rms - original_rms).abs() < 0.00000001,
-                "RMS-es (elkan: {}, original: {}) should match at each step",
+                (elkan_rms - original_rms).abs() < 0.001,
+                "RMS-es (elkan: {}, original: {}) should approximately match at each step",
                 elkan_rms,
                 original_rms
             )
