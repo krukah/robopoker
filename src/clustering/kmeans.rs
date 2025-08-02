@@ -892,6 +892,7 @@ mod tests {
 
         let init_centers = vec![
             create_test_histogram(vec![create_equity_abstraction(0.1)]),
+            create_test_histogram(vec![create_equity_abstraction(0.105)]),
             create_test_histogram(vec![create_equity_abstraction(0.11)]),
         ];
 
@@ -900,30 +901,46 @@ mod tests {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers,
             points: &points,
-            kmeans_k: 2,
+            kmeans_k: 3,
+
+            // Note: usually converges *very* quickly / after only 2 iterations. So increasing this may cause a false-alarm.
             iterations_t: 3,
+
             label: "test_elkan".to_string(),
             compute_rms: true,
         };
 
         let (result, all_rms) = cluster(&clusterable, cluster_args);
-        assert_eq!(result.len(), 2);
+        assert_eq!(result.len(), 3);
+        assert_eq!(all_rms.len(), 3);
+
         for w in all_rms.windows(2) {
             let prior_rms = w[0];
             let next_rms = w[1];
             assert!(
                 next_rms < prior_rms,
-                "RMS did not decrease during at least one iteration (goes from {} to {})",
+                "RMS was not monotonially decreasing (goes from {} to {})",
                 prior_rms,
                 next_rms
             );
             assert!(
-                (prior_rms - next_rms).abs() > 0.00000001,
+                (prior_rms - next_rms).abs() > 0.001,
                 "RMS did not decrease *enough* during at least one iteration (goes from {} to {})",
                 prior_rms,
                 next_rms
-            )
+            );
+            println!("{} {}", prior_rms, next_rms);
         }
+
+        // Check against known starting value referenced above
+        assert!(
+            (all_rms[0] - 0.9639984).abs() < 0.00001,
+            "Starting RMS must approximately match expected hardcoded value"
+        );
+        assert!(
+            all_rms[0] - all_rms[2] > 0.5,
+            "Ending RMS must be much lower than the starting value"
+        );
     }
 
     #[test]
