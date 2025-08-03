@@ -217,9 +217,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 type Neighbor = (usize, f32);
 
 #[cfg(feature = "native")]
-/// calculates the next step of the kmeans iteration by
-/// determining K * N optimal transport calculations and
-/// taking the nearest neighbor
+/// Calculates the next step of the kmeans iteration by determining K * N
+/// optimal transport calculations and taking the nearest neighbor.
 fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     cluster_args: &ClusterArgs,
