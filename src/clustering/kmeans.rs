@@ -118,7 +118,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         ClusterAlgorithm::KmeansOriginal => {
             log::info!(
                 "{:<32}{:<32}",
-                "clustering kmeans (unaccelerated)",
+                "clustering kmeans (original)",
                 cluster_args.label
             );
             let progress = crate::progress(t);
@@ -175,7 +175,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 
             log::info!(
                 "{:<32}{:<32}",
-                "clustering kmeans (*accelerated*)",
+                "clustering kmeans (Elkan 2003)",
                 cluster_args.label
             );
             // As per the paper:
