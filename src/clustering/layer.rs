@@ -234,14 +234,11 @@ impl crate::save::disk::Disk for Layer {
         let init_centers: Vec<Histogram> = layer.init_centers();
         layer.kmeans = init_centers.clone();
 
-        // TODO clean this up too
-        let mut cluster_alg = ClusterAlgorithm::KmeansOriginal;
-        if cfg!(feature = "kmeans-accel") {
-            cluster_alg = ClusterAlgorithm::KmeansElkan2003;
-        }
-
         let cluster_args = ClusterArgs {
-            algorithm: cluster_alg,
+            algorithm: match cfg!(feature = "kmeans-accel") {
+                true => ClusterAlgorithm::KmeansElkan2003,
+                false => ClusterAlgorithm::KmeansOriginal,
+            },
             init_centers: &init_centers,
             points: layer.points(),
             iterations_t: layer.street().t(),
