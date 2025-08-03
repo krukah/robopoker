@@ -17,8 +17,12 @@ pub enum ClusterAlgorithm {
 
 #[derive(Debug, Clone)]
 pub struct ClusterArgs<'a> {
-    /// Explicitly choose which clustering algorithm to use. Leave the
-    /// optional empty to let cluster() choose.
+    /// Explicitly choose which clustering algorithm to use.
+    ///
+    /// Note: we suggest using KmeansElkan2003 over KMeansOriginal in most
+    /// cases. Given the same inputs they return approximately-identical
+    /// centers at each iteration, and the former is usually _significantly_
+    /// faster.
     pub algorithm: ClusterAlgorithm,
 
     /// Center Histograms prior to performing any clustering / the start of
