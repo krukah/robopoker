@@ -199,7 +199,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // Ensures that the progress bar actually refreshes smoothly (as opposed
             // to e.g. hanging out at 4%, then jumping all the way to 40%)
             // (Could probably be )
-            progress.enable_steady_tick(Duration::from_millis(1000));
+            progress.enable_steady_tick(Duration::from_millis(500));
 
             for i in 0..t {
                 progress.inc(1);
@@ -281,7 +281,7 @@ fn replace_multiprogress_spinner(
     }
 
     running_spinner.set_message(message);
-    running_spinner.enable_steady_tick(Duration::from_millis(5));
+    running_spinner.enable_steady_tick(Duration::from_millis(10));
     running_spinner
 }
 
@@ -635,7 +635,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     let mut optional_rms: Option<f32> = None;
     if cluster_args.compute_rms {
         spinner.finish();
-        spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Optional RMS calculations; consider disabling if this is taking a long time!)".to_string());
+        spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Performing optional 'non-free' RMS calculations. Consider disabling them if doing performance testing!)".to_string());
 
         let rms = (loss / cluster_args.points.len() as f32).sqrt();
         optional_rms = Some(rms);
