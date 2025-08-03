@@ -196,6 +196,9 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // """
             let mp = MultiProgress::new();
             let progress = mp.add(crate::progress(t));
+            // Ensures that the progress bar actually refreshes smoothly (as opposed
+            // to e.g. hanging out at 4%, then jumping all the way to 40%)
+            // (Could probably be )
             progress.enable_steady_tick(Duration::from_millis(1000));
 
             for i in 0..t {
@@ -259,9 +262,15 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     (centers_end, rms)
 }
 
+// Intended to help provide visual signal that we are "doing stuff"
+// in places where it's otherwise impractical to show the exact progress (e.g. when A. we need to
+// use a MultiProgress becasue we already have at least one bar going, and
+// also at the same time B. we're using Rayon / parallelization and so cannot manually incrememnt
+// things ourselves).
 fn replace_multiprogress_spinner(
     multi_progress: &Option<&MultiProgress>,
     finished_spinner: ProgressBar,
+    message: String,
 ) -> ProgressBar {
     use tokio::time::Duration;
 
@@ -271,7 +280,8 @@ fn replace_multiprogress_spinner(
         running_spinner = mp.add(ProgressBar::new_spinner());
     }
 
-    running_spinner.enable_steady_tick(Duration::from_millis(25));
+    running_spinner.set_message(message);
+    running_spinner.enable_steady_tick(Duration::from_millis(5));
     running_spinner
 }
 
@@ -435,7 +445,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // parallelization on account of using Histograms and non-Euclidean
     // distances.
     log::debug!("{:<32}", " - Elkan Step 3");
-    spinner = replace_multiprogress_spinner(&multi_progress, spinner);
+    spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Elkan Step 3)".to_string());
     use rayon::prelude::*;
     for (center_c_idx, center_c) in centers_start.iter().enumerate() {
         step_3_working_points
@@ -515,7 +525,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     spinner.finish();
 
     log::debug!("{:<32}", " - Elkan Step 4");
-    spinner = replace_multiprogress_spinner(&multi_progress, spinner);
     // Merge the updated helper values back with the original vector we got
     // at the start of the function (which has entries for *all* points, not
     // just the ones bieng updated in step 3).
@@ -530,6 +539,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
             }
         })
         .collect();
+
+    spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Elkan Step 4)".to_string());
 
     // Step 4: For each center c, let m(c) be the mean of the points
     // assigned to c.
@@ -620,8 +631,12 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 
         new_centroids.push(next_centroid);
     }
+
     let mut optional_rms: Option<f32> = None;
     if cluster_args.compute_rms {
+        spinner.finish();
+        spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Optional RMS calculations; consider disabling if this is taking a long time!)".to_string());
+
         let rms = (loss / cluster_args.points.len() as f32).sqrt();
         optional_rms = Some(rms);
 
@@ -720,6 +735,7 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     cluster_args: &ClusterArgs,
 ) -> Vec<Neighbor> {
+    use crate::PROGRESS_STYLE;
     use indicatif::ParallelProgressIterator;
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
@@ -753,11 +769,13 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
         .collect();
 
     log::debug!("{:<32}", "lemma 1 accelerated par_init of helpers");
+    let style = indicatif::ProgressStyle::with_template(PROGRESS_STYLE).unwrap();
+    log::debug!("{}", PROGRESS_STYLE);
+
     let nearest_neighbors: Vec<Neighbor> = cluster_args
         .points
         .par_iter()
-        // TODO: Add styling so that this matches all the other progress bars!
-        .progress_count(cluster_args.points.len().try_into().unwrap())
+        .progress_with_style(style)
         .map(|point| {
             // As of Jun 8, toggling this gives same results for shortdeck turn clustering.
             // So if no changes since then can assume that this is doing the correct thing for now.
