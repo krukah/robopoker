@@ -128,10 +128,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             );
             let progress = crate::progress(t);
             for _ in 0..t {
-                // WARNING: If modifying this code, MAKE SURE THAT THE RMS VALUES ACTUALLY
-                // DECREASE ON EACH ITERATION. (We've hit a bug in the past trying to fix this
-                // where the code looked fine at casual glance, but in practice it wasn't
-                // actually making progress past the first iteration.)
                 let (ref mut next_centers, rms) =
                     compute_next_kmeans(clusterable, &cluster_args, &working_centers);
                 log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
@@ -869,7 +865,6 @@ mod tests {
     fn test_kmeans_original_rms_decreases() {
         let points: Vec<Histogram> = create_seeded_histograms(400);
         let init_centers: Vec<Histogram> = create_seeded_histograms(5);
-
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansOriginal,
@@ -907,13 +902,15 @@ mod tests {
         }
     }
 
+    // As per the research paper:
+    // "After each iteration, [Elkan's algorithm] produces the same set of center locations as the standard k-means method."
+    // Therefore, the RMS we compute at every single iteration should be (nearly) identical.
     #[test]
-    fn test_kmeans_elkan_original_match() {
+    fn test_kmeans_elkan_original_rms_matches() {
         let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
         let points_original: Vec<Histogram> = points_elkan.clone();
         let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(5);
         let init_centers_original: Vec<Histogram> = init_centers_elkan.clone();
-
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
