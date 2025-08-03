@@ -228,18 +228,14 @@ impl crate::save::disk::Disk for Layer {
                 metric: Metric::load(street.next()),
             },
         };
-
-        // TODO this is not great :/ but things are all tied together
-        // in such a way that we gotta temporarily leave it like this
-        let init_centers: Vec<Histogram> = layer.init_centers();
-        layer.kmeans = init_centers.clone();
+        layer.kmeans = layer.init_centers();
 
         let cluster_args = ClusterArgs {
             algorithm: match cfg!(feature = "kmeans-accel") {
                 true => ClusterAlgorithm::KmeansElkan2003,
                 false => ClusterAlgorithm::KmeansOriginal,
             },
-            init_centers: &init_centers,
+            init_centers: layer.kmeans(),
             points: layer.points(),
             iterations_t: layer.street().t(),
             label: layer.street().to_string(),
