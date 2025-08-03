@@ -127,8 +127,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                     // WARNING: we may technically be repeating the 'pick
                     // initial centers' work here twice (e.g. if we already
                     // did that during the init() above). That said, this
-                    // doesn't appear to be a performance bottleneck, so will
-                    // probably leave as-is for now.
+                    // doesn't appear to be a performance bottleneck. And so
+                    // unless it becomes one, we will probably leave as-is.
                     //
                     // ** If this part becomes a bottleneck, consider
                     //    refactoring! **
