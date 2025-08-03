@@ -866,6 +866,48 @@ mod tests {
     }
 
     #[test]
+    fn test_kmeans_original_rms_decreases() {
+        let points: Vec<Histogram> = create_seeded_histograms(400);
+        let init_centers: Vec<Histogram> = create_seeded_histograms(5);
+
+        let clusterable = MockClusterable {};
+        let cluster_args = ClusterArgs {
+            algorithm: ClusterAlgorithm::KmeansOriginal,
+            init_centers,
+            points: &points,
+            kmeans_k: 5,
+
+            // Don't set too high; the values stop decreasing as much in normal operation once it starts converging
+            iterations_t: 4,
+
+            label: "test_original".to_string(),
+            compute_rms: true,
+        };
+
+        let (result, all_rms) = cluster(&clusterable, cluster_args);
+        assert_eq!(result.len(), 5);
+        assert_eq!(all_rms.len(), 4);
+
+        for w in all_rms.windows(2) {
+            let prior_rms = w[0];
+            let next_rms = w[1];
+            assert!(
+                next_rms < prior_rms,
+                "RMS was not monotonially decreasing (goes from {} to {})",
+                prior_rms,
+                next_rms
+            );
+            assert!(
+                (prior_rms - next_rms).abs() > 0.0001,
+                "RMS did not decrease *enough* during at least one iteration (goes from {} to {})",
+                prior_rms,
+                next_rms
+            );
+            println!("{} {}", prior_rms, next_rms);
+        }
+    }
+
+    #[test]
     fn test_kmeans_elkan_original_match() {
         let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
         let points_original: Vec<Histogram> = points_elkan.clone();
