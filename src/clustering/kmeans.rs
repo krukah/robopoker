@@ -819,19 +819,14 @@ mod tests {
         }
     }
 
-    fn create_seeded_histogram(seed: u64) -> Histogram {
-        use rand::{rngs::StdRng, SeedableRng};
-        let _rng = StdRng::seed_from_u64(seed);
-        Histogram::random()
-    }
-    fn create_seeded_histogram_range(range: std::ops::Range<u64>) -> Vec<Histogram> {
-        range.map(|seed| create_seeded_histogram(seed)).collect()
+    fn create_seeded_histograms(i: i32) -> Vec<Histogram> {
+        (0..i).map(|_| Histogram::random()).collect()
     }
 
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
-        let points: Vec<Histogram> = create_seeded_histogram_range(100..500);
-        let init_centers: Vec<Histogram> = create_seeded_histogram_range(1..6);
+        let points: Vec<Histogram> = create_seeded_histograms(400);
+        let init_centers: Vec<Histogram> = create_seeded_histograms(5);
 
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
@@ -872,10 +867,10 @@ mod tests {
 
     #[test]
     fn test_kmeans_elkan_original_match() {
-        let points_elkan: Vec<Histogram> = create_seeded_histogram_range(100..500);
-        let points_original: Vec<Histogram> = create_seeded_histogram_range(100..500);
-        let init_centers_elkan: Vec<Histogram> = create_seeded_histogram_range(1..6);
-        let init_centers_original: Vec<Histogram> = create_seeded_histogram_range(1..6);
+        let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
+        let points_original: Vec<Histogram> = points_elkan.clone();
+        let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(5);
+        let init_centers_original: Vec<Histogram> = init_centers_elkan.clone();
 
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
@@ -903,7 +898,7 @@ mod tests {
         for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
             println!("elkan: {}, original: {}", elkan_rms, original_rms);
             assert!(
-                (elkan_rms - original_rms).abs() < 0.00001,
+                (elkan_rms - original_rms).abs() < 0.0001,
                 "RMS-es (elkan: {}, original: {}) should approximately match at each step",
                 elkan_rms,
                 original_rms
