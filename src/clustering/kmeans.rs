@@ -30,10 +30,7 @@ pub struct ClusterArgs<'a> {
     ///
     /// The length of the resulting clusters will match, i.e. we look at this
     /// field's length to determine the 'k' for kmeans.
-    ///
-    /// TODO: Stop needing to pass ownership for this / possibly use a
-    /// different approach to update every iteration
-    pub init_centers: Vec<Histogram>,
+    pub init_centers: &'a Vec<Histogram>,
 
     /// Points to be clustered.
     pub points: &'a Vec<Histogram>,
@@ -873,7 +870,7 @@ mod tests {
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
-            init_centers,
+            init_centers: &init_centers,
             points: &points,
             iterations_t: 6,
             label: "test_elkan_converges".to_string(),
@@ -918,7 +915,7 @@ mod tests {
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
-            init_centers,
+            init_centers: &init_centers,
             points: &points,
 
             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging.
@@ -959,7 +956,7 @@ mod tests {
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansOriginal,
-            init_centers,
+            init_centers: &init_centers,
             points: &points,
 
             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging
@@ -1004,7 +1001,7 @@ mod tests {
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
-            init_centers: init_centers_elkan,
+            init_centers: &init_centers_elkan,
             points: &points_elkan,
             iterations_t: 4,
             label: "test_elkan".to_string(),
@@ -1012,7 +1009,7 @@ mod tests {
         };
         let cluster_args_original = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansOriginal,
-            init_centers: init_centers_original,
+            init_centers: &init_centers_original,
             points: &points_original,
             label: "test_original".to_string(),
             ..cluster_args_elkan
