@@ -66,12 +66,12 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     cluster_args: &ClusterArgs,
 ) -> (
-    // Resulting clusters
+    // Resulting centers post-clustering
     Vec<Histogram>,
     // RMS error at each iteration. Will be left empty unless either A.
-    // compute_rms, or B. the RMSs are computed "for free" using the
-    // specified ClusterAlgorithm (i.e. as a byproduct of performing the
-    // clustering).
+    // compute_rms has been set in cluster_args, or B. the RMSs are
+    // computed "for free" using the specified ClusterAlgorithm (i.e. as a
+    // byproduct of performing the clustering).
     Vec<f32>,
 ) {
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
