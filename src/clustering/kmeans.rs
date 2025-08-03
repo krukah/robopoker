@@ -10,79 +10,84 @@ use std::time::SystemTime;
 pub enum ClusterAlgorithm {
     KmeansOriginal = 0isize,
 
-    // Accelerated via Triangle Inequality math as per paper 'Elkan 2003'.
+    /// Accelerated via Triangle Inequality math as per paper 'Elkan 2003'.
     KmeansElkan2003 = 1isize,
 }
 
 #[derive(Debug, Clone)]
 pub struct ClusterArgs<'a> {
-    // Explicitly choose which clustering algorithm to use. Leave the optional
-    // empty to let cluster() choose.
+    /// Explicitly choose which clustering algorithm to use. Leave the optional
+    /// empty to let cluster() choose.
     pub algorithm: ClusterAlgorithm,
 
-    // Center Histograms prior to performing any clustering / the start of the
-    // first training loop.
-    // Length should match kmeans_k below.
-    // TODO: Stop needing to pass ownership for this /
-    // use a different approach to update every iteration
-    // TODO: Determine whether this actually needs to be
-    // passed in in the first place...
+    /// Center Histograms prior to performing any clustering / the start of the
+    /// first training loop.
+    /// Length should match kmeans_k below.
+    /// TODO: Stop needing to pass ownership for this /
+    /// use a different approach to update every iteration
+    /// TODO: Determine whether this actually needs to be
+    /// passed in in the first place...
     pub init_centers: Vec<Histogram>,
 
-    // Points to be clustered.
+    /// Points to be clustered.
     pub points: &'a Vec<Histogram>,
 
-    // Number of clusters. Expected to match the length of init_centers.
+    /// Number of clusters. Expected to match the length of init_centers.
     pub kmeans_k: usize,
 
-    // Number of training iterations to perform.
+    /// Number of training iterations to perform.
     pub iterations_t: usize,
 
-    // String intended for tagging any logged messages. Solely for logging and
-    // debugging purposes!
+    /// Used to tag logged messages. Solely for debugging purposes!
     pub label: String,
 
+    /// Whether to compute the RMS of the resulting clusters in situations where
+    /// doing so is not (effectively) "free", e.g. where we already have all the
+    /// needed distances as a consequence of running the algorithm.
+    ///
+    /// Even if false RMS will still always be returned for other ClusterAlgorithm-s
+    /// where it is (effecitvely) "free", e.g. KmeansOriginal.
     pub compute_rms: bool,
 }
 
 type Neighbor = (usize, f32);
 
-// "Carr[ied]... information" between k-means iterations for a specific point
-// in self.points. See Elkan 2003 for more details.
-//
-// Used to accelerate k-means clustering via the paper's Triangle Inequality
-// (abrv. 'TriIneq' here) based optimized algorithm.
-//
-// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
-// field to help lookup the currently assigned centroid for the point).
-//
-// TODO: Stop making this public / start hiding away some of the kmeans
-// logic so it's not directly in the trait
+/// "Carr[ied]... information" between k-means iterations for a specific point
+/// in self.points. See Elkan 2003 for more details.
+///
+/// Used to accelerate k-means clustering via the paper's Triangle Inequality
+/// (abrv. 'TriIneq' here) based optimized algorithm.
+///
+/// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
+/// field to help lookup the currently assigned centroid for the point).
+///
+/// TODO: Stop making this public / start hiding away some of the kmeans
+/// logic so it's not directly in the trait
 #[derive(Debug, Clone)]
 struct TriIneqBounds {
-    // The index into self.kmeans for the currently assigned centroid "nearest
-    // neighbor" (i.e. c(x) in the paper) for this specifed point.
+    /// The index into self.kmeans for the currently assigned centroid "nearest
+    /// neighbor" (i.e. c(x) in the paper) for this specifed point.
     assigned_centroid_idx: usize,
-    // Lower bounds on the distance from this point to each centroid c
-    // (l(x,c) in the paper).
-    // Is k in length, where k is the number of centroids in the k-means
-    // clustering. Each value inside the vector must correspond to the
-    // same-indexed **centroid** (not point!) in the Layer.
+    /// Lower bounds on the distance from this point to each centroid c
+    /// (l(x,c) in the paper).
+    /// Is k in length, where k is the number of centroids in the k-means
+    /// clustering. Each value inside the vector must correspond to the
+    /// same-indexed **centroid** (not point!) in the Layer.
     lower_bounds: Vec<f32>,
-    // The upper bound on the distance from this point to its currently
-    // assinged centroid (u(x) in the paper).
+    /// The upper bound on the distance from this point to its currently
+    /// assinged centroid (u(x) in the paper).
     upper_bound: f32,
-    // Whether the upper_bound is out-of-date and needs a 'refresh'
-    // (r(x) from the paper).
+    /// Whether the upper_bound is out-of-date and needs a 'refresh'
+    /// (r(x) from the paper).
     stale_upper_bound: bool,
 }
 
 pub trait Clusterable {
-    // TODO: consider updating this to use generics here if possible, + return a simple f32. E.g. some
-    // function <T1, T2> that does ((T1, T2, T2) -> f32).
+    /// TODO: consider updating this to use generics here if possible, + return a simple f32. E.g. some
+    /// function <T1, T2> that does ((T1, T2, T2) -> f32).
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy;
-    // TODO: remove this entirely and just have an implementation of this defined in terms
-    // of the distance function... if possible.
+    /// TODO: remove this entirely and just have an implementation of this defined in terms
+    /// of the distance function... if possible.
     fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32);
 }
 
@@ -258,11 +263,14 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     (centers_end, rms)
 }
 
-// Intended to help provide visual signal that we are "doing stuff"
-// in places where it's otherwise impractical to show the exact progress (e.g. when A. we need to
-// use a MultiProgress becasue we already have at least one bar going, and
-// also at the same time B. we're using Rayon / parallelization and so cannot manually incrememnt
-// things ourselves).
+/// Helper function to replace a 'spinner' ProgressBar inside the specificed MultiProgress
+/// with a new one carrying a different message.
+///
+/// This is useful for starting/stopping spinners repeatedly to help provide visual signal that we are "doing stuff"
+/// in places where it's otherwise impractical to show the exact progress (e.g. when A. we need to
+/// use a MultiProgress becasue we already have at least one bar going, and
+/// also at the same time B. we're using Rayon / parallelization and so cannot manually incrememnt
+/// things ourselves).
 fn replace_multiprogress_spinner(
     multi_progress: &Option<&MultiProgress>,
     finished_spinner: ProgressBar,
@@ -987,9 +995,9 @@ mod tests {
         }
     }
 
-    // As per the research paper:
-    // "After each iteration, [Elkan's algorithm] produces the same set of center locations as the standard k-means method."
-    // Therefore, the RMS we compute at every single iteration should be (nearly) identical.
+    /// As per the research paper:
+    /// "After each iteration, [Elkan's algorithm] produces the same set of center locations as the standard k-means method."
+    /// Therefore, the RMS we compute at every single iteration should be (nearly) identical.
     #[test]
     fn test_kmeans_elkan_original_rms_matches() {
         let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
