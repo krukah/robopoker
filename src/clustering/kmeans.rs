@@ -100,15 +100,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 ) {
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
-    // TODO: Extract out to a helper function + generally clean it up once we
-    // have unit tests to prevent regressions / not properly replicating
-    // std::mem::swap's behavior. DO NOT DO SO until then - we've already
-    // been burned once by doing a botched refactoring here!
-    let mut init_centers_clone = cluster_args.init_centers.clone();
-    let mut working_centers: Vec<Histogram> = Vec::default();
-    let ref mut i = init_centers_clone;
-    let ref mut c = working_centers;
-    std::mem::swap(i, c);
+    let mut working_centers = cluster_args.init_centers.clone();
 
     let k = cluster_args.kmeans_k;
     if k == 0 {
@@ -128,13 +120,12 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             );
             let progress = crate::progress(t);
             for _ in 0..t {
-                let (ref mut next_centers, rms) =
+                let (next_centers, rms) =
                     compute_next_kmeans(clusterable, &cluster_args, &working_centers);
                 log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
                 all_rms.push(rms);
 
-                let ref mut c = working_centers;
-                std::mem::swap(next_centers, c);
+                working_centers = next_centers;
                 progress.inc(1);
             }
             progress.finish();
@@ -207,26 +198,20 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
                 // already made a mistake nd introduced a major bug once before
                 // in this section.
-                let (ref mut next_centers, ref mut next_helpers, rms) =
-                    compute_next_kmeans_tri_ineq(
-                        clusterable,
-                        &cluster_args,
-                        &working_centers,
-                        &ti_helpers,
-                    );
-                match rms {
-                    Some(x) => {
-                        log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", x);
-                        all_rms.push(x);
-                    }
-                    _ => (),
+                let (next_centers, next_helpers, rms) = compute_next_kmeans_tri_ineq(
+                    clusterable,
+                    &cluster_args,
+                    &working_centers,
+                    &ti_helpers,
+                );
+
+                if let Some(rms) = rms {
+                    log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
+                    all_rms.push(rms);
                 }
 
-                let ref mut c = working_centers;
-                std::mem::swap(next_centers, c);
-
-                let ref mut h = ti_helpers;
-                std::mem::swap(h, next_helpers)
+                working_centers = next_centers;
+                ti_helpers = next_helpers;
             }
         }
     }
