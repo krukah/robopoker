@@ -333,6 +333,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     ti_helpers: &[TriIneqBounds],
     multi_progress: Option<&MultiProgress>,
 ) -> ElkanIterationResult {
+    // Both by definition should be length 'N'.
     assert_eq!(ti_helpers.len(), cluster_args.points.len());
 
     use rayon::iter::IndexedParallelIterator;
