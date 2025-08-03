@@ -1,5 +1,6 @@
 use super::histogram::Histogram;
 use crate::Energy;
+use indicatif::ProgressIterator;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::SystemTime;
@@ -191,9 +192,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // of center locations as the standard k-means method.
             // """
             // TODO: Add styling to progress bar
-            let progress = crate::progress(t);
-            for i in 0..t {
-                progress.inc(1);
+            for i in (0..t).progress() {
                 log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
                 // TODO refactor this to be more readable (ie stop using ref mut)
                 // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
@@ -214,8 +213,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 working_centers = result.centers;
                 ti_helpers = result.helpers;
             }
-            progress.finish();
-            println!();
         }
     }
     (working_centers, all_rms)
@@ -312,8 +309,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // between this centroid and the closest other centroid' for each
     // centroid.
     log::debug!("{:<32}", " - Elkan Step 1");
-    let centroid_progress = crate::progress(k * k);
-
     // Step 1 (first half): d(c, c') for all centers c and c'
     let centroid_to_centroid_distances: Vec<Vec<f32>> = centers_start
         .iter()
@@ -324,13 +319,11 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         .flat_map(|c| centers_start.iter().map(move |c_prime| (c, c_prime)))
         .collect::<Vec<_>>()
         .par_iter()
-        .progress_with(centroid_progress.clone())
         .map(|(center1, center2)| clusterable.distance(center1, center2)) // 1-D vector with length k^2
         .collect::<Vec<f32>>()
         .chunks(k) // Separate into k-length chunks so we can get it into a 2-D vector
         .map(|chunked| chunked.to_vec())
         .collect();
-    centroid_progress.finish();
 
     // Step 1 (second half): s(c) = (1/2) min_{c'!=c} d(c, c')
     // (i.e. the closest midpoint to another centroid besides itself)
@@ -417,28 +410,16 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // distances.
     log::debug!("{:<32}", " - Elkan Step 3");
     use rayon::prelude::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
-    let total_operations = centers_start.len() * step_3_working_points.len();
-    let step3_progress = crate::progress(total_operations);
-    let counter = Arc::new(AtomicUsize::new(0));
-
     for (center_c_idx, center_c) in centers_start.iter().enumerate() {
-        let counter_clone = counter.clone();
-        let progress_clone = step3_progress.clone();
-
-        // Collect the keys first to avoid borrowing issues
         step_3_working_points
             .par_iter_mut()
+            // As far as we can tell, this progress bar doesn't negatively affect
+            // performance. HOWEVER, it does mess with the other progress bar +
+            // doesn't look tidy (due to being unstyled), so we should probably
+            // come back and clean it up a bit.
+            .progress_count(cluster_args.points.len().try_into().unwrap())
+            // _point_i used later for step 4 lookups but unneeded when mutating here
             .for_each(|(_point_i, (point_h, helper))| {
-                let count = counter_clone.fetch_add(1, Ordering::Relaxed) + 1;
-                // Update the progress bar every N operations to reduce overhead
-                // Adjust this number based on your total operations - use smaller
-                // values if you have fewer total operations
-                if count % 10 == 0 || count == total_operations {
-                    progress_clone.set_position(count as u64);
-                }
-
                 // STEP 3 FILTERING: Apply all three filter conditions with early exits
                 // STEP 3.i: Skip if c == c(x) (point already assigned to this centroid)
                 // STEP 3.ii: Skip if u(x) <= l(x, c) (upper bound not greater than lower bound)
@@ -509,8 +490,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
                 }
             });
     }
-    step3_progress.set_position(total_operations as u64);
-    step3_progress.finish();
 
     log::debug!("{:<32}", " - Elkan Step 4");
     // Merge the updated helper values back with the original vector we got
