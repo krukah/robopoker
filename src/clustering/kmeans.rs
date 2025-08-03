@@ -247,14 +247,14 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     (centers_end, rms)
 }
 
-/// Helper struct for specifically the Elkan 2003 Triangle-Inequality
-/// accelerated version of Kmeans to make it easier to pass along metadata
-/// about each point into the function at each iteration.
+/// Helper struct for the Elkan 2003 algorithm(Triangle-Inequality accelerated
+/// version of Kmeans) to make it easier to pass along metadata about each
+/// point into the function at each iteration.
 ///
-/// Specifically, each instance of struct contains "Carr[ied]... information"
-/// between k-means iterations for a specific point in `ClusterArg`'s
-/// `points` field. (Most notably: upper and lower distance bounds to help
-/// avoid significant #s of redundant distance calculations.)
+/// Specifically, each instance of this struct contains "Carr[ied]...
+/// information" between k-means iterations for a specific point in
+/// `ClusterArg`'s `points` field. (Most notably: upper and lower distance
+/// bounds to help avoid significant #s of redundant distance calculations.)
 ///
 /// See below for more information.
 #[derive(Debug, Clone)]
