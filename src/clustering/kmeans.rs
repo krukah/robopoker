@@ -1009,7 +1009,7 @@ mod tests {
     /// Therefore, the RMS we compute at every single iteration should be (nearly) identical.
     #[test]
     fn test_kmeans_elkan2003_original_rms_matches() {
-        let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
+        let points_elkan: Vec<Histogram> = create_seeded_histograms(500);
         let points_original: Vec<Histogram> = points_elkan.clone();
         let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(3);
         let init_centers_original: Vec<Histogram> = init_centers_elkan.clone();
