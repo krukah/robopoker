@@ -51,40 +51,6 @@ pub struct ClusterArgs<'a> {
     pub compute_rms: bool,
 }
 
-type Neighbor = (usize, f32);
-
-/// "Carr[ied]... information" between k-means iterations for a specific point
-///  in self.points. See Elkan 2003 for more details.
-///
-/// Used to accelerate k-means clustering via the paper's Triangle Inequality
-/// (abrv. 'TriIneq' here) based optimized algorithm.
-///
-/// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
-/// field to help lookup the currently assigned centroid for the point).
-///
-/// TODO: Stop making this public / start hiding away some of the kmeans logic
-/// so it's not directly in the trait
-#[derive(Debug, Clone)]
-struct TriIneqBounds {
-    /// The index into self.kmeans for the currently assigned
-    /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
-    /// specifed point.
-    assigned_centroid_idx: usize,
-    /// Lower bounds on the distance from this point to each centroid c
-    /// (l(x,c) in the paper).
-    ///
-    /// Is k in length, where k is the number of centroids in the k-means
-    /// clustering. Each value inside the vector must correspond to the
-    /// same-indexed **centroid** (not point!) in the Layer.
-    lower_bounds: Vec<f32>,
-    /// The upper bound on the distance from this point to its currently
-    /// assigned centroid (u(x) in the paper).
-    upper_bound: f32,
-    /// Whether the upper_bound is out-of-date and needs a 'refresh'(r(x) from
-    /// the paper).
-    stale_upper_bound: bool,
-}
-
 pub trait Clusterable {
     /// TODO: consider updating this to use generics here if possible, +
     /// return a simple f32. E.g. some function <T1, T2> that does ((T1, T2,
@@ -238,6 +204,37 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
         }
     }
     (working_centers, all_rms)
+}
+
+type Neighbor = (usize, f32);
+
+/// "Carr[ied]... information" between k-means iterations for a specific point
+///  in self.points. See Elkan 2003 for more details.
+///
+/// Used to accelerate k-means clustering via the paper's Triangle Inequality
+/// (abrv. 'TriIneq' here) based optimized algorithm.
+///
+/// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
+/// field to help lookup the currently assigned centroid for the point).
+#[derive(Debug, Clone)]
+struct TriIneqBounds {
+    /// The index into self.kmeans for the currently assigned
+    /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
+    /// specifed point.
+    assigned_centroid_idx: usize,
+    /// Lower bounds on the distance from this point to each centroid c
+    /// (l(x,c) in the paper).
+    ///
+    /// Is k in length, where k is the number of centroids in the k-means
+    /// clustering. Each value inside the vector must correspond to the
+    /// same-indexed **centroid** (not point!) in the Layer.
+    lower_bounds: Vec<f32>,
+    /// The upper bound on the distance from this point to its currently
+    /// assigned centroid (u(x) in the paper).
+    upper_bound: f32,
+    /// Whether the upper_bound is out-of-date and needs a 'refresh'(r(x) from
+    /// the paper).
+    stale_upper_bound: bool,
 }
 
 #[cfg(feature = "native")]
@@ -698,8 +695,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     let mut step_6_helpers: Vec<TriIneqBounds> = step_5_helpers;
     for helper in &mut step_6_helpers {
         // u(x) = u(x) + d(m(c(x)), c(x))
-        // TODO: VERIFY THAT d(m(c(x)), c(x)) = d(c(x), m(c(x))).
-        // IF NOT THEN THIS WILL BE INCORRECT.
+        // Note: assumes that d(m(c(x)), c(x)) = d(c(x), m(c(x))).
         let dist_center_and_new_center = &new_centroid_movements[helper.assigned_centroid_idx];
         helper.upper_bound += dist_center_and_new_center;
         // r(x) = true
