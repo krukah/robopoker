@@ -56,12 +56,12 @@ pub struct ClusterArgs<'a> {
 }
 
 pub trait Clusterable {
-    /// TODO: consider updating this to use generics here if possible, +
-    /// return a simple f32. E.g. some function <T1, T2> that does ((T1, T2,
-    /// T2) -> f32).
+    // TODO: consider updating this to use generics here if possible, +
+    // return a simple f32. E.g. some function <T1, T2> that does ((T1, T2,
+    // T2) -> f32).
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy;
-    /// TODO: remove this entirely and just have an implementation of this
-    /// defined in terms of the distance function.
+    // TODO: remove this entirely and just have an implementation of this
+    // defined in terms of the distance function.
     fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32);
 }
 
@@ -69,7 +69,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     cluster_args: &ClusterArgs,
 ) -> (
-    // Resulting centers post-clustering
+    // Resulting centers post-clustering.
     Vec<Histogram>,
     // RMS error at each iteration. Will be left empty unless either A.
     // compute_rms has been set in cluster_args, or B. the RMSs are
@@ -79,7 +79,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 ) {
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
-    // Means the 'k' in kmeans is 0, so no work to do here.
+    // Means the 'k' for the kmeans clustering is 0, i.e. there's no work to
+    // do here
     if cluster_args.init_centers.len() == 0 {
         log::debug!("Immediately returning empty values (since init_centers was empty / the 'k' in kmeans here is 0).");
         let empty_clusters = Vec::new();
