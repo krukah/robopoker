@@ -124,9 +124,14 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             let mut ti_helpers: Vec<TriIneqBounds> =
                 create_centroids_tri_ineq(clusterable, cluster_args)
                     .iter()
-                    // TODO: Double check we're not repeating the 'pick
-                    // initial centers' work here twice. (e.g. if we already
-                    // did that during the init() above)
+                    // WARNING: we may technically be repeating the 'pick
+                    // initial centers' work here twice (e.g. if we already
+                    // did that during the init() above). That said, this
+                    // doesn't appear to be a performance bottleneck, so will
+                    // probably leave as-is for now.
+                    //
+                    // ** If this part becomes a bottleneck, consider
+                    //    refactoring! **
                     .map(|nearest_neighbor| TriIneqBounds {
                         // "c(x)"'s index in init_centers
                         assigned_centroid_idx: nearest_neighbor.0,
