@@ -198,20 +198,20 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
                 // already made a mistake nd introduced a major bug once before
                 // in this section.
-                let (next_centers, next_helpers, rms) = compute_next_kmeans_tri_ineq(
+                let result = compute_next_kmeans_tri_ineq(
                     clusterable,
                     &cluster_args,
                     &working_centers,
                     &ti_helpers,
                 );
 
-                if let Some(rms) = rms {
+                if let Some(rms) = result.rms {
                     log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
                     all_rms.push(rms);
                 }
 
-                working_centers = next_centers;
-                ti_helpers = next_helpers;
+                working_centers = result.centers;
+                ti_helpers = result.helpers;
             }
         }
     }
@@ -250,6 +250,20 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     (centers_end, rms)
 }
 
+// Simple helper for specifically the Elkan 2003 Triangle-Inequality accelerated version
+// of Kmeans to make it easier to pass around the result.
+//
+// See below for more details.
+#[derive(Debug)]
+struct ElkanIterationResult {
+    // K centroids
+    centers: Vec<Histogram>,
+    // Updated Triangle Inequality Helpers after each iteration
+    helpers: Vec<TriIneqBounds>,
+    // RMS error iff compute_rms is enabled
+    rms: Option<f32>,
+}
+
 #[cfg(feature = "native")]
 /// Triangle(tri)-Inequality(ineq) accelerated version of kmeans.
 ///
@@ -269,11 +283,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // (WARNING: do not confuse with cluster_args.init_centers!)
     centers_start: &Vec<Histogram>,
     ti_helpers: &[TriIneqBounds],
-) -> (
-    Vec<Histogram>,     /* K centroids */
-    Vec<TriIneqBounds>, /* Updated Triangle Inequality Helpers */
-    Option<f32>,        /* RMS error, if the feature is enabled */
-) {
+) -> ElkanIterationResult {
     // TODO: panic if the length of ti_helpers doesn't match the length of
     // self.points
 
@@ -665,7 +675,11 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // i.e. Step 7:
     // "7. Replace each center c by m(c)"
     log::debug!("{:<32}", " - Elkan Step 7");
-    (new_centroids, step_6_helpers, optional_rms)
+    ElkanIterationResult {
+        centers: new_centroids,
+        helpers: step_6_helpers,
+        rms: optional_rms,
+    }
 }
 
 /// Obtains nearest neighbor and separation distance for a Histogram
