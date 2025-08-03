@@ -58,7 +58,7 @@ pub trait Clusterable {
     /// T2) -> f32).
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy;
     /// TODO: remove this entirely and just have an implementation of this
-    /// defined in terms of the distance function... if possible.
+    /// defined in terms of the distance function.
     fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> (usize, f32);
 }
 
@@ -212,35 +212,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 
 type Neighbor = (usize, f32);
 
-/// "Carr[ied]... information" between k-means iterations for a specific point
-///  in self.points. See Elkan 2003 for more details.
-///
-/// Used to accelerate k-means clustering via the paper's Triangle Inequality
-/// (abrv. 'TriIneq' here) based optimized algorithm.
-///
-/// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
-/// field to help lookup the currently assigned centroid for the point).
-#[derive(Debug, Clone)]
-struct TriIneqBounds {
-    /// The index into self.kmeans for the currently assigned
-    /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
-    /// specifed point.
-    assigned_centroid_idx: usize,
-    /// Lower bounds on the distance from this point to each centroid c
-    /// (l(x,c) in the paper).
-    ///
-    /// Is k in length, where k is the number of centroids in the k-means
-    /// clustering. Each value inside the vector must correspond to the
-    /// same-indexed **centroid** (not point!) in the Layer.
-    lower_bounds: Vec<f32>,
-    /// The upper bound on the distance from this point to its currently
-    /// assigned centroid (u(x) in the paper).
-    upper_bound: f32,
-    /// Whether the upper_bound is out-of-date and needs a 'refresh'(r(x) from
-    /// the paper).
-    stale_upper_bound: bool,
-}
-
 #[cfg(feature = "native")]
 /// calculates the next step of the kmeans iteration by
 /// determining K * N optimal transport calculations and
@@ -273,32 +244,37 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     (centers_end, rms)
 }
 
-/// Helper function to replace a 'spinner' ProgressBar inside the specificed
-/// MultiProgress with a new one carrying a different message.
+/// Helper struct for specifically the Elkan 2003 Triangle-Inequality
+/// accelerated version of Kmeans to make it easier to pass along metadata
+/// into the function at each iteration.
 ///
-/// This is useful for starting/stopping spinners repeatedly to help provide
-/// visual signal that we are "doing stuff" in places where it's otherwise
-/// impractical to show the exact progress (e.g. when A. we need to use a
-/// MultiProgress becasue we already have at least one bar going, and also at
-/// the same time B. we're using Rayon / parallelization and so cannot
-/// manually incrememnt things ourselves).
-fn replace_multiprogress_spinner(
-    multi_progress: &Option<&MultiProgress>,
-    spinner: ProgressBar,
-    message: String,
-) -> ProgressBar {
-    if !spinner.is_finished() {
-        spinner.finish_and_clear();
-    }
-    let mut running_spinner = spinner;
-    if let Some(mp) = multi_progress {
-        mp.remove(&running_spinner);
-        running_spinner = mp.add(ProgressBar::new_spinner());
-    }
-
-    running_spinner.set_message(message);
-    running_spinner.enable_steady_tick(Duration::from_millis(10));
-    running_spinner
+/// Specifically, each instance of struct contains "Carr[ied]... information"
+/// between k-means iterations for a specific point in `ClusterArg`'s
+/// `points` field.
+///
+/// See below for more information.
+///
+/// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
+/// field to help lookup the currently assigned centroid for the point).
+#[derive(Debug, Clone)]
+struct TriIneqBounds {
+    /// The index into self.kmeans for the currently assigned
+    /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
+    /// specifed point.
+    assigned_centroid_idx: usize,
+    /// Lower bounds on the distance from this point to each centroid c
+    /// (l(x,c) in the paper).
+    ///
+    /// Is k in length, where k is the number of centroids in the k-means
+    /// clustering. Each value inside the vector must correspond to the
+    /// same-indexed **centroid** (not point!) in the Layer.
+    lower_bounds: Vec<f32>,
+    /// The upper bound on the distance from this point to its currently
+    /// assigned centroid (u(x) in the paper).
+    upper_bound: f32,
+    /// Whether the upper_bound is out-of-date and needs a 'refresh'(r(x) from
+    /// the paper).
+    stale_upper_bound: bool,
 }
 
 // Simple helper for specifically the Elkan 2003 Triangle-Inequality
@@ -724,33 +700,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     }
 }
 
-/// Computes the distance between each pair in `centers`, i.e. d(c, c') for
-/// all centers c and c'.
-fn pairwise_distances<T: Clusterable + std::marker::Sync>(
-    clusterable: &T,
-    centers: &Vec<Histogram>,
-) -> Vec<Vec<f32>> {
-    use rayon::iter::IntoParallelRefIterator;
-    use rayon::iter::ParallelIterator;
-    let k = centers.len();
-    centers
-        .iter()
-        // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into a
-        // simple 1-D vector to allow for easily parallelizing the emd
-        // calculations.
-        // (TLDR this is effectively just itertools.array_combinations().)
-        .flat_map(|c| centers.iter().map(move |c_prime| (c, c_prime)))
-        .collect::<Vec<_>>()
-        .par_iter()
-        // 1-D vector with length k^2
-        .map(|(center1, center2)| clusterable.distance(center1, center2))
-        .collect::<Vec<f32>>()
-        // Separate into k-length chunks so we can turn it into a 2-D vector
-        .chunks(k)
-        .map(|chunked| chunked.to_vec())
-        .collect()
-}
-
 /// Obtains nearest neighbor and separation distance for a Histogram
 /// using lemma 1 from Elkan (2003) to avoid redundant distance
 /// calculations. Allowing us to efficiently assign each point to
@@ -823,6 +772,62 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
         })
         .collect();
     nearest_neighbors
+}
+
+/// Helper function to computes the pairwise distances for all Histograms
+/// in the input, i.e. distance d(c, c') for all centers c and c'. Notably
+/// including also (c, c') where c = c'.
+fn pairwise_distances<T: Clusterable + std::marker::Sync>(
+    clusterable: &T,
+    centers: &Vec<Histogram>,
+) -> Vec<Vec<f32>> {
+    use rayon::iter::IntoParallelRefIterator;
+    use rayon::iter::ParallelIterator;
+    let k = centers.len();
+    centers
+        .iter()
+        // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into a
+        // simple 1-D vector to allow for easily parallelizing the emd
+        // calculations.
+        // (TLDR this is effectively just itertools.array_combinations().)
+        .flat_map(|c| centers.iter().map(move |c_prime| (c, c_prime)))
+        .collect::<Vec<_>>()
+        .par_iter()
+        // 1-D vector with length k^2
+        .map(|(center1, center2)| clusterable.distance(center1, center2))
+        .collect::<Vec<f32>>()
+        // Separate into k-length chunks so we can turn it into a 2-D vector
+        .chunks(k)
+        .map(|chunked| chunked.to_vec())
+        .collect()
+}
+
+/// Helper function to replace a 'spinner' ProgressBar inside the specificed
+/// MultiProgress with a new one carrying a different message.
+///
+/// This is useful for starting/stopping spinners repeatedly to help provide
+/// visual signal that we are "doing stuff" in places where it's otherwise
+/// impractical to show the exact progress (e.g. when A. we need to use a
+/// MultiProgress becasue we already have at least one bar going, and also at
+/// the same time B. we're using Rayon / parallelization and so cannot
+/// manually incrememnt things ourselves).
+fn replace_multiprogress_spinner(
+    multi_progress: &Option<&MultiProgress>,
+    spinner: ProgressBar,
+    message: String,
+) -> ProgressBar {
+    if !spinner.is_finished() {
+        spinner.finish_and_clear();
+    }
+    let mut running_spinner = spinner;
+    if let Some(mp) = multi_progress {
+        mp.remove(&running_spinner);
+        running_spinner = mp.add(ProgressBar::new_spinner());
+    }
+
+    running_spinner.set_message(message);
+    running_spinner.enable_steady_tick(Duration::from_millis(10));
+    running_spinner
 }
 
 #[cfg(test)]
