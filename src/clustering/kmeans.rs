@@ -818,7 +818,47 @@ mod tests {
         (0..i).map(|_| Histogram::random()).collect()
     }
 
-    // TODO Add a test for convergence
+    #[test]
+    fn test_kmeans_elkan_rms_converges() {
+        let points: Vec<Histogram> = create_seeded_histograms(400);
+        let init_centers: Vec<Histogram> = create_seeded_histograms(5);
+
+        let clusterable = MockClusterable {};
+        let cluster_args = ClusterArgs {
+            algorithm: ClusterAlgorithm::KmeansElkan2003,
+            init_centers,
+            points: &points,
+            kmeans_k: 5,
+
+            // Don't set too low without loosening the strictness below.
+            iterations_t: 16,
+
+            label: "test_elkan".to_string(),
+            compute_rms: true,
+        };
+
+        let (result, all_rms) = cluster(&clusterable, cluster_args);
+        assert_eq!(result.len(), 5);
+        assert_eq!(all_rms.len(), 16);
+
+        for w in all_rms.iter().take(12).collect::<Vec<_>>().windows(2) {
+            println!("{} {}", w[0], w[1]);
+        }
+
+        for w in all_rms.into_iter().skip(12).collect::<Vec<_>>().windows(2) {
+            let prior_rms = w[0];
+            let next_rms = w[1];
+            println!("{} {}", prior_rms, next_rms);
+
+            assert!(
+                (prior_rms - next_rms).abs() <= 0.00001,
+                "RMS is still decreasing _too much_ / did not converge enough (goes from {} to {})",
+                prior_rms,
+                next_rms
+            );
+        }
+        assert_eq!(1, 0);
+    }
 
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
