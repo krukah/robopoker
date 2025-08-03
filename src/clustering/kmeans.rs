@@ -818,6 +818,8 @@ mod tests {
         (0..i).map(|_| Histogram::random()).collect()
     }
 
+    // TODO Add a test for convergence
+
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
         let points: Vec<Histogram> = create_seeded_histograms(400);
@@ -830,7 +832,7 @@ mod tests {
             points: &points,
             kmeans_k: 5,
 
-            // Don't set too high; the values stop decreasing as much in normal operation once it starts converging
+            // Don't set too high; the values stop decreasing as much in normal operation once it starts converging.
             iterations_t: 4,
 
             label: "test_elkan".to_string(),
@@ -844,6 +846,8 @@ mod tests {
         for w in all_rms.windows(2) {
             let prior_rms = w[0];
             let next_rms = w[1];
+            println!("{} {}", prior_rms, next_rms);
+
             assert!(
                 next_rms < prior_rms,
                 "RMS was not monotonially decreasing (goes from {} to {})",
@@ -856,7 +860,6 @@ mod tests {
                 prior_rms,
                 next_rms
             );
-            println!("{} {}", prior_rms, next_rms);
         }
     }
 
