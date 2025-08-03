@@ -121,7 +121,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // redundant distance calculations. Each time d(x,c) is computed,
             // set l(x,c) = d(x,c). Assign upper bounds u(x) = min_c d(x,c).
             // """
-            let mut ti_helpers: Vec<TriIneqBounds> =
+            let mut ti_helpers: Vec<PointMetdataElkan2003> =
                 create_centroids_tri_ineq(clusterable, cluster_args)
                     .iter()
                     // WARNING: we may technically be repeating the 'pick
@@ -132,7 +132,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                     //
                     // ** If this part becomes a bottleneck, consider
                     //    refactoring! **
-                    .map(|nearest_neighbor| TriIneqBounds {
+                    .map(|nearest_neighbor| PointMetdataElkan2003 {
                         // "c(x)"'s index in init_centers
                         assigned_centroid_idx: nearest_neighbor.0,
                         // "l(x,c)"
@@ -246,18 +246,15 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 
 /// Helper struct for specifically the Elkan 2003 Triangle-Inequality
 /// accelerated version of Kmeans to make it easier to pass along metadata
-/// into the function at each iteration.
+/// about each point into the function at each iteration.
 ///
 /// Specifically, each instance of struct contains "Carr[ied]... information"
 /// between k-means iterations for a specific point in `ClusterArg`'s
 /// `points` field.
 ///
 /// See below for more information.
-///
-/// NOTE: Includes some additional fields besides _just_ the bounds. (E.g. a
-/// field to help lookup the currently assigned centroid for the point).
 #[derive(Debug, Clone)]
-struct TriIneqBounds {
+struct PointMetdataElkan2003 {
     /// The index into self.kmeans for the currently assigned
     /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
     /// specifed point.
@@ -287,7 +284,7 @@ struct ElkanIterationResult {
     // K centroids
     centers: Vec<Histogram>,
     // Updated Triangle Inequality Helpers after each iteration
-    helpers: Vec<TriIneqBounds>,
+    helpers: Vec<PointMetdataElkan2003>,
     // RMS error iff compute_rms is enabled
     rms: Option<f32>,
 }
@@ -310,7 +307,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // The centers at the start of *this training iteration*.
     // (WARNING: do not confuse with cluster_args.init_centers!)
     centers_start: &Vec<Histogram>,
-    ti_helpers: &[TriIneqBounds],
+    ti_helpers: &[PointMetdataElkan2003],
     multi_progress: Option<&MultiProgress>,
 ) -> ElkanIterationResult {
     // Both by definition should be length 'N'.
@@ -390,7 +387,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    let mut step_3_working_points: HashMap<usize, (&Histogram, TriIneqBounds)> = cluster_args
+    let mut step_3_working_points: HashMap<usize, (&Histogram, PointMetdataElkan2003)> = cluster_args
         .points
         .iter()
         .enumerate()
@@ -502,7 +499,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // Merge the updated helper values back with the original vector we got
     // at the start of the function (which has entries for *all* points, not
     // just the ones bieng updated in step 3).
-    let step_4_helpers: Vec<&TriIneqBounds> = ti_helpers
+    let step_4_helpers: Vec<&PointMetdataElkan2003> = ti_helpers
         .iter()
         .enumerate()
         .map(|(point_i, original_helper)| {
@@ -647,7 +644,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         .map(|(old_center, new_center)| clusterable.distance(old_center, new_center))
         .collect();
 
-    let step_5_helpers: Vec<TriIneqBounds> = step_4_helpers
+    let step_5_helpers: Vec<PointMetdataElkan2003> = step_4_helpers
         .into_par_iter()
         .cloned()
         .map(|mut helper| {
@@ -671,7 +668,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // """
     // TODO: consider refactoring - we probably can get away with continuing
     // to borrow here? And/or do using a .map() inside in a .par_iter() etc?
-    let mut step_6_helpers: Vec<TriIneqBounds> = step_5_helpers;
+    let mut step_6_helpers: Vec<PointMetdataElkan2003> = step_5_helpers;
     for helper in &mut step_6_helpers {
         // u(x) = u(x) + d(m(c(x)), c(x))
         // Note: assumes that d(m(c(x)), c(x)) = d(c(x), m(c(x))).
