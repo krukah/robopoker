@@ -781,9 +781,6 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
         .par_iter()
         .progress_with_style(style)
         .map(|point| {
-            // As of Jun 8 2025, toggling this gives same results for shortdeck turn clustering.
-            // So if no changes since then can assume that this is doing the correct thing for now.
-            // TODO: ADD A TEST FOR THIS TOO!
             // Compute min distance d(x, c) efficiently by using
             // lemma 1 from Elkan (2003):
             // if d(b, c) >= 2d(x, b) then d(x, c) >= d(x, b)
