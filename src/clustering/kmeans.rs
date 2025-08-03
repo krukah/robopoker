@@ -183,7 +183,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             let progress = mp.add(crate::progress(t));
             // Ensures that the progress bar actually refreshes smoothly (as opposed
             // to e.g. hanging out at 4%, then jumping all the way to 40%)
-            // (Could probably be )
             progress.enable_steady_tick(Duration::from_millis(500));
 
             for i in 0..t {
@@ -664,7 +663,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // replacement (i.e. the one with the same index). Hence it's a
     // Vec<f32> of length k, NOT a Vec<Vec<f32>>.
     //
-    // TODO: double check that distance is equivalent in either direction.
+    // Note: assumes that the distance is equivalent in either direction.
     // (If not, would need to e.g. compute a Vec<(f32, f32)> instead.)
     let new_centroid_movements: Vec<f32> = new_centroids
         .par_iter()
@@ -694,8 +693,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     //    u(x) = u(x) + d(m(c(x)), c(x))
     //    r(x) = true
     // """
-    // TODO refactor probably can get away with continuing to borrow here.
-    // And/or do using a .map() inside in a .par_iter() etc.
+    // TODO: consider refactoring - we probably can get away with continuing
+    // to borrow here? And/or do using a .map() inside in a .par_iter() etc?
     let mut step_6_helpers: Vec<TriIneqBounds> = step_5_helpers;
     for helper in &mut step_6_helpers {
         // u(x) = u(x) + d(m(c(x)), c(x))
@@ -711,11 +710,13 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         mp.remove(&spinner)
     }
 
-    // Form paper "[Compute] the new location of each cluster center",
-    // i.e. Step 7:
-    // "7. Replace each center c by m(c)"
+    // Still need to handle Step 7. i.e.
+    //
+    //  "7. Replace each center c by m(c)"
+    //
+    // but that all gets taken care of by the caller so no need to worry about
+    // it inside here.
     log::debug!("{:<32}", " - Elkan Step 7");
-
     ElkanIterationResult {
         centers: new_centroids,
         helpers: step_6_helpers,
