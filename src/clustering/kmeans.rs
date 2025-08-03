@@ -5,6 +5,7 @@ use indicatif::ProgressBar;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::SystemTime;
+use tokio::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClusterAlgorithm {
@@ -103,18 +104,16 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     // clustering).
     Vec<f32>,
 ) {
-    use tokio::time::Duration;
-
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
-    let k = cluster_args.init_centers.len();
-    let mut working_centers = cluster_args.init_centers.clone();
-
-    if k == 0 {
+    // Means the 'k' in kmeans is 0, so no work to do here.
+    if cluster_args.init_centers.len() == 0 {
+        log::debug!("Immediately returning empty values (since init_centers was empty / the 'k' in kmeans here is 0).");
         let empty_clusters = Vec::new();
         let empty_rms = Vec::new();
         return (empty_clusters, empty_rms);
     }
+    let mut working_centers = cluster_args.init_centers.clone();
     let t = cluster_args.iterations_t;
 
     let mut all_rms: Vec<f32> = Vec::default();
@@ -275,8 +274,6 @@ fn replace_multiprogress_spinner(
     finished_spinner: ProgressBar,
     message: String,
 ) -> ProgressBar {
-    use tokio::time::Duration;
-
     let mut running_spinner = finished_spinner;
     if let Some(mp) = multi_progress {
         mp.remove(&running_spinner);
