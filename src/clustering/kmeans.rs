@@ -596,7 +596,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         if points.is_empty() {
             log::error!("No points assigned to current centroid. This is currently an edge case we are unable to resolve; for more details see https://github.com/krukah/robopoker/issues/34#issuecomment-2860641178");
             todo!(
-                "Figure out what to do here for the center - no points assigned to it currently!!"
+                "Figure out what to do here for centers that don't have assigned points, or tweak your inputs (increase # points, decrease # centroids, make starting centers 'better') to make this less likely."
             );
         }
         let mut mean_of_assigned_points = points[0].clone();
