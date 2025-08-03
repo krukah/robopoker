@@ -22,7 +22,9 @@ pub struct ClusterArgs<'a> {
 
     /// Center Histograms prior to performing any clustering / the start of the
     /// first training loop.
-    /// Length should match kmeans_k below.
+    ///
+    /// The length of the resulting clusters will match, i.e. we look at this
+    /// field's length to determine the 'k' for kmeans.
     /// TODO: Stop needing to pass ownership for this /
     /// use a different approach to update every iteration
     /// TODO: Determine whether this actually needs to be
@@ -31,9 +33,6 @@ pub struct ClusterArgs<'a> {
 
     /// Points to be clustered.
     pub points: &'a Vec<Histogram>,
-
-    /// Number of clusters. Expected to match the length of init_centers.
-    pub kmeans_k: usize,
 
     /// Number of training iterations to perform.
     pub iterations_t: usize,
@@ -108,9 +107,9 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
 
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
+    let k = cluster_args.init_centers.len();
     let mut working_centers = cluster_args.init_centers.clone();
 
-    let k = cluster_args.kmeans_k;
     if k == 0 {
         let empty_clusters = Vec::new();
         let empty_rms = Vec::new();
@@ -163,7 +162,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                         assigned_centroid_idx: nearest_neighbor.0,
                         // "l(x,c)"
                         // "Set the lower bound l(x,c) = 0 for each point x and center c"
-                        lower_bounds: vec![0.0; cluster_args.kmeans_k],
+                        lower_bounds: vec![0.0; cluster_args.init_centers.len()],
                         // "u(x)"
                         // "Assign upper bounds u(x) = min_c d(x,c)" (which by
                         //  definition is the distance of the nearest neighbor at
@@ -242,7 +241,7 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 ) -> (Vec<Histogram>, f32) {
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
-    let k = cluster_args.kmeans_k;
+    let k = cluster_args.init_centers.len();
     let mut loss = 0f32;
     let mut centers_end = vec![Histogram::default(); k];
     // assign points to nearest neighbors
@@ -332,7 +331,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     use rayon::iter::ParallelIterator;
     let mut spinner: ProgressBar = ProgressBar::new_spinner();
 
-    let k = cluster_args.kmeans_k;
+    let k = cluster_args.init_centers.len();
 
     // TODO: refactor / start using some things like this
     // let n = self.points().len();
@@ -749,7 +748,7 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
     //
     // TODO: Extract into shared helper function (curently duped
     // here and in the main triangle accelerated clustering loop)
-    let k = cluster_args.kmeans_k;
+    let k = cluster_args.init_centers.len();
     log::debug!("{:<32}", "precomputing centroid to centroid distances");
     let centroid_to_centroid_distances: Vec<Vec<f32>> = cluster_args
         .init_centers
@@ -877,7 +876,6 @@ mod tests {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers,
             points: &points,
-            kmeans_k: 2,
             iterations_t: 6,
             label: "test_elkan_converges".to_string(),
             compute_rms: true,
@@ -923,7 +921,6 @@ mod tests {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers,
             points: &points,
-            kmeans_k: 5,
 
             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging.
             iterations_t: 4,
@@ -965,7 +962,6 @@ mod tests {
             algorithm: ClusterAlgorithm::KmeansOriginal,
             init_centers,
             points: &points,
-            kmeans_k: 5,
 
             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging
             iterations_t: 4,
@@ -1011,7 +1007,6 @@ mod tests {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers: init_centers_elkan,
             points: &points_elkan,
-            kmeans_k: 3,
             iterations_t: 4,
             label: "test_elkan".to_string(),
             compute_rms: true,

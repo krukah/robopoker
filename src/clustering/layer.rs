@@ -244,7 +244,6 @@ impl crate::save::disk::Disk for Layer {
             algorithm: cluster_alg,
             init_centers: init_centers,
             points: layer.points(),
-            kmeans_k: layer.street().k(),
             iterations_t: layer.street().t(),
             label: layer.street().to_string(),
             compute_rms: cfg!(feature = "kmeans-compute-nonfree-rms"),
