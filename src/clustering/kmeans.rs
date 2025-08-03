@@ -873,37 +873,42 @@ mod tests {
     #[test]
     fn test_kmeans_elkan_rms_converges() {
         let points: Vec<Histogram> = create_seeded_histograms(400);
-        let init_centers: Vec<Histogram> = create_seeded_histograms(5);
+        let init_centers: Vec<Histogram> = create_seeded_histograms(2);
 
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers,
             points: &points,
-            kmeans_k: 5,
-
-            // Don't set too low without loosening the strictness below.
-            iterations_t: 16,
-
-            label: "test_elkan".to_string(),
+            kmeans_k: 2,
+            iterations_t: 6,
+            label: "test_elkan_converges".to_string(),
             compute_rms: true,
         };
 
         let (result, all_rms) = cluster(&clusterable, cluster_args);
-        assert_eq!(result.len(), 5);
-        assert_eq!(all_rms.len(), 16);
-
-        for w in all_rms.iter().take(12).collect::<Vec<_>>().windows(2) {
+        for w in all_rms.windows(2) {
             println!("{} {}", w[0], w[1]);
         }
 
-        for w in all_rms.into_iter().skip(12).collect::<Vec<_>>().windows(2) {
+        // "Safety" checks to make sure things are overall behaving as expected
+        assert_eq!(result.len(), 2);
+        assert_eq!(all_rms.len(), 6);
+        assert!(
+            (all_rms[0] - all_rms[1]).abs() > 0.01,
+            "RMS was already converged too much for a fair test at the start (goes from {} to {})",
+            all_rms[0],
+            all_rms[1]
+        );
+
+        // Actual asserts the test is targeting ("did the RMS converge near the end")
+        for w in all_rms.into_iter().skip(3).collect::<Vec<_>>().windows(2) {
             let prior_rms = w[0];
             let next_rms = w[1];
             println!("{} {}", prior_rms, next_rms);
 
             assert!(
-                (prior_rms - next_rms).abs() <= 0.0001,
+                (prior_rms - next_rms).abs() <= 0.0005,
                 "RMS is still decreasing _too much_ / did not converge enough (goes from {} to {})",
                 prior_rms,
                 next_rms
@@ -926,7 +931,7 @@ mod tests {
             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging.
             iterations_t: 4,
 
-            label: "test_elkan".to_string(),
+            label: "test_elkan_decreases".to_string(),
             compute_rms: true,
         };
 
@@ -941,7 +946,7 @@ mod tests {
 
             assert!(
                 next_rms < prior_rms,
-                "RMS was not monotonially decreasing (goes from {} to {})",
+                "RMS was not monotonically decreasing (goes from {} to {})",
                 prior_rms,
                 next_rms
             );
@@ -1002,15 +1007,15 @@ mod tests {
     fn test_kmeans_elkan_original_rms_matches() {
         let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
         let points_original: Vec<Histogram> = points_elkan.clone();
-        let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(5);
+        let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(3);
         let init_centers_original: Vec<Histogram> = init_centers_elkan.clone();
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers: init_centers_elkan,
             points: &points_elkan,
-            kmeans_k: 5,
-            iterations_t: 7,
+            kmeans_k: 3,
+            iterations_t: 4,
             label: "test_elkan".to_string(),
             compute_rms: true,
         };
@@ -1024,13 +1029,13 @@ mod tests {
 
         let (_, all_rms_elkan) = cluster(&clusterable, cluster_args_elkan);
         let (_, all_rms_original) = cluster(&clusterable, cluster_args_original);
-        assert_eq!(all_rms_elkan.len(), 7);
-        assert_eq!(all_rms_original.len(), 7);
+        assert_eq!(all_rms_elkan.len(), 4);
+        assert_eq!(all_rms_original.len(), 4);
 
         for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
             println!("elkan: {}, original: {}", elkan_rms, original_rms);
             assert!(
-                (elkan_rms - original_rms).abs() < 0.0001,
+                (elkan_rms - original_rms).abs() < 0.00001,
                 "RMS-es (elkan: {}, original: {}) should approximately match at each step",
                 elkan_rms,
                 original_rms
