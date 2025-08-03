@@ -302,6 +302,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     let mut running_spinner: ProgressBar = ProgressBar::new_spinner();
     if let Some(mp) = multi_progress {
         running_spinner = mp.add(ProgressBar::new_spinner());
+        // mp.set_move_cursor(true);
     }
     running_spinner.enable_steady_tick(Duration::from_millis(100));
 
@@ -680,6 +681,10 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     }
 
     running_spinner.finish();
+    if let Some(mp) = multi_progress {
+       // mp.set_move_cursor(false);
+        mp.remove(&running_spinner)
+    }
 
     // Form paper "[Compute] the new location of each cluster center",
     // i.e. Step 7:
