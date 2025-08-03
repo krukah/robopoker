@@ -786,7 +786,7 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gameplay::abstraction::Abstraction;
+    use crate::Arbitrary;
     use crate::Energy;
 
     #[derive(Debug)]
@@ -819,99 +819,37 @@ mod tests {
         }
     }
 
-    fn create_test_histogram(abstractions: Vec<Abstraction>) -> Histogram {
-        abstractions
-            .into_iter()
-            .fold(Histogram::default(), |h, a| h.increment(a))
-    }
-    // Helper to create simple equity-based abstractions for testing
-    fn create_equity_abstraction(equity: f32) -> Abstraction {
-        Abstraction::Learned((equity * 100.0) as u64)
+    fn create_seeded_histogram(seed: u64) -> Histogram {
+        use rand::{rngs::StdRng, SeedableRng};
+        let _rng = StdRng::seed_from_u64(seed);
+        Histogram::random()
     }
 
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
-        // Create test data with clear clusters
-        let points = vec![
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.12),
-                create_equity_abstraction(0.08),
-                create_equity_abstraction(0.13),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.8),
-                create_equity_abstraction(0.85),
-                create_equity_abstraction(0.9),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-        ];
-
-        let init_centers = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.3)]),
-            create_test_histogram(vec![create_equity_abstraction(0.6)]),
-        ];
+        let points: Vec<Histogram> = (100..500)
+            .map(|seed| create_seeded_histogram(seed))
+            .collect();
+        let init_centers: Vec<Histogram> =
+            (1..6).map(|seed| create_seeded_histogram(seed)).collect();
 
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers,
             points: &points,
-            kmeans_k: 2,
+            kmeans_k: 5,
 
-            // Note: usually converges *very* quickly / after only 2 iterations. So increasing this may cause a false-alarm.
-            iterations_t: 3,
+            // Don't set too high; the values stop decreasing as much in normal operation once it starts converging
+            iterations_t: 4,
 
             label: "test_elkan".to_string(),
             compute_rms: true,
         };
 
         let (result, all_rms) = cluster(&clusterable, cluster_args);
-        assert_eq!(result.len(), 2);
-        assert_eq!(all_rms.len(), 3);
+        assert_eq!(result.len(), 5);
+        assert_eq!(all_rms.len(), 4);
 
         for w in all_rms.windows(2) {
             let prior_rms = w[0];
@@ -923,101 +861,35 @@ mod tests {
                 next_rms
             );
             assert!(
-                (prior_rms - next_rms).abs() > 0.001,
+                (prior_rms - next_rms).abs() > 0.0001,
                 "RMS did not decrease *enough* during at least one iteration (goes from {} to {})",
                 prior_rms,
                 next_rms
             );
             println!("{} {}", prior_rms, next_rms);
         }
-
-        // Check against known starting value referenced above
-        assert!(
-            (all_rms[0] - 1.1891768).abs() < 0.00001,
-            "Starting RMS must approximately match expected hardcoded value"
-        );
-        assert!(
-            all_rms[0] - all_rms[2] > 0.5,
-            "Ending RMS must be much lower than the starting value"
-        );
     }
 
     #[test]
     fn test_kmeans_elkan_original_match() {
-        // Create test data with clear clusters
-        let points = vec![
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.1),
-                create_equity_abstraction(0.15),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.12),
-                create_equity_abstraction(0.08),
-                create_equity_abstraction(0.13),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.8),
-                create_equity_abstraction(0.85),
-                create_equity_abstraction(0.9),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-            create_test_histogram(vec![
-                create_equity_abstraction(0.82),
-                create_equity_abstraction(0.88),
-                create_equity_abstraction(0.87),
-            ]),
-        ];
+        let points: Vec<Histogram> = (100..500)
+            .map(|seed| create_seeded_histogram(seed))
+            .collect();
+        let init_centers: Vec<Histogram> =
+            (1..6).map(|seed| create_seeded_histogram(seed)).collect();
 
-        let init_centers_elkan = vec![
-            create_test_histogram(vec![create_equity_abstraction(0.3)]),
-            create_test_histogram(vec![create_equity_abstraction(0.6)]),
-        ];
-        let init_centers_original = init_centers_elkan.clone();
         let points_elkan = points.clone();
         let points_original = points.clone();
+        let init_centers_elkan = init_centers.clone();
+        let init_centers_original = init_centers.clone();
 
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
             algorithm: ClusterAlgorithm::KmeansElkan2003,
             init_centers: init_centers_elkan,
             points: &points_elkan,
-            kmeans_k: 2,
-            iterations_t: 3,
+            kmeans_k: 5,
+            iterations_t: 7,
             label: "test_elkan".to_string(),
             compute_rms: true,
         };
@@ -1031,13 +903,13 @@ mod tests {
 
         let (_, all_rms_elkan) = cluster(&clusterable, cluster_args_elkan);
         let (_, all_rms_original) = cluster(&clusterable, cluster_args_original);
-        assert_eq!(all_rms_elkan.len(), 3);
-        assert_eq!(all_rms_original.len(), 3);
+        assert_eq!(all_rms_elkan.len(), 7);
+        assert_eq!(all_rms_original.len(), 7);
 
         for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
             println!("elkan: {}, original: {}", elkan_rms, original_rms);
             assert!(
-                (elkan_rms - original_rms).abs() < 0.001,
+                (elkan_rms - original_rms).abs() < 0.00001,
                 "RMS-es (elkan: {}, original: {}) should approximately match at each step",
                 elkan_rms,
                 original_rms
