@@ -12,6 +12,9 @@ pub enum ClusterAlgorithm {
     KmeansOriginal = 0isize,
 
     /// Accelerated via Triangle Inequality math as per paper 'Elkan 2003'.
+    ///
+    /// Guaranteed to return approximately-identical centers to those computed
+    /// by the KmeansOriginal algorithm (when clustering the same set inputs).
     KmeansElkan2003 = 1isize,
 }
 
@@ -330,7 +333,7 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
     // This means s effectively contains the 'distance to the midpoint
     // between this centroid and the closest other centroid' for each
     // centroid.
-    log::debug!("{:<32}", " - Elkan Step 1");
+    log::debug!("{:<32}", " - Elkan 2003 Step 1");
     // Step 1 (first half): d(c, c') for all centers c and c'
     let centroid_to_centroid_distances: Vec<Vec<f32>> =
         pairwise_distances(clusterable, centers_start);
@@ -358,7 +361,7 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    log::debug!("{:<32}", " - Elkan Step 2");
+    log::debug!("{:<32}", " - Elkan 2003 Step 2");
 
     // Step 2: "Identify all points x such that u(x) <= s(c(x)).", i.e.
     // where the upper bound for the opint is less than its closest
@@ -418,8 +421,9 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
     // pure vectorized math. Instead we're having to settle for Rayon
     // parallelization on account of using Histograms and non-Euclidean
     // distances.
-    log::debug!("{:<32}", " - Elkan Step 3");
-    spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Elkan Step 3)".to_string());
+    log::debug!("{:<32}", " - Elkan 2003 Step 3");
+    spinner =
+        replace_multiprogress_spinner(&multi_progress, spinner, "(Elkan 2003 Step 3)".to_string());
     use rayon::prelude::*;
     for (center_c_idx, center_c) in centers_start.iter().enumerate() {
         step_3_working_points
@@ -497,7 +501,7 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
             });
     }
 
-    log::debug!("{:<32}", " - Elkan Step 4");
+    log::debug!("{:<32}", " - Elkan 2003 Step 4");
     // Merge the updated helper values back with the original vector we got
     // at the start of the function (which has entries for *all* points, not
     // just the ones bieng updated in step 3).
@@ -513,7 +517,8 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Elkan Step 4)".to_string());
+    spinner =
+        replace_multiprogress_spinner(&multi_progress, spinner, "(Elkan 2003 Step 4)".to_string());
 
     // Step 4: For each center c, let m(c) be the mean of the points
     // assigned to c.
@@ -624,7 +629,7 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
         }
     }
 
-    log::debug!("{:<32}", " - Elkan Step 5");
+    log::debug!("{:<32}", " - Elkan 2003 Step 5");
     // Step 5: Update lower bounds. From paper: ""
     // 5. For each point x and center c, assign
     //    l(x,c) = max{ l(x, c) - d(c, m(c)), 0 }
@@ -662,7 +667,7 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    log::debug!("{:<32}", " - Elkan Step 6");
+    log::debug!("{:<32}", " - Elkan 2003 Step 6");
     // Step 6: Update upper bounds. From paper: """
     // 6. For each point x, assign
     //    u(x) = u(x) + d(m(c(x)), c(x))
@@ -691,7 +696,7 @@ fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
     //
     // but that all gets taken care of by the caller so no need to worry about
     // it inside here.
-    log::debug!("{:<32}", " - Elkan Step 7");
+    log::debug!("{:<32}", " - Elkan 2003 Step 7");
     ElkanIterationResult {
         centers: new_centroids,
         helpers: step_6_helpers,
