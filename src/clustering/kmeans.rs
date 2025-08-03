@@ -205,10 +205,6 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 progress.inc(1);
 
                 log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
-                // TODO refactor this to be more readable (ie stop using ref mut)
-                // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
-                // already made a mistake nd introduced a major bug once before
-                // in this section.
                 let result = compute_next_kmeans_tri_ineq(
                     clusterable,
                     &cluster_args,
