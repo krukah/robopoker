@@ -768,7 +768,6 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
 
     log::debug!("{:<32}", "lemma 1 accelerated par_init of helpers");
     let style = indicatif::ProgressStyle::with_template(PROGRESS_STYLE).unwrap();
-    log::debug!("{}", PROGRESS_STYLE);
 
     let nearest_neighbors: Vec<Neighbor> = cluster_args
         .points
