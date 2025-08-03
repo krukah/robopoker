@@ -333,8 +333,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     ti_helpers: &[TriIneqBounds],
     multi_progress: Option<&MultiProgress>,
 ) -> ElkanIterationResult {
-    // TODO: panic if the length of ti_helpers doesn't match the length of
-    // self.points
+    assert_eq!(ti_helpers.len(), cluster_args.points.len());
 
     use rayon::iter::IndexedParallelIterator;
     use rayon::iter::IntoParallelRefIterator;
@@ -342,9 +341,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     let mut spinner: ProgressBar = ProgressBar::new_spinner();
 
     let k = cluster_args.init_centers.len();
-
-    // TODO: refactor / start using some things like this
-    // let n = self.points().len();
 
     // ****
     // The following 7-step algorithm is taken from Elkan (2003). It uses
