@@ -250,7 +250,8 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 ///
 /// Specifically, each instance of struct contains "Carr[ied]... information"
 /// between k-means iterations for a specific point in `ClusterArg`'s
-/// `points` field.
+/// `points` field. (Most notably: upper and lower distance bounds to help
+/// avoid significant #s of redundant distance calculations.)
 ///
 /// See below for more information.
 #[derive(Debug, Clone)]
@@ -387,13 +388,14 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         })
         .collect();
 
-    let mut step_3_working_points: HashMap<usize, (&Histogram, PointMetdataElkan2003)> = cluster_args
-        .points
-        .iter()
-        .enumerate()
-        .filter(|(point_i, _)| !step_2_excluded_points.contains(point_i))
-        .map(|(point_i, point_h)| (point_i, (point_h, ti_helpers[point_i].clone())))
-        .collect();
+    let mut step_3_working_points: HashMap<usize, (&Histogram, PointMetdataElkan2003)> =
+        cluster_args
+            .points
+            .iter()
+            .enumerate()
+            .filter(|(point_i, _)| !step_2_excluded_points.contains(point_i))
+            .map(|(point_i, point_h)| (point_i, (point_h, ti_helpers[point_i].clone())))
+            .collect();
 
     // Step 3: For all remaining points x and centers c such that ...
     //
