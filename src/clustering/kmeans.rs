@@ -98,6 +98,8 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
     // clustering).
     Vec<f32>,
 ) {
+    use tokio::time::Duration;
+
     log::info!("{:<32}{:<32}", "initialize  kmeans", cluster_args.label);
 
     let mut working_centers = cluster_args.init_centers.clone();
@@ -193,6 +195,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // """
             let mp = MultiProgress::new();
             let progress = mp.add(crate::progress(t));
+            progress.enable_steady_tick(Duration::from_millis(1000));
 
             for i in 0..t {
                 progress.inc(1);
@@ -302,9 +305,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     let mut running_spinner: ProgressBar = ProgressBar::new_spinner();
     if let Some(mp) = multi_progress {
         running_spinner = mp.add(ProgressBar::new_spinner());
-        // mp.set_move_cursor(true);
     }
-    running_spinner.enable_steady_tick(Duration::from_millis(100));
+    running_spinner.enable_steady_tick(Duration::from_millis(10));
 
     let k = cluster_args.kmeans_k;
 
@@ -682,7 +684,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 
     running_spinner.finish();
     if let Some(mp) = multi_progress {
-       // mp.set_move_cursor(false);
         mp.remove(&running_spinner)
     }
 
