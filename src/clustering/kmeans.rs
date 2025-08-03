@@ -824,14 +824,14 @@ mod tests {
         let _rng = StdRng::seed_from_u64(seed);
         Histogram::random()
     }
+    fn create_seeded_histogram_range(range: std::ops::Range<u64>) -> Vec<Histogram> {
+        range.map(|seed| create_seeded_histogram(seed)).collect()
+    }
 
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
-        let points: Vec<Histogram> = (100..500)
-            .map(|seed| create_seeded_histogram(seed))
-            .collect();
-        let init_centers: Vec<Histogram> =
-            (1..6).map(|seed| create_seeded_histogram(seed)).collect();
+        let points: Vec<Histogram> = create_seeded_histogram_range(100..500);
+        let init_centers: Vec<Histogram> = create_seeded_histogram_range(1..6);
 
         let clusterable = MockClusterable {};
         let cluster_args = ClusterArgs {
@@ -872,16 +872,10 @@ mod tests {
 
     #[test]
     fn test_kmeans_elkan_original_match() {
-        let points: Vec<Histogram> = (100..500)
-            .map(|seed| create_seeded_histogram(seed))
-            .collect();
-        let init_centers: Vec<Histogram> =
-            (1..6).map(|seed| create_seeded_histogram(seed)).collect();
-
-        let points_elkan = points.clone();
-        let points_original = points.clone();
-        let init_centers_elkan = init_centers.clone();
-        let init_centers_original = init_centers.clone();
+        let points_elkan: Vec<Histogram> = create_seeded_histogram_range(100..500);
+        let points_original: Vec<Histogram> = create_seeded_histogram_range(100..500);
+        let init_centers_elkan: Vec<Histogram> = create_seeded_histogram_range(1..6);
+        let init_centers_original: Vec<Histogram> = create_seeded_histogram_range(1..6);
 
         let clusterable = MockClusterable {};
         let cluster_args_elkan = ClusterArgs {
