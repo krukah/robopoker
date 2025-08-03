@@ -344,8 +344,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     use rayon::iter::ParallelIterator;
     let mut spinner: ProgressBar = ProgressBar::new_spinner();
 
-    let k = cluster_args.init_centers.len();
-
     // ****
     // The following 7-step algorithm is taken from Elkan (2003). It uses
     // triangle inequalities to accelerate the k-means algorithm.
@@ -359,21 +357,8 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // centroid.
     log::debug!("{:<32}", " - Elkan Step 1");
     // Step 1 (first half): d(c, c') for all centers c and c'
-    let centroid_to_centroid_distances: Vec<Vec<f32>> = centers_start
-        .iter()
-        // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into
-        // a simple 1-D vector to allow for easily parallelizing the emd
-        // calculations.
-        // TLDR: effectively just itertools.array_combinations().
-        .flat_map(|c| centers_start.iter().map(move |c_prime| (c, c_prime)))
-        .collect::<Vec<_>>()
-        .par_iter()
-        .map(|(center1, center2)| clusterable.distance(center1, center2)) // 1-D vector with length k^2
-        .collect::<Vec<f32>>()
-        .chunks(k) // Separate into k-length chunks so we can get it into a 2-D vector
-        .map(|chunked| chunked.to_vec())
-        .collect();
-
+    let centroid_to_centroid_distances: Vec<Vec<f32>> =
+        pairwise_distances(clusterable, centers_start);
     // Step 1 (second half): s(c) = (1/2) min_{c'!=c} d(c, c')
     // (i.e. the closest midpoint to another centroid besides itself)
     let per_centroid_distance_to_closest_midpoint: Vec<f32> = centroid_to_centroid_distances
@@ -738,6 +723,33 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     }
 }
 
+/// Computes the distance between each pair in `centers`, i.e. d(c, c') for
+/// all centers c and c'.
+fn pairwise_distances<T: Clusterable + std::marker::Sync>(
+    clusterable: &T,
+    centers: &Vec<Histogram>,
+) -> Vec<Vec<f32>> {
+    use rayon::iter::IntoParallelRefIterator;
+    use rayon::iter::ParallelIterator;
+    let k = centers.len();
+    centers
+        .iter()
+        // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into a
+        // simple 1-D vector to allow for easily parallelizing the emd
+        // calculations.
+        // (TLDR this is effectively just itertools.array_combinations().)
+        .flat_map(|c| centers.iter().map(move |c_prime| (c, c_prime)))
+        .collect::<Vec<_>>()
+        .par_iter()
+        // 1-D vector with length k^2
+        .map(|(center1, center2)| clusterable.distance(center1, center2))
+        .collect::<Vec<f32>>()
+        // Separate into k-length chunks so we can turn it into a 2-D vector
+        .chunks(k)
+        .map(|chunked| chunked.to_vec())
+        .collect()
+}
+
 /// Obtains nearest neighbor and separation distance for a Histogram
 /// using lemma 1 from Elkan (2003) to avoid redundant distance
 /// calculations. Allowing us to efficiently assign each point to
@@ -753,31 +765,10 @@ fn create_centroids_tri_ineq<T: Clusterable + std::marker::Sync>(
 
     // Initialization first half: d(c, c') for all centers c and c'
     // (this lets us use lemma 1 for massive speedups below)
-    //
-    // TODO: Extract into shared helper function (curently duped
-    // here and in the main triangle accelerated clustering loop)
-    let k = cluster_args.init_centers.len();
+    // let k = cluster_args.init_centers.len();
     log::debug!("{:<32}", "precomputing centroid to centroid distances");
-    let centroid_to_centroid_distances: Vec<Vec<f32>> = cluster_args
-        .init_centers
-        .iter()
-        // Get all combinations [(c1,c1), (c1,c2), ... (c_k, c_k)] into
-        // a simple 1-D vector to allow for easily parallelizing the emd
-        // calculations.
-        // TLDR: effectively just itertools.array_combinations().
-        .flat_map(|c| {
-            cluster_args
-                .init_centers
-                .iter()
-                .map(move |c_prime| (c, c_prime))
-        })
-        .collect::<Vec<_>>()
-        .par_iter()
-        .map(|(center1, center2)| clusterable.distance(center1, center2)) // 1-D vector with length k^2
-        .collect::<Vec<f32>>()
-        .chunks(k) // Separate into k-length chunks so we can get it into a 2-D vector
-        .map(|chunked| chunked.to_vec())
-        .collect();
+    let centroid_to_centroid_distances: Vec<Vec<f32>> =
+        pairwise_distances(clusterable, &cluster_args.init_centers);
 
     log::debug!("{:<32}", "lemma 1 accelerated par_init of helpers");
     let style = indicatif::ProgressStyle::with_template(PROGRESS_STYLE).unwrap();
