@@ -589,9 +589,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 
     let mut new_centroids: Vec<Histogram> = vec![];
 
-    // Note: we could optionally parallelize this. In practice though, so long
-    // as `perform_extra_loss_calculations` is false this is so fast that it's
-    // not worth doing.
     for (centroid_i, points) in points_assigned_per_center.iter().enumerate() {
         if points.is_empty() {
             log::error!("No points assigned to current centroid. This is currently an edge case we are unable to resolve; for more details see https://github.com/krukah/robopoker/issues/34#issuecomment-2860641178");
@@ -607,12 +604,14 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         let next_centroid = mean_of_assigned_points;
 
         if cluster_args.compute_rms {
-            // NOTE: Calculating the error with the OLD center (to ensure
-            // that this is consistent with the unaccelerated algorithm).
+            // NOTE: Calculating the error with the OLD center (to ensure that
+            // this is consistent with the unaccelerated algorithm).
             let old_centroid = &(centers_start[centroid_i]);
-            // As mentioned above, this can be expensive; we add extra tracking
-            // here to allow the user to more easily determine if it's worth
-            // disabling or not.
+            // As mentioned above, this could theoretically be expensive. In
+            // practice the rest of the algorithm dominates, but to be safe
+            // we add extra tracking here to allow the user to more easily
+            // determine if it's worth disabling (and/or parallellizing via
+            // rayon or otherwise optimizing).
             let now = SystemTime::now();
             for point in points.iter() {
                 let distance_point_to_prior_centroid = clusterable.distance(&old_centroid, &point);
