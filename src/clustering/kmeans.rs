@@ -1,6 +1,6 @@
 use super::histogram::Histogram;
 use crate::Energy;
-use indicatif::ProgressIterator;
+use indicatif::MultiProgress;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::SystemTime;
@@ -191,8 +191,12 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // second one above: after each iteration, it produces the same set
             // of center locations as the standard k-means method.
             // """
-            // TODO: Add styling to progress bar
-            for i in (0..t).progress() {
+            let mp = MultiProgress::new();
+            let progress = mp.add(crate::progress(t));
+
+            for i in 0..t {
+                progress.inc(1);
+
                 log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
                 // TODO refactor this to be more readable (ie stop using ref mut)
                 // if possible. DO NOT DO SO UNTIL ADDING UNIT TESTS - we've
@@ -203,6 +207,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                     &cluster_args,
                     &working_centers,
                     &ti_helpers,
+                    Some(&mp),
                 );
 
                 if let Some(rms) = result.rms {
@@ -283,14 +288,22 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // (WARNING: do not confuse with cluster_args.init_centers!)
     centers_start: &Vec<Histogram>,
     ti_helpers: &[TriIneqBounds],
+    multi_progress: Option<&MultiProgress>,
 ) -> ElkanIterationResult {
     // TODO: panic if the length of ti_helpers doesn't match the length of
     // self.points
 
-    use indicatif::ParallelProgressIterator;
+    use indicatif::ProgressBar;
     use rayon::iter::IndexedParallelIterator;
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
+    use tokio::time::Duration;
+
+    let mut running_spinner: ProgressBar = ProgressBar::new_spinner();
+    if let Some(mp) = multi_progress {
+        running_spinner = mp.add(ProgressBar::new_spinner());
+    }
+    running_spinner.enable_steady_tick(Duration::from_millis(100));
 
     let k = cluster_args.kmeans_k;
 
@@ -413,11 +426,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     for (center_c_idx, center_c) in centers_start.iter().enumerate() {
         step_3_working_points
             .par_iter_mut()
-            // As far as we can tell, this progress bar doesn't negatively affect
-            // performance. HOWEVER, it does mess with the other progress bar +
-            // doesn't look tidy (due to being unstyled), so we should probably
-            // come back and clean it up a bit.
-            .progress_count(cluster_args.points.len().try_into().unwrap())
             // _point_i used later for step 4 lookups but unneeded when mutating here
             .for_each(|(_point_i, (point_h, helper))| {
                 // STEP 3 FILTERING: Apply all three filter conditions with early exits
@@ -671,10 +679,13 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         helper.stale_upper_bound = true;
     }
 
+    running_spinner.finish();
+
     // Form paper "[Compute] the new location of each cluster center",
     // i.e. Step 7:
     // "7. Replace each center c by m(c)"
     log::debug!("{:<32}", " - Elkan Step 7");
+
     ElkanIterationResult {
         centers: new_centroids,
         helpers: step_6_helpers,
@@ -851,7 +862,7 @@ mod tests {
             println!("{} {}", prior_rms, next_rms);
 
             assert!(
-                (prior_rms - next_rms).abs() <= 0.00001,
+                (prior_rms - next_rms).abs() <= 0.0001,
                 "RMS is still decreasing _too much_ / did not converge enough (goes from {} to {})",
                 prior_rms,
                 next_rms
