@@ -121,7 +121,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // redundant distance calculations. Each time d(x,c) is computed,
             // set l(x,c) = d(x,c). Assign upper bounds u(x) = min_c d(x,c).
             // """
-            let mut ti_helpers: Vec<PointMetdataElkan2003> =
+            let mut per_point_metadata: Vec<PointMetdataElkan2003> =
                 create_centroids_tri_ineq(clusterable, cluster_args)
                     .iter()
                     // WARNING: we may technically be repeating the 'pick
@@ -189,11 +189,11 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 progress.inc(1);
 
                 log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
-                let result = compute_next_kmeans_tri_ineq(
+                let result = compute_next_kmeans_elkan2003(
                     clusterable,
                     cluster_args,
                     &working_centers,
-                    &ti_helpers,
+                    &per_point_metadata,
                     Some(&mp),
                 );
 
@@ -203,7 +203,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 }
 
                 working_centers = result.centers;
-                ti_helpers = result.helpers;
+                per_point_metadata = result.helpers;
             }
         }
     }
@@ -291,7 +291,7 @@ struct ElkanIterationResult {
 }
 
 #[cfg(feature = "native")]
-/// Triangle(tri)-Inequality(ineq) accelerated version of kmeans.
+/// Elkan 2003 Triangle Inequality accelerated version of kmeans.
 ///
 /// Calculates the next step of the kmeans iteration by efficiently
 /// computing (a subset of) K * N optimal transport calculations and
@@ -302,17 +302,17 @@ struct ElkanIterationResult {
 /// results as the 'unaccelerated' kmeans at every iteration given the
 /// same set of inputs, while providing a massive speedup in most
 /// real-world situations.
-fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
+fn compute_next_kmeans_elkan2003<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
     cluster_args: &ClusterArgs,
     // The centers at the start of *this training iteration*.
     // (WARNING: do not confuse with cluster_args.init_centers!)
     centers_start: &Vec<Histogram>,
-    ti_helpers: &[PointMetdataElkan2003],
+    per_point_metadata: &[PointMetdataElkan2003],
     multi_progress: Option<&MultiProgress>,
 ) -> ElkanIterationResult {
     // Both by definition should be length 'N'.
-    assert_eq!(ti_helpers.len(), cluster_args.points.len());
+    assert_eq!(per_point_metadata.len(), cluster_args.points.len());
 
     use rayon::iter::IndexedParallelIterator;
     use rayon::iter::IntoParallelRefIterator;
@@ -368,7 +368,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // [but c]omputationally step (2) is beneficial because if it
     // eliminates a point x from further consideration, then comparing u
     // (x) to l(x,c) for every c separately is not necessary."
-    let step_2_excluded_points: HashSet<usize> = ti_helpers
+    let step_2_excluded_points: HashSet<usize> = per_point_metadata
         .iter()
         .enumerate()
         .filter_map(|(x, helper)| {
@@ -394,7 +394,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
             .iter()
             .enumerate()
             .filter(|(point_i, _)| !step_2_excluded_points.contains(point_i))
-            .map(|(point_i, point_h)| (point_i, (point_h, ti_helpers[point_i].clone())))
+            .map(|(point_i, point_h)| (point_i, (point_h, per_point_metadata[point_i].clone())))
             .collect();
 
     // Step 3: For all remaining points x and centers c such that ...
@@ -501,7 +501,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // Merge the updated helper values back with the original vector we got
     // at the start of the function (which has entries for *all* points, not
     // just the ones bieng updated in step 3).
-    let step_4_helpers: Vec<&PointMetdataElkan2003> = ti_helpers
+    let step_4_helpers: Vec<&PointMetdataElkan2003> = per_point_metadata
         .iter()
         .enumerate()
         .map(|(point_i, original_helper)| {
@@ -873,7 +873,7 @@ mod tests {
     }
 
     #[test]
-    fn test_kmeans_elkan_rms_converges() {
+    fn test_kmeans_elkan2003_rms_converges() {
         let points: Vec<Histogram> = create_seeded_histograms(400);
         let init_centers: Vec<Histogram> = create_seeded_histograms(2);
 
@@ -883,7 +883,7 @@ mod tests {
             init_centers: &init_centers,
             points: &points,
             iterations_t: 6,
-            label: "test_elkan_converges".to_string(),
+            label: "test_elkan2003_converges".to_string(),
             compute_rms: true,
         };
 
@@ -918,7 +918,7 @@ mod tests {
     }
 
     #[test]
-    fn test_kmeans_elkan_rms_decreases() {
+    fn test_kmeans_elkan2003_rms_decreases() {
         let points: Vec<Histogram> = create_seeded_histograms(500);
         let init_centers: Vec<Histogram> = create_seeded_histograms(5);
 
@@ -931,7 +931,7 @@ mod tests {
             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging.
             iterations_t: 4,
 
-            label: "test_elkan_decreases".to_string(),
+            label: "test_elkan2003_decreases".to_string(),
             compute_rms: true,
         };
 
@@ -1003,7 +1003,7 @@ mod tests {
     /// "After each iteration, [Elkan's algorithm] produces the same set of center locations as the standard k-means method."
     /// Therefore, the RMS we compute at every single iteration should be (nearly) identical.
     #[test]
-    fn test_kmeans_elkan_original_rms_matches() {
+    fn test_kmeans_elkan2003_original_rms_matches() {
         let points_elkan: Vec<Histogram> = create_seeded_histograms(400);
         let points_original: Vec<Histogram> = points_elkan.clone();
         let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(3);
@@ -1030,12 +1030,12 @@ mod tests {
         assert_eq!(all_rms_elkan.len(), 4);
         assert_eq!(all_rms_original.len(), 4);
 
-        for (elkan_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
-            println!("elkan: {}, original: {}", elkan_rms, original_rms);
+        for (elkan2003_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
+            println!("elkan: {}, original: {}", elkan2003_rms, original_rms);
             assert!(
-                (elkan_rms - original_rms).abs() < 0.00001,
+                (elkan2003_rms - original_rms).abs() < 0.00001,
                 "RMS-es (elkan: {}, original: {}) should approximately match at each step",
-                elkan_rms,
+                elkan2003_rms,
                 original_rms
             )
         }
