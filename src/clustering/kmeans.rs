@@ -64,8 +64,7 @@ pub trait Clusterable {
 
 pub fn cluster<T: Clusterable + std::marker::Sync>(
     clusterable: &T,
-    // TODO: update to avoid needing ownership, if possible
-    cluster_args: ClusterArgs,
+    cluster_args: &ClusterArgs,
 ) -> (
     // Resulting clusters
     Vec<Histogram>,
@@ -98,7 +97,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             let progress = crate::progress(t);
             for _ in 0..t {
                 let (next_centers, rms) =
-                    compute_next_kmeans(clusterable, &cluster_args, &working_centers);
+                    compute_next_kmeans(clusterable, cluster_args, &working_centers);
                 log::debug!("{:<32}{:<32}", "abstraction cluster RMS error", rms);
                 all_rms.push(rms);
 
@@ -123,7 +122,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
             // set l(x,c) = d(x,c). Assign upper bounds u(x) = min_c d(x,c).
             // """
             let mut ti_helpers: Vec<TriIneqBounds> =
-                create_centroids_tri_ineq(clusterable, &cluster_args)
+                create_centroids_tri_ineq(clusterable, cluster_args)
                     .iter()
                     // TODO: Double check we're not repeating the 'pick
                     // initial centers' work here twice. (e.g. if we already
@@ -188,7 +187,7 @@ pub fn cluster<T: Clusterable + std::marker::Sync>(
                 log::debug!("{:<32}{:<32}", "Performing training iteration # ", i);
                 let result = compute_next_kmeans_tri_ineq(
                     clusterable,
-                    &cluster_args,
+                    cluster_args,
                     &working_centers,
                     &ti_helpers,
                     Some(&mp),
@@ -877,7 +876,7 @@ mod tests {
             compute_rms: true,
         };
 
-        let (result, all_rms) = cluster(&clusterable, cluster_args);
+        let (result, all_rms) = cluster(&clusterable, &cluster_args);
         for w in all_rms.windows(2) {
             println!("{} {}", w[0], w[1]);
         }
@@ -925,7 +924,7 @@ mod tests {
             compute_rms: true,
         };
 
-        let (result, all_rms) = cluster(&clusterable, cluster_args);
+        let (result, all_rms) = cluster(&clusterable, &cluster_args);
         assert_eq!(result.len(), 5);
         assert_eq!(all_rms.len(), 4);
 
@@ -966,7 +965,7 @@ mod tests {
             compute_rms: true,
         };
 
-        let (result, all_rms) = cluster(&clusterable, cluster_args);
+        let (result, all_rms) = cluster(&clusterable, &cluster_args);
         assert_eq!(result.len(), 5);
         assert_eq!(all_rms.len(), 4);
 
@@ -1015,8 +1014,8 @@ mod tests {
             ..cluster_args_elkan
         };
 
-        let (_, all_rms_elkan) = cluster(&clusterable, cluster_args_elkan);
-        let (_, all_rms_original) = cluster(&clusterable, cluster_args_original);
+        let (_, all_rms_elkan) = cluster(&clusterable, &cluster_args_elkan);
+        let (_, all_rms_original) = cluster(&clusterable, &cluster_args_original);
         assert_eq!(all_rms_elkan.len(), 4);
         assert_eq!(all_rms_original.len(), 4);
 

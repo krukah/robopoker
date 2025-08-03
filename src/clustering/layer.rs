@@ -249,7 +249,7 @@ impl crate::save::disk::Disk for Layer {
             compute_rms: cfg!(feature = "kmeans-compute-nonfree-rms"),
         };
         let (clustered_centers, _): (Vec<Histogram>, Vec<f32>) =
-            kmeans::cluster(&layer, cluster_args);
+            kmeans::cluster(&layer, &cluster_args);
         layer.kmeans = clustered_centers;
 
         layer
