@@ -283,10 +283,13 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
 /// manually incrememnt things ourselves).
 fn replace_multiprogress_spinner(
     multi_progress: &Option<&MultiProgress>,
-    finished_spinner: ProgressBar,
+    spinner: ProgressBar,
     message: String,
 ) -> ProgressBar {
-    let mut running_spinner = finished_spinner;
+    if !spinner.is_finished() {
+        spinner.finish_and_clear();
+    }
+    let mut running_spinner = spinner;
     if let Some(mp) = multi_progress {
         mp.remove(&running_spinner);
         running_spinner = mp.add(ProgressBar::new_spinner());
@@ -532,7 +535,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
                 }
             });
     }
-    spinner.finish();
 
     log::debug!("{:<32}", " - Elkan Step 4");
     // Merge the updated helper values back with the original vector we got
@@ -644,7 +646,6 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
 
     let mut optional_rms: Option<f32> = None;
     if cluster_args.compute_rms {
-        spinner.finish();
         spinner = replace_multiprogress_spinner(&multi_progress, spinner, "(Performing optional 'non-free' RMS calculations. Consider disabling them if doing performance testing!)".to_string());
 
         let rms = (loss / cluster_args.points.len() as f32).sqrt();
@@ -720,7 +721,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         helper.stale_upper_bound = true;
     }
 
-    spinner.finish();
+    spinner.finish_and_clear();
     if let Some(mp) = multi_progress {
         mp.remove(&spinner)
     }
