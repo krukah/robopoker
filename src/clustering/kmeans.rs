@@ -4,8 +4,8 @@ use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::Duration;
 use std::time::SystemTime;
-use tokio::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClusterAlgorithm {
