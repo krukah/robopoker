@@ -829,12 +829,15 @@ mod tests {
     #[derive(Debug)]
     struct MockClusterable {}
     impl Clusterable for MockClusterable {
-        // Smple Euclidean-like distance for testing
+        // Simple Euclidean-like distance for testing (based on distribution
+        // differences).
+        //
+        // Warning: this may have been LLM generated; don't blindly use it
+        // outside of this test code unless you're certain it actually does
+        // what you want :)
         fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
             let dist1 = h1.distribution();
             let dist2 = h2.distribution();
-
-            // Simple distance calculation based on distribution differences
             let mut sum = 0.0;
             let all_keys: std::collections::HashSet<_> =
                 dist1.iter().chain(dist2.iter()).map(|(k, _)| k).collect();
