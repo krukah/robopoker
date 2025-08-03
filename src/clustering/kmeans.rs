@@ -857,7 +857,6 @@ mod tests {
                 next_rms
             );
         }
-        assert_eq!(1, 0);
     }
 
     #[test]
