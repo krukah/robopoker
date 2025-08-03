@@ -1,6 +1,7 @@
 use super::histogram::Histogram;
 use crate::Energy;
 use indicatif::MultiProgress;
+use indicatif::ProgressBar;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::SystemTime;
@@ -258,6 +259,22 @@ fn compute_next_kmeans<T: Clusterable + std::marker::Sync>(
     (centers_end, rms)
 }
 
+fn replace_multiprogress_spinner(
+    multi_progress: &Option<&MultiProgress>,
+    finished_spinner: ProgressBar,
+) -> ProgressBar {
+    use tokio::time::Duration;
+
+    let mut running_spinner = finished_spinner;
+    if let Some(mp) = multi_progress {
+        mp.remove(&running_spinner);
+        running_spinner = mp.add(ProgressBar::new_spinner());
+    }
+
+    running_spinner.enable_steady_tick(Duration::from_millis(25));
+    running_spinner
+}
+
 // Simple helper for specifically the Elkan 2003 Triangle-Inequality accelerated version
 // of Kmeans to make it easier to pass around the result.
 //
@@ -296,17 +313,10 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // TODO: panic if the length of ti_helpers doesn't match the length of
     // self.points
 
-    use indicatif::ProgressBar;
     use rayon::iter::IndexedParallelIterator;
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
-    use tokio::time::Duration;
-
-    let mut running_spinner: ProgressBar = ProgressBar::new_spinner();
-    if let Some(mp) = multi_progress {
-        running_spinner = mp.add(ProgressBar::new_spinner());
-    }
-    running_spinner.enable_steady_tick(Duration::from_millis(10));
+    let mut spinner: ProgressBar = ProgressBar::new_spinner();
 
     let k = cluster_args.kmeans_k;
 
@@ -425,6 +435,7 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
     // parallelization on account of using Histograms and non-Euclidean
     // distances.
     log::debug!("{:<32}", " - Elkan Step 3");
+    spinner = replace_multiprogress_spinner(&multi_progress, spinner);
     use rayon::prelude::*;
     for (center_c_idx, center_c) in centers_start.iter().enumerate() {
         step_3_working_points
@@ -501,8 +512,10 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
                 }
             });
     }
+    spinner.finish();
 
     log::debug!("{:<32}", " - Elkan Step 4");
+    spinner = replace_multiprogress_spinner(&multi_progress, spinner);
     // Merge the updated helper values back with the original vector we got
     // at the start of the function (which has entries for *all* points, not
     // just the ones bieng updated in step 3).
@@ -682,9 +695,9 @@ fn compute_next_kmeans_tri_ineq<T: Clusterable + std::marker::Sync>(
         helper.stale_upper_bound = true;
     }
 
-    running_spinner.finish();
+    spinner.finish();
     if let Some(mp) = multi_progress {
-        mp.remove(&running_spinner)
+        mp.remove(&spinner)
     }
 
     // Form paper "[Compute] the new location of each cluster center",
