@@ -908,7 +908,7 @@ mod tests {
 
     #[test]
     fn test_kmeans_elkan_rms_decreases() {
-        let points: Vec<Histogram> = create_seeded_histograms(400);
+        let points: Vec<Histogram> = create_seeded_histograms(500);
         let init_centers: Vec<Histogram> = create_seeded_histograms(5);
 
         let clusterable = MockClusterable {};
