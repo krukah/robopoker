@@ -1,4 +1,7 @@
 use super::histogram::Histogram;
+use super::kmeans;
+use super::kmeans::ClusterArgs;
+use super::kmeans::Clusterable;
 use super::lookup::Lookup;
 use super::metric::Metric;
 use super::pair::Pair;
@@ -9,6 +12,8 @@ use crate::cards::street::Street;
 use crate::gameplay::abstraction::Abstraction;
 use crate::Energy;
 use std::collections::BTreeMap;
+
+use crate::clustering::ClusterAlgorithm;
 
 type Neighbor = (usize, f32);
 
@@ -46,31 +51,11 @@ impl Layer {
             .count();
     }
 
-    /// primary clustering algorithm loop
-    fn cluster(mut self) -> Self {
-        log::info!("{:<32}{:<32}", "initialize  kmeans", self.street());
-        let ref mut init = self.init();
-        let ref mut last = self.kmeans;
-        std::mem::swap(init, last);
-        log::info!("{:<32}{:<32}", "clustering  kmeans", self.street());
-        let t = self.street().t();
-        let progress = crate::progress(t);
-        for _ in 0..t {
-            let ref mut next = self.next();
-            let ref mut last = self.kmeans;
-            std::mem::swap(next, last);
-            progress.inc(1);
-        }
-        progress.finish();
-        println!();
-        self
-    }
-
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    fn init(&self) -> Vec<Histogram> /* K */ {
+    fn init_centers(&self) -> Vec<Histogram> /* K */ {
         use rand::distr::weighted::WeightedIndex;
         use rand::distr::Distribution;
         use rand::rngs::SmallRng;
@@ -122,37 +107,6 @@ impl Layer {
         histograms
     }
 
-    /// calculates the next step of the kmeans iteration by
-    /// determining K * N optimal transport calculations and
-    /// taking the nearest neighbor
-    fn next(&self) -> Vec<Histogram> /* K */ {
-        use rayon::iter::IntoParallelRefIterator;
-        use rayon::iter::ParallelIterator;
-        let k = self.street().k();
-        let mut loss = 0f32;
-        let mut centroids = vec![Histogram::default(); k];
-        // assign points to nearest neighbors
-        for (point, (neighbor, distance)) in self
-            .points()
-            .par_iter()
-            .map(|h| (h, self.neighborhood(h)))
-            .collect::<Vec<_>>()
-            .into_iter()
-        {
-            loss = loss + distance * distance;
-            centroids
-                .get_mut(neighbor)
-                .expect("index from neighbor calculation")
-                .absorb(point);
-        }
-        log::debug!(
-            "{:<32}{:<32}",
-            "abstraction cluster RMS error",
-            (loss / self.points().len() as f32).sqrt()
-        );
-        centroids
-    }
-
     /// in ObsIterator order, get a mapping of
     /// Isomorphism -> Abstraction
     fn lookup(&self) -> Lookup {
@@ -166,7 +120,7 @@ impl Layer {
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
-                .map(|h| self.neighborhood(h))
+                .map(|h| self.nearest_neighbor(self.kmeans(), h))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstraction(k))
@@ -185,16 +139,6 @@ impl Layer {
     /// street and K-index, we should encapsulate the self.street depenency
     fn abstraction(&self, i: usize) -> Abstraction {
         Abstraction::from((self.street(), i))
-    }
-    /// calculates nearest neighbor and separation distance for a Histogram
-    fn neighborhood(&self, x: &Histogram) -> Neighbor {
-        self.kmeans()
-            .iter()
-            .enumerate()
-            .map(|(k, h)| (k, self.emd(x, h)))
-            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
-            .expect("find nearest neighbor")
-            .into()
     }
 
     /// reference to current street
@@ -235,6 +179,23 @@ impl Layer {
     }
 }
 
+impl Clusterable for Layer {
+    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+        self.metric.emd(h1, h2)
+    }
+
+    /// calculates nearest neighbor and separation distance for a Histogram
+    fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> Neighbor {
+        clusters
+            .iter()
+            .enumerate()
+            .map(|(k, h)| (k, self.distance(x, h)))
+            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
+            .expect("find nearest neighbor")
+            .into()
+    }
+}
+
 impl crate::save::disk::Disk for Layer {
     fn name() -> String {
         format!(
@@ -253,7 +214,7 @@ impl crate::save::disk::Disk for Layer {
         self.decomp().save();
     }
     fn grow(street: Street) -> Self {
-        let layer = match street {
+        let mut layer = match street {
             Street::Rive => Self {
                 street,
                 kmeans: Vec::default(),
@@ -267,7 +228,24 @@ impl crate::save::disk::Disk for Layer {
                 metric: Metric::load(street.next()),
             },
         };
-        layer.cluster()
+        layer.kmeans = layer.init_centers();
+
+        let cluster_args = ClusterArgs {
+            algorithm: match cfg!(feature = "kmeans-accel") {
+                true => ClusterAlgorithm::KmeansElkan2003,
+                false => ClusterAlgorithm::KmeansOriginal,
+            },
+            init_centers: layer.kmeans(),
+            points: layer.points(),
+            iterations_t: layer.street().t(),
+            label: layer.street().to_string(),
+            compute_rms: cfg!(feature = "kmeans-compute-nonfree-rms"),
+        };
+        let (clustered_centers, _): (Vec<Histogram>, Vec<f32>) =
+            kmeans::cluster(&layer, &cluster_args);
+        layer.kmeans = clustered_centers;
+
+        layer
     }
     fn load(_: Street) -> Self {
         unimplemented!()

@@ -1,6 +1,6 @@
 use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
+use crate::gameplay::abstraction::Abstraction;
 use std::collections::BTreeMap;
 use std::mem::size_of;
 use std::u16;

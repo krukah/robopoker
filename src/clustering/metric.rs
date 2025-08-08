@@ -1,9 +1,9 @@
 use super::equity::Equity;
 use super::sinkhorn::Sinkhorn;
 use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::pair::Pair;
+use crate::gameplay::abstraction::Abstraction;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Energy;

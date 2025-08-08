@@ -30,3 +30,6 @@ pub use sinkhorn::*;
 
 pub mod transitions;
 pub use transitions::*;
+
+pub mod kmeans;
+pub use kmeans::*;
