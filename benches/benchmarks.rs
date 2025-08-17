@@ -19,6 +19,8 @@ criterion::criterion_group! {
         computing_optimal_transport_heuristic,
         computing_optimal_transport_sinkhorns,
         solving_cfr_rps,
+        cfr_policy_vector_rps,
+        cfr_sampling_probs_rps,
 }
 
 fn sampling_river_evaluation(c: &mut criterion::Criterion) {
@@ -105,6 +107,93 @@ fn computing_optimal_transport_sinkhorns(c: &mut criterion::Criterion) {
 fn solving_cfr_rps(c: &mut criterion::Criterion) {
     c.bench_function("cfr solve rock paper scissors (rps)", |b| {
         b.iter(|| RPS::default().solve());
+    });
+}
+
+fn cfr_policy_vector_rps(c: &mut criterion::Criterion) {
+    use robopoker::mccfr::rps::edge::Edge;
+    use robopoker::mccfr::rps::game::Game;
+    use robopoker::mccfr::rps::turn::Turn;
+    use robopoker::mccfr::structs::infoset::InfoSet;
+    use robopoker::mccfr::structs::tree::Tree;
+    use robopoker::mccfr::traits::game::Game as GameTrait;
+    use robopoker::mccfr::traits::profile::Profile;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    #[derive(Default)]
+    struct BenchProfile {
+        regrets: HashMap<Turn, HashMap<Edge, f32>>, // accumulated regrets
+        epochs: usize,
+    }
+    impl Profile for BenchProfile {
+        type T = Turn;
+        type E = Edge;
+        type G = Game;
+        type I = Turn;
+        fn increment(&mut self) { self.epochs += 1; }
+        fn walker(&self) -> Self::T { Turn::P1 }
+        fn epochs(&self) -> usize { self.epochs }
+        fn sum_policy(&self, _info: &Self::I, _edge: &Self::E) -> f32 { 0.0 }
+        fn sum_regret(&self, info: &Self::I, edge: &Self::E) -> f32 {
+            self.regrets.get(info).and_then(|m| m.get(edge)).copied().unwrap_or_default()
+        }
+    }
+
+    // Build a minimal infoset for Turn::P1
+    let mut tree: Tree<Turn, Edge, Game, Turn> = Tree::default();
+    let head_index = { let node = tree.seed(Turn::P1, <Game as GameTrait>::root()); node.index() };
+    let mut infoset = InfoSet::from(Arc::new(tree));
+    infoset.push(head_index);
+
+    let mut profile = BenchProfile::default();
+    profile.regrets.entry(Turn::P1).or_default().extend([
+        (Edge::R, 1.0), (Edge::P, 3.0), (Edge::S, 0.5)
+    ]);
+
+    c.bench_function("cfr policy_vector (RPS)", |b| {
+        b.iter(|| robopoker::mccfr::traits::profile::Profile::policy_vector(&profile, &infoset))
+    });
+}
+
+fn cfr_sampling_probs_rps(c: &mut criterion::Criterion) {
+    use robopoker::mccfr::rps::edge::Edge;
+    use robopoker::mccfr::rps::turn::Turn;
+    use robopoker::mccfr::traits::profile::Profile;
+    use std::collections::HashMap;
+
+    #[derive(Default)]
+    struct BenchProfile {
+        policies: HashMap<Turn, HashMap<Edge, f32>>, // accumulated policy weights
+        epochs: usize,
+    }
+    impl Profile for BenchProfile {
+        type T = Turn;
+        type E = Edge;
+        type G = robopoker::mccfr::rps::game::Game;
+        type I = Turn;
+        fn increment(&mut self) { self.epochs += 1; }
+        fn walker(&self) -> Self::T { Turn::P1 }
+        fn epochs(&self) -> usize { self.epochs }
+        fn sum_policy(&self, info: &Self::I, edge: &Self::E) -> f32 {
+            self.policies.get(info).and_then(|m| m.get(edge)).copied().unwrap_or_default()
+        }
+        fn sum_regret(&self, _info: &Self::I, _edge: &Self::E) -> f32 { 0.0 }
+    }
+
+    let mut profile = BenchProfile::default();
+    profile.policies.entry(Turn::P1).or_default().extend([
+        (Edge::R, 0.10), (Edge::P, 0.30), (Edge::S, 0.60)
+    ]);
+
+    c.bench_function("cfr sampling probability q(a) (RPS)", |b| {
+        b.iter(|| {
+            let _ = (
+                Profile::sample(&profile, &Turn::P1, &Edge::R),
+                Profile::sample(&profile, &Turn::P1, &Edge::P),
+                Profile::sample(&profile, &Turn::P1, &Edge::S),
+            );
+        })
     });
 }
 

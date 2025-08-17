@@ -123,9 +123,17 @@ pub trait Profile {
         let ref info = node.info();
         let ref mut rng = self.rng(info);
         let mut choices = branches;
-        let policy = choices
+        // Fused pass to compute sampling weights without recomputing denominators per edge.
+        // q(a) = max(exploration, (activation + threshold * weight(a)) / (activation + sum(weights)))
+        // where weight(a) = accumulated policy for (info, a)
+        let weights = choices
             .iter()
-            .map(|(edge, _, _)| self.sample(info, edge))
+            .map(|(edge, _, _)| self.sum_policy(info, edge).max(crate::POLICY_MIN))
+            .collect::<Vec<_>>();
+        let denom = self.activation() + weights.iter().copied().sum::<crate::Probability>();
+        let policy = weights
+            .iter()
+            .map(|&w| ((self.activation() + w * self.threshold()) / denom).max(self.exploration()))
             .collect::<Vec<_>>();
         let choice = WeightedIndex::new(policy)
             .expect("at least one policy > 0")
@@ -165,24 +173,20 @@ pub trait Profile {
         infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
     ) -> Policy<Self::E> {
         let info = infoset.info();
-        let regrets = info
-            .choices()
-            .into_iter()
-            .map(|e| (e, self.sum_regret(&info, &e)))
-            .map(|(a, r)| (a, r.max(crate::POLICY_MIN)))
-            .collect::<Policy<Self::E>>();
-        let denominator = regrets
-            .iter()
-            .map(|(_, r)| r)
-            .inspect(|r| assert!(**r >= 0.))
-            .sum::<crate::Utility>();
-        let policy = regrets
-            .into_iter()
-            .map(|(a, r)| (a, r / denominator))
+        // Fused pass: compute positive regrets and denominator in one loop, then normalize.
+        let mut tmp: Policy<Self::E> = Vec::with_capacity(info.choices().len());
+        let mut denom: crate::Utility = 0.0;
+        for edge in info.choices().into_iter() {
+            let r = self.sum_regret(&info, &edge).max(crate::POLICY_MIN);
+            denom += r;
+            tmp.push((edge, r));
+        }
+        assert!(denom > 0.0);
+        tmp.into_iter()
+            .map(|(a, r)| (a, r / denom))
             .inspect(|(_, p)| assert!(*p >= 0.))
             .inspect(|(_, p)| assert!(*p <= 1.))
-            .collect::<Policy<Self::E>>();
-        policy
+            .collect::<Policy<Self::E>>()
     }
 
     // strategy calculations
@@ -191,15 +195,14 @@ pub trait Profile {
     /// strategy for this information.
     /// i.e. policy from accumulated REGRET values
     fn policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+        // Single-pass denominator accumulation for clarity; per-edge API limits reuse across calls.
         let numer = self.sum_regret(info, edge).max(crate::POLICY_MIN);
-        let denom = info
-            .choices()
-            .iter()
-            .map(|e| self.sum_regret(info, e))
-            .inspect(|r| assert!(!r.is_nan()))
-            .inspect(|r| assert!(!r.is_infinite()))
-            .map(|r| r.max(crate::POLICY_MIN))
-            .sum::<crate::Utility>();
+        let mut denom: crate::Utility = 0.0;
+        for e in info.choices().iter() {
+            let r = self.sum_regret(info, e).max(crate::POLICY_MIN);
+            assert!(!r.is_nan() && !r.is_infinite());
+            denom += r;
+        }
         numer / denom
     }
     /// calculate the HISTORICAL WEIGHTED AVERAGE decision
@@ -207,15 +210,12 @@ pub trait Profile {
     /// i.e. policy from accumulated POLICY values
     fn advice(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
         let numer = self.sum_policy(info, edge).max(crate::POLICY_MIN);
-        let denom = info
-            .choices()
-            .iter()
-            .map(|e| self.sum_policy(info, e))
-            .inspect(|r| assert!(!r.is_nan()))
-            .inspect(|r| assert!(!r.is_infinite()))
-            .inspect(|r| assert!(*r >= 0.))
-            .map(|r| r.max(crate::POLICY_MIN))
-            .sum::<crate::Probability>();
+        let mut denom: crate::Probability = 0.0;
+        for e in info.choices().iter() {
+            let w = self.sum_policy(info, e).max(crate::POLICY_MIN);
+            assert!(!w.is_nan() && !w.is_infinite() && w >= 0.0);
+            denom += w;
+        }
         numer / denom
     }
     /// In Monte Carlo CFR variants, we sample actions according to a sampling strategy q(a).
@@ -223,16 +223,14 @@ pub trait Profile {
     /// The sampling probability is based on the action weights, temperature, inertia, and exploration parameters.
     /// The formula is: q(a) = max(exploration, (inertia + temperature * weight(a)) / (inertia + sum(weights)))
     fn sample(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+        // Keep per-edge API but avoid extra iterator adapters; accumulate denom directly.
         let numer = self.sum_policy(info, edge).max(crate::POLICY_MIN);
-        let denom = info
-            .choices()
-            .iter()
-            .map(|e| self.sum_policy(info, e))
-            .inspect(|r| assert!(!r.is_nan()))
-            .inspect(|r| assert!(!r.is_infinite()))
-            .inspect(|r| assert!(*r >= 0.))
-            .map(|r| r.max(crate::POLICY_MIN))
-            .sum::<crate::Probability>();
+        let mut denom: crate::Probability = 0.0;
+        for e in info.choices().iter() {
+            let w = self.sum_policy(info, e).max(crate::POLICY_MIN);
+            assert!(!w.is_nan() && !w.is_infinite() && w >= 0.0);
+            denom += w;
+        }
         let denom = self.activation() + denom;
         let numer = self.activation() + numer * self.threshold();
         (numer / denom).max(self.exploration())
@@ -428,5 +426,129 @@ pub trait Profile {
     /// which showed better convergence compared to higher values.
     fn exploration(&self) -> crate::Probability {
         crate::SAMPLING_EXPLORATION
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mccfr::rps::edge::Edge;
+    use crate::mccfr::rps::game::Game;
+    use crate::mccfr::rps::turn::Turn;
+    use crate::mccfr::structs::infoset::InfoSet;
+    use crate::mccfr::structs::tree::Tree;
+    use crate::mccfr::traits::game::Game as GameTrait;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    fn make_infoset(turn: Turn) -> InfoSet<Turn, Edge, Game, Turn> {
+        let mut tree: Tree<Turn, Edge, Game, Turn> = Tree::default();
+        let index = {
+            let node = tree.seed(turn, <Game as GameTrait>::root());
+            node.index()
+        };
+        let mut infoset = InfoSet::from(Arc::new(tree));
+        infoset.push(index);
+        infoset
+    }
+
+    #[derive(Default)]
+    struct TestProfile {
+        epochs: usize,
+        policies: HashMap<Turn, HashMap<Edge, f32>>, // accumulated policy weights
+        regrets: HashMap<Turn, HashMap<Edge, f32>>,  // accumulated regrets
+    }
+
+    impl Profile for TestProfile {
+        type T = Turn;
+        type E = Edge;
+        type G = Game;
+        type I = Turn; // Info == Turn for RPS
+
+        fn increment(&mut self) {
+            self.epochs += 1;
+        }
+        fn walker(&self) -> Self::T {
+            Turn::P1
+        }
+        fn epochs(&self) -> usize {
+            self.epochs
+        }
+        fn sum_policy(&self, info: &Self::I, edge: &Self::E) -> crate::Probability {
+            self.policies
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .copied()
+                .unwrap_or_default()
+        }
+        fn sum_regret(&self, info: &Self::I, edge: &Self::E) -> crate::Utility {
+            self.regrets
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .copied()
+                .unwrap_or_default()
+        }
+    }
+
+    #[test]
+    fn policy_vector_normalizes_and_matches_regret_matching() {
+        // Prepare profile with specific regrets for Turn::P1
+        let mut profile = TestProfile::default();
+        profile
+            .regrets
+            .entry(Turn::P1)
+            .or_default()
+            .extend([(Edge::R, 1.0), (Edge::P, 3.0), (Edge::S, 0.0)]);
+
+        let infoset = make_infoset(Turn::P1);
+
+        // Compute policy vector
+        let policy = Profile::policy_vector(&profile, &infoset);
+        // Expected via regret matching with floor at POLICY_MIN
+        let r_r = profile.sum_regret(&Turn::P1, &Edge::R).max(crate::POLICY_MIN);
+        let r_p = profile.sum_regret(&Turn::P1, &Edge::P).max(crate::POLICY_MIN);
+        let r_s = profile.sum_regret(&Turn::P1, &Edge::S).max(crate::POLICY_MIN);
+        let denom = r_r + r_p + r_s;
+        let exp_r = r_r / denom;
+        let exp_p = r_p / denom;
+        let exp_s = r_s / denom;
+
+        let get = |e: Edge| policy.iter().find(|(a, _)| *a == e).unwrap().1;
+        let pr = get(Edge::R);
+        let pp = get(Edge::P);
+        let ps = get(Edge::S);
+
+        assert!((pr - exp_r).abs() < 1e-6);
+        assert!((pp - exp_p).abs() < 1e-6);
+        assert!((ps - exp_s).abs() < 1e-6);
+        let sum: f32 = pr + pp + ps;
+        assert!((sum - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn sampling_q_matches_formula() {
+        // Prepare profile with specific accumulated policy weights
+        let mut profile = TestProfile::default();
+        profile
+            .policies
+            .entry(Turn::P1)
+            .or_default()
+            .extend([(Edge::R, 0.10), (Edge::P, 0.30), (Edge::S, 0.60)]);
+
+        // Expected q(a) per formula
+        let w_r = profile.sum_policy(&Turn::P1, &Edge::R).max(crate::POLICY_MIN);
+        let w_p = profile.sum_policy(&Turn::P1, &Edge::P).max(crate::POLICY_MIN);
+        let w_s = profile.sum_policy(&Turn::P1, &Edge::S).max(crate::POLICY_MIN);
+        let denom = profile.activation() + (w_r + w_p + w_s);
+        let q = |w: f32| ((profile.activation() + w * profile.threshold()) / denom)
+            .max(profile.exploration());
+
+        let qr = Profile::sample(&profile, &Turn::P1, &Edge::R);
+        let qp = Profile::sample(&profile, &Turn::P1, &Edge::P);
+        let qs = Profile::sample(&profile, &Turn::P1, &Edge::S);
+
+        assert!((qr - q(w_r)).abs() < 1e-6);
+        assert!((qp - q(w_p)).abs() < 1e-6);
+        assert!((qs - q(w_s)).abs() < 1e-6);
     }
 }
