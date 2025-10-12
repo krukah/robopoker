@@ -1,7 +1,7 @@
 use super::histogram::Histogram;
 use super::kmeans;
 use super::kmeans::ClusterArgs;
-use super::kmeans::Clusterable;
+use super::kmeans::KMeans;
 use super::lookup::Lookup;
 use super::metric::Metric;
 use super::pair::Pair;
@@ -120,7 +120,7 @@ impl Layer {
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
-                .map(|h| self.nearest_neighbor(self.kmeans(), h))
+                .map(|h| self.neighbor(self.kmeans(), h))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstraction(k))
@@ -179,20 +179,15 @@ impl Layer {
     }
 }
 
-impl Clusterable for Layer {
-    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
-        self.metric.emd(h1, h2)
+impl KMeans for Layer {
+    type P = Histogram;
+
+    fn points(&self) -> &Vec<Histogram> {
+        &self.points
     }
 
-    /// calculates nearest neighbor and separation distance for a Histogram
-    fn nearest_neighbor(&self, clusters: &Vec<Histogram>, x: &Histogram) -> Neighbor {
-        clusters
-            .iter()
-            .enumerate()
-            .map(|(k, h)| (k, self.distance(x, h)))
-            .min_by(|(_, dx), (_, dy)| dx.partial_cmp(dy).unwrap())
-            .expect("find nearest neighbor")
-            .into()
+    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+        self.metric.emd(h1, h2)
     }
 }
 
