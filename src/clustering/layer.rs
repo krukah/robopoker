@@ -22,6 +22,7 @@ pub struct Layer {
     metric: Metric,
     points: Vec<Histogram>, // positioned by Isomorphism
     kmeans: Vec<Histogram>, // positioned by K-means abstraction
+    metadata: Vec<super::Bounds>, // empty - only used for Elkan acceleration
 }
 
 impl Layer {
@@ -120,7 +121,7 @@ impl Layer {
             Street::Flop | Street::Turn => self
                 .points()
                 .par_iter()
-                .map(|h| self.neighbor(self.kmeans(), h))
+                .map(|h| self.neighbor(h))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstraction(k))
@@ -182,8 +183,28 @@ impl Layer {
 impl KMeans for Layer {
     type P = Histogram;
 
+    fn t(&self) -> usize {
+        self.street().t()
+    }
+
+    fn k(&self) -> usize {
+        self.kmeans.len()
+    }
+
+    fn n(&self) -> usize {
+        self.points.len()
+    }
+
     fn points(&self) -> &Vec<Histogram> {
         &self.points
+    }
+
+    fn centers(&self) -> &Vec<Histogram> {
+        &self.kmeans
+    }
+
+    fn metadata(&self) -> &Vec<super::Bounds> {
+        &self.metadata
     }
 
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
@@ -215,12 +236,14 @@ impl crate::save::disk::Disk for Layer {
                 kmeans: Vec::default(),
                 points: Vec::default(),
                 metric: Metric::default(),
+                metadata: Vec::default(),
             },
             _ => Self {
                 street,
                 kmeans: Vec::default(),
                 points: Lookup::load(street.next()).projections(),
                 metric: Metric::load(street.next()),
+                metadata: Vec::default(),
             },
         };
         layer.kmeans = layer.init_centers();

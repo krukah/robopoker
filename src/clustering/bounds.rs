@@ -38,4 +38,63 @@ impl Bounds {
             stale: false,
         }
     }
+
+    /// Elkan 2003 Step 3 filter: determines if bounds for centroid j should be updated
+    /// Returns true if all three triangle inequality conditions are met:
+    /// 1. j != c(x) - not currently assigned to this centroid
+    /// 2. u(x) > l(x,j) - upper bound exceeds lower bound to j
+    /// 3. u(x) > (1/2) * d(c(x), j) - upper bound exceeds half distance between centroids
+    pub fn should_update(&self, j: usize, pairwises: &[Vec<f32>]) -> bool {
+        j != self.j
+            && self.upper > self.lower[j]
+            && self.upper > 0.5 * pairwises[self.j][j]
+    }
+
+    /// Check if this point can be excluded from Step 3 processing
+    /// Returns true if u(x) <= s(c(x)) where s(c(x)) is the midpoint
+    pub fn can_exclude(&self, midpoints: &[f32]) -> bool {
+        self.upper <= midpoints[self.j]
+    }
+
+    /// Update lower bounds given centroid movements (Elkan Step 5)
+    pub fn update_lower(mut self, movements: &[f32]) -> Self {
+        self.lower = self
+            .lower
+            .iter()
+            .zip(movements)
+            .map(|(lower, movement)| (lower - movement).max(0.0))
+            .collect();
+        self
+    }
+
+    /// Update upper bound given centroid movements (Elkan Step 6)
+    pub fn update_upper(mut self, movements: &[f32]) -> Self {
+        self.upper += movements[self.j];
+        self.stale = true;
+        self
+    }
+
+    /// Update bounds for candidate centroid j (Elkan Step 3)
+    pub fn update<F>(&mut self, j: usize, pairwises: &[Vec<f32>], distance_to_center: F)
+    where
+        F: Fn(usize) -> f32,
+    {
+        let upper = if self.stale {
+            let d = distance_to_center(self.j);
+            self.lower[self.j] = d;
+            self.upper = d;
+            self.stale = false;
+            d
+        } else {
+            self.upper
+        };
+        if upper > self.lower[j] || upper > 0.5 * pairwises[self.j][j] {
+            let radius = distance_to_center(j);
+            self.lower[j] = radius;
+            if radius < upper {
+                self.j = j;
+                self.upper = radius;
+            }
+        }
+    }
 }

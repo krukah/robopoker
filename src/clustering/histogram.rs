@@ -54,6 +54,11 @@ impl Histogram {
         }
     }
 
+    pub fn puma(mut self, other: &Self) -> Self {
+        self.absorb(other);
+        self
+    }
+
     /// it is useful in EMD calculation
     /// to know if we're dealing with ::Equity or ::Random
     /// Abstraction variants, so we expose this method to

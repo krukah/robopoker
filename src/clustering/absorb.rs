@@ -1,8 +1,8 @@
 pub trait Absorb: Default {
-    fn absorb(&mut self, other: &Self);
+    fn absorb(self, other: &Self) -> Self;
 }
 impl Absorb for crate::clustering::Histogram {
-    fn absorb(&mut self, other: &Self) {
-        self.absorb(other);
+    fn absorb(self, other: &Self) -> Self {
+        self.puma(other)
     }
 }
