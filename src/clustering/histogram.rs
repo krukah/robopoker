@@ -47,15 +47,11 @@ impl Histogram {
         self
     }
     /// absorb the other histogram into this one.
-    pub fn absorb(&mut self, other: &Self) {
+    pub fn absorb(mut self, other: &Self) -> Self {
         self.mass += other.mass;
         for (key, count) in other.counts.iter() {
             self.counts.entry(*key).or_insert(0usize).add_assign(*count);
         }
-    }
-
-    pub fn puma(mut self, other: &Self) -> Self {
-        self.absorb(other);
         self
     }
 

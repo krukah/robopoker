@@ -3,54 +3,6 @@ use crate::Energy;
 use rayon::prelude::*;
 use std::collections::*;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ClusterAlgorithm {
-    KmeansOriginal = 0isize,
-
-    /// Accelerated via Triangle Inequality math as per paper 'Elkan 2003'.
-    ///
-    /// Guaranteed to return approximately-identical centers to those computed
-    /// by the KmeansOriginal algorithm (when clustering the same set inputs).
-    KmeansElkan2003 = 1isize,
-}
-
-#[derive(Debug, Clone)]
-pub struct ClusterArgs<'a, D> {
-    /// Explicitly choose which clustering algorithm to use.
-    ///
-    /// Note: we suggest using KmeansElkan2003 over KMeansOriginal in most
-    /// cases. Given the same inputs they return approximately-identical
-    /// centers at each iteration, and the former is usually _significantly_
-    /// faster.
-    pub algorithm: ClusterAlgorithm,
-
-    /// Center Histograms prior to performing any clustering / the start of
-    /// the first training loop.
-    ///
-    /// The length of the resulting clusters will match, i.e. we look at this
-    /// field's length to determine the 'k' for kmeans.
-    pub init_centers: &'a Vec<D>,
-
-    /// Points to be clustered.
-    pub points: &'a Vec<D>,
-
-    /// Number of training iterations to perform.
-    pub iterations_t: usize,
-
-    /// Used to tag logged messages. Solely for debugging purposes!
-    pub label: String,
-
-    /// Whether to compute the RMS of the resulting clusters in situations
-    /// where doing so is not (effectively) "free", e.g. where we already
-    /// have all the needed distances as a consequence of running the
-    /// algorithm.
-    ///
-    /// Even if false RMS will still always be returned for other
-    /// ClusterAlgorithm-s where it is (effecitvely) "free", e.g.
-    /// KmeansOriginal.
-    pub compute_rms: bool,
-}
-
 pub trait KMeans: Sync {
     type P: Absorb + Send + Sync + Clone;
 
@@ -60,7 +12,7 @@ pub trait KMeans: Sync {
 
     fn points(&self) -> &Vec<Self::P>;
     fn centers(&self) -> &Vec<Self::P>;
-    fn metadata(&self) -> &Vec<Bounds>;
+    fn boundaries(&self) -> &Vec<Bounds>;
 
     fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
 
@@ -82,7 +34,7 @@ pub trait KMeans: Sync {
             .collect::<Vec<_>>()
             .chunks(self.k())
             .map(|chunk| chunk.to_vec())
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     /// Compute s(c) = (1/2) min_{c'!=c} d(c, c')
@@ -97,120 +49,96 @@ pub trait KMeans: Sync {
                     .map(|(_, &d)| d)
                     .reduce(f32::min)
                     .map(|d| d * 0.5)
-                    .unwrap_or(0.0)
+                    .unwrap()
             })
-            .collect()
+            .collect::<Vec<_>>()
     }
 
     /// Identify points where u(x) <= s(c(x))
-    fn exclusions(&self) -> HashSet<usize> {
-        let midpoints = self.midpoints();
-        self.metadata()
+    fn excluded(&self) -> HashSet<usize> {
+        let ref midpoints = self.midpoints();
+        self.boundaries()
             .iter()
             .enumerate()
             .filter(|(_, bs)| bs.upper <= midpoints[bs.j])
             .map(|(x, _)| x)
-            .collect()
+            .collect::<HashSet<_>>()
     }
 
     /// Identify points where u(x) > s(c(x)) requiring bound updates
-    fn inclusions(&self) -> HashMap<usize, (&Self::P, Bounds)> {
-        let exclusions = self.exclusions();
+    fn included(&self) -> HashMap<usize, (&Self::P, Bounds)> {
+        let ref exclusions = self.excluded();
         self.points()
             .iter()
             .enumerate()
             .filter(|(i, _)| !exclusions.contains(i))
-            .map(|(i, p)| (i, (p, self.metadata()[i].clone())))
-            .collect()
+            .map(|(i, p)| (i, (p, self.boundaries().get(i).cloned().expect("n bounds"))))
+            .collect::<HashMap<_, _>>()
     }
 
     /// Step 3: Update bounds for each point/center pair using triangle inequality
-    fn boundaries(&self) -> HashMap<usize, (&Self::P, Bounds)> {
-        let ref pairwises = self.pairwise();
-        let mut inclusions = self.inclusions();
-        for j in 0..self.k() {
-            inclusions
+    fn candidates(&self) -> HashMap<usize, (&Self::P, Bounds)> {
+        let ref pairwise = self.pairwise();
+        let mut included = self.included();
+        (0..self.k()).for_each(|j| {
+            included
                 .par_iter_mut()
-                .filter(|(_, (_, bs))| bs.should_update(j, pairwises))
-                .for_each(|(_, (p, bounds))| {
-                    bounds.update(j, pairwises, |idx| self.distance(p, &self.centers()[idx]))
-                });
-        }
-        inclusions
+                .map(|(_, (p, b))| (p, b))
+                .filter(|(_, b)| b.is_stale(j, pairwise))
+                .for_each(|(p, b)| self.update(pairwise, p, b, j));
+        });
+        included
+    }
+
+    fn update(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bounds, j: usize) {
+        b.update(j, pairs, |idx| self.distance(p, &self.centers()[idx]))
     }
 
     /// Merge updated bounds back with original
-    fn merge(&self) -> Vec<Bounds> {
-        let boundaries = self.boundaries();
-        self.metadata()
+    fn improvements(&self) -> Vec<Bounds> {
+        let ref candidates = self.candidates();
+        self.boundaries()
             .iter()
             .enumerate()
             .map(|(i, og)| {
-                boundaries
+                candidates
                     .get(&i)
                     .map(|(_, bs)| bs.clone())
                     .unwrap_or_else(|| og.clone())
             })
-            .collect()
+            .collect::<Vec<_>>()
     }
 
-    /// Group points by assigned centroid
-    fn groupings(&self) -> (Vec<Vec<&Self::P>>, Vec<Bounds>) {
-        let merged = self.merge();
-        let assignments = self
+    /// Compute new centroids from assigned points
+    fn next(&self) -> (Vec<Self::P>, Vec<Bounds>) {
+        let improvements = self.improvements();
+        let centroids = self
             .centers()
             .iter()
             .enumerate()
             .map(|(j, _)| {
-                merged
+                improvements
                     .iter()
                     .enumerate()
                     .filter(|(_, helper)| helper.j == j)
                     .map(|(i, _)| &self.points()[i])
-                    .collect()
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .fold(Self::P::default(), Self::P::absorb)
             })
-            .collect();
-        (assignments, merged)
-    }
-
-    /// Compute new centroids from assigned points
-    fn solution(&self) -> (Vec<Self::P>, Vec<Bounds>) {
-        let (assignments, merged) = self.groupings();
-        let centroids = assignments
-            .into_iter()
-            .map(|group| group.into_iter().fold(Self::P::default(), Self::P::absorb))
-            .collect();
-        (centroids, merged)
-    }
-
-    fn next(&self) -> (Vec<Self::P>, Vec<Bounds>) {
-        let (centroids, boundaries) = self.solution();
-        let movements = centroids
+            .collect::<Vec<_>>();
+        let ref movements = centroids
             .par_iter()
             .zip(self.centers().par_iter())
             .map(|(new, old)| self.distance(old, new))
             .collect::<Vec<_>>();
-        let boundaries = boundaries
+        let boundaries = improvements
             .into_par_iter()
-            .map(|helper| helper.update_lower(&movements))
-            .map(|helper| helper.update_upper(&movements))
+            .map(|helper| helper.update_lower(movements))
+            .map(|helper| helper.update_upper(movements))
             .collect::<Vec<_>>();
         (centroids, boundaries)
     }
-}
-
-/// Initialize metadata using triangle inequality (Elkan lemma 1)
-fn init_metadata() -> Vec<(usize, f32)> {
-    todo!("Initialize metadata: Vec<(usize, f32)> using Elkan 2003 lemma 1 for efficient nearest neighbor assignment")
-}
-
-#[cfg(feature = "native")]
-/// Legacy cluster function - use KMeans::cluster() instead
-pub fn cluster<T: KMeans + std::marker::Sync>(
-    clusterable: &T,
-    cluster_args: &ClusterArgs<T::P>,
-) -> (Vec<T::P>, Vec<f32>) {
-    todo!("Use KMeans::cluster() trait method instead")
 }
 
 // #[cfg(test)]

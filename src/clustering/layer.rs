@@ -20,8 +20,8 @@ type Neighbor = (usize, f32);
 pub struct Layer {
     street: Street,
     metric: Metric,
-    points: Vec<Histogram>, // positioned by Isomorphism
-    kmeans: Vec<Histogram>, // positioned by K-means abstraction
+    points: Vec<Histogram>,       // positioned by Isomorphism
+    kmeans: Vec<Histogram>,       // positioned by K-means abstraction
     metadata: Vec<super::Bounds>, // empty - only used for Elkan acceleration
 }
 
@@ -203,7 +203,7 @@ impl KMeans for Layer {
         &self.kmeans
     }
 
-    fn metadata(&self) -> &Vec<super::Bounds> {
+    fn boundaries(&self) -> &Vec<super::Bounds> {
         &self.metadata
     }
 

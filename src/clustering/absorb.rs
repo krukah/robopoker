@@ -3,6 +3,6 @@ pub trait Absorb: Default {
 }
 impl Absorb for crate::clustering::Histogram {
     fn absorb(self, other: &Self) -> Self {
-        self.puma(other)
+        self.absorb(other)
     }
 }
