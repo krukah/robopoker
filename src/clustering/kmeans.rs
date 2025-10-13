@@ -16,8 +16,6 @@ pub trait Elkan: Sync {
     fn init_kmeans(&self) -> Vec<Self::P>;
     fn init_bounds(&self) -> Vec<Bound>;
 
-    fn step(&mut self);
-
     fn t(&self) -> usize {
         1024
     }
@@ -228,6 +226,11 @@ mod tests {
             km.boundaries = km.init_bounds();
             km
         }
+        fn step(&mut self) {
+            let (centers, boundaries) = self.next();
+            self.centers = centers;
+            self.boundaries = boundaries;
+        }
     }
 
     impl Elkan for Turns {
@@ -264,11 +267,6 @@ mod tests {
                 .map(|i| self.neighbor(i))
                 .map(|(j, dist)| Bound::new(j, self.k(), dist))
                 .collect::<Vec<_>>()
-        }
-        fn step(&mut self) {
-            let (centers, boundaries) = self.next();
-            self.centers = centers;
-            self.boundaries = boundaries;
         }
     }
 

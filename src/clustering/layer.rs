@@ -51,13 +51,10 @@ impl Layer {
 }
 
 impl Layer {
-    pub fn init(&self) -> (Vec<Histogram>, Vec<Bound>) {
-        (self.init_kmeans(), self.init_bounds())
-    }
-
     /// in ObsIterator order, get a mapping of
     /// Isomorphism -> Abstraction
     fn lookup(&self) -> Lookup {
+        // @parallelizable
         log::info!("{:<32}{:<32}", "calculating lookup", self.street());
         use crate::save::disk::Disk;
         use rayon::iter::IntoParallelIterator;
@@ -218,7 +215,7 @@ impl Elkan for Layer {
     }
 
     fn init_bounds(&self) -> Vec<Bound> {
-        // @paralllelizable
+        // @parallelizable
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
         (0..self.n())
@@ -226,12 +223,6 @@ impl Elkan for Layer {
             .map(|i| self.neighbor(i))
             .map(|(j, dist)| Bound::new(j, self.k(), dist))
             .collect::<Vec<_>>()
-    }
-
-    fn step(&mut self) {
-        let (centers, boundaries) = self.next();
-        self.bounds = boundaries;
-        self.kmeans = centers;
     }
 }
 
@@ -254,12 +245,18 @@ impl crate::save::disk::Disk for Layer {
     }
     fn grow(street: Street) -> Self {
         let mut layer = Self::load(street);
-        let (centers, boundaries) = layer.init();
-        layer.kmeans = centers;
-        layer.bounds = boundaries;
+        log::info!("{:<32}{:<32}", "initializing kmeans", street);
+        layer.kmeans = layer.init_kmeans();
+        layer.bounds = layer.init_bounds();
+        log::info!("{:<32}{:<32}", "calculating kmeans", street);
+        let progress = crate::progress(street.t());
         for _ in 0..layer.t() {
-            layer.step();
+            let (kmeans, bounds) = layer.next();
+            layer.kmeans = kmeans;
+            layer.bounds = bounds;
+            progress.inc(1);
         }
+        progress.finish();
         layer
     }
     fn load(street: Street) -> Self {
