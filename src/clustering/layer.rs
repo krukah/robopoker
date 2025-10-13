@@ -1,6 +1,6 @@
 use super::bounds::Bound;
 use super::histogram::Histogram;
-use super::kmeans::KMeans;
+use super::kmeans::Elkan;
 use super::lookup::Lookup;
 use super::metric::Metric;
 use super::pair::Pair;
@@ -192,7 +192,7 @@ impl Layer {
     }
 }
 
-impl KMeans for Layer {
+impl Elkan for Layer {
     type P = Histogram;
     fn t(&self) -> usize {
         self.street().t()
@@ -214,6 +214,11 @@ impl KMeans for Layer {
     }
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
         self.metric.emd(h1, h2)
+    }
+    fn step(&mut self) {
+        let (centers, boundaries) = self.next();
+        self.kmeans = centers;
+        self.bounds = boundaries;
     }
 }
 
@@ -240,9 +245,7 @@ impl crate::save::disk::Disk for Layer {
         layer.kmeans = centers;
         layer.bounds = boundaries;
         for _ in 0..layer.t() {
-            let (centers, boundaries) = layer.next();
-            layer.bounds = boundaries;
-            layer.kmeans = centers;
+            layer.step();
         }
         layer
     }

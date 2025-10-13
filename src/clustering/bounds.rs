@@ -56,8 +56,12 @@ impl Bound {
         self.u() <= midpoints[self.j()]
     }
 
+    pub fn shift(self, movements: &[f32]) -> Self {
+        self.update_lower(movements).update_upper(movements)
+    }
+
     /// Update lower bounds given centroid movements (Elkan Step 5)
-    pub fn update_lower(mut self, movements: &[f32]) -> Self {
+    fn update_lower(mut self, movements: &[f32]) -> Self {
         self.lower = self
             .lower
             .iter()
@@ -68,7 +72,7 @@ impl Bound {
     }
 
     /// Update upper bound given centroid movements (Elkan Step 6)
-    pub fn update_upper(mut self, movements: &[f32]) -> Self {
+    fn update_upper(mut self, movements: &[f32]) -> Self {
         self.error += movements[self.j()];
         self.stale = true;
         self

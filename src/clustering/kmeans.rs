@@ -4,18 +4,26 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-pub trait KMeans: Sync {
+pub trait Elkan: Sync {
     type P: Absorb + Send + Sync + Clone;
 
     fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
 
-    fn t(&self) -> usize;
-    fn k(&self) -> usize;
-    fn n(&self) -> usize;
-
     fn dataset(&self) -> &Vec<Self::P>;
     fn centers(&self) -> &Vec<Self::P>;
     fn boundaries(&self) -> &Vec<Bound>;
+
+    fn step(&mut self);
+
+    fn t(&self) -> usize {
+        1024
+    }
+    fn k(&self) -> usize {
+        self.centers().len()
+    }
+    fn n(&self) -> usize {
+        self.dataset().len()
+    }
 
     fn point(&self, i: usize) -> &Self::P {
         self.dataset().get(i).expect("n bounds")
@@ -70,15 +78,16 @@ pub trait KMeans: Sync {
     fn excluded(&self) -> HashSet<usize> {
         let ref midpoints = self.midpoints();
         self.boundaries()
-            .iter()
+            // .iter()
+            .par_iter()
             .enumerate()
-            .filter(|(_, bs)| bs.u() <= midpoints[bs.j()])
+            .filter(|(_, b)| b.u() <= midpoints[b.j()])
             .map(|(x, _)| x)
             .collect::<HashSet<_>>()
     }
 
     /// Identify points where u(x) > s(c(x)) requiring bound updates
-    fn included(&self) -> HashMap<usize, (&Self::P, Bound)> {
+    fn triangle(&self) -> HashMap<usize, (&Self::P, Bound)> {
         let ref exclusions = self.excluded();
         (0..self.n())
             .filter(|i| !exclusions.contains(i))
@@ -90,13 +99,13 @@ pub trait KMeans: Sync {
     /// Step 3: Update bounds for each point/center pair using triangle inequality
     fn updating(&self) -> HashMap<usize, (&Self::P, Bound)> {
         let ref pairwise = self.pairwise();
-        let mut included = self.included();
+        let mut included = self.triangle();
         (0..self.k()).for_each(|j| {
             included
                 .par_iter_mut()
-                .map(|(_, (p, b))| (p, b))
+                .map(|(_, (x, b))| (x, b))
                 .filter(|(_, b)| b.needs_update(j, pairwise))
-                .for_each(|(p, b)| self.modify(pairwise, p, b, j));
+                .for_each(|(x, b)| self.modify(pairwise, x, b, j));
         });
         included
     }
@@ -106,7 +115,7 @@ pub trait KMeans: Sync {
     }
 
     /// Merge updated bounds back with original
-    fn next_boundaries(&self) -> Vec<Bound> {
+    fn next_bounds(&self) -> Vec<Bound> {
         let ref new = self.updating();
         self.boundaries()
             .par_iter()
@@ -116,10 +125,10 @@ pub trait KMeans: Sync {
             .collect::<Vec<_>>()
     }
 
-    fn next_centroids(&self) -> Vec<Self::P> {
+    fn next_kmeans(&self) -> Vec<Self::P> {
         (0..self.k())
             .map(|j| {
-                self.boundaries() // if this is the first iteration, we should sample k() random points from dataset
+                self.boundaries()
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| b.j == j)
@@ -129,208 +138,155 @@ pub trait KMeans: Sync {
             .collect::<Vec<_>>()
     }
 
-    fn movements(&self, centroids: &[Self::P]) -> Vec<Energy> {
-        assert!(centroids.len() == self.k());
+    fn gradient(&self, news: &[Self::P]) -> Vec<Energy> {
+        assert!(news.len() == self.k());
         self.centers()
             .par_iter()
-            .zip(centroids.par_iter())
+            .zip(news.par_iter())
             .map(|(old, new)| self.distance(new, old))
             .collect::<Vec<_>>()
     }
 
     /// Compute new centroids from assigned points
     fn next(&self) -> (Vec<Self::P>, Vec<Bound>) {
-        let centroids = self.next_centroids();
-        let ref movements = self.movements(&centroids);
-        let boundaries = self
-            .next_boundaries()
+        let kmeans = self.next_kmeans();
+        let ref gradient = self.gradient(&kmeans);
+        let bounds = self
+            .next_bounds()
             .into_par_iter()
-            .map(|b| b.update_lower(movements))
-            .map(|b| b.update_upper(movements))
+            .map(|b| b.shift(gradient))
             .collect::<Vec<_>>();
-        (centroids, boundaries)
+        (kmeans, bounds)
+    }
+
+    fn rms(&self) -> Energy {
+        (self
+            .boundaries()
+            .par_iter()
+            .enumerate()
+            .map(|(i, b)| self.distance(self.point(i), self.kmean(b.j())))
+            .map(|d| d * d)
+            .sum::<Energy>()
+            / self.n() as Energy)
+            .sqrt()
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::Arbitrary;
-//     use crate::Energy;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cards::observation::Observation;
+    use crate::cards::street::Street;
+    use crate::clustering::histogram::Histogram;
+    use crate::clustering::metric::Metric;
 
-//     #[derive(Debug)]
-//     struct MockClusterable {}
+    /// it just so happens that we can cluster arbitrary
+    /// subsets of Turn Histogram equity distributions,
+    /// because we project into the River space on the fly (obs.equity())
+    struct Turns {
+        metric: Metric,
+        dataset: Vec<Histogram>,
+        centers: Vec<Histogram>,
+        boundaries: Vec<Bound>,
+    }
 
-//     fn create_seeded_histograms(i: i32) -> Vec<Histogram> {
-//         (0..i).map(|_| Histogram::random()).collect()
-//     }
+    impl Turns {
+        const K: usize = 4;
+        const N: usize = 64;
+        const T: usize = 8;
 
-//     #[test]
-//     fn test_kmeans_elkan2003_rms_converges() {
-//         let points: Vec<Histogram> = create_seeded_histograms(400);
-//         let init_centers: Vec<Histogram> = create_seeded_histograms(2);
+        fn new() -> Self {
+            let k = Self::K;
+            let n = Self::N;
+            let metric = Metric::default();
+            let dataset = (0..n)
+                .map(|_| Histogram::from(Observation::from(Street::Turn)))
+                .collect();
+            let centers = (0..k)
+                .map(|_| Histogram::from(Observation::from(Street::Turn)))
+                .collect();
+            let mut km = Self {
+                metric,
+                dataset,
+                centers,
+                boundaries: vec![],
+            };
+            km.boundaries = (0..n)
+                .map(|i| km.neighbor(i))
+                .map(|(j, d)| Bound::new(j, k, d))
+                .collect::<Vec<_>>();
+            km
+        }
+    }
 
-//         let clusterable = MockClusterable {};
-//         let cluster_args = ClusterArgs {
-//             algorithm: ClusterAlgorithm::KmeansElkan2003,
-//             init_centers: &init_centers,
-//             points: &points,
-//             iterations_t: 6,
-//             label: "test_elkan2003_converges".to_string(),
-//             compute_rms: true,
-//         };
+    impl Elkan for Turns {
+        type P = Histogram;
+        fn t(&self) -> usize {
+            Self::T
+        }
+        fn dataset(&self) -> &Vec<Histogram> {
+            &self.dataset
+        }
+        fn centers(&self) -> &Vec<Histogram> {
+            &self.centers
+        }
+        fn boundaries(&self) -> &Vec<Bound> {
+            &self.boundaries
+        }
+        fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+            self.metric.emd(h1, h2)
+        }
+        fn step(&mut self) {
+            let (centers, boundaries) = self.next();
+            self.centers = centers;
+            self.boundaries = boundaries;
+        }
+    }
 
-//         let (result, all_rms) = cluster(&clusterable, &cluster_args);
-//         for w in all_rms.windows(2) {
-//             println!("{} {}", w[0], w[1]);
-//         }
+    #[test]
+    fn elkan_rms_decreases() {
+        let mut km = Turns::new();
+        let mut rms = vec![km.rms()];
+        (0..km.t()).for_each(|_| {
+            km.step();
+            println!("RMS: {}", km.rms());
+            rms.push(km.rms());
+        });
+        for window in rms.windows(2) {
+            assert!(
+                window[0] >= window[1],
+                "RMS increasing: {} -> {}",
+                window[0],
+                window[1]
+            );
+        }
+    }
 
-//         // "Safety" checks to make sure things are overall behaving as expected
-//         assert_eq!(result.len(), 2);
-//         assert_eq!(all_rms.len(), 6);
-//         assert!(
-//             (all_rms[0] - all_rms[1]).abs() > 0.01,
-//             "RMS was already converged too much for a fair test at the start (goes from {} to {})",
-//             all_rms[0],
-//             all_rms[1]
-//         );
+    #[test]
+    fn elkan_rms_converges() {
+        let mut km = Turns::new();
+        (0..km.t()).for_each(|_| km.step());
+        let r1 = km.rms();
+        km.step();
+        let r2 = km.rms();
+        println!("RMS: {} -> {}", r1, r2);
+        assert!(
+            (r1 - r2).abs() <= 0.005,
+            "RMS not converged: {} -> {}",
+            r1,
+            r2
+        );
+    }
 
-//         // Actual asserts the test is targeting ("did the RMS converge near the end")
-//         for w in all_rms.into_iter().skip(3).collect::<Vec<_>>().windows(2) {
-//             let prior_rms = w[0];
-//             let next_rms = w[1];
-//             println!("{} {}", prior_rms, next_rms);
-
-//             assert!(
-//                 (prior_rms - next_rms).abs() <= 0.0005,
-//                 "RMS is still decreasing _too much_ / did not converge enough (goes from {} to {})",
-//                 prior_rms,
-//                 next_rms
-//             );
-//         }
-//     }
-
-//     #[test]
-//     fn test_kmeans_elkan2003_rms_decreases() {
-//         let points: Vec<Histogram> = create_seeded_histograms(500);
-//         let init_centers: Vec<Histogram> = create_seeded_histograms(5);
-
-//         let clusterable = MockClusterable {};
-//         let cluster_args = ClusterArgs {
-//             algorithm: ClusterAlgorithm::KmeansElkan2003,
-//             init_centers: &init_centers,
-//             points: &points,
-
-//             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging.
-//             iterations_t: 4,
-
-//             label: "test_elkan2003_decreases".to_string(),
-//             compute_rms: true,
-//         };
-
-//         let (result, all_rms) = cluster(&clusterable, &cluster_args);
-//         assert_eq!(result.len(), 5);
-//         assert_eq!(all_rms.len(), 4);
-
-//         for w in all_rms.windows(2) {
-//             let prior_rms = w[0];
-//             let next_rms = w[1];
-//             println!("{} {}", prior_rms, next_rms);
-
-//             assert!(
-//                 next_rms < prior_rms,
-//                 "RMS was not monotonically decreasing (goes from {} to {})",
-//                 prior_rms,
-//                 next_rms
-//             );
-//             assert!(
-//                 (prior_rms - next_rms).abs() > 0.0001,
-//                 "RMS did not decrease *enough* during at least one iteration (goes from {} to {})",
-//                 prior_rms,
-//                 next_rms
-//             );
-//         }
-//     }
-
-//     #[test]
-//     fn test_kmeans_original_rms_decreases() {
-//         let points: Vec<Histogram> = create_seeded_histograms(400);
-//         let init_centers: Vec<Histogram> = create_seeded_histograms(5);
-//         let clusterable = MockClusterable {};
-//         let cluster_args = ClusterArgs {
-//             algorithm: ClusterAlgorithm::KmeansOriginal,
-//             init_centers: &init_centers,
-//             points: &points,
-
-//             // Don't set too high; the values stop decreasing as much in normal operation once it starts converging
-//             iterations_t: 4,
-
-//             label: "test_original".to_string(),
-//             compute_rms: true,
-//         };
-
-//         let (result, all_rms) = cluster(&clusterable, &cluster_args);
-//         assert_eq!(result.len(), 5);
-//         assert_eq!(all_rms.len(), 4);
-
-//         for w in all_rms.windows(2) {
-//             let prior_rms = w[0];
-//             let next_rms = w[1];
-//             assert!(
-//                 next_rms < prior_rms,
-//                 "RMS was not monotonially decreasing (goes from {} to {})",
-//                 prior_rms,
-//                 next_rms
-//             );
-//             assert!(
-//                 (prior_rms - next_rms).abs() > 0.0001,
-//                 "RMS did not decrease *enough* during at least one iteration (goes from {} to {})",
-//                 prior_rms,
-//                 next_rms
-//             );
-//             println!("{} {}", prior_rms, next_rms);
-//         }
-//     }
-
-//     /// As per the research paper:
-//     /// "After each iteration, [Elkan's algorithm] produces the same set of center locations as the standard k-means method."
-//     /// Therefore, the RMS we compute at every single iteration should be (nearly) identical.
-//     #[test]
-//     fn test_kmeans_elkan2003_original_rms_matches() {
-//         let points_elkan: Vec<Histogram> = create_seeded_histograms(500);
-//         let points_original: Vec<Histogram> = points_elkan.clone();
-//         let init_centers_elkan: Vec<Histogram> = create_seeded_histograms(3);
-//         let init_centers_original: Vec<Histogram> = init_centers_elkan.clone();
-//         let clusterable = MockClusterable {};
-//         let cluster_args_elkan = ClusterArgs {
-//             algorithm: ClusterAlgorithm::KmeansElkan2003,
-//             init_centers: &init_centers_elkan,
-//             points: &points_elkan,
-//             iterations_t: 4,
-//             label: "test_elkan".to_string(),
-//             compute_rms: true,
-//         };
-//         let cluster_args_original = ClusterArgs {
-//             algorithm: ClusterAlgorithm::KmeansOriginal,
-//             init_centers: &init_centers_original,
-//             points: &points_original,
-//             label: "test_original".to_string(),
-//             ..cluster_args_elkan
-//         };
-
-//         let (_, all_rms_elkan) = cluster(&clusterable, &cluster_args_elkan);
-//         let (_, all_rms_original) = cluster(&clusterable, &cluster_args_original);
-//         assert_eq!(all_rms_elkan.len(), 4);
-//         assert_eq!(all_rms_original.len(), 4);
-
-//         for (elkan2003_rms, original_rms) in all_rms_elkan.iter().zip(all_rms_original) {
-//             println!("elkan: {}, original: {}", elkan2003_rms, original_rms);
-//             assert!(
-//                 (elkan2003_rms - original_rms).abs() < 0.00001,
-//                 "RMS-es (elkan: {}, original: {}) should approximately match at each step",
-//                 elkan2003_rms,
-//                 original_rms
-//             )
-//         }
-//     }
-// }
+    #[test]
+    fn elkan_assigns_all_points() {
+        let km = Turns::new();
+        let assignments = km
+            .boundaries()
+            .iter()
+            .map(|b| b.j())
+            .collect::<HashSet<_>>();
+        assert!(assignments.len() > 0);
+        assert!(assignments.iter().all(|&j| j < km.k()));
+    }
+}
