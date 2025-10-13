@@ -1,6 +1,5 @@
+use super::bounds::Bound;
 use super::histogram::Histogram;
-use super::kmeans;
-use super::kmeans::ClusterArgs;
 use super::kmeans::KMeans;
 use super::lookup::Lookup;
 use super::metric::Metric;
@@ -13,16 +12,14 @@ use crate::gameplay::abstraction::Abstraction;
 use crate::Energy;
 use std::collections::BTreeMap;
 
-use crate::clustering::ClusterAlgorithm;
-
 type Neighbor = (usize, f32);
 
 pub struct Layer {
     street: Street,
     metric: Metric,
-    points: Vec<Histogram>,       // positioned by Isomorphism
-    kmeans: Vec<Histogram>,       // positioned by K-means abstraction
-    metadata: Vec<super::Bounds>, // empty - only used for Elkan acceleration
+    points: Vec<Histogram>, // positioned by Isomorphism
+    kmeans: Vec<Histogram>, // positioned by K-means abstraction
+    bounds: Vec<Bound>,     // empty - only used for Elkan acceleration
 }
 
 impl Layer {
@@ -51,12 +48,18 @@ impl Layer {
             .map(|&s| Self::grow(s).save())
             .count();
     }
+}
+
+impl Layer {
+    pub fn init(&self) -> (Vec<Histogram>, Vec<Bound>) {
+        (self.init_kmeans(), self.init_bounds())
+    }
 
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
-    fn init_centers(&self) -> Vec<Histogram> /* K */ {
+    fn init_kmeans(&self) -> Vec<Histogram> {
         use rand::distr::weighted::WeightedIndex;
         use rand::distr::Distribution;
         use rand::rngs::SmallRng;
@@ -108,20 +111,29 @@ impl Layer {
         histograms
     }
 
+    fn init_bounds(&self) -> Vec<Bound> {
+        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
+        (0..self.n())
+            .into_par_iter()
+            .map(|i| self.neighbor(i))
+            .map(|(j, dist)| Bound::new(j, self.k(), dist))
+            .collect::<Vec<_>>()
+    }
+
     /// in ObsIterator order, get a mapping of
     /// Isomorphism -> Abstraction
     fn lookup(&self) -> Lookup {
         log::info!("{:<32}{:<32}", "calculating lookup", self.street());
         use crate::save::disk::Disk;
-        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
         let street = self.street();
         match street {
             Street::Pref | Street::Rive => Lookup::grow(street),
-            Street::Flop | Street::Turn => self
-                .points()
-                .par_iter()
-                .map(|h| self.neighbor(h))
+            Street::Flop | Street::Turn => (0..self.n())
+                .into_par_iter()
+                .map(|i| self.neighbor(i))
                 .collect::<Vec<Neighbor>>()
                 .into_iter()
                 .map(|(k, _)| self.abstraction(k))
@@ -182,31 +194,24 @@ impl Layer {
 
 impl KMeans for Layer {
     type P = Histogram;
-
     fn t(&self) -> usize {
         self.street().t()
     }
-
     fn k(&self) -> usize {
-        self.kmeans.len()
+        self.street().k()
     }
-
     fn n(&self) -> usize {
-        self.points.len()
+        self.street().n_isomorphisms()
     }
-
     fn points(&self) -> &Vec<Histogram> {
         &self.points
     }
-
-    fn centers(&self) -> &Vec<Histogram> {
+    fn kmeans(&self) -> &Vec<Histogram> {
         &self.kmeans
     }
-
-    fn boundaries(&self) -> &Vec<super::Bounds> {
-        &self.metadata
+    fn boundaries(&self) -> &Vec<Bound> {
+        &self.bounds
     }
-
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
         self.metric.emd(h1, h2)
     }
@@ -230,42 +235,33 @@ impl crate::save::disk::Disk for Layer {
         self.decomp().save();
     }
     fn grow(street: Street) -> Self {
-        let mut layer = match street {
+        let mut layer = Self::load(street);
+        let (centers, boundaries) = layer.init();
+        layer.kmeans = centers;
+        layer.bounds = boundaries;
+        for _ in 0..layer.t() {
+            let (centers, boundaries) = layer.next();
+            layer.bounds = boundaries;
+            layer.kmeans = centers;
+        }
+        layer
+    }
+    fn load(street: Street) -> Self {
+        match street {
             Street::Rive => Self {
                 street,
+                bounds: Vec::default(),
                 kmeans: Vec::default(),
                 points: Vec::default(),
                 metric: Metric::default(),
-                metadata: Vec::default(),
             },
             _ => Self {
                 street,
+                bounds: Vec::default(),
                 kmeans: Vec::default(),
                 points: Lookup::load(street.next()).projections(),
                 metric: Metric::load(street.next()),
-                metadata: Vec::default(),
             },
-        };
-        layer.kmeans = layer.init_centers();
-
-        let cluster_args = ClusterArgs {
-            algorithm: match cfg!(feature = "kmeans-accel") {
-                true => ClusterAlgorithm::KmeansElkan2003,
-                false => ClusterAlgorithm::KmeansOriginal,
-            },
-            init_centers: layer.kmeans(),
-            points: layer.points(),
-            iterations_t: layer.street().t(),
-            label: layer.street().to_string(),
-            compute_rms: cfg!(feature = "kmeans-compute-nonfree-rms"),
-        };
-        let (clustered_centers, _): (Vec<Histogram>, Vec<f32>) =
-            kmeans::cluster(&layer, &cluster_args);
-        layer.kmeans = clustered_centers;
-
-        layer
-    }
-    fn load(_: Street) -> Self {
-        unimplemented!()
+        }
     }
 }

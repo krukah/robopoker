@@ -1,24 +1,36 @@
 use super::*;
 use crate::Energy;
 use rayon::prelude::*;
-use std::collections::*;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub trait KMeans: Sync {
     type P: Absorb + Send + Sync + Clone;
+
+    fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
 
     fn t(&self) -> usize;
     fn k(&self) -> usize;
     fn n(&self) -> usize;
 
     fn points(&self) -> &Vec<Self::P>;
-    fn centers(&self) -> &Vec<Self::P>;
-    fn boundaries(&self) -> &Vec<Bounds>;
+    fn kmeans(&self) -> &Vec<Self::P>;
+    fn boundaries(&self) -> &Vec<Bound>;
 
-    fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
+    fn datum(&self, i: usize) -> &Self::P {
+        self.points().get(i).expect("n bounds")
+    }
+    fn kmean(&self, j: usize) -> &Self::P {
+        self.kmeans().get(j).expect("k bounds")
+    }
+    fn bound(&self, i: usize) -> &Bound {
+        self.boundaries().get(i).expect("n bounds")
+    }
 
     /// Compute the nearest neighbor in O(k) * MetricCost
-    fn neighbor(&self, x: &Self::P) -> (usize, f32) {
-        self.centers()
+    fn neighbor(&self, i: usize) -> (usize, f32) {
+        let ref x = self.datum(i);
+        self.kmeans()
             .iter()
             .enumerate()
             .map(|(i, c)| (i, self.distance(c, x)))
@@ -28,9 +40,9 @@ pub trait KMeans: Sync {
 
     /// Compute d(c, c') for all centers c and c'
     fn pairwise(&self) -> Vec<Vec<f32>> {
-        self.centers()
+        self.kmeans()
             .iter()
-            .flat_map(|c1| self.centers().iter().map(move |c2| self.distance(c1, c2)))
+            .flat_map(|c1| self.kmeans().iter().map(|c2| self.distance(c1, c2)))
             .collect::<Vec<_>>()
             .chunks(self.k())
             .map(|chunk| chunk.to_vec())
@@ -60,82 +72,81 @@ pub trait KMeans: Sync {
         self.boundaries()
             .iter()
             .enumerate()
-            .filter(|(_, bs)| bs.upper <= midpoints[bs.j])
+            .filter(|(_, bs)| bs.u() <= midpoints[bs.j()])
             .map(|(x, _)| x)
             .collect::<HashSet<_>>()
     }
 
     /// Identify points where u(x) > s(c(x)) requiring bound updates
-    fn included(&self) -> HashMap<usize, (&Self::P, Bounds)> {
+    fn included(&self) -> HashMap<usize, (&Self::P, Bound)> {
         let ref exclusions = self.excluded();
-        self.points()
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| !exclusions.contains(i))
-            .map(|(i, p)| (i, (p, self.boundaries().get(i).cloned().expect("n bounds"))))
+        (0..self.n())
+            .filter(|i| !exclusions.contains(i))
+            .map(|i| (i, (self.datum(i), self.bound(i))))
+            .map(|(i, (p, b))| (i, (p, b.clone())))
             .collect::<HashMap<_, _>>()
     }
 
     /// Step 3: Update bounds for each point/center pair using triangle inequality
-    fn candidates(&self) -> HashMap<usize, (&Self::P, Bounds)> {
+    fn updating(&self) -> HashMap<usize, (&Self::P, Bound)> {
         let ref pairwise = self.pairwise();
         let mut included = self.included();
         (0..self.k()).for_each(|j| {
             included
                 .par_iter_mut()
                 .map(|(_, (p, b))| (p, b))
-                .filter(|(_, b)| b.is_stale(j, pairwise))
+                .filter(|(_, b)| b.needs_update(j, pairwise))
                 .for_each(|(p, b)| self.update(pairwise, p, b, j));
         });
         included
     }
 
-    fn update(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bounds, j: usize) {
-        b.update(j, pairs, |idx| self.distance(p, &self.centers()[idx]))
+    fn update(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
+        b.update(j, pairs, |j| self.distance(p, self.kmean(j)))
     }
 
     /// Merge updated bounds back with original
-    fn improvements(&self) -> Vec<Bounds> {
-        let ref candidates = self.candidates();
+    fn next_boundaries(&self) -> Vec<Bound> {
+        let ref new = self.updating();
         self.boundaries()
-            .iter()
+            .par_iter()
             .enumerate()
-            .map(|(i, og)| {
-                candidates
-                    .get(&i)
-                    .map(|(_, bs)| bs.clone())
-                    .unwrap_or_else(|| og.clone())
+            .map(|(i, original)| new.get(&i).map(|(_, b)| b).unwrap_or_else(|| original))
+            .cloned()
+            .collect::<Vec<_>>()
+    }
+
+    fn next_centroids(&self) -> Vec<Self::P> {
+        (0..self.k())
+            .map(|j| {
+                self.boundaries() // if this is the first iteration, we should sample k() random points from dataset
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.j == j)
+                    .map(|(i, _)| self.datum(i))
+                    .fold(Self::P::default(), Self::P::absorb)
             })
             .collect::<Vec<_>>()
     }
 
-    /// Compute new centroids from assigned points
-    fn next(&self) -> (Vec<Self::P>, Vec<Bounds>) {
-        let improvements = self.improvements();
-        let centroids = self
-            .centers()
-            .iter()
-            .enumerate()
-            .map(|(j, _)| {
-                improvements
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, helper)| helper.j == j)
-                    .map(|(i, _)| &self.points()[i])
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .fold(Self::P::default(), Self::P::absorb)
-            })
-            .collect::<Vec<_>>();
-        let ref movements = centroids
+    fn movements(&self, centroids: &[Self::P]) -> Vec<Energy> {
+        assert!(centroids.len() == self.k());
+        self.kmeans()
             .par_iter()
-            .zip(self.centers().par_iter())
-            .map(|(new, old)| self.distance(old, new))
-            .collect::<Vec<_>>();
-        let boundaries = improvements
+            .zip(centroids.par_iter())
+            .map(|(old, new)| self.distance(new, old))
+            .collect::<Vec<_>>()
+    }
+
+    /// Compute new centroids from assigned points
+    fn next(&self) -> (Vec<Self::P>, Vec<Bound>) {
+        let centroids = self.next_centroids();
+        let ref movements = self.movements(&centroids);
+        let boundaries = self
+            .next_boundaries()
             .into_par_iter()
-            .map(|helper| helper.update_lower(movements))
-            .map(|helper| helper.update_upper(movements))
+            .map(|b| b.update_lower(movements))
+            .map(|b| b.update_upper(movements))
             .collect::<Vec<_>>();
         (centroids, boundaries)
     }
