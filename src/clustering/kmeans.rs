@@ -13,15 +13,15 @@ pub trait KMeans: Sync {
     fn k(&self) -> usize;
     fn n(&self) -> usize;
 
-    fn points(&self) -> &Vec<Self::P>;
-    fn kmeans(&self) -> &Vec<Self::P>;
+    fn dataset(&self) -> &Vec<Self::P>;
+    fn centers(&self) -> &Vec<Self::P>;
     fn boundaries(&self) -> &Vec<Bound>;
 
-    fn datum(&self, i: usize) -> &Self::P {
-        self.points().get(i).expect("n bounds")
+    fn point(&self, i: usize) -> &Self::P {
+        self.dataset().get(i).expect("n bounds")
     }
     fn kmean(&self, j: usize) -> &Self::P {
-        self.kmeans().get(j).expect("k bounds")
+        self.centers().get(j).expect("k bounds")
     }
     fn bound(&self, i: usize) -> &Bound {
         self.boundaries().get(i).expect("n bounds")
@@ -29,8 +29,8 @@ pub trait KMeans: Sync {
 
     /// Compute the nearest neighbor in O(k) * MetricCost
     fn neighbor(&self, i: usize) -> (usize, f32) {
-        let ref x = self.datum(i);
-        self.kmeans()
+        let ref x = self.point(i);
+        self.centers()
             .iter()
             .enumerate()
             .map(|(i, c)| (i, self.distance(c, x)))
@@ -40,9 +40,9 @@ pub trait KMeans: Sync {
 
     /// Compute d(c, c') for all centers c and c'
     fn pairwise(&self) -> Vec<Vec<f32>> {
-        self.kmeans()
+        self.centers()
             .iter()
-            .flat_map(|c1| self.kmeans().iter().map(|c2| self.distance(c1, c2)))
+            .flat_map(|c1| self.centers().iter().map(|c2| self.distance(c1, c2)))
             .collect::<Vec<_>>()
             .chunks(self.k())
             .map(|chunk| chunk.to_vec())
@@ -82,7 +82,7 @@ pub trait KMeans: Sync {
         let ref exclusions = self.excluded();
         (0..self.n())
             .filter(|i| !exclusions.contains(i))
-            .map(|i| (i, (self.datum(i), self.bound(i))))
+            .map(|i| (i, (self.point(i), self.bound(i))))
             .map(|(i, (p, b))| (i, (p, b.clone())))
             .collect::<HashMap<_, _>>()
     }
@@ -96,12 +96,12 @@ pub trait KMeans: Sync {
                 .par_iter_mut()
                 .map(|(_, (p, b))| (p, b))
                 .filter(|(_, b)| b.needs_update(j, pairwise))
-                .for_each(|(p, b)| self.update(pairwise, p, b, j));
+                .for_each(|(p, b)| self.modify(pairwise, p, b, j));
         });
         included
     }
 
-    fn update(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
+    fn modify(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
         b.update(j, pairs, |j| self.distance(p, self.kmean(j)))
     }
 
@@ -123,7 +123,7 @@ pub trait KMeans: Sync {
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| b.j == j)
-                    .map(|(i, _)| self.datum(i))
+                    .map(|(i, _)| self.point(i))
                     .fold(Self::P::default(), Self::P::absorb)
             })
             .collect::<Vec<_>>()
@@ -131,7 +131,7 @@ pub trait KMeans: Sync {
 
     fn movements(&self, centroids: &[Self::P]) -> Vec<Energy> {
         assert!(centroids.len() == self.k());
-        self.kmeans()
+        self.centers()
             .par_iter()
             .zip(centroids.par_iter())
             .map(|(old, new)| self.distance(new, old))

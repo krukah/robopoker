@@ -203,10 +203,10 @@ impl KMeans for Layer {
     fn n(&self) -> usize {
         self.street().n_isomorphisms()
     }
-    fn points(&self) -> &Vec<Histogram> {
+    fn dataset(&self) -> &Vec<Histogram> {
         &self.points
     }
-    fn kmeans(&self) -> &Vec<Histogram> {
+    fn centers(&self) -> &Vec<Histogram> {
         &self.kmeans
     }
     fn boundaries(&self) -> &Vec<Bound> {

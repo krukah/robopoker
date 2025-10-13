@@ -34,20 +34,20 @@ where
     I: Info<E = E, T = T>,
 {
     /// get all Nodes in the Tree
-    pub fn all(&self) -> impl Iterator<Item = Node<T, E, G, I>> {
+    pub fn all(&self) -> impl Iterator<Item = Node<'_, T, E, G, I>> {
         self.graph.node_indices().map(|n| self.at(n))
     }
     /// get a Node by index
-    pub fn at(&self, index: petgraph::graph::NodeIndex) -> Node<T, E, G, I> {
+    pub fn at(&self, index: petgraph::graph::NodeIndex) -> Node<'_, T, E, G, I> {
         Node::from(index, &self.graph)
     }
     /// seed a Tree by giving an (Info, Game) and getting a Node
-    pub fn seed(&mut self, info: I, seed: G) -> Node<T, E, G, I> {
+    pub fn seed(&mut self, info: I, seed: G) -> Node<'_, T, E, G, I> {
         let seed = self.graph.add_node((seed, info));
         self.at(seed)
     }
     /// extend a Tree by giving a Leaf and getting a Node
-    pub fn grow(&mut self, info: I, leaf: Branch<E, G>) -> Node<T, E, G, I> {
+    pub fn grow(&mut self, info: I, leaf: Branch<E, G>) -> Node<'_, T, E, G, I> {
         let tail = self.graph.add_node((leaf.1, info));
         let edge = self.graph.add_edge(leaf.2, tail, leaf.0);
         assert!(edge.index() == tail.index() - 1);

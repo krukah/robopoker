@@ -43,10 +43,10 @@ where
     pub fn push(&mut self, index: petgraph::graph::NodeIndex) {
         self.span.push(index);
     }
-    pub fn span(&self) -> Vec<Node<T, E, G, I>> {
+    pub fn span(&self) -> Vec<Node<'_, T, E, G, I>> {
         self.span.iter().copied().map(|i| self.tree.at(i)).collect()
     }
-    pub fn head(&self) -> Node<T, E, G, I> {
+    pub fn head(&self) -> Node<'_, T, E, G, I> {
         self.tree
             .at(self.span.first().copied().expect("nodes in info"))
     }
