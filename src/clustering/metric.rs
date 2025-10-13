@@ -19,15 +19,12 @@ impl Measure for Metric {
     type X = Abstraction;
     type Y = Abstraction;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        if x == y {
-            0.
-        } else {
-            match (x, y) {
-                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
-                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
-                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
-                _ => unreachable!(),
-            }
+        match (x, y) {
+            _ if x == y => 0.,
+            (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
+            (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
+            (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
+            _ => unreachable!(),
         }
     }
 }

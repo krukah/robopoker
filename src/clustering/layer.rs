@@ -19,7 +19,7 @@ pub struct Layer {
     metric: Metric,
     points: Vec<Histogram>, // positioned by Isomorphism
     kmeans: Vec<Histogram>, // positioned by K-means abstraction
-    bounds: Vec<Bound>,     // empty - only used for Elkan acceleration
+    bounds: Vec<Bound>,     // not persisted, only used for Elkan acceleration
 }
 
 impl Layer {
@@ -55,11 +55,121 @@ impl Layer {
         (self.init_kmeans(), self.init_bounds())
     }
 
+    /// in ObsIterator order, get a mapping of
+    /// Isomorphism -> Abstraction
+    fn lookup(&self) -> Lookup {
+        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
+        use crate::save::disk::Disk;
+        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
+        let street = self.street();
+        match street {
+            Street::Pref | Street::Rive => Lookup::grow(street),
+            Street::Flop | Street::Turn => {
+                let progress = crate::progress(self.n());
+                let result = (0..self.n())
+                    .into_par_iter()
+                    .inspect(|_| progress.inc(1))
+                    .map(|i| self.neighbor(i))
+                    .collect::<Vec<Neighbor>>()
+                    .into_iter()
+                    .map(|(k, _)| self.abstraction(k))
+                    .zip(IsomorphismIterator::from(street))
+                    .map(|(abs, iso)| (iso, abs))
+                    .collect::<BTreeMap<Isomorphism, Abstraction>>()
+                    .into();
+                progress.finish();
+                result
+            }
+        }
+    }
+
+    /// wrawpper for distance metric calculations
+    fn emd(&self, x: &Histogram, y: &Histogram) -> Energy {
+        self.metric.emd(x, y)
+    }
+    /// because we have fixed-order Abstractions that are determined by
+    /// street and K-index, we should encapsulate the self.street depenency
+    fn abstraction(&self, i: usize) -> Abstraction {
+        Abstraction::from((self.street(), i))
+    }
+
+    /// reference to current street
+    fn street(&self) -> Street {
+        self.street
+    }
+    /// take outer triangular product of current learned kmeans
+    /// Histograms, using whatever is stored as the future metric
+    fn metric(&self) -> Metric {
+        // @parallelizable
+        log::info!("{:<32}{:<32}", "calculating metric", self.street());
+        let mut metric = BTreeMap::new();
+        for (i, x) in self.kmeans.iter().enumerate() {
+            for (j, y) in self.kmeans.iter().enumerate() {
+                if i > j {
+                    let ref a = self.abstraction(i);
+                    let ref b = self.abstraction(j);
+                    let index = Pair::from((a, b));
+                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
+                    let distance = distance / 2.;
+                    metric.insert(index, distance);
+                }
+            }
+        }
+        Metric::from(metric)
+    }
+    /// in AbsIterator order, get a mapping of
+    /// Abstraction -> Histogram
+    /// end-of-recurse call
+    fn decomp(&self) -> Shadow {
+        // @parallelizable
+        log::info!("{:<32}{:<32}", "calculating transitions", self.street());
+        self.kmeans()
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(k, centroid)| (self.abstraction(k), centroid))
+            .collect::<BTreeMap<Abstraction, Histogram>>()
+            .into()
+    }
+}
+
+impl Elkan for Layer {
+    type P = Histogram;
+    fn t(&self) -> usize {
+        self.street().t()
+    }
+    fn k(&self) -> usize {
+        self.street().k()
+    }
+    fn n(&self) -> usize {
+        match self.street() {
+            Street::Rive => 0,
+            _ => self.street().n_isomorphisms(),
+        }
+    }
+    fn dataset(&self) -> &Vec<Histogram> {
+        assert!(self.points.len() == self.n());
+        &self.points
+    }
+    fn centers(&self) -> &Vec<Histogram> {
+        assert!(self.kmeans.len() == self.k());
+        &self.kmeans
+    }
+    fn boundaries(&self) -> &Vec<Bound> {
+        assert!(self.bounds.len() == self.n());
+        &self.bounds
+    }
+    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+        self.metric.emd(h1, h2)
+    }
+
     /// initializes the centroids for k-means clustering using the k-means++ algorithm
     /// 1. choose 1st centroid randomly from the dataset
     /// 2. choose nth centroid with probability proportional to squared distance of nearest neighbors
     /// 3. collect histograms and label with arbitrary (random) `Abstraction`s
     fn init_kmeans(&self) -> Vec<Histogram> {
+        // @parallelizable
         use rand::distr::weighted::WeightedIndex;
         use rand::distr::Distribution;
         use rand::rngs::SmallRng;
@@ -81,7 +191,6 @@ impl Layer {
         self.street().hash(hasher);
         let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
         // kmeans++ initialization
-        let progress = crate::progress(k * n);
         let mut potentials = vec![1.; n];
         let mut histograms = Vec::new();
         while histograms.len() < k {
@@ -99,19 +208,17 @@ impl Layer {
                 .par_iter()
                 .map(|h| self.emd(x, h))
                 .map(|p| p * p)
-                .inspect(|_| progress.inc(1))
                 .collect::<Vec<Energy>>()
                 .iter()
                 .zip(potentials.iter())
                 .map(|(d0, d1)| Energy::min(*d0, *d1))
                 .collect::<Vec<Energy>>();
         }
-        progress.finish();
-        println!();
         histograms
     }
 
     fn init_bounds(&self) -> Vec<Bound> {
+        // @paralllelizable
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
         (0..self.n())
@@ -121,100 +228,6 @@ impl Layer {
             .collect::<Vec<_>>()
     }
 
-    /// in ObsIterator order, get a mapping of
-    /// Isomorphism -> Abstraction
-    fn lookup(&self) -> Lookup {
-        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
-        use crate::save::disk::Disk;
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
-        let street = self.street();
-        match street {
-            Street::Pref | Street::Rive => Lookup::grow(street),
-            Street::Flop | Street::Turn => (0..self.n())
-                .into_par_iter()
-                .map(|i| self.neighbor(i))
-                .collect::<Vec<Neighbor>>()
-                .into_iter()
-                .map(|(k, _)| self.abstraction(k))
-                .zip(IsomorphismIterator::from(street))
-                .map(|(abs, iso)| (iso, abs))
-                .collect::<BTreeMap<Isomorphism, Abstraction>>()
-                .into(),
-        }
-    }
-
-    /// wrawpper for distance metric calculations
-    fn emd(&self, x: &Histogram, y: &Histogram) -> Energy {
-        self.metric.emd(x, y)
-    }
-    /// because we have fixed-order Abstractions that are determined by
-    /// street and K-index, we should encapsulate the self.street depenency
-    fn abstraction(&self, i: usize) -> Abstraction {
-        Abstraction::from((self.street(), i))
-    }
-
-    /// reference to current street
-    fn street(&self) -> Street {
-        self.street
-    }
-    /// take outer triangular product of current learned kmeans
-    /// Histograms, using whatever is stored as the future metric
-    fn metric(&self) -> Metric {
-        log::info!("{:<32}{:<32}", "calculating metric", self.street());
-        let mut metric = BTreeMap::new();
-        for (i, x) in self.kmeans.iter().enumerate() {
-            for (j, y) in self.kmeans.iter().enumerate() {
-                if i > j {
-                    let ref a = self.abstraction(i);
-                    let ref b = self.abstraction(j);
-                    let index = Pair::from((a, b));
-                    let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
-                    let distance = distance / 2.;
-                    metric.insert(index, distance);
-                }
-            }
-        }
-        Metric::from(metric)
-    }
-    /// in AbsIterator order, get a mapping of
-    /// Abstraction -> Histogram
-    /// end-of-recurse call
-    fn decomp(&self) -> Shadow {
-        log::info!("{:<32}{:<32}", "calculating transitions", self.street());
-        self.kmeans()
-            .iter()
-            .cloned()
-            .enumerate()
-            .map(|(k, centroid)| (self.abstraction(k), centroid))
-            .collect::<BTreeMap<Abstraction, Histogram>>()
-            .into()
-    }
-}
-
-impl Elkan for Layer {
-    type P = Histogram;
-    fn t(&self) -> usize {
-        self.street().t()
-    }
-    fn k(&self) -> usize {
-        self.street().k()
-    }
-    fn n(&self) -> usize {
-        self.street().n_isomorphisms()
-    }
-    fn dataset(&self) -> &Vec<Histogram> {
-        &self.points
-    }
-    fn centers(&self) -> &Vec<Histogram> {
-        &self.kmeans
-    }
-    fn boundaries(&self) -> &Vec<Bound> {
-        &self.bounds
-    }
-    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
-        self.metric.emd(h1, h2)
-    }
     fn step(&mut self) {
         let (centers, boundaries) = self.next();
         self.bounds = boundaries;

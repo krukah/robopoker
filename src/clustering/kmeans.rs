@@ -13,6 +13,9 @@ pub trait Elkan: Sync {
     fn centers(&self) -> &Vec<Self::P>;
     fn boundaries(&self) -> &Vec<Bound>;
 
+    fn init_kmeans(&self) -> Vec<Self::P>;
+    fn init_bounds(&self) -> Vec<Bound>;
+
     fn step(&mut self);
 
     fn t(&self) -> usize {
@@ -26,10 +29,10 @@ pub trait Elkan: Sync {
     }
 
     fn point(&self, i: usize) -> &Self::P {
-        self.dataset().get(i).expect("n bounds")
+        self.dataset().get(i).expect("n points")
     }
     fn kmean(&self, j: usize) -> &Self::P {
-        self.centers().get(j).expect("k bounds")
+        self.centers().get(j).expect("k means")
     }
     fn bound(&self, i: usize) -> &Bound {
         self.boundaries().get(i).expect("n bounds")
@@ -37,17 +40,20 @@ pub trait Elkan: Sync {
 
     /// Compute the nearest neighbor in O(k) * MetricCost
     fn neighbor(&self, i: usize) -> (usize, f32) {
+        // @parallelizable
         let ref x = self.point(i);
         self.centers()
             .iter()
             .enumerate()
             .map(|(i, c)| (i, self.distance(c, x)))
+            .inspect(|(_, d)| assert!(d.is_finite()))
             .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
             .unwrap()
     }
 
     /// Compute d(c, c') for all centers c and c'
     fn pairwise(&self) -> Vec<Vec<f32>> {
+        // @parallelizable
         self.centers()
             .iter()
             .flat_map(|c1| self.centers().iter().map(|c2| self.distance(c1, c2)))
@@ -59,6 +65,7 @@ pub trait Elkan: Sync {
 
     /// Compute s(c) = (1/2) min_{c'!=c} d(c, c')
     fn midpoints(&self) -> Vec<f32> {
+        // @parallelizable
         self.pairwise()
             .iter()
             .enumerate()
@@ -76,6 +83,7 @@ pub trait Elkan: Sync {
 
     /// Identify points where u(x) <= s(c(x))
     fn excluded(&self) -> HashSet<usize> {
+        // @parallelizable
         let ref midpoints = self.midpoints();
         self.boundaries()
             // .iter()
@@ -88,6 +96,7 @@ pub trait Elkan: Sync {
 
     /// Identify points where u(x) > s(c(x)) requiring bound updates
     fn triangle(&self) -> HashMap<usize, (&Self::P, Bound)> {
+        // @parallelizable
         let ref exclusions = self.excluded();
         (0..self.n())
             .filter(|i| !exclusions.contains(i))
@@ -98,6 +107,7 @@ pub trait Elkan: Sync {
 
     /// Step 3: Update bounds for each point/center pair using triangle inequality
     fn updating(&self) -> HashMap<usize, (&Self::P, Bound)> {
+        // @parallelizable
         let ref pairwise = self.pairwise();
         let mut included = self.triangle();
         (0..self.k()).for_each(|j| {
@@ -110,12 +120,9 @@ pub trait Elkan: Sync {
         included
     }
 
-    fn modify(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
-        b.update(j, pairs, |j| self.distance(p, self.kmean(j)))
-    }
-
     /// Merge updated bounds back with original
     fn next_bounds(&self) -> Vec<Bound> {
+        // @parallelizable
         let ref new = self.updating();
         self.boundaries()
             .par_iter()
@@ -126,6 +133,7 @@ pub trait Elkan: Sync {
     }
 
     fn next_kmeans(&self) -> Vec<Self::P> {
+        // @parallelizable
         (0..self.k())
             .map(|j| {
                 self.boundaries()
@@ -140,15 +148,17 @@ pub trait Elkan: Sync {
 
     fn gradient(&self, news: &[Self::P]) -> Vec<Energy> {
         assert!(news.len() == self.k());
+        // @parallelizable
         self.centers()
-            .par_iter()
-            .zip(news.par_iter())
+            .iter()
+            .zip(news.iter())
             .map(|(old, new)| self.distance(new, old))
             .collect::<Vec<_>>()
     }
 
     /// Compute new centroids from assigned points
     fn next(&self) -> (Vec<Self::P>, Vec<Bound>) {
+        // @parallelizable
         let kmeans = self.next_kmeans();
         let ref gradient = self.gradient(&kmeans);
         let bounds = self
@@ -160,6 +170,7 @@ pub trait Elkan: Sync {
     }
 
     fn rms(&self) -> Energy {
+        // @parallelizable
         (self
             .boundaries()
             .par_iter()
@@ -169,6 +180,10 @@ pub trait Elkan: Sync {
             .sum::<Energy>()
             / self.n() as Energy)
             .sqrt()
+    }
+
+    fn modify(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
+        b.update(j, pairs, |j| self.distance(p, self.kmean(j)))
     }
 }
 
@@ -191,30 +206,26 @@ mod tests {
     }
 
     impl Turns {
-        const K: usize = 4;
-        const N: usize = 64;
-        const T: usize = 8;
-
+        const fn k() -> usize {
+            4
+        }
+        const fn n() -> usize {
+            64
+        }
+        const fn t() -> usize {
+            8
+        }
         fn new() -> Self {
-            let k = Self::K;
-            let n = Self::N;
-            let metric = Metric::default();
-            let dataset = (0..n)
-                .map(|_| Histogram::from(Observation::from(Street::Turn)))
-                .collect();
-            let centers = (0..k)
-                .map(|_| Histogram::from(Observation::from(Street::Turn)))
-                .collect();
             let mut km = Self {
-                metric,
-                dataset,
-                centers,
+                metric: Metric::default(),
+                dataset: (0..Self::n())
+                    .map(|_| Histogram::from(Observation::from(Street::Turn)))
+                    .collect(),
+                centers: vec![],
                 boundaries: vec![],
             };
-            km.boundaries = (0..n)
-                .map(|i| km.neighbor(i))
-                .map(|(j, d)| Bound::new(j, k, d))
-                .collect::<Vec<_>>();
+            km.centers = km.init_kmeans();
+            km.boundaries = km.init_bounds();
             km
         }
     }
@@ -222,7 +233,13 @@ mod tests {
     impl Elkan for Turns {
         type P = Histogram;
         fn t(&self) -> usize {
-            Self::T
+            Self::t()
+        }
+        fn n(&self) -> usize {
+            Self::n()
+        }
+        fn k(&self) -> usize {
+            Self::k()
         }
         fn dataset(&self) -> &Vec<Histogram> {
             &self.dataset
@@ -235,6 +252,18 @@ mod tests {
         }
         fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
             self.metric.emd(h1, h2)
+        }
+        fn init_kmeans(&self) -> Vec<Histogram> {
+            (0..self.k())
+                .map(|_| Histogram::from(Observation::from(Street::Turn)))
+                .collect()
+        }
+        fn init_bounds(&self) -> Vec<Bound> {
+            (0..self.n())
+                .into_iter()
+                .map(|i| self.neighbor(i))
+                .map(|(j, dist)| Bound::new(j, self.k(), dist))
+                .collect::<Vec<_>>()
         }
         fn step(&mut self) {
             let (centers, boundaries) = self.next();
