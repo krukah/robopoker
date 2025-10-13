@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 pub trait Elkan: Sync {
-    type P: Absorb + Send + Sync + Clone;
+    type P: Absorb + Sync;
 
     fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
 

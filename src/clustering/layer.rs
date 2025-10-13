@@ -4,7 +4,7 @@ use super::kmeans::Elkan;
 use super::lookup::Lookup;
 use super::metric::Metric;
 use super::pair::Pair;
-use super::transitions::Decomp;
+use super::transitions::Shadow;
 use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::street::Street;
@@ -180,7 +180,7 @@ impl Layer {
     /// in AbsIterator order, get a mapping of
     /// Abstraction -> Histogram
     /// end-of-recurse call
-    fn decomp(&self) -> Decomp {
+    fn decomp(&self) -> Shadow {
         log::info!("{:<32}{:<32}", "calculating transitions", self.street());
         self.kmeans()
             .iter()
@@ -217,8 +217,8 @@ impl Elkan for Layer {
     }
     fn step(&mut self) {
         let (centers, boundaries) = self.next();
-        self.kmeans = centers;
         self.bounds = boundaries;
+        self.kmeans = centers;
     }
 }
 
@@ -227,12 +227,12 @@ impl crate::save::disk::Disk for Layer {
         format!(
             "{:<16}{:<16}{:<16}",
             Lookup::name(),
-            Decomp::name(),
+            Shadow::name(),
             Metric::name()
         )
     }
     fn done(street: Street) -> bool {
-        Lookup::done(street) && Decomp::done(street) && Metric::done(street)
+        Lookup::done(street) && Shadow::done(street) && Metric::done(street)
     }
     fn save(&self) {
         self.metric().save();

@@ -102,7 +102,8 @@ impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
         assert!(turn.street() == crate::cards::street::Street::Turn);
         turn.children()
-            .map(|river| Abstraction::from(river.equity()))
+            .map(|river| river.equity())
+            .map(Abstraction::from)
             .fold(Self::default(), |hist, abs| hist.increment(abs))
     }
 }
