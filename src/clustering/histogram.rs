@@ -48,11 +48,15 @@ impl Histogram {
     }
     /// absorb the other histogram into this one.
     pub fn absorb(mut self, other: &Self) -> Self {
+        self.engulf(other);
+        self
+    }
+
+    pub fn engulf(&mut self, other: &Self) {
         self.mass += other.mass;
         for (key, count) in other.counts.iter() {
             self.counts.entry(*key).or_insert(0usize).add_assign(*count);
         }
-        self
     }
 
     /// it is useful in EMD calculation

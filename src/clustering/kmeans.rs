@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 pub trait Elkan: Sync {
-    type P: Absorb + Sync;
+    type P: Absorb + Clone + Sync;
 
     fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
 
@@ -182,6 +182,23 @@ pub trait Elkan: Sync {
 
     fn modify(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
         b.update(j, pairs, |j| self.distance(p, self.kmean(j)))
+    }
+
+    /// without optimization
+    fn naive(&self) -> Vec<Self::P> {
+        let mut kmeans = (0..self.k())
+            .map(|_| Self::P::default())
+            .collect::<Vec<_>>();
+        for (i, (j, _)) in (0..self.n())
+            .into_par_iter()
+            .map(|n| self.neighbor(n))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .enumerate()
+        {
+            kmeans.get_mut(j).expect("k bounds").engulf(self.point(i));
+        }
+        kmeans
     }
 }
 
