@@ -185,90 +185,94 @@ pub trait Elkan: Sync {
     }
 }
 
+#[allow(dead_code)]
+/// it just so happens that we can cluster arbitrary
+/// subsets of Turn Histogram equity distributions,
+/// because we project into the River space on the fly (obs.equity())
+struct Turns {
+    metric: Metric,
+    dataset: Vec<Histogram>,
+    centers: Vec<Histogram>,
+    boundaries: Vec<Bound>,
+}
+
+#[allow(dead_code)]
+impl Turns {
+    const fn k() -> usize {
+        4
+    }
+    const fn n() -> usize {
+        64
+    }
+    const fn t() -> usize {
+        8
+    }
+    fn new() -> Self {
+        use crate::cards::observation::Observation;
+        use crate::cards::street::Street;
+        use crate::clustering::histogram::Histogram;
+        let mut km = Self {
+            metric: Metric::default(),
+            dataset: (0..Self::n())
+                .map(|_| Histogram::from(Observation::from(Street::Turn)))
+                .collect(),
+            centers: vec![],
+            boundaries: vec![],
+        };
+        km.centers = km.init_kmeans();
+        km.boundaries = km.init_bounds();
+        km
+    }
+    fn step(&mut self) {
+        let (centers, boundaries) = self.next();
+        self.centers = centers;
+        self.boundaries = boundaries;
+    }
+}
+
+impl Elkan for Turns {
+    type P = Histogram;
+    fn t(&self) -> usize {
+        Self::t()
+    }
+    fn n(&self) -> usize {
+        Self::n()
+    }
+    fn k(&self) -> usize {
+        Self::k()
+    }
+    fn dataset(&self) -> &Vec<Histogram> {
+        &self.dataset
+    }
+    fn centers(&self) -> &Vec<Histogram> {
+        &self.centers
+    }
+    fn boundaries(&self) -> &Vec<Bound> {
+        &self.boundaries
+    }
+    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+        self.metric.emd(h1, h2)
+    }
+    fn init_kmeans(&self) -> Vec<Histogram> {
+        use crate::cards::observation::Observation;
+        use crate::cards::street::Street;
+        use crate::clustering::histogram::Histogram;
+        (0..self.k())
+            .map(|_| Histogram::from(Observation::from(Street::Turn)))
+            .collect()
+    }
+    fn init_bounds(&self) -> Vec<Bound> {
+        (0..self.n())
+            .into_iter()
+            .map(|i| self.neighbor(i))
+            .map(|(j, dist)| Bound::new(j, self.k(), dist))
+            .collect::<Vec<_>>()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::Observation;
-    use crate::cards::street::Street;
-    use crate::clustering::histogram::Histogram;
-    use crate::clustering::metric::Metric;
-
-    /// it just so happens that we can cluster arbitrary
-    /// subsets of Turn Histogram equity distributions,
-    /// because we project into the River space on the fly (obs.equity())
-    struct Turns {
-        metric: Metric,
-        dataset: Vec<Histogram>,
-        centers: Vec<Histogram>,
-        boundaries: Vec<Bound>,
-    }
-
-    impl Turns {
-        const fn k() -> usize {
-            4
-        }
-        const fn n() -> usize {
-            64
-        }
-        const fn t() -> usize {
-            8
-        }
-        fn new() -> Self {
-            let mut km = Self {
-                metric: Metric::default(),
-                dataset: (0..Self::n())
-                    .map(|_| Histogram::from(Observation::from(Street::Turn)))
-                    .collect(),
-                centers: vec![],
-                boundaries: vec![],
-            };
-            km.centers = km.init_kmeans();
-            km.boundaries = km.init_bounds();
-            km
-        }
-        fn step(&mut self) {
-            let (centers, boundaries) = self.next();
-            self.centers = centers;
-            self.boundaries = boundaries;
-        }
-    }
-
-    impl Elkan for Turns {
-        type P = Histogram;
-        fn t(&self) -> usize {
-            Self::t()
-        }
-        fn n(&self) -> usize {
-            Self::n()
-        }
-        fn k(&self) -> usize {
-            Self::k()
-        }
-        fn dataset(&self) -> &Vec<Histogram> {
-            &self.dataset
-        }
-        fn centers(&self) -> &Vec<Histogram> {
-            &self.centers
-        }
-        fn boundaries(&self) -> &Vec<Bound> {
-            &self.boundaries
-        }
-        fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
-            self.metric.emd(h1, h2)
-        }
-        fn init_kmeans(&self) -> Vec<Histogram> {
-            (0..self.k())
-                .map(|_| Histogram::from(Observation::from(Street::Turn)))
-                .collect()
-        }
-        fn init_bounds(&self) -> Vec<Bound> {
-            (0..self.n())
-                .into_iter()
-                .map(|i| self.neighbor(i))
-                .map(|(j, dist)| Bound::new(j, self.k(), dist))
-                .collect::<Vec<_>>()
-        }
-    }
 
     #[test]
     fn elkan_rms_decreases() {
