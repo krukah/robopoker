@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 /// Distance metric for kmeans clustering.
 /// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Metric(BTreeMap<Pair, Energy>);
 
 impl Measure for Metric {

@@ -66,8 +66,8 @@ impl Layer {
                 let progress = crate::progress(self.n());
                 let result = (0..self.n())
                     .into_par_iter()
-                    .inspect(|_| progress.inc(1))
                     .map(|i| self.neighbor(i))
+                    .inspect(|_| progress.inc(1))
                     .collect::<Vec<Neighbor>>()
                     .into_iter()
                     .map(|(k, _)| self.abstraction(k))
@@ -251,7 +251,7 @@ impl crate::save::disk::Disk for Layer {
         log::info!("{:<32}{:<32}", "calculating kmeans", street);
         let progress = crate::progress(street.t());
         for _ in 0..layer.t() {
-            let (kmeans, bounds) = layer.next();
+            let (kmeans, bounds) = layer.next_eklan();
             layer.kmeans = kmeans;
             layer.bounds = bounds;
             progress.inc(1);

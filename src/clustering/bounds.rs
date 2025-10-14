@@ -126,4 +126,11 @@ impl Bound {
             self.compute_and_maybe_reassign(j, upper, &d);
         }
     }
+
+    /// this is only used in the naive implementation of bounds generation,
+    /// so we don't keep all the information that we have to with Elkan optimizaion.
+    pub fn assign(&mut self, j: usize, distance: f32) {
+        self.j = j;
+        self.error = distance;
+    }
 }

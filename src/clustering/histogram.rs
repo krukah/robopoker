@@ -11,7 +11,7 @@ use std::ops::AddAssign;
 ///
 /// The sum of the weights is the total number of samples.
 /// The weight of an abstraction is the number of times it was sampled.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Histogram {
     mass: usize,
     counts: BTreeMap<Abstraction, usize>,
