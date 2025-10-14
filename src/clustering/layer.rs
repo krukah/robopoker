@@ -248,7 +248,7 @@ impl crate::save::disk::Disk for Layer {
         log::info!("{:<32}{:<32}", "initializing kmeans", street);
         layer.kmeans = layer.init_kmeans();
         layer.bounds = layer.init_bounds();
-        log::info!("{:<32}{:<32}", "calculating kmeans", street);
+        log::info!("{:<32}{:<32}", "clustering   kmeans", street);
         let progress = crate::progress(street.t());
         for _ in 0..layer.t() {
             let (kmeans, bounds) = layer.next_eklan();

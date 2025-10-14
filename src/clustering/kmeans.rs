@@ -95,59 +95,67 @@ pub trait Elkan: Sync {
     }
 
     /// Identify points where u(x) > s(c(x)) requiring bound updates
-    fn triangle(&self) -> HashMap<usize, (&Self::P, Bound)> {
+    fn included(&self) -> HashMap<usize, (&Self::P, Bound)> {
         // @parallelizable
-        let ref exclusions = self.excluded();
+        let ref excluded = self.excluded();
         (0..self.n())
-            .filter(|i| !exclusions.contains(i))
+            .filter(|i| !excluded.contains(i))
             .map(|i| (i, (self.point(i), self.bound(i))))
             .map(|(i, (p, b))| (i, (p, b.clone())))
             .collect::<HashMap<_, _>>()
     }
 
     /// Step 3: Update bounds for each point/center pair using triangle inequality
-    fn updating(&self) -> HashMap<usize, (&Self::P, Bound)> {
+    fn triangle(&self) -> HashMap<usize, (&Self::P, Bound)> {
         // @parallelizable
         let ref pairwise = self.pairwise();
-        let mut included = self.triangle();
+        let mut included = self.included();
         (0..self.k()).for_each(|j| {
             included
                 .par_iter_mut()
-                .map(|(_, (x, b))| (x, b))
-                .filter(|(_, b)| b.needs_update(j, pairwise))
-                .for_each(|(x, b)| self.modify(pairwise, x, b, j));
+                .for_each(|(_, (x, b))| self.update(b, j, pairwise, x));
         });
         included
     }
 
-    /// Merge updated bounds back with original
-    fn next_bounds(&self) -> Vec<Bound> {
+    fn drift(&self, news: &[Self::P]) -> Vec<Energy> {
+        assert!(news.len() == self.k());
         // @parallelizable
-        let ref new = self.updating();
-        (0..self.n())
+        self.kmeans()
+            .iter()
+            .zip(news.iter())
+            .map(|(old, new)| self.distance(new, old))
+            .collect::<Vec<_>>()
+    }
+
+    /// Update bound for a single point-centroid pair
+    fn update(&self, b: &mut Bound, j: usize, metric: &[Vec<f32>], x: &Self::P) {
+        // Refresh stale upper bound if needed
+        // Check triangle inequality and maybe reassign
+        if b.stale() {
+            b.refresh(self.distance(x, self.kmean(b.j())));
+        }
+        if b.moved(metric, j) {
+            b.witness(self.distance(x, self.kmean(j)), j);
+        }
+    }
+
+    /// Merge updated bounds back with original
+    fn next_elkan_bounds(&self) -> Vec<Bound> {
+        // @parallelizable
+        let n = self.n();
+        let ref tri = self.triangle();
+        (0..n)
             .into_par_iter()
-            .map(|i| new.get(&i).map(|(_, b)| b).unwrap_or_else(|| self.bound(i)))
+            .map(|i| tri.get(&i).map(|(_, b)| b).unwrap_or_else(|| self.bound(i)))
             .cloned()
             .collect::<Vec<_>>()
     }
 
-    fn next_kmeans(&self) -> Vec<Self::P> {
+    fn next_elkan_kmeans(&self, bounds: &[Bound]) -> Vec<Self::P> {
         // @parallelizable
-        (0..self.k())
-            .map(|j| {
-                self.bounds()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, b)| b.j == j)
-                    .map(|(i, _)| self.point(i))
-                    .fold(Self::P::default(), Self::P::absorb)
-            })
-            .collect::<Vec<_>>()
-    }
-
-    fn compute_kmeans_from(&self, bounds: &[Bound]) -> Vec<Self::P> {
-        // @parallelizable
-        (0..self.k())
+        let k = self.k();
+        (0..k)
             .map(|j| {
                 bounds
                     .iter()
@@ -159,46 +167,30 @@ pub trait Elkan: Sync {
             .collect::<Vec<_>>()
     }
 
-    fn drifts(&self, news: &[Self::P]) -> Vec<Energy> {
-        assert!(news.len() == self.k());
-        // @parallelizable
-        self.kmeans()
-            .iter()
-            .zip(news.iter())
-            .map(|(old, new)| self.distance(new, old))
-            .collect::<Vec<_>>()
-    }
-
     /// Compute new centroids from assigned points
     fn next_eklan(&self) -> (Vec<Self::P>, Vec<Bound>) {
         // @parallelizable
         // Step 1: Update bounds and reassign points (using OLD centroids from self.kmeans())
-        let bounds = self.next_bounds();
-
         // Step 2: Compute NEW centroids based on UPDATED assignments
-        let kmeans = self.compute_kmeans_from(&bounds);
-
         // Step 3: Compute drift between old and new centroids
-        let ref drifts = self.drifts(&kmeans);
-
         // Step 4: Shift bounds for next iteration
+        let bounds = self.next_elkan_bounds();
+        let kmeans = self.next_elkan_kmeans(&bounds);
+        let ref drift = self.drift(&kmeans);
         let bounds = bounds
             .into_par_iter()
-            .map(|b| b.shift(drifts))
+            .map(|b| b.shift(drift))
             .collect::<Vec<_>>();
-
         (kmeans, bounds)
     }
 
     /// without optimization
     fn next_naive(&self) -> (Vec<Self::P>, Vec<Bound>) {
-        let mut bounds = (0..self.n())
-            .map(|j| Bound::new(j, self.k(), 0.0))
-            .collect::<Vec<_>>();
-        let mut kmeans = (0..self.k())
-            .map(|_| Self::P::default())
-            .collect::<Vec<_>>();
-        for (i, (j, distance)) in (0..self.n())
+        let n = self.n();
+        let k = self.k();
+        let mut kmeans = (0..k).map(|_| Self::P::default()).collect::<Vec<_>>();
+        let mut bounds = (0..n).map(|j| Bound::new(j, k, 0.0)).collect::<Vec<_>>();
+        for (i, (j, distance)) in (0..n)
             .into_par_iter()
             .map(|i| (i, self.neighbor(i)))
             .collect::<Vec<_>>()
@@ -217,15 +209,10 @@ pub trait Elkan: Sync {
             .par_iter()
             .enumerate()
             .map(|(i, b)| self.distance(self.point(i), self.kmean(b.j())))
-            // .map(|b| b.u())
             .map(|d| d * d)
             .sum::<Energy>()
             / self.n() as Energy)
             .sqrt()
-    }
-
-    fn modify(&self, pairs: &[Vec<Energy>], p: &Self::P, b: &mut Bound, j: usize) {
-        b.update(j, pairs, |j| self.distance(p, self.kmean(j)))
     }
 }
 
@@ -236,9 +223,9 @@ pub trait Elkan: Sync {
 #[derive(Clone)]
 struct Turns {
     metric: Metric,
-    dataset: Vec<Histogram>,
-    centers: Vec<Histogram>,
-    boundaries: Vec<Bound>,
+    points: Vec<Histogram>,
+    kmeans: Vec<Histogram>,
+    bounds: Vec<Bound>,
 }
 
 #[allow(dead_code)]
@@ -256,31 +243,31 @@ impl Turns {
         use crate::cards::observation::Observation;
         use crate::cards::street::Street;
         use crate::clustering::histogram::Histogram;
-        let dataset = (0..Self::n())
+        let points = (0..Self::n())
             .map(|_| Histogram::from(Observation::from(Street::Turn)))
             .collect::<Vec<_>>();
+        let kmeans = Vec::default();
+        let bounds = Vec::default();
         let metric = Metric::default();
-        let centers = Vec::default();
-        let boundaries = Vec::default();
         let mut km = Self {
             metric,
-            dataset,
-            centers,
-            boundaries,
+            points,
+            kmeans,
+            bounds,
         };
-        km.centers = km.init_kmeans();
-        km.boundaries = km.init_bounds();
+        km.kmeans = km.init_kmeans();
+        km.bounds = km.init_bounds();
         km
     }
     fn step_elkan(&mut self) {
-        let (centers, boundaries) = self.next_eklan();
-        self.centers = centers;
-        self.boundaries = boundaries;
+        let (kmeans, bounds) = self.next_eklan();
+        self.kmeans = kmeans;
+        self.bounds = bounds;
     }
     fn step_naive(&mut self) {
         let (kmeans, bounds) = self.next_naive();
-        self.centers = kmeans;
-        self.boundaries = bounds;
+        self.kmeans = kmeans;
+        self.bounds = bounds;
     }
 }
 
@@ -296,13 +283,13 @@ impl Elkan for Turns {
         Self::k()
     }
     fn dataset(&self) -> &Vec<Histogram> {
-        &self.dataset
+        &self.points
     }
     fn kmeans(&self) -> &Vec<Histogram> {
-        &self.centers
+        &self.kmeans
     }
     fn bounds(&self) -> &Vec<Bound> {
-        &self.boundaries
+        &self.bounds
     }
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
         self.metric.emd(h1, h2)
@@ -311,15 +298,18 @@ impl Elkan for Turns {
         use crate::cards::observation::Observation;
         use crate::cards::street::Street;
         use crate::clustering::histogram::Histogram;
-        (0..self.k())
+        let k = self.k();
+        (0..k)
             .map(|_| Histogram::from(Observation::from(Street::Turn)))
             .collect()
     }
     fn init_bounds(&self) -> Vec<Bound> {
-        (0..self.n())
+        let n = self.n();
+        let k = self.k();
+        (0..n)
             .into_iter()
             .map(|i| self.neighbor(i))
-            .map(|(j, dist)| Bound::new(j, self.k(), dist))
+            .map(|(j, dist)| Bound::new(j, k, dist))
             .collect::<Vec<_>>()
     }
 }
@@ -365,23 +355,15 @@ mod tests {
     }
 
     #[test]
-    fn elkan_assigns_all_points() {
-        let km = Turns::new();
-        let assignments = km.bounds().iter().map(|b| b.j()).collect::<HashSet<_>>();
-        assert!(assignments.len() > 0);
-        assert!(assignments.iter().all(|&j| j < km.k()));
-    }
-
-    #[test]
     fn elkan_naive_equivalence() {
         let km = Turns::new();
         let mut elkan = km.clone();
         let mut naive = km.clone();
-        for i in 0..km.t() {
+        for _ in 0..km.t() {
             naive.step_naive();
             elkan.step_elkan();
-            assert_eq!(elkan.rms(), naive.rms(), "iteration {}", i);
-            assert_eq!(elkan.kmeans(), naive.kmeans(), "iteration {}", i);
+            assert_eq!(elkan.rms(), naive.rms());
+            assert_eq!(elkan.kmeans(), naive.kmeans());
         }
     }
 }

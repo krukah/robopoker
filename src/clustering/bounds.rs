@@ -41,13 +41,19 @@ impl Bound {
         }
     }
 
+    pub fn stale(&self) -> bool {
+        self.stale
+    }
+
     /// Elkan 2003 Step 3 filter: determines if bounds for centroid j should be updated
     /// Returns true if all three triangle inequality conditions are met:
     /// 1. j != c(x) - not currently assigned to this centroid
     /// 2. u(x) > l(x,j) - upper bound exceeds lower bound to j
     /// 3. u(x) > (1/2) * d(c(x), j) - upper bound exceeds half distance between centroids
-    pub fn needs_update(&self, j: usize, pairs: &[Vec<f32>]) -> bool {
-        self.j() != j && self.error > self.lower[j] && self.u() > 0.5 * pairs[self.j()][j]
+    pub fn moved(&self, pairs: &[Vec<f32>], j: usize) -> bool {
+        self.j() != j
+            && self.u() > self.lower.get(j).cloned().expect("k bounds")
+            && self.u() > 0.5 * pairs[self.j()][j]
     }
 
     /// Check if this point can be excluded from Step 3 processing
@@ -78,52 +84,19 @@ impl Bound {
         self
     }
 
-    pub fn refresh(&mut self, distance: f32) -> f32 {
+    pub fn refresh(&mut self, distance: f32) {
         let j = self.j();
         self.lower[j] = distance;
         self.error = distance;
         self.stale = false;
-        distance
     }
 
-    /// Get current upper bound, refreshing if stale
-    fn get_current_upper<F>(&mut self, d: &F) -> f32
-    where
-        F: Fn(usize) -> f32,
-    {
-        if self.stale {
-            self.refresh(d(self.j()))
-        } else {
-            self.error
-        }
-    }
-
-    /// Check if we should compute actual distance to centroid j based on triangle inequality
-    fn should_compute_distance(&self, j: usize, upper: f32, pairwises: &[Vec<f32>]) -> bool {
-        upper > self.lower[j] || upper > 0.5 * pairwises[self.j()][j]
-    }
-
-    /// Compute distance to centroid j and potentially reassign if closer
-    fn compute_and_maybe_reassign<F>(&mut self, j: usize, upper: f32, d: &F)
-    where
-        F: Fn(usize) -> f32,
-    {
-        let radius = d(j);
-        self.lower[j] = radius;
-        if radius < upper {
+    /// Try to reassign to centroid j if distance is closer than current assignment
+    pub fn witness(&mut self, distance: f32, j: usize) {
+        self.lower[j] = distance;
+        if distance < self.u() {
             self.j = j;
-            self.error = radius;
-        }
-    }
-
-    /// Update bounds for candidate centroid j (Elkan Step 3)
-    pub fn update<F>(&mut self, j: usize, pairwises: &[Vec<f32>], d: F)
-    where
-        F: Fn(usize) -> f32,
-    {
-        let upper = self.get_current_upper(&d);
-        if self.should_compute_distance(j, upper, pairwises) {
-            self.compute_and_maybe_reassign(j, upper, &d);
+            self.error = distance;
         }
     }
 
