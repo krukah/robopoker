@@ -149,11 +149,11 @@ impl Elkan for Layer {
         assert!(self.points.len() == self.n());
         &self.points
     }
-    fn centers(&self) -> &Vec<Histogram> {
+    fn kmeans(&self) -> &Vec<Histogram> {
         assert!(self.kmeans.len() == self.k());
         &self.kmeans
     }
-    fn boundaries(&self) -> &Vec<Bound> {
+    fn bounds(&self) -> &Vec<Bound> {
         assert!(self.bounds.len() == self.n());
         &self.bounds
     }

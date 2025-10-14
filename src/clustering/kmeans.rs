@@ -10,8 +10,8 @@ pub trait Elkan: Sync {
     fn distance(&self, h1: &Self::P, h2: &Self::P) -> Energy;
 
     fn dataset(&self) -> &Vec<Self::P>;
-    fn centers(&self) -> &Vec<Self::P>;
-    fn boundaries(&self) -> &Vec<Bound>;
+    fn kmeans(&self) -> &Vec<Self::P>;
+    fn bounds(&self) -> &Vec<Bound>;
 
     // fn mapping(&self) -> Vec<usize>;
 
@@ -22,7 +22,7 @@ pub trait Elkan: Sync {
         1024
     }
     fn k(&self) -> usize {
-        self.centers().len()
+        self.kmeans().len()
     }
     fn n(&self) -> usize {
         self.dataset().len()
@@ -32,17 +32,17 @@ pub trait Elkan: Sync {
         self.dataset().get(i).expect("n points")
     }
     fn kmean(&self, j: usize) -> &Self::P {
-        self.centers().get(j).expect("k means")
+        self.kmeans().get(j).expect("k means")
     }
     fn bound(&self, i: usize) -> &Bound {
-        self.boundaries().get(i).expect("n bounds")
+        self.bounds().get(i).expect("n bounds")
     }
 
     /// Compute the nearest neighbor in O(k) * MetricCost
     fn neighbor(&self, i: usize) -> (usize, f32) {
         // @parallelizable
         let ref x = self.point(i);
-        self.centers()
+        self.kmeans()
             .iter()
             .enumerate()
             .map(|(i, c)| (i, self.distance(c, x)))
@@ -54,9 +54,9 @@ pub trait Elkan: Sync {
     /// Compute d(c, c') for all centers c and c'
     fn pairwise(&self) -> Vec<Vec<f32>> {
         // @parallelizable
-        self.centers()
+        self.kmeans()
             .iter()
-            .flat_map(|c1| self.centers().iter().map(|c2| self.distance(c1, c2)))
+            .flat_map(|c1| self.kmeans().iter().map(|c2| self.distance(c1, c2)))
             .collect::<Vec<_>>()
             .chunks(self.k())
             .map(|chunk| chunk.to_vec())
@@ -85,7 +85,7 @@ pub trait Elkan: Sync {
     fn excluded(&self) -> HashSet<usize> {
         // @parallelizable
         let ref midpoints = self.midpoints();
-        self.boundaries()
+        self.bounds()
             // .iter()
             .par_iter()
             .enumerate()
@@ -135,7 +135,21 @@ pub trait Elkan: Sync {
         // @parallelizable
         (0..self.k())
             .map(|j| {
-                self.boundaries()
+                self.bounds()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.j == j)
+                    .map(|(i, _)| self.point(i))
+                    .fold(Self::P::default(), Self::P::absorb)
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn compute_kmeans_from(&self, bounds: &[Bound]) -> Vec<Self::P> {
+        // @parallelizable
+        (0..self.k())
+            .map(|j| {
+                bounds
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| b.j == j)
@@ -148,7 +162,7 @@ pub trait Elkan: Sync {
     fn drifts(&self, news: &[Self::P]) -> Vec<Energy> {
         assert!(news.len() == self.k());
         // @parallelizable
-        self.centers()
+        self.kmeans()
             .iter()
             .zip(news.iter())
             .map(|(old, new)| self.distance(new, old))
@@ -158,13 +172,21 @@ pub trait Elkan: Sync {
     /// Compute new centroids from assigned points
     fn next_eklan(&self) -> (Vec<Self::P>, Vec<Bound>) {
         // @parallelizable
-        let kmeans = self.next_kmeans();
+        // Step 1: Update bounds and reassign points (using OLD centroids from self.kmeans())
+        let bounds = self.next_bounds();
+
+        // Step 2: Compute NEW centroids based on UPDATED assignments
+        let kmeans = self.compute_kmeans_from(&bounds);
+
+        // Step 3: Compute drift between old and new centroids
         let ref drifts = self.drifts(&kmeans);
-        let bounds = self
-            .next_bounds()
+
+        // Step 4: Shift bounds for next iteration
+        let bounds = bounds
             .into_par_iter()
             .map(|b| b.shift(drifts))
             .collect::<Vec<_>>();
+
         (kmeans, bounds)
     }
 
@@ -191,11 +213,10 @@ pub trait Elkan: Sync {
     fn rms(&self) -> Energy {
         // @parallelizable
         (self
-            .boundaries()
+            .bounds()
             .par_iter()
             .enumerate()
             .map(|(i, b)| self.distance(self.point(i), self.kmean(b.j())))
-            // .map(|b| b.u())
             // .map(|b| b.u())
             .map(|d| d * d)
             .sum::<Energy>()
@@ -277,10 +298,10 @@ impl Elkan for Turns {
     fn dataset(&self) -> &Vec<Histogram> {
         &self.dataset
     }
-    fn centers(&self) -> &Vec<Histogram> {
+    fn kmeans(&self) -> &Vec<Histogram> {
         &self.centers
     }
-    fn boundaries(&self) -> &Vec<Bound> {
+    fn bounds(&self) -> &Vec<Bound> {
         &self.boundaries
     }
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
@@ -305,8 +326,6 @@ impl Elkan for Turns {
 
 #[cfg(test)]
 mod tests {
-    use std::panic;
-
     use super::*;
 
     #[test]
@@ -348,11 +367,7 @@ mod tests {
     #[test]
     fn elkan_assigns_all_points() {
         let km = Turns::new();
-        let assignments = km
-            .boundaries()
-            .iter()
-            .map(|b| b.j())
-            .collect::<HashSet<_>>();
+        let assignments = km.bounds().iter().map(|b| b.j()).collect::<HashSet<_>>();
         assert!(assignments.len() > 0);
         assert!(assignments.iter().all(|&j| j < km.k()));
     }
@@ -365,9 +380,8 @@ mod tests {
         for i in 0..km.t() {
             naive.step_naive();
             elkan.step_elkan();
-            assert_eq!(elkan.centers, naive.centers, "iteration {}", i);
             assert_eq!(elkan.rms(), naive.rms(), "iteration {}", i);
+            assert_eq!(elkan.kmeans(), naive.kmeans(), "iteration {}", i);
         }
-        panic!("Elkan and naive KMeans are not equivalent");
     }
 }
