@@ -19,6 +19,8 @@ criterion::criterion_group! {
         computing_optimal_transport_heuristic,
         computing_optimal_transport_sinkhorns,
         solving_cfr_rps,
+        clustering_kmeans_elkan,
+        clustering_kmeans_naive,
 }
 
 fn sampling_river_evaluation(c: &mut criterion::Criterion) {
@@ -108,6 +110,28 @@ fn solving_cfr_rps(c: &mut criterion::Criterion) {
     });
 }
 
+fn clustering_kmeans_elkan(c: &mut criterion::Criterion) {
+    c.bench_function("equity k-means clustering (Elkan optimization)", |b| {
+        b.iter(|| {
+            let mut km = TurnLayer::new();
+            for _ in 0..km.t() {
+                km.step_elkan();
+            }
+        })
+    });
+}
+
+fn clustering_kmeans_naive(c: &mut criterion::Criterion) {
+    c.bench_function("equity k-means clustering (naive implementation)", |b| {
+        b.iter(|| {
+            let mut km = TurnLayer::new();
+            for _ in 0..km.t() {
+                km.step_naive();
+            }
+        })
+    });
+}
+
 use robopoker::cards::evaluator::Evaluator;
 use robopoker::cards::hand::Hand;
 use robopoker::cards::isomorphism::Isomorphism;
@@ -119,7 +143,9 @@ use robopoker::clustering::emd::EMD;
 use robopoker::clustering::equity::Equity;
 use robopoker::clustering::heuristic::Heuristic;
 use robopoker::clustering::histogram::Histogram;
+use robopoker::clustering::kmeans::Elkan;
 use robopoker::clustering::sinkhorn::Sinkhorn;
+use robopoker::clustering::turns::TurnLayer;
 use robopoker::mccfr::rps::RPS;
 use robopoker::mccfr::traits::Blueprint;
 use robopoker::transport::coupling::Coupling;

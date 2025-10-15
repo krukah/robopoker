@@ -1,4 +1,5 @@
 use super::*;
+use crate::cards::*;
 use crate::Energy;
 
 /// it just so happens that we can cluster arbitrary
@@ -14,18 +15,15 @@ pub struct TurnLayer {
 
 impl TurnLayer {
     const fn n() -> usize {
-        64
+        2048
     }
     const fn k() -> usize {
-        4
+        8
     }
     const fn t() -> usize {
         8
     }
     pub fn new() -> Self {
-        use crate::cards::observation::Observation;
-        use crate::cards::street::Street;
-        use crate::clustering::histogram::Histogram;
         let points = (0..Self::n())
             .map(|_| Histogram::from(Observation::from(Street::Turn)))
             .collect::<Vec<_>>();
@@ -46,11 +44,21 @@ impl TurnLayer {
         let (kmeans, bounds) = self.next_eklan();
         self.kmeans = kmeans;
         self.bounds = bounds;
+        self.heal();
     }
     pub fn step_naive(&mut self) {
         let (kmeans, bounds) = self.next_naive();
         self.kmeans = kmeans;
         self.bounds = bounds;
+        self.heal();
+    }
+    pub fn heal(&mut self) {
+        // if there are any empty histograms, we want to replace them with an arbitrary histogram
+        self.kmeans
+            .iter_mut()
+            .filter(|h| h.n() == 0)
+            .map(|h| *h = Histogram::from(Observation::from(Street::Turn)))
+            .count(); // force evaluation
     }
 }
 
