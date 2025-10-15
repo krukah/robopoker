@@ -139,12 +139,6 @@ impl Elkan for Layer {
     fn k(&self) -> usize {
         self.street().k()
     }
-    fn n(&self) -> usize {
-        match self.street() {
-            Street::Rive => 0,
-            _ => self.street().n_isomorphisms(),
-        }
-    }
     fn dataset(&self) -> &Vec<Histogram> {
         assert!(self.points.len() == self.n());
         &self.points
@@ -176,10 +170,10 @@ impl Elkan for Layer {
         use std::hash::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
-        // don't do any abstraction on preflop
+        // don't do any abstraction on preflop or river
         let k = self.street().k();
         let n = self.points().len();
-        if self.street() == Street::Pref {
+        if matches!(self.street(), Street::Pref | Street::Rive) {
             assert!(n == k);
             return self.points().clone();
         }
@@ -212,17 +206,6 @@ impl Elkan for Layer {
                 .collect::<Vec<Energy>>();
         }
         histograms
-    }
-
-    fn init_bounds(&self) -> Vec<Bound> {
-        // @parallelizable
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
-        (0..self.n())
-            .into_par_iter()
-            .map(|i| self.neighbor(i))
-            .map(|(j, dist)| Bound::new(j, self.k(), dist))
-            .collect::<Vec<_>>()
     }
 }
 

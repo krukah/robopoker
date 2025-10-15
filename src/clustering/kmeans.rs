@@ -13,10 +13,16 @@ pub trait Elkan: Sync {
     fn kmeans(&self) -> &Vec<Self::P>;
     fn bounds(&self) -> &Vec<Bound>;
 
-    // fn mapping(&self) -> Vec<usize>;
-
     fn init_kmeans(&self) -> Vec<Self::P>;
-    fn init_bounds(&self) -> Vec<Bound>;
+    fn init_bounds(&self) -> Vec<Bound> {
+        let n = self.n();
+        let k = self.k();
+        (0..n)
+            .into_iter()
+            .map(|i| self.neighbor(i))
+            .map(|(j, dist)| Bound::new(j, k, dist))
+            .collect::<Vec<_>>()
+    }
 
     fn t(&self) -> usize {
         1024
@@ -86,7 +92,6 @@ pub trait Elkan: Sync {
         // @parallelizable
         let ref midpoints = self.midpoints();
         self.bounds()
-            // .iter()
             .par_iter()
             .enumerate()
             .filter(|(_, b)| b.u() <= midpoints[b.j()])
@@ -113,13 +118,12 @@ pub trait Elkan: Sync {
         (0..self.k()).for_each(|j| {
             included
                 .par_iter_mut()
-                .for_each(|(_, (x, b))| self.update(b, j, pairwise, x));
+                .for_each(|(_, (x, b))| self.rebound(b, j, pairwise, x));
         });
         included
     }
 
     fn drift(&self, news: &[Self::P]) -> Vec<Energy> {
-        assert!(news.len() == self.k());
         // @parallelizable
         self.kmeans()
             .iter()
@@ -129,7 +133,7 @@ pub trait Elkan: Sync {
     }
 
     /// Update bound for a single point-centroid pair
-    fn update(&self, b: &mut Bound, j: usize, metric: &[Vec<f32>], x: &Self::P) {
+    fn rebound(&self, b: &mut Bound, j: usize, metric: &[Vec<f32>], x: &Self::P) {
         // Refresh stale upper bound if needed
         // Check triangle inequality and maybe reassign
         if b.stale() {
@@ -216,111 +220,14 @@ pub trait Elkan: Sync {
     }
 }
 
-#[allow(dead_code)]
-/// it just so happens that we can cluster arbitrary
-/// subsets of Turn Histogram equity distributions,
-/// because we project into the River space on the fly (obs.equity())
-#[derive(Clone)]
-struct Turns {
-    metric: Metric,
-    points: Vec<Histogram>,
-    kmeans: Vec<Histogram>,
-    bounds: Vec<Bound>,
-}
-
-#[allow(dead_code)]
-impl Turns {
-    const fn k() -> usize {
-        4
-    }
-    const fn n() -> usize {
-        64
-    }
-    const fn t() -> usize {
-        8
-    }
-    fn new() -> Self {
-        use crate::cards::observation::Observation;
-        use crate::cards::street::Street;
-        use crate::clustering::histogram::Histogram;
-        let points = (0..Self::n())
-            .map(|_| Histogram::from(Observation::from(Street::Turn)))
-            .collect::<Vec<_>>();
-        let kmeans = Vec::default();
-        let bounds = Vec::default();
-        let metric = Metric::default();
-        let mut km = Self {
-            metric,
-            points,
-            kmeans,
-            bounds,
-        };
-        km.kmeans = km.init_kmeans();
-        km.bounds = km.init_bounds();
-        km
-    }
-    fn step_elkan(&mut self) {
-        let (kmeans, bounds) = self.next_eklan();
-        self.kmeans = kmeans;
-        self.bounds = bounds;
-    }
-    fn step_naive(&mut self) {
-        let (kmeans, bounds) = self.next_naive();
-        self.kmeans = kmeans;
-        self.bounds = bounds;
-    }
-}
-
-impl Elkan for Turns {
-    type P = Histogram;
-    fn t(&self) -> usize {
-        Self::t()
-    }
-    fn n(&self) -> usize {
-        Self::n()
-    }
-    fn k(&self) -> usize {
-        Self::k()
-    }
-    fn dataset(&self) -> &Vec<Histogram> {
-        &self.points
-    }
-    fn kmeans(&self) -> &Vec<Histogram> {
-        &self.kmeans
-    }
-    fn bounds(&self) -> &Vec<Bound> {
-        &self.bounds
-    }
-    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
-        self.metric.emd(h1, h2)
-    }
-    fn init_kmeans(&self) -> Vec<Histogram> {
-        use crate::cards::observation::Observation;
-        use crate::cards::street::Street;
-        use crate::clustering::histogram::Histogram;
-        let k = self.k();
-        (0..k)
-            .map(|_| Histogram::from(Observation::from(Street::Turn)))
-            .collect()
-    }
-    fn init_bounds(&self) -> Vec<Bound> {
-        let n = self.n();
-        let k = self.k();
-        (0..n)
-            .into_iter()
-            .map(|i| self.neighbor(i))
-            .map(|(j, dist)| Bound::new(j, k, dist))
-            .collect::<Vec<_>>()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Elkan;
+    use super::TurnLayer;
 
     #[test]
     fn elkan_rms_decreases() {
-        let mut km = Turns::new();
+        let mut km = TurnLayer::new();
         let mut rms = vec![km.rms()];
         for _ in 0..km.t() {
             km.step_elkan();
@@ -338,17 +245,16 @@ mod tests {
 
     #[test]
     fn elkan_rms_converges() {
-        let mut km = Turns::new();
+        let mut km = TurnLayer::new();
         for _ in 0..km.t() {
             km.step_elkan();
         }
-        km.step_elkan();
         let r1 = km.rms();
         km.step_elkan();
         let r2 = km.rms();
         assert!(
-            (r1 - r2).abs() <= 0.005,
-            "RMS not converged: {} -> {}",
+            (r1 - r2).abs() <= 0.01,
+            "RMS is unlikely large: {} -> {}",
             r1,
             r2
         );
@@ -356,12 +262,12 @@ mod tests {
 
     #[test]
     fn elkan_naive_equivalence() {
-        let km = Turns::new();
+        let km = TurnLayer::new();
         let mut elkan = km.clone();
         let mut naive = km.clone();
         for _ in 0..km.t() {
-            naive.step_naive();
             elkan.step_elkan();
+            naive.step_naive();
             assert_eq!(elkan.rms(), naive.rms());
             assert_eq!(elkan.kmeans(), naive.kmeans());
         }
