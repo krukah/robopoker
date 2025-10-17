@@ -4,6 +4,20 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+/// Trait for Elkan's K-Means algorithm. This exploits the triangle inequality to accelerate
+/// computation of a naive O(n * k * t) algorithm that recalculates centroid-to-point distances
+/// on every iteration. The key insight of Elkan (2003) is to use the triangle inequality to
+/// avoid recalculating distances between points and centroids that are already known to be
+/// far apart.
+///
+/// We also provide a naive implementation for benchmarking purposes. However, our sampling of
+/// arbitrary Histograms is biased toward the naive implementation: Elkan's optimization assumes that
+/// the algorithm runtime is dominated by the EMD distance calculations. This is true for the abstract
+/// EMD distance calculations between distributions over Abstraactions, but not necessarily true for the
+/// EMD distance calculations between distributions over River Equity. Still, with large enough N, the
+/// memory overhead of Elkan's algorithm is worth the shorter runtime.
+///
+/// See benchmarks.rs, sinkhorn.rs for more information.
 pub trait Elkan: Sync {
     type P: Absorb + Clone + Sync;
 
@@ -226,6 +240,12 @@ mod tests {
     use super::TurnLayer;
 
     #[test]
+    /// This test is kinda fuzzy. There's no guarantee that we achieve strict monotonicity.
+    /// Techincally, we don't even guarantee that the RMS will not increase. This is because
+    /// there is some probability that a cluster will end up empty, after which we will replace it
+    /// with a random point (see Self::heal()), after which this new random point may introduce a larger error.
+    /// I don't know, haven't done any paper pencil proofing. But this fuzziness is fine for me. Really the important
+    /// thing is that the algorithm is equivalent to the naive KMeans algorithm.
     fn elkan_rms_decreases() {
         let mut km = TurnLayer::new();
         let mut rms = vec![km.rms()];
@@ -244,6 +264,9 @@ mod tests {
     }
 
     #[test]
+    /// This test is kinda fuzzy. There's no guarantee that this must converge within
+    /// Self::t() iterations. And the scale of this distance/energy values are unitless,
+    /// so the arbitrary 1/100 threshold is meaningless. But it seems to pass most times so whatever.
     fn elkan_rms_converges() {
         let mut km = TurnLayer::new();
         for _ in 0..km.t() {
@@ -261,6 +284,9 @@ mod tests {
     }
 
     #[test]
+    /// Test that Elkan's algorithm is equivalent to the naive implementation.
+    /// The optimization is not an approximation, so we can assert that the
+    /// state machine of the algorithm is identical to the naive implementation at every iteration.
     fn elkan_naive_equivalence() {
         let km = TurnLayer::new();
         let mut elkan = km.clone();

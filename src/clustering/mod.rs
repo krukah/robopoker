@@ -37,8 +37,8 @@ pub use transitions::*;
 pub mod bounds;
 pub use bounds::*;
 
-pub mod kmeans;
-pub use kmeans::*;
+pub mod elkan;
+pub use elkan::*;
 
 pub mod turns;
 pub use turns::*;

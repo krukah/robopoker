@@ -2,9 +2,9 @@
 /// version of Kmeans) to make it easier to pass along metadata about each
 /// point into the function at each iteration.
 ///
-/// Specifically, each instance of this struct contains "Carr[ied]...
+/// Specifically, each instance of this struct contains "Carried...
 /// information" between k-means iterations for a specific point in
-/// `ClusterArg`'s `points` field. (Most notably: upper and lower distance
+/// the Elkan::points() field. (Most notably: upper and lower distance
 /// bounds to help avoid significant #s of redundant distance calculations.)
 ///
 /// See Elkan (2003) for more information.
@@ -12,7 +12,7 @@
 pub struct Bound {
     /// The index into self.kmeans for the currently assigned
     /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
-    /// specifed point.
+    /// specified point.
     pub j: usize,
     /// Lower bounds on the distance from this point to each centroid c
     /// (l(x,c) in the paper).
