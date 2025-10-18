@@ -79,9 +79,6 @@ impl Arbitrary for Odds {
     fn random() -> Self {
         use rand::prelude::IndexedRandom;
         let ref mut rng = rand::rng();
-        Self::GRID
-            .choose(rng)
-            .copied()
-            .expect("GRID is empty")
+        Self::GRID.choose(rng).copied().expect("GRID is empty")
     }
 }

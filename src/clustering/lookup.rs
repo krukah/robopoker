@@ -2,8 +2,8 @@ use crate::cards::isomorphism::Isomorphism;
 use crate::cards::isomorphisms::IsomorphismIterator;
 use crate::cards::observation::Observation;
 use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
+use crate::gameplay::abstraction::Abstraction;
 use std::collections::BTreeMap;
 
 #[derive(Default)]

@@ -1,9 +1,9 @@
 use super::equity::Equity;
 use super::sinkhorn::Sinkhorn;
 use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
 use crate::clustering::pair::Pair;
+use crate::gameplay::abstraction::Abstraction;
 use crate::transport::coupling::Coupling;
 use crate::transport::measure::Measure;
 use crate::Energy;
@@ -12,22 +12,19 @@ use std::collections::BTreeMap;
 /// Distance metric for kmeans clustering.
 /// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Metric(BTreeMap<Pair, Energy>);
 
 impl Measure for Metric {
     type X = Abstraction;
     type Y = Abstraction;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        if x == y {
-            0.
-        } else {
-            match (x, y) {
-                (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
-                (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
-                (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
-                _ => unreachable!(),
-            }
+        match (x, y) {
+            _ if x == y => 0.,
+            (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
+            (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
+            (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
+            _ => unreachable!(),
         }
     }
 }
