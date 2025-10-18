@@ -2,7 +2,7 @@ use super::derive::Derive;
 use super::upload::Table;
 use crate::cards::street::Street;
 use crate::clustering::metric::Metric;
-use crate::clustering::transitions::Decomp;
+use crate::clustering::transitions::Shadow;
 use crate::gameplay::abstraction::Abstraction;
 use crate::mccfr::nlhe::encoder::Encoder;
 use crate::mccfr::nlhe::profile::Profile;
@@ -30,7 +30,7 @@ impl Writer {
     pub async fn publish() -> Result<(), E> {
         let postgres = Self(crate::db().await);
         postgres.upload::<Metric>().await?;
-        postgres.upload::<Decomp>().await?;
+        postgres.upload::<Shadow>().await?;
         postgres.upload::<Encoder>().await?;
         postgres.upload::<Profile>().await?;
         postgres.derive::<Abstraction>().await?;

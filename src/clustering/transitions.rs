@@ -1,25 +1,25 @@
 use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
 use crate::clustering::histogram::Histogram;
+use crate::gameplay::abstraction::Abstraction;
 use std::collections::BTreeMap;
 use std::mem::size_of;
 use std::u16;
 
-pub struct Decomp(BTreeMap<Abstraction, Histogram>);
+pub struct Shadow(BTreeMap<Abstraction, Histogram>);
 
-impl From<BTreeMap<Abstraction, Histogram>> for Decomp {
+impl From<BTreeMap<Abstraction, Histogram>> for Shadow {
     fn from(map: BTreeMap<Abstraction, Histogram>) -> Self {
         Self(map)
     }
 }
 
-impl Decomp {
+impl Shadow {
     fn name() -> String {
         "transitions".to_string()
     }
 }
 
-impl crate::save::disk::Disk for Decomp {
+impl crate::save::disk::Disk for Shadow {
     fn name() -> String {
         Self::name()
     }
@@ -95,7 +95,7 @@ impl crate::save::disk::Disk for Decomp {
     }
 }
 
-impl crate::save::upload::Table for Decomp {
+impl crate::save::upload::Table for Shadow {
     fn name() -> String {
         Self::name()
     }

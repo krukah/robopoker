@@ -51,11 +51,7 @@ impl Ranking {
             | Ranking::OnePair(hi)
             | Ranking::FourOAK(hi)
             | Ranking::ThreeOAK(hi) => !(u16::from(hi)),
-            Ranking::FullHouse(..)
-            | Ranking::StraightFlush(..)
-            | Ranking::Straight(..)
-            | Ranking::Flush(..)
-            | Ranking::MAX => unreachable!(),
+            _ => unreachable!(),
         }
     }
 }

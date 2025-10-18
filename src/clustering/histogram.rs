@@ -11,7 +11,7 @@ use std::ops::AddAssign;
 ///
 /// The sum of the weights is the total number of samples.
 /// The weight of an abstraction is the number of times it was sampled.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Histogram {
     mass: usize,
     counts: BTreeMap<Abstraction, usize>,
@@ -47,7 +47,12 @@ impl Histogram {
         self
     }
     /// absorb the other histogram into this one.
-    pub fn absorb(&mut self, other: &Self) {
+    pub fn absorb(mut self, other: &Self) -> Self {
+        self.engulf(other);
+        self
+    }
+
+    pub fn engulf(&mut self, other: &Self) {
         self.mass += other.mass;
         for (key, count) in other.counts.iter() {
             self.counts.entry(*key).or_insert(0usize).add_assign(*count);
@@ -101,7 +106,8 @@ impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
         assert!(turn.street() == crate::cards::street::Street::Turn);
         turn.children()
-            .map(|river| Abstraction::from(river.equity()))
+            .map(|river| river.equity())
+            .map(Abstraction::from)
             .fold(Self::default(), |hist, abs| hist.increment(abs))
     }
 }

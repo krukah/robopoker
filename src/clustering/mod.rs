@@ -1,6 +1,9 @@
 pub mod emd;
 pub use emd::*;
 
+pub mod absorb;
+pub use absorb::*;
+
 pub mod equity;
 pub use equity::*;
 
@@ -30,3 +33,12 @@ pub use sinkhorn::*;
 
 pub mod transitions;
 pub use transitions::*;
+
+pub mod bounds;
+pub use bounds::*;
+
+pub mod elkan;
+pub use elkan::*;
+
+pub mod turns;
+pub use turns::*;
