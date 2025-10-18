@@ -15,10 +15,10 @@ impl EMD {
     pub fn metric(&self) -> &Metric {
         &self.0
     }
-    pub fn sinkhorn(&self) -> Sinkhorn {
+    pub fn sinkhorn(&self) -> Sinkhorn<'_> {
         Sinkhorn::from((&self.1, &self.2, &self.0)).minimize()
     }
-    pub fn heuristic(&self) -> Heuristic {
+    pub fn heuristic(&self) -> Heuristic<'_> {
         Heuristic::from((&self.1, &self.2, &self.0)).minimize()
     }
     pub fn inner(self) -> (Metric, Histogram, Histogram, Histogram) {
