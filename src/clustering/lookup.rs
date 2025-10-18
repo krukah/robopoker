@@ -63,8 +63,8 @@ impl Lookup {
 mod tests {
     use super::*;
 
-    #[ignore]
     #[test]
+    #[ignore]
     fn persistence() {
         use crate::save::disk::Disk;
         let street = Street::Pref;

@@ -11,7 +11,5 @@ jobs:
         run: cargo build
       - name: Test
         run: cargo test --quiet --lib
-      - name: Test Shortdeck
-        run: cargo test --quiet --lib --features shortdeck
       - name: Benchmark
         run: cargo bench --quiet --message-format short

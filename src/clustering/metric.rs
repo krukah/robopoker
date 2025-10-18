@@ -215,8 +215,8 @@ mod tests {
     use crate::save::disk::Disk;
     use crate::Arbitrary;
 
-    #[ignore]
     #[test]
+    #[ignore]
     fn persistence() {
         let street = Street::Rive;
         let emd = EMD::random();
