@@ -1,10 +1,6 @@
-use super::heuristic::Heuristic;
-use super::histogram::Histogram;
-use super::metric::Metric;
-use super::pair::Pair;
-use super::sinkhorn::Sinkhorn;
-use crate::transport::coupling::Coupling;
-use crate::Arbitrary;
+use super::*;
+use crate::transport::*;
+use crate::*;
 use std::collections::BTreeMap;
 
 /// this guy is used just to construct arbitrary metric, histogram, histogram tuples
@@ -42,10 +38,10 @@ impl Arbitrary for EMD {
                         .chain(p.support())
                         .chain(q.support())
                         .chain(r.support())
-                        .map(move |y| (x, y))
+                        .map(move |y| (x.clone(), y))
                 })
                 .filter(|(x, y)| x > y)
-                .map(|(x, y)| Pair::from((x, y)))
+                .map(|(x, y)| Pair::from((&x, &y)))
                 .map(|paired| (paired, rand::random::<f32>()))
                 .collect::<BTreeMap<_, _>>(),
         );
@@ -56,9 +52,7 @@ impl Arbitrary for EMD {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::observation::Observation;
-    use crate::cards::street::Street;
-    use crate::clustering::histogram::Histogram;
+    use crate::cards::*;
 
     /// equity implementation should be
     /// 1. symmetric

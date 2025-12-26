@@ -1,5 +1,6 @@
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Street {
+    #[default]
     Pref = 0isize,
     Flop = 1isize,
     Turn = 2isize,
@@ -7,9 +8,28 @@ pub enum Street {
 }
 
 impl Street {
-    pub const fn all() -> &'static [Self] {
-        &[Self::Pref, Self::Flop, Self::Turn, Self::Rive]
+    pub const fn all() -> [Self; 4] {
+        [Self::Pref, Self::Flop, Self::Turn, Self::Rive]
     }
+
+    pub const fn symbol(&self) -> &'static str {
+        match self {
+            Self::Pref => "P",
+            Self::Flop => "F",
+            Self::Turn => "T",
+            Self::Rive => "R",
+        }
+    }
+
+    pub const fn label(&self) -> &'static str {
+        match self {
+            Self::Pref => "Preflop",
+            Self::Flop => "Flop",
+            Self::Turn => "Turn",
+            Self::Rive => "River",
+        }
+    }
+
     pub const fn next(&self) -> Self {
         match self {
             Self::Pref => Self::Flop,
@@ -18,6 +38,7 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
+
     pub const fn prev(&self) -> Self {
         match self {
             Self::Pref => panic!("starting"),
@@ -26,6 +47,7 @@ impl Street {
             Self::Rive => Self::Turn,
         }
     }
+
     pub const fn k(&self) -> usize {
         match self {
             Self::Pref => self.n_isomorphisms(),
@@ -34,6 +56,7 @@ impl Street {
             Self::Rive => 0,
         }
     }
+
     pub const fn t(&self) -> usize {
         match self {
             Self::Pref => 0,
@@ -42,20 +65,22 @@ impl Street {
             Self::Rive => 0,
         }
     }
+
     pub const fn n_observed(&self) -> usize {
         match self {
-            Self::Pref => 0,
-            Self::Flop => 3,
-            Self::Turn => 4,
-            Self::Rive => 5,
+            Self::Pref => 2,
+            Self::Flop => 5,
+            Self::Turn => 6,
+            Self::Rive => 7,
         }
     }
+
     pub const fn n_revealed(&self) -> usize {
         match self {
-            Self::Pref => 3,
-            Self::Flop => 1,
+            Self::Pref => 2,
+            Self::Flop => 3,
             Self::Turn => 1,
-            Self::Rive => panic!("terminal"),
+            Self::Rive => 1,
         }
     }
 
@@ -129,6 +154,18 @@ impl Street {
     }
 }
 
+#[cfg(feature = "client")]
+impl Street {
+    pub const fn dimension(&self) -> (usize, usize) {
+        match self {
+            Self::Pref => (13, 13),
+            Self::Flop => (16, 08),
+            Self::Turn => (12, 12),
+            Self::Rive => (10, 10),
+        }
+    }
+}
+
 impl From<isize> for Street {
     fn from(n: isize) -> Self {
         match n {
@@ -136,7 +173,7 @@ impl From<isize> for Street {
             1 => Self::Flop,
             2 => Self::Turn,
             3 => Self::Rive,
-            _ => panic!("no other u8s"),
+            x => panic!("no other u8s {}", x),
         }
     }
 }
@@ -144,11 +181,11 @@ impl From<isize> for Street {
 impl From<usize> for Street {
     fn from(n: usize) -> Self {
         match n {
-            0 => Self::Pref,
-            3 => Self::Flop,
-            4 => Self::Turn,
-            5 => Self::Rive,
-            _ => panic!("no other usizes"),
+            2 => Self::Pref,
+            5 => Self::Flop,
+            6 => Self::Turn,
+            7 => Self::Rive,
+            x => panic!("no other usizes {}", x),
         }
     }
 }
@@ -163,7 +200,6 @@ impl From<i64> for Street {
                 .map(|bits| bits as u8)
                 .map(|bits| bits - 1)
                 .map(|bits| 1u64 << bits)
-                .skip(2)
                 .count(),
         )
     }
@@ -181,14 +217,14 @@ impl std::fmt::Display for Street {
 }
 
 impl TryFrom<&str> for Street {
-    type Error = String;
+    type Error = anyhow::Error;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.to_uppercase().chars().next() {
             Some('P') => Ok(Self::Pref),
             Some('F') => Ok(Self::Flop),
             Some('T') => Ok(Self::Turn),
             Some('R') => Ok(Self::Rive),
-            _ => Err("invalid street character".into()),
+            _ => Err(anyhow::anyhow!("invalid street character")),
         }
     }
 }
@@ -201,5 +237,77 @@ impl crate::Arbitrary for Street {
             2 => Self::Turn,
             _ => Self::Rive,
         }
+    }
+}
+
+#[cfg(feature = "database")]
+impl crate::save::Schema for Street {
+    fn name() -> &'static str {
+        crate::save::STREET
+    }
+    fn creates() -> &'static str {
+        const_format::concatcp!(
+            "CREATE TABLE IF NOT EXISTS ",
+            crate::save::STREET,
+            " (
+                street     SMALLINT,
+                nobs       INTEGER,
+                nabs       INTEGER
+            );
+            TRUNCATE TABLE ",
+            crate::save::STREET,
+            ";
+            CREATE OR REPLACE FUNCTION get_nabs(s SMALLINT) RETURNS INTEGER AS
+            $$ BEGIN RETURN (SELECT COUNT(*) FROM ",
+            crate::save::ABSTRACTION,
+            " a WHERE a.street = s); END; $$
+            LANGUAGE plpgsql;"
+        )
+    }
+    fn indices() -> &'static str {
+        const_format::concatcp!(
+            "CREATE INDEX IF NOT EXISTS idx_",
+            crate::save::STREET,
+            "_st ON ",
+            crate::save::STREET,
+            " (street);"
+        )
+    }
+    fn copy() -> &'static str {
+        unimplemented!("Street is derived, not loaded from files")
+    }
+    fn truncates() -> &'static str {
+        const_format::concatcp!("TRUNCATE TABLE ", crate::save::STREET, ";")
+    }
+    fn freeze() -> &'static str {
+        const_format::concatcp!(
+            "ALTER TABLE ",
+            crate::save::STREET,
+            " SET (fillfactor = 100);
+            ALTER TABLE ",
+            crate::save::STREET,
+            " SET (autovacuum_enabled = false);"
+        )
+    }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        unimplemented!("Street is derived, not loaded from files")
+    }
+}
+
+#[cfg(feature = "database")]
+impl crate::save::Derive for Street {
+    fn exhaust() -> Vec<Self> {
+        Self::all().iter().rev().copied().collect()
+    }
+    fn inserts(&self) -> String {
+        let s = self.clone() as i16;
+        let n = self.n_isomorphisms() as i32;
+        format!(
+            "INSERT INTO {} (street, nobs, nabs) VALUES ({}, {}, get_nabs({}::SMALLINT));",
+            crate::save::STREET,
+            s,
+            n,
+            s
+        )
     }
 }

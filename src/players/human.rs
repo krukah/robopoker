@@ -1,7 +1,6 @@
 #![allow(dead_code)]
-use crate::gameplay::action::Action;
-use crate::gameplay::game::Game;
-use crate::Chips;
+use crate::gameplay::*;
+use crate::*;
 use dialoguer::Input;
 use dialoguer::Select;
 

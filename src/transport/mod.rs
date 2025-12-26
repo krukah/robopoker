@@ -1,6 +1,13 @@
-pub mod coupling;
-pub mod density;
-pub mod greedy;
-pub mod greenkhorn;
-pub mod measure;
-pub mod support;
+mod coupling;
+mod density;
+mod greedy;
+mod greenkhorn;
+mod measure;
+mod support;
+
+pub use coupling::*;
+pub use density::*;
+pub use greedy::*;
+pub use greenkhorn::*;
+pub use measure::*;
+pub use support::*;

@@ -1,6 +1,5 @@
-use crate::cards::card::Card;
-use crate::cards::hand::Hand;
-use crate::Chips;
+use crate::cards::*;
+use crate::*;
 
 const MASK: u32 = 0xFF;
 const BITS: u32 = MASK.count_ones();
@@ -35,6 +34,9 @@ impl Action {
     pub fn is_blind(&self) -> bool {
         matches!(self, Action::Blind(_))
     }
+    pub fn is_passive(&self) -> bool {
+        matches!(self, Action::Fold | Action::Check)
+    }
 }
 
 impl Action {
@@ -45,19 +47,53 @@ impl Action {
             None
         }
     }
+    pub fn amount(&self) -> Option<Chips> {
+        match *self {
+            Action::Call(amount)
+            | Action::Raise(amount)
+            | Action::Shove(amount)
+            | Action::Blind(amount) => Some(amount),
+            _ => None,
+        }
+    }
+    pub fn symbol(&self) -> String {
+        match self {
+            Action::Fold => format!("F"),
+            Action::Check => format!("X"),
+            Action::Draw(h) => format!("{}", h),
+            Action::Call(n) => format!("C{}", n),
+            Action::Blind(n) => format!("B{}", n),
+            Action::Raise(n) => format!("R{}", n),
+            Action::Shove(n) => format!("S{}", n),
+        }
+    }
+    pub fn label(&self) -> &'static str {
+        match self {
+            Action::Fold => "Fold",
+            Action::Check => "Check",
+            Action::Call(_) => "Call",
+            Action::Raise(_) => "Raise",
+            Action::Shove(_) => "Shove",
+            Action::Draw(_) => "Draw",
+            Action::Blind(_) => "Blind",
+        }
+    }
+    pub fn abbrev(&self) -> &'static str {
+        match self {
+            Action::Fold => "-",
+            Action::Check => "•",
+            Action::Call(_) => "=",
+            Action::Raise(_) => "+",
+            Action::Shove(_) => "!",
+            Action::Draw(_) => "?",
+            Action::Blind(_) => "$",
+        }
+    }
 }
 
 impl From<Action> for String {
     fn from(action: Action) -> Self {
-        match action {
-            Action::Fold => format!("FOLD"),
-            Action::Check => format!("CHECK"),
-            Action::Draw(card) => format!("DEAL  {}", card),
-            Action::Call(amount) => format!("CALL  {}", amount),
-            Action::Blind(amount) => format!("BLIND {}", amount),
-            Action::Raise(amount) => format!("RAISE {}", amount),
-            Action::Shove(amount) => format!("SHOVE {}", amount),
-        }
+        action.to_string()
     }
 }
 
@@ -149,11 +185,19 @@ impl TryFrom<&str> for Action {
 }
 impl std::fmt::Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        String::from(*self).fmt(f)
+        match self {
+            Action::Fold => write!(f, "FOLD"),
+            Action::Check => write!(f, "CHECK"),
+            Action::Draw(hand) => write!(f, "DEAL  {}", hand),
+            Action::Call(amount) => write!(f, "CALL  {}", amount),
+            Action::Blind(amount) => write!(f, "BLIND {}", amount),
+            Action::Raise(amount) => write!(f, "RAISE {}", amount),
+            Action::Shove(amount) => write!(f, "SHOVE {}", amount),
+        }
     }
 }
 
-#[cfg(feature = "native")]
+#[cfg(feature = "server")]
 impl From<Action> for colored::Color {
     fn from(action: Action) -> Self {
         match action {
@@ -164,6 +208,32 @@ impl From<Action> for colored::Color {
             Action::Shove(_) => colored::Color::Green,
             Action::Blind(_) => colored::Color::White,
             Action::Draw(_) => colored::Color::White,
+        }
+    }
+}
+
+#[cfg(feature = "client")]
+impl Action {
+    pub fn color(&self) -> &'static str {
+        match self {
+            Action::Fold => "#6B7280",
+            Action::Check => "#0F4C2F",
+            Action::Call(_) => "#3B82F6",
+            Action::Raise(_) => "#F59E0B",
+            Action::Shove(_) => "#DC2626",
+            Action::Draw(_) => "#3B82F6",
+            Action::Blind(_) => "#F59E0B",
+        }
+    }
+    pub fn style(&self) -> &'static str {
+        match self {
+            Action::Fold => "bg-action-fold hover:bg-action-fold/90",
+            Action::Check => "bg-action-check hover:bg-action-check/90",
+            Action::Call(_) => "bg-action-call hover:bg-action-call/90",
+            Action::Raise(_) => "bg-action-raise hover:bg-action-raise/90",
+            Action::Shove(_) => "bg-action-allin hover:bg-action-allin/90",
+            Action::Draw(_) => "bg-card-back hover:bg-card-back/90",
+            Action::Blind(_) => "bg-accent-gold hover:bg-accent-gold/90",
         }
     }
 }

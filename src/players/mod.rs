@@ -1,1 +1,3 @@
-pub mod human;
+mod human;
+
+pub use human::*;

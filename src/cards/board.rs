@@ -2,7 +2,7 @@ use super::card::Card;
 use super::hand::Hand;
 use super::street::Street;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Board(Hand);
 
 impl Board {
@@ -20,7 +20,7 @@ impl Board {
     }
     /// what street is this board on?
     pub fn street(&self) -> Street {
-        Street::from(self.0.size())
+        Street::from(2 + self.0.size())
     }
 }
 

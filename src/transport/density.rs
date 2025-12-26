@@ -10,7 +10,7 @@ pub trait Density {
     type Support: Support;
 
     fn density(&self, x: &Self::Support) -> Probability;
-    fn support(&self) -> impl Iterator<Item = &Self::Support>;
+    fn support(&self) -> impl Iterator<Item = Self::Support>;
 }
 
 impl<T> Density for BTreeMap<T, Probability>
@@ -23,8 +23,8 @@ where
         self.get(x).cloned().unwrap_or(0.)
     }
 
-    fn support(&self) -> impl Iterator<Item = &Self::Support> {
-        self.keys()
+    fn support(&self) -> impl Iterator<Item = Self::Support> {
+        self.keys().cloned()
     }
 }
 
@@ -38,8 +38,8 @@ where
         self.get(x).cloned().unwrap_or(0.)
     }
 
-    fn support(&self) -> impl Iterator<Item = &Self::Support> {
-        self.keys()
+    fn support(&self) -> impl Iterator<Item = Self::Support> {
+        self.keys().cloned()
     }
 }
 
@@ -57,7 +57,7 @@ where
             .unwrap_or(0.)
     }
 
-    fn support(&self) -> impl Iterator<Item = &Self::Support> {
-        self.iter().map(|(a, _)| a)
+    fn support(&self) -> impl Iterator<Item = Self::Support> {
+        self.iter().map(|(a, _)| a).cloned()
     }
 }

@@ -1,24 +1,21 @@
-use super::api::API;
-use super::request::*;
-use crate::cards::observation::Observation;
-use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
-use crate::gameplay::action::Action;
-use crate::gameplay::recall::Recall;
-use crate::gameplay::turn::Turn;
+use super::*;
+use crate::cards::*;
+use crate::gameplay::*;
 use actix_cors::Cors;
-use actix_web::middleware::Logger;
-use actix_web::web;
 use actix_web::App;
 use actix_web::HttpResponse;
 use actix_web::HttpServer;
 use actix_web::Responder;
+use actix_web::middleware::Logger;
+use actix_web::web;
+
+// WRT_NEIGHBOR_ABS = "/nbr-wrt-abs", // TODO implement in server.rs
 
 pub struct Server;
 
 impl Server {
     pub async fn run() -> Result<(), std::io::Error> {
-        let api = web::Data::new(API::from(crate::db().await));
+        let api = web::Data::new(API::from(crate::save::db().await));
         log::info!("starting HTTP server");
         HttpServer::new(move || {
             App::new()
@@ -30,6 +27,7 @@ impl Server {
                         .allow_any_header(),
                 )
                 .app_data(api.clone())
+                .route("/health", web::get().to(health))
                 .route("/replace-obs", web::post().to(replace_obs))
                 .route("/nbr-any-abs", web::post().to(nbr_any_wrt_abs))
                 .route("/nbr-obs-abs", web::post().to(nbr_obs_wrt_abs))
@@ -45,7 +43,7 @@ impl Server {
                 .route("/blueprint", web::post().to(blueprint))
         })
         .workers(6)
-        .bind("127.0.0.1:8888")?
+        .bind(std::env::var("BIND_ADDR").expect("BIND_ADDR must be set"))?
         .run()
         .await
     }
@@ -53,13 +51,17 @@ impl Server {
 
 // Route handlers
 
+async fn health() -> impl Responder {
+    HttpResponse::Ok().body("ok")
+}
+
 async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
     let obs = Observation::try_from(req.obs.as_str());
     match obs {
         Err(_) => HttpResponse::BadRequest().body("invalid observation format"),
         Ok(obs) => match api.replace_obs(obs).await {
             Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-            Ok(new) => HttpResponse::Ok().json(new.equivalent()),
+            Ok(new) => HttpResponse::Ok().json(new.to_string()),
         },
     }
 }
@@ -208,7 +210,8 @@ async fn blueprint(api: web::Data<API>, req: web::Json<GetPolicy>) -> impl Respo
         (Ok(hero), Ok(seen), Ok(path)) => {
             match api.policy(Recall::from((hero, seen, path))).await {
                 Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-                Ok(rows) => HttpResponse::Ok().json(rows),
+                Ok(Some(strategy)) => HttpResponse::Ok().json(strategy),
+                Ok(None) => HttpResponse::Ok().json(serde_json::Value::Null),
             }
         }
         _ => HttpResponse::BadRequest().body("invalid recall format"),

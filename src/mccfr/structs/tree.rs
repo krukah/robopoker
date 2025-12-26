@@ -1,10 +1,5 @@
-use super::infoset::InfoSet;
-use super::node::Node;
-use crate::mccfr::traits::edge::Edge;
-use crate::mccfr::traits::game::Game;
-use crate::mccfr::traits::info::Info;
-use crate::mccfr::traits::turn::Turn;
-use crate::mccfr::types::branch::Branch;
+use super::*;
+use crate::mccfr::*;
 use petgraph::graph::NodeIndex;
 
 /// the tree is pre-implemented. it is a wrapper around
@@ -17,10 +12,10 @@ use petgraph::graph::NodeIndex;
 #[derive(Debug)]
 pub struct Tree<T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     graph: petgraph::graph::DiGraph<(G, I), E>,
     danny: std::marker::PhantomData<(T, I)>,
@@ -28,11 +23,14 @@ where
 
 impl<T, E, G, I> Tree<T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
+    pub fn n(&self) -> usize {
+        self.graph.node_count()
+    }
     /// get all Nodes in the Tree
     pub fn all(&self) -> impl Iterator<Item = Node<'_, T, E, G, I>> {
         self.graph.node_indices().map(|n| self.at(n))
@@ -65,6 +63,31 @@ where
         info
     }
 
+    /// Iterate nodes in BFS order (root first) for top-down traversal.
+    /// Returns a Vec that visits parents before children.
+    pub fn bfs(&self) -> Vec<NodeIndex> {
+        use petgraph::visit::Walker;
+        petgraph::visit::Bfs::new(&self.graph, NodeIndex::new(0))
+            .iter(&self.graph)
+            .collect()
+    }
+    /// Iterate nodes in postorder (leaves first) for bottom-up traversal.
+    /// Returns a Vec since we need to reverse the DFS order.
+    pub fn postorder(&self) -> Vec<NodeIndex> {
+        let mut result = Vec::with_capacity(self.n());
+        let mut stack = vec![(NodeIndex::new(0), false)];
+        while let Some((node, expanded)) = stack.pop() {
+            if expanded {
+                result.push(node);
+            } else {
+                stack.push((node, true));
+                for child in self.at(node).children() {
+                    stack.push((child.index(), false));
+                }
+            }
+        }
+        result
+    }
     /// display the Tree in a human-readable format
     /// be careful because it's really big and recursive
     fn show(&self, f: &mut std::fmt::Formatter, x: NodeIndex, prefix: &str) -> std::fmt::Result {
@@ -95,10 +118,10 @@ where
 
 impl<T, E, G, I> Default for Tree<T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     fn default() -> Self {
         Self {
@@ -110,10 +133,10 @@ where
 
 impl<T, E, G, I> std::fmt::Display for Tree<T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    I: Info<E = E, T = T>,
-    G: Game<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    I: TreeInfo<E = E, T = T>,
+    G: TreeGame<E = E, T = T>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.show(f, NodeIndex::new(0), "")

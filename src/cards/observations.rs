@@ -26,7 +26,7 @@ impl From<Street> for ObservationIterator {
 
         // start with first card
         let pocket = Self::start();
-        let inner = HandIterator::from((street.n_observed(), pocket));
+        let inner = HandIterator::from((street.n_observed() - 2, pocket));
         let mut outer = HandIterator::from((2, Hand::empty()));
         match street {
             Street::Pref => None,
@@ -83,7 +83,7 @@ impl ObservationIterator {
         match self.street {
             Street::Pref => Some(Observation::from((self.pocket, Hand::empty()))),
             street => {
-                self.inner = HandIterator::from((street.n_observed(), self.pocket));
+                self.inner = HandIterator::from((street.n_observed() - 2, self.pocket));
                 self.inner
                     .next()
                     .map(|public| Observation::from((self.pocket, public)))

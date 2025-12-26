@@ -54,6 +54,38 @@ impl Hand {
         self.0 & (1 << u8::from(*card)) != 0
     }
 
+    pub fn shuffle(&self) -> Vec<Card> {
+        use rand::seq::SliceRandom;
+        let ref mut rng = rand::rng();
+        let mut cards = Vec::<Card>::from(self.clone());
+        cards.shuffle(rng);
+        cards
+    }
+
+    /// one-way conversion to u16 Rank masks
+    /// zero-allocation, zero iteration. just shredding bits
+    pub fn ranks(&self) -> u16 {
+        let mut x = self.0;
+        x |= x >> 1;
+        x |= x >> 2;
+        x &= 0x1111111111111;
+        let mut y = 0u64;
+        y |= (x >> 00) & 0b_0000000000001;
+        y |= (x >> 03) & 0b_0000000000010;
+        y |= (x >> 06) & 0b_0000000000100;
+        y |= (x >> 09) & 0b_0000000001000;
+        y |= (x >> 12) & 0b_0000000010000;
+        y |= (x >> 15) & 0b_0000000100000;
+        y |= (x >> 18) & 0b_0000001000000;
+        y |= (x >> 21) & 0b_0000010000000;
+        y |= (x >> 24) & 0b_0000100000000;
+        y |= (x >> 27) & 0b_0001000000000;
+        y |= (x >> 30) & 0b_0010000000000;
+        y |= (x >> 33) & 0b_0100000000000;
+        y |= (x >> 36) & 0b_1000000000000;
+        y as u16
+    }
+
     #[cfg(not(feature = "shortdeck"))]
     pub const fn mask() -> u64 {
         0x000FFFFFFFFFFFFF
@@ -117,38 +149,19 @@ impl From<Hand> for Vec<Card> {
 }
 impl From<Vec<Card>> for Hand {
     fn from(cards: Vec<Card>) -> Self {
-        Self(
-            cards
-                .into_iter()
-                .map(|c| u64::from(c))
-                .fold(0u64, |a, b| a | b),
-        )
+        cards.into_iter().collect()
     }
 }
 
-/// one-way conversion to u16 Rank masks
-/// zero-allocation, zero iteration. just shredding bits
+impl FromIterator<Card> for Hand {
+    fn from_iter<I: IntoIterator<Item = Card>>(iter: I) -> Self {
+        Self(iter.into_iter().map(u64::from).fold(0u64, |a, b| a | b))
+    }
+}
+
 impl From<Hand> for u16 {
     fn from(h: Hand) -> Self {
-        let mut x = u64::from(h);
-        x |= x >> 1;
-        x |= x >> 2;
-        x &= 0x1111111111111;
-        let mut y = u64::default();
-        y |= (x >> 00) & 0x0001;
-        y |= (x >> 03) & 0x0002;
-        y |= (x >> 06) & 0x0004;
-        y |= (x >> 09) & 0x0008;
-        y |= (x >> 12) & 0x0010;
-        y |= (x >> 15) & 0x0020;
-        y |= (x >> 18) & 0x0040;
-        y |= (x >> 21) & 0x0080;
-        y |= (x >> 24) & 0x0100;
-        y |= (x >> 27) & 0x0200;
-        y |= (x >> 30) & 0x0400;
-        y |= (x >> 33) & 0x0800;
-        y |= (x >> 36) & 0x1000;
-        y as u16
+        h.ranks()
     }
 }
 
@@ -164,20 +177,7 @@ impl From<Card> for Hand {
 impl TryFrom<&str> for Hand {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        Ok(s.split_whitespace()
-            .map(|token| {
-                token
-                    .chars()
-                    .collect::<Vec<_>>()
-                    .chunks(2)
-                    .map(|chunk| chunk.iter().collect::<String>())
-                    .map(|owned| Card::try_from(owned.as_str()))
-                    .collect::<Result<Vec<Card>, _>>()
-            })
-            .flatten()
-            .flatten()
-            .collect::<Vec<Card>>()
-            .into())
+        Ok(Self::from(Card::parse(s)?))
     }
 }
 

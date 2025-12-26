@@ -1,3 +1,6 @@
+use super::*;
+use crate::*;
+
 /// the tree-local game state is fully abstracted. it must be implemented
 /// by the consumer of this MCCFR API.
 ///
@@ -11,11 +14,11 @@
 /// it is up to the implementation of Encoder to decide how the
 /// game tree is navigated, in a neighbor-aware context. this Game
 /// structure should only concern itself of local properties.
-pub trait Game: Clone + Copy + Send + Sync {
-    type E: super::edge::Edge;
-    type T: super::turn::Turn;
+pub trait TreeGame: Clone + Copy + Send + Sync {
+    type E: TreeEdge;
+    type T: TreeTurn;
     fn root() -> Self;
     fn turn(&self) -> Self::T;
     fn apply(&self, edge: Self::E) -> Self;
-    fn payoff(&self, turn: Self::T) -> crate::Utility;
+    fn payoff(&self, turn: Self::T) -> Utility;
 }

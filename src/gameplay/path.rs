@@ -1,19 +1,16 @@
-use crate::gameplay::edge::Edge;
-use crate::Arbitrary;
+use crate::gameplay::*;
+use crate::*;
 
 #[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path(u64);
 
 impl Path {
+    const SEPARATOR: &'static str = "/";
     pub fn length(&self) -> usize {
         (67 - self.0.leading_zeros() as usize) / 4
     }
     pub fn raises(&self) -> usize {
-        self.into_iter()
-            .rev()
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_aggro())
-            .count()
+        crate::mccfr::Info::depth(self)
     }
 }
 
@@ -60,11 +57,27 @@ impl From<i64> for Path {
     }
 }
 
+impl TryFrom<&str> for Path {
+    type Error = anyhow::Error;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        s.split(Self::SEPARATOR)
+            .map(Edge::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .map(Self::from)
+    }
+}
+
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.clone()
-            .into_iter()
-            .try_for_each(|e| write!(f, ".{}", e))
+        write!(
+            f,
+            "{}",
+            self.clone()
+                .into_iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join(Self::SEPARATOR)
+        )
     }
 }
 

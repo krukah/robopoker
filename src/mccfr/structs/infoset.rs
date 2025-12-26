@@ -1,9 +1,5 @@
-use super::node::Node;
-use super::tree::Tree;
-use crate::mccfr::traits::edge::Edge;
-use crate::mccfr::traits::game::Game;
-use crate::mccfr::traits::info::Info;
-use crate::mccfr::traits::turn::Turn;
+use super::*;
+use crate::mccfr::*;
 
 /// the infoset is pre-implemented. it is an [un]ordered collection of
 /// Node indices, and a thread-safe readonly reference to the Tree
@@ -19,20 +15,20 @@ use crate::mccfr::traits::turn::Turn;
 #[derive(Debug, Default)]
 pub struct InfoSet<T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     span: Vec<petgraph::graph::NodeIndex>,
     tree: std::sync::Arc<Tree<T, E, G, I>>,
 }
 impl<T, E, G, I> InfoSet<T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<T = T, E = E>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<T = T, E = E>,
+    I: TreeInfo<E = E, T = T>,
 {
     pub fn from(tree: std::sync::Arc<Tree<T, E, G, I>>) -> Self {
         Self {
@@ -52,5 +48,8 @@ where
     }
     pub fn info(&self) -> I {
         self.head().info().clone()
+    }
+    pub fn tree(&self) -> &Tree<T, E, G, I> {
+        &self.tree
     }
 }

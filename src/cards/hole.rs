@@ -5,12 +5,6 @@ use super::observation::Observation;
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Hole(Hand);
 
-impl Hole {
-    pub fn empty() -> Self {
-        Self(Hand::empty())
-    }
-}
-
 impl std::fmt::Display for Hole {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)

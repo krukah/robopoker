@@ -3,18 +3,10 @@
 //! This module implements a single clustering layer that maps poker hand isomorphisms
 //! to abstract buckets using the k-means algorithm with Elkan acceleration.
 
-use super::bounds::Bound;
-use super::elkan::Elkan;
-use super::histogram::Histogram;
-use super::lookup::Lookup;
-use super::metric::Metric;
-use super::pair::Pair;
-use super::transitions::Shadow;
-use crate::cards::isomorphism::Isomorphism;
-use crate::cards::isomorphisms::IsomorphismIterator;
-use crate::cards::street::Street;
-use crate::gameplay::abstraction::Abstraction;
-use crate::Energy;
+use super::*;
+use crate::cards::*;
+use crate::gameplay::*;
+use crate::*;
 use std::collections::BTreeMap;
 
 /// A clustering layer that maps poker hand isomorphisms to abstract buckets.
@@ -26,125 +18,59 @@ use std::collections::BTreeMap;
 ///
 /// The layer produces three artifacts:
 /// 1. A `Lookup` table mapping isomorphisms to abstractions
-/// 2. A `Shadow` transition model mapping abstractions to next-street distributions
+/// 2. A `Future` transition model mapping abstractions to next-street distributions
 /// 3. A `Metric` defining distances between learned abstractions
-pub struct Layer {
+pub struct Layer<const K: usize, const N: usize> {
     /// The betting street this layer represents
     street: Street,
     /// Distance metric for computing EMD between abstractions in the next street
     metric: Metric,
-    /// All poker hand histograms, indexed by isomorphism order (N total)
-    points: Vec<Histogram>,
     /// Learned k-means cluster centroids, indexed by abstraction (K total)
-    kmeans: Vec<Histogram>,
+    kmeans: [Histogram; K],
+    /// All poker hand histograms, indexed by isomorphism order (N total)
+    points: Box<[Histogram; N]>,
     /// Distance bounds for each point, used by Elkan acceleration (not persisted)
-    bounds: Vec<Bound>,
+    bounds: Box<[Bounds<K>; N]>,
 }
 
-impl Layer {
-    /// Returns a reference to all data points (N total).
-    ///
-    /// These are the poker hand histograms representing the complete dataset,
-    /// with one histogram per isomorphism class.
-    fn points(&self) -> &Vec<Histogram> {
-        &self.points
-    }
-
-    /// Returns a reference to the current k-means cluster centroids (K total).
-    ///
-    /// Each centroid is a histogram representing the center of a learned abstraction bucket.
-    fn kmeans(&self) -> &Vec<Histogram> {
-        &self.kmeans
-    }
-
-    /// Entry point for learning k-means abstractions across all streets and persisting to disk.
-    ///
-    /// This function:
-    /// 1. Logs which streets already have computed abstractions
-    /// 2. Computes and saves abstractions for streets that need them
-    ///
-    /// Streets are processed in reverse order (River → Turn → Flop → Preflop)
-    /// to ensure dependencies are available when needed.
-    pub fn learn() {
-        use crate::save::disk::Disk;
-        Street::all()
-            .into_iter()
-            .rev()
-            .filter(|&&s| Self::done(s))
-            .for_each(|s| log::info!("{:<32}{:<16}{:<32}", "using kmeans layer", s, Self::name()));
-        Street::all()
-            .into_iter()
-            .rev()
-            .filter(|&&s| !Self::done(s))
-            .map(|&s| Self::grow(s).save())
-            .count();
-    }
-}
-
-impl Layer {
-    /// Builds a lookup table mapping each isomorphism to its nearest cluster abstraction.
-    ///
-    /// For preflop and river, returns a trivial 1:1 mapping since no clustering is performed.
-    /// For flop and turn, assigns each hand isomorphism to its nearest learned cluster centroid
-    /// using parallel computation.
-    ///
-    /// Returns a `Lookup` structure in `IsomorphismIterator` order.
-    fn lookup(&self) -> Lookup {
-        // @parallelizable
-        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
-        use crate::save::disk::Disk;
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
-        let street = self.street();
-        match street {
-            Street::Pref | Street::Rive => Lookup::grow(street),
-            Street::Flop | Street::Turn => {
-                let progress = crate::progress(self.n());
-                let result = (0..self.n())
-                    .into_par_iter()
-                    .map(|i| self.neighbor(i))
-                    .inspect(|_| progress.inc(1))
-                    .collect::<Vec<(usize, f32)>>()
-                    .into_iter()
-                    .map(|(k, _)| self.abstraction(k))
-                    .zip(IsomorphismIterator::from(street))
-                    .map(|(abs, iso)| (iso, abs))
-                    .collect::<BTreeMap<Isomorphism, Abstraction>>()
-                    .into();
-                progress.finish();
-                result
-            }
-        }
-    }
-
-    /// Computes the earth mover's distance (EMD) between two histograms.
-    ///
-    /// This is a thin wrapper around the metric's EMD calculation.
-    fn emd(&self, x: &Histogram, y: &Histogram) -> Energy {
-        self.metric.emd(x, y)
-    }
-
-    /// Constructs an `Abstraction` from this layer's street and a cluster index.
-    ///
-    /// Abstractions have a fixed order determined by (street, k-index),
-    /// so this method encapsulates the street dependency.
-    fn abstraction(&self, i: usize) -> Abstraction {
-        Abstraction::from((self.street(), i))
-    }
-
+impl<const K: usize, const N: usize> Layer<K, N> {
     /// Returns the betting street for this layer.
     fn street(&self) -> Street {
         self.street
     }
 
+    /// Constructs an `Abstraction` from this layer's street and a cluster index.
+    fn abstraction(&self, i: usize) -> Abstraction {
+        Abstraction::from((self.street(), i))
+    }
+}
+
+impl<const K: usize, const N: usize> Layer<K, N> {
+    /// Builds a lookup table mapping each isomorphism to its nearest cluster abstraction.
+    fn lookup(&self) -> Lookup
+    where
+        Self: Elkan<K, N>,
+    {
+        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
+        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::ParallelIterator;
+        match self.street() {
+            Street::Pref | Street::Rive => Lookup::grow(self.street()),
+            Street::Flop | Street::Turn => (0..N)
+                .into_par_iter()
+                .map(|i| self.neighbor(i))
+                .collect::<Vec<(usize, f32)>>()
+                .into_iter()
+                .map(|(k, _)| self.abstraction(k))
+                .zip(IsomorphismIterator::from(self.street()))
+                .map(|(abs, iso)| (iso, abs))
+                .collect::<BTreeMap<Isomorphism, Abstraction>>()
+                .into(),
+        }
+    }
+
     /// Computes pairwise distances between all learned cluster centroids.
-    ///
-    /// Builds a `Metric` containing the symmetric average EMD for each pair of abstractions.
-    /// This metric is used by the previous street when computing distances between its histograms.
-    ///
-    /// Only computes the lower triangular portion to avoid redundant work.
     fn metric(&self) -> Metric {
-        // @parallelizable
         log::info!("{:<32}{:<32}", "calculating metric", self.street());
         let mut metric = BTreeMap::new();
         for (i, x) in self.kmeans.iter().enumerate() {
@@ -162,14 +88,8 @@ impl Layer {
         Metric::from(metric)
     }
 
-    /// Builds the transition shadow mapping abstractions to their centroid histograms.
-    ///
-    /// Returns a `Shadow` structure in `AbstractionIterator` order that maps each abstraction
-    /// on this street to its distribution over next-street abstractions.
-    ///
-    /// This is the terminal case in the recursive abstraction refinement process.
-    fn decomp(&self) -> Shadow {
-        // @parallelizable
+    /// Builds the transition future hand mapping abstractions to their centroid histograms.
+    fn future(&self) -> Future {
         log::info!("{:<32}{:<32}", "calculating transitions", self.street());
         self.kmeans()
             .iter()
@@ -182,106 +102,62 @@ impl Layer {
 }
 
 /// Elkan k-means implementation for clustering poker hand abstractions.
-///
-/// This trait implementation provides the Elkan-accelerated k-means algorithm
-/// with distance bounds to avoid redundant distance calculations.
-impl Elkan for Layer {
-    /// The data point type is a histogram over next-street abstractions.
+impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
     type P = Histogram;
 
-    /// Returns the number of k-means iterations to perform for this street.
     fn t(&self) -> usize {
         self.street().t()
     }
 
-    /// Returns the target number of clusters (K) for this street.
-    fn k(&self) -> usize {
-        self.street().k()
-    }
-
-    /// Returns the complete dataset of points to be clustered.
-    ///
-    /// # Panics
-    /// Panics if the number of points doesn't match the expected count.
-    fn dataset(&self) -> &Vec<Histogram> {
-        assert!(self.points.len() == self.n());
+    fn points(&self) -> &[Histogram; N] {
         &self.points
     }
 
-    /// Returns the current k-means cluster centroids.
-    ///
-    /// # Panics
-    /// Panics if the number of centroids doesn't match K.
-    fn kmeans(&self) -> &Vec<Histogram> {
-        assert!(self.kmeans.len() == self.k());
+    fn kmeans(&self) -> &[Histogram; K] {
         &self.kmeans
     }
 
-    /// Returns the distance bounds for Elkan acceleration.
-    ///
-    /// # Panics
-    /// Panics if the number of bounds doesn't match the number of data points.
-    fn bounds(&self) -> &Vec<Bound> {
-        assert!(self.bounds.len() == self.n());
+    fn bounds(&self) -> &[Bounds<K>; N] {
         &self.bounds
     }
 
-    /// Computes the distance between two histograms using EMD.
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
         self.metric.emd(h1, h2)
     }
 
-    /// Initializes k-means centroids using the k-means++ algorithm.
-    ///
-    /// The algorithm:
-    /// 1. Selects the first centroid uniformly at random from the dataset
-    /// 2. For each subsequent centroid, selects a point with probability proportional
-    ///    to the squared distance from its nearest existing centroid
-    /// 3. Repeats until K centroids are selected
-    ///
-    /// For preflop and river streets, returns the full dataset unchanged since
-    /// no clustering is performed (N = K).
-    ///
-    /// Uses deterministic seeding based on the street for reproducibility.
-    fn init_kmeans(&self) -> Vec<Histogram> {
-        // @parallelizable
-        use rand::distr::weighted::WeightedIndex;
-        use rand::distr::Distribution;
-        use rand::rngs::SmallRng;
+    fn init_kmeans(&self) -> [Histogram; K] {
         use rand::SeedableRng;
+        use rand::distr::Distribution;
+        use rand::distr::weighted::WeightedIndex;
+        use rand::rngs::SmallRng;
         use rayon::iter::IntoParallelRefIterator;
         use rayon::iter::ParallelIterator;
         use std::hash::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
         // don't do any abstraction on preflop or river
-        let k = self.street().k();
-        let n = self.points().len();
         if matches!(self.street(), Street::Pref | Street::Rive) {
-            assert!(n == k);
-            return self.points().clone();
+            assert!(N == K);
+            return std::array::from_fn(|i| self.points()[i]);
         }
         // deterministic pseudo-random clustering
         let ref mut hasher = DefaultHasher::default();
         self.street().hash(hasher);
         let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
         // kmeans++ initialization
-        let mut potentials = vec![1.; n];
-        let mut histograms = Vec::new();
-        while histograms.len() < k {
+        let mut potentials = vec![1.; N];
+        let mut histograms = Vec::with_capacity(K);
+        while histograms.len() < K {
             let i = WeightedIndex::new(potentials.iter())
                 .expect("valid weights array")
                 .sample(rng);
-            let x = self
-                .points()
-                .get(i)
-                .expect("sharing index with outer layer");
-            histograms.push(x.clone());
+            let x = self.points()[i];
+            histograms.push(x);
             potentials[i] = 0.;
             potentials = self
                 .points()
                 .par_iter()
-                .map(|h| self.emd(x, h))
+                .map(|h| self.distance(&x, &h))
                 .map(|p| p * p)
                 .collect::<Vec<Energy>>()
                 .iter()
@@ -289,91 +165,165 @@ impl Elkan for Layer {
                 .map(|(d0, d1)| Energy::min(*d0, *d1))
                 .collect::<Vec<Energy>>();
         }
-        histograms
+        histograms.try_into().expect("K")
     }
 }
 
-/// Disk persistence implementation for saving and loading clustering layers.
-///
-/// A layer produces and persists three artifacts:
-/// - Lookup table (isomorphism → abstraction mappings)
-/// - Shadow transitions (abstraction → histogram distributions)
-/// - Metric (pairwise distances between abstractions)
-impl crate::save::disk::Disk for Layer {
-    /// Returns a formatted name combining the three artifact types.
-    fn name() -> String {
-        format!(
-            "{:<16}{:<16}{:<16}",
-            Lookup::name(),
-            Shadow::name(),
-            Metric::name()
-        )
+#[cfg(feature = "database")]
+impl<const K: usize, const N: usize> Layer<K, N> {
+    /// Internal clustering implementation for a specific K, N.
+    pub async fn cluster(street: Street, client: &tokio_postgres::Client) -> Artifacts {
+        log::info!("{:<32}{:<32}", "kmeans hydrating", street);
+        let mut layer = Self::build(street, client).await;
+        log::info!("{:<32}{:<32}", "kmeans initializing", street);
+        layer.kmeans = layer.init_kmeans();
+        log::info!("{:<32}{:<32}", "kmeans bounding", street);
+        layer.bounds = layer.init_bounds();
+        log::info!("{:<32}{:<32}", "kmeans iterating", street);
+        let new = vec![Bounds::default(); N].try_into().expect("N");
+        let ref mut old = layer.bounds;
+        let ref mut old = std::mem::replace(old, new);
+        for i in 0..layer.t() {
+            layer.kmeans = layer.step_elkan(old);
+            log::debug!("{:3}", i);
+        }
+        let ref mut new = layer.bounds;
+        std::mem::swap(new, old);
+        Artifacts {
+            lookup: layer.lookup(),
+            metric: layer.metric(),
+            future: layer.future(),
+        }
     }
 
-    /// Checks if all three artifacts have been persisted for the given street.
-    fn done(street: Street) -> bool {
-        Lookup::done(street) && Shadow::done(street) && Metric::done(street)
+    /// Build layer dependencies from postgres (not disk).
+    async fn build(street: Street, client: &tokio_postgres::Client) -> Self {
+        if street == Street::Rive {
+            Self {
+                street,
+                metric: Metric::default(),
+                kmeans: std::array::from_fn(|_| Histogram::empty(Street::Rive)),
+                bounds: vec![Bounds::default(); N].try_into().expect("N"),
+                points: vec![Histogram::empty(Street::Rive); N]
+                    .try_into()
+                    .expect("N"),
+            }
+        } else {
+            Self {
+                street,
+                metric: Metric::from_street(client, street.next()).await,
+                kmeans: std::array::from_fn(|_| Histogram::empty(street.next())),
+                bounds: vec![Bounds::default(); N].try_into().expect("N"),
+                points: Lookup::from_street(client, street.next())
+                    .await
+                    .projections()
+                    .try_into()
+                    .expect("projections.len() == N"),
+            }
+        }
     }
+}
 
-    /// Persists all three artifacts (metric, lookup, transitions) to disk.
-    fn save(&self) {
-        self.metric().save();
-        self.lookup().save();
-        self.decomp().save();
-    }
-
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+impl<const K: usize, const N: usize> Layer<K, N> {
     /// Learns k-means clusters for the given street and returns the trained layer.
-    ///
-    /// The process:
-    /// 1. Loads the layer (including next-street data as the metric and points)
-    /// 2. Initializes centroids using k-means++
-    /// 3. Initializes distance bounds for Elkan acceleration
-    /// 4. Runs k-means iterations to convergence
-    ///
-    /// # Parameters
-    /// - `street`: The betting street to cluster
     fn grow(street: Street) -> Self {
         let mut layer = Self::load(street);
         log::info!("{:<32}{:<32}", "initializing kmeans", street);
         layer.kmeans = layer.init_kmeans();
         layer.bounds = layer.init_bounds();
         log::info!("{:<32}{:<32}", "clustering   kmeans", street);
-        let progress = crate::progress(street.t());
+        let new = vec![Bounds::default(); N].try_into().expect("N");
+        let ref mut old = layer.bounds;
+        let ref mut old = std::mem::replace(old, new);
         for _ in 0..layer.t() {
-            let (kmeans, bounds) = layer.next_eklan();
-            layer.kmeans = kmeans;
-            layer.bounds = bounds;
-            progress.inc(1);
+            layer.kmeans = layer.step_elkan(old);
         }
-        progress.finish();
+        let ref mut new = layer.bounds;
+        std::mem::swap(new, old);
         layer
     }
 
     /// Loads a layer for the given street from persisted next-street data.
-    ///
-    /// For the river, creates an empty layer since there is no next street.
-    /// For other streets, loads:
-    /// - Points: Histogram projections from the next street's lookup table
-    /// - Metric: Distance metric from the next street
-    ///
-    /// # Parameters
-    /// - `street`: The betting street to load
     fn load(street: Street) -> Self {
+        use crate::save::Disk;
         match street {
             Street::Rive => Self {
                 street,
-                bounds: Vec::default(),
-                kmeans: Vec::default(),
-                points: Vec::default(),
                 metric: Metric::default(),
+                kmeans: std::array::from_fn(|_| Histogram::empty(Street::Rive)),
+                bounds: vec![Bounds::default(); N].try_into().expect("N"),
+                points: vec![Histogram::empty(Street::Rive); N]
+                    .try_into()
+                    .expect("N"),
             },
             _ => Self {
                 street,
-                bounds: Vec::default(),
-                kmeans: Vec::default(),
-                points: Lookup::load(street.next()).projections(),
                 metric: Metric::load(street.next()),
+                kmeans: std::array::from_fn(|_| Histogram::empty(street.next())),
+                bounds: vec![Bounds::default(); N].try_into().expect("N"),
+                points: Lookup::load(street.next())
+                    .projections()
+                    .try_into()
+                    .expect("projections.len() == N"),
             },
+        }
+    }
+
+    /// Persists all three artifacts (metric, lookup, transitions) to disk.
+    fn save(&self) {
+        use crate::save::Disk;
+        self.metric().save();
+        self.lookup().save();
+        self.future().save();
+    }
+}
+
+#[cfg(feature = "disk")]
+type PrefLayer = Layer<{ Street::Pref.k() }, { Street::Pref.n_isomorphisms() }>;
+#[cfg(feature = "disk")]
+type FlopLayer = Layer<{ Street::Flop.k() }, { Street::Flop.n_isomorphisms() }>;
+#[cfg(feature = "disk")]
+type TurnLayer = Layer<{ Street::Turn.k() }, { Street::Turn.n_isomorphisms() }>;
+
+/// Disk persistence - dispatches to appropriate Layer type
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+pub struct LayerDisk;
+
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+impl LayerDisk {
+    pub fn name() -> &'static str {
+        "layer"
+    }
+
+    pub fn done(street: Street) -> bool {
+        use crate::save::Disk;
+        Lookup::done(street) && Future::done(street) && Metric::done(street)
+    }
+
+    /// Entry point for learning k-means abstractions across all streets.
+    pub fn learn() {
+        Street::all()
+            .into_iter()
+            .rev()
+            .filter(|&s| Self::done(s))
+            .for_each(|s| log::info!("{:<32}{:<16}{:<32}", "using kmeans layer", s, Self::name()));
+        Street::all()
+            .into_iter()
+            .rev()
+            .filter(|&s| !Self::done(s))
+            .for_each(|s| Self::grow_and_save(s));
+    }
+
+    fn grow_and_save(street: Street) {
+        match street {
+            Street::Pref => PrefLayer::grow(street).save(),
+            Street::Flop => FlopLayer::grow(street).save(),
+            Street::Turn => TurnLayer::grow(street).save(),
+            Street::Rive => (), // river uses Lookup::grow directly
         }
     }
 }

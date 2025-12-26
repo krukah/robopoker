@@ -5,6 +5,14 @@
 //! implementation to provide more semantic naming and improve code readability,
 //! while maintaining the simplicity of basic Rust types underneath.
 
-pub mod branch;
-pub mod counterfactual;
-pub mod policy;
+mod branch;
+mod counterfactual;
+mod decision;
+mod policy;
+mod strategy;
+
+pub use branch::*;
+pub use counterfactual::*;
+pub use decision::*;
+pub use policy::*;
+pub use strategy::*;

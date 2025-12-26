@@ -1,12 +1,13 @@
-use super::edge::Edge;
-use super::turn::Turn;
+use super::*;
+use crate::mccfr::*;
+use crate::*;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Game(u8);
+pub struct RpsGame(u8);
 
-impl crate::mccfr::traits::game::Game for Game {
-    type E = Edge;
-    type T = Turn;
+impl TreeGame for RpsGame {
+    type E = RpsEdge;
+    type T = RpsTurn;
 
     fn root() -> Self {
         Self(0)
@@ -14,37 +15,37 @@ impl crate::mccfr::traits::game::Game for Game {
 
     fn turn(&self) -> Self::T {
         match self.0 {
-            00..=00 => Turn::P1,
-            01..=03 => Turn::P2,
-            04..=12 => Turn::Terminal,
+            00..=00 => RpsTurn::P1,
+            01..=03 => RpsTurn::P2,
+            04..=12 => RpsTurn::Terminal,
             _ => unreachable!(),
         }
     }
 
     fn apply(&self, edge: Self::E) -> Self {
         match (self.0, edge) {
-            (00, Edge::R) => Self(01),
-            (00, Edge::P) => Self(02),
-            (00, Edge::S) => Self(03),
-            (01, Edge::R) => Self(04),
-            (01, Edge::P) => Self(05),
-            (01, Edge::S) => Self(06),
-            (02, Edge::R) => Self(07),
-            (02, Edge::P) => Self(08),
-            (02, Edge::S) => Self(09),
-            (03, Edge::R) => Self(10),
-            (03, Edge::P) => Self(11),
-            (03, Edge::S) => Self(12),
+            (00, RpsEdge::R) => Self(01),
+            (00, RpsEdge::P) => Self(02),
+            (00, RpsEdge::S) => Self(03),
+            (01, RpsEdge::R) => Self(04),
+            (01, RpsEdge::P) => Self(05),
+            (01, RpsEdge::S) => Self(06),
+            (02, RpsEdge::R) => Self(07),
+            (02, RpsEdge::P) => Self(08),
+            (02, RpsEdge::S) => Self(09),
+            (03, RpsEdge::R) => Self(10),
+            (03, RpsEdge::P) => Self(11),
+            (03, RpsEdge::S) => Self(12),
             _ => unreachable!(),
         }
     }
 
-    fn payoff(&self, turn: Self::T) -> crate::Utility {
-        const P_WIN: crate::Utility = 1.;
-        const S_WIN: crate::Utility = P_WIN * crate::ASYMMETRIC_UTILITY;
+    fn payoff(&self, turn: Self::T) -> Utility {
+        const P_WIN: Utility = 1.;
+        const S_WIN: Utility = P_WIN * ASYMMETRIC_UTILITY;
         let direction = match turn {
-            Turn::P1 => 0. + 1.,
-            Turn::P2 => 0. - 1.,
+            RpsTurn::P1 => 0. + 1.,
+            RpsTurn::P2 => 0. - 1.,
             _ => unreachable!(),
         };
         let payoff = match self.0 {

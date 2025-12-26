@@ -5,24 +5,25 @@
 //! - `Edge`: Represents actions/decisions available at each state
 //! - `Game`: Defines the game rules and structure
 //! - `Info`: Represents information sets that group indistinguishable states
-//! - `Profile`: Maintains strategy profiles and regret values
+//! - `Profile`: Maintains strategy profiles and regret values (sync)
 //! - `Encoder`: Handles encoding/decoding of game states
-//! - `Trainer`: Implements the CFR training algorithm
+//! - `Blueprint`: Implements the CFR training algorithm (sync)
+//! - `Trainer`: Unified async training interface for both sync and async implementations
 //!
 //! These traits allow implementing CFR for different game types while sharing common infrastructure.
 
-pub mod blueprint;
-pub mod edge;
-pub mod encoder;
-pub mod game;
-pub mod info;
-pub mod profile;
-pub mod turn;
+mod blueprint;
+mod edge;
+mod encoder;
+mod game;
+mod info;
+mod profile;
+mod turn;
 
-pub use blueprint::Blueprint;
-pub use edge::Edge;
-pub use encoder::Encoder;
-pub use game::Game;
-pub use info::Info;
-pub use profile::Profile;
-pub use turn::Turn;
+pub use blueprint::*;
+pub use edge::*;
+pub use encoder::*;
+pub use game::*;
+pub use info::*;
+pub use profile::*;
+pub use turn::*;

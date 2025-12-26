@@ -1,35 +1,38 @@
 pub mod cards;
-pub use cards::*;
+pub mod dto;
 pub mod gameplay;
-pub use gameplay::*;
-pub mod transport;
-pub use transport::*;
-pub mod wasm;
-pub use wasm::*;
-
-#[cfg(feature = "native")]
-pub mod analysis;
-#[cfg(feature = "native")]
-pub mod clustering;
-#[cfg(feature = "native")]
 pub mod mccfr;
-#[cfg(feature = "native")]
+pub mod transport;
+
+#[cfg(feature = "database")]
+pub mod analysis;
+#[cfg(feature = "database")]
+pub mod autotrain;
+#[cfg(feature = "client")]
+pub mod client;
+#[cfg(feature = "server")]
+pub mod clustering;
+#[cfg(feature = "database")]
+pub mod database;
+#[cfg(feature = "server")]
+pub mod gameroom;
+#[cfg(feature = "server")]
+pub mod hosting;
+#[cfg(feature = "server")]
 pub mod players;
-#[cfg(feature = "native")]
+#[cfg(feature = "server")]
 pub mod save;
-#[cfg(feature = "native")]
+#[cfg(feature = "server")]
 pub mod search;
+#[cfg(feature = "database")]
+pub mod workers;
 
 /// dimensional analysis types
 type Chips = i16;
-type Equity = f32;
 type Energy = f32;
 type Entropy = f32;
 type Utility = f32;
 type Probability = f32;
-
-#[cfg(feature = "native")]
-static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 // game tree parameters
 const N: usize = 2;
@@ -69,26 +72,22 @@ const SAMPLING_EXPLORATION: Probability = 0.01;
 const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
 const REGRET_MIN: Utility = -3e5;
 
-pub const PROGRESS_STYLE: &str = "{spinner:.cyan} {elapsed} ~ {percent:>3}% {wide_bar:.cyan}";
+// training parameters
+const TRAINING_LOG_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
+
+// regret bias parameters (weights, not probabilities—only ratios matter)
+// with k=4 raises: p(fold)=50%, p(raises)=33%, p(other)=17%
+const BIAS_FOLDS: Utility = 3.0;
+const BIAS_RAISE: Utility = 0.5;
+const BIAS_OTHER: Utility = 1.0;
 
 /// trait for random generation, mainly (strictly?) for testing
 pub trait Arbitrary {
     fn random() -> Self;
 }
 
-/// progress bar
-#[cfg(feature = "native")]
-pub fn progress(n: usize) -> indicatif::ProgressBar {
-    let tick = std::time::Duration::from_secs(60);
-    let style = indicatif::ProgressStyle::with_template(PROGRESS_STYLE).unwrap();
-    let progress = indicatif::ProgressBar::new(n as u64);
-    progress.set_style(style);
-    progress.enable_steady_tick(tick);
-    progress
-}
-
 /// initialize logging and setup graceful interrupt listener
-#[cfg(feature = "native")]
+#[cfg(feature = "server")]
 pub fn log() {
     std::fs::create_dir_all("logs").expect("create logs directory");
     let config = simplelog::ConfigBuilder::new()
@@ -114,20 +113,7 @@ pub fn log() {
     simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
 }
 
-/// get a database connection and return the client
-#[cfg(feature = "native")]
-pub async fn db() -> std::sync::Arc<tokio_postgres::Client> {
-    log::info!("connecting to database");
-    let tls = tokio_postgres::tls::NoTls;
-    let ref url = std::env::var("DB_URL").expect("DB_URL must be set");
-    let (client, connection) = tokio_postgres::connect(url, tls)
-        .await
-        .expect("database connection failed");
-    tokio::spawn(connection);
-    std::sync::Arc::new(client)
-}
-
-#[cfg(feature = "native")]
+#[cfg(feature = "server")]
 pub fn kys() {
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
@@ -137,12 +123,21 @@ pub fn kys() {
     });
 }
 
-#[cfg(feature = "native")]
+#[cfg(feature = "server")]
+static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+#[cfg(feature = "server")]
+pub fn interrupted() -> bool {
+    INTERRUPTED.load(std::sync::atomic::Ordering::Relaxed)
+}
+#[cfg(not(feature = "server"))]
+pub fn interrupted() -> bool {
+    false
+}
+#[cfg(feature = "server")]
 pub fn brb() {
     std::thread::spawn(|| {
-        let ref mut buffer = String::new();
         loop {
-            buffer.clear();
+            let ref mut buffer = String::new();
             if let Ok(_) = std::io::stdin().read_line(buffer) {
                 if buffer.trim().to_uppercase() == "Q" {
                     log::warn!("graceful interrupt requested, finishing current batch...");

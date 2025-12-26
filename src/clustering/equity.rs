@@ -1,8 +1,7 @@
-use super::histogram::Histogram;
-use crate::gameplay::abstraction::Abstraction;
-use crate::transport::measure::Measure;
-use crate::Energy;
-use crate::Probability;
+use super::*;
+use crate::gameplay::*;
+use crate::transport::*;
+use crate::*;
 
 /// useful struct for grouping methods that help in calculating
 /// optimal transport between two Equity Histograms.

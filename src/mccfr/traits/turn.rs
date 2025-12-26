@@ -2,7 +2,7 @@
 /// but requires two fundamnetal properties:
 /// 1. it has an element of chance
 /// 2. its elements can be mapped to by unsigned integers
-pub trait Turn:
+pub trait TreeTurn:
     Clone + Copy + PartialEq + Eq + Send + Sync + std::fmt::Debug + std::hash::Hash
 {
     fn chance() -> Self;

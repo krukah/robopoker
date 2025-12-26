@@ -1,7 +1,7 @@
-use crate::cards::hole::Hole;
 use crate::Chips;
+use crate::cards::*;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Seat {
     state: State,
     stack: Chips,
@@ -14,14 +14,14 @@ pub struct Seat {
     cards: Hole,
 }
 
-impl From<Chips> for Seat {
-    fn from(stack: Chips) -> Self {
+impl From<(Hole, Chips)> for Seat {
+    fn from((cards, stack): (Hole, Chips)) -> Self {
         Self {
+            cards,
             stack,
             spent: 0,
             stake: 0,
             state: State::Betting,
-            cards: Hole::empty(),
         }
     }
 }
@@ -63,6 +63,9 @@ impl Seat {
     pub fn reset_spent(&mut self) {
         self.spent = 0;
     }
+    pub fn reset_stack(&mut self) {
+        self.stack = crate::STACK;
+    }
 }
 
 impl std::fmt::Display for Seat {
@@ -77,11 +80,29 @@ impl std::fmt::Display for Seat {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum State {
     Betting,
     Shoving,
     Folding,
+}
+
+impl State {
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Betting | Self::Shoving)
+    }
+}
+
+impl TryFrom<&str> for State {
+    type Error = anyhow::Error;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.to_uppercase().as_str() {
+            "P" => Ok(State::Betting),
+            "S" => Ok(State::Shoving),
+            "F" => Ok(State::Folding),
+            _ => Err(anyhow::anyhow!("invalid state string")),
+        }
+    }
 }
 
 impl std::fmt::Display for State {
