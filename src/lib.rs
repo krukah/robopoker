@@ -8,8 +8,6 @@ pub mod transport;
 pub mod analysis;
 #[cfg(feature = "database")]
 pub mod autotrain;
-#[cfg(feature = "client")]
-pub mod client;
 #[cfg(feature = "server")]
 pub mod clustering;
 #[cfg(feature = "database")]
