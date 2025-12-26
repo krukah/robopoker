@@ -203,37 +203,3 @@ impl Arbitrary for Edge {
         }
     }
 }
-
-#[cfg(feature = "client")]
-impl Edge {
-    pub fn color(&self) -> String {
-        match self {
-            Edge::Draw => "#3B82F6".to_string(),
-            Edge::Fold => "#6B7280".to_string(),
-            Edge::Check => "#0F4C2F".to_string(),
-            Edge::Call => "#3B82F6".to_string(),
-            Edge::Raise(odds) => crate::client::raise_color(*odds),
-            Edge::Shove => "#DC2626".to_string(),
-        }
-    }
-    pub fn symbol(&self) -> &'static str {
-        match self {
-            Edge::Draw => "?",
-            Edge::Fold => "F",
-            Edge::Check => "O",
-            Edge::Call => "*",
-            Edge::Raise(_) => "+",
-            Edge::Shove => "!",
-        }
-    }
-    pub fn label(&self) -> String {
-        match self {
-            Edge::Draw => format!("Deal"),
-            Edge::Fold => format!("Fold"),
-            Edge::Call => format!("Call"),
-            Edge::Check => format!("Check"),
-            Edge::Shove => format!("Shove"),
-            Edge::Raise(odds) => odds.ratio(),
-        }
-    }
-}

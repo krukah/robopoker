@@ -3,8 +3,7 @@ use super::suit::Suit;
 
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct Card(u8);
 
 impl Card {

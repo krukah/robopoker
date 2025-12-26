@@ -212,32 +212,6 @@ impl From<Action> for colored::Color {
     }
 }
 
-#[cfg(feature = "client")]
-impl Action {
-    pub fn color(&self) -> &'static str {
-        match self {
-            Action::Fold => "#6B7280",
-            Action::Check => "#0F4C2F",
-            Action::Call(_) => "#3B82F6",
-            Action::Raise(_) => "#F59E0B",
-            Action::Shove(_) => "#DC2626",
-            Action::Draw(_) => "#3B82F6",
-            Action::Blind(_) => "#F59E0B",
-        }
-    }
-    pub fn style(&self) -> &'static str {
-        match self {
-            Action::Fold => "bg-action-fold hover:bg-action-fold/90",
-            Action::Check => "bg-action-check hover:bg-action-check/90",
-            Action::Call(_) => "bg-action-call hover:bg-action-call/90",
-            Action::Raise(_) => "bg-action-raise hover:bg-action-raise/90",
-            Action::Shove(_) => "bg-action-allin hover:bg-action-allin/90",
-            Action::Draw(_) => "bg-card-back hover:bg-card-back/90",
-            Action::Blind(_) => "bg-accent-gold hover:bg-accent-gold/90",
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

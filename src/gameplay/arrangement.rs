@@ -2,8 +2,7 @@ use super::*;
 use crate::cards::*;
 use crate::*;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Arrangement([Option<Card>; 7]);
 
 impl Default for Arrangement {
