@@ -1,9 +1,6 @@
-use super::api::API;
-use super::query::Query;
-use crate::cards::hand::Hand;
-use crate::cards::observation::Observation;
-use crate::cards::strength::Strength;
-use crate::gameplay::abstraction::Abstraction;
+use super::*;
+use crate::cards::*;
+use crate::gameplay::*;
 use clap::Parser;
 use std::io::Write;
 
@@ -18,7 +15,7 @@ impl From<API> for CLI {
 impl CLI {
     pub async fn run() -> () {
         log::info!("entering analysis");
-        let cli = Self(API::from(crate::db().await));
+        let cli = Self(API::from(crate::save::db().await));
         loop {
             print!("> ");
             let ref mut input = String::new();
@@ -78,16 +75,6 @@ impl CLI {
                     return Ok(println!("{}", self.0.abs_population(abs).await?));
                 }
                 Err("invalid population target".into())
-            }
-
-            Query::Centrality { target } => {
-                if let Ok(obs) = Observation::try_from(target.as_str()) {
-                    return Ok(println!("{:.4}", self.0.obs_centrality(obs).await?));
-                }
-                if let Ok(abs) = Abstraction::try_from(target.as_str()) {
-                    return Ok(println!("{:.4}", self.0.abs_centrality(abs).await?));
-                }
-                Err("invalid centrality target".into())
             }
 
             Query::Similar { target } => {
@@ -174,6 +161,72 @@ impl CLI {
                     return Ok(println!("{}", distribution));
                 }
                 Err("invalid histogram target".into())
+            }
+
+            Query::Path { value } => {
+                let path = Path::from(value);
+                println!("Path({})", value);
+                println!("  Display:  {}", path);
+                println!("  Length:   {}", path.length());
+                println!("  Raises:   {}", path.raises());
+                println!("  Edges:    {:?}", Vec::<Edge>::from(path));
+                Ok(())
+            }
+
+            Query::Edge { value } => {
+                let edge = Edge::from(value);
+                println!("Edge({})", value);
+                println!("  Display:  {}", edge);
+                println!("  Is choice: {}", edge.is_choice());
+                println!("  Is aggro:  {}", edge.is_aggro());
+                Ok(())
+            }
+
+            Query::AbsFromInt { value } => {
+                let abs = Abstraction::from(value);
+                println!("Abstraction({})", value);
+                println!("  Display:  {}", abs);
+                println!("  Street:   {}", abs.street());
+                println!("  Index:    {}", abs.index());
+                Ok(())
+            }
+
+            Query::ObsFromInt { value } => {
+                println!("Observation({})", value);
+                match std::panic::catch_unwind(|| Observation::from(value)) {
+                    Ok(obs) => {
+                        println!("  Display:  {}", obs);
+                        println!("  Street:   {}", obs.street());
+                        println!("  i64:      {}", i64::from(obs));
+                        Ok(())
+                    }
+                    Err(_) => {
+                        println!("  Error: Invalid observation encoding (assertions failed)");
+                        println!("  Note: Observations require valid poker hand representations");
+                        Ok(())
+                    }
+                }
+            }
+
+            Query::Isomorphism { value } => {
+                println!("Isomorphism({})", value);
+                match std::panic::catch_unwind(|| {
+                    let iso = Isomorphism::from(value);
+                    let obs = Observation::from(iso);
+                    (iso, obs)
+                }) {
+                    Ok((iso, obs)) => {
+                        println!("  Observation: {}", obs);
+                        println!("  Street:      {}", obs.street());
+                        println!("  i64:         {}", i64::from(iso));
+                        Ok(())
+                    }
+                    Err(_) => {
+                        println!("  Error: Invalid isomorphism encoding (assertions failed)");
+                        println!("  Note: Isomorphisms require valid poker hand representations");
+                        Ok(())
+                    }
+                }
             }
         }
     }

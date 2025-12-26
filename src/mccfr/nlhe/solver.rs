@@ -1,8 +1,8 @@
-use super::encoder::Encoder;
-use super::profile::Profile;
-use crate::cards::street::Street;
-use crate::save::disk::Disk;
-use crate::Arbitrary;
+use super::*;
+use crate::gameplay::*;
+use crate::mccfr::*;
+use crate::*;
+use std::collections::BTreeMap;
 
 /// NLHE represents the complete Monte Carlo Counterfactual Regret Minimization (MCCFR) algorithm
 /// for No-Limit Hold'em poker. It combines:
@@ -17,38 +17,112 @@ use crate::Arbitrary;
 ///
 /// The training process uses external sampling MCCFR with alternating updates and
 /// linear averaging of strategies over time.
-pub struct NLHE {
-    pub(super) sampler: Encoder,
-    pub(super) profile: Profile,
+pub struct NlheSolver {
+    pub sampler: NlheEncoder,
+    pub profile: NlheProfile,
 }
 
-impl NLHE {
-    pub fn solve() {
-        use crate::mccfr::traits::blueprint::Blueprint;
-        Self::train();
+#[cfg(feature = "database")]
+#[async_trait::async_trait]
+impl crate::save::Hydrate for NlheSolver {
+    async fn hydrate(client: std::sync::Arc<tokio_postgres::Client>) -> Self {
+        Self {
+            sampler: NlheEncoder::hydrate(client.clone()).await,
+            profile: NlheProfile::hydrate(client.clone()).await,
+        }
     }
 }
 
-impl Disk for NLHE {
-    fn name() -> String {
-        unimplemented!()
+impl Blueprint for NlheSolver {
+    type T = Turn;
+    type E = Edge;
+    type G = Game;
+    type I = Info;
+    type P = NlheProfile;
+    type S = NlheEncoder;
+
+    fn tree_count() -> usize {
+        crate::CFR_TREE_COUNT_NLHE
+    }
+    fn batch_size() -> usize {
+        crate::CFR_BATCH_SIZE_NLHE
+    }
+
+    fn advance(&mut self) {
+        self.profile.increment();
+    }
+    fn encoder(&self) -> &Self::S {
+        &self.sampler
+    }
+    fn profile(&self) -> &Self::P {
+        &self.profile
+    }
+    fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut Utility {
+        &mut self
+            .profile
+            .encounters
+            .entry(*info)
+            .or_insert_with(BTreeMap::default)
+            .entry(*edge)
+            .or_insert_with(|| edge.policy())
+            .0
+    }
+    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut Utility {
+        &mut self
+            .profile
+            .encounters
+            .entry(*info)
+            .or_insert_with(BTreeMap::default)
+            .entry(*edge)
+            .or_insert_with(|| edge.regret())
+            .1
+    }
+}
+
+#[cfg(feature = "disk")]
+use crate::cards::*;
+
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+impl NlheSolver {
+    #[allow(unused)]
+    fn write() {
+        use crate::save::Disk;
+        if Self::done(Street::random()) {
+            log::info!("resuming regret minimization from checkpoint");
+            Self::load(Street::random()).solve().save();
+        } else {
+            log::info!("starting regret minimization from scratch");
+            Self::grow(Street::random()).solve().save();
+        }
+    }
+}
+
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+impl crate::save::Disk for NlheSolver {
+    fn name() -> &'static str {
+        "solver"
+    }
+    fn sources() -> Vec<std::path::PathBuf> {
+        Vec::new()
     }
     fn done(street: Street) -> bool {
-        Profile::done(street) && Encoder::done(street)
+        NlheProfile::done(street) && NlheEncoder::done(street)
     }
     fn save(&self) {
         self.profile.save();
     }
     fn grow(_: Street) -> Self {
         Self {
-            profile: Profile::default(),
-            sampler: Encoder::load(Street::random()),
+            profile: NlheProfile::default(),
+            sampler: NlheEncoder::load(Street::random()),
         }
     }
     fn load(_: Street) -> Self {
         Self {
-            profile: Profile::load(Street::random()),
-            sampler: Encoder::load(Street::random()),
+            profile: NlheProfile::load(Street::random()),
+            sampler: NlheEncoder::load(Street::random()),
         }
     }
 }

@@ -14,6 +14,7 @@ const WHEEL: u16 = 0b_1000011110000;
 #[cfg(feature = "shortdeck")]
 const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
 
+#[derive(Clone, Copy)]
 /// A lazy evaluator for a hand's strength.
 ///
 /// Using a compact representation of the Hand, we search for

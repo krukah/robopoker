@@ -1,11 +1,7 @@
-use super::histogram::Histogram;
-use super::metric::Metric;
-use super::pair::Pair;
-use super::potential::Potential;
-use crate::gameplay::abstraction::Abstraction;
-use crate::transport::coupling::Coupling;
-use crate::transport::measure::Measure;
-use crate::Probability;
+use super::*;
+use crate::gameplay::*;
+use crate::transport::*;
+use crate::*;
 use std::collections::BTreeMap;
 
 /// greedy algorithm for optimimal transport.
@@ -52,27 +48,28 @@ impl Coupling for Heuristic<'_> {
     }
     fn minimize(mut self) -> Self {
         self.plan.clear();
-        let ref mut pile = Potential::normalize(self.source);
-        let ref mut sink = Potential::normalize(self.target);
-        'cost: while pile.values().any(|&dx| dx > 0.) {
-            'pile: for (x, dx) in pile
-                .iter_mut()
-                .filter(|(_, dx)| **dx > 0.)
-                .map(|(&x, dx)| (x, dx))
+        let ref mut pile = Potential::derive(self.source);
+        let ref mut sink = Potential::derive(self.target);
+        'cost: while pile.values().any(|v| v > 0.) {
+            'pile: for x in pile
+                .support()
+                .filter(|x| pile.density(x) > 0.)
                 .collect::<Vec<_>>()
             {
                 match sink
-                    .iter_mut()
-                    .filter(|(_, dy)| **dy > 0.)
-                    .map(|(&y, dy)| ((y, dy), self.metric.distance(&x, &y)))
+                    .support()
+                    .filter(|y| sink.density(y) > 0.)
+                    .map(|y| (y, self.metric.distance(&x, &y)))
                     .min_by(|(_, d1), (_, d2)| d1.partial_cmp(d2).unwrap())
                 {
                     None => break 'cost,
-                    Some(((y, dy), distance)) => {
-                        let mass = Probability::min(*dx, *dy);
+                    Some((y, distance)) => {
+                        let dx = pile.density(&x);
+                        let dy = sink.density(&y);
+                        let mass = Probability::min(dx, dy);
                         let pair = Pair::from((&x, &y));
-                        *dx -= mass;
-                        *dy -= mass;
+                        pile.increment(&x, -mass);
+                        sink.increment(&y, -mass);
                         *self.plan.entry(pair).or_default() += mass * distance;
                         continue 'pile;
                     }

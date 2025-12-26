@@ -1,16 +1,12 @@
-pub mod blueprint;
-pub mod edge;
-pub mod encoder;
-pub mod game;
-pub mod info;
-pub mod profile;
-pub mod solver;
-pub mod turn;
+mod encoder;
+mod info;
+mod profile;
 
-pub use edge::Edge;
-pub use encoder::Encoder;
-pub use game::Game;
-pub use info::Info;
-pub use profile::Profile;
-pub use solver::NLHE;
-pub use turn::Turn;
+pub use encoder::*;
+pub use info::*;
+pub use profile::*;
+
+#[cfg(feature = "server")]
+mod solver;
+#[cfg(feature = "server")]
+pub use solver::*;

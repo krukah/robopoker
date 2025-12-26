@@ -1,12 +1,6 @@
-use super::edge::Edge;
-use super::encoder::Encoder;
-use super::game::Game;
-use super::info::Info;
-use super::profile::Profile;
-use super::turn::Turn;
-use crate::mccfr::structs::infoset::InfoSet;
-use crate::mccfr::structs::tree::Tree;
-use crate::mccfr::types::counterfactual::Counterfactual;
+use super::*;
+use crate::mccfr::*;
+use crate::*;
 
 /// given access to a Profile and Encoder,
 /// we enapsulate the process of
@@ -15,16 +9,12 @@ use crate::mccfr::types::counterfactual::Counterfactual;
 /// 3) updating the Profile after each Counterfactual batch
 /// 4) [optional] apply Discount scheduling to updates
 pub trait Blueprint: Send + Sync {
-    type T: Turn;
-    type E: Edge;
-    type G: Game<E = Self::E, T = Self::T>;
-    type I: Info<E = Self::E, T = Self::T>;
+    type T: TreeTurn;
+    type E: TreeEdge;
+    type G: TreeGame<E = Self::E, T = Self::T>;
+    type I: TreeInfo<E = Self::E, T = Self::T>;
     type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     type S: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
-
-    /// Trains the model by running counterfactual regret minimization iterations.
-    /// This is the main training loop that drives strategy optimization.
-    fn train();
 
     /// Returns the number of trees to process in each training batch.
     /// Batching allows for more efficient parallel processing of game trees.
@@ -53,57 +43,56 @@ pub trait Blueprint: Send + Sync {
     /// This allows updating the historical action weights that determine the final strategy.
     fn mut_policy(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
 
+    /// Run one training iteration: batch, update regrets/weights, advance epoch.
+    fn step(&mut self) {
+        for ref update in self.batch() {
+            self.update_regret(update);
+            self.update_weight(update);
+        }
+        self.profile().metrics().inspect(|m| m.inc_epoch());
+        self.advance();
+    }
+
     /// Updates trainer state based on regret vectors from Profile.
+    /// NOTE: For production training, use trainer binary which provides unified
+    /// interrupt handling and postgres integration.
     fn solve(mut self) -> Self
     where
         Self: Sized,
     {
-        log::info!("type 'Q + ↵' to gracefully interrupt training loop");
-        'training: for _ in 0..Self::iterations() {
-            for ref update in self.batch() {
-                self.update_regret(update);
-                self.update_weight(update);
-            }
-            if self.interrupted() {
-                break 'training;
+        for _ in 0..Self::iterations() {
+            self.step();
+            if crate::interrupted() {
+                break;
             }
         }
         self
     }
 
-    /// handles interrupt for training process
-    fn interrupted(&mut self) -> bool {
-        if crate::INTERRUPTED.load(std::sync::atomic::Ordering::Relaxed) {
-            log::warn!("training interrupted @ {}", self.profile().epochs());
-            true
-        } else {
-            self.advance();
-            false
-        }
-    }
-
     /// Updates accumulated regret values for each edge in the counterfactual.
     fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
-        let ref info = cfr.0.clone();
-        for (edge, regret) in cfr.1.iter() {
+        let ref info = cfr.0;
+        let ref vector = cfr.1;
+        for (edge, regret) in vector.iter() {
             let discount = self.discount(Some(self.profile().sum_regret(info, edge)));
             let accumulated = self.profile().sum_regret(info, edge);
             let accumulated = accumulated * discount;
             let accumulated = accumulated + regret;
-            let accumulated = accumulated.max(crate::REGRET_MIN);
+            let accumulated = accumulated.max(REGRET_MIN);
             *self.mut_regret(info, edge) = accumulated;
         }
     }
 
     /// Updates accumulated policy weights for each edge in the counterfactual.
     fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
-        let ref info = cfr.0.clone();
-        for (edge, policy) in cfr.2.iter() {
+        let ref info = cfr.0;
+        let ref vector = cfr.2;
+        for (edge, policy) in vector.iter() {
             let discount = self.discount(None);
             let accumulated = self.profile().sum_policy(info, edge);
             let accumulated = accumulated * discount;
             let accumulated = accumulated + policy;
-            let accumulated = accumulated.max(crate::POLICY_MIN);
+            let accumulated = accumulated.max(POLICY_MIN);
             *self.mut_policy(info, edge) = accumulated;
         }
     }
@@ -120,9 +109,11 @@ pub trait Blueprint: Send + Sync {
     ///
     /// it would be nice to do a kind of parameter sweep across
     /// these different settings. i should checkout if criterion supports.
+    #[cfg(feature = "server")]
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
+        // @parallelizable
         (0..Self::batch_size())
             // specify batch size in trait implementation
             .into_par_iter()
@@ -130,11 +121,28 @@ pub trait Blueprint: Send + Sync {
             .collect::<Vec<_>>()
             // partition tree into infosets, and only update one player regrets at a time
             .into_iter()
+            .inspect(|t| self.inc_nodes(t.n()))
             .flat_map(|tree| tree.partition().into_values())
             .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
+            .inspect(|_| self.inc_infos(1))
             .collect::<Vec<_>>()
             // calculate CFR vectors (policy, regret) for each infoset
             .into_par_iter()
+            .map(|infoset| self.counterfactual(infoset))
+            .collect::<Vec<_>>()
+    }
+    #[cfg(not(feature = "server"))]
+    fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
+        (0..Self::batch_size())
+            // specify batch size in trait implementation
+            .into_iter()
+            .map(|_| self.tree())
+            .inspect(|t| self.inc_nodes(t.n()))
+            // partition tree into infosets, and only update one player regrets at a time
+            .flat_map(|tree| tree.partition().into_values())
+            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
+            .inspect(|_| self.inc_infos(1))
+            // calculate CFR vectors (policy, regret) for each infoset
             .map(|infoset| self.counterfactual(infoset))
             .collect::<Vec<_>>()
     }
@@ -205,7 +213,7 @@ pub trait Blueprint: Send + Sync {
     /// - `omega`: Controls the rate at which historical updates are given more weight.
     /// - `gamma`: Controls the rate at which the discount factor decays over time.
     /// - `period`: Controls the frequency of discount updates.
-    fn discount(&self, regret: Option<crate::Utility>) -> f32 {
+    fn discount(&self, regret: Option<Utility>) -> f32 {
         match regret {
             None => {
                 let g = self.gamma();
@@ -243,5 +251,14 @@ pub trait Blueprint: Send + Sync {
     }
     fn period(&self) -> usize {
         1
+    }
+
+    // metrics logging helpers
+
+    fn inc_nodes(&self, n: usize) {
+        self.profile().metrics().inspect(|m| m.add_nodes(n));
+    }
+    fn inc_infos(&self, n: usize) {
+        self.profile().metrics().inspect(|m| m.add_infos(n));
     }
 }

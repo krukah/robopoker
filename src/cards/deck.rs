@@ -4,8 +4,15 @@ use super::hole::Hole;
 use super::street::Street;
 
 /// Deck extends much of Hand functionality, with ability to remove cards from itself. Random selection via ::draw(), or sequential via ::flip().
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Deck(Hand);
+
+impl Default for Deck {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deck {
     pub fn new() -> Self {
         Self(Hand::from(Hand::mask()))
@@ -20,6 +27,7 @@ impl Deck {
     /// different from Hand::draw() since that removes
     /// highest card deterministically
     pub fn draw(&mut self) -> Card {
+        assert!(self.0.size() > 0);
         let n = self.0.size();
         let i = rand::random_range(0..n) as u8;
         let mut ones = 0u8;
@@ -37,9 +45,10 @@ impl Deck {
 
     /// only needed for Flop, but the creation of a Hand is well-generalized
     pub fn deal(&mut self, street: Street) -> Hand {
-        (0..street.n_revealed())
+        (0..street.next().n_revealed())
             .map(|_| self.draw())
-            .fold(Hand::empty(), |h, c| Hand::add(h, Hand::from(c)))
+            .map(Hand::from)
+            .fold(Hand::empty(), Hand::add)
     }
 
     /// remove two cards from the deck
@@ -59,5 +68,12 @@ impl From<Deck> for Hand {
 impl From<Hand> for Deck {
     fn from(hand: Hand) -> Self {
         Self(hand)
+    }
+}
+
+impl Iterator for Deck {
+    type Item = Card;
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.draw())
     }
 }

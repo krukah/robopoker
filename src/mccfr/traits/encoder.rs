@@ -1,10 +1,5 @@
-use super::edge::Edge;
-use super::game::Game;
-use super::info::Info;
-use super::turn::Turn;
-use crate::mccfr::structs::node::Node;
-use crate::mccfr::structs::tree::Tree;
-use crate::mccfr::types::branch::Branch;
+use super::*;
+use crate::mccfr::*;
 
 /// infoset encoding is fully abstracted. it must be implemented
 /// by the consumer of this MCCFR API.
@@ -18,10 +13,10 @@ use crate::mccfr::types::branch::Branch;
 /// whereas NLHE must learn the massive abstraction from kmeans clustering
 /// over the set of all hands up to strategic isomorphism.
 pub trait Encoder {
-    type T: Turn;
-    type E: Edge;
-    type G: Game<E = Self::E, T = Self::T>;
-    type I: Info<E = Self::E, T = Self::T>;
+    type T: TreeTurn;
+    type E: TreeEdge;
+    type G: TreeGame<E = Self::E, T = Self::T>;
+    type I: TreeInfo<E = Self::E, T = Self::T>;
 
     fn seed(&self, game: &Self::G) -> Self::I;
     fn info(

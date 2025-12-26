@@ -1,81 +1,150 @@
-use super::histogram::Histogram;
-use crate::gameplay::abstraction::Abstraction;
-use crate::transport::density::Density;
-use crate::Entropy;
-use crate::Probability;
-use std::collections::BTreeMap;
-use std::ops::AddAssign;
+use super::*;
+use crate::cards::*;
+use crate::gameplay::*;
+use crate::transport::*;
+use crate::*;
 
-/// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
-/// potential formulation of the optimal transport problem.
-/// this structure can also be treated as a normalized distribution over Abstractions.
-pub struct Potential(BTreeMap<Abstraction, Entropy>);
+/// Street-specific potential type aliases
+pub type PhiPref = Phi<N_PREF>;
+pub type PhiFlop = Phi<N_FLOP>;
+pub type PhiTurn = Phi<N_TURN>;
+pub type PhiRive = Phi<N_RIVE>;
+
+/// Runtime-polymorphic potential wrapper that preserves the original interface
+/// while eliminating heap allocations internally.
+#[derive(Debug, Clone, Copy)]
+pub enum Potential {
+    Pref(PhiPref),
+    Flop(PhiFlop),
+    Turn(PhiTurn),
+    Rive(PhiRive),
+}
 
 impl Potential {
-    /// useful for Heuristic where we don't need to allocate.
-    /// i guess we don't need to allocate in Sinkhorn either. but it's
-    /// nbd, + we might want to calaculate deltas between new and old potentials
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Abstraction, &mut Entropy)> {
-        self.0.iter_mut()
-    }
-
-    /// also only useful for Heuristic
-    pub fn values(&self) -> impl Iterator<Item = &Entropy> {
-        self.0.values()
-    }
-
-    pub fn increment(&mut self, i: &Abstraction, delta: Entropy) {
-        self.0
-            .get_mut(i)
-            .expect("fixed abstraction space")
-            .add_assign(delta)
-    }
-
-    /// zero potential over the support, in log prob space
     pub fn zeroes(h: &Histogram) -> Self {
-        Self(h.support().copied().map(|x| (x, 0.)).collect())
+        match h {
+            Histogram::Pref(b) => Potential::Pref(Phi::zeroes(b)),
+            Histogram::Flop(b) => Potential::Flop(Phi::zeroes(b)),
+            Histogram::Turn(b) => Potential::Turn(Phi::zeroes(b)),
+            Histogram::Rive(b) => Potential::Rive(Phi::zeroes(b)),
+        }
     }
-
-    /// uniform distribution over the support, in log prob space
     pub fn uniform(h: &Histogram) -> Self {
-        Self(
-            h.support()
-                .copied()
-                .map(|x| (x, h.n()))
-                .map(|(x, y)| (x, 1. / y as Probability))
-                .map(|(x, y)| (x, y.ln() as Entropy))
-                .collect::<BTreeMap<_, _>>(),
-        )
+        match h {
+            Histogram::Pref(b) => Potential::Pref(Phi::uniform(b)),
+            Histogram::Flop(b) => Potential::Flop(Phi::uniform(b)),
+            Histogram::Turn(b) => Potential::Turn(Phi::uniform(b)),
+            Histogram::Rive(b) => Potential::Rive(Phi::uniform(b)),
+        }
     }
-
-    /// unit normalized distribution over the support
-    pub fn normalize(h: &Histogram) -> Self {
-        Self(
-            h.support()
-                .copied()
-                .map(|x| (x, h.density(&x)))
-                .collect::<BTreeMap<_, _>>(),
-        )
+    pub fn derive(h: &Histogram) -> Self {
+        match h {
+            Histogram::Pref(b) => Potential::Pref(Phi::derive(b)),
+            Histogram::Flop(b) => Potential::Flop(Phi::derive(b)),
+            Histogram::Turn(b) => Potential::Turn(Phi::derive(b)),
+            Histogram::Rive(b) => Potential::Rive(Phi::derive(b)),
+        }
+    }
+    pub fn density(&self, x: &Abstraction) -> Entropy {
+        match self {
+            Potential::Pref(p) => p.density(x),
+            Potential::Flop(p) => p.density(x),
+            Potential::Turn(p) => p.density(x),
+            Potential::Rive(p) => p.density(x),
+        }
+    }
+    pub fn support(&self) -> impl Iterator<Item = Abstraction> + '_ {
+        match self {
+            Potential::Pref(p) => IterWrap::Pref(p.support(Street::Pref)),
+            Potential::Flop(p) => IterWrap::Flop(p.support(Street::Flop)),
+            Potential::Turn(p) => IterWrap::Turn(p.support(Street::Turn)),
+            Potential::Rive(p) => IterWrap::Rive(p.support(Street::Rive)),
+        }
+    }
+    pub fn increment(&mut self, x: &Abstraction, delta: Entropy) {
+        match self {
+            Potential::Pref(p) => p.increment(x, delta),
+            Potential::Flop(p) => p.increment(x, delta),
+            Potential::Turn(p) => p.increment(x, delta),
+            Potential::Rive(p) => p.increment(x, delta),
+        }
+    }
+    pub fn set(&mut self, x: &Abstraction, value: Entropy) {
+        match self {
+            Potential::Pref(p) => p.set(x, value),
+            Potential::Flop(p) => p.set(x, value),
+            Potential::Turn(p) => p.set(x, value),
+            Potential::Rive(p) => p.set(x, value),
+        }
+    }
+    pub fn values(&self) -> impl Iterator<Item = Entropy> + '_ {
+        match self {
+            Potential::Pref(p) => IterValWrap::Pref(p.values()),
+            Potential::Flop(p) => IterValWrap::Flop(p.values()),
+            Potential::Turn(p) => IterValWrap::Turn(p.values()),
+            Potential::Rive(p) => IterValWrap::Rive(p.values()),
+        }
     }
 }
 
-impl From<BTreeMap<Abstraction, Entropy>> for Potential {
-    fn from(potential: BTreeMap<Abstraction, Entropy>) -> Self {
-        assert!(potential.len() > 0);
-        Self(potential)
+/// Helper enum to unify different support iterators
+enum IterWrap<A, B, C, D> {
+    Pref(A),
+    Flop(B),
+    Turn(C),
+    Rive(D),
+}
+
+impl<A, B, C, D> Iterator for IterWrap<A, B, C, D>
+where
+    A: Iterator<Item = Abstraction>,
+    B: Iterator<Item = Abstraction>,
+    C: Iterator<Item = Abstraction>,
+    D: Iterator<Item = Abstraction>,
+{
+    type Item = Abstraction;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            IterWrap::Pref(i) => i.next(),
+            IterWrap::Flop(i) => i.next(),
+            IterWrap::Turn(i) => i.next(),
+            IterWrap::Rive(i) => i.next(),
+        }
+    }
+}
+
+/// Helper enum to unify different value iterators
+enum IterValWrap<A, B, C, D> {
+    Pref(A),
+    Flop(B),
+    Turn(C),
+    Rive(D),
+}
+
+impl<A, B, C, D> Iterator for IterValWrap<A, B, C, D>
+where
+    A: Iterator<Item = Entropy>,
+    B: Iterator<Item = Entropy>,
+    C: Iterator<Item = Entropy>,
+    D: Iterator<Item = Entropy>,
+{
+    type Item = Entropy;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            IterValWrap::Pref(i) => i.next(),
+            IterValWrap::Flop(i) => i.next(),
+            IterValWrap::Turn(i) => i.next(),
+            IterValWrap::Rive(i) => i.next(),
+        }
     }
 }
 
 impl Density for Potential {
     type Support = Abstraction;
     fn density(&self, x: &Self::Support) -> Entropy {
-        self.0
-            .get(x)
-            .copied()
-            .inspect(|p| assert!(p.is_finite(), "density overflow"))
-            .expect("abstraction in potential")
+        self.density(x)
     }
-    fn support(&self) -> impl Iterator<Item = &Self::Support> {
-        self.0.keys()
+    fn support(&self) -> impl Iterator<Item = Self::Support> {
+        self.support()
     }
 }

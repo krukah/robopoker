@@ -1,5 +1,5 @@
 /// the edge is fully abstracted. it is basically a marker trait
-pub trait Edge:
+pub trait TreeEdge:
     Copy
     + Clone
     + PartialEq
@@ -8,7 +8,7 @@ pub trait Edge:
     + Ord // can be ignored
     + Send
     + Sync
-    + crate::transport::support::Support
+    + crate::transport::Support
     + std::hash::Hash // can be ignored
     + std::fmt::Debug
 {

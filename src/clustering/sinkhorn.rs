@@ -1,13 +1,7 @@
-use super::histogram::Histogram;
-use super::metric::Metric;
-use super::potential::Potential;
-use crate::gameplay::abstraction::Abstraction;
-use crate::transport::coupling::Coupling;
-use crate::transport::density::Density;
-use crate::transport::measure::Measure;
-use crate::Energy;
-use crate::Entropy;
-use std::collections::BTreeMap;
+use super::*;
+use crate::gameplay::*;
+use crate::transport::*;
+use crate::*;
 
 /// using this to represent an arbitrary instance of the Kontorovich-Rubinstein
 /// potential formulation of the optimal transport problem.
@@ -37,27 +31,25 @@ impl Sinkhorn<'_> {
             }
         }
     }
-    /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
+    /// calculate next iteration of LHS potential after Sinkhorn scaling
     fn lhs(&self) -> Potential {
-        Potential::from(
-            self.lhs
-                .support()
-                .copied()
-                .map(|x| (x, self.divergence(&x, &self.mu, &self.rhs)))
-                .inspect(|(_, dx)| assert!(dx.is_finite(), "lhs entropy overflow"))
-                .collect::<BTreeMap<_, _>>(),
-        )
+        let mut next = Potential::zeroes(self.mu);
+        self.lhs
+            .support()
+            .map(|x| (x, self.divergence(&x, self.mu, &self.rhs)))
+            .inspect(|(_, d)| assert!(d.is_finite(), "lhs entropy overflow"))
+            .for_each(|(x, d)| next.set(&x, d));
+        next
     }
-    /// calculate next iteration of LHS and RHS potentials after Sinkhorn scaling
+    /// calculate next iteration of RHS potential after Sinkhorn scaling
     fn rhs(&self) -> Potential {
-        Potential::from(
-            self.rhs
-                .support()
-                .copied()
-                .map(|x| (x, self.divergence(&x, &self.nu, &self.lhs)))
-                .inspect(|(_, dx)| assert!(dx.is_finite(), "rhs entropy overflow"))
-                .collect::<BTreeMap<_, _>>(),
-        )
+        let mut next = Potential::zeroes(self.nu);
+        self.rhs
+            .support()
+            .map(|x| (x, self.divergence(&x, self.nu, &self.lhs)))
+            .inspect(|(_, d)| assert!(d.is_finite(), "rhs entropy overflow"))
+            .for_each(|(x, d)| next.set(&x, d));
+        next
     }
     /// the coupling formed by joint distribution of LHS and RHS potentials
     fn coupling(&self, x: &Abstraction, y: &Abstraction) -> Energy {
@@ -73,7 +65,7 @@ impl Sinkhorn<'_> {
         histogram.density(x).ln()
             - potential
                 .support()
-                .map(|y| potential.density(y) - self.regularization(x, y))
+                .map(|y| potential.density(&y) - self.regularization(x, &y))
                 .map(|e| e.exp())
                 .map(|e| e.max(Energy::MIN_POSITIVE))
                 .sum::<Energy>()
@@ -86,7 +78,7 @@ impl Sinkhorn<'_> {
     /// stopping criteria
     fn delta(prev: &Potential, next: &Potential) -> Energy {
         prev.support()
-            .map(|x| next.density(x).exp() - prev.density(x).exp())
+            .map(|x| next.density(&x).exp() - prev.density(&x).exp())
             .map(|e| e.abs())
             .sum::<Energy>()
     }
@@ -122,7 +114,7 @@ impl Coupling for Sinkhorn<'_> {
         self.lhs
             .support()
             .flat_map(|x| self.rhs.support().map(move |y| (x, y)))
-            .map(|(x, y)| self.flow(x, y))
+            .map(|(x, y)| self.flow(&x, &y))
             .inspect(|x| assert!(x.is_finite()))
             .sum::<Energy>()
     }

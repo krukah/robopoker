@@ -25,8 +25,8 @@ use crate::Arbitrary;
 pub struct Isomorphism(pub Observation);
 
 impl From<Observation> for Isomorphism {
-    fn from(ref observation: Observation) -> Self {
-        let isomorphism = Permutation::from(observation);
+    fn from(observation: Observation) -> Self {
+        let isomorphism = Permutation::from(&observation);
         let transformed = isomorphism.permute(observation);
         Self(transformed)
     }
@@ -79,11 +79,13 @@ mod tests {
     fn false_positives() {
         let observation = Observation::from(Street::Rive);
         let isomorphism = Isomorphism::from(observation);
-        assert!(Permutation::exhaust()
-            .iter()
-            .map(|p| p.permute(&observation))
-            .map(|o| Isomorphism::from(o))
-            .all(|i| i == isomorphism));
+        assert!(
+            Permutation::exhaust()
+                .iter()
+                .map(|p| p.permute(observation))
+                .map(|o| Isomorphism::from(o))
+                .all(|i| i == isomorphism)
+        );
     }
 
     #[test]
@@ -91,10 +93,12 @@ mod tests {
         let observation = Observation::from(Street::Rive);
         let isomorphism = Isomorphism::from(observation);
         let transformed = Observation::from(isomorphism);
-        assert!(Permutation::exhaust()
-            .iter()
-            .map(|p| p.permute(&transformed))
-            .any(|o| o == observation));
+        assert!(
+            Permutation::exhaust()
+                .iter()
+                .map(|p| p.permute(transformed))
+                .any(|o| o == observation)
+        );
     }
 
     #[test]

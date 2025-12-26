@@ -11,13 +11,17 @@
 //! The module provides both concrete game implementations (`nlhe`, `rps`) as well as
 //! generic infrastructure (`structs`, `traits`, `types`) that can be reused for
 //! implementing CFR on any extensive-form game with perfect recall.
+//!
 
-pub mod nlhe;
-pub mod rps;
-pub mod structs;
-pub mod traits;
-pub mod types;
+pub mod cache;
+mod nlhe;
+mod rps;
+mod structs;
+mod traits;
+mod types;
 
-pub use nlhe::solver::NLHE;
-pub use rps::solver::RPS;
-pub use traits::blueprint::Blueprint;
+pub use nlhe::*;
+pub use rps::*;
+pub use structs::*;
+pub use traits::*;
+pub use types::*;

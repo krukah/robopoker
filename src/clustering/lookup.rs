@@ -1,9 +1,7 @@
-use crate::cards::isomorphism::Isomorphism;
-use crate::cards::isomorphisms::IsomorphismIterator;
-use crate::cards::observation::Observation;
-use crate::cards::street::Street;
-use crate::clustering::histogram::Histogram;
-use crate::gameplay::abstraction::Abstraction;
+use crate::cards::*;
+use crate::clustering::*;
+use crate::gameplay::*;
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 
 #[derive(Default)]
@@ -25,68 +23,99 @@ impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
 
 impl Lookup {
     /// lookup the pre-computed abstraction for the outer observation
-    pub fn lookup(&self, obs: &Observation) -> Abstraction {
+    pub fn lookup(&self, iso: &Isomorphism) -> Abstraction {
         self.0
-            .get(&Isomorphism::from(*obs))
+            .get(iso)
             .cloned()
-            .expect(&format!("precomputed abstraction missing for {obs}"))
+            .expect("precomputed abstraction in lookup")
     }
+
     /// generate the entire space of inner layers
     pub fn projections(&self) -> Vec<Histogram> {
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
         IsomorphismIterator::from(self.street().prev())
             .collect::<Vec<Isomorphism>>()
             .into_par_iter()
-            .map(|inner| self.future(&inner))
+            .map(|i| self.future(&i))
             .collect::<Vec<Histogram>>()
     }
+
     /// distribution over potential next states. this "layer locality" is what
     /// makes imperfect recall hierarchical kmeans nice
     fn future(&self, iso: &Isomorphism) -> Histogram {
         assert!(iso.0.street() != Street::Rive);
         iso.0
             .children()
-            .map(|o| self.lookup(&o))
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .map(Isomorphism::from)
+            .map(|i| self.lookup(&i))
             .collect::<Vec<Abstraction>>()
             .into()
     }
+
     fn street(&self) -> Street {
         self.0.keys().next().expect("non empty").0.street()
     }
-    fn name() -> String {
-        "isomorphism".to_string()
+}
+
+#[cfg(feature = "database")]
+impl crate::save::Schema for Lookup {
+    fn name() -> &'static str {
+        crate::save::ISOMORPHISM
+    }
+    fn columns() -> &'static [tokio_postgres::types::Type] {
+        <crate::mccfr::NlheEncoder as crate::save::Schema>::columns()
+    }
+    fn creates() -> &'static str {
+        <crate::mccfr::NlheEncoder as crate::save::Schema>::creates()
+    }
+    fn indices() -> &'static str {
+        <crate::mccfr::NlheEncoder as crate::save::Schema>::indices()
+    }
+    fn copy() -> &'static str {
+        <crate::mccfr::NlheEncoder as crate::save::Schema>::copy()
+    }
+    fn truncates() -> &'static str {
+        <crate::mccfr::NlheEncoder as crate::save::Schema>::truncates()
+    }
+    fn freeze() -> &'static str {
+        <crate::mccfr::NlheEncoder as crate::save::Schema>::freeze()
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[ignore]
-    fn persistence() {
-        use crate::save::disk::Disk;
-        let street = Street::Pref;
-        let lookup = Lookup::grow(street);
-        lookup.save();
-        let loaded = Lookup::load(street);
-        std::iter::empty()
-            .chain(lookup.0.iter().zip(loaded.0.iter()))
-            .chain(loaded.0.iter().zip(lookup.0.iter()))
-            .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2);
+#[cfg(feature = "database")]
+#[async_trait::async_trait]
+impl crate::save::Streamable for Lookup {
+    type Row = (i64, i16);
+    fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
+        self.0
+            .into_iter()
+            .map(|(iso, abs)| (i64::from(iso), i16::from(abs)))
     }
 }
 
-impl crate::save::disk::Disk for Lookup {
-    fn name() -> String {
-        Self::name()
+#[cfg(feature = "database")]
+impl Lookup {
+    pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
+        const SQL: &str =
+            const_format::concatcp!("SELECT obs, abs FROM ", crate::save::ISOMORPHISM);
+        client
+            .query(SQL, &[])
+            .await
+            .expect("query")
+            .into_iter()
+            .map(|row| (row.get::<_, i64>(0), row.get::<_, i16>(1)))
+            .filter(|(obs, _)| Street::from(*obs) == street)
+            .map(|(obs, abs)| (Isomorphism::from(obs), Abstraction::from(abs)))
+            .collect::<BTreeMap<_, _>>()
+            .into()
     }
+}
+
+impl Lookup {
     /// abstractions for River are calculated once via obs.equity
-    /// abstractions for Preflop are cequivalent to just enumerating isomorphisms
-    fn grow(street: Street) -> Self {
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
+    /// abstractions for Preflop are equivalent to just enumerating isomorphisms
+    pub fn grow(street: Street) -> Self {
         match street {
             Street::Rive => IsomorphismIterator::from(Street::Rive)
                 .collect::<Vec<_>>()
@@ -102,11 +131,30 @@ impl crate::save::disk::Disk for Lookup {
             Street::Flop | Street::Turn => panic!("lookup must be learned via layer for {street}"),
         }
     }
+}
+
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+impl crate::save::Disk for Lookup {
+    fn name() -> &'static str {
+        crate::save::ISOMORPHISM
+    }
+    fn grow(street: Street) -> Self {
+        Lookup::grow(street)
+    }
+    fn sources() -> Vec<std::path::PathBuf> {
+        Street::all()
+            .iter()
+            .rev()
+            .copied()
+            .map(Self::path)
+            .collect()
+    }
     fn load(street: Street) -> Self {
         let ref path = Self::path(street);
         log::info!("{:<32}{:<32}", "loading     lookup", path.display());
-        use byteorder::ReadBytesExt;
         use byteorder::BE;
+        use byteorder::ReadBytesExt;
         use std::fs::File;
         use std::io::BufReader;
         use std::io::Read;
@@ -122,8 +170,8 @@ impl crate::save::disk::Disk for Lookup {
                 2 => {
                     assert!(8 == reader.read_u32::<BE>().expect("observation length"));
                     let iso = reader.read_i64::<BE>().expect("read observation");
-                    assert!(8 == reader.read_u32::<BE>().expect("abstraction length"));
-                    let abs = reader.read_i64::<BE>().expect("read abstraction");
+                    assert!(2 == reader.read_u32::<BE>().expect("abstraction length"));
+                    let abs = reader.read_i16::<BE>().expect("read abstraction");
                     let observation = Isomorphism::from(iso);
                     let abstraction = Abstraction::from(abs);
                     lookup.insert(observation, abstraction);
@@ -139,8 +187,8 @@ impl crate::save::disk::Disk for Lookup {
         let street = self.street();
         let ref path = Self::path(street);
         let ref mut file = File::create(path).expect(&format!("touch {}", path.display()));
-        use byteorder::WriteBytesExt;
         use byteorder::BE;
+        use byteorder::WriteBytesExt;
         use std::fs::File;
         use std::io::Write;
         log::info!("{:<32}{:<32}", "saving      lookup", path.display());
@@ -149,9 +197,29 @@ impl crate::save::disk::Disk for Lookup {
             file.write_u16::<BE>(N_FIELDS).unwrap();
             file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
             file.write_i64::<BE>(i64::from(*obs)).unwrap();
-            file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
-            file.write_i64::<BE>(i64::from(*abs)).unwrap();
+            file.write_u32::<BE>(size_of::<i16>() as u32).unwrap();
+            file.write_i16::<BE>(i16::from(*abs)).unwrap();
         }
         file.write_u16::<BE>(Self::footer()).expect("trailer");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore]
+    #[cfg(feature = "disk")]
+    fn persistence() {
+        use crate::cards::*;
+        use crate::clustering::*;
+        use crate::save::*;
+        let street = Street::Pref;
+        let lookup = Lookup::grow(street);
+        lookup.save();
+        let loaded = Lookup::load(street);
+        std::iter::empty()
+            .chain(lookup.0.iter().zip(loaded.0.iter()))
+            .chain(loaded.0.iter().zip(lookup.0.iter()))
+            .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2);
     }
 }

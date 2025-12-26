@@ -1,11 +1,10 @@
-use crate::cards::kicks::Kickers;
-use crate::cards::ranking::Ranking;
-use crate::cards::strength::Strength;
-use crate::gameplay::seat::State;
-use crate::gameplay::settlement::Settlement;
 use crate::Chips;
+use crate::cards::*;
+use crate::gameplay::*;
 
-// ephemeral data structure that is used to calculate the results of a hand by iterating over hand.actions to calculate side pots, handling every edge case with generalized zero-cost logic
+// ephemeral data structure that is used to calculate the results of a hand by
+// iterating over hand.actions to calculate side pots, handling every edge
+//  case with generalized zero-cost logic
 pub struct Showdown {
     payouts: Vec<Settlement>,
     distributing: Chips,
@@ -43,25 +42,26 @@ impl Showdown {
     fn strongest(&self) -> Option<Strength> {
         self.payouts
             .iter()
-            .filter(|p| p.strength < self.best)
-            .filter(|p| p.status != State::Folding)
-            .map(|p| p.strength)
+            .filter(|p| p.strength() < &self.best)
+            .filter(|p| p.pnl().status() != State::Folding)
+            .map(|p| p.strength())
             .max()
+            .cloned()
     }
     fn remaining(&mut self) -> Option<Chips> {
         self.distributed = self.distributing;
         self.payouts
             .iter()
-            .filter(|p| p.strength == self.best)
-            .filter(|p| p.risked > self.distributed)
-            .filter(|p| p.status != State::Folding)
-            .map(|p| p.risked)
+            .filter(|p| p.strength() == &self.best)
+            .filter(|p| p.pnl().risked() > self.distributed)
+            .filter(|p| p.pnl().status() != State::Folding)
+            .map(|p| p.pnl().risked())
             .min()
     }
     fn winnings(&self) -> Chips {
         self.payouts
             .iter()
-            .map(|p| p.risked)
+            .map(|p| p.pnl().risked())
             .map(|s| std::cmp::min(s, self.distributing))
             .map(|s| (s - self.distributed).max(0))
             .sum()
@@ -71,23 +71,23 @@ impl Showdown {
         let mut winners = self
             .payouts
             .iter_mut()
-            .filter(|p| p.status != State::Folding)
-            .filter(|p| p.strength == self.best)
-            .filter(|p| p.risked > self.distributed)
+            .filter(|p| p.pnl().status() != State::Folding)
+            .filter(|p| p.strength() == &self.best)
+            .filter(|p| p.pnl().risked() > self.distributed)
             .collect::<Vec<&mut Settlement>>();
         let n = winners.len();
         let share = chips / n as Chips;
         let bonus = chips % n as Chips;
         for winner in winners.iter_mut() {
-            winner.reward += share;
+            winner.add(share);
         }
         for winner in winners.iter_mut().take(bonus as usize) {
-            winner.reward += 1;
+            winner.add(1);
         }
     }
     fn is_complete(&self) -> bool {
-        let staked = self.payouts.iter().map(|p| p.risked).sum::<Chips>();
-        let reward = self.payouts.iter().map(|p| p.reward).sum::<Chips>();
+        let staked = self.payouts.iter().map(|p| p.pnl().risked()).sum::<Chips>();
+        let reward = self.payouts.iter().map(|p| p.pnl().reward()).sum::<Chips>();
         staked == reward
     }
 }
@@ -95,7 +95,7 @@ impl Showdown {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::rank::Rank;
+
     // Define functions for hand strengths
     fn ace_high() -> Strength {
         Strength::from((Ranking::HighCard(Rank::Ace), Kickers::default()))
@@ -120,8 +120,8 @@ mod tests {
             Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
-        assert!(settlement[0].reward == 0);
-        assert!(settlement[1].reward == 200);
+        assert!(settlement[0].pnl().reward() == 0);
+        assert!(settlement[1].pnl().reward() == 200);
     }
 
     #[test]
@@ -133,10 +133,10 @@ mod tests {
             Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
-        assert!(settlement[0].reward == 0);
-        assert!(settlement[1].reward == 325);
-        assert!(settlement[2].reward == 0);
-        assert!(settlement[3].reward == 0);
+        assert!(settlement[0].pnl().reward() == 0);
+        assert!(settlement[1].pnl().reward() == 325);
+        assert!(settlement[2].pnl().reward() == 0);
+        assert!(settlement[3].pnl().reward() == 0);
     }
 
     #[test]
@@ -147,9 +147,9 @@ mod tests {
             Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
-        assert!(settlement[0].reward == 150);
-        assert!(settlement[1].reward == 150);
-        assert!(settlement[2].reward == 0);
+        assert!(settlement[0].pnl().reward() == 150);
+        assert!(settlement[1].pnl().reward() == 150);
+        assert!(settlement[2].pnl().reward() == 0);
     }
 
     #[test]
@@ -162,11 +162,11 @@ mod tests {
             Settlement::from((050, State::Folding, the_nuts())),
         ])
         .settle();
-        assert!(settlement[0].reward == 700);
-        assert!(settlement[1].reward == 0);
-        assert!(settlement[2].reward == 0);
-        assert!(settlement[3].reward == 0);
-        assert!(settlement[4].reward == 0);
+        assert!(settlement[0].pnl().reward() == 700);
+        assert!(settlement[1].pnl().reward() == 0);
+        assert!(settlement[2].pnl().reward() == 0);
+        assert!(settlement[3].pnl().reward() == 0);
+        assert!(settlement[4].pnl().reward() == 0);
     }
 
     #[test]
@@ -178,10 +178,10 @@ mod tests {
             Settlement::from((050, State::Shoving, ace_high())),
         ])
         .settle();
-        assert!(settlement[0].reward == 500);
-        assert!(settlement[1].reward == 100);
-        assert!(settlement[2].reward == 150);
-        assert!(settlement[3].reward == 0);
+        assert!(settlement[0].pnl().reward() == 500);
+        assert!(settlement[1].pnl().reward() == 100);
+        assert!(settlement[2].pnl().reward() == 150);
+        assert!(settlement[3].pnl().reward() == 0);
     }
 
     #[test]
@@ -193,10 +193,10 @@ mod tests {
             Settlement::from((150, State::Betting, ace_high())),
         ])
         .settle();
-        assert!(settlement[0].reward == 200);
-        assert!(settlement[1].reward == 150);
-        assert!(settlement[2].reward == 100);
-        assert!(settlement[3].reward == 0);
+        assert!(settlement[0].pnl().reward() == 200);
+        assert!(settlement[1].pnl().reward() == 150);
+        assert!(settlement[2].pnl().reward() == 100);
+        assert!(settlement[3].pnl().reward() == 0);
     }
 
     #[test]
@@ -207,9 +207,9 @@ mod tests {
             Settlement::from((100, State::Betting, ace_high())),
         ])
         .settle();
-        assert!(settlement[0].reward == 150);
-        assert!(settlement[1].reward == 100);
-        assert!(settlement[2].reward == 0);
+        assert!(settlement[0].pnl().reward() == 150);
+        assert!(settlement[1].pnl().reward() == 100);
+        assert!(settlement[2].pnl().reward() == 0);
     }
 
     #[test]
@@ -220,9 +220,9 @@ mod tests {
             Settlement::from((100, State::Betting, two_pair())),
         ])
         .settle();
-        assert!(settlement[0].reward == 150);
-        assert!(settlement[1].reward == 50);
-        assert!(settlement[2].reward == 50);
+        assert!(settlement[0].pnl().reward() == 150);
+        assert!(settlement[1].pnl().reward() == 50);
+        assert!(settlement[2].pnl().reward() == 50);
     }
 
     #[test]
@@ -234,9 +234,9 @@ mod tests {
             Settlement::from((025, State::Folding, the_nuts())),
         ])
         .settle();
-        assert!(settlement[0].reward == 0);
-        assert!(settlement[1].reward == 250);
-        assert!(settlement[2].reward == 0);
-        assert!(settlement[3].reward == 0);
+        assert!(settlement[0].pnl().reward() == 0);
+        assert!(settlement[1].pnl().reward() == 250);
+        assert!(settlement[2].pnl().reward() == 0);
+        assert!(settlement[3].pnl().reward() == 0);
     }
 }

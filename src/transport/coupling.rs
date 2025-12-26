@@ -29,4 +29,3 @@ pub trait Coupling {
     /// Metric uses greedy approximation of EMD.
     fn cost(&self) -> f32;
 }
-

@@ -11,6 +11,20 @@ impl Suit {
     pub const fn all() -> [Suit; 4] {
         [Suit::C, Suit::D, Suit::H, Suit::S]
     }
+    pub fn color(&self) -> String {
+        match self {
+            Suit::C | Suit::S => "rgb(0,0,0)".to_string(),
+            Suit::D | Suit::H => "rgb(220,38,38)".to_string(),
+        }
+    }
+    pub fn ascii(&self) -> char {
+        match self {
+            Suit::C => '♣',
+            Suit::D => '♦',
+            Suit::H => '♥',
+            Suit::S => '♠',
+        }
+    }
 }
 
 /// u8 isomorphism

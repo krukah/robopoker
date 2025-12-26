@@ -1,7 +1,5 @@
-use super::action::Action;
-use super::odds::Odds;
-use crate::Arbitrary;
-use crate::Chips;
+use super::*;
+use crate::*;
 use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
@@ -14,9 +12,8 @@ pub enum Edge {
     Shove,
 }
 
-#[cfg(feature = "native")]
-impl crate::mccfr::traits::edge::Edge for Edge {}
-impl crate::transport::support::Support for Edge {}
+impl crate::mccfr::TreeEdge for Edge {}
+impl crate::transport::Support for Edge {}
 
 impl Edge {
     pub fn is_shove(&self) -> bool {
@@ -24,6 +21,9 @@ impl Edge {
     }
     pub fn is_raise(&self) -> bool {
         matches!(self, Edge::Raise(_))
+    }
+    pub fn is_folded(&self) -> bool {
+        matches!(self, Edge::Fold)
     }
     pub fn is_chance(&self) -> bool {
         matches!(self, Edge::Draw)
@@ -33,6 +33,22 @@ impl Edge {
     }
     pub fn is_choice(&self) -> bool {
         !self.is_chance()
+    }
+}
+
+impl Edge {
+    pub fn regret(&self) -> (Utility, Utility) {
+        match self {
+            Edge::Raise(_) => (Utility::default(), crate::BIAS_RAISE),
+            Edge::Check => (Utility::default(), crate::BIAS_OTHER),
+            Edge::Shove => (Utility::default(), crate::BIAS_RAISE),
+            Edge::Call => (Utility::default(), crate::BIAS_OTHER),
+            Edge::Fold => (Utility::default(), crate::BIAS_FOLDS),
+            Edge::Draw => panic!("chance edges have no learned regret"),
+        }
+    }
+    pub fn policy(&self) -> (Probability, Probability) {
+        (Probability::default(), Probability::default())
     }
 }
 
@@ -118,6 +134,20 @@ impl From<Edge> for u64 {
     }
 }
 
+impl TryFrom<&str> for Edge {
+    type Error = anyhow::Error;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "?" => Ok(Edge::Draw),
+            "F" => Ok(Edge::Fold),
+            "*" => Ok(Edge::Call),
+            "O" => Ok(Edge::Check),
+            "!" => Ok(Edge::Shove),
+            s => Odds::try_from(s).map(Edge::Raise),
+        }
+    }
+}
+
 impl std::fmt::Display for Edge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -139,20 +169,24 @@ mod bijection_tests {
     fn bijective_usize() {
         let raise = Odds::GRID.map(Edge::Raise);
         let edges = [Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove];
-        assert!(edges
-            .into_iter()
-            .chain(raise)
-            .all(|edge| edge == Edge::from(u8::from(edge))));
+        assert!(
+            edges
+                .into_iter()
+                .chain(raise)
+                .all(|edge| edge == Edge::from(u8::from(edge)))
+        );
     }
 
     #[test]
     fn bijective_u64() {
         let raise = Odds::GRID.map(Edge::Raise);
         let edges = [Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove];
-        assert!(edges
-            .into_iter()
-            .chain(raise)
-            .all(|edge| edge == Edge::from(u64::from(edge))));
+        assert!(
+            edges
+                .into_iter()
+                .chain(raise)
+                .all(|edge| edge == Edge::from(u64::from(edge)))
+        );
     }
 }
 
@@ -166,6 +200,40 @@ impl Arbitrary for Edge {
             4 => Self::Shove,
             5 => Self::Raise(Odds::random()),
             _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "client")]
+impl Edge {
+    pub fn color(&self) -> String {
+        match self {
+            Edge::Draw => "#3B82F6".to_string(),
+            Edge::Fold => "#6B7280".to_string(),
+            Edge::Check => "#0F4C2F".to_string(),
+            Edge::Call => "#3B82F6".to_string(),
+            Edge::Raise(odds) => crate::client::raise_color(*odds),
+            Edge::Shove => "#DC2626".to_string(),
+        }
+    }
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            Edge::Draw => "?",
+            Edge::Fold => "F",
+            Edge::Check => "O",
+            Edge::Call => "*",
+            Edge::Raise(_) => "+",
+            Edge::Shove => "!",
+        }
+    }
+    pub fn label(&self) -> String {
+        match self {
+            Edge::Draw => format!("Deal"),
+            Edge::Fold => format!("Fold"),
+            Edge::Call => format!("Call"),
+            Edge::Check => format!("Check"),
+            Edge::Shove => format!("Shove"),
+            Edge::Raise(odds) => odds.ratio(),
         }
     }
 }

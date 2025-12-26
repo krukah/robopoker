@@ -9,38 +9,26 @@
 ///
 /// See Elkan (2003) for more information.
 #[derive(Debug, Clone)]
-pub struct Bound {
+pub struct Bounds<const K: usize> {
     /// The index into self.kmeans for the currently assigned
     /// centroid "nearest neighbor" (i.e. c(x) in the paper) for this
     /// specified point.
-    pub j: usize,
+    j: usize,
     /// Lower bounds on the distance from this point to each centroid c
     /// (l(x,c) in the paper).
-    pub lower: Vec<f32>,
+    lower: [f32; K],
     /// Distance to currently assigned centroid
-    pub error: f32,
-    pub stale: bool,
+    error: f32,
+    stale: bool,
 }
 
-impl Bound {
+impl<const K: usize> Bounds<K> {
     pub fn j(&self) -> usize {
         self.j
-    }
-    pub fn k(&self) -> usize {
-        self.lower.len()
     }
     pub fn u(&self) -> f32 {
         self.error
     }
-    pub fn new(j: usize, k: usize, upper: f32) -> Self {
-        Self {
-            j,
-            lower: vec![0.0; k],
-            error: upper,
-            stale: false,
-        }
-    }
-
     pub fn stale(&self) -> bool {
         self.stale
     }
@@ -50,38 +38,24 @@ impl Bound {
     /// 1. j != c(x) - not currently assigned to this centroid
     /// 2. u(x) > l(x,j) - upper bound exceeds lower bound to j
     /// 3. u(x) > (1/2) * d(c(x), j) - upper bound exceeds half distance between centroids
-    pub fn moved(&self, pairs: &[Vec<f32>], j: usize) -> bool {
-        self.j() != j
-            && self.u() > self.lower.get(j).cloned().expect("k bounds")
-            && self.u() > 0.5 * pairs[self.j()][j]
+    pub fn has_shifted(&self, pairs: &[[f32; K]; K], j: usize) -> bool {
+        self.j() != j && self.u() > self.lower[j] && self.u() > 0.5 * pairs[self.j()][j]
     }
 
     /// Check if this point can be excluded from Step 3 processing
     /// Returns true if u(x) <= s(c(x)) where s(c(x)) is the midpoint
-    pub fn can_exclude(&self, midpoints: &[f32]) -> bool {
+    pub fn can_exclude(&self, midpoints: &[f32; K]) -> bool {
         self.u() <= midpoints[self.j()]
     }
 
-    pub fn shift(self, movements: &[f32]) -> Self {
-        self.update_lower(movements).update_upper(movements)
-    }
-
-    /// Update lower bounds given centroid movements (Elkan Step 5)
-    fn update_lower(mut self, movements: &[f32]) -> Self {
-        self.lower = self
-            .lower
-            .iter()
-            .zip(movements)
-            .map(|(lower, movement)| (lower - movement).max(0.0))
-            .collect();
-        self
-    }
-
-    /// Update upper bound given centroid movements (Elkan Step 6)
-    fn update_upper(mut self, movements: &[f32]) -> Self {
+    /// Mutate bounds in place given centroid movements (Elkan Steps 5-6)
+    pub fn update(&mut self, movements: &[f32; K]) {
+        self.lower
+            .iter_mut()
+            .zip(movements.iter())
+            .for_each(|(lower, movement)| *lower = (*lower - movement).max(0.0));
         self.error += movements[self.j()];
         self.stale = true;
-        self
     }
 
     pub fn refresh(&mut self, distance: f32) {
@@ -102,8 +76,30 @@ impl Bound {
 
     /// this is only used in the naive implementation of bounds generation,
     /// so we don't keep all the information that we have to with Elkan optimizaion.
-    pub fn assign(&mut self, j: usize, distance: f32) {
+    pub fn assign(&mut self, distance: f32, j: usize) {
         self.j = j;
         self.error = distance;
+    }
+}
+
+impl<const K: usize> Default for Bounds<K> {
+    fn default() -> Self {
+        Self {
+            j: 0,
+            lower: [0.0; K],
+            error: 0.0,
+            stale: false,
+        }
+    }
+}
+
+impl<const K: usize> From<(usize, f32)> for Bounds<K> {
+    fn from((j, upper): (usize, f32)) -> Self {
+        Self {
+            j,
+            lower: [0.0; K],
+            error: upper,
+            stale: false,
+        }
     }
 }

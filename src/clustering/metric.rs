@@ -1,96 +1,243 @@
-use super::equity::Equity;
-use super::sinkhorn::Sinkhorn;
-use crate::cards::street::Street;
-use crate::clustering::histogram::Histogram;
-use crate::clustering::pair::Pair;
-use crate::gameplay::abstraction::Abstraction;
-use crate::transport::coupling::Coupling;
-use crate::transport::measure::Measure;
-use crate::Energy;
-use std::collections::BTreeMap;
+use super::*;
+use crate::cards::*;
+use crate::gameplay::*;
+use crate::transport::*;
+use crate::*;
 
 /// Distance metric for kmeans clustering.
-/// encapsulates distance between `Abstraction`s of the "previous" hierarchy,
+/// Encapsulates distance between `Abstraction`s of the "previous" hierarchy,
 /// as well as: distance between `Histogram`s of the "current" hierarchy.
-#[derive(Default, Clone)]
-pub struct Metric(BTreeMap<Pair, Energy>);
+#[derive(Clone, Copy)]
+pub enum Metric {
+    Pref(DistPref),
+    Flop(DistFlop),
+    Turn(DistTurn),
+    Rive,
+}
+
+impl Default for Metric {
+    fn default() -> Self {
+        Metric::Pref(Distances::new(Street::Pref))
+    }
+}
 
 impl Measure for Metric {
     type X = Abstraction;
     type Y = Abstraction;
     fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
-        match (x, y) {
-            _ if x == y => 0.,
-            (Self::X::Learned(_), Self::Y::Learned(_)) => self.lookup(x, y),
-            (Self::X::Percent(_), Self::Y::Percent(_)) => Equity.distance(x, y),
-            (Self::X::Preflop(_), Self::Y::Preflop(_)) => unreachable!("no preflop distance"),
-            _ => unreachable!(),
+        if x == y {
+            0.
+        } else {
+            match (x.street(), y.street()) {
+                (Street::Flop, Street::Flop) | (Street::Turn, Street::Turn) => self.lookup(x, y),
+                (Street::Rive, Street::Rive) => Equity.distance(x, y),
+                (Street::Pref, Street::Pref) => unreachable!("no preflop distance"),
+                _ => unreachable!("mismatched streets"),
+            }
         }
     }
 }
 
 impl Metric {
+    pub const fn new(street: Street) -> Self {
+        match street {
+            Street::Pref => Metric::Pref(Distances::new(street)),
+            Street::Flop => Metric::Flop(Distances::new(street)),
+            Street::Turn => Metric::Turn(Distances::new(street)),
+            Street::Rive => Metric::Rive,
+        }
+    }
+    pub fn street(&self) -> Street {
+        match self {
+            Metric::Pref(_) => Street::Pref,
+            Metric::Flop(_) => Street::Flop,
+            Metric::Turn(_) => Street::Turn,
+            Metric::Rive => Street::Rive,
+        }
+    }
     fn lookup(&self, x: &Abstraction, y: &Abstraction) -> Energy {
-        self.0
-            .get(&Pair::from((x, y)))
-            .copied()
-            .expect("missing abstraction pair")
+        let pair = Pair::from((x, y));
+        match self {
+            Metric::Pref(_) => unreachable!("no metric over Histogram<Preflop>"),
+            Metric::Flop(d) => d.get(pair),
+            Metric::Turn(d) => d.get(pair),
+            Metric::Rive => unreachable!("no metric over Histogram<River>"),
+        }
     }
-
+    pub fn set(&mut self, pair: Pair, value: Energy) {
+        match self {
+            Metric::Pref(d) => d.set(pair, value),
+            Metric::Flop(d) => d.set(pair, value),
+            Metric::Turn(d) => d.set(pair, value),
+            Metric::Rive => unreachable!("no metric over Histogram<River>"),
+        }
+    }
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> Energy {
-        match source.peek() {
-            Abstraction::Learned(_) => Sinkhorn::from((source, target, self)).minimize().cost(),
-            Abstraction::Percent(_) => Equity::variation(source, target),
-            Abstraction::Preflop(_) => unreachable!("no preflop emd"),
+        match source.peek().street() {
+            Street::Flop | Street::Turn => Sinkhorn::from((source, target, self)).minimize().cost(),
+            Street::Rive => Equity::variation(source, target),
+            Street::Pref => unreachable!("no preflop emd"),
         }
     }
-
-    /// we're assuming tht the street is being generated AFTER the learned kmeans
-    /// cluster distance calculation. so we should have (Street::K() choose 2)
-    /// entreis in our abstraction pair lookup table.
-    /// if this is off by just a few then it probably means a bunch of collisions
-    /// maybe i should determinsitcally seed kmeans process, could be cool for reproducability too
-    ///
-    /// TODO
-    ///
-    /// determine street dynamiccaly by checking for existence of XOR'ed abstraction pairs using
-    /// Abstraction::From(Street, Index)
-    ///
-    /// it's also not great that we are FORCED to have different number of abstractions
-    /// clusters K means for each street to avoid nC2 collisions !!
-    /// we should either just store Street as Self.1 or determine from XOR hits what street we're on
-    /// whichever solution should work with test case so we don't have to remove test case
-    /// to not overwrite existing metric. we like overwriting river.metric bc it can be empty
-    fn street(&self) -> Street {
-        fn choose_2(k: usize) -> usize {
-            k * (k.saturating_sub(1)) / 2
+    /// Normalize all distances by the maximum value.
+    pub fn normalize(&mut self) {
+        match self {
+            Metric::Pref(d) => d.normalize(),
+            Metric::Flop(d) => d.normalize(),
+            Metric::Turn(d) => d.normalize(),
+            Metric::Rive => {}
         }
-        match self.0.len() {
-            n if n == choose_2(Street::Rive.k()) => Street::Rive,
-            n if n == choose_2(Street::Turn.k()) => Street::Turn,
-            n if n == choose_2(Street::Flop.k()) => Street::Flop,
-            n if n == choose_2(Street::Pref.k()) => Street::Pref,
-            _ => Street::Rive, // assertion of no-collisions is convenient for tests
-        }
-    }
-
-    fn name() -> String {
-        "metric".to_string()
     }
 }
 
-impl crate::save::upload::Table for Metric {
-    fn name() -> String {
-        Self::name()
+impl From<std::collections::BTreeMap<Pair, Energy>> for Metric {
+    fn from(map: std::collections::BTreeMap<Pair, Energy>) -> Self {
+        let max = map.values().copied().fold(f32::MIN_POSITIVE, f32::max);
+        let mut metric = map
+            .keys()
+            .next()
+            .map(|p| p.street())
+            .map(Metric::new)
+            .expect("map is empty");
+        for (pair, distance) in map {
+            metric.set(pair, distance / max);
+        }
+        metric
+    }
+}
+
+impl IntoIterator for Metric {
+    type Item = (i32, Energy);
+    type IntoIter = Box<dyn Iterator<Item = Self::Item> + Send>;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Metric::Pref(d) => d.into_iter(),
+            Metric::Flop(d) => d.into_iter(),
+            Metric::Turn(d) => d.into_iter(),
+            Metric::Rive => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "database")]
+#[async_trait::async_trait]
+impl crate::save::Streamable for Metric {
+    type Row = (i32, f32);
+    fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
+        self.into_iter()
+    }
+}
+#[cfg(feature = "database")]
+impl Metric {
+    pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
+        const SQL: &str = const_format::concatcp!("SELECT tri, dx FROM ", crate::save::METRIC);
+        let mut keys = std::collections::HashSet::new();
+        for ref x in Abstraction::all(street) {
+            for ref y in Abstraction::all(street) {
+                if x < y {
+                    keys.insert(i32::from(Pair::from((x, y))));
+                }
+            }
+        }
+        let mut metric = Metric::new(street);
+        client
+            .query(SQL, &[])
+            .await
+            .expect("query")
+            .into_iter()
+            .map(|row| (row.get::<_, i32>(0), row.get::<_, f32>(1)))
+            .filter(|(tri, _)| keys.contains(tri))
+            .map(|(tri, dx)| (Pair::from(tri), dx))
+            .for_each(|(pair, dx)| metric.set(pair, dx));
+        metric
+    }
+}
+
+#[cfg(feature = "database")]
+impl crate::save::Schema for Metric {
+    fn name() -> &'static str {
+        crate::save::METRIC
     }
     fn columns() -> &'static [tokio_postgres::types::Type] {
         &[
-            tokio_postgres::types::Type::INT8,
+            tokio_postgres::types::Type::INT4,
             tokio_postgres::types::Type::FLOAT4,
         ]
     }
+    fn copy() -> &'static str {
+        const_format::concatcp!("COPY ", crate::save::METRIC, " (tri, dx) FROM STDIN BINARY")
+    }
+    fn creates() -> &'static str {
+        const_format::concatcp!(
+            "CREATE TABLE IF NOT EXISTS ",
+            crate::save::METRIC,
+            " (
+                tri        INTEGER,
+                dx         REAL
+            );
+            CREATE OR REPLACE FUNCTION get_pair_tri(abs1 SMALLINT, abs2 SMALLINT) RETURNS INTEGER AS
+            $$ DECLARE
+                street INTEGER;
+                i1 INTEGER;
+                i2 INTEGER;
+                lo INTEGER;
+                hi INTEGER;
+            BEGIN
+                street := (abs1 >> 8) & 255;
+                i1 := abs1 & 255;
+                i2 := abs2 & 255;
+                IF i1 < i2 THEN
+                    lo := i1;
+                    hi := i2;
+                ELSE
+                    lo := i2;
+                    hi := i1;
+                END IF;
+                IF hi = 0 THEN
+                    RETURN (street << 30);
+                ELSE
+                    RETURN (street << 30) | (hi * (hi - 1) / 2 + lo);
+                END IF;
+            END;
+            $$ LANGUAGE plpgsql;"
+        )
+    }
+    fn indices() -> &'static str {
+        const_format::concatcp!(
+            "INSERT INTO ",
+            crate::save::METRIC,
+            " (tri, dx) VALUES (0, 0);
+             CREATE INDEX IF NOT EXISTS idx_",
+            crate::save::METRIC,
+            "_tri ON ",
+            crate::save::METRIC,
+            " (tri);
+             CREATE INDEX IF NOT EXISTS idx_",
+            crate::save::METRIC,
+            "_dx  ON ",
+            crate::save::METRIC,
+            " (dx);"
+        )
+    }
+    fn truncates() -> &'static str {
+        const_format::concatcp!("TRUNCATE TABLE ", crate::save::METRIC, ";")
+    }
+    fn freeze() -> &'static str {
+        const_format::concatcp!(
+            "ALTER TABLE ",
+            crate::save::METRIC,
+            " SET (fillfactor = 100);
+            ALTER TABLE ",
+            crate::save::METRIC,
+            " SET (autovacuum_enabled = false);"
+        )
+    }
+}
+
+#[cfg(feature = "disk")]
+#[allow(deprecated)]
+impl crate::save::Disk for Metric {
     fn sources() -> Vec<std::path::PathBuf> {
-        use crate::save::disk::Disk;
         Street::all()
             .iter()
             .rev()
@@ -98,53 +245,18 @@ impl crate::save::upload::Table for Metric {
             .map(Self::path)
             .collect()
     }
-    fn copy() -> String {
-        "COPY metric (
-            xor,
-            dx
-        )
-        FROM STDIN BINARY
-        "
-        .to_string()
-    }
-    fn creates() -> String {
-        "
-        CREATE TABLE IF NOT EXISTS metric (
-            xor        BIGINT,
-            dx         REAL
-        );
-        "
-        .to_string()
-    }
-    fn indices() -> String {
-        "
-        INSERT INTO metric (
-            xor,
-            dx
-        ) VALUES (
-            0,
-            0
-        );
-        CREATE INDEX IF NOT EXISTS idx_metric_xor ON metric (xor);
-        CREATE INDEX IF NOT EXISTS idx_metric_dx  ON metric (dx);
-        "
-        .to_string()
-    }
-}
-
-impl crate::save::disk::Disk for Metric {
     fn load(street: Street) -> Self {
         let ref path = Self::path(street);
         log::info!("{:<32}{:<32}", "loading     metric", path.display());
-        use byteorder::ReadBytesExt;
         use byteorder::BE;
+        use byteorder::ReadBytesExt;
         use std::fs::File;
         use std::io::BufReader;
         use std::io::Read;
         use std::io::Seek;
         use std::io::SeekFrom;
         let ref file = File::open(path).expect(&format!("open {}", path.display()));
-        let mut metric = BTreeMap::new();
+        let mut metric = Metric::new(street);
         let mut reader = BufReader::new(file);
         let ref mut buffer = [0u8; 2];
         reader.seek(SeekFrom::Start(19)).expect("seek past header");
@@ -152,77 +264,83 @@ impl crate::save::disk::Disk for Metric {
             match u16::from_be_bytes(buffer.clone()) {
                 2 => {
                     reader.read_u32::<BE>().expect("pair length");
-                    let pair = reader.read_i64::<BE>().expect("read pair");
+                    let pair = reader.read_i32::<BE>().expect("read pair");
                     reader.read_u32::<BE>().expect("distance length");
                     let dist = reader.read_f32::<BE>().expect("read distance");
-                    metric.insert(Pair::from(pair), dist);
+                    metric.set(Pair::from(pair), dist);
                     continue;
                 }
                 0xFFFF => break,
                 n => panic!("unexpected number of fields: {}", n),
             }
         }
-        Self(metric)
+        metric
     }
     fn save(&self) {
         const N_FIELDS: u16 = 2;
         let street = self.street();
         let ref path = Self::path(street);
         let ref mut file = File::create(path).expect(&format!("touch {}", path.display()));
-        use byteorder::WriteBytesExt;
         use byteorder::BE;
+        use byteorder::WriteBytesExt;
         use std::fs::File;
         use std::io::Write;
         log::info!("{:<32}{:<32}", "saving      metric", path.display());
         file.write_all(Self::header()).expect("header");
-        for (pair, distance) in self.0.iter() {
+        for (tri, distance) in (*self).into_iter() {
             file.write_u16::<BE>(N_FIELDS).unwrap();
-            file.write_u32::<BE>(size_of::<i64>() as u32).unwrap();
-            file.write_i64::<BE>(i64::from(*pair)).unwrap();
+            file.write_u32::<BE>(size_of::<i32>() as u32).unwrap();
+            file.write_i32::<BE>(tri).unwrap();
             file.write_u32::<BE>(size_of::<f32>() as u32).unwrap();
-            file.write_f32::<BE>(*distance).unwrap();
+            file.write_f32::<BE>(distance).unwrap();
         }
         file.write_u16::<BE>(Self::footer()).expect("trailer");
     }
     fn grow(_: Street) -> Self {
         unreachable!("metric must be learned from kmeans clustering")
     }
-
-    fn name() -> String {
-        Self::name()
+    fn name() -> &'static str {
+        crate::save::METRIC
     }
 }
 
-impl From<BTreeMap<Pair, Energy>> for Metric {
-    fn from(metric: BTreeMap<Pair, Energy>) -> Self {
-        let max = metric.values().copied().fold(f32::MIN_POSITIVE, f32::max);
-        Self(
-            metric
-                .into_iter()
-                .map(|(index, distance)| (index, distance / max))
-                .collect(),
-        )
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::street::Street;
-    use crate::clustering::emd::EMD;
-    use crate::save::disk::Disk;
-    use crate::Arbitrary;
-
+    #[test]
+    fn pair_triangular_roundtrip() {
+        for k in [10, 50, 100] {
+            for i in 0..k {
+                for j in (i + 1)..k {
+                    let pair = Pair::new(Street::Flop, i, j);
+                    let (ri, rj) = pair.indices();
+                    assert_eq!((i, j), (ri, rj), "roundtrip failed for ({}, {})", i, j);
+                }
+            }
+        }
+    }
+    #[test]
+    fn pair_abstractions_roundtrip() {
+        let street = Street::Flop;
+        let a = Abstraction::from((street, 5));
+        let b = Abstraction::from((street, 10));
+        let pair = Pair::from((&a, &b));
+        let (ra, rb) = pair.abstractions();
+        assert_eq!(a, ra);
+        assert_eq!(b, rb);
+    }
     #[test]
     #[ignore]
+    #[cfg(feature = "disk")]
     fn persistence() {
+        use crate::save::*;
         let street = Street::Rive;
         let emd = EMD::random();
         let save = emd.metric();
         save.save();
         let load = Metric::load(street);
-        std::iter::empty()
-            .chain(save.0.iter().zip(load.0.iter()))
-            .chain(load.0.iter().zip(save.0.iter()))
-            .all(|((s1, l1), (s2, l2))| s1 == s2 && l1 == l2);
+        save.into_iter()
+            .zip(load.into_iter())
+            .all(|((p1, d1), (p2, d2))| p1 == p2 && d1 == d2);
     }
 }

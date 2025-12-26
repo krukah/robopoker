@@ -1,8 +1,4 @@
-use crate::mccfr::traits::edge::Edge;
-use crate::mccfr::traits::game::Game;
-use crate::mccfr::traits::info::Info;
-use crate::mccfr::traits::turn::Turn;
-use crate::mccfr::types::branch::Branch;
+use crate::mccfr::*;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
 
@@ -16,10 +12,10 @@ use petgraph::graph::NodeIndex;
 #[derive(Copy, Clone)]
 pub struct Node<'tree, T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     index: NodeIndex,
     graph: &'tree DiGraph<(G, I), E>,
@@ -28,10 +24,10 @@ where
 
 impl<'tree, T, E, G, I> Node<'tree, T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     pub fn from(index: NodeIndex, graph: &'tree DiGraph<(G, I), E>) -> Self {
         Self {
@@ -132,10 +128,10 @@ where
 /// from any node back to the root of the tree.
 impl<'tree, T, E, G, I> Iterator for Node<'tree, T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     type Item = (Self, E);
     fn next(&mut self) -> Option<Self::Item> {
@@ -150,10 +146,10 @@ where
 /// associated Info + its location in the tree
 impl<'tree, T, E, G, I> std::fmt::Debug for Node<'tree, T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -172,10 +168,10 @@ where
 /// care about comparing indices.
 impl<'tree, T, E, G, I> PartialEq for Node<'tree, T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
     fn eq(&self, other: &Self) -> bool {
         self.index() == other.index() && std::ptr::eq(self.graph(), other.graph())
@@ -183,9 +179,9 @@ where
 }
 impl<'tree, T, E, G, I> Eq for Node<'tree, T, E, G, I>
 where
-    T: Turn,
-    E: Edge,
-    G: Game<E = E, T = T>,
-    I: Info<E = E, T = T>,
+    T: TreeTurn,
+    E: TreeEdge,
+    G: TreeGame<E = E, T = T>,
+    I: TreeInfo<E = E, T = T>,
 {
 }

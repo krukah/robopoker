@@ -1,11 +1,5 @@
-use super::card::Card;
-use super::deck::Deck;
-use super::hand::Hand;
-use super::hands::HandIterator;
-use super::street::Street;
-use super::strength::Strength;
-use crate::Arbitrary;
-use crate::Equity;
+use super::*;
+use crate::*;
 use std::cmp::Ordering;
 
 /// Observation represents the memoryless state of the game in between chance actions.
@@ -23,13 +17,12 @@ pub struct Observation {
 
 impl Observation {
     pub fn children<'a>(&'a self) -> impl Iterator<Item = Self> + 'a {
-        let n = self.street().n_revealed();
-        let removed = Hand::from(*self);
-        HandIterator::from((n, removed))
+        let n = self.street().next().n_revealed();
+        HandIterator::from((n, Hand::from(*self)))
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Self::from((self.pocket, public)))
     }
-    pub fn equity(&self) -> Equity {
+    pub fn equity(&self) -> Probability {
         assert!(self.street() == Street::Rive);
         let hand = Hand::from(*self);
         let hero = Strength::from(hand);
@@ -45,14 +38,14 @@ impl Observation {
             });
         match sum {
             0 => 0.5, // all draw edge case
-            _ => won as Equity / sum as Equity,
+            _ => won as Probability / sum as Probability,
         }
     }
-    pub fn simulate(&self, _: usize) -> Equity {
+    pub fn simulate(&self, _: usize) -> Probability {
         todo!("run out some number of simulations and take equity as average")
     }
     pub fn street(&self) -> Street {
-        Street::from(self.public.size())
+        Street::from(self.public().size() + self.pocket().size())
     }
     pub fn pocket(&self) -> &Hand {
         &self.pocket
@@ -61,32 +54,7 @@ impl Observation {
         &self.public
     }
 
-    // #[cfg(feature = "entropy")]
-    fn shuffle(hand: String) -> String {
-        use rand::seq::SliceRandom;
-        let ref mut rng = rand::rng();
-        let mut cards = hand
-            .chars()
-            .collect::<Vec<char>>()
-            .chunks(2)
-            .map(|c| c.iter().collect::<String>())
-            .collect::<Vec<String>>();
-        cards.shuffle(rng);
-        cards.join("")
-    }
-    pub fn equivalent(&self) -> String {
-        super::permutation::Permutation::random()
-            .permute(self)
-            .to_string()
-            .split(Self::SEPARATOR)
-            .map(|s| s.to_string())
-            .map(|s| s.trim().to_string())
-            .map(|s| Self::shuffle(s))
-            .collect::<Vec<String>>()
-            .join(Self::SEPARATOR)
-    }
-
-    const SEPARATOR: &'static str = "~";
+    pub const SEPARATOR: &'static str = "~";
 }
 /// i64 isomorphism
 ///
@@ -101,6 +69,7 @@ impl From<Observation> for i64 {
             .fold(0u64, |acc, card| acc << 8 | card) as i64 // next card
     }
 }
+
 impl From<i64> for Observation {
     fn from(bits: i64) -> Self {
         Self::from(
@@ -140,12 +109,12 @@ impl From<Street> for Observation {
     fn from(street: Street) -> Self {
         let mut deck = Deck::new();
         let n = street.n_observed();
-        let public = (0..n)
+        let pocket = (0..2)
             .map(|_| deck.draw())
             .map(u64::from)
             .map(Hand::from)
             .fold(Hand::empty(), Hand::add);
-        let pocket = (0..2)
+        let public = (2..n)
             .map(|_| deck.draw())
             .map(u64::from)
             .map(Hand::from)
@@ -154,10 +123,40 @@ impl From<Street> for Observation {
     }
 }
 
+/// what is our belief of the deck from this perspective
+impl From<Observation> for Deck {
+    fn from(observation: Observation) -> Self {
+        Self::from(Hand::from(observation).complement())
+    }
+}
+
 /// coalesce public + private cards into single Hand
 impl From<Observation> for Hand {
     fn from(observation: Observation) -> Self {
         Self::add(observation.pocket, observation.public)
+    }
+}
+
+/// losing ordering information, reduce revealed cards into Observation
+impl TryFrom<Vec<Card>> for Observation {
+    type Error = String;
+    fn try_from(cards: Vec<Card>) -> Result<Self, Self::Error> {
+        if cards
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            == cards.len()
+        {
+            match cards.len() {
+                2 | 5 | 6 | 7 => Ok(Self::from((
+                    Hand::from(cards[..2].to_vec()),
+                    Hand::from(cards[2..].to_vec()),
+                ))),
+                _ => Err(format!("invalid card count: {}", cards.len())),
+            }
+        } else {
+            Err(format!("duplicate cards: {}", cards.len()))
+        }
     }
 }
 
@@ -193,18 +192,10 @@ impl std::fmt::Display for Observation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::isomorphism::Isomorphism;
 
     #[test]
     fn bijective_i64() {
         let random = Observation::random();
         assert!(random == Observation::from(i64::from(random)));
-    }
-
-    #[test]
-    fn shuffle() {
-        let random = Observation::random();
-        let swappy = Observation::try_from(random.equivalent().as_str()).unwrap();
-        assert!(Isomorphism::from(random) == Isomorphism::from(swappy));
     }
 }

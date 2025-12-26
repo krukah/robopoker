@@ -33,7 +33,7 @@ impl Permutation {
     /// the image of an Observation under a Permutation
     /// is computed from applying the Permutation to
     /// its constituent Hands, pocket and public
-    pub fn permute(&self, observation: &Observation) -> Observation {
+    pub fn permute(&self, observation: Observation) -> Observation {
         Observation::from((
             self.image(observation.pocket()),
             self.image(observation.public()),

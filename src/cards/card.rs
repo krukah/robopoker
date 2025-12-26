@@ -4,6 +4,7 @@ use super::suit::Suit;
 /// Card represents a playing card
 /// it is a tuple of Rank and Suit
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
 pub struct Card(u8);
 
 impl Card {
@@ -86,6 +87,17 @@ impl TryFrom<&str> for Card {
             }
             _ => Err("2 characters".into()),
         }
+    }
+}
+impl Card {
+    pub fn parse(s: &str) -> Result<Vec<Self>, String> {
+        s.replace(char::is_whitespace, "")
+            .chars()
+            .collect::<Vec<_>>()
+            .chunks(2)
+            .map(|pair| pair.iter().collect::<String>())
+            .map(|pair| Self::try_from(pair.as_str()))
+            .collect::<Result<Vec<Self>, _>>()
     }
 }
 
