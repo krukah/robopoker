@@ -13,11 +13,6 @@ rust-version    = "1.90"
 
 
 [[bin]]
-name              = "explore"
-path              = "src/bin/explore.rs"
-required-features = ["client"]
-
-[[bin]]
 name              = "convert"
 path              = "src/bin/convert.rs"
 required-features = ["database"]
@@ -44,7 +39,6 @@ benchmark       = []
 core            = []
 disk            = ["server"]
 database        = ["server", "tokio-postgres"]
-client          = ["leptos/csr", "leptos_meta"]
 server          = [
     "clap",
     "core",
@@ -90,8 +84,6 @@ actix-web         = { optional = true,  version = "4.4"                         
 actix-cors        = { optional = true,  version = "0.6"                                }
 actix-ws          = { optional = true,  version = "0.3"                                }
 clap              = { optional = true,  version = "4.0"    , features = ["derive"]     }
-leptos            = { optional = true,  version = "0.8.2"  , features = ["csr"]        }
-leptos_meta       = { optional = true,  version = "0.8.2"                              }
 env_logger        = { optional = true,  version = "0.11.6"                             }
 
 [lib]
