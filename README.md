@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/ci.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/ci.yml)
 
-`robopoker` is a Rust library and application suite to play, learn, analyze, track, and solve No-Limit Texas Hold'em.
+`robopoker` is a Rust library and application suite to solve, play, and analyze No-Limit Texas Hold'em.
 
 # Overview
 
@@ -30,7 +30,7 @@ The project consists of three main components:
 
 1. **Training Pipeline**: A unified `trainer` binary that orchestrates clustering and MCCFR training, with PostgreSQL as the source of truth for all abstractions and strategies.
 
-2. **Analysis Platform**: An HTTP API server (`analyze`) and interactive CLI (`convert`) for querying training results, plus a Leptos web frontend (`explore`) for visualization.
+2. **Analysis Platform**: An HTTP API server (`analyze`) and interactive CLI (`convert`) for querying training results.
 
 3. **Game Hosting**: A WebSocket server (`hosting`) for running live poker games with pluggable player implementations (compute, human, network).
 
@@ -184,16 +184,6 @@ Tools for querying training results via PostgreSQL:
 - **SQL Optimization**: Indexed queries for isomorphisms, abstractions, EMD metrics, and blueprint strategies
 - **Query Interface**: Structured request/response types for API clients
 
-### `client`
-
-Leptos web frontend for interactive analysis:
-
-- **Reactive UI**: Leptos-based client-side rendering with signals
-- **Visualization Components**: PolicyDisplay, FeltSurface, NeighborhoodTable, Histogram
-- **Context System**: Shared state for Chance, Choice, Policy, and Street
-- **TailwindCSS**: Styled with utility-first CSS via Trunk build system
-- **Multiple Views**: Distributions, topology, card displays, and neighborhood exploration
-
 ### `dto`
 
 Data transfer objects for client-server communication:
@@ -256,9 +246,6 @@ cargo run --bin trainer --release -- --fast
 # Start analysis server
 cargo run --bin analyze --release
 
-# Start Leptos frontend (requires trunk)
-trunk serve
-
 # Run interactive CLI
 cargo run --bin convert --release
 
@@ -273,7 +260,6 @@ cargo bench --features benchmark
 | `trainer` | `database` | Unified training pipeline for clustering and MCCFR |
 | `analyze` | `database` | HTTP REST API server on port 8888                  |
 | `convert` | `database` | Interactive CLI for type conversions and queries   |
-| `explore` | `client`   | Leptos web frontend (WASM)                         |
 | `hosting` | `database` | WebSocket server for live games                    |
 
 # Feature Flags
@@ -282,37 +268,13 @@ cargo bench --features benchmark
 | ----------- | ---------------------------------------------- |
 | `database`  | PostgreSQL integration (default)               |
 | `server`    | Server-side dependencies (Actix, Tokio, Rayon) |
-| `client`    | Leptos frontend with CSR                       |
 | `disk`      | Legacy file-based persistence (deprecated)     |
 | `shortdeck` | 36-card short deck variant                     |
 | `benchmark` | Criterion benchmarks                           |
 
-# Infrastructure
+# Docker
 
-The project includes Terraform configurations for AWS deployment in `infra/`:
-
-- **ECS Clusters**: Fargate tasks for trainer and analyzer services
-- **RDS PostgreSQL**: Managed database for training artifacts
-- **CloudFront CDN**: Static asset distribution for the frontend
-- **Route53 DNS**: Domain management
-- **ECR Registry**: Container image storage
-
-## Deployment
-
-```bash
-# Deploy trainer
-.github/workflows/deploy-trainer.yml
-
-# Deploy analyzer
-.github/workflows/deploy-analyze.yml
-
-# Deploy frontend
-.github/workflows/deploy-explore.yml
-```
-
-## Docker
-
-Multi-stage Dockerfile supporting three targets:
+Multi-stage Dockerfile supporting two targets:
 
 ```bash
 # Build trainer image
@@ -320,9 +282,6 @@ docker build --target trainer -t robopoker-trainer .
 
 # Build analyzer image
 docker build --target analyzer -t robopoker-analyzer .
-
-# Build frontend image
-docker build --target explorer -t robopoker-explorer .
 ```
 
 # References
