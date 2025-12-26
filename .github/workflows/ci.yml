@@ -1,0 +1,23 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  check:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-features
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --lib --quiet

@@ -1,8 +1,10 @@
 /target
 /pgcopy
 /data
+/dist
 /analysis
 /.vscode
+/.claude
 
 .cursorrules
 .DS_Store
@@ -13,9 +15,21 @@
 *.log
 *.png
 *.gif
-*.sh
+*.wasm
 
 react/.next/
 react/build/
 react/dist/
 react/node_modules/
+
+/pkg/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
+infra/crash.log
+infra/override.tf
+infra/override.tf.json
+infra/.terraform.lock.hcl
