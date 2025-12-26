@@ -154,18 +154,6 @@ impl Street {
     }
 }
 
-#[cfg(feature = "client")]
-impl Street {
-    pub const fn dimension(&self) -> (usize, usize) {
-        match self {
-            Self::Pref => (13, 13),
-            Self::Flop => (16, 08),
-            Self::Turn => (12, 12),
-            Self::Rive => (10, 10),
-        }
-    }
-}
-
 impl From<isize> for Street {
     fn from(n: isize) -> Self {
         match n {

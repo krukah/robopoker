@@ -9,8 +9,7 @@ use std::hash::Hash;
 /// - River: index represents the equity bucket (0-100)
 /// - Pre-Flop: index represents one of 169 strategically-unique hands
 /// - Flop/Turn: index represents k-means cluster assignment
-#[derive(Default, Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Default, Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct Abstraction(u16);
 
 const INDEX_MASK: u16 = 0xFF;
