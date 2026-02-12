@@ -1597,6 +1597,7 @@ version = "0.1.0"
 dependencies = [
  "rbp-analysis",
  "rbp-auth",
+ "rbp-autotrain",
  "rbp-cards",
  "rbp-clustering",
  "rbp-core",
@@ -1607,7 +1608,6 @@ dependencies = [
  "rbp-hosting",
  "rbp-mccfr",
  "rbp-nlhe",
- "rbp-pg",
  "rbp-players",
  "rbp-records",
  "rbp-server",
@@ -1633,7 +1633,6 @@ dependencies = [
  "rbp-gameplay",
  "rbp-mccfr",
  "rbp-nlhe",
- "rbp-pg",
  "rbp-transport",
  "serde_json",
  "tokio",
@@ -1650,7 +1649,7 @@ dependencies = [
  "jsonwebtoken",
  "rand",
  "rbp-core",
- "rbp-pg",
+ "rbp-database",
  "serde",
  "serde_json",
  "sha2",
@@ -1673,7 +1672,6 @@ dependencies = [
  "rbp-gameplay",
  "rbp-mccfr",
  "rbp-nlhe",
- "rbp-pg",
  "rbp-workers",
  "tokio-postgres",
 ]
@@ -1683,12 +1681,9 @@ name = "rbp-cards"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "const_format",
  "rand",
  "rbp-core",
- "rbp-pg",
  "serde",
- "tokio-postgres",
 ]
 
 [[package]]
@@ -1702,8 +1697,8 @@ dependencies = [
  "rayon",
  "rbp-cards",
  "rbp-core",
+ "rbp-database",
  "rbp-gameplay",
- "rbp-pg",
  "rbp-transport",
  "tokio-postgres",
 ]
@@ -1724,13 +1719,12 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "const_format",
+ "futures",
  "log",
  "rbp-cards",
- "rbp-clustering",
  "rbp-core",
  "rbp-gameplay",
- "rbp-nlhe",
- "rbp-pg",
+ "tokio",
  "tokio-postgres",
 ]
 
@@ -1746,16 +1740,12 @@ name = "rbp-gameplay"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "const_format",
  "log",
  "petgraph 0.6.5",
  "rand",
  "rbp-cards",
  "rbp-core",
- "rbp-pg",
- "rbp-transport",
  "serde",
- "tokio-postgres",
 ]
 
 [[package]]
@@ -1768,8 +1758,8 @@ dependencies = [
  "rbp-auth",
  "rbp-cards",
  "rbp-core",
+ "rbp-database",
  "rbp-gameplay",
- "rbp-pg",
  "rbp-records",
  "serde",
  "serde_json",
@@ -1823,22 +1813,11 @@ dependencies = [
  "rand",
  "rbp-cards",
  "rbp-core",
+ "rbp-database",
  "rbp-dto",
  "rbp-gameplay",
  "rbp-mccfr",
- "rbp-pg",
  "rbp-transport",
- "tokio-postgres",
-]
-
-[[package]]
-name = "rbp-pg"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "futures",
- "log",
- "tokio",
  "tokio-postgres",
 ]
 
@@ -1850,11 +1829,11 @@ dependencies = [
  "dialoguer",
  "rand",
  "rbp-core",
+ "rbp-database",
  "rbp-gameplay",
  "rbp-gameroom",
  "rbp-mccfr",
  "rbp-nlhe",
- "rbp-pg",
  "rbp-transport",
  "tokio-postgres",
 ]
@@ -1867,8 +1846,8 @@ dependencies = [
  "rbp-auth",
  "rbp-cards",
  "rbp-core",
+ "rbp-database",
  "rbp-gameplay",
- "rbp-pg",
  "tokio-postgres",
 ]
 
@@ -1881,8 +1860,8 @@ dependencies = [
  "log",
  "rbp-analysis",
  "rbp-auth",
+ "rbp-database",
  "rbp-hosting",
- "rbp-pg",
  "tokio",
  "tokio-postgres",
 ]

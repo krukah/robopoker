@@ -1,0 +1,22 @@
+[package]
+name         = "rbp-database"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "PostgreSQL database integration, serialization traits, and training pipeline"
+license      = "MIT"
+
+[features]
+default      = []
+
+[dependencies]
+rbp-core       = { path = "../util" }
+rbp-cards      = { path = "../cards" }
+rbp-gameplay   = { path = "../gameplay" }
+tokio-postgres = "0.7"
+async-trait    = "0.1"
+const_format   = "0.2"
+futures        = "0.3"
+log            = "0.4"
+tokio          = { version = "1", features = ["rt"] }

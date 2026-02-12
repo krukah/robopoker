@@ -1,0 +1,21 @@
+[package]
+name         = "rbp-records"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Hand history recording and replay"
+license      = "MIT"
+
+[features]
+default      = []
+database     = ["tokio-postgres", "const_format", "rbp-database"]
+
+[dependencies]
+rbp-core       = { path = "../util"                     }
+rbp-cards      = { path = "../cards"                    }
+rbp-gameplay   = { path = "../gameplay"                 }
+rbp-auth       = { path = "../auth"                     }
+rbp-database   = { path = "../database", optional = true }
+tokio-postgres = { version = "0.7",    optional = true      }
+const_format   = { version = "0.2",    optional = true      }

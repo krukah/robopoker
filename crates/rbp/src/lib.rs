@@ -17,7 +17,6 @@
 //! - [`nlhe`] — No-Limit Hold'em solver
 //!
 //! ### Infrastructure
-//! - [`pg`] — PostgreSQL serialization
 //! - [`database`] — Database pipeline
 //! - [`auth`] — Authentication
 //! - [`records`] — Hand history
@@ -29,6 +28,7 @@
 //! - [`analysis`] — Query API
 //! - [`hosting`] — WebSocket server
 //! - [`server`] — Unified backend
+//! - [`autotrain`] — Training orchestration
 
 pub use rbp_core        as core;
 pub use rbp_transport   as transport;
@@ -38,7 +38,6 @@ pub use rbp_gameplay    as gameplay;
 pub use rbp_dto         as dto;
 pub use rbp_clustering  as clustering;
 pub use rbp_nlhe        as nlhe;
-pub use rbp_pg          as pg;
 pub use rbp_database    as database;
 pub use rbp_auth        as auth;
 pub use rbp_records     as records;
@@ -48,6 +47,7 @@ pub use rbp_players     as players;
 pub use rbp_analysis    as analysis;
 pub use rbp_hosting     as hosting;
 pub use rbp_server      as server;
+pub use rbp_autotrain   as autotrain;
 
 // Re-export commonly used types at the root
 pub use rbp_core::*;

@@ -1,0 +1,26 @@
+[package]
+name            = "rbp-autotrain"
+version         = "0.1.0"
+edition         = "2024"
+rust-version    = "1.90"
+authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description     = "Automated training pipeline orchestration"
+license         = "MIT"
+
+[features]
+default         = []
+
+[dependencies]
+rbp-core        = { path = "../util", features = ["server"]        }
+rbp-cards       = { path = "../cards"                              }
+rbp-clustering  = { path = "../clustering", features = ["database"]}
+rbp-database    = { path = "../database"                           }
+rbp-gameplay    = { path = "../gameplay"                           }
+rbp-mccfr       = { path = "../mccfr"                              }
+rbp-nlhe        = { path = "../nlhe", features = ["database"]      }
+rbp-workers     = { path = "../workers"                            }
+tokio-postgres  = "0.7"
+async-trait     = "0.1"
+const_format    = "0.2"
+futures         = "0.3"
+log             = "0.4"

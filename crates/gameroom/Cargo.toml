@@ -1,0 +1,27 @@
+[package]
+name          = "rbp-gameroom"
+version       = "0.1.0"
+edition       = "2024"
+rust-version  = "1.90"
+authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description   = "Async runtime for live poker games"
+license       = "MIT"
+
+[features]
+default       = []
+
+[dependencies]
+rbp-core      = { path = "../util"     }
+rbp-cards     = { path = "../cards"    }
+rbp-gameplay  = { path = "../gameplay" }
+rbp-auth      = { path = "../auth"     }
+rbp-records   = { path = "../records"  }
+rbp-database  = { path = "../database" }
+tokio         = { version = "1",   features = ["sync", "time", "rt", "macros"] }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"]                  }
+async-trait   = "0.1"
+const_format  = "0.2"
+serde         = { version = "1", features = ["derive"] }
+serde_json    = "1"
+log           = "0.4"
+uuid          = "1"

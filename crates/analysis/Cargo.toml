@@ -1,0 +1,32 @@
+[package]
+name          = "rbp-analysis"
+version       = "0.1.0"
+edition       = "2024"
+rust-version  = "1.90"
+authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description   = "Training result analysis and query interface"
+license       = "MIT"
+
+[features]
+default       = []
+server        = ["actix-web"]
+
+[dependencies]
+rbp-core      = { path = "../util"       }
+rbp-cards     = { path = "../cards"      }
+rbp-clustering = { path = "../clustering" }
+rbp-database  = { path = "../database"   }
+rbp-dto       = { path = "../dto"        }
+rbp-gameplay  = { path = "../gameplay"   }
+rbp-mccfr     = { path = "../mccfr"      }
+rbp-nlhe      = { path = "../nlhe"       }
+rbp-transport = { path = "../transport"  }
+log           = "0.4"
+tokio-postgres = "0.7"
+const_format  = "0.2"
+anyhow        = "1"
+rand          = { version = "0.9.1", features = ["small_rng"] }
+clap          = { version = "4", features = ["derive"] }
+actix-web     = { version = "4", optional = true }
+serde_json    = "1"
+tokio         = { version = "1", features = ["macros"] }

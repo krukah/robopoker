@@ -1,0 +1,21 @@
+[package]
+name           = "rbp-gameplay"
+version        = "0.1.0"
+edition        = "2024"
+rust-version   = "1.90"
+authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description    = "Poker game engine with state management, action handling, and settlement"
+license        = "MIT"
+
+[features]
+default = []
+client  = ["serde", "rbp-cards/client"]
+
+[dependencies]
+rbp-core  = { path = "../util" }
+rbp-cards = { path = "../cards" }
+rand      = { version = "0.9.1", features = ["small_rng"] }
+serde     = { optional = true, version = "1.0", features = ["derive"] }
+anyhow    = "1.0"
+log       = "0.4"
+petgraph  = "0.6"

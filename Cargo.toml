@@ -2,27 +2,26 @@
 resolver = "2"
 members  = [
     # Core crates
-    "crates/rbp-core",
-    "crates/rbp-transport",
-    "crates/rbp-cards",
-    "crates/rbp-mccfr",
-    "crates/rbp-gameplay",
-    "crates/rbp-dto",
-    "crates/rbp-clustering",
-    "crates/rbp-nlhe",
+    "crates/util",
+    "crates/transport",
+    "crates/cards",
+    "crates/mccfr",
+    "crates/gameplay",
+    "crates/dto",
+    "crates/clustering",
+    "crates/nlhe",
     # Infrastructure crates
-    "crates/rbp-pg",
-    "crates/rbp-database",
-    "crates/rbp-auth",
-    "crates/rbp-records",
-    "crates/rbp-workers",
+    "crates/database",
+    "crates/auth",
+    "crates/records",
+    "crates/workers",
     # Application crates
-    "crates/rbp-gameroom",
-    "crates/rbp-players",
-    "crates/rbp-analysis",
-    "crates/rbp-hosting",
-    "crates/rbp-server",
-    "crates/rbp-autotrain",
+    "crates/gameroom",
+    "crates/players",
+    "crates/analysis",
+    "crates/hosting",
+    "crates/server",
+    "crates/autotrain",
     # Facade crate
     "crates/rbp",
 ]
@@ -37,24 +36,24 @@ repository   = "https://github.com/krukah/robopoker"
 
 [workspace.dependencies]
 # Internal crates
-rbp-core        = { path = "crates/rbp-core"       }
-rbp-transport   = { path = "crates/rbp-transport"  }
-rbp-cards       = { path = "crates/rbp-cards"      }
-rbp-mccfr       = { path = "crates/rbp-mccfr"      }
-rbp-gameplay    = { path = "crates/rbp-gameplay"   }
-rbp-dto         = { path = "crates/rbp-dto"        }
-rbp-clustering  = { path = "crates/rbp-clustering" }
-rbp-nlhe        = { path = "crates/rbp-nlhe"       }
-rbp-pg          = { path = "crates/rbp-pg"         }
-rbp-database    = { path = "crates/rbp-database"   }
-rbp-auth        = { path = "crates/rbp-auth"       }
-rbp-records     = { path = "crates/rbp-records"    }
-rbp-workers     = { path = "crates/rbp-workers"    }
-rbp-gameroom    = { path = "crates/rbp-gameroom"   }
-rbp-players     = { path = "crates/rbp-players"    }
-rbp-analysis    = { path = "crates/rbp-analysis"   }
-rbp-hosting     = { path = "crates/rbp-hosting"    }
-rbp-server      = { path = "crates/rbp-server"     }
+rbp-core        = { path = "crates/util"        }
+rbp-transport   = { path = "crates/transport"   }
+rbp-cards       = { path = "crates/cards"       }
+rbp-mccfr       = { path = "crates/mccfr"       }
+rbp-gameplay    = { path = "crates/gameplay"    }
+rbp-dto         = { path = "crates/dto"         }
+rbp-clustering  = { path = "crates/clustering"  }
+rbp-nlhe        = { path = "crates/nlhe"        }
+rbp-database    = { path = "crates/database"    }
+rbp-auth        = { path = "crates/auth"        }
+rbp-records     = { path = "crates/records"     }
+rbp-workers     = { path = "crates/workers"     }
+rbp-gameroom    = { path = "crates/gameroom"    }
+rbp-players     = { path = "crates/players"     }
+rbp-analysis    = { path = "crates/analysis"    }
+rbp-hosting     = { path = "crates/hosting"    }
+rbp-server      = { path = "crates/server"     }
+rbp-autotrain   = { path = "crates/autotrain"  }
 
 # External dependencies
 tokio           = { version = "1", features = ["full"] }

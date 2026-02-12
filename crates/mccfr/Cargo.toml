@@ -1,0 +1,20 @@
+[package]
+name          = "rbp-mccfr"
+version       = "0.1.0"
+edition       = "2024"
+rust-version  = "1.90"
+authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description   = "Game-agnostic CFR abstractions and machinery"
+license       = "MIT"
+
+[features]
+default       = []
+server        = ["rbp-core/server", "rayon"]
+
+[dependencies]
+rbp-core      = { path = "../util" }
+rbp-transport = { path = "../transport" }
+rand          = { version = "0.9.1", features = ["small_rng"] }
+petgraph      = "0.7"
+paste         = "1.0"
+rayon         = { optional = true, version = "1.10" }

@@ -15,21 +15,21 @@ database        = ["rbp-auth/database", "rbp-records/database"]
 server          = ["rbp-auth/server", "rbp-analysis/server"]
 
 [dependencies]
-rbp-core        = { path = "../rbp-core"       }
-rbp-transport   = { path = "../rbp-transport"  }
-rbp-cards       = { path = "../rbp-cards"      }
-rbp-mccfr       = { path = "../rbp-mccfr"      }
-rbp-gameplay    = { path = "../rbp-gameplay"   }
-rbp-dto         = { path = "../rbp-dto"        }
-rbp-clustering  = { path = "../rbp-clustering" }
-rbp-nlhe        = { path = "../rbp-nlhe"       }
-rbp-pg          = { path = "../rbp-pg"         }
-rbp-database    = { path = "../rbp-database"   }
-rbp-auth        = { path = "../rbp-auth"       }
-rbp-records     = { path = "../rbp-records"    }
-rbp-workers     = { path = "../rbp-workers"    }
-rbp-gameroom    = { path = "../rbp-gameroom"   }
-rbp-players     = { path = "../rbp-players"    }
-rbp-analysis    = { path = "../rbp-analysis"   }
-rbp-hosting     = { path = "../rbp-hosting"    }
-rbp-server      = { path = "../rbp-server"     }
+rbp-core        = { path = "../util"       }
+rbp-transport   = { path = "../transport"  }
+rbp-cards       = { path = "../cards"      }
+rbp-mccfr       = { path = "../mccfr"      }
+rbp-gameplay    = { path = "../gameplay"   }
+rbp-dto         = { path = "../dto"        }
+rbp-clustering  = { path = "../clustering" }
+rbp-nlhe        = { path = "../nlhe"       }
+rbp-database    = { path = "../database"   }
+rbp-auth        = { path = "../auth"       }
+rbp-records     = { path = "../records"    }
+rbp-workers     = { path = "../workers"    }
+rbp-gameroom    = { path = "../gameroom"   }
+rbp-players     = { path = "../players"    }
+rbp-analysis    = { path = "../analysis"   }
+rbp-hosting     = { path = "../hosting"    }
+rbp-server      = { path = "../server"     }
+rbp-autotrain   = { path = "../autotrain"  }
