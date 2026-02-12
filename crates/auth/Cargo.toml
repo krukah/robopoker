@@ -1,11 +1,14 @@
 [package]
 name         = "rbp-auth"
-version      = "0.1.0"
+version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "Authentication, sessions, and identity management"
+description  = "JWT and Argon2 authentication for robopoker"
 license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["authentication", "jwt", "argon2", "security"]
+categories   = ["authentication", "web-programming"]
 
 [features]
 default      = []

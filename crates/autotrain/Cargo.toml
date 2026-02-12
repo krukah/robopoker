@@ -1,11 +1,14 @@
 [package]
 name            = "rbp-autotrain"
-version         = "0.1.0"
+version         = "1.0.0"
 edition         = "2024"
 rust-version    = "1.90"
 authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description     = "Automated training pipeline orchestration"
+description     = "Automated MCCFR training pipeline orchestration"
 license         = "MIT"
+repository      = "https://github.com/krukah/robopoker"
+keywords        = ["training", "mccfr", "automation", "pipeline"]
+categories      = ["algorithms", "command-line-utilities"]
 
 [features]
 default         = []

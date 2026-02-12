@@ -1,11 +1,14 @@
 [package]
 name         = "rbp-workers"
-version      = "0.1.0"
+version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "Distributed training workers for MCCFR"
+description  = "Distributed MCCFR training workers"
 license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["distributed", "training", "mccfr", "workers"]
+categories   = ["concurrency", "algorithms"]
 
 [features]
 default      = []

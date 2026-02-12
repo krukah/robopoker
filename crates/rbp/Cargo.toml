@@ -1,13 +1,14 @@
 [package]
 name            = "rbp"
-version         = "0.1.0"
+version         = "1.0.0"
 edition         = "2024"
 rust-version    = "1.90"
 authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description     = "Poker solver toolkit - facade re-exporting all public crates"
+description     = "GTO poker toolkit: MCCFR solver, hand evaluation, strategic abstraction, and training pipeline"
 license         = "MIT"
 repository      = "https://github.com/krukah/robopoker"
-keywords        = ["poker", "mccfr", "cards", "holdem"]
+keywords        = ["poker", "mccfr", "gto", "solver", "holdem"]
+categories      = ["game-development", "algorithms", "mathematics"]
 
 [features]
 default         = []

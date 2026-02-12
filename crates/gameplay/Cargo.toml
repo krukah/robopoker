@@ -1,11 +1,14 @@
 [package]
 name           = "rbp-gameplay"
-version        = "0.1.0"
+version        = "1.0.0"
 edition        = "2024"
 rust-version   = "1.90"
 authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 description    = "Poker game engine with state management, action handling, and settlement"
 license        = "MIT"
+repository     = "https://github.com/krukah/robopoker"
+keywords       = ["poker", "game-engine", "holdem", "nlhe"]
+categories     = ["game-development"]
 
 [features]
 default = []

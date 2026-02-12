@@ -1,11 +1,14 @@
 [package]
 name          = "rbp-mccfr"
-version       = "0.1.0"
+version       = "1.0.0"
 edition       = "2024"
 rust-version  = "1.90"
 authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description   = "Game-agnostic CFR abstractions and machinery"
+description   = "Game-agnostic Monte Carlo Counterfactual Regret Minimization framework"
 license       = "MIT"
+repository    = "https://github.com/krukah/robopoker"
+keywords      = ["mccfr", "cfr", "game-theory", "nash-equilibrium", "solver"]
+categories    = ["algorithms", "mathematics", "game-development"]
 
 [features]
 default       = []

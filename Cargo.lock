@@ -1593,7 +1593,7 @@ dependencies = [
 
 [[package]]
 name = "rbp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rbp-analysis",
  "rbp-auth",
@@ -1617,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-analysis"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -1641,7 +1641,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-auth"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "actix-web",
  "argon2",
@@ -1659,7 +1659,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-autotrain"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1678,7 +1678,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-cards"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "rand",
@@ -1688,7 +1688,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-clustering"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1705,7 +1705,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "log",
  "simplelog",
@@ -1715,7 +1715,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-database"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1730,14 +1730,14 @@ dependencies = [
 
 [[package]]
 name = "rbp-dto"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "rbp-gameplay"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "log",
@@ -1750,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-gameroom"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1770,7 +1770,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-hosting"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "actix-web",
  "actix-ws",
@@ -1792,7 +1792,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-mccfr"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "paste",
  "petgraph 0.7.1",
@@ -1804,7 +1804,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-nlhe"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1823,7 +1823,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-players"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "dialoguer",
@@ -1840,7 +1840,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-records"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "const_format",
  "rbp-auth",
@@ -1853,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-server"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "actix-cors",
  "actix-web",
@@ -1868,14 +1868,14 @@ dependencies = [
 
 [[package]]
 name = "rbp-transport"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rbp-core",
 ]
 
 [[package]]
 name = "rbp-workers"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "futures",
  "log",

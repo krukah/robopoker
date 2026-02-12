@@ -27,12 +27,14 @@ members  = [
 ]
 
 [workspace.package]
-version      = "0.1.0"
+version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 license      = "MIT"
 repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "mccfr", "gto", "solver", "cfr"]
+categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates

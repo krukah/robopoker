@@ -1,11 +1,14 @@
 [package]
 name         = "rbp-transport"
-version      = "0.1.0"
+version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "Optimal transport and Earth Mover's Distance computation for robopoker"
+description  = "Optimal transport and Earth Mover's Distance via Sinkhorn algorithm"
 license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["optimal-transport", "sinkhorn", "emd", "wasserstein"]
+categories   = ["algorithms", "mathematics"]
 
 [dependencies]
 rbp-core = { path = "../util" }

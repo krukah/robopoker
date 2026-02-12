@@ -1,11 +1,14 @@
 [package]
 name         = "rbp-database"
-version      = "0.1.0"
+version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "PostgreSQL database integration, serialization traits, and training pipeline"
+description  = "PostgreSQL integration for robopoker training and strategy storage"
 license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["postgres", "database", "storage", "serialization"]
+categories   = ["database"]
 
 [features]
 default      = []

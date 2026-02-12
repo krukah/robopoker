@@ -1,11 +1,14 @@
 [package]
 name          = "rbp-gameroom"
-version       = "0.1.0"
+version       = "1.0.0"
 edition       = "2024"
 rust-version  = "1.90"
 authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description   = "Async runtime for live poker games"
+description   = "Async game coordinator for live poker sessions"
 license       = "MIT"
+repository    = "https://github.com/krukah/robopoker"
+keywords      = ["poker", "async", "gameroom", "multiplayer"]
+categories    = ["game-development", "asynchronous"]
 
 [features]
 default       = []
