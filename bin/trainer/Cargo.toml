@@ -1,0 +1,17 @@
+[package]
+name         = "trainer"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "MCCFR training pipeline binary"
+license      = "MIT"
+
+[[bin]]
+name         = "trainer"
+path         = "src/main.rs"
+
+[dependencies]
+rbp-core      = { path = "../../crates/util", features = ["server"] }
+rbp-autotrain = { path = "../../crates/autotrain" }
+tokio         = { version = "1", features = ["rt-multi-thread", "macros"] }

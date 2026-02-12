@@ -12,12 +12,15 @@ members  = [
     # Infrastructure crates
     "crates/database",
     "crates/auth",
-    # Application crates (consolidated)
+    # Application crates
     "crates/gameroom",
     "crates/server",
     "crates/autotrain",
     # Facade crate
     "crates/rbp",
+    # Binary crates
+    "bin/backend",
+    "bin/trainer",
 ]
 
 [workspace.package]
@@ -32,18 +35,18 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-rbp-core        = { path = "crates/util"        }
-rbp-transport   = { path = "crates/transport"   }
-rbp-cards       = { path = "crates/cards"       }
-rbp-mccfr       = { path = "crates/mccfr"       }
-rbp-gameplay    = { path = "crates/gameplay"    }
-rbp-clustering  = { path = "crates/clustering"  }
-rbp-nlhe        = { path = "crates/nlhe"        }
-rbp-database    = { path = "crates/database"    }
-rbp-auth        = { path = "crates/auth"        }
-rbp-gameroom    = { path = "crates/gameroom"    }
-rbp-server      = { path = "crates/server"      }
-rbp-autotrain   = { path = "crates/autotrain"   }
+rbp-core        = { version = "1.0", path = "crates/util"        }
+rbp-transport   = { version = "1.0", path = "crates/transport"   }
+rbp-cards       = { version = "1.0", path = "crates/cards"       }
+rbp-mccfr       = { version = "1.0", path = "crates/mccfr"       }
+rbp-gameplay    = { version = "1.0", path = "crates/gameplay"    }
+rbp-clustering  = { version = "1.0", path = "crates/clustering"  }
+rbp-nlhe        = { version = "1.0", path = "crates/nlhe"        }
+rbp-database    = { version = "1.0", path = "crates/database"    }
+rbp-auth        = { version = "1.0", path = "crates/auth"        }
+rbp-gameroom    = { version = "1.0", path = "crates/gameroom"    }
+rbp-server      = { version = "1.0", path = "crates/server"      }
+rbp-autotrain   = { version = "1.0", path = "crates/autotrain"   }
 
 # External dependencies
 tokio           = { version = "1", features = ["full"] }

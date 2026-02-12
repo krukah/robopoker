@@ -1,0 +1,17 @@
+[package]
+name         = "backend"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Unified backend server binary"
+license      = "MIT"
+
+[[bin]]
+name         = "backend"
+path         = "src/main.rs"
+
+[dependencies]
+rbp-core     = { path = "../../crates/util", features = ["server"] }
+rbp-server   = { path = "../../crates/server" }
+tokio        = { version = "1", features = ["rt-multi-thread", "macros"] }

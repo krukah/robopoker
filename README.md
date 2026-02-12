@@ -37,12 +37,12 @@ Add robopoker to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rbp = "0.1"
+rbp = "1.0"
 
 # Or individual crates:
-rbp-cards = "0.1"
-rbp-gameplay = "0.1"
-rbp-mccfr = "0.1"
+rbp-cards = "1.0"
+rbp-gameplay = "1.0"
+rbp-mccfr = "1.0"
 ```
 
 ### Basic Usage
@@ -65,24 +65,18 @@ let equity = obs.equity();
 | Crate | Description |
 |-------|-------------|
 | [`rbp`](crates/rbp) | Facade re-exporting all public crates |
-| [`rbp-core`](crates/rbp-core) | Type aliases, constants, shared traits |
-| [`rbp-cards`](crates/rbp-cards) | Card primitives, hand evaluation, equity |
-| [`rbp-transport`](crates/rbp-transport) | Optimal transport (Sinkhorn, EMD) |
-| [`rbp-mccfr`](crates/rbp-mccfr) | Game-agnostic CFR framework |
-| [`rbp-gameplay`](crates/rbp-gameplay) | Poker game engine |
-| [`rbp-clustering`](crates/rbp-clustering) | K-means abstraction |
-| [`rbp-nlhe`](crates/rbp-nlhe) | No-Limit Hold'em solver |
-| [`rbp-dto`](crates/rbp-dto) | API request/response types |
-| [`rbp-pg`](crates/rbp-pg) | PostgreSQL serialization |
-| [`rbp-database`](crates/rbp-database) | Database pipeline |
-| [`rbp-autotrain`](crates/rbp-autotrain) | Training orchestration |
-| [`rbp-workers`](crates/rbp-workers) | Distributed training |
-| [`rbp-gameroom`](crates/rbp-gameroom) | Async game coordinator |
-| [`rbp-players`](crates/rbp-players) | Player implementations |
-| [`rbp-analysis`](crates/rbp-analysis) | Query API |
-| [`rbp-server`](crates/rbp-server) | HTTP server |
-| [`rbp-auth`](crates/rbp-auth) | JWT authentication |
-| [`rbp-records`](crates/rbp-records) | Hand history |
+| [`rbp-core`](crates/util) | Type aliases, constants, DTOs, shared traits |
+| [`rbp-cards`](crates/cards) | Card primitives, hand evaluation, equity |
+| [`rbp-transport`](crates/transport) | Optimal transport (Sinkhorn, EMD) |
+| [`rbp-mccfr`](crates/mccfr) | Game-agnostic CFR framework |
+| [`rbp-gameplay`](crates/gameplay) | Poker game engine |
+| [`rbp-clustering`](crates/clustering) | K-means abstraction |
+| [`rbp-nlhe`](crates/nlhe) | No-Limit Hold'em solver |
+| [`rbp-database`](crates/database) | PostgreSQL persistence layer |
+| [`rbp-auth`](crates/auth) | JWT + Argon2 authentication |
+| [`rbp-gameroom`](crates/gameroom) | Async game coordinator, players, hand history |
+| [`rbp-server`](crates/server) | Unified HTTP server (analysis API + game hosting) |
+| [`rbp-autotrain`](crates/autotrain) | Training orchestration with distributed workers |
 
 ## Architecture
 
@@ -129,16 +123,21 @@ let equity = obs.equity();
 
 ### Infrastructure Layer
 
-**`rbp-pg`** — PostgreSQL integration:
-- Binary format serialization via `Row` trait
-- Schema definitions via `Schema` trait
-- Streaming I/O via `COPY IN` binary protocol
-- `Hydrate` trait for database loading
-
-**`rbp-database`** — Database pipeline:
-- `Source` trait for SELECT queries
-- `Sink` trait for INSERT/UPDATE operations
+**`rbp-database`** — PostgreSQL persistence:
+- Binary format serialization for efficient storage
+- Schema definitions and streaming I/O via `COPY IN` protocol
+- `Source` trait for SELECT, `Sink` trait for INSERT/UPDATE
 - Training stage tracking and validation
+
+**`rbp-gameroom`** — Async game coordination:
+- Room-based multiplayer game management
+- Pluggable player implementations (AI, human, network)
+- Hand history recording and replay
+
+**`rbp-server`** — Unified HTTP server:
+- Analysis API for querying training results
+- Game hosting with WebSocket support
+- Authentication integration
 
 **`rbp-autotrain`** — Training orchestration:
 - Two-phase: clustering then MCCFR
