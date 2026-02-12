@@ -15,10 +15,10 @@ default      = []
 database     = ["tokio-postgres", "const_format", "rbp-database"]
 
 [dependencies]
-rbp-core       = { path = "../util"                     }
-rbp-cards      = { path = "../cards"                    }
-rbp-gameplay   = { path = "../gameplay"                 }
-rbp-auth       = { path = "../auth"                     }
-rbp-database   = { path = "../database", optional = true }
+rbp-core       = { version = "1.0", path = "../util"                     }
+rbp-cards      = { version = "1.0", path = "../cards"                    }
+rbp-gameplay   = { version = "1.0", path = "../gameplay"                 }
+rbp-auth       = { version = "1.0", path = "../auth"                     }
+rbp-database   = { version = "1.0", path = "../database", optional = true }
 tokio-postgres = { version = "0.7",    optional = true      }
 const_format   = { version = "0.2",    optional = true      }

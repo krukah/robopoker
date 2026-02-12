@@ -15,8 +15,8 @@ default       = []
 server        = ["rbp-core/server", "rayon"]
 
 [dependencies]
-rbp-core      = { path = "../util" }
-rbp-transport = { path = "../transport" }
+rbp-core      = { version = "1.0", path = "../util"      }
+rbp-transport = { version = "1.0", path = "../transport" }
 rand          = { version = "0.9.1", features = ["small_rng"] }
 petgraph      = "0.7"
 paste         = "1.0"

@@ -16,21 +16,21 @@ database        = ["rbp-auth/database", "rbp-records/database"]
 server          = ["rbp-auth/server", "rbp-analysis/server"]
 
 [dependencies]
-rbp-core        = { path = "../util"       }
-rbp-transport   = { path = "../transport"  }
-rbp-cards       = { path = "../cards"      }
-rbp-mccfr       = { path = "../mccfr"      }
-rbp-gameplay    = { path = "../gameplay"   }
-rbp-dto         = { path = "../dto"        }
-rbp-clustering  = { path = "../clustering" }
-rbp-nlhe        = { path = "../nlhe"       }
-rbp-database    = { path = "../database"   }
-rbp-auth        = { path = "../auth"       }
-rbp-records     = { path = "../records"    }
-rbp-workers     = { path = "../workers"    }
-rbp-gameroom    = { path = "../gameroom"   }
-rbp-players     = { path = "../players"    }
-rbp-analysis    = { path = "../analysis"   }
-rbp-hosting     = { path = "../hosting"    }
-rbp-server      = { path = "../server"     }
-rbp-autotrain   = { path = "../autotrain"  }
+rbp-core        = { version = "1.0", path = "../util"       }
+rbp-transport   = { version = "1.0", path = "../transport"  }
+rbp-cards       = { version = "1.0", path = "../cards"      }
+rbp-mccfr       = { version = "1.0", path = "../mccfr"      }
+rbp-gameplay    = { version = "1.0", path = "../gameplay"   }
+rbp-dto         = { version = "1.0", path = "../dto"        }
+rbp-clustering  = { version = "1.0", path = "../clustering" }
+rbp-nlhe        = { version = "1.0", path = "../nlhe"       }
+rbp-database    = { version = "1.0", path = "../database"   }
+rbp-auth        = { version = "1.0", path = "../auth"       }
+rbp-records     = { version = "1.0", path = "../records"    }
+rbp-workers     = { version = "1.0", path = "../workers"    }
+rbp-gameroom    = { version = "1.0", path = "../gameroom"   }
+rbp-players     = { version = "1.0", path = "../players"    }
+rbp-analysis    = { version = "1.0", path = "../analysis"   }
+rbp-hosting     = { version = "1.0", path = "../hosting"    }
+rbp-server      = { version = "1.0", path = "../server"     }
+rbp-autotrain   = { version = "1.0", path = "../autotrain"  }

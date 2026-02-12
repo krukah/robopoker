@@ -16,13 +16,13 @@ database       = ["tokio-postgres", "const_format", "async-trait", "rbp-database
 server         = ["rbp-mccfr/server"]
 
 [dependencies]
-rbp-core       = { path = "../util" }
-rbp-cards      = { path = "../cards" }
-rbp-gameplay   = { path = "../gameplay" }
-rbp-transport  = { path = "../transport" }
-rbp-mccfr      = { path = "../mccfr" }
-rbp-dto        = { path = "../dto" }
-rbp-database   = { path = "../database", optional = true }
+rbp-core       = { version = "1.0", path = "../util"      }
+rbp-cards      = { version = "1.0", path = "../cards"     }
+rbp-gameplay   = { version = "1.0", path = "../gameplay"  }
+rbp-transport  = { version = "1.0", path = "../transport" }
+rbp-mccfr      = { version = "1.0", path = "../mccfr"     }
+rbp-dto        = { version = "1.0", path = "../dto"       }
+rbp-database   = { version = "1.0", path = "../database", optional = true }
 log            = "0.4"
 rand           = { version = "0.9.1", features = ["small_rng"] }
 anyhow         = "1.0"

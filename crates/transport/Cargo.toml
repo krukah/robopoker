@@ -11,4 +11,4 @@ keywords     = ["optimal-transport", "sinkhorn", "emd", "wasserstein"]
 categories   = ["algorithms", "mathematics"]
 
 [dependencies]
-rbp-core = { path = "../util" }
+rbp-core = { version = "1.0", path = "../util" }

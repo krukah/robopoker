@@ -14,9 +14,9 @@ categories   = ["database"]
 default      = []
 
 [dependencies]
-rbp-core       = { path = "../util" }
-rbp-cards      = { path = "../cards" }
-rbp-gameplay   = { path = "../gameplay" }
+rbp-core       = { version = "1.0", path = "../util"     }
+rbp-cards      = { version = "1.0", path = "../cards"    }
+rbp-gameplay   = { version = "1.0", path = "../gameplay" }
 tokio-postgres = "0.7"
 async-trait    = "0.1"
 const_format   = "0.2"

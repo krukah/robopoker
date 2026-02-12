@@ -14,12 +14,12 @@ categories    = ["game-development", "asynchronous"]
 default       = []
 
 [dependencies]
-rbp-core      = { path = "../util"     }
-rbp-cards     = { path = "../cards"    }
-rbp-gameplay  = { path = "../gameplay" }
-rbp-auth      = { path = "../auth"     }
-rbp-records   = { path = "../records"  }
-rbp-database  = { path = "../database" }
+rbp-core      = { version = "1.0", path = "../util"     }
+rbp-cards     = { version = "1.0", path = "../cards"    }
+rbp-gameplay  = { version = "1.0", path = "../gameplay" }
+rbp-auth      = { version = "1.0", path = "../auth"     }
+rbp-records   = { version = "1.0", path = "../records"  }
+rbp-database  = { version = "1.0", path = "../database" }
 tokio         = { version = "1",   features = ["sync", "time", "rt", "macros"] }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"]                  }
 async-trait   = "0.1"

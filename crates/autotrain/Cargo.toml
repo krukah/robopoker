@@ -14,14 +14,14 @@ categories      = ["algorithms", "command-line-utilities"]
 default         = []
 
 [dependencies]
-rbp-core        = { path = "../util", features = ["server"]        }
-rbp-cards       = { path = "../cards"                              }
-rbp-clustering  = { path = "../clustering", features = ["database"]}
-rbp-database    = { path = "../database"                           }
-rbp-gameplay    = { path = "../gameplay"                           }
-rbp-mccfr       = { path = "../mccfr"                              }
-rbp-nlhe        = { path = "../nlhe", features = ["database"]      }
-rbp-workers     = { path = "../workers"                            }
+rbp-core        = { version = "1.0", path = "../util", features = ["server"]         }
+rbp-cards       = { version = "1.0", path = "../cards"                               }
+rbp-clustering  = { version = "1.0", path = "../clustering", features = ["database"] }
+rbp-database    = { version = "1.0", path = "../database"                            }
+rbp-gameplay    = { version = "1.0", path = "../gameplay"                            }
+rbp-mccfr       = { version = "1.0", path = "../mccfr"                               }
+rbp-nlhe        = { version = "1.0", path = "../nlhe", features = ["database"]       }
+rbp-workers     = { version = "1.0", path = "../workers"                             }
 tokio-postgres  = "0.7"
 async-trait     = "0.1"
 const_format    = "0.2"

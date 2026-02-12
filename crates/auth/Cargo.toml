@@ -16,8 +16,8 @@ database     = ["tokio-postgres", "const_format", "rbp-database"]
 server       = ["database", "actix-web", "serde_json"]
 
 [dependencies]
-rbp-core       = { path = "../util"                          }
-rbp-database   = { path = "../database", optional = true     }
+rbp-core       = { version = "1.0", path = "../util"                          }
+rbp-database   = { version = "1.0", path = "../database", optional = true     }
 jsonwebtoken   = "9"
 argon2         = { version = "0.5",   features = ["rand"]        }
 sha2           = "0.10"

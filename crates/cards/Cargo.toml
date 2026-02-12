@@ -16,7 +16,7 @@ client    = ["serde"]
 shortdeck = []
 
 [dependencies]
-rbp-core = { path = "../util" }
+rbp-core = { version = "1.0", path = "../util" }
 rand     = { version = "0.9.1", features = ["small_rng"] }
 serde    = { version = "1.0", features = ["derive"], optional = true }
 anyhow   = "1.0"

@@ -11,12 +11,12 @@ keywords      = ["websocket", "hosting", "poker", "multiplayer"]
 categories    = ["web-programming", "game-development"]
 
 [dependencies]
-rbp-core      = { path = "../util"     }
-rbp-auth      = { path = "../auth"     }
-rbp-gameroom  = { path = "../gameroom" }
-rbp-gameplay  = { path = "../gameplay" }
-rbp-players   = { path = "../players"  }
-rbp-records   = { path = "../records"  }
+rbp-core      = { version = "1.0", path = "../util"     }
+rbp-auth      = { version = "1.0", path = "../auth"     }
+rbp-gameroom  = { version = "1.0", path = "../gameroom" }
+rbp-gameplay  = { version = "1.0", path = "../gameplay" }
+rbp-players   = { version = "1.0", path = "../players"  }
+rbp-records   = { version = "1.0", path = "../records"  }
 tokio-postgres = "0.7"
 tokio         = { version = "1", features = ["sync", "rt"] }
 actix-web     = "4"

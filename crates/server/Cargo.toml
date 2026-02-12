@@ -11,10 +11,10 @@ keywords        = ["server", "api", "poker", "backend"]
 categories      = ["web-programming::http-server"]
 
 [dependencies]
-rbp-analysis    = { path = "../analysis", features = ["server"] }
-rbp-auth        = { path = "../auth", features = ["server"]     }
-rbp-hosting     = { path = "../hosting"                         }
-rbp-database    = { path = "../database"                        }
+rbp-analysis    = { version = "1.0", path = "../analysis", features = ["server"] }
+rbp-auth        = { version = "1.0", path = "../auth", features = ["server"]     }
+rbp-hosting     = { version = "1.0", path = "../hosting"                         }
+rbp-database    = { version = "1.0", path = "../database"                        }
 tokio-postgres  = "0.7"
 tokio           = { version = "1", features = ["rt-multi-thread"]   }
 actix-web       = "4"

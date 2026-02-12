@@ -15,15 +15,15 @@ default       = []
 server        = ["actix-web"]
 
 [dependencies]
-rbp-core      = { path = "../util"       }
-rbp-cards     = { path = "../cards"      }
-rbp-clustering = { path = "../clustering" }
-rbp-database  = { path = "../database"   }
-rbp-dto       = { path = "../dto"        }
-rbp-gameplay  = { path = "../gameplay"   }
-rbp-mccfr     = { path = "../mccfr"      }
-rbp-nlhe      = { path = "../nlhe"       }
-rbp-transport = { path = "../transport"  }
+rbp-core       = { version = "1.0", path = "../util"       }
+rbp-cards      = { version = "1.0", path = "../cards"      }
+rbp-clustering = { version = "1.0", path = "../clustering" }
+rbp-database   = { version = "1.0", path = "../database"   }
+rbp-dto        = { version = "1.0", path = "../dto"        }
+rbp-gameplay   = { version = "1.0", path = "../gameplay"   }
+rbp-mccfr      = { version = "1.0", path = "../mccfr"      }
+rbp-nlhe       = { version = "1.0", path = "../nlhe"       }
+rbp-transport  = { version = "1.0", path = "../transport"  }
 log           = "0.4"
 tokio-postgres = "0.7"
 const_format  = "0.2"

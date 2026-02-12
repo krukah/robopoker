@@ -14,13 +14,13 @@ categories   = ["concurrency", "algorithms"]
 default      = []
 
 [dependencies]
-rbp-core       = { path = "../util"                    }
-rbp-cards      = { path = "../cards"                   }
-rbp-gameplay   = { path = "../gameplay"                }
-rbp-transport  = { path = "../transport"               }
-rbp-mccfr      = { path = "../mccfr"                   }
-rbp-nlhe       = { path = "../nlhe"                    }
-rbp-database   = { path = "../database"                }
+rbp-core       = { version = "1.0", path = "../util"      }
+rbp-cards      = { version = "1.0", path = "../cards"     }
+rbp-gameplay   = { version = "1.0", path = "../gameplay"  }
+rbp-transport  = { version = "1.0", path = "../transport" }
+rbp-mccfr      = { version = "1.0", path = "../mccfr"     }
+rbp-nlhe       = { version = "1.0", path = "../nlhe"      }
+rbp-database   = { version = "1.0", path = "../database"  }
 tokio-postgres = "0.7"
 futures        = "0.3"
 num_cpus       = "1.16"
