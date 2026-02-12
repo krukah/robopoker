@@ -1,6 +1,6 @@
 [package]
 name          = "rbp-gameroom"
-version       = "1.0.0"
+version       = "1.0.1"
 edition       = "2024"
 rust-version  = "1.90"
 authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -12,7 +12,7 @@ categories    = ["game-development", "asynchronous"]
 
 [features]
 default       = []
-database      = ["rbp-database", "tokio-postgres"]
+database      = ["rbp-database", "rbp-nlhe/database", "tokio-postgres"]
 cli           = ["dialoguer"]
 
 [dependencies]
