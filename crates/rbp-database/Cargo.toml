@@ -1,0 +1,23 @@
+[package]
+name = "rbp-database"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description = "PostgreSQL database pipeline for training artifacts"
+license = "MIT"
+
+[features]
+default = []
+
+[dependencies]
+rbp-core = { path = "../rbp-core" }
+rbp-cards = { path = "../rbp-cards" }
+rbp-gameplay = { path = "../rbp-gameplay" }
+rbp-clustering = { path = "../rbp-clustering" }
+rbp-nlhe = { path = "../rbp-nlhe" }
+rbp-pg = { path = "../rbp-pg" }
+tokio-postgres = "0.7"
+async-trait = "0.1"
+const_format = "0.2"
+log = "0.4"

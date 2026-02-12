@@ -1,6 +1,0 @@
-*
-!Cargo.toml
-!Cargo.lock
-!benches/
-!pgcopy/
-!src/

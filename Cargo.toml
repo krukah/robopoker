@@ -1,101 +1,45 @@
-[package]
-name            = "robopoker"
-version         = "0.1.1"
-authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description     = "Implementations of No-Limit Texas Hold-Em solution."
-homepage        = "https://github.com/krukah/robopoker"
-repository      = "https://github.com/krukah/robopoker"
-readme          = "README.md"
-keywords        = ["poker", "cards", "cfr", "mcts", "holdem"]
-license         = "MIT"
-edition         = "2024"
-rust-version    = "1.90"
-
-
-[[bin]]
-name              = "convert"
-path              = "src/bin/convert.rs"
-required-features = ["database"]
-
-[[bin]]
-name              = "trainer"
-path              = "src/bin/trainer.rs"
-required-features = ["database"]
-
-[[bin]]
-name              = "analyze"
-path              = "src/bin/analyze.rs"
-required-features = ["database"]
-
-[[bin]]
-name              = "hosting"
-path              = "src/bin/hosting.rs"
-required-features = ["database"]
-
-[features]
-default         = ["database"]
-shortdeck       = []
-benchmark       = []
-core            = []
-disk            = ["server"]
-database        = ["server", "tokio-postgres"]
-server          = [
-    "clap",
-    "core",
-    "colored",
-    "dialoguer",
-    "env_logger",
-    "num_cpus",
-    "rayon",
-    "simplelog",
-    "tokio",
-    "actix-ws",
-    "actix-web",
-    "actix-cors",
+[workspace]
+resolver = "2"
+members = [
+    "crates/rbp",
+    "crates/rbp-core",
+    "crates/rbp-cards",
+    "crates/rbp-transport",
+    "crates/rbp-mccfr",
+    "crates/rbp-gameplay",
+    "crates/rbp-clustering",
+    "crates/rbp-nlhe",
+    "crates/rbp-dto",
+    "crates/rbp-pg",
+    "crates/rbp-database",
+    "crates/rbp-auth",
+    "crates/rbp-records",
+    "crates/rbp-workers",
+    "crates/rbp-gameroom",
+    "crates/rbp-players",
+    "crates/rbp-analysis",
+    "crates/rbp-hosting",
+    "crates/rbp-autotrain",
+    "crates/rbp-server",
 ]
 
-[dependencies]
-const_format                                    = "0.2"
-anyhow                                          = "1.0.63"
-async-trait                                     = "0.1"
-petgraph                                        = "0.6.5"
-bytes                                           = "1.0"
-log                                             = "0.4.22"
-byteorder                                       = "1.5.0"
-futures                                         = "0.3"
-serde_json                                      = "1.0"
-js-sys                                          = "0.3"
-wasm-bindgen                                    = "0.2"
-wasm-bindgen-futures                            = "0.4"
-gloo-net                                        = "0.6"
-web-sys                                         = "0.3.77"
-console_error_panic_hook                        = "0.1.7"
-serde             = {                   version = "1.0"    , features = ["derive"]     }
-rand              = {                   version = "0.9.1"  , features = ["small_rng"]  }
-getrandom         = {                   version = "0.3.3"  , features = ["wasm_js"]    }
-colored           = { optional = true,  version = "2.0"                                }
-dialoguer         = { optional = true,  version = "0.11.0"                             }
-num_cpus          = { optional = true,  version = "1.16.0"                             }
-rayon             = { optional = true,  version = "1.10.0"                             }
-simplelog         = { optional = true,  version = "0.12.2"                             }
-tokio             = { optional = true,  version = "1.0"    , features = ["full"]       }
-tokio-postgres    = { optional = true,  version = "0.7"                                }
-actix-web         = { optional = true,  version = "4.4"                                }
-actix-cors        = { optional = true,  version = "0.6"                                }
-actix-ws          = { optional = true,  version = "0.3"                                }
-clap              = { optional = true,  version = "4.0"    , features = ["derive"]     }
-env_logger        = { optional = true,  version = "0.11.6"                             }
+[workspace.package]
+edition = "2024"
+rust-version = "1.90"
+license = "MIT"
+repository = "https://github.com/krukah/robopoker"
+homepage = "https://robopoker.club"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(tarpaulin_include)"] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-criterion         = {                   version = "0.3"    , features = ["html_reports"] }
+[profile.dev]
+panic = "unwind"
+opt-level = 3
 
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = {                   version = "0.3"                                  }
-
-[[bench]]
-name              = "benchmarks"
-harness           = false
-required-features = ["benchmark"]
+[profile.release]
+lto = true
+panic = "abort"
+opt-level = 3
+codegen-units = 1
+strip = "debuginfo"

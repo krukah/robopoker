@@ -1,0 +1,25 @@
+[package]
+name = "rbp-workers"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description = "Distributed training workers for MCCFR"
+license = "MIT"
+
+[features]
+default = []
+
+[dependencies]
+rbp-core = { path = "../rbp-core" }
+rbp-cards = { path = "../rbp-cards" }
+rbp-gameplay = { path = "../rbp-gameplay" }
+rbp-transport = { path = "../rbp-transport" }
+rbp-mccfr = { path = "../rbp-mccfr" }
+rbp-nlhe = { path = "../rbp-nlhe" }
+rbp-database = { path = "../rbp-database" }
+tokio-postgres = "0.7"
+futures = "0.3"
+num_cpus = "1.16"
+rand = { version = "0.9.1", features = ["small_rng"] }
+log = "0.4"

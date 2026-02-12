@@ -1,0 +1,14 @@
+[package]
+name = "rbp-dto"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description = "Data transfer objects for API communication"
+license = "MIT"
+
+[features]
+default = []
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }

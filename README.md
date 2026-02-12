@@ -3,11 +3,9 @@
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/ci.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/ci.yml)
 
-`robopoker` is a Rust library and application suite to solve, play, and analyze No-Limit Texas Hold'em.
+A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em with functional parity to Pluribus<sup>1</sup>.
 
-# Overview
-
-This started as a simple Rust project before evolving into a state-of-the-art poker solver and analysis tool seeking functional parity with Pluribus<sup>1</sup>, the first superhuman agent in multiplayer No Limit Texas Hold'em.
+## Visual Tour
 
 <table align="center">
 <tr>
@@ -24,48 +22,151 @@ This started as a simple Rust project before evolving into a state-of-the-art po
 </tr>
 </table>
 
-The guiding philosophy of this crate is to use very precise struct and trait abstractions to represent the rules, mechanics, and strategies of NLHE. Every module is modeled as closely as possible to its real-world analogue, while also utilizing clever representations and transformations to be as memory- and compute-efficient as possible. We lean heavily into idiomatic Rust by using lazy functional patterns, efficient data structure representations, infallible type conversions, thread-safe multi-processing, and strictly safe code.
+## Features
 
-The project consists of three main components:
+- **Fastest open-source hand evaluator** - Nanosecond evaluation outperforming Cactus Kev
+- **Strategic abstraction** - Hierarchical k-means clustering of 3.1T poker situations
+- **Optimal transport** - Earth Mover's Distance via Sinkhorn algorithm
+- **MCCFR solver** - External sampling with dynamic tree construction
+- **PostgreSQL persistence** - Binary format serialization for efficiency
+- **Short deck support** - 36-card variant with adjusted rankings
 
-1. **Training Pipeline**: A unified `trainer` binary that orchestrates clustering and MCCFR training, with PostgreSQL as the source of truth for all abstractions and strategies.
+## Quick Start
 
-2. **Analysis Platform**: An HTTP API server (`analyze`) and interactive CLI (`convert`) for querying training results.
+Add robopoker to your `Cargo.toml`:
 
-3. **Game Hosting**: A WebSocket server (`hosting`) for running live poker games with pluggable player implementations (compute, human, network).
+```toml
+[dependencies]
+rbp = "0.1"
+
+# Or individual crates:
+rbp-cards = "0.1"
+rbp-gameplay = "0.1"
+rbp-mccfr = "0.1"
+```
+
+### Basic Usage
+
+```rust
+use rbp::cards::*;
+use rbp::gameplay::*;
+
+// Create a hand and evaluate it
+let hand = Hand::from("AcKsQhJdTc9h8s");
+let strength = hand.evaluate();
+
+// Work with observations
+let obs = Observation::from(Street::Flop);
+let equity = obs.equity();
+```
+
+## Crate Overview
+
+| Crate | Description |
+|-------|-------------|
+| [`rbp`](crates/rbp) | Facade re-exporting all public crates |
+| [`rbp-core`](crates/rbp-core) | Type aliases, constants, shared traits |
+| [`rbp-cards`](crates/rbp-cards) | Card primitives, hand evaluation, equity |
+| [`rbp-transport`](crates/rbp-transport) | Optimal transport (Sinkhorn, EMD) |
+| [`rbp-mccfr`](crates/rbp-mccfr) | Game-agnostic CFR framework |
+| [`rbp-gameplay`](crates/rbp-gameplay) | Poker game engine |
+| [`rbp-clustering`](crates/rbp-clustering) | K-means abstraction |
+| [`rbp-nlhe`](crates/rbp-nlhe) | No-Limit Hold'em solver |
+| [`rbp-dto`](crates/rbp-dto) | API request/response types |
+| [`rbp-pg`](crates/rbp-pg) | PostgreSQL serialization |
+| [`rbp-database`](crates/rbp-database) | Database pipeline |
+| [`rbp-autotrain`](crates/rbp-autotrain) | Training orchestration |
+| [`rbp-workers`](crates/rbp-workers) | Distributed training |
+| [`rbp-gameroom`](crates/rbp-gameroom) | Async game coordinator |
+| [`rbp-players`](crates/rbp-players) | Player implementations |
+| [`rbp-analysis`](crates/rbp-analysis) | Query API |
+| [`rbp-server`](crates/rbp-server) | HTTP server |
+| [`rbp-auth`](crates/rbp-auth) | JWT authentication |
+| [`rbp-records`](crates/rbp-records) | Hand history |
+
+## Architecture
+
+### Core Layer
+
+**`rbp-cards`** — Card representation, hand evaluation, and strategic primitives:
+- Bijective card representations (`u8`/`u16`/`u32`/`u64`) for efficient operations
+- Lazy hand strength evaluation in nanoseconds
+- Equity calculation via enumeration and Monte Carlo
+- Exhaustive iteration over cards, hands, decks, and observations
+- Short deck (36-card) variant support
+
+**`rbp-transport`** — Optimal transport algorithms:
+- Sinkhorn iteration for near-linear Wasserstein approximation<sup>5</sup>
+- Greenhorn optimization for sparse distributions
+- Generic `Measure` abstraction for arbitrary metric spaces
+
+**`rbp-mccfr`** — Game-agnostic CFR framework:
+- State primitives: `Turn`, `Edge`, `Game`, `Info`, `Tree`
+- Strategy representation: `Encoder`, `Profile`, `InfoSet`
+- Training: `Solver` trait with pluggable algorithms
+- Schemes: `RegretSchedule`, `PolicySchedule`, `SamplingScheme`
+- Subgame solving with safe search
+
+### Domain Layer
+
+**`rbp-gameplay`** — Complete poker game engine:
+- Full No-Limit Texas Hold'em rules
+- Complex showdown handling (side pots, all-ins, ties)
+- Bet sizing abstraction via `Size` enum (`SPR(n,d)` / `BBs(n)`)
+- Clean Node/Edge/Tree game state representation
+
+**`rbp-clustering`** — Hand abstraction via clustering:
+- Hierarchical k-means with Elkan acceleration
+- Earth Mover's Distance between distributions
+- Isomorphic exhaustion of 3.1T situations<sup>4</sup>
+- PostgreSQL binary persistence
+
+**`rbp-nlhe`** — Concrete NLHE solver:
+- `NlheSolver<R, W, S>` with pluggable regret/policy/sampling
+- `NlheEncoder` for state→info mapping
+- `NlheProfile` for regret/strategy storage
+- Production config: `Flagship` type alias
+
+### Infrastructure Layer
+
+**`rbp-pg`** — PostgreSQL integration:
+- Binary format serialization via `Row` trait
+- Schema definitions via `Schema` trait
+- Streaming I/O via `COPY IN` binary protocol
+- `Hydrate` trait for database loading
+
+**`rbp-database`** — Database pipeline:
+- `Source` trait for SELECT queries
+- `Sink` trait for INSERT/UPDATE operations
+- Training stage tracking and validation
+
+**`rbp-autotrain`** — Training orchestration:
+- Two-phase: clustering then MCCFR
+- Fast (in-memory) and slow (distributed) modes
+- Graceful interrupts and resumable state
+- Timed training via `TRAIN_DURATION`
 
 ## Training Pipeline
 
-The training pipeline generates strategic abstractions and blueprint strategies:
+1. **Hierarchical Abstraction** (per street: river → turn → flop → preflop):
+   - Generate isomorphic hand clusters
+   - Initialize k-means centroids via k-means++<sup>2</sup>
+   - Run clustering to group strategically similar hands
+   - Calculate EMD metrics via optimal transport<sup>5</sup>
+   - Save abstractions to PostgreSQL
 
-1. For each layer of hierarchical abstraction (`preflop`, `flop`, `turn`, `river`):
-   - Generate isomorphic hand clusters by exhaustively iterating through strategically equivalent situations
-   - Initialize k-means centroids using k-means++ seeding over abstract distribution space <sup>2</sup>
-   - Run hierarchical k-means clustering to group hands into strategically similar situations
-   - Calculate Earth Mover's Distance metrics via optimal transport<sup>5</sup> between all cluster pairs
-   - Save abstraction results and distance metrics to PostgreSQL
+2. **MCCFR Training**<sup>3</sup>:
+   - Sample game trajectories via external sampling
+   - Update regret values and counterfactual values
+   - Accumulate strategy with linear weighting
+   - Checkpoint blueprint strategy to database
 
-2. Run iterative Monte Carlo CFR training<sup>3</sup>:
-   - Initialize regret tables and strategy profiles
-   - Sample game trajectories using external sampling MCCFR
-   - Update regret values and compute counterfactual values
-   - Accumulate strategy updates with linear weighting
-   - Periodically checkpoint blueprint strategy to database
-   - Continue until convergence criteria met
+3. **Real-time Search** (in progress):
+   - Depth-limited subgame solving<sup>10</sup>
+   - Blueprint strategy as prior
+   - Targeted Monte Carlo rollouts
 
-3. Perform real-time search during gameplay (in progress):
-   - Load pre-computed abstractions and blueprint strategy
-   - Use depth-limited subgame solving with blueprint as prior
-   - Dynamically build local game trees
-   - Run targeted Monte Carlo rollouts
-   - Return optimal actions within time constraints
-
-# System Requirements
-
-The abstraction and counterfactual regret minimization algorithms are quite resource intensive.
-
-- Hierarchical k-means requires holding all strategically isomorphic observations at a given street, as well as their projected distributions onto their future streets.
-- Monte Carlo CFR requires sampling game trees with full game state information and accumulating regret and policy information
+## System Requirements
 
 | Street  | Abstraction Size | Metric Size |
 | ------- | ---------------- | ----------- |
@@ -74,217 +175,36 @@ The abstraction and counterfactual regret minimization algorithms are quite reso
 | Turn    | 347 MB           | 175 KB      |
 | River   | 3.02 GB          | -           |
 
-**Recommended Resources:**
+**Recommended:**
+- Training: 16 vCPU, 120GB RAM
+- Database: PostgreSQL 14+ with 8 vCPU, 64GB RAM
+- Analysis: 1 vCPU, 4GB RAM
 
-- Training: 16 vCPU, 120GB RAM (configurable via Terraform)
-- Database: PostgreSQL with 8 vCPU, 64GB RAM for production workloads
-- Analysis: 1 vCPU, 4GB RAM for serving queries
+## Feature Flags
 
-# Modules
+| Feature | Description |
+|---------|-------------|
+| `database` | PostgreSQL integration |
+| `server` | Server dependencies (Actix, Tokio, Rayon) |
+| `shortdeck` | 36-card short deck variant |
 
-## Core
-
-### `cards`
-
-Core functionality for working with standard playing cards and Texas Hold'em rules:
-
-- **Hand Evaluation**: Nanosecond hand strength calculation using lazy evaluation; fastest open-source hand evaluation algorithm; benchmarks outperform the popular Cactus Kev implementation
-- **Equity Calculation**: Fast equity calculations between ranges of hands, supporting both exact enumeration and Monte Carlo simulation
-- **Exhaustive Iteration**: Efficient iteration over cards, hands, decks, and private-public observations with lazy bitwise advancing
-- **Distribution Analysis**: Tools for analyzing equity distributions and range vs range scenarios
-- **Short Deck Support**: Full support for 36-card short deck variant with adjusted hand rankings and iterators
-- **Bijective Representations**: Multiple card representations `(u8/u16/u32/u64)` allow for maximally efficient operations and transformations
-
-### `gameplay`
-
-A complete poker game engine implementation:
-
-- **Standard Rules**: Full implementation of No-Limit Texas Hold'em rules and mechanics
-- **Complex Showdowns**: Elegant handling and thorough testing of showdown edge cases like side pots, all-ins, dead cards, and multi-way ties
-- **Flexible Payout Logic**: Configurable payout structures for different game formats
-- **Decider Abstraction**: Generic trait system for implementing different player decision strategies
-- **Functional Design**: Clean Node/Edge/Tree implementation for game state representation
-
-### `clustering`
-
-Advanced clustering capabilities for poker hand analysis:
-
-- **Isomorphic Exhaustion**: Plays out _every one of 3.1T_ possible situations by respecting symmetries and enforcing permutation invariance<sup>4</sup>
-- **Earth Mover's Distance (EMD)**: Implementation of EMD metric for comparing hand distributions over equity and hierarchical abstraction clusters
-- **Hierarchical K-means**: Multi-level clustering algorithm with Elkan acceleration for creating strategic abstractions
-- **Persistence**: Efficient serialization and deserialization of clustering results using PostgreSQL binary formats
-
-### `transport`
-
-Optimal transport algorithms for computing distribution distances:
-
-- **Sinkhorn Iteration**: Near-linear time approximation of Wasserstein distance<sup>5</sup>
-- **Greenhorn Algorithm**: Optimized Sinkhorn variant for sparse distributions
-- **Greedy Matching**: Fast approximate coupling for large-scale comparisons
-- **Measure Abstraction**: Generic support for arbitrary metric spaces
-
-### `mccfr`
-
-Monte Carlo Counterfactual Regret Minimization solver:
-
-- **Generic Trait System**: Extensible `Encoder`, `Profile`, and `Solver` traits for any extensive-form game
-- **RPS Validation**: Demonstrated convergence on Rock-Paper-Scissors as a correctness check
-- **NLHE Implementation**: Full No-Limit Hold'em solver with external sampling MCCFR
-- **Dynamic Tree Building**: On-the-fly game tree construction for memory efficiency
-- **Linear Strategy Weighting**: Efficient strategy updates using iterative weighting and discount schemes<sup>6</sup>
-- **Caching**: Optional tree caching for faster repeated traversals
-
-## Training
-
-### `autotrain`
-
-Unified training pipeline orchestrating clustering and MCCFR:
-
-- **CLI Interface**: `--status`, `--fast`, `--slow`, `--cluster` modes
-- **Two-Phase Training**: Clustering phase followed by blueprint training
-- **Graceful Interrupts**: Press 'Q' to cleanly stop training and checkpoint
-- **Resumable State**: Training progress persisted to PostgreSQL for recovery
-- **Epoch Management**: Configurable training epochs with progress tracking
-
-### `workers`
-
-Distributed training infrastructure:
-
-- **Worker Pool**: Parallel training workers for MCCFR iterations
-- **Memory Tracking**: Real-time statistics on memory usage and throughput
-- **Record Serialization**: Efficient training record encoding for database writes
-
-## Persistence
-
-### `database`
-
-PostgreSQL abstraction layer:
-
-- **Source Trait**: Read interface for SELECT queries (memory, encoding, equity, metrics)
-- **Sink Trait**: Write interface for INSERT/UPDATE operations
-- **Stage Management**: Training stage tracking and validation
-- **Connection Pooling**: Efficient connection management with `Arc<Client>`
-
-### `save`
-
-Data persistence layer:
-
-- **PostgreSQL Backend**: Binary format serialization for high-throughput writes
-- **Schema Management**: Table definitions and migrations for training artifacts
-- **Streaming I/O**: Efficient bulk upload via `COPY IN` binary protocol
-- **Hydration**: Deserialization of abstractions, profiles, and encoders from database
-
-## Analysis & Visualization
-
-### `analysis`
-
-Tools for querying training results via PostgreSQL:
-
-- **HTTP API**: Actix-web server on port 8888 for programmatic access
-- **SQL Optimization**: Indexed queries for isomorphisms, abstractions, EMD metrics, and blueprint strategies
-- **Query Interface**: Structured request/response types for API clients
-
-### `dto`
-
-Data transfer objects for client-server communication:
-
-- **Request Types**: Structured API request serialization
-- **Response Types**: Typed API response deserialization
-
-## Live Play
-
-### `gameroom`
-
-Async runtime for live poker games:
-
-- **Room Coordinator**: Central game state and action history management
-- **Actor Model**: Tokio-based async player task wrappers
-- **Player Trait**: Async decision abstraction for pluggable player types
-- **Event Broadcasting**: Real-time game events to all participants
-- **Turn Orchestration**: Timeout handling and turn management
-
-### `hosting`
-
-HTTP/WebSocket server for game hosting:
-
-- **REST API**: HTTP endpoints for game management
-- **WebSocket Support**: Real-time bidirectional communication
-- **Casino Coordinator**: Multi-room game management
-- **Connection Handling**: Player session lifecycle management
-
-### `players`
-
-Concrete player implementations:
-
-- **Human Player**: Interactive decision-making with input validation
-- **Extensible Design**: Framework for compute, network, and random players
-
-### `search`
-
-Real-time subgame solving (in progress):
-
-- Reserved for depth-limited solving during live gameplay
-- Will integrate with blueprint strategy as a prior
-
-# Getting Started
-
-## Prerequisites
-
-- Rust 1.90+ (Edition 2024)
-- PostgreSQL 14+ (for training and analysis)
-- Node.js (for Trunk/TailwindCSS frontend builds)
-
-## Build Commands
+## Building
 
 ```bash
-# Build with default features (database)
-cargo build --release
+# Build all crates
+cargo build --workspace
 
-# Run training pipeline
-cargo run --bin trainer --release -- --fast
+# Build with database features
+cargo build --workspace --features database
 
-# Start analysis server
-cargo run --bin analyze --release
+# Run tests
+cargo test --workspace
 
-# Run interactive CLI
-cargo run --bin convert --release
-
-# Run benchmarks
-cargo bench --features benchmark
+# Generate documentation
+cargo doc --workspace --no-deps --open
 ```
 
-# Binaries
-
-| Binary    | Features   | Description                                        |
-| --------- | ---------- | -------------------------------------------------- |
-| `trainer` | `database` | Unified training pipeline for clustering and MCCFR |
-| `analyze` | `database` | HTTP REST API server on port 8888                  |
-| `convert` | `database` | Interactive CLI for type conversions and queries   |
-| `hosting` | `database` | WebSocket server for live games                    |
-
-# Feature Flags
-
-| Feature     | Description                                    |
-| ----------- | ---------------------------------------------- |
-| `database`  | PostgreSQL integration (default)               |
-| `server`    | Server-side dependencies (Actix, Tokio, Rayon) |
-| `disk`      | Legacy file-based persistence (deprecated)     |
-| `shortdeck` | 36-card short deck variant                     |
-| `benchmark` | Criterion benchmarks                           |
-
-# Docker
-
-Multi-stage Dockerfile supporting two targets:
-
-```bash
-# Build trainer image
-docker build --target trainer -t robopoker-trainer .
-
-# Build analyzer image
-docker build --target analyzer -t robopoker-analyzer .
-```
-
-# References
+## References
 
 1. (2019). Superhuman AI for multiplayer poker. [(Science)](https://science.sciencemag.org/content/early/2019/07/10/science.aay2400)
 2. (2014). Potential-Aware Imperfect-Recall Abstraction with Earth Mover's Distance in Imperfect-Information Games. [(AAAI)](http://www.cs.cmu.edu/~sandholm/potential-aware_imperfect-recall.aaai14.pdf)
@@ -292,9 +212,13 @@ docker build --target analyzer -t robopoker-analyzer .
 4. (2013). A Fast and Optimal Hand Isomorphism Algorithm. [(AAAI)](https://www.cs.cmu.edu/~waugh/publications/isomorphism13.pdf)
 5. (2018). Near-linear time approximation algorithms for optimal transport via Sinkhorn iteration. [(NIPS)](https://arxiv.org/abs/1705.09634)
 6. (2019). Solving Imperfect-Information Games via Discounted Regret Minimization. [(AAAI)](https://arxiv.org/pdf/1809.04040.pdf)
-7. (2013). Action Translation in Extensive-Form Games with Large Action Spaces: Axioms, Paradoxes, and the Pseudo-Harmonic Mapping. [(IJCAI)](http://www.cs.cmu.edu/~sandholm/reverse%20mapping.ijcai13.pdf)
+7. (2013). Action Translation in Extensive-Form Games with Large Action Spaces. [(IJCAI)](http://www.cs.cmu.edu/~sandholm/reverse%20mapping.ijcai13.pdf)
 8. (2015). Discretization of Continuous Action Spaces in Extensive-Form Games. [(AAMAS)](http://www.cs.cmu.edu/~sandholm/discretization.aamas15.fromACM.pdf)
 9. (2015). Regret-Based Pruning in Extensive-Form Games. [(NIPS)](http://www.cs.cmu.edu/~sandholm/regret-basedPruning.nips15.withAppendix.pdf)
 10. (2018). Depth-Limited Solving for Imperfect-Information Games. [(NeurIPS)](https://arxiv.org/pdf/1805.08195.pdf)
 11. (2017). Reduced Space and Faster Convergence in Imperfect-Information Games via Pruning. [(ICML)](http://www.cs.cmu.edu/~sandholm/reducedSpace.icml17.pdf)
 12. (2017). Safe and Nested Subgame Solving for Imperfect-Information Games. [(NIPS)](https://www.cs.cmu.edu/~noamb/papers/17-NIPS-Safe.pdf)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

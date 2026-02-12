@@ -1,0 +1,25 @@
+[package]
+name            = "rbp-clustering"
+version         = "0.1.0"
+edition         = "2024"
+rust-version    = "1.90"
+authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description     = "Hierarchical k-means clustering for poker hand abstraction"
+license         = "MIT"
+
+[features]
+default         = []
+database        = ["rbp-pg", "rbp-gameplay/database", "tokio-postgres", "const_format", "async-trait"]
+
+[dependencies]
+rbp-core        = { path = "../rbp-core"      }
+rbp-cards       = { path = "../rbp-cards"     }
+rbp-gameplay    = { path = "../rbp-gameplay"  }
+rbp-transport   = { path = "../rbp-transport" }
+rbp-pg          = { path = "../rbp-pg", optional = true }
+tokio-postgres  = { version = "0.7",   optional = true  }
+const_format    = { version = "0.2",   optional = true  }
+async-trait     = { version = "0.1",   optional = true  }
+rayon           = "1.10"
+rand            = { version = "0.9.1", features = ["small_rng"] }
+log             = "0.4"
