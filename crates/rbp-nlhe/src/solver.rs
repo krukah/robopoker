@@ -1,5 +1,4 @@
 use super::*;
-use rbp_cards::*;
 use rbp_core::Utility;
 use rbp_gameplay::*;
 use rbp_mccfr::*;

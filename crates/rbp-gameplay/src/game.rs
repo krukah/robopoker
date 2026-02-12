@@ -641,6 +641,7 @@ impl Game {
     }
     /// True if this is a preflop opening spot (no player actions yet).
     /// Used to interpret Odds(n,1) as nBB rather than nx pot.
+    #[allow(dead_code)]
     fn is_opening(&self) -> bool {
         self.street() == Street::Pref && self.pot() == Self::sblind() + Self::bblind()
     }

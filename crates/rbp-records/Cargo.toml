@@ -1,21 +1,21 @@
 [package]
-name = "rbp-records"
-version = "0.1.0"
-edition = "2024"
+name         = "rbp-records"
+version      = "0.1.0"
+edition      = "2024"
 rust-version = "1.90"
-authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description = "Hand history recording and replay"
-license = "MIT"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Hand history recording and replay"
+license      = "MIT"
 
 [features]
-default = []
-database = ["tokio-postgres", "const_format", "rbp-pg"]
+default      = []
+database     = ["tokio-postgres", "const_format", "rbp-pg"]
 
 [dependencies]
-rbp-core = { path = "../rbp-core" }
-rbp-cards = { path = "../rbp-cards" }
-rbp-gameplay = { path = "../rbp-gameplay" }
-rbp-auth = { path = "../rbp-auth" }
-rbp-pg = { optional = true, path = "../rbp-pg" }
-tokio-postgres = { optional = true, version = "0.7" }
-const_format = { optional = true, version = "0.2" }
+rbp-core       = { path = "../rbp-core"                     }
+rbp-cards      = { path = "../rbp-cards"                    }
+rbp-gameplay   = { path = "../rbp-gameplay"                 }
+rbp-auth       = { path = "../rbp-auth"                     }
+rbp-pg         = { path = "../rbp-pg", optional = true      }
+tokio-postgres = { version = "0.7",    optional = true      }
+const_format   = { version = "0.2",    optional = true      }

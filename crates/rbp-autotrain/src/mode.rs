@@ -33,11 +33,11 @@ impl Mode {
     pub async fn run() {
         let client = rbp_pg::db().await;
         match Self::from_args() {
-            Self::Cluster => PreTraining::run(&client).await,
-            Self::Status => client.status().await,
             Self::Fast => FastSession::new(client).await.train().await,
             Self::Slow => SlowSession::new(client).await.train().await,
             Self::Reset => Self::reset(&client).await,
+            Self::Status => client.status().await,
+            Self::Cluster => PreTraining::run(&client).await,
         }
     }
     async fn reset(client: &tokio_postgres::Client) {

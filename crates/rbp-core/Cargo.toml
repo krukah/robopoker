@@ -1,18 +1,18 @@
 [package]
-name = "rbp-core"
-version = "0.1.0"
-edition = "2024"
+name         = "rbp-core"
+version      = "0.1.0"
+edition      = "2024"
 rust-version = "1.90"
-authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description = "Core type aliases, traits, and constants for robopoker"
-license = "MIT"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Core type aliases, traits, and constants for robopoker"
+license      = "MIT"
 
 [features]
 default = []
-server = ["simplelog", "log", "tokio"]
+server  = ["simplelog", "log", "tokio"]
 
 [dependencies]
-uuid = { version = "1", features = ["v7", "serde"] }
+uuid      = { version = "1", features = ["v7", "serde"] }
 simplelog = { optional = true, version = "0.12.2" }
-log = { optional = true, version = "0.4.22" }
-tokio = { optional = true, version = "1.0", features = ["signal"] }
+log       = { optional = true, version = "0.4.22" }
+tokio     = { optional = true, version = "1.0", features = ["signal"] }

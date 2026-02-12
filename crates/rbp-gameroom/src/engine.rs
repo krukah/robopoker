@@ -293,6 +293,7 @@ macro_rules! impl_engine_internals {
     ($($phase:ty),*) => {
         $(
             impl Engine<$phase> {
+                #[allow(dead_code)]
                 fn apply(&mut self, action: Action) {
                     self.history.push(action);
                     self.game = self.game.apply(action);
@@ -311,6 +312,7 @@ macro_rules! impl_engine_internals {
                             .collect(),
                     ))
                 }
+                #[allow(dead_code)]
                 fn unicast(&self, i: usize, event: Event) {
                     log::debug!("[engine] unicast to P{}: {}", i, event);
                     match self.players.get(i).map(|inbox| inbox.send(event)) {

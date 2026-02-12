@@ -1,45 +1,91 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/rbp",
+members  = [
+    # Core crates
     "crates/rbp-core",
-    "crates/rbp-cards",
     "crates/rbp-transport",
+    "crates/rbp-cards",
     "crates/rbp-mccfr",
     "crates/rbp-gameplay",
+    "crates/rbp-dto",
     "crates/rbp-clustering",
     "crates/rbp-nlhe",
-    "crates/rbp-dto",
+    # Infrastructure crates
     "crates/rbp-pg",
     "crates/rbp-database",
     "crates/rbp-auth",
     "crates/rbp-records",
     "crates/rbp-workers",
+    # Application crates
     "crates/rbp-gameroom",
     "crates/rbp-players",
     "crates/rbp-analysis",
     "crates/rbp-hosting",
-    "crates/rbp-autotrain",
     "crates/rbp-server",
+    "crates/rbp-autotrain",
+    # Facade crate
+    "crates/rbp",
 ]
 
 [workspace.package]
-edition = "2024"
+version      = "0.1.0"
+edition      = "2024"
 rust-version = "1.90"
-license = "MIT"
-repository = "https://github.com/krukah/robopoker"
-homepage = "https://robopoker.club"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+
+[workspace.dependencies]
+# Internal crates
+rbp-core        = { path = "crates/rbp-core"       }
+rbp-transport   = { path = "crates/rbp-transport"  }
+rbp-cards       = { path = "crates/rbp-cards"      }
+rbp-mccfr       = { path = "crates/rbp-mccfr"      }
+rbp-gameplay    = { path = "crates/rbp-gameplay"   }
+rbp-dto         = { path = "crates/rbp-dto"        }
+rbp-clustering  = { path = "crates/rbp-clustering" }
+rbp-nlhe        = { path = "crates/rbp-nlhe"       }
+rbp-pg          = { path = "crates/rbp-pg"         }
+rbp-database    = { path = "crates/rbp-database"   }
+rbp-auth        = { path = "crates/rbp-auth"       }
+rbp-records     = { path = "crates/rbp-records"    }
+rbp-workers     = { path = "crates/rbp-workers"    }
+rbp-gameroom    = { path = "crates/rbp-gameroom"   }
+rbp-players     = { path = "crates/rbp-players"    }
+rbp-analysis    = { path = "crates/rbp-analysis"   }
+rbp-hosting     = { path = "crates/rbp-hosting"    }
+rbp-server      = { path = "crates/rbp-server"     }
+
+# External dependencies
+tokio           = { version = "1", features = ["full"] }
+tokio-postgres  = { version = "0.7", features = ["with-uuid-1"] }
+async-trait     = "0.1"
+futures         = "0.3"
+anyhow          = "1"
+log             = "0.4"
+serde           = { version = "1.0", features = ["derive"] }
+serde_json      = "1"
+const_format    = "0.2"
+uuid            = { version = "1", features = ["v7", "serde"] }
+rand            = { version = "0.9.1", features = ["small_rng"] }
+rayon           = "1"
+petgraph        = "0.6"
+byteorder       = "1.5"
+actix-web       = "4"
+actix-cors      = "0.7"
+actix-ws        = "0.3"
+clap            = { version = "4", features = ["derive"] }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(tarpaulin_include)"] }
 
 [profile.dev]
-panic = "unwind"
+panic     = "unwind"
 opt-level = 3
 
 [profile.release]
-lto = true
-panic = "abort"
-opt-level = 3
+lto           = true
+panic         = "abort"
+opt-level     = 3
 codegen-units = 1
-strip = "debuginfo"
+strip         = "debuginfo"

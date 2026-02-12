@@ -1,27 +1,27 @@
 [package]
-name            = "rbp-auth"
-version         = "0.1.0"
-edition         = "2024"
-rust-version    = "1.90"
-authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description     = "Authentication, sessions, and identity management"
-license         = "MIT"
+name         = "rbp-auth"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Authentication, sessions, and identity management"
+license      = "MIT"
 
 [features]
-default         = []
-database        = ["tokio-postgres", "const_format", "rbp-pg"]
-server          = ["database", "actix-web", "serde_json"]
+default      = []
+database     = ["tokio-postgres", "const_format", "rbp-pg"]
+server       = ["database", "actix-web", "serde_json"]
 
 [dependencies]
-rbp-core        = { path = "../rbp-core"                           }
-rbp-pg          = { path = "../rbp-pg", optional = true            }
-jsonwebtoken    = "9"
-argon2          = { version = "0.5",   features = ["rand"]         }
-sha2            = "0.10"
-rand            = { version = "0.9.1", features = ["small_rng"]    }
-serde           = { version = "1.0",   features = ["derive"]       }
-uuid            = { version = "1",     features = ["v7", "serde"]  }
-tokio-postgres  = { version = "0.7",   optional = true             }
-const_format    = { version = "0.2",   optional = true             }
-actix-web       = { version = "4.4",   optional = true             }
-serde_json      = { version = "1",     optional = true             }
+rbp-core       = { path = "../rbp-core"                          }
+rbp-pg         = { path = "../rbp-pg", optional = true           }
+jsonwebtoken   = "9"
+argon2         = { version = "0.5",   features = ["rand"]        }
+sha2           = "0.10"
+rand           = { version = "0.9.1", features = ["small_rng"]   }
+serde          = { version = "1.0",   features = ["derive"]      }
+uuid           = { version = "1",     features = ["v7", "serde"] }
+tokio-postgres = { version = "0.7",   optional = true            }
+const_format   = { version = "0.2",   optional = true            }
+actix-web      = { version = "4.4",   optional = true            }
+serde_json     = { version = "1",     optional = true            }

@@ -1,23 +1,23 @@
 [package]
-name = "rbp-cards"
-version = "0.1.0"
-edition = "2024"
+name         = "rbp-cards"
+version      = "0.1.0"
+edition      = "2024"
 rust-version = "1.90"
-authors = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description = "Card representation, hand evaluation, and strategic abstraction primitives"
-license = "MIT"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Card representation, hand evaluation, and strategic abstraction primitives"
+license      = "MIT"
 
 [features]
-default = []
-client = ["serde"]
+default   = []
+client    = ["serde"]
 shortdeck = []
-database = ["rbp-pg", "tokio-postgres", "const_format"]
+database  = ["rbp-pg", "tokio-postgres", "const_format"]
 
 [dependencies]
-rbp-core = { path = "../rbp-core" }
-rbp-pg = { path = "../rbp-pg", optional = true }
+rbp-core       = { path = "../rbp-core" }
+rbp-pg         = { path = "../rbp-pg", optional = true }
 tokio-postgres = { version = "0.7", optional = true }
-const_format = { version = "0.2", optional = true }
-rand = { version = "0.9.1", features = ["small_rng"] }
-serde = { optional = true, version = "1.0", features = ["derive"] }
-anyhow = "1.0"
+const_format   = { version = "0.2", optional = true }
+rand           = { version = "0.9.1", features = ["small_rng"] }
+serde          = { version = "1.0", features = ["derive"], optional = true }
+anyhow         = "1.0"
