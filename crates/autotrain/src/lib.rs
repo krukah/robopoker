@@ -14,6 +14,10 @@
 //!
 //! - [`Trainer`] — Main entry point for training orchestration
 //! - [`Mode`] — Training configuration (fast vs slow, clustering vs blueprint)
+//!
+//! ## Submodules
+//!
+//! - [`workers`] — Distributed training workers for MCCFR
 mod epoch;
 mod fast;
 mod mode;
@@ -21,9 +25,12 @@ mod pretraining;
 mod slow;
 mod trainer;
 
+pub mod workers;
+
 pub use epoch::*;
 pub use fast::*;
 pub use mode::*;
 pub use pretraining::*;
 pub use slow::*;
 pub use trainer::*;
+pub use workers::*;

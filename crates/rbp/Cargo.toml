@@ -12,8 +12,8 @@ categories      = ["game-development", "algorithms", "mathematics"]
 
 [features]
 default         = []
-database        = ["rbp-auth/database", "rbp-records/database"]
-server          = ["rbp-auth/server", "rbp-analysis/server"]
+database        = ["rbp-auth/database", "rbp-gameroom/database"]
+server          = ["rbp-auth/server"]
 
 [dependencies]
 rbp-core        = { version = "1.0", path = "../util"       }
@@ -21,16 +21,10 @@ rbp-transport   = { version = "1.0", path = "../transport"  }
 rbp-cards       = { version = "1.0", path = "../cards"      }
 rbp-mccfr       = { version = "1.0", path = "../mccfr"      }
 rbp-gameplay    = { version = "1.0", path = "../gameplay"   }
-rbp-dto         = { version = "1.0", path = "../dto"        }
 rbp-clustering  = { version = "1.0", path = "../clustering" }
 rbp-nlhe        = { version = "1.0", path = "../nlhe"       }
 rbp-database    = { version = "1.0", path = "../database"   }
 rbp-auth        = { version = "1.0", path = "../auth"       }
-rbp-records     = { version = "1.0", path = "../records"    }
-rbp-workers     = { version = "1.0", path = "../workers"    }
 rbp-gameroom    = { version = "1.0", path = "../gameroom"   }
-rbp-players     = { version = "1.0", path = "../players"    }
-rbp-analysis    = { version = "1.0", path = "../analysis"   }
-rbp-hosting     = { version = "1.0", path = "../hosting"    }
 rbp-server      = { version = "1.0", path = "../server"     }
 rbp-autotrain   = { version = "1.0", path = "../autotrain"  }

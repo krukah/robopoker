@@ -1,6 +1,6 @@
 //! Slow distributed training session
 use crate::*;
-use rbp_workers::*;
+use crate::workers::*;
 use std::sync::Arc;
 use tokio_postgres::Client;
 

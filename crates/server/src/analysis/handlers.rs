@@ -1,6 +1,6 @@
 use super::API;
 use rbp_cards::*;
-use rbp_dto::*;
+use rbp_core::*;
 use rbp_gameplay::*;
 use actix_web::HttpResponse;
 use actix_web::Responder;

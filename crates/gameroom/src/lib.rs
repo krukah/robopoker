@@ -15,6 +15,11 @@
 //!
 //! - [`Event`] — Messages from room to player (deal, turn, result)
 //! - [`Player`] — Trait for pluggable player implementations
+//!
+//! ## Submodules
+//!
+//! - [`records`] — Hand history recording and replay
+//! - [`players`] — Concrete player implementations (Fish, Human, AI)
 mod actor;
 mod channel;
 mod context;
@@ -24,10 +29,15 @@ mod event;
 mod message;
 mod player;
 mod protocol;
+#[cfg(feature = "database")]
 mod repository;
+#[cfg(feature = "database")]
 mod room;
 mod table;
 mod timer;
+
+pub mod records;
+pub mod players;
 
 pub use actor::*;
 pub use channel::*;
@@ -38,7 +48,16 @@ pub use event::*;
 pub use message::*;
 pub use player::*;
 pub use protocol::*;
+#[cfg(feature = "database")]
 pub use repository::*;
+#[cfg(feature = "database")]
 pub use room::*;
 pub use table::*;
 pub use timer::*;
+pub use players::*;
+
+// Re-export specific records types (not Hand which conflicts with rbp_cards::Hand,
+// not Room which conflicts with room::Room)
+pub use records::Participant;
+pub use records::Play;
+pub use records::Replay;

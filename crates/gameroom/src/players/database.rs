@@ -1,6 +1,6 @@
 //! Database-loaded player that samples directly from trained blueprint.
 use rbp_gameplay::*;
-use rbp_gameroom::*;
+use crate::*;
 use rbp_mccfr::*;
 use rbp_nlhe::*;
 use rbp_database::Hydrate;

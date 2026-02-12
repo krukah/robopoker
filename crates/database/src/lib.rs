@@ -30,8 +30,8 @@ mod stage;
 mod traits;
 
 pub use check::*;
-pub use schema::*;
 pub use stage::*;
+// schema module provides trait impls, no items to re-export
 pub use traits::*;
 
 use std::sync::Arc;

@@ -1,13 +1,23 @@
 //! Unified Backend Server
 //!
 //! Combines analysis API routes and live game hosting routes
-//! into a single actix-web server. Handlers are defined in their
-//! respective modules (analysis::handlers, hosting::handlers).
+//! into a single actix-web server.
+//!
+//! ## Submodules
+//!
+//! - [`analysis`] — Training result analysis and query interface
+//! - [`hosting`] — WebSocket game hosting infrastructure
 
-use rbp_analysis;
-use rbp_auth;
-use rbp_hosting;
-use rbp_database;
+pub mod analysis;
+pub mod hosting;
+
+// Re-export main types (not handlers or Client, which conflict between modules)
+pub use analysis::API;
+pub use analysis::CLI;
+pub use analysis::Query;
+pub use hosting::Casino;
+pub use hosting::RoomHandle;
+
 use actix_cors::Cors;
 use actix_web::App;
 use actix_web::HttpResponse;
@@ -32,9 +42,9 @@ async fn health(client: web::Data<Arc<Client>>) -> impl Responder {
 #[rustfmt::skip]
 pub async fn run() -> Result<(), std::io::Error> {
     let client = rbp_database::db().await;
-    let api = web::Data::new(rbp_analysis::API::new(client.clone()));
+    let api = web::Data::new(analysis::API::new(client.clone()));
     let crypto = web::Data::new(rbp_auth::Crypto::from_env());
-    let casino = web::Data::new(rbp_hosting::Casino::new(client.clone()));
+    let casino = web::Data::new(hosting::Casino::new(client.clone()));
     let client = web::Data::new(client);
     log::info!("starting unified server");
     HttpServer::new(move || {
@@ -60,25 +70,25 @@ pub async fn run() -> Result<(), std::io::Error> {
             )
             .service(
                 web::scope("/room")
-                    .route("/start", web::post().to(rbp_hosting::handlers::start))
-                    .route("/enter/{room_id}", web::get().to(rbp_hosting::handlers::enter))
-                    .route("/leave/{room_id}", web::post().to(rbp_hosting::handlers::leave)),
+                    .route("/start", web::post().to(hosting::handlers::start))
+                    .route("/enter/{room_id}", web::get().to(hosting::handlers::enter))
+                    .route("/leave/{room_id}", web::post().to(hosting::handlers::leave)),
             )
             .service(
                 web::scope("/api")
-                    .route("/replace-obs", web::post().to(rbp_analysis::handlers::replace_obs))
-                    .route("/nbr-any-abs", web::post().to(rbp_analysis::handlers::nbr_any_wrt_abs))
-                    .route("/nbr-obs-abs", web::post().to(rbp_analysis::handlers::nbr_obs_wrt_abs))
-                    .route("/nbr-abs-abs", web::post().to(rbp_analysis::handlers::nbr_abs_wrt_abs))
-                    .route("/nbr-kfn-abs", web::post().to(rbp_analysis::handlers::kfn_wrt_abs))
-                    .route("/nbr-knn-abs", web::post().to(rbp_analysis::handlers::knn_wrt_abs))
-                    .route("/nbr-kgn-abs", web::post().to(rbp_analysis::handlers::kgn_wrt_abs))
-                    .route("/exp-wrt-str", web::post().to(rbp_analysis::handlers::exp_wrt_str))
-                    .route("/exp-wrt-abs", web::post().to(rbp_analysis::handlers::exp_wrt_abs))
-                    .route("/exp-wrt-obs", web::post().to(rbp_analysis::handlers::exp_wrt_obs))
-                    .route("/hst-wrt-abs", web::post().to(rbp_analysis::handlers::hst_wrt_abs))
-                    .route("/hst-wrt-obs", web::post().to(rbp_analysis::handlers::hst_wrt_obs))
-                    .route("/blueprint", web::post().to(rbp_analysis::handlers::blueprint)),
+                    .route("/replace-obs", web::post().to(analysis::handlers::replace_obs))
+                    .route("/nbr-any-abs", web::post().to(analysis::handlers::nbr_any_wrt_abs))
+                    .route("/nbr-obs-abs", web::post().to(analysis::handlers::nbr_obs_wrt_abs))
+                    .route("/nbr-abs-abs", web::post().to(analysis::handlers::nbr_abs_wrt_abs))
+                    .route("/nbr-kfn-abs", web::post().to(analysis::handlers::kfn_wrt_abs))
+                    .route("/nbr-knn-abs", web::post().to(analysis::handlers::knn_wrt_abs))
+                    .route("/nbr-kgn-abs", web::post().to(analysis::handlers::kgn_wrt_abs))
+                    .route("/exp-wrt-str", web::post().to(analysis::handlers::exp_wrt_str))
+                    .route("/exp-wrt-abs", web::post().to(analysis::handlers::exp_wrt_abs))
+                    .route("/exp-wrt-obs", web::post().to(analysis::handlers::exp_wrt_obs))
+                    .route("/hst-wrt-abs", web::post().to(analysis::handlers::hst_wrt_abs))
+                    .route("/hst-wrt-obs", web::post().to(analysis::handlers::hst_wrt_obs))
+                    .route("/blueprint", web::post().to(analysis::handlers::blueprint)),
             )
     })
     .workers(6)

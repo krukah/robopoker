@@ -1,7 +1,7 @@
 //! Interactive CLI for poker analysis.
 //!
 //! Provides commands for type conversions and database queries.
-use crate::*;
+use super::*;
 use clap::Parser;
 use rbp_cards::*;
 use rbp_gameplay::*;

@@ -22,12 +22,3 @@ pub use participant::*;
 pub use play::*;
 pub use replay::*;
 pub use room::*;
-
-// Re-export core identity types
-pub use rbp_core::ID;
-pub use rbp_core::Unique;
-
-#[cfg(feature = "database")]
-mod repository;
-#[cfg(feature = "database")]
-pub use repository::*;

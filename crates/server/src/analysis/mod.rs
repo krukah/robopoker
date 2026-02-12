@@ -15,7 +15,6 @@
 //! supporting neighborhood queries, histogram retrieval, and blueprint lookup.
 mod api;
 mod cli;
-#[cfg(feature = "server")]
 pub mod handlers;
 mod query;
 

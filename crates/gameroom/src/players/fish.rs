@@ -1,5 +1,5 @@
 use rbp_gameplay::*;
-use rbp_gameroom::*;
+use crate::*;
 use rand::seq::IndexedRandom;
 
 /// Example CPU player that chooses randomly from legal actions.

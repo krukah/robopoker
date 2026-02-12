@@ -1595,48 +1595,18 @@ dependencies = [
 name = "rbp"
 version = "1.0.0"
 dependencies = [
- "rbp-analysis",
  "rbp-auth",
  "rbp-autotrain",
  "rbp-cards",
  "rbp-clustering",
  "rbp-core",
  "rbp-database",
- "rbp-dto",
  "rbp-gameplay",
  "rbp-gameroom",
- "rbp-hosting",
  "rbp-mccfr",
  "rbp-nlhe",
- "rbp-players",
- "rbp-records",
  "rbp-server",
  "rbp-transport",
- "rbp-workers",
-]
-
-[[package]]
-name = "rbp-analysis"
-version = "1.0.0"
-dependencies = [
- "actix-web",
- "anyhow",
- "clap",
- "const_format",
- "log",
- "rand",
- "rbp-cards",
- "rbp-clustering",
- "rbp-core",
- "rbp-database",
- "rbp-dto",
- "rbp-gameplay",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-transport",
- "serde_json",
- "tokio",
- "tokio-postgres",
 ]
 
 [[package]]
@@ -1665,6 +1635,8 @@ dependencies = [
  "const_format",
  "futures",
  "log",
+ "num_cpus",
+ "rand",
  "rbp-cards",
  "rbp-clustering",
  "rbp-core",
@@ -1672,7 +1644,7 @@ dependencies = [
  "rbp-gameplay",
  "rbp-mccfr",
  "rbp-nlhe",
- "rbp-workers",
+ "rbp-transport",
  "tokio-postgres",
 ]
 
@@ -1708,6 +1680,7 @@ name = "rbp-core"
 version = "1.0.0"
 dependencies = [
  "log",
+ "serde",
  "simplelog",
  "tokio",
  "uuid",
@@ -1729,13 +1702,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rbp-dto"
-version = "1.0.0"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "rbp-gameplay"
 version = "1.0.0"
 dependencies = [
@@ -1754,36 +1720,18 @@ version = "1.0.0"
 dependencies = [
  "async-trait",
  "const_format",
+ "dialoguer",
  "log",
+ "rand",
  "rbp-auth",
  "rbp-cards",
  "rbp-core",
  "rbp-database",
  "rbp-gameplay",
- "rbp-records",
+ "rbp-mccfr",
+ "rbp-nlhe",
+ "rbp-transport",
  "serde",
- "serde_json",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "rbp-hosting"
-version = "1.0.0"
-dependencies = [
- "actix-web",
- "actix-ws",
- "anyhow",
- "async-trait",
- "futures",
- "log",
- "rbp-auth",
- "rbp-core",
- "rbp-gameplay",
- "rbp-gameroom",
- "rbp-players",
- "rbp-records",
  "serde_json",
  "tokio",
  "tokio-postgres",
@@ -1814,40 +1762,9 @@ dependencies = [
  "rbp-cards",
  "rbp-core",
  "rbp-database",
- "rbp-dto",
  "rbp-gameplay",
  "rbp-mccfr",
  "rbp-transport",
- "tokio-postgres",
-]
-
-[[package]]
-name = "rbp-players"
-version = "1.0.0"
-dependencies = [
- "async-trait",
- "dialoguer",
- "rand",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-gameroom",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-transport",
- "tokio-postgres",
-]
-
-[[package]]
-name = "rbp-records"
-version = "1.0.0"
-dependencies = [
- "const_format",
- "rbp-auth",
- "rbp-cards",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
  "tokio-postgres",
 ]
 
@@ -1857,13 +1774,28 @@ version = "1.0.0"
 dependencies = [
  "actix-cors",
  "actix-web",
+ "actix-ws",
+ "anyhow",
+ "async-trait",
+ "clap",
+ "const_format",
+ "futures",
  "log",
- "rbp-analysis",
+ "rand",
  "rbp-auth",
+ "rbp-cards",
+ "rbp-clustering",
+ "rbp-core",
  "rbp-database",
- "rbp-hosting",
+ "rbp-gameplay",
+ "rbp-gameroom",
+ "rbp-mccfr",
+ "rbp-nlhe",
+ "rbp-transport",
+ "serde_json",
  "tokio",
  "tokio-postgres",
+ "uuid",
 ]
 
 [[package]]
@@ -1871,24 +1803,6 @@ name = "rbp-transport"
 version = "1.0.0"
 dependencies = [
  "rbp-core",
-]
-
-[[package]]
-name = "rbp-workers"
-version = "1.0.0"
-dependencies = [
- "futures",
- "log",
- "num_cpus",
- "rand",
- "rbp-cards",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-transport",
- "tokio-postgres",
 ]
 
 [[package]]

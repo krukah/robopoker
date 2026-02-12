@@ -1,6 +1,6 @@
 //! Player implementations for the game room.
 //!
-//! Concrete types implementing the `Player` trait from [`rbp_gameroom`],
+//! Concrete types implementing the `Player` trait,
 //! providing different decision-making behaviors.
 //!
 //! ## Implementations

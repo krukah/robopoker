@@ -4,7 +4,7 @@ version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "Core type aliases, traits, and constants for robopoker"
+description  = "Core types, constants, and DTOs for robopoker"
 license      = "MIT"
 repository   = "https://github.com/krukah/robopoker"
 keywords     = ["poker", "types", "constants"]
@@ -16,6 +16,7 @@ server  = ["simplelog", "log", "tokio"]
 
 [dependencies]
 uuid      = { version = "1", features = ["v7", "serde"] }
+serde     = { version = "1.0", features = ["derive"] }
 simplelog = { optional = true, version = "0.12.2" }
 log       = { optional = true, version = "0.4.22" }
 tokio     = { optional = true, version = "1.0", features = ["signal"] }

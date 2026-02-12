@@ -7,19 +7,13 @@ members  = [
     "crates/cards",
     "crates/mccfr",
     "crates/gameplay",
-    "crates/dto",
     "crates/clustering",
     "crates/nlhe",
     # Infrastructure crates
     "crates/database",
     "crates/auth",
-    "crates/records",
-    "crates/workers",
-    # Application crates
+    # Application crates (consolidated)
     "crates/gameroom",
-    "crates/players",
-    "crates/analysis",
-    "crates/hosting",
     "crates/server",
     "crates/autotrain",
     # Facade crate
@@ -43,19 +37,13 @@ rbp-transport   = { path = "crates/transport"   }
 rbp-cards       = { path = "crates/cards"       }
 rbp-mccfr       = { path = "crates/mccfr"       }
 rbp-gameplay    = { path = "crates/gameplay"    }
-rbp-dto         = { path = "crates/dto"         }
 rbp-clustering  = { path = "crates/clustering"  }
 rbp-nlhe        = { path = "crates/nlhe"        }
 rbp-database    = { path = "crates/database"    }
 rbp-auth        = { path = "crates/auth"        }
-rbp-records     = { path = "crates/records"     }
-rbp-workers     = { path = "crates/workers"     }
 rbp-gameroom    = { path = "crates/gameroom"    }
-rbp-players     = { path = "crates/players"     }
-rbp-analysis    = { path = "crates/analysis"    }
-rbp-hosting     = { path = "crates/hosting"    }
-rbp-server      = { path = "crates/server"     }
-rbp-autotrain   = { path = "crates/autotrain"  }
+rbp-server      = { path = "crates/server"      }
+rbp-autotrain   = { path = "crates/autotrain"   }
 
 # External dependencies
 tokio           = { version = "1", features = ["full"] }

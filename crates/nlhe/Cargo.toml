@@ -21,7 +21,6 @@ rbp-cards      = { version = "1.0", path = "../cards"     }
 rbp-gameplay   = { version = "1.0", path = "../gameplay"  }
 rbp-transport  = { version = "1.0", path = "../transport" }
 rbp-mccfr      = { version = "1.0", path = "../mccfr"     }
-rbp-dto        = { version = "1.0", path = "../dto"       }
 rbp-database   = { version = "1.0", path = "../database", optional = true }
 log            = "0.4"
 rand           = { version = "0.9.1", features = ["small_rng"] }

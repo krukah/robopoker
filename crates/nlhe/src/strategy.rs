@@ -1,6 +1,6 @@
 use super::*;
 use rbp_core::Probability;
-use rbp_dto::*;
+use rbp_core::*;
 use rbp_gameplay::*;
 use rbp_mccfr::*;
 use rbp_transport::*;

@@ -7,16 +7,34 @@ authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 description     = "Unified backend combining analysis API and game hosting"
 license         = "MIT"
 repository      = "https://github.com/krukah/robopoker"
-keywords        = ["server", "api", "poker", "backend"]
-categories      = ["web-programming::http-server"]
+keywords        = ["server", "api", "poker", "backend", "websocket"]
+categories      = ["web-programming::http-server", "game-development"]
 
 [dependencies]
-rbp-analysis    = { version = "1.0", path = "../analysis", features = ["server"] }
-rbp-auth        = { version = "1.0", path = "../auth", features = ["server"]     }
-rbp-hosting     = { version = "1.0", path = "../hosting"                         }
-rbp-database    = { version = "1.0", path = "../database"                        }
-tokio-postgres  = "0.7"
-tokio           = { version = "1", features = ["rt-multi-thread"]   }
-actix-web       = "4"
-actix-cors      = "0.7"
-log             = "0.4"
+# Internal crates
+rbp-core       = { version = "1.0", path = "../util"       }
+rbp-auth       = { version = "1.0", path = "../auth", features = ["server"] }
+rbp-cards      = { version = "1.0", path = "../cards"      }
+rbp-clustering = { version = "1.0", path = "../clustering" }
+rbp-database   = { version = "1.0", path = "../database"   }
+rbp-gameroom   = { version = "1.0", path = "../gameroom", features = ["database"] }
+rbp-gameplay   = { version = "1.0", path = "../gameplay"   }
+rbp-mccfr      = { version = "1.0", path = "../mccfr"      }
+rbp-nlhe       = { version = "1.0", path = "../nlhe"       }
+rbp-transport  = { version = "1.0", path = "../transport"  }
+
+# External dependencies
+tokio-postgres = "0.7"
+tokio          = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros"] }
+actix-web      = "4"
+actix-cors     = "0.7"
+actix-ws       = "0.3"
+async-trait    = "0.1"
+uuid           = "1"
+futures        = "0.3"
+serde_json     = "1"
+log            = "0.4"
+anyhow         = "1"
+rand           = { version = "0.9.1", features = ["small_rng"] }
+clap           = { version = "4", features = ["derive"] }
+const_format   = "0.2"
