@@ -1,8 +1,8 @@
 use super::*;
 use rbp_core::Utility;
 use rbp_gameplay::*;
-use rbp_mccfr::*;
 use rbp_mccfr::Posterior;
+use rbp_mccfr::*;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
@@ -76,13 +76,15 @@ where
         &self,
         recall: &Partial,
     ) -> SubSolver<'_, NlheProfile, NlheEncoder, SUBGAME_ITERATIONS> {
+        if rbp_core::N != 2 {
+            panic!("subgame solving is currently heads-up only");
+        }
         SubSolver::new(
             &self.encoder,
             &self.profile,
             match recall.turn() {
-                Turn::Choice(0) => NlheTurn::from(1),
-                Turn::Choice(1) => NlheTurn::from(0),
-                _ => unreachable!("subgame solving requires two-player game...for now"),
+                Turn::Choice(position) => NlheTurn::from((position + 1) % rbp_core::N),
+                _ => unreachable!("subgame solving expects a player decision node"),
             },
             recall.subgame().into_iter().map(NlheEdge::from).collect(),
             ManyWorlds::cluster(self.opponent_range(recall)),
@@ -100,6 +102,9 @@ where
     /// Projects observation-level range to abstraction level.
     /// Aggregates reach by abstraction bucket for clustering into worlds.
     pub fn opponent_range(&self, recall: &Partial) -> Posterior<NlheSecret> {
+        if rbp_core::N != 2 {
+            panic!("opponent range calculation is currently heads-up only");
+        }
         let hero = NlheTurn::from(recall.turn());
         recall
             .histories()

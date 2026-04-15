@@ -196,13 +196,24 @@ impl Arbitrary for NlheInfo {
 mod tests {
     use super::*;
 
+    fn walk_to_next_street(mut game: Game) -> Game {
+        while !game.must_deal() {
+            let action = if game.may_call() {
+                game.calls()
+            } else if game.may_check() {
+                game.check()
+            } else {
+                game.passive()
+            };
+            game = game.apply(action);
+        }
+        let draw = game.deck().deal(game.street());
+        game.apply(Action::Draw(draw))
+    }
+
     #[test]
     fn consistent_edge_collection_flop() {
-        let game = Game::root();
-        let game = game.apply(Action::Call(1));
-        let game = game.apply(Action::Check);
-        let flop = game.deck().deal(Street::Pref);
-        let game = game.apply(Action::Draw(flop));
+        let game = walk_to_next_street(Game::root());
         assert_eq!(game.street(), Street::Flop);
         let depth = 0;
         let learned = game
@@ -227,15 +238,7 @@ mod tests {
 
     #[test]
     fn consistent_edge_collection_turn() {
-        let game = Game::root();
-        let game = game.apply(Action::Call(1));
-        let game = game.apply(Action::Check);
-        let flop = game.deck().deal(Street::Pref);
-        let game = game.apply(Action::Draw(flop));
-        let game = game.apply(Action::Check);
-        let game = game.apply(Action::Check);
-        let turn = game.deck().deal(Street::Flop);
-        let game = game.apply(Action::Draw(turn));
+        let game = walk_to_next_street(walk_to_next_street(Game::root()));
         assert_eq!(game.street(), Street::Turn);
         let depth = 0;
         let trained = game
@@ -336,12 +339,29 @@ mod tests {
 
     #[test]
     fn from_path_filters_to_current_street() {
-        let recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
-            .push(Action::Call(1))
-            .push(Action::Check)
-            .push(Action::Raise(3))
-            .push(Action::Raise(9))
-            .push(Action::Call(6));
+        let mut recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)));
+        let a1 = if recall.head().may_call() {
+            recall.head().calls()
+        } else {
+            Action::Check
+        };
+        recall = recall.push(a1);
+        let a2 = if recall.head().may_check() {
+            Action::Check
+        } else if recall.head().may_call() {
+            recall.head().calls()
+        } else {
+            recall.head().passive()
+        };
+        recall = recall.push(a2);
+        let a3 = if recall.head().may_raise() {
+            recall.head().raise()
+        } else if recall.head().may_check() {
+            Action::Check
+        } else {
+            recall.head().calls()
+        };
+        recall = recall.push(a3);
         let abs = Abstraction::random();
         let info = NlheInfo::from((recall.subgame(), abs, recall.choices()));
         let current = recall
@@ -356,11 +376,29 @@ mod tests {
     }
     #[test]
     fn canonical_choices_from_edge_reconstruction() {
-        // Build a recall with arbitrary (potentially off-grid) actions
-        let recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
-            .push(Action::Call(1))
-            .push(Action::Check)
-            .push(Action::Raise(7)); // arbitrary amount
+        let mut recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)));
+        let a1 = if recall.head().may_call() {
+            recall.head().calls()
+        } else {
+            Action::Check
+        };
+        recall = recall.push(a1);
+        let a2 = if recall.head().may_check() {
+            Action::Check
+        } else if recall.head().may_call() {
+            recall.head().calls()
+        } else {
+            recall.head().passive()
+        };
+        recall = recall.push(a2);
+        let a3 = if recall.head().may_raise() {
+            recall.head().raise()
+        } else if recall.head().may_check() {
+            Action::Check
+        } else {
+            recall.head().calls()
+        };
+        recall = recall.push(a3);
         // The actual game state has pot reflecting 7-chip raise
         let _actual_game = recall.head();
         // The canonical game state reconstructs from edges

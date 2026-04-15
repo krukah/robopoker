@@ -115,7 +115,7 @@ where
         self.iterations += 1;
     }
     fn walker(&self) -> Self::T {
-        Self::T::from(self.iterations % 2)
+        Self::T::from(self.iterations % rbp_core::N)
     }
     fn epochs(&self) -> usize {
         self.iterations

@@ -23,7 +23,7 @@ use std::ops::Not;
 /// - `pot` — Total chips in the center (including current street bets)
 /// - `board` — Community cards (0–5 depending on street)
 /// - `seats` — Per-player state (stack, stake, status, hole cards)
-/// - `dealer` — Button position (0 or 1 for heads-up)
+/// - `dealer` — Button position
 /// - `ticker` — Action counter for determining whose turn it is
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Game {
@@ -58,6 +58,7 @@ impl Game {
     /// decision. Default stack is 100bb with P0 on the button.
     pub fn root() -> Self {
         let mut game = Self::default();
+        game.reset_preflop_ticker_for_blinds();
         game.act(game.posts());
         game.act(game.posts());
         game
@@ -197,6 +198,73 @@ impl Game {
         child.act(action);
         Ok(child)
     }
+
+    /// Returns a compact set of realistic non-all-in raise actions.
+    ///
+    /// This method follows no-limit hold'em constraints:
+    /// - every `Raise(x)` must satisfy the minimum full-raise rule (`x >= to_raise()`)
+    /// - `Shove` is handled separately by `legal()`, so this method only returns
+    ///   values inside the non-all-in interval `[to_raise(), to_shove() - 1]`
+    ///
+    /// Sizing policy:
+    /// - preflop unopened pot: min-raise plus common open sizes (3bb/4bb/5bb)
+    /// - postflop unopened pot: min-raise plus common c-bet sizes (1/3, 1/2, 2/3, 1x, 1.5x pot)
+    /// - already raised pot: min-raise plus compact re-raise sizes (2/3, 1x pot)
+    ///   to keep branching manageable in multiway/6-max trees
+    ///
+    /// Candidate sizes are rounded to the nearest 1bb, clamped to legal bounds,
+    /// deduplicated, and returned in ascending order as `Action::Raise`.
+    pub fn valid_raises(&self) -> Vec<Action> {
+        if !self.may_raise() {
+            return vec![];
+        }
+
+        let min_raise = self.to_raise();
+        let max_raise = self.to_shove() - 1;
+        let bb = Self::bblind().max(1);
+        let call = self.to_call();
+        let pot_after_call = self.pot() + call;
+        let unopened = match self.street() {
+            Street::Pref => self.stakes() == Self::bblind(),
+            _ => self.stakes() == 0,
+        };
+
+        let mut candidates = vec![min_raise];
+
+        if self.street() == Street::Pref && unopened {
+            let actor_stake = self.actor_ref().stake();
+            for total in [
+                3 * Self::bblind(), // 3bb
+                4 * Self::bblind(), // 4bb
+                5 * Self::bblind(), // 5bb
+            ] {
+                candidates.push(total.saturating_sub(actor_stake));
+            }
+        } else if unopened {
+            candidates.extend([
+                call + pot_after_call / 3,
+                call + pot_after_call / 2,
+                call + (2 * pot_after_call) / 3,
+                call + pot_after_call,
+                call + (3 * pot_after_call) / 2,
+            ]);
+        } else {
+            candidates.extend([call + (2 * pot_after_call) / 3, call + pot_after_call]);
+        }
+
+        candidates
+            .into_iter()
+            .map(|raise| {
+                let rounded = ((raise + bb / 2) / bb) * bb;
+                rounded.clamp(min_raise, max_raise)
+            })
+            .filter(|&raise| raise >= min_raise && raise <= max_raise)
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .map(Action::Raise)
+            .collect()
+    }
+
     /// Returns all legal actions in the current state.
     ///
     /// Empty at terminal nodes. Contains exactly one action at chance nodes.
@@ -214,20 +282,20 @@ impl Game {
         }
         // now it's certainly a Turn::Choice
         let mut options = Vec::new();
-        if self.may_raise() {
-            options.push(self.raise());
-        }
-        if self.may_shove() {
-            options.push(self.shove());
-        }
-        if self.may_call() {
-            options.push(self.calls());
-        }
         if self.may_fold() {
             options.push(self.folds());
         }
         if self.may_check() {
             options.push(self.check());
+        }
+        if self.may_call() {
+            options.push(self.calls());
+        }
+        if self.may_raise() {
+            options.extend(self.valid_raises());
+        }
+        if self.may_shove() {
+            options.push(self.shove());
         }
         debug_assert!(options.len() > 0);
         options
@@ -317,7 +385,7 @@ impl Game {
         debug_assert!(self.street() == Street::Pref);
         self.dealer = self.dealer + 1;
         self.dealer = self.dealer % self.n();
-        self.ticker = 0;
+        self.reset_preflop_ticker_for_blinds();
     }
 }
 
@@ -407,7 +475,7 @@ impl Game {
     }
     /// True if blinds have not yet been posted.
     pub fn must_post(&self) -> bool {
-        self.street() == Street::Pref && self.pot() < Self::sblind() + Self::bblind()
+        self.street() == Street::Pref && self.ticker < self.preflop_start_ticker() + 2
     }
     /// All players have acted and the pot is right.
     fn is_everyone_alright(&self) -> bool {
@@ -419,7 +487,12 @@ impl Game {
     }
     /// All players have acted at least once this street.
     fn is_everyone_touched(&self) -> bool {
-        self.ticker > self.n() + if self.street() == Street::Pref { 1 } else { 0 }
+        let extra = if self.street() == Street::Pref {
+            self.preflop_start_ticker() + 1
+        } else {
+            0
+        };
+        self.ticker > self.n() + extra
     }
     /// All betting players are in for the effective stake.
     fn is_everyone_matched(&self) -> bool {
@@ -458,10 +531,32 @@ impl Game {
     pub fn may_check(&self) -> bool {
         matches!(self.turn(), Turn::Choice(_)) && self.stakes() == self.actor_ref().stake()
     }
+    /// Approximate number of completed raise levels on the current street.
+    ///
+    /// Memoryless state does not track action history, so we infer depth from
+    /// distinct committed stake levels above the street baseline.
+    fn raise_depth(&self) -> usize {
+        let baseline = if self.street() == Street::Pref {
+            Self::bblind()
+        } else {
+            0
+        };
+        self.seats
+            .iter()
+            .filter(|s| s.state() != State::Folding)
+            .map(|s| s.stake())
+            .filter(|&stake| stake > baseline)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+    }
+
     /// True if raising is legal (have chips beyond the min-raise).
     pub fn may_raise(&self) -> bool {
-        matches!(self.turn(), Turn::Choice(_)) && self.to_raise() < self.to_shove()
+        matches!(self.turn(), Turn::Choice(_))
+            && self.to_raise() < self.to_shove()
+            && self.raise_depth() <= rbp_core::MAX_RAISE_REPEATS
     }
+
     /// True if shoving (all-in) is legal.
     pub fn may_shove(&self) -> bool {
         matches!(self.turn(), Turn::Choice(_)) && self.to_shove() > 0
@@ -477,10 +572,12 @@ impl Game {
     /// Blind amount to post (SB or BB depending on position).
     pub fn to_post(&self) -> Chips {
         debug_assert!(self.street() == Street::Pref);
-        if self.actor_idx() == self.dealer {
+        if self.actor_idx() == self.small_blind_idx() {
             Self::sblind().min(self.actor_ref().stack())
-        } else {
+        } else if self.actor_idx() == self.big_blind_idx() {
             Self::bblind().min(self.actor_ref().stack())
+        } else {
+            panic!("only small blind and big blind may post blinds")
         }
     }
     /// All remaining chips (for all-in).
@@ -594,6 +691,22 @@ impl Game {
 
 /// Position tracking.
 impl Game {
+    fn preflop_start_ticker(&self) -> Position {
+        if self.n() == 2 { 0 } else { 1 }
+    }
+    fn reset_preflop_ticker_for_blinds(&mut self) {
+        self.ticker = self.preflop_start_ticker();
+    }
+    fn small_blind_idx(&self) -> Position {
+        if self.n() == 2 {
+            self.dealer
+        } else {
+            (self.dealer + 1) % self.n()
+        }
+    }
+    fn big_blind_idx(&self) -> Position {
+        (self.small_blind_idx() + 1) % self.n()
+    }
     /// Index of the player to act.
     fn actor_idx(&self) -> Position {
         (self.dealer + self.ticker) % self.n()
@@ -752,7 +865,6 @@ impl Game {
         }
     }
 }
-
 
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1288,6 +1400,9 @@ mod tests {
     /// legal() returns correct options preflop after blinds
     #[test]
     fn legal_preflop_options() {
+        if rbp_core::N != 2 {
+            return;
+        }
         let game = Game::root();
         let legal = game.legal();
         assert!(legal.contains(&Action::Fold));
@@ -1300,6 +1415,9 @@ mod tests {
     /// legal() after limp allows check
     #[test]
     fn legal_bb_can_check() {
+        if rbp_core::N != 2 {
+            return;
+        }
         let game = Game::root().apply(Action::Call(1));
         let legal = game.legal();
         assert!(legal.contains(&Action::Check));
@@ -1309,6 +1427,9 @@ mod tests {
     /// legal() on flop
     #[test]
     fn legal_flop_options() {
+        if rbp_core::N != 2 {
+            return;
+        }
         let game = Game::root().apply(Action::Call(1)).apply(Action::Check);
         let flop = game.deck().deal(Street::Pref);
         let game = game.apply(Action::Draw(flop));
@@ -1316,6 +1437,48 @@ mod tests {
         assert!(legal.contains(&Action::Check));
         assert!(legal.iter().any(|a| matches!(a, Action::Raise(_))));
         assert!(!legal.contains(&Action::Fold)); // no bet to fold to
+    }
+
+    /// legal() returns sorted realistic raises bounded by min-raise and shove
+    #[test]
+    fn legal_raise_sizes_are_sorted_and_legal() {
+        let game = Game::root();
+        let raises = game
+            .legal()
+            .into_iter()
+            .filter_map(|action| match action {
+                Action::Raise(chips) => Some(chips),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert!(raises.len() >= 2);
+        assert!(raises.windows(2).all(|w| w[0] < w[1]));
+        assert!(raises.iter().all(|&raise| raise >= game.to_raise()));
+        assert!(raises.iter().all(|&raise| raise < game.to_shove()));
+    }
+
+    /// Re-raise candidates are humanized to whole-big-blind chip counts.
+    #[test]
+    fn raised_pot_raises_are_rounded_to_big_blind() {
+        if rbp_core::N != 2 {
+            return;
+        }
+
+        let root = Game::root();
+        let game = root.apply(root.raise());
+        let bb = Game::bblind();
+        let raises = game
+            .legal()
+            .into_iter()
+            .filter_map(|action| match action {
+                Action::Raise(chips) => Some(chips),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert!(!raises.is_empty());
+        assert!(raises.iter().all(|raise| raise % bb == 0));
     }
 
     /// terminal via river showdown
@@ -1348,12 +1511,33 @@ mod tests {
     /// min raise calculation
     #[test]
     fn min_raise_size() {
+        if rbp_core::N != 2 {
+            return;
+        }
         let game = Game::root();
         // dealer stake=1, BB stake=2. to_raise = (2-1) + max(2-1, BB) = 1 + 2 = 3
         assert_eq!(game.to_raise(), 3);
         let game = game.apply(Action::Raise(3));
         // dealer stake=4, BB stake=2. to_raise = (4-2) + max(4-2, BB) = 2 + 2 = 4
         assert_eq!(game.to_raise(), 4);
+    }
+
+    /// may_raise() is capped by MAX_RAISE_REPEATS.
+    #[test]
+    fn raise_depth_is_capped() {
+        let mut game = Game::root();
+        let mut raises = 0usize;
+
+        while game.may_raise() {
+            game = game.apply(game.raise());
+            raises += 1;
+            if raises > rbp_core::MAX_RAISE_REPEATS + 2 {
+                break;
+            }
+        }
+
+        assert!(!game.may_raise() || game.to_raise() >= game.to_shove());
+        assert!(raises <= rbp_core::MAX_RAISE_REPEATS + 1);
     }
 
     /// pot size tracks correctly through streets
@@ -1453,5 +1637,234 @@ mod tests {
         assert!(!game.may_check());
         assert!(game.may_call());
         assert_eq!(game.snap(Action::Check), game.calls());
+    }
+
+    #[test]
+    fn six_max_preflop_positions() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        // Assuming dealer is 0. Then SB=1, BB=2, UTG=3
+        let game = Game::root();
+
+        assert_eq!(game.dealer, 0);
+        assert_eq!(game.small_blind_idx(), 1);
+        assert_eq!(game.big_blind_idx(), 2);
+
+        // After posting blinds, UTG (dealer+3) should act first
+        assert_eq!(game.actor_idx(), 3);
+        assert_eq!(game.turn(), Turn::Choice(3));
+
+        // Check initial pot size with blinds
+        assert_eq!(game.pot(), Game::sblind() + Game::bblind());
+    }
+
+    #[test]
+    fn six_max_bb_live_option() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        let mut game = Game::root(); // actor is 3 (UTG)
+
+        // Everyone limps (calls)
+        // 3(UTG), 4(HJ), 5(CO), 0(BTN), 1(SB)
+        for _ in 0..5 {
+            assert!(game.may_call());
+            let call_action = game.calls();
+            game = game.apply(call_action);
+        }
+
+        // Now it is BB's (2) turn
+        assert_eq!(game.actor_idx(), 2);
+
+        // Since BB's blind was matched but not raised, they have the live option
+        assert!(game.is_everyone_matched());
+        assert!(!game.is_everyone_touched()); // BB hasn't been touched yet, must act
+
+        assert!(game.may_check());
+        assert!(game.may_raise());
+
+        // BB chooses to check, proceeding to flop
+        game = game.apply(Action::Check);
+        assert!(game.must_deal());
+        assert!(game.is_everyone_touched());
+    }
+
+    #[test]
+    fn six_max_flop_action_order() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        let mut game = Game::root();
+
+        // Everyone limps
+        for _ in 0..5 {
+            let call = game.calls();
+            game = game.apply(call);
+        }
+        // BB checks
+        game = game.apply(Action::Check);
+
+        // Deal flop
+        let flop = game.deck().deal(Street::Pref);
+        game = game.apply(Action::Draw(flop));
+
+        assert_eq!(game.street(), Street::Flop);
+
+        // On the flop, SB (1) should be the first to act
+        assert_eq!(game.actor_idx(), 1);
+        assert_eq!(game.turn(), Turn::Choice(1));
+    }
+
+    #[test]
+    fn six_max_blinds_posting_invariants() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        let game = Game::root();
+        let seats = game.seats();
+
+        assert_eq!(game.pot(), Game::sblind() + Game::bblind());
+        assert_eq!(seats[1].stake(), Game::sblind());
+        assert_eq!(seats[1].spent(), Game::sblind());
+        assert_eq!(seats[2].stake(), Game::bblind());
+        assert_eq!(seats[2].spent(), Game::bblind());
+
+        for idx in [0usize, 3, 4, 5] {
+            assert_eq!(seats[idx].stake(), 0);
+            assert_eq!(seats[idx].spent(), 0);
+        }
+    }
+
+    #[test]
+    fn six_max_preflop_actor_sequence_limped_pot() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        let mut game = Game::root();
+        let expected_actors = [3usize, 4, 5, 0, 1, 2];
+
+        for &actor in expected_actors.iter().take(5) {
+            assert_eq!(game.actor_idx(), actor);
+            assert!(game.may_call());
+            game = game.apply(game.calls());
+        }
+
+        assert_eq!(game.actor_idx(), 2);
+        assert!(game.may_check());
+        game = game.apply(Action::Check);
+        assert!(game.must_deal());
+    }
+
+    #[test]
+    fn six_max_root_legal_has_realistic_raises() {
+        if rbp_core::N != 6 {
+            return;
+        }
+
+        let game = Game::root();
+        let raises = game
+            .legal()
+            .into_iter()
+            .filter_map(|action| match action {
+                Action::Raise(chips) => Some(chips),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(raises, vec![4, 6, 8, 10]);
+    }
+
+    #[test]
+    fn six_max_preflop_raise_reopens_to_original_raiser() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        let mut game = Game::root();
+
+        // UTG opens; later BTN 3-bets, so action must reopen to UTG.
+        game = game.apply(game.raise());
+        assert_eq!(game.actor_idx(), 4);
+
+        assert!(game.may_call());
+        game = game.apply(game.calls()); // HJ flats
+        assert_eq!(game.actor_idx(), 5);
+
+        assert!(game.may_fold());
+        game = game.apply(Action::Fold); // CO folds
+        assert_eq!(game.actor_idx(), 0);
+
+        assert!(game.may_raise());
+        game = game.apply(game.raise()); // BTN 3-bets
+        assert_eq!(game.actor_idx(), 1);
+
+        assert!(game.may_call());
+        game = game.apply(game.calls()); // SB calls
+        assert_eq!(game.actor_idx(), 2);
+
+        assert!(game.may_call());
+        game = game.apply(game.calls()); // BB calls
+
+        assert_eq!(game.actor_idx(), 3);
+        assert!(game.may_call()); // reopened to UTG
+        assert!(!game.must_deal());
+    }
+
+    #[test]
+    fn six_max_continuation_rotates_button_and_blinds() {
+        if rbp_core::N != 6 {
+            return;
+        }
+        let mut game = Game::root();
+
+        // Everyone folds to BB preflop: UTG -> HJ -> CO -> BTN -> SB.
+        for actor in [3usize, 4, 5, 0, 1] {
+            assert_eq!(game.actor_idx(), actor);
+            assert!(game.may_fold());
+            game = game.apply(Action::Fold);
+        }
+
+        assert!(game.must_stop());
+        let next = game
+            .continuation()
+            .expect("all players still cover the blind");
+
+        assert_eq!(next.dealer, 1);
+        assert_eq!(next.small_blind_idx(), 2);
+        assert_eq!(next.big_blind_idx(), 3);
+        assert_eq!(next.actor_idx(), 4);
+    }
+
+    #[test]
+    fn six_max_random_games() {
+        let mut game = Game::root();
+        loop {
+            let actions = game.legal();
+            let street = game.street();
+            match game.turn() {
+                Turn::Chance => println!("[{:?} | Chance] {:?}", street, actions),
+                Turn::Terminal => println!("[{:?} | Terminal] {:?}", street, actions),
+                Turn::Choice(seat) => println!("[{:?} | Seat {}] {:?}", street, seat, actions),
+            }
+            if actions.is_empty() {
+                break;
+            }
+            let action = actions[rand::random_range(0..actions.len())];
+            game = game.apply(action);
+        }
+    }
+
+    #[test]
+    fn fuzz_six_max_random_games() {
+        if rbp_core::N != 6 {
+            return;
+        }
+
+        let game = Game::root();
+        let mut count = 0;
+        for _action in game.perpetual().take(10_0000) {
+            count += 1;
+        }
+        assert_eq!(count, 10_0000);
     }
 }
