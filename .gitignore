@@ -16,6 +16,7 @@
 *.png
 *.gif
 *.wasm
+*.pdf
 
 react/.next/
 react/build/

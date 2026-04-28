@@ -1,5 +1,30 @@
 use crate::*;
 
+/// One parallel task’s worth of counterfactual updates (internal to [`Solver::batch`]).
+struct BatchChunk<E, I>
+where
+    E: CfrEdge,
+    I: CfrInfo<E = E>,
+{
+    updates: Vec<Counterfactual<E, I>>,
+    nodes: usize,
+    infos: usize,
+}
+
+impl<E, I> Default for BatchChunk<E, I>
+where
+    E: CfrEdge,
+    I: CfrInfo<E = E>,
+{
+    fn default() -> Self {
+        Self {
+            updates: Vec::new(),
+            nodes: 0,
+            infos: 0,
+        }
+    }
+}
+
 /// The core training orchestrator for Monte Carlo CFR.
 ///
 /// Given access to a [`Profile`] and [`Encoder`], the `Solver` trait encapsulates:
@@ -218,54 +243,76 @@ pub trait Solver: Send + Sync {
             .product()
     }
 
-    /// turn a batch of trees into a batch
-    /// of infosets into a batch of counterfactual update vectors.
+    /// Build one batch of counterfactual updates.
     ///
-    /// this encapsulates the largest unit of "update"
-    /// that we can generate in parallel / from immutable reference.
-    /// it is unclear from RPS benchmarks if:
-    /// - what level to parallelize  .collect().into_par_iter()
-    /// - what optimal batch size is given N available CPU cores
-    /// - for small batches, whether overhead is worth it to parallelize at all
+    /// With `server`, trees are split into chunks sized from [`Self::batch_chunk_size`]
+    /// so each Rayon task does tree grow → partition → counterfactual locally (better
+    /// locality than over-parallelizing per-infoset work). NUMA pinning is left to process
+    /// / environment (`taskset`, `numactl`, `RAYON_NUM_THREADS`).
     ///
-    /// it would be nice to do a kind of parameter sweep across
-    /// these different settings. i should checkout if criterion supports.
+    /// Runs `trees` contiguous trees sequentially (one parallel task's workload).
+    fn batch_chunk(&self, trees: usize) -> BatchChunk<Self::E, Self::I> {
+        let mut chunk = BatchChunk::default();
+        for _ in 0..trees {
+            let tree = self.tree();
+            chunk.nodes += tree.n();
+            let infosets = tree
+                .partition()
+                .into_values()
+                .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
+                .collect::<Vec<_>>();
+            chunk.infos += infosets.len();
+            chunk.updates.extend(
+                infosets
+                    .into_iter()
+                    .map(|infoset| self.counterfactual(infoset)),
+            );
+        }
+        chunk
+    }
+
+    /// Parallel chunk size derived from logical CPU count (NUMA-aware placement is external).
+    fn batch_chunk_size() -> usize {
+        let cores = std::thread::available_parallelism()
+            .map(usize::from)
+            .unwrap_or(1);
+        Self::batch_size().div_ceil(cores).max(1)
+    }
+
     #[cfg(feature = "server")]
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
-        use rayon::iter::IntoParallelIterator;
-        use rayon::iter::ParallelIterator;
-        // @parallelizable
-        (0..Self::batch_size())
-            // specify batch size in trait implementation
+        use rayon::prelude::*;
+        let batch_size = Self::batch_size();
+        let chunk_size = Self::batch_chunk_size().max(1);
+        let num_chunks = batch_size.div_ceil(chunk_size);
+        let chunks: Vec<_> = (0..num_chunks)
             .into_par_iter()
-            .map(|_| self.tree())
-            .collect::<Vec<_>>()
-            // partition tree into infosets, and only update one player regrets at a time
-            .into_iter()
-            .inspect(|t| self.inc_nodes(t.n()))
-            .flat_map(|tree| tree.partition().into_values())
-            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
-            .inspect(|_| self.inc_infos(1))
-            .collect::<Vec<_>>()
-            // calculate CFR vectors (policy, regret) for each infoset
-            .into_par_iter()
-            .map(|infoset| self.counterfactual(infoset))
-            .collect::<Vec<_>>()
+            .map(|chunk_idx| {
+                let start = chunk_idx * chunk_size;
+                let trees = (batch_size - start).min(chunk_size);
+                self.batch_chunk(trees)
+            })
+            .collect();
+        let mut nodes = 0usize;
+        let mut infos = 0usize;
+        let mut updates = Vec::new();
+        for chunk in chunks {
+            nodes += chunk.nodes;
+            infos += chunk.infos;
+            updates.extend(chunk.updates);
+        }
+        self.inc_nodes(nodes);
+        self.inc_infos(infos);
+        updates
     }
+
     #[cfg(not(feature = "server"))]
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
-        (0..Self::batch_size())
-            // specify batch size in trait implementation
-            .into_iter()
-            .map(|_| self.tree())
-            .inspect(|t| self.inc_nodes(t.n()))
-            // partition tree into infosets, and only update one player regrets at a time
-            .flat_map(|tree| tree.partition().into_values())
-            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
-            .inspect(|_| self.inc_infos(1))
-            // calculate CFR vectors (policy, regret) for each infoset
-            .map(|infoset| self.counterfactual(infoset))
-            .collect::<Vec<_>>()
+        let batch_size = Self::batch_size();
+        let chunk = self.batch_chunk(batch_size);
+        self.inc_nodes(chunk.nodes);
+        self.inc_infos(chunk.infos);
+        chunk.updates
     }
 
     /// Generate a single tree by growing it DFS from root to leaves.
