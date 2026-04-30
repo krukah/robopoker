@@ -44,7 +44,7 @@ use rbp_core::PRUNING_WARMUP;
 ///
 /// | Constant | Value | Purpose |
 /// |----------|-------|---------|
-/// | `PRUNING_WARMUP` | 1k | Epochs before pruning begins |
+/// | `PRUNING_WARMUP` | 1_048_576 | Epochs before pruning begins |
 /// | `PRUNING_EXPLORE` | 0.05 | Probability of exploring anyway |
 /// | `PRUNING_THRESHOLD` | -3e5 | Regret level below which actions are pruned |
 /// | `REGRET_MIN` | -1e6 | Floor for regret accumulation (allows recovery) |

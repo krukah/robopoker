@@ -10,6 +10,7 @@ use std::marker::PhantomData;
 const SUBGAME_ITERATIONS: usize = 100;
 const CFR_TREE_COUNT_NLHE: usize = 1;
 const CFR_BATCH_SIZE_NLHE: usize = 1000;
+const CFR_BATCH_TREES_PER_THREAD: usize = 8;
 
 /// Complete MCCFR solver and trained blueprint for No-Limit Hold'em.
 ///
@@ -134,7 +135,10 @@ where
         CFR_TREE_COUNT_NLHE
     }
     fn batch_size() -> usize {
-        CFR_BATCH_SIZE_NLHE
+        let cores = std::thread::available_parallelism()
+            .map(usize::from)
+            .unwrap_or(1);
+        CFR_BATCH_SIZE_NLHE.max(cores * CFR_BATCH_TREES_PER_THREAD)
     }
     fn advance(&mut self) {
         self.profile.increment();

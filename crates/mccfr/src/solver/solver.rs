@@ -1,7 +1,7 @@
 use crate::*;
 
 /// One parallel task’s worth of counterfactual updates (internal to [`Solver::batch`]).
-struct BatchChunk<E, I>
+pub struct BatchChunk<E, I>
 where
     E: CfrEdge,
     I: CfrInfo<E = E>,
@@ -245,10 +245,8 @@ pub trait Solver: Send + Sync {
 
     /// Build one batch of counterfactual updates.
     ///
-    /// With `server`, trees are split into chunks sized from [`Self::batch_chunk_size`]
-    /// so each Rayon task does tree grow → partition → counterfactual locally (better
-    /// locality than over-parallelizing per-infoset work). NUMA pinning is left to process
-    /// / environment (`taskset`, `numactl`, `RAYON_NUM_THREADS`).
+    /// With `server`, each tree is a Rayon task by default. NLHE sampled trees vary
+    /// enough in cost that one-tree chunks keep large CPU pools better balanced.
     ///
     /// Runs `trees` contiguous trees sequentially (one parallel task's workload).
     fn batch_chunk(&self, trees: usize) -> BatchChunk<Self::E, Self::I> {
@@ -271,12 +269,9 @@ pub trait Solver: Send + Sync {
         chunk
     }
 
-    /// Parallel chunk size derived from logical CPU count (NUMA-aware placement is external).
+    /// One tree per task gives the Rayon scheduler enough work to balance large hosts.
     fn batch_chunk_size() -> usize {
-        let cores = std::thread::available_parallelism()
-            .map(usize::from)
-            .unwrap_or(1);
-        Self::batch_size().div_ceil(cores).max(1)
+        1
     }
 
     #[cfg(feature = "server")]
@@ -285,25 +280,22 @@ pub trait Solver: Send + Sync {
         let batch_size = Self::batch_size();
         let chunk_size = Self::batch_chunk_size().max(1);
         let num_chunks = batch_size.div_ceil(chunk_size);
-        let chunks: Vec<_> = (0..num_chunks)
+        let merged = (0..num_chunks)
             .into_par_iter()
             .map(|chunk_idx| {
                 let start = chunk_idx * chunk_size;
                 let trees = (batch_size - start).min(chunk_size);
                 self.batch_chunk(trees)
             })
-            .collect();
-        let mut nodes = 0usize;
-        let mut infos = 0usize;
-        let mut updates = Vec::new();
-        for chunk in chunks {
-            nodes += chunk.nodes;
-            infos += chunk.infos;
-            updates.extend(chunk.updates);
-        }
-        self.inc_nodes(nodes);
-        self.inc_infos(infos);
-        updates
+            .reduce(BatchChunk::default, |mut acc, mut chunk| {
+                acc.nodes += chunk.nodes;
+                acc.infos += chunk.infos;
+                acc.updates.append(&mut chunk.updates);
+                acc
+            });
+        self.inc_nodes(merged.nodes);
+        self.inc_infos(merged.infos);
+        merged.updates
     }
 
     #[cfg(not(feature = "server"))]
