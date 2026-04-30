@@ -38,8 +38,15 @@ where
     /// - `villain`: The player who selects alternatives (non-traverser)
     /// - `length`: Number of edges in the prefix history
     pub fn new(villain: G::T, length: usize) -> Self {
+        Self::from_root(G::root(), villain, length)
+    }
+    /// Creates a subgame from an explicit public-round root.
+    ///
+    /// Pluribus-style real-time search starts at the beginning of the current
+    /// betting round, not necessarily at the beginning of the hand.
+    pub fn from_root(root: G, villain: G::T, length: usize) -> Self {
         Self {
-            inner: G::root(),
+            inner: root,
             villain,
             phase: if length > 0 {
                 SubPhase::Prefix(0, length)

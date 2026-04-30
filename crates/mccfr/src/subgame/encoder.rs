@@ -47,6 +47,8 @@ where
     }
     /// Creates a depth-limited encoder that stops before chance/street transitions.
     pub fn depth_limited(inner: &'blueprint N, prefix: Vec<N::E>) -> Self {
+        // The prefix is the already-observed current-round line. Replaying it
+        // keeps the actual hand consistent before the frontier search branches.
         Self {
             inner,
             prefix,

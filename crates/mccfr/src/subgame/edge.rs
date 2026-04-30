@@ -30,6 +30,25 @@ impl Continuation {
             _ => 1.0,
         }
     }
+    /// Applies this continuation bias to a blueprint distribution.
+    pub fn policy<P>(&self, profile: &P, info: &P::I) -> Policy<P::E>
+    where
+        P: Profile,
+    {
+        let weighted = info
+            .choices()
+            .into_iter()
+            .map(|edge| {
+                let probability = profile.averaged(info, &edge) * self.multiplier(&edge);
+                (edge, probability.max(rbp_core::POLICY_MIN))
+            })
+            .collect::<Vec<_>>();
+        let total = weighted.iter().map(|(_, p)| *p).sum::<Probability>();
+        weighted
+            .into_iter()
+            .map(|(edge, probability)| (edge, probability / total))
+            .collect()
+    }
 }
 
 /// Edge type for subgame-augmented games.

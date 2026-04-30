@@ -12,6 +12,23 @@ use rbp_core::Probability;
 use rbp_core::SUBGAME_ALTS;
 use rbp_core::Utility;
 use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::sync::Mutex;
+
+/// Computes terminal-equivalent values for depth-limited frontier leaves.
+pub trait FrontierEvaluator<P>: Send + Sync
+where
+    P: Profile,
+{
+    fn evaluate(
+        &self,
+        blueprint: &P,
+        info: &P::I,
+        game: &P::G,
+        payoff_turn: P::T,
+        continuation: Continuation,
+    ) -> Option<Utility>;
+}
 
 /// Profile wrapper for safe subgame solving.
 ///
@@ -32,6 +49,10 @@ where
     global: &'blueprint P,
     /// K-world distribution for opponent range buckets.
     worlds: ManyWorlds<SUBGAME_ALTS>,
+    /// Optional rollout/value evaluator for depth-limited pseudo-terminals.
+    frontier: Option<Arc<dyn FrontierEvaluator<P> + 'blueprint>>,
+    /// Per-solve cache. It is intentionally local to avoid stale cross-hand EVs.
+    frontier_cache: Mutex<BTreeMap<(P::I, Continuation), Utility>>,
     /// Current iteration within subgame solving.
     iterations: usize,
 }
@@ -47,6 +68,23 @@ where
             global: blueprint,
             iterations: 0,
             worlds,
+            frontier: None,
+            frontier_cache: Mutex::new(BTreeMap::new()),
+        }
+    }
+    /// Creates a subgame profile with a frontier evaluator.
+    pub fn with_frontier_evaluator(
+        blueprint: &'blueprint P,
+        worlds: ManyWorlds<SUBGAME_ALTS>,
+        frontier: Option<Arc<dyn FrontierEvaluator<P> + 'blueprint>>,
+    ) -> Self {
+        Self {
+            local: BTreeMap::new(),
+            global: blueprint,
+            iterations: 0,
+            worlds,
+            frontier,
+            frontier_cache: Mutex::new(BTreeMap::new()),
         }
     }
     /// Returns the blueprint profile.
@@ -232,8 +270,15 @@ where
     ) -> Utility {
         if let Some(continuation) = leaf.game().continuation() {
             if let SubInfo::Frontier(info) = leaf.info() {
-                return self.continuation_evalue(info, continuation)
-                    * self.relative_reach(root, leaf)
+                let payoff_turn = match root.game().turn() {
+                    SubTurn::Natural(turn) | SubTurn::Adverse(turn) => turn,
+                };
+                return self.frontier_continuation_evalue(
+                    info,
+                    &leaf.game().inner(),
+                    payoff_turn,
+                    continuation,
+                ) * self.relative_reach(root, leaf)
                     / self.sampling_reach(leaf);
             }
         }
@@ -250,6 +295,40 @@ impl<P> SubProfile<'_, P>
 where
     P: Profile,
 {
+    fn frontier_continuation_evalue(
+        &self,
+        info: &P::I,
+        game: &P::G,
+        payoff_turn: P::T,
+        continuation: Continuation,
+    ) -> Utility {
+        let key = (*info, continuation);
+        if let Some(value) = self
+            .frontier_cache
+            .lock()
+            .expect("frontier cache")
+            .get(&key)
+            .copied()
+        {
+            return value;
+        }
+        let value = self
+            .frontier
+            .as_ref()
+            .and_then(|evaluator| {
+                evaluator.evaluate(self.global, info, game, payoff_turn, continuation)
+            })
+            // Rollout can fail when the runtime observation is outside the
+            // blueprint abstraction. In that case, preserve liveness by using
+            // the blueprint frontier EV rather than blocking action selection.
+            .unwrap_or_else(|| self.continuation_evalue(info, continuation));
+        self.frontier_cache
+            .lock()
+            .expect("frontier cache")
+            .insert(key, value);
+        value
+    }
+
     fn continuation_evalue(&self, info: &P::I, continuation: Continuation) -> Utility {
         let choices = info.choices();
         let denom = choices

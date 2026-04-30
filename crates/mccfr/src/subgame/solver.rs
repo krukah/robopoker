@@ -77,11 +77,13 @@ where
         villain: P::T,
         prefix: Vec<P::E>,
         worlds: ManyWorlds<SUBGAME_ALTS>,
+        root: P::G,
+        evaluator: Option<std::sync::Arc<dyn FrontierEvaluator<P> + 'blueprint>>,
     ) -> Self {
         Self {
-            subroot: SubGame::new(villain, prefix.len()),
+            subroot: SubGame::from_root(root, villain, prefix.len()),
             encoder: SubEncoder::depth_limited(encoder, prefix),
-            profile: SubProfile::new(profile, worlds),
+            profile: SubProfile::with_frontier_evaluator(profile, worlds, evaluator),
             sampling: PhantomData,
         }
     }

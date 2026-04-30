@@ -5,6 +5,7 @@ use rbp_gameplay::*;
 use rbp_mccfr::*;
 use rbp_nlhe::*;
 use rbp_transport::Density;
+use std::time::Duration;
 
 /// Compute player using subgame solving with deterministic action selection.
 ///
@@ -40,6 +41,18 @@ impl ZeroTempPlayer {
             .map(|edge| game.actionize(Edge::from(edge)))
             .unwrap_or_else(|| game.legal().choose(&mut rand::rng()).copied().unwrap())
     }
+    fn argmax_blueprint(game: &Game, policy: Policy<NlheEdge>) -> Action {
+        policy
+            .support()
+            .max_by(|a, b| {
+                policy
+                    .density(a)
+                    .partial_cmp(&policy.density(b))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|edge| game.actionize(Edge::from(edge)))
+            .unwrap_or_else(|| game.legal().choose(&mut rand::rng()).copied().unwrap())
+    }
 }
 
 #[async_trait::async_trait]
@@ -48,10 +61,26 @@ impl Player for ZeroTempPlayer {
     async fn decide(&mut self, recall: &Partial) -> Action {
         let game = recall.head();
         let observation = recall.seen();
-        let abstraction = self.0.encoder().abstraction(&observation);
-        let info = SubInfo::Info(NlheInfo::from((recall, abstraction)));
-        let solver = self.0.depth_limited_subgame(recall);
-        let policy = solver.solve().profile().averaged_distribution(&info);
-        Self::argmax(&game, policy)
+        let Some(abstraction) = self.0.encoder().try_abstraction(&observation) else {
+            return game.legal().choose(&mut rand::rng()).copied().unwrap();
+        };
+        if has_offtree_actions(recall) {
+            log::debug!("off-tree action sequence detected; DLS will use canonicalized edges");
+        }
+        let blueprint = self.0;
+        let recall_for_solve = recall.clone();
+        let info = SubInfo::Info(NlheInfo::from((&recall_for_solve, abstraction)));
+        let solve = tokio::task::spawn_blocking(move || {
+            let solver = blueprint.depth_limited_subgame(&recall_for_solve);
+            solver.solve().profile().averaged_distribution(&info)
+        });
+        let timeout = Duration::from_millis(DlsOptions::default().max_solve_ms);
+        match tokio::time::timeout(timeout, solve).await {
+            Ok(Ok(policy)) => Self::argmax(&game, policy),
+            _ => {
+                let info = NlheInfo::from((recall.subgame(), abstraction, recall.choices()));
+                Self::argmax_blueprint(&game, self.0.profile.averaged_distribution(&info))
+            }
+        }
     }
 }
