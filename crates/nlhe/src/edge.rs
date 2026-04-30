@@ -45,7 +45,17 @@ impl NlheEdge {
 }
 
 impl Support for NlheEdge {}
-impl CfrEdge for NlheEdge {}
+impl CfrEdge for NlheEdge {
+    fn is_fold(&self) -> bool {
+        matches!(self.0, Edge::Fold)
+    }
+    fn is_call(&self) -> bool {
+        matches!(self.0, Edge::Call)
+    }
+    fn is_raise(&self) -> bool {
+        self.0.is_aggro()
+    }
+}
 
 impl From<Edge> for NlheEdge {
     fn from(edge: Edge) -> Self {

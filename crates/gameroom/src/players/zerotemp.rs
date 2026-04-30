@@ -1,10 +1,10 @@
 //! Zero-temperature player that always takes the most likely action.
-use rbp_gameplay::*;
 use crate::*;
+use rand::prelude::*;
+use rbp_gameplay::*;
 use rbp_mccfr::*;
 use rbp_nlhe::*;
 use rbp_transport::Density;
-use rand::prelude::*;
 
 /// Compute player using subgame solving with deterministic action selection.
 ///
@@ -29,7 +29,7 @@ impl ZeroTempPlayer {
             .support()
             .filter_map(|e| match e {
                 SubEdge::Inner(e) => Some(e),
-                SubEdge::World(_) => None,
+                SubEdge::World(_) | SubEdge::Continuation(_) => None,
             })
             .max_by(|a, b| {
                 policy
@@ -50,7 +50,7 @@ impl Player for ZeroTempPlayer {
         let observation = recall.seen();
         let abstraction = self.0.encoder().abstraction(&observation);
         let info = SubInfo::Info(NlheInfo::from((recall, abstraction)));
-        let solver = self.0.subgame(recall);
+        let solver = self.0.depth_limited_subgame(recall);
         let policy = solver.solve().profile().averaged_distribution(&info);
         Self::argmax(&game, policy)
     }

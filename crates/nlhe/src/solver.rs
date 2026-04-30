@@ -1,8 +1,8 @@
 use super::*;
 use rbp_core::Utility;
 use rbp_gameplay::*;
-use rbp_mccfr::*;
 use rbp_mccfr::Posterior;
+use rbp_mccfr::*;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
@@ -76,7 +76,7 @@ where
     pub fn subgame(
         &self,
         recall: &Partial,
-    ) -> SubSolver<'_, NlheProfile, NlheEncoder, SUBGAME_ITERATIONS> {
+    ) -> SubSolver<'_, NlheProfile, NlheEncoder, ExternalSampling, SUBGAME_ITERATIONS> {
         SubSolver::new(
             &self.encoder,
             &self.profile,
@@ -84,6 +84,27 @@ where
                 Turn::Choice(0) => NlheTurn::from(1),
                 Turn::Choice(1) => NlheTurn::from(0),
                 _ => unreachable!("subgame solving requires two-player game...for now"),
+            },
+            recall.subgame().into_iter().map(NlheEdge::from).collect(),
+            ManyWorlds::cluster(self.opponent_range(recall)),
+        )
+    }
+    /// Creates a heads-up depth-limited subgame solver from game history.
+    ///
+    /// The solver replays the current-street prefix, stops before the next
+    /// chance/street transition, and lets the opponent choose among fixed
+    /// blueprint-derived continuation strategies at the frontier.
+    pub fn depth_limited_subgame(
+        &self,
+        recall: &Partial,
+    ) -> SubSolver<'_, NlheProfile, NlheEncoder, ExternalSampling, SUBGAME_ITERATIONS> {
+        SubSolver::depth_limited(
+            &self.encoder,
+            &self.profile,
+            match recall.turn() {
+                Turn::Choice(0) => NlheTurn::from(1),
+                Turn::Choice(1) => NlheTurn::from(0),
+                _ => unreachable!("depth-limited solving requires two-player action"),
             },
             recall.subgame().into_iter().map(NlheEdge::from).collect(),
             ManyWorlds::cluster(self.opponent_range(recall)),

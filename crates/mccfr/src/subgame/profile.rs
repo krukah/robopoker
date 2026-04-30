@@ -129,6 +129,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 1.0,
             (SubInfo::Root, SubEdge::World(i)) => self.worlds.weight(*i),
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.weight)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -147,6 +153,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 0.0,
             (SubInfo::Root, SubEdge::World(_)) => 0.0,
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.regret)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -165,6 +177,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 0.0,
             (SubInfo::Root, SubEdge::World(_)) => 0.0,
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.evalue)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -183,6 +201,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 0,
             (SubInfo::Root, SubEdge::World(_)) => 0,
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.counts)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -200,5 +224,55 @@ where
     }
     fn curiosity(&self) -> rbp_core::Probability {
         self.global.curiosity()
+    }
+    fn relative_value(
+        &self,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+        leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Utility {
+        if let Some(continuation) = leaf.game().continuation() {
+            if let SubInfo::Frontier(info) = leaf.info() {
+                return self.continuation_evalue(info, continuation)
+                    * self.relative_reach(root, leaf)
+                    / self.sampling_reach(leaf);
+            }
+        }
+        (if leaf.game().turn() == Self::T::terminal() {
+            leaf.game().payoff(root.game().turn())
+        } else {
+            self.frontier_evalue(leaf.info())
+        }) * self.relative_reach(root, leaf)
+            / self.sampling_reach(leaf)
+    }
+}
+
+impl<P> SubProfile<'_, P>
+where
+    P: Profile,
+{
+    fn continuation_evalue(&self, info: &P::I, continuation: Continuation) -> Utility {
+        let choices = info.choices();
+        let denom = choices
+            .iter()
+            .map(|edge| {
+                self.global.cum_weight(info, edge).max(rbp_core::POLICY_MIN)
+                    * continuation.multiplier(edge)
+            })
+            .sum::<Probability>();
+        if denom <= 0.0 {
+            return self.global.frontier_evalue(info);
+        }
+        choices
+            .into_iter()
+            .map(|edge| {
+                let weight = self
+                    .global
+                    .cum_weight(info, &edge)
+                    .max(rbp_core::POLICY_MIN)
+                    * continuation.multiplier(&edge);
+                weight * self.global.cum_evalue(info, &edge)
+            })
+            .sum::<Utility>()
+            / denom
     }
 }
