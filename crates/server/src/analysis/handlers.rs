@@ -1,10 +1,10 @@
 use super::API;
-use rbp_cards::*;
-use rbp_core::*;
-use rbp_gameplay::*;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
+use rbp_cards::*;
+use rbp_core::*;
+use rbp_gameplay::*;
 
 pub async fn replace_obs(api: web::Data<API>, req: web::Json<ReplaceObs>) -> impl Responder {
     match Observation::try_from(req.obs.as_str()) {
@@ -148,6 +148,27 @@ pub async fn blueprint(api: web::Data<API>, req: web::Json<GetPolicy>) -> impl R
                 Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
                 Ok(Some(strategy)) => HttpResponse::Ok().json(strategy),
                 Ok(None) => HttpResponse::Ok().json(serde_json::Value::Null),
+            },
+        },
+        _ => HttpResponse::BadRequest().body("invalid recall format"),
+    }
+}
+
+pub async fn realtime(api: web::Data<API>, req: web::Json<GetPolicy>) -> impl Responder {
+    let hero = Turn::try_from(req.turn.as_str());
+    let seen = Observation::try_from(req.seen.as_str());
+    let path = req
+        .past
+        .iter()
+        .map(|string| string.as_str())
+        .map(Action::try_from)
+        .collect::<Result<Vec<_>, _>>();
+    match (hero, seen, path) {
+        (Ok(hero), Ok(seen), Ok(path)) => match Partial::try_build(hero, seen, path) {
+            Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {}", e)),
+            Ok(recall) => match api.realtime(recall).await {
+                Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+                Ok(strategy) => HttpResponse::Ok().json(strategy),
             },
         },
         _ => HttpResponse::BadRequest().body("invalid recall format"),

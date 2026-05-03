@@ -2,7 +2,8 @@ use super::*;
 use rand::SeedableRng;
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
-use rbp_core::Utility;
+use rbp_cards::Street;
+use rbp_core::{B_BLIND, Chips, Utility};
 use rbp_gameplay::*;
 use rbp_mccfr::Posterior;
 use rbp_mccfr::*;
@@ -21,6 +22,12 @@ const CFR_BATCH_TREES_PER_THREAD: usize = 8;
 const DLS_ROLLOUTS_PER_LEAF: usize = 8;
 const DLS_MAX_ROLLOUT_ACTIONS: usize = 128;
 pub const DLS_MAX_SOLVE_MS: u64 = 5_000;
+/// Pluribus' preflop off-tree threshold translated to this HU toy game.
+///
+/// The paper's "$100" threshold is one big blind in its $50/$100 game.
+/// Our chip units use `B_BLIND`, so preflop DLS only starts when a raise is
+/// farther than one BB from every abstract preflop raise size.
+pub const PREFLOP_DLS_OFFTREE_THRESHOLD: Chips = B_BLIND;
 
 /// Runtime settings for heads-up depth-limited solving.
 #[derive(Clone, Copy, Debug)]
@@ -57,6 +64,51 @@ pub fn has_offtree_actions(recall: &impl Recall) -> bool {
         game = game.apply(action);
     }
     false
+}
+
+/// Pluribus-style realtime search scheduling for the current heads-up game.
+///
+/// - Postflop streets always use DLS.
+/// - Preflop uses blueprint unless an opponent/player raise is far outside the
+///   action abstraction. In HU the "remaining players <= 4" condition is always
+///   satisfied.
+pub fn should_use_depth_limited_search(recall: &impl Recall) -> bool {
+    if recall.head().street() != Street::Pref {
+        return true;
+    }
+    has_major_preflop_offtree_raise(recall)
+}
+
+fn has_major_preflop_offtree_raise(recall: &impl Recall) -> bool {
+    let mut game = recall.root();
+    let mut path = Path::default();
+    for action in recall.actions().iter().copied() {
+        let depth = path.aggression();
+        if game.street() == Street::Pref {
+            if let Some(delta) = raise_abstraction_delta(&game, action, depth) {
+                if delta > PREFLOP_DLS_OFFTREE_THRESHOLD {
+                    return true;
+                }
+            }
+        }
+        let edge = game.edgify(action, depth);
+        path = path
+            .into_iter()
+            .chain(std::iter::once(edge))
+            .collect::<Path>();
+        game = game.apply(action);
+    }
+    false
+}
+
+fn raise_abstraction_delta(game: &Game, action: Action, depth: usize) -> Option<Chips> {
+    let Action::Raise(chips) = action else {
+        return None;
+    };
+    let edge = game.edgify(action, depth);
+    let canonical = game.snap(game.actionize(edge));
+    let canonical_chips = canonical.amount()?;
+    Some((canonical_chips as i32 - chips as i32).abs() as Chips)
 }
 
 /// Complete MCCFR solver and trained blueprint for No-Limit Hold'em.
@@ -440,5 +492,26 @@ mod tests {
     fn canonical_line_is_not_offtree() {
         let recall = Partial::initial(Turn::Choice(0)).push(Action::Call(1));
         assert!(!has_offtree_actions(&recall));
+    }
+
+    #[test]
+    fn normal_preflop_uses_blueprint() {
+        let recall = Partial::initial(Turn::Choice(0));
+        assert!(!should_use_depth_limited_search(&recall));
+    }
+
+    #[test]
+    fn postflop_uses_dls() {
+        let recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
+            .push(Action::Call(1))
+            .push(Action::Check);
+        assert_eq!(recall.head().street(), Street::Flop);
+        assert!(should_use_depth_limited_search(&recall));
+    }
+
+    #[test]
+    fn large_preflop_offtree_raise_uses_dls() {
+        let recall = Partial::initial(Turn::Choice(0)).push(Action::Raise(50));
+        assert!(should_use_depth_limited_search(&recall));
     }
 }

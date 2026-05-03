@@ -36,8 +36,8 @@ mod room;
 mod table;
 mod timer;
 
-pub mod records;
 pub mod players;
+pub mod records;
 
 pub use actor::*;
 pub use channel::*;
@@ -47,6 +47,7 @@ pub use engine::*;
 pub use event::*;
 pub use message::*;
 pub use player::*;
+pub use players::*;
 pub use protocol::*;
 #[cfg(feature = "database")]
 pub use repository::*;
@@ -54,7 +55,6 @@ pub use repository::*;
 pub use room::*;
 pub use table::*;
 pub use timer::*;
-pub use players::*;
 
 // Re-export specific records types (not Hand which conflicts with rbp_cards::Hand,
 // not Room which conflicts with room::Room)

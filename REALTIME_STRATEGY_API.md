@@ -1,10 +1,8 @@
 # Realtime Strategy API
 
-This document describes the intended API for using the bot as a real-time decision
-tool while playing a heads-up hand. The current server already exposes
-`POST /api/blueprint` for blueprint lookup only. A Pluribus-style realtime
-endpoint should be added separately, because realtime DLS is an on-demand solve,
-not a database lookup.
+This document describes the API for using the bot as a real-time decision tool
+while playing a heads-up hand. The server exposes `POST /api/blueprint` for
+blueprint lookup only and `POST /api/realtime` for Pluribus-style realtime DLS.
 
 ## Seat And Blind Semantics
 
@@ -63,7 +61,7 @@ request
 
 This endpoint is useful when you want the raw offline blueprint strategy.
 
-## Proposed API: Realtime DLS Advice
+## Realtime API: DLS Advice
 
 ### Endpoint
 

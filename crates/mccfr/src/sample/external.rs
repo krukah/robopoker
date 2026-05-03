@@ -1,10 +1,10 @@
 //! External sampling strategy for MCCFR.
 
 use super::*;
-use rbp_core::POLICY_MIN;
-use rbp_transport::Density;
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
+use rbp_core::POLICY_MIN;
+use rbp_transport::Density;
 
 /// External sampling strategy.
 ///

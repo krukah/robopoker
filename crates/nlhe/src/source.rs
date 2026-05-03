@@ -2,11 +2,11 @@
 //!
 //! Requires the `database` feature.
 use super::*;
+use const_format::concatcp;
 use rbp_cards::*;
 use rbp_core::*;
 use rbp_database::*;
 use rbp_gameplay::*;
-use const_format::concatcp;
 use std::sync::Arc;
 use tokio_postgres::Client;
 

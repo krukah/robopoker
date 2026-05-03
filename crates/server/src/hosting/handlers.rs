@@ -1,11 +1,11 @@
 use super::*;
-use rbp_auth;
-use rbp_core::ID;
-use rbp_gameroom::Room;
 use actix_web::HttpRequest;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
+use rbp_auth;
+use rbp_core::ID;
+use rbp_gameroom::Room;
 
 pub async fn start(casino: web::Data<Casino>) -> impl Responder {
     match casino.into_inner().start().await {

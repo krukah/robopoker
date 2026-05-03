@@ -235,8 +235,6 @@ impl HistoryRepository for Arc<Client> {
             &[&hand.inner(), &(seat as i16), &viewer.inner()],
         )
         .await
-        .map(|opt| {
-            opt.map(|row| Hole::from(rbp_cards::Hand::from(row.get::<_, i64>(0) as u64)))
-        })
+        .map(|opt| opt.map(|row| Hole::from(rbp_cards::Hand::from(row.get::<_, i64>(0) as u64))))
     }
 }

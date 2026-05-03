@@ -46,13 +46,13 @@ mod profile;
 mod public;
 mod record;
 mod secret;
-mod solver;
-mod strategy;
-mod turn;
 #[cfg(feature = "database")]
 mod sink;
+mod solver;
 #[cfg(feature = "database")]
 mod source;
+mod strategy;
+mod turn;
 
 pub use edge::*;
 pub use encoder::*;
@@ -63,13 +63,13 @@ pub use profile::*;
 pub use public::*;
 pub use record::*;
 pub use secret::*;
-pub use solver::*;
-pub use strategy::*;
-pub use turn::*;
 #[cfg(feature = "database")]
 pub use sink::*;
+pub use solver::*;
 #[cfg(feature = "database")]
 pub use source::*;
+pub use strategy::*;
+pub use turn::*;
 
 /// Flagship NLHE solver configuration.
 ///

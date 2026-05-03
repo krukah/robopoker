@@ -68,9 +68,19 @@ impl Player for RealTimePlayer {
         let Some(abstraction) = self.0.encoder().try_abstraction(&observation) else {
             return game.legal().choose(&mut rand::rng()).copied().unwrap();
         };
-        if has_offtree_actions(recall) {
+        let offtree = has_offtree_actions(recall);
+        if offtree {
             log::debug!("off-tree action sequence detected; DLS will use canonicalized edges");
         }
+        if !should_use_depth_limited_search(recall) {
+            let info = NlheInfo::from((recall.subgame(), abstraction, recall.choices()));
+            return Self::sample_blueprint(&game, self.0.profile.averaged_distribution(&info));
+        }
+        eprintln!(
+            "[DLS] RealTimePlayer using depth-limited search: street={}, offtree={}",
+            game.street(),
+            offtree
+        );
         let blueprint = self.0;
         let recall_for_solve = recall.clone();
         let info = SubInfo::Info(NlheInfo::from((&recall_for_solve, abstraction)));

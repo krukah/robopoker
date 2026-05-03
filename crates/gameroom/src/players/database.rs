@@ -1,12 +1,12 @@
 //! Database-loaded player that samples directly from trained blueprint.
-use rbp_gameplay::*;
 use crate::*;
-use rbp_mccfr::*;
-use rbp_nlhe::*;
-use rbp_database::Hydrate;
-use rbp_transport::Density;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
+use rbp_database::Hydrate;
+use rbp_gameplay::*;
+use rbp_mccfr::*;
+use rbp_nlhe::*;
+use rbp_transport::Density;
 
 /// Compute player using only blueprint lookup.
 ///

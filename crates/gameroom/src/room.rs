@@ -2,8 +2,8 @@ use super::*;
 use rbp_auth::Member;
 use rbp_auth::User;
 use rbp_core::*;
-use rbp_gameplay::Turn;
 use rbp_database::*;
+use rbp_gameplay::Turn;
 use std::sync::Arc;
 use tokio_postgres::Client;
 
@@ -118,7 +118,9 @@ impl Room {
             EngineState::Showdown(e) => e.game(),
             _ => panic!("flush_hand called in wrong phase"),
         };
-        let hand = self.context.to_hand(self.id().cast(), game.board(), game.pot());
+        let hand = self
+            .context
+            .to_hand(self.id().cast(), game.board(), game.pot());
         self.db
             .create_hand(&hand)
             .await

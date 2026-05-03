@@ -1,15 +1,22 @@
 use rbp_cards::*;
 use rbp_clustering::*;
 use rbp_core::*;
-use rbp_gameplay::*;
-use rbp_mccfr::Decision;
-use rbp_nlhe::*;
 use rbp_database::*;
+use rbp_gameplay::*;
+use rbp_mccfr::*;
+use rbp_nlhe::*;
 use rbp_transport::*;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio_postgres::Client;
 
 const N_NEIGHBORS: i64 = 6;
+
+macro_rules! sql_params {
+    ($($param:expr),+ $(,)?) => {
+        &[$(&$param as &(dyn tokio_postgres::types::ToSql + Sync)),+]
+    };
+}
 
 // Local conversion functions for database types.
 // These bridge tokio_postgres::Row to our domain types.
@@ -54,20 +61,29 @@ fn api_strategy_from(strategy: Strategy) -> ApiStrategy {
     }
 }
 
-pub struct API(Arc<Client>);
+pub struct API(Arc<Client>, tokio::sync::OnceCell<Arc<Flagship>>);
 
 impl From<Arc<Client>> for API {
     fn from(client: Arc<Client>) -> Self {
-        Self(client)
+        Self::new(client)
     }
 }
 
 impl API {
     pub fn new(client: Arc<Client>) -> Self {
-        Self(client)
+        Self(client, tokio::sync::OnceCell::new())
     }
     pub fn client(&self) -> &Arc<Client> {
         &self.0
+    }
+    async fn flagship(&self) -> Arc<Flagship> {
+        self.1
+            .get_or_init(|| async {
+                use rbp_database::Hydrate;
+                Arc::new(Flagship::hydrate(self.0.clone()).await)
+            })
+            .await
+            .clone()
     }
 }
 
@@ -76,11 +92,7 @@ impl API {
     pub async fn obs_to_abs(&self, obs: Observation) -> anyhow::Result<Abstraction> {
         let iso = Isomorphism::from(obs);
         let idx = i64::from(iso);
-        let sql = const_format::concatcp!(
-            "SELECT abs FROM ",
-            ISOMORPHISM,
-            " WHERE obs = $1"
-        );
+        let sql = const_format::concatcp!("SELECT abs FROM ", ISOMORPHISM, " WHERE obs = $1");
         self.0
             .query_one(sql, &[&idx])
             .await
@@ -89,11 +101,7 @@ impl API {
     }
     pub async fn metric(&self, street: Street) -> anyhow::Result<Metric> {
         let s = street as i16;
-        let sql = const_format::concatcp!(
-            "SELECT tri, dx FROM ",
-            METRIC,
-            " WHERE street = $1"
-        );
+        let sql = const_format::concatcp!("SELECT tri, dx FROM ", METRIC, " WHERE street = $1");
         let rows = self
             .0
             .query(sql, &[&s])
@@ -113,11 +121,7 @@ impl API {
 impl API {
     pub async fn abs_equity(&self, abs: Abstraction) -> anyhow::Result<Probability> {
         let abs = i16::from(abs);
-        let sql = const_format::concatcp!(
-            "SELECT equity FROM ",
-            ABSTRACTION,
-            " WHERE abs = $1"
-        );
+        let sql = const_format::concatcp!("SELECT equity FROM ", ABSTRACTION, " WHERE abs = $1");
         self.0
             .query_one(sql, &[&abs])
             .await
@@ -169,9 +173,7 @@ impl API {
         abs2: Abstraction,
     ) -> anyhow::Result<Energy> {
         if abs1.street() != abs2.street() {
-            return Err(anyhow::anyhow!(
-                "abstractions must be from the same street"
-            ));
+            return Err(anyhow::anyhow!("abstractions must be from the same street"));
         }
         if abs1 == abs2 {
             return Ok(0 as Energy);
@@ -191,9 +193,7 @@ impl API {
         obs2: Observation,
     ) -> anyhow::Result<Energy> {
         if obs1.street() != obs2.street() {
-            return Err(anyhow::anyhow!(
-                "observations must be from the same street"
-            ));
+            return Err(anyhow::anyhow!("observations must be from the same street"));
         }
         let (ref hx, ref hy, ref metric) = tokio::try_join!(
             self.obs_histogram(obs1),
@@ -208,11 +208,8 @@ impl API {
 impl API {
     pub async fn abs_population(&self, abs: Abstraction) -> anyhow::Result<usize> {
         let abs = i16::from(abs);
-        let sql = const_format::concatcp!(
-            "SELECT population FROM ",
-            ABSTRACTION,
-            " WHERE abs = $1"
-        );
+        let sql =
+            const_format::concatcp!("SELECT population FROM ", ABSTRACTION, " WHERE abs = $1");
         self.0
             .query_one(sql, &[&abs])
             .await
@@ -244,11 +241,7 @@ impl API {
 impl API {
     pub async fn abs_histogram(&self, abs: Abstraction) -> anyhow::Result<Histogram> {
         let abs_i = i16::from(abs);
-        let sql = const_format::concatcp!(
-            "SELECT next, dx FROM ",
-            TRANSITIONS,
-            " WHERE prev = $1"
-        );
+        let sql = const_format::concatcp!("SELECT next, dx FROM ", TRANSITIONS, " WHERE prev = $1");
         let street = abs.street().next();
         let rows = self
             .0
@@ -318,7 +311,7 @@ impl API {
         let iso = i64::from(Isomorphism::from(obs));
         let row = self
             .0
-            .query_one(sql, &[&iso, &n])
+            .query_one(sql, sql_params![iso, n])
             .await
             .map_err(|e| anyhow::anyhow!("explore with respect to observation: {}", e))?;
         Ok(api_sample_from_row(row))
@@ -349,7 +342,7 @@ impl API {
         let abs = i16::from(abs);
         let row = self
             .0
-            .query_one(sql, &[&abs, &n])
+            .query_one(sql, sql_params![abs, n])
             .await
             .map_err(|e| anyhow::anyhow!("explore with respect to abstraction: {}", e))?;
         Ok(api_sample_from_row(row))
@@ -375,7 +368,7 @@ impl API {
         );
         Ok(self
             .0
-            .query(sql, &[&abs, &N_NEIGHBORS])
+            .query(sql, sql_params![abs, N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch nearby abstractions: {}", e))?
             .iter()
@@ -404,7 +397,7 @@ impl API {
         );
         Ok(self
             .0
-            .query(sql, &[&iso, &N_NEIGHBORS])
+            .query(sql, sql_params![iso, N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch nearby abstractions for observation: {}", e))?
             .iter()
@@ -441,7 +434,7 @@ impl API {
         );
         Ok(self
             .0
-            .query(sql, &[&iso, &N_NEIGHBORS])
+            .query(sql, sql_params![iso, N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch similar observations: {}", e))?
             .iter()
@@ -470,7 +463,7 @@ impl API {
         );
         Ok(self
             .0
-            .query(sql, &[&abs, &N_NEIGHBORS])
+            .query(sql, sql_params![abs, N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch observations similar to abstraction: {}", e))?
             .iter()
@@ -567,7 +560,7 @@ impl API {
         let wrt = i16::from(wrt);
         let row = self
             .0
-            .query_one(sql, &[&abs, &n, &wrt])
+            .query_one(sql, sql_params![abs, n, wrt])
             .await
             .map_err(|e| anyhow::anyhow!("fetch neighbor abstraction: {}", e))?;
         Ok(api_sample_from_row(row))
@@ -604,7 +597,7 @@ impl API {
         let wrt = i16::from(wrt);
         let row = self
             .0
-            .query_one(sql, &[&iso, &n, &wrt])
+            .query_one(sql, sql_params![iso, n, wrt])
             .await
             .map_err(|e| anyhow::anyhow!("fetch neighbor observation: {}", e))?;
         Ok(api_sample_from_row(row))
@@ -650,7 +643,7 @@ impl API {
         let wrt = i16::from(wrt);
         let rows = self
             .0
-            .query(sql, &[&wrt, &s, &N_NEIGHBORS, &n])
+            .query(sql, sql_params![wrt, s, N_NEIGHBORS, n])
             .await
             .map_err(|e| anyhow::anyhow!("fetch k-farthest neighbors: {}", e))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
@@ -692,7 +685,7 @@ impl API {
         let wrt = i16::from(wrt);
         let rows = self
             .0
-            .query(sql, &[&wrt, &s, &N_NEIGHBORS, &n])
+            .query(sql, sql_params![wrt, s, N_NEIGHBORS, n])
             .await
             .map_err(|e| anyhow::anyhow!("fetch k-nearest neighbors: {}", e))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
@@ -734,7 +727,7 @@ impl API {
         let wrt = i16::from(wrt);
         let rows = self
             .0
-            .query(sql, &[&n, &wrt, &&isos, &N_NEIGHBORS])
+            .query(sql, sql_params![n, wrt, isos, N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch given neighbors: {}", e))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
@@ -895,12 +888,12 @@ impl API {
         let recall = recall.validate()?;
         let present = self.obs_to_abs(recall.seen()).await?;
         let info = NlheInfo::from((&recall, present));
-        let ref history = i64::from(info.subgame());
-        let ref present = i16::from(info.bucket());
-        let ref choices = i64::from(info.choices());
+        let history = i64::from(info.subgame());
+        let present = i16::from(info.bucket());
+        let choices = i64::from(info.choices());
         let rows = self
             .0
-            .query(sql, &[history, present, choices])
+            .query(sql, sql_params![history, present, choices])
             .await
             .map_err(|e| anyhow::anyhow!("fetch policy: {}", e))?;
         match rows.len() {
@@ -910,5 +903,138 @@ impl API {
                 rows.into_iter().map(decision_from_row).collect::<Vec<_>>(),
             ))))),
         }
+    }
+
+    pub async fn realtime(&self, recall: Partial) -> anyhow::Result<ApiRealtimeStrategy> {
+        let recall = recall.validate()?;
+        let offtree = has_offtree_actions(&recall);
+        let game = recall.head();
+        let started = Instant::now();
+        let timeout_ms = DlsOptions::default().max_solve_ms;
+        if !should_use_depth_limited_search(&recall) {
+            return match self.policy(recall).await? {
+                Some(strategy) => Ok(Self::realtime_response(
+                    "blueprint",
+                    strategy
+                        .accumulated
+                        .iter()
+                        .map(|(edge, weight)| (edge.clone(), *weight))
+                        .collect(),
+                    ApiRealtimeDiagnostics {
+                        used_dls: false,
+                        used_blueprint_fallback: false,
+                        used_legal_fallback: false,
+                        offtree_detected: offtree,
+                        solve_ms: started.elapsed().as_millis(),
+                        timeout_ms,
+                    },
+                )),
+                None => Ok(self.legal_fallback(&game, offtree, started.elapsed().as_millis())),
+            };
+        }
+        eprintln!(
+            "[DLS] /api/realtime using depth-limited search: street={}, offtree={}",
+            game.street(),
+            offtree
+        );
+        let seen = recall.seen();
+        let flagship = self.flagship().await;
+        let abstraction = match flagship.encoder.try_abstraction(&seen) {
+            Some(abs) => abs,
+            None => {
+                return Ok(self.legal_fallback(&game, offtree, started.elapsed().as_millis()));
+            }
+        };
+        let info = SubInfo::Info(NlheInfo::from((&recall, abstraction)));
+        let dls_recall = recall.clone();
+        let dls_flagship = flagship.clone();
+        let solved = tokio::task::spawn_blocking(move || {
+            let solver = dls_flagship.depth_limited_subgame(&dls_recall);
+            solver.solve().profile().averaged_distribution(&info)
+        });
+        match tokio::time::timeout(std::time::Duration::from_millis(timeout_ms), solved).await {
+            Ok(Ok(policy)) => Ok(Self::realtime_response(
+                "dls",
+                policy
+                    .into_iter()
+                    .filter_map(|(edge, probability)| match edge {
+                        SubEdge::Inner(edge) => Some((Edge::from(edge).to_string(), probability)),
+                        SubEdge::World(_) | SubEdge::Continuation(_) => None,
+                    })
+                    .collect(),
+                ApiRealtimeDiagnostics {
+                    used_dls: true,
+                    used_blueprint_fallback: false,
+                    used_legal_fallback: false,
+                    offtree_detected: offtree,
+                    solve_ms: started.elapsed().as_millis(),
+                    timeout_ms,
+                },
+            )),
+            _ => match self.policy(recall).await? {
+                Some(strategy) => Ok(Self::realtime_response(
+                    "blueprint_fallback",
+                    strategy
+                        .accumulated
+                        .iter()
+                        .map(|(edge, weight)| (edge.clone(), *weight))
+                        .collect(),
+                    ApiRealtimeDiagnostics {
+                        used_dls: false,
+                        used_blueprint_fallback: true,
+                        used_legal_fallback: false,
+                        offtree_detected: offtree,
+                        solve_ms: started.elapsed().as_millis(),
+                        timeout_ms,
+                    },
+                )),
+                None => Ok(self.legal_fallback(&game, offtree, started.elapsed().as_millis())),
+            },
+        }
+    }
+
+    fn realtime_response(
+        source: &str,
+        mut actions: std::collections::BTreeMap<String, Probability>,
+        diagnostics: ApiRealtimeDiagnostics,
+    ) -> ApiRealtimeStrategy {
+        let total = actions.values().map(|p| p.max(0.0)).sum::<Probability>();
+        if total > 0.0 {
+            actions = actions
+                .into_iter()
+                .map(|(action, probability)| (action, probability.max(0.0) / total))
+                .collect();
+        }
+        let recommended_action = actions
+            .iter()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(action, _)| action.clone())
+            .unwrap_or_default();
+        ApiRealtimeStrategy {
+            source: source.to_string(),
+            recommended_action,
+            actions,
+            diagnostics,
+        }
+    }
+
+    fn legal_fallback(&self, game: &Game, offtree: bool, solve_ms: u128) -> ApiRealtimeStrategy {
+        let legal = game.legal();
+        let probability = 1.0 / legal.len().max(1) as Probability;
+        Self::realtime_response(
+            "legal_fallback",
+            legal
+                .into_iter()
+                .map(|action| (action.to_string(), probability))
+                .collect(),
+            ApiRealtimeDiagnostics {
+                used_dls: false,
+                used_blueprint_fallback: false,
+                used_legal_fallback: true,
+                offtree_detected: offtree,
+                solve_ms,
+                timeout_ms: DlsOptions::default().max_solve_ms,
+            },
+        )
     }
 }

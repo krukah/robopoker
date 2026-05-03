@@ -55,6 +55,8 @@ where
     frontier_cache: Mutex<BTreeMap<(P::I, Continuation), Utility>>,
     /// Current iteration within subgame solving.
     iterations: usize,
+    /// Player being updated on this CFR iteration.
+    walker: SubTurn<P::T>,
 }
 
 impl<'blueprint, P> SubProfile<'blueprint, P>
@@ -70,6 +72,7 @@ where
             worlds,
             frontier: None,
             frontier_cache: Mutex::new(BTreeMap::new()),
+            walker: SubTurn::from(0),
         }
     }
     /// Creates a subgame profile with a frontier evaluator.
@@ -85,7 +88,12 @@ where
             worlds,
             frontier,
             frontier_cache: Mutex::new(BTreeMap::new()),
+            walker: SubTurn::from(0),
         }
+    }
+    /// Sets the traverser for the current CFR iteration.
+    pub fn set_walker(&mut self, walker: SubTurn<P::T>) {
+        self.walker = walker;
     }
     /// Returns the blueprint profile.
     pub fn blueprint(&self) -> &P {
@@ -153,7 +161,7 @@ where
         self.iterations += 1;
     }
     fn walker(&self) -> Self::T {
-        Self::T::from(self.iterations % 2)
+        self.walker
     }
     fn epochs(&self) -> usize {
         self.iterations

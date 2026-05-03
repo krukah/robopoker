@@ -260,4 +260,3 @@ impl Arbitrary for Street {
         }
     }
 }
-

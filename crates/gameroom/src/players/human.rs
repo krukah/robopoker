@@ -1,8 +1,8 @@
-use rbp_core::Chips;
-use rbp_gameplay::*;
 use crate::*;
 use dialoguer::Input;
 use dialoguer::Select;
+use rbp_core::Chips;
+use rbp_gameplay::*;
 
 #[derive(Debug, Default)]
 pub struct Human;

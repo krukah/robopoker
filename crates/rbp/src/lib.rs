@@ -24,18 +24,18 @@
 //! - [`server`] — Unified backend with analysis API and WebSocket hosting
 //! - [`autotrain`] — Training orchestration with distributed workers
 
-pub use rbp_core        as core;
-pub use rbp_transport   as transport;
-pub use rbp_cards       as cards;
-pub use rbp_mccfr       as mccfr;
-pub use rbp_gameplay    as gameplay;
-pub use rbp_clustering  as clustering;
-pub use rbp_nlhe        as nlhe;
-pub use rbp_database    as database;
-pub use rbp_auth        as auth;
-pub use rbp_gameroom    as gameroom;
-pub use rbp_server      as server;
-pub use rbp_autotrain   as autotrain;
+pub use rbp_auth as auth;
+pub use rbp_autotrain as autotrain;
+pub use rbp_cards as cards;
+pub use rbp_clustering as clustering;
+pub use rbp_core as core;
+pub use rbp_database as database;
+pub use rbp_gameplay as gameplay;
+pub use rbp_gameroom as gameroom;
+pub use rbp_mccfr as mccfr;
+pub use rbp_nlhe as nlhe;
+pub use rbp_server as server;
+pub use rbp_transport as transport;
 
 // Re-export commonly used types at the root
 pub use rbp_core::*;

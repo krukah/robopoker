@@ -313,8 +313,7 @@ impl Worker {
             leaf.game().turn() == NlheTurn::terminal(),
             "worker builds full trees; leaves must be terminal"
         );
-        CfrGame::payoff(leaf.game(), root.game().turn())
-            * self.relative_reach(root, leaf).await
+        CfrGame::payoff(leaf.game(), root.game().turn()) * self.relative_reach(root, leaf).await
             / self.sampling_reach(leaf).await
     }
 

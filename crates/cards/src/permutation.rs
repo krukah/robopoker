@@ -153,9 +153,9 @@ impl std::fmt::Display for Permutation {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::suit::Suit;
     use super::super::hand::Hand;
+    use super::super::suit::Suit;
+    use super::*;
 
     #[test]
     fn map_identity() {

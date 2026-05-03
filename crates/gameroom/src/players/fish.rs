@@ -1,6 +1,6 @@
-use rbp_gameplay::*;
 use crate::*;
 use rand::seq::IndexedRandom;
+use rbp_gameplay::*;
 
 /// Example CPU player that chooses randomly from legal actions.
 /// Demonstrates synchronous decision-making in async context.

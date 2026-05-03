@@ -136,6 +136,19 @@ where
     fn mut_counts(&mut self, info: &Self::I, edge: &Self::E) -> &mut u32 {
         self.profile.mut_counts(info, edge)
     }
+    fn step(&mut self) {
+        for walker in [P::T::from(0), P::T::from(1)] {
+            self.profile.set_walker(SubTurn::Natural(walker));
+            for ref update in self.batch() {
+                self.update_regret(update);
+                self.update_weight(update);
+                self.update_evalue(update);
+                self.update_counts(update);
+            }
+            self.profile().metrics().inspect(|m| m.inc_epoch());
+            self.advance();
+        }
+    }
     /// Override root to return the subgame at root.
     fn root(&self) -> Self::G {
         self.subroot

@@ -70,6 +70,22 @@ where
     pub fn at(&self, i: usize) -> N::E {
         self.prefix[i]
     }
+    fn inner_path(
+        &self,
+        tree: &Tree<SubTurn<N::T>, SubEdge<N::E>, SubGame<N::G>, SubInfo<N::I, N::E>>,
+        (edge, _, head): &Branch<SubEdge<N::E>, SubGame<N::G>>,
+    ) -> Vec<N::E> {
+        std::iter::once(*edge)
+            .chain(tree.at(*head).map(|(_, e)| e))
+            .filter_map(|edge| match edge {
+                SubEdge::Inner(edge) => Some(edge),
+                SubEdge::World(_) | SubEdge::Continuation(_) => None,
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect()
+    }
     fn dls_child(
         &self,
         edge: SubEdge<N::E>,
@@ -117,18 +133,23 @@ where
 
     fn info(
         &self,
-        _: &Tree<Self::T, Self::E, Self::G, Self::I>,
-        (_, game, _): Branch<Self::E, Self::G>,
+        tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
+        branch @ (_, game, _): Branch<Self::E, Self::G>,
     ) -> Self::I {
         match game.phase() {
             SubPhase::Meta => SubInfo::Root,
-            SubPhase::Real(_) => SubInfo::Info(self.encoder().resume(self.prefix(), &game.inner())),
-            SubPhase::Frontier(_) => {
-                SubInfo::Frontier(self.encoder().resume(self.prefix(), &game.inner()))
-            }
-            SubPhase::Terminal(_, _) => {
-                SubInfo::Frontier(self.encoder().resume(self.prefix(), &game.inner()))
-            }
+            SubPhase::Real(_) => SubInfo::Info(
+                self.encoder()
+                    .resume(&self.inner_path(tree, &branch), &game.inner()),
+            ),
+            SubPhase::Frontier(_) => SubInfo::Frontier(
+                self.encoder()
+                    .resume(&self.inner_path(tree, &branch), &game.inner()),
+            ),
+            SubPhase::Terminal(_, _) => SubInfo::Frontier(
+                self.encoder()
+                    .resume(&self.inner_path(tree, &branch), &game.inner()),
+            ),
             SubPhase::Prefix(i, _) => SubInfo::Prefix(
                 self.encoder().resume(self.until(i), &game.inner()),
                 self.at(i),

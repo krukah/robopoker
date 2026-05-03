@@ -20,7 +20,6 @@ use std::hash::Hash;
 #[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
 pub struct Abstraction(u16);
 
-
 const INDEX_MASK: u16 = 0xFF;
 const STREET_BITS: u16 = 8;
 const STREET_MASK: u16 = 0xFF << STREET_BITS;
@@ -220,4 +219,3 @@ mod tests {
         }
     }
 }
-
