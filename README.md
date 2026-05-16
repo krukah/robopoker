@@ -24,12 +24,16 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
 
 ## Features
 
-- **Fastest open-source hand evaluator** - Nanosecond evaluation outperforming Cactus Kev
-- **Strategic abstraction** - Hierarchical k-means clustering of 3.1T poker situations
-- **Optimal transport** - Earth Mover's Distance via Sinkhorn algorithm
-- **MCCFR solver** - External sampling with dynamic tree construction
-- **PostgreSQL persistence** - Binary format serialization for efficiency
-- **Short deck support** - 36-card variant with adjusted rankings
+- **Fastest open-source hand evaluator** — nanosecond evaluation outperforming Cactus Kev
+- **Strategic abstraction** — hierarchical k-means clustering of 3.1T poker situations
+- **Optimal transport** — Earth Mover's Distance via Sinkhorn algorithm
+- **MCCFR solver** — external sampling with dynamic tree construction, pluggable regret/policy/sampling schemes
+- **Depth-limited subgame solving<sup>10</sup>** — frontier-augmented games with biased continuation strategies
+- **Safe subgame solving<sup>12</sup>** — world-partitioned belief preserves blueprint equilibrium
+- **Action translation<sup>7,8</sup>** — pseudo-harmonic mapping over finite lattices
+- **AIVAT variance reduction** — for hand-history evaluation of trained strategies
+- **PostgreSQL persistence** — binary format serialization for efficiency
+- **Short-deck support** — 36-card variant with adjusted rankings
 
 ## Quick Start
 
@@ -62,108 +66,153 @@ let equity = obs.equity();
 
 ## Crate Overview
 
+### Core
+
 | Crate | Description |
 |-------|-------------|
 | [`rbp`](crates/rbp) | Facade re-exporting all public crates |
-| [`rbp-core`](crates/util) | Type aliases, constants, DTOs, shared traits |
+| [`rbp-core`](crates/util) | Type aliases, constants, regime/version metadata, shared traits |
 | [`rbp-cards`](crates/cards) | Card primitives, hand evaluation, equity |
-| [`rbp-transport`](crates/transport) | Optimal transport (Sinkhorn, EMD) |
+| [`rbp-transport`](crates/transport) | Optimal transport (Sinkhorn, EMD) over arbitrary measures |
 | [`rbp-mccfr`](crates/mccfr) | Game-agnostic CFR framework |
-| [`rbp-gameplay`](crates/gameplay) | Poker game engine |
-| [`rbp-clustering`](crates/clustering) | K-means abstraction |
-| [`rbp-nlhe`](crates/nlhe) | No-Limit Hold'em solver |
-| [`rbp-database`](crates/database) | PostgreSQL persistence layer |
-| [`rbp-auth`](crates/auth) | JWT + Argon2 authentication |
-| [`rbp-gameroom`](crates/gameroom) | Async game coordinator, players, hand history |
-| [`rbp-server`](crates/server) | Unified HTTP server (analysis API + game hosting) |
-| [`rbp-autotrain`](crates/autotrain) | Training orchestration with distributed workers |
+| [`rbp-gameplay`](crates/gameplay) | Poker game engine: state, edges, settlement, witness/perfect recall |
+| [`rbp-clustering`](crates/clustering) | Hierarchical k-means abstraction with Elkan acceleration |
+| [`rbp-hyperparams`](crates/hyperparams) | Proc-macro deriving a `OnceLock`-backed global config pattern |
+
+### Search & abstraction
+
+| Crate | Description |
+|-------|-------------|
+| [`rbp-translate`](crates/translate) | Generic action translation over finite lattices |
+| [`rbp-world`](crates/world) | World-partitioned belief layer for safe subgame solving |
+| [`rbp-depth`](crates/depth) | Depth-limited solving with biased continuation strategies |
+| [`rbp-subgame`](crates/subgame) | Safe + depth-limited subgame composition |
+
+### Games
+
+| Crate | Description |
+|-------|-------------|
+| [`rbp-nlhe`](crates/nlhe) | No-Limit Hold'em solver and abstraction |
+| [`rbp-leduc`](crates/leduc) | Leduc Hold'em — MCCFR framework validation |
+| [`rbp-kuhn`](crates/kuhn) | Kuhn poker — MCCFR framework validation |
+| [`rbp-rps`](crates/rps) | Rock-Paper-Scissors — MCCFR framework validation |
+
+### Infrastructure
+
+| Crate | Description |
+|-------|-------------|
+| [`rbp-database`](crates/database) | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits |
+| [`rbp-auth`](crates/auth) | JWT + Argon2 authentication, session management |
+| [`rbp-telemetry`](crates/telemetry) | OpenTelemetry init and a centrally-registered metric handle table |
+
+### Applications
+
+| Crate | Description |
+|-------|-------------|
+| [`rbp-gameroom`](crates/gameroom) | Async game coordinator with pluggable players and hand-history records |
+| [`rbp-server`](crates/server) | Unified HTTP/WebSocket backend (analysis API + game hosting) |
+| [`rbp-autotrain`](crates/autotrain) | Training pipeline orchestration with distributed workers |
+| [`rbp-slumbot`](crates/slumbot) | Slumbot API benchmark client for blueprint evaluation |
+| [`rbp-competition`](crates/competition) | Hand-history analysis with AIVAT variance reduction |
+| [`rbp-litmus`](crates/litmus) | Strategic litmus tests for blueprint validation |
 
 ## Architecture
 
-### Core Layer
+### Core layer
 
-**`rbp-cards`** — Card representation, hand evaluation, and strategic primitives:
-- Bijective card representations (`u8`/`u16`/`u32`/`u64`) for efficient operations
-- Lazy hand strength evaluation in nanoseconds
+**`rbp-cards`** — Card representation and hand evaluation:
+- Bijective `u8` / `u16` / `u32` / `u64` representations for efficient bit-twiddling
+- Nanosecond-scale hand strength evaluation
 - Equity calculation via enumeration and Monte Carlo
 - Exhaustive iteration over cards, hands, decks, and observations
-- Short deck (36-card) variant support
+- Short-deck (36-card) variant support
 
-**`rbp-transport`** — Optimal transport algorithms:
+**`rbp-transport`** — Optimal transport:
 - Sinkhorn iteration for near-linear Wasserstein approximation<sup>5</sup>
-- Greenhorn optimization for sparse distributions
-- Generic `Measure` abstraction for arbitrary metric spaces
+- Greenkhorn / greedy variants for sparse distributions
+- Generic `Density` / `Support` traits over arbitrary metric spaces
 
 **`rbp-mccfr`** — Game-agnostic CFR framework:
-- State primitives: `Turn`, `Edge`, `Game`, `Info`, `Tree`
-- Strategy representation: `Encoder`, `Profile`, `InfoSet`
-- Training: `Solver` trait with pluggable algorithms
-- Schemes: `RegretSchedule`, `PolicySchedule`, `SamplingScheme`
-- Subgame solving with safe search
+- State primitives: `CfrTurn`, `CfrEdge`, `CfrGame`, `CfrInfo`, `CfrTree`
+- Strategy representation: `CfrEncoder`, `Profile`, `InfoSet`, `Posterior`
+- Solver layer: `Solver`, `TreeBuilder`, `Decisions`, `Harvest`
+- Schemes: `RegretSchedule` (linear, discounted, asymmetric, floored, summed), `WeightSchedule`, `SamplingScheme` (external, vanilla, targeted, pluribus, pruning)
 
-### Domain Layer
+### Search & abstraction layer
+
+**`rbp-translate`** — Action translation:
+- Generic `Lattice` over a totally-ordered axis
+- Pseudo-harmonic translation between abstract and concrete actions<sup>7,8</sup>
+- Composable scalar and bracket primitives
+
+**`rbp-world` + `rbp-depth` + `rbp-subgame`** — Real-time search:
+- `WorldProfile` partitions belief into discrete worlds for safe re-solving<sup>12</sup>
+- `DepthEdge<E, D>` augments base edges with `D` continuation choices at the frontier
+- `Subgame` composes the two: depth-limited tree of world-tagged states
+
+### Domain layer
 
 **`rbp-gameplay`** — Complete poker game engine:
 - Full No-Limit Texas Hold'em rules
-- Complex showdown handling (side pots, all-ins, ties)
-- Bet sizing abstraction via `Size` enum (`SPR(n,d)` / `BBs(n)`)
-- Clean Node/Edge/Tree game state representation
+- Side-pot, all-in, and tie handling
+- Bet-sizing abstraction via `Size::SPR(n, d)` and `Size::BBs(n)`
+- `Witness` (one player's view) vs `Perfect` (god's view) recall types
 
 **`rbp-clustering`** — Hand abstraction via clustering:
-- Hierarchical k-means with Elkan acceleration
-- Earth Mover's Distance between distributions
+- Hierarchical k-means with Elkan triangle-inequality acceleration
+- Earth Mover's Distance over child-street distributions
 - Isomorphic exhaustion of 3.1T situations<sup>4</sup>
 - PostgreSQL binary persistence
 
 **`rbp-nlhe`** — Concrete NLHE solver:
-- `NlheSolver<R, W, S>` with pluggable regret/policy/sampling
-- `NlheEncoder` for state→info mapping
+- `Nlhe<R, W, S>` parameterised over regret, weight, and sampling schemes
+- `NlheEncoder` for state → infoset mapping
 - `NlheProfile` for regret/strategy storage
-- Production config: `Flagship` type alias
+- `Flagship` type alias for the production Pluribus-inspired config
 
-### Infrastructure Layer
+### Infrastructure layer
 
 **`rbp-database`** — PostgreSQL persistence:
 - Binary format serialization for efficient storage
-- Schema definitions and streaming I/O via `COPY IN` protocol
-- `Source` trait for SELECT, `Sink` trait for INSERT/UPDATE
-- Training stage tracking and validation
+- `Schema`, `Row`, `Streamable` traits with `COPY IN` for bulk inserts
+- `(Regime × Version)` table-naming macros (`table!`, `versioned!`, `regime!`)
+- Regime fingerprint check guards against silent constant drift
 
 **`rbp-gameroom`** — Async game coordination:
-- Room-based multiplayer game management
-- Pluggable player implementations (AI, human, network)
-- Hand history recording and replay
+- Room-based session management with `Engine` / `Actor` / `Channel` model
+- Pluggable player implementations: `agent`, `blueprint`, `brain`, `depth`, `dirac`, `fish`, `human`, `mount`, `solved`, `variant`, `world`, `zoo`
+- Hand-history recording and replay
 
-**`rbp-server`** — Unified HTTP server:
-- Analysis API for querying training results
+**`rbp-server`** — Unified backend:
+- Analysis API for querying training results, strategies, and topology
 - Game hosting with WebSocket support
 - Authentication integration
 
 **`rbp-autotrain`** — Training orchestration:
-- Two-phase: clustering then MCCFR
-- Fast (in-memory) and slow (distributed) modes
+- `Fast` (single-machine in-memory) and `Slow` (distributed workers) modes
+- Pre-training: cluster generation + persistence
 - Graceful interrupts and resumable state
-- Timed training via `TRAIN_DURATION`
 
-## Training Pipeline
+## Training pipeline
 
-1. **Hierarchical Abstraction** (per street: river → turn → flop → preflop):
+1. **Hierarchical abstraction** (per street: river → turn → flop → preflop):
    - Generate isomorphic hand clusters
    - Initialize k-means centroids via k-means++<sup>2</sup>
    - Run clustering to group strategically similar hands
    - Calculate EMD metrics via optimal transport<sup>5</sup>
-   - Save abstractions to PostgreSQL
+   - Save abstractions and metrics to PostgreSQL
 
-2. **MCCFR Training**<sup>3</sup>:
+2. **MCCFR training**<sup>3</sup>:
    - Sample game trajectories via external sampling
-   - Update regret values and counterfactual values
-   - Accumulate strategy with linear weighting
+   - Update regret values and compute counterfactual values
+   - Accumulate strategy with linear weighting<sup>6</sup>
    - Checkpoint blueprint strategy to database
 
-3. **Real-time Search** (in progress):
-   - Depth-limited subgame solving<sup>10</sup>
-   - Blueprint strategy as prior
-   - Targeted Monte Carlo rollouts
+3. **Real-time search**:
+   - Load blueprint as prior
+   - Build depth-limited subgame tree from current state<sup>10</sup>
+   - Re-solve using world-partitioned belief to preserve equilibrium<sup>12</sup>
+   - Translate abstract action back to a concrete chip amount<sup>7,8</sup>
 
 ## System Requirements
 
@@ -175,23 +224,36 @@ let equity = obs.equity();
 | River   | 3.02 GB          | -           |
 
 **Recommended:**
-- Training: 16 vCPU, 120GB RAM
-- Database: PostgreSQL 14+ with 8 vCPU, 64GB RAM
-- Analysis: 1 vCPU, 4GB RAM
+- Training: 16 vCPU, 120 GB RAM
+- Database: PostgreSQL 14+ with 8 vCPU, 64 GB RAM
+- Analysis: 1 vCPU, 4 GB RAM
 
 ## Feature Flags
 
 | Feature | Description |
 |---------|-------------|
 | `database` | PostgreSQL integration |
-| `server` | Server dependencies (Actix, Tokio, Rayon) |
-| `shortdeck` | 36-card short deck variant |
+| `server` | Server dependencies (Actix, Tokio, Rayon, telemetry) |
+| `async` | Async MCCFR sampling/regret variants |
+| `shortdeck` | 36-card short-deck variant |
+
+## Binaries
+
+```bash
+# Train a blueprint (fast = single-machine in-memory)
+cargo run --bin trainer --features database -- --fast
+
+# Run the unified backend (analysis API + game hosting)
+BIND_ADDR=0.0.0.0:8888 cargo run --bin backend --features database
+```
+
+`trainer` modes: `--status`, `--fast`, `--slow`, `--cluster`, `--reset`, `--forget`.
 
 ## Building
 
 ```bash
-# Build all crates
-cargo build --workspace
+# Type-check the whole workspace (fastest signal during iteration)
+cargo check --workspace
 
 # Build with database features
 cargo build --workspace --features database
@@ -220,4 +282,4 @@ cargo doc --workspace --no-deps --open
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
