@@ -1615,6 +1615,7 @@ dependencies = [
  "rbp-mccfr",
  "rbp-nlhe",
  "rbp-server",
+ "rbp-translate",
  "rbp-transport",
 ]
 
@@ -1725,7 +1726,7 @@ dependencies = [
 
 [[package]]
 name = "rbp-gameroom"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1805,6 +1806,13 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "uuid",
+]
+
+[[package]]
+name = "rbp-translate"
+version = "1.0.0"
+dependencies = [
+ "rand",
 ]
 
 [[package]]

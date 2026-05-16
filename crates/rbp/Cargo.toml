@@ -22,6 +22,7 @@ rbp-cards       = { version = "1.0", path = "../cards"      }
 rbp-mccfr       = { version = "1.0", path = "../mccfr"      }
 rbp-gameplay    = { version = "1.0", path = "../gameplay"   }
 rbp-clustering  = { version = "1.0", path = "../clustering" }
+rbp-translate   = { version = "1.0", path = "../translate"  }
 rbp-nlhe        = { version = "1.0", path = "../nlhe"       }
 rbp-database    = { version = "1.0", path = "../database"   }
 rbp-auth        = { version = "1.0", path = "../auth"       }

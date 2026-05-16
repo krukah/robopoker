@@ -8,6 +8,7 @@ members  = [
     "crates/mccfr",
     "crates/gameplay",
     "crates/clustering",
+    "crates/translate",
     "crates/nlhe",
     # Infrastructure crates
     "crates/database",
@@ -41,6 +42,7 @@ rbp-cards       = { version = "1.0", path = "crates/cards"       }
 rbp-mccfr       = { version = "1.0", path = "crates/mccfr"       }
 rbp-gameplay    = { version = "1.0", path = "crates/gameplay"    }
 rbp-clustering  = { version = "1.0", path = "crates/clustering"  }
+rbp-translate   = { version = "1.0", path = "crates/translate"   }
 rbp-nlhe        = { version = "1.0", path = "crates/nlhe"        }
 rbp-database    = { version = "1.0", path = "crates/database"    }
 rbp-auth        = { version = "1.0", path = "crates/auth"        }

@@ -13,6 +13,7 @@
 //! ### Domain Logic
 //! - [`gameplay`] — Poker game engine
 //! - [`clustering`] — K-means abstraction
+//! - [`translate`] — Action translation over finite lattices
 //! - [`nlhe`] — No-Limit Hold'em solver
 //!
 //! ### Infrastructure
@@ -30,6 +31,7 @@ pub use rbp_cards       as cards;
 pub use rbp_mccfr       as mccfr;
 pub use rbp_gameplay    as gameplay;
 pub use rbp_clustering  as clustering;
+pub use rbp_translate   as translate;
 pub use rbp_nlhe        as nlhe;
 pub use rbp_database    as database;
 pub use rbp_auth        as auth;
