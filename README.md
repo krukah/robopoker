@@ -13,8 +13,11 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
 
 ## Results
 
-| <img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600"/> | Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com). |
-| :--- | :--- |
+<img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600" align="left"/>
+
+Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com).
+
+<br clear="all"/>
 
 | variant             |  hands |    bb/100 | 95% CI | H/hr |
 | :------------------ | -----: | --------: | -----: | ---: |
@@ -235,8 +238,11 @@ let equity = obs.equity();
    - Re-solve using world-partitioned belief to preserve equilibrium¹²
    - Translate abstract action back to a concrete chip amount⁷,⁸
 
-| <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650"/> | The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately. |
-| :--- | :--- |
+<img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650" align="left"/>
+
+The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately.
+
+<br clear="all"/>
 
 ## System Requirements
 
