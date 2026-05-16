@@ -2,6 +2,8 @@
 
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/ci.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/rbp.svg)](https://crates.io/crates/rbp)
+[![docs.rs](https://img.shields.io/docsrs/rbp)](https://docs.rs/rbp)
 
 A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em. Seeking functional parity to Pluribus¹.
 
