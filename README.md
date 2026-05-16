@@ -47,37 +47,6 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 - **PostgreSQL persistence** — binary format serialization for efficiency
 - **Short-deck support** — 36-card variant with adjusted rankings
 
-## Quick Start
-
-Add robopoker to your `Cargo.toml`:
-
-```toml
-[dependencies]
-rbp = "1.0"
-
-# Or individual crates:
-rbp-cards = "1.0"
-rbp-gameplay = "1.0"
-rbp-mccfr = "1.0"
-```
-
-### Basic Usage
-
-```rust
-use rbp::cards::*;
-
-// Parse a 7-card hand and read its ranking
-let hand = Hand::try_from("Ac Ks Qh Jd Tc 9h 8s").unwrap();
-let ranking = Strength::from(hand).ranking();
-println!("{:?}", ranking); // Straight(Ace)
-
-// Sample a random river observation and compute hero's equity
-// over the opponent's uniform-random hole-card distribution.
-let obs = Observation::from(Street::Rive);
-let equity = obs.equity();
-println!("equity = {equity:.3}");
-```
-
 ## Crate Overview
 
 ### Core
@@ -281,22 +250,6 @@ BIND_ADDR=0.0.0.0:8888 cargo run --bin backend --features database
 ```
 
 `trainer` modes: `--status`, `--fast`, `--slow`, `--cluster`, `--reset`, `--forget`.
-
-## Building
-
-```bash
-# Type-check the whole workspace (fastest signal during iteration)
-cargo check --workspace
-
-# Build with database features
-cargo build --workspace --features database
-
-# Run tests
-cargo test --workspace
-
-# Generate documentation
-cargo doc --workspace --no-deps --open
-```
 
 ## Built on this stack
 
