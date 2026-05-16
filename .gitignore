@@ -16,6 +16,8 @@
 *.png
 *.gif
 *.wasm
+!assets/**/*.png
+!assets/**/*.gif
 
 react/.next/
 react/build/
