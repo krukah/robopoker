@@ -7,28 +7,18 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
 
 ## Visual Tour
 
-<table align="center">
-<tr>
-<td align="center">
-    <img src="https://github.com/user-attachments/assets/5118eba3-3d64-42f8-ac07-5c83ff733439" height="200" alt="Training Progress"/>
-    <br>
-    <em>Monte Carlo Tree Search</em>
-</td>
-<td align="center">
-    <img src="https://github.com/user-attachments/assets/90b491df-9482-483e-9475-4360f5a17add" height="200" alt="Strategy Growth"/>
-    <br>
-    <em>Equity Distributions</em>
-</td>
-</tr>
-</table>
+| ![Monte Carlo Tree Search](https://github.com/user-attachments/assets/5118eba3-3d64-42f8-ac07-5c83ff733439) | ![Equity Distributions](https://github.com/user-attachments/assets/90b491df-9482-483e-9475-4360f5a17add) |
+|:---:|:---:|
+| *Monte Carlo Tree Search* | *Equity Distributions* |
 
 ## Results
 
-<p align="center">
-  <img src="assets/images/competition-bb100.png" alt="bb/100 per task — head-to-head bot competition" width="850"/>
-</p>
+| ![bb/100 per task](assets/images/competition-bb100.png) | **Final bb/100** *(~11 h pool)* <br><br> **−25**  `depth+world+dirac` <br> **−32**  `depth+dirac` <br> **−35**  `world+dirac` <br> **−45**  `dirac` <br> **−55**  `base` <br> **−85**  `depth` <br> **−92**  `depth+world` <br> **−118** `world` <br> **−140** `fish` <br><br> *Approximate end-of-session values read off the chart.* |
+|:---|:---|
 
-Net bb/100 per bot over an eleven-hour competition pool. Each colored series is a different combination of search techniques from `rbp-depth`, `rbp-world`, and the `dirac` zero-temperature player; `fish` plays uniformly at random and `base` is the unaugmented MCCFR blueprint. The full real-time-search stack (`depth+world+dirac`) tops the chart at roughly −25 bb/100, more than 100 bb/100 ahead of `fish` and ~30 bb/100 ahead of `base` alone — a direct measurement of how much each technique contributes on top of the blueprint.
+Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving<sup>10</sup>), `world` (world-partitioned belief<sup>12</sup>), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search.
+
+The striking pattern: **dirac is doing the heavy lifting.** Every variant that includes `dirac` finishes above `base`; every variant without it (except `base` itself) finishes below. `depth` and `world` add value on top of `dirac` (`depth+world+dirac` is the leader at −25 bb/100), but neither helps in isolation. This is the kind of ablation that suggests sampling temperature, not just tree depth, is the main loss source in the unaugmented blueprint — a useful direction for further work.
 
 ## Features
 
@@ -283,27 +273,23 @@ cargo doc --workspace --no-deps --open
 
 A closed-source analysis frontend consumes the public APIs in this repo — `rbp-server`'s WebSocket and HTTP endpoints, the `rbp-clustering` abstraction tables, the blueprint format from `rbp-nlhe`. The crates here are sufficient to build a similar product.
 
-<table align="center">
-<tr>
-<td align="center" width="50%">
-    <img src="assets/images/frontend-table.png" alt="Live game UI" width="420"/>
-    <br>
-    <em>Live gameplay UI — showdown view with both hole cards revealed, an "abstraction cube" picking which opponent configuration (depth × world × dirac) to face, and a Fish-random fallback. Backed by <code>rbp-server</code>'s WebSocket hosting API.</em>
-</td>
-<td align="center" width="50%">
-    <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="420"/>
-    <br>
-    <em>Per-decision strategy lookup — abstraction bucket (here, flop bucket 95), action distribution over Fold / Call / Shove / pot-relative raises, visit count, EV, and the subgame's action history. Reads <code>rbp-server</code>'s <code>/api/strategy</code> endpoint.</em>
-</td>
-</tr>
-<tr>
-<td align="center" colspan="2">
-    <img src="assets/images/frontend-range.png" alt="Opponent range grid" width="360"/>
-    <br>
-    <em>The 169-cell preflop range grid (suited above the diagonal, pairs on it, offsuit below). Each cell's intensity is the opponent's likelihood of holding that hand given the observed action history. This is the canonical surface that <a href="crates/litmus"><code>rbp-litmus</code></a> validates against (rank monotonicity, suited/offsuit symmetry, premium control, etc.).</em>
-</td>
-</tr>
-</table>
+### Live gameplay
+
+![Live game UI](assets/images/frontend-table.png)
+
+Showdown view with both hole cards revealed. The "abstraction cube" on the left picks the opponent's search configuration along the `depth × world × dirac` axes (the same axes evaluated in the Results section above); `Fish (random)` is the uniform fallback. Backed by `rbp-server`'s WebSocket hosting API.
+
+### Per-decision strategy
+
+![Per-decision strategy view](assets/images/frontend-strategy.png)
+
+Strategy lookup for a single decision point — the abstraction bucket (here `F:95`, flop bucket 95), the action distribution over Fold / Call / Shove / pot-relative raises, visit count, EV, and the subgame's action history. Reads `rbp-server`'s `/api/strategy` endpoint and renders the donut + bar chart client-side.
+
+### Opponent range grid
+
+<p align="center"><img src="assets/images/frontend-range.png" alt="Opponent range grid" width="380"/></p>
+
+The 169-cell preflop range grid — suited combos above the diagonal, pocket pairs on it, offsuit below. Each cell's intensity is the opponent's posterior likelihood of holding that hand given the observed action history. This is the canonical surface that [`rbp-litmus`](crates/litmus) validates against (rank monotonicity, suited/offsuit symmetry, premium control, etc.).
 
 ## References
 
