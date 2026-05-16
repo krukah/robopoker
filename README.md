@@ -3,30 +3,29 @@
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/ci.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/ci.yml)
 
-A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em with functional parity to Pluribus¹.
+A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em. Seeking functional parity to Pluribus¹.
 
 ## Visual Tour
 
 | ![Monte Carlo Tree Search](https://github.com/user-attachments/assets/5118eba3-3d64-42f8-ac07-5c83ff733439) | ![Equity Distributions](https://github.com/user-attachments/assets/90b491df-9482-483e-9475-4360f5a17add) |
-|:---:|:---:|
-| *Monte Carlo Tree Search* | *Equity Distributions* |
+| :---------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
+|                                          _Monte Carlo Tree Search_                                          |                                          _Equity Distributions_                                          |
 
 ## Results
 
-<p align="center"><img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="850"/></p>
+| <img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600"/> | Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com). |
+| :--- | :--- |
 
-Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com).
-
-| variant             |   hands |    bb/100 | 95% CI | H/hr |
-|:--------------------|--------:|----------:|-------:|-----:|
-| `world+dirac`       |  23.1 K | **−22.8** | ± 25.8 |  4 K |
-| `dirac`             |   480 K |     −26.6 | ±  5.7 |  —   |
-| `depth+dirac`       |  23.0 K |     −28.6 | ± 25.9 |  3 K |
-| `base`              |   480 K |     −32.8 | ±  5.7 |  —   |
-| `depth+world+dirac` |  3.76 K |     −33.7 | ± 64.0 |  —   |
-| `depth`             |  5.93 K |     −48.2 | ± 50.9 |  —   |
-| `world`             |  24.2 K |     −68.1 | ± 25.2 |  1 K |
-| `depth+world`       |  21.8 K |     −76.1 | ± 26.6 |  —   |
+| variant             |  hands |    bb/100 | 95% CI | H/hr |
+| :------------------ | -----: | --------: | -----: | ---: |
+| `world+dirac`       | 23.1 K | **−22.8** | ± 25.8 |  4 K |
+| `dirac`             |  480 K |     −26.6 |  ± 5.7 |    — |
+| `depth+dirac`       | 23.0 K |     −28.6 | ± 25.9 |  3 K |
+| `base`              |  480 K |     −32.8 |  ± 5.7 |    — |
+| `depth+world+dirac` | 3.76 K |     −33.7 | ± 64.0 |    — |
+| `depth`             | 5.93 K |     −48.2 | ± 50.9 |    — |
+| `world`             | 24.2 K |     −68.1 | ± 25.2 |  1 K |
+| `depth+world`       | 21.8 K |     −76.1 | ± 26.6 |    — |
 
 **Every variant with `dirac` is at or above `base`; every variant without `dirac` (except `base` itself) is well below it.** The leader is `world+dirac` at −22.8 bb/100 — ten bb/100 ahead of `base` and ~50 bb/100 ahead of `depth+world`. The dashboard's running marginal-effect estimator agrees: turning `dirac` on improves bb/100 by an order of magnitude more than turning `depth` or `world` on. Sampling temperature, not tree depth or belief partitioning, is currently the dominant loss source in the unaugmented blueprint — a useful direction for further work.
 
@@ -78,59 +77,60 @@ let equity = obs.equity();
 
 ### Core
 
-| Crate | Description |
-|-------|-------------|
-| [`rbp`](crates/rbp) | Facade re-exporting all public crates |
-| [`rbp-core`](crates/util) | Type aliases, constants, regime/version metadata, shared traits |
-| [`rbp-cards`](crates/cards) | Card primitives, hand evaluation, equity |
-| [`rbp-transport`](crates/transport) | Optimal transport (Sinkhorn, EMD) over arbitrary measures |
-| [`rbp-mccfr`](crates/mccfr) | Game-agnostic CFR framework |
-| [`rbp-gameplay`](crates/gameplay) | Poker game engine: state, edges, settlement, witness/perfect recall |
-| [`rbp-clustering`](crates/clustering) | Hierarchical k-means abstraction with Elkan acceleration |
-| [`rbp-hyperparams`](crates/hyperparams) | Proc-macro deriving a `OnceLock`-backed global config pattern |
+| Crate                                   | Description                                                         |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| [`rbp`](crates/rbp)                     | Facade re-exporting all public crates                               |
+| [`rbp-core`](crates/util)               | Type aliases, constants, regime/version metadata, shared traits     |
+| [`rbp-cards`](crates/cards)             | Card primitives, hand evaluation, equity                            |
+| [`rbp-transport`](crates/transport)     | Optimal transport (Sinkhorn, EMD) over arbitrary measures           |
+| [`rbp-mccfr`](crates/mccfr)             | Game-agnostic CFR framework                                         |
+| [`rbp-gameplay`](crates/gameplay)       | Poker game engine: state, edges, settlement, witness/perfect recall |
+| [`rbp-clustering`](crates/clustering)   | Hierarchical k-means abstraction with Elkan acceleration            |
+| [`rbp-hyperparams`](crates/hyperparams) | Proc-macro deriving a `OnceLock`-backed global config pattern       |
 
 ### Search & abstraction
 
-| Crate | Description |
-|-------|-------------|
-| [`rbp-translate`](crates/translate) | Generic action translation over finite lattices |
-| [`rbp-world`](crates/world) | World-partitioned belief layer for safe subgame solving |
-| [`rbp-depth`](crates/depth) | Depth-limited solving with biased continuation strategies |
-| [`rbp-subgame`](crates/subgame) | Safe + depth-limited subgame composition |
+| Crate                               | Description                                               |
+| ----------------------------------- | --------------------------------------------------------- |
+| [`rbp-translate`](crates/translate) | Generic action translation over finite lattices           |
+| [`rbp-world`](crates/world)         | World-partitioned belief layer for safe subgame solving   |
+| [`rbp-depth`](crates/depth)         | Depth-limited solving with biased continuation strategies |
+| [`rbp-subgame`](crates/subgame)     | Safe + depth-limited subgame composition                  |
 
 ### Games
 
-| Crate | Description |
-|-------|-------------|
-| [`rbp-nlhe`](crates/nlhe) | No-Limit Hold'em solver and abstraction |
-| [`rbp-leduc`](crates/leduc) | Leduc Hold'em — MCCFR framework validation |
-| [`rbp-kuhn`](crates/kuhn) | Kuhn poker — MCCFR framework validation |
-| [`rbp-rps`](crates/rps) | Rock-Paper-Scissors — MCCFR framework validation |
+| Crate                       | Description                                      |
+| --------------------------- | ------------------------------------------------ |
+| [`rbp-nlhe`](crates/nlhe)   | No-Limit Hold'em solver and abstraction          |
+| [`rbp-leduc`](crates/leduc) | Leduc Hold'em — MCCFR framework validation       |
+| [`rbp-kuhn`](crates/kuhn)   | Kuhn poker — MCCFR framework validation          |
+| [`rbp-rps`](crates/rps)     | Rock-Paper-Scissors — MCCFR framework validation |
 
 ### Infrastructure
 
-| Crate | Description |
-|-------|-------------|
-| [`rbp-database`](crates/database) | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits |
-| [`rbp-auth`](crates/auth) | JWT + Argon2 authentication, session management |
+| Crate                               | Description                                                       |
+| ----------------------------------- | ----------------------------------------------------------------- |
+| [`rbp-database`](crates/database)   | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits    |
+| [`rbp-auth`](crates/auth)           | JWT + Argon2 authentication, session management                   |
 | [`rbp-telemetry`](crates/telemetry) | OpenTelemetry init and a centrally-registered metric handle table |
 
 ### Applications
 
-| Crate | Description |
-|-------|-------------|
-| [`rbp-gameroom`](crates/gameroom) | Async game coordinator with pluggable players and hand-history records |
-| [`rbp-server`](crates/server) | Unified HTTP/WebSocket backend (analysis API + game hosting) |
-| [`rbp-autotrain`](crates/autotrain) | Training pipeline orchestration with distributed workers |
-| [`rbp-slumbot`](crates/slumbot) | Slumbot API benchmark client for blueprint evaluation |
-| [`rbp-competition`](crates/competition) | Hand-history analysis with AIVAT variance reduction |
-| [`rbp-litmus`](crates/litmus) | Strategic litmus tests for blueprint validation |
+| Crate                                   | Description                                                            |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| [`rbp-gameroom`](crates/gameroom)       | Async game coordinator with pluggable players and hand-history records |
+| [`rbp-server`](crates/server)           | Unified HTTP/WebSocket backend (analysis API + game hosting)           |
+| [`rbp-autotrain`](crates/autotrain)     | Training pipeline orchestration with distributed workers               |
+| [`rbp-slumbot`](crates/slumbot)         | Slumbot API benchmark client for blueprint evaluation                  |
+| [`rbp-competition`](crates/competition) | Hand-history analysis with AIVAT variance reduction                    |
+| [`rbp-litmus`](crates/litmus)           | Strategic litmus tests for blueprint validation                        |
 
 ## Architecture
 
 ### Core layer
 
 **`rbp-cards`** — Card representation and hand evaluation:
+
 - Bijective `u8` / `u16` / `u32` / `u64` representations for efficient bit-twiddling
 - Nanosecond-scale hand strength evaluation
 - Equity calculation via enumeration and Monte Carlo
@@ -138,11 +138,13 @@ let equity = obs.equity();
 - Short-deck (36-card) variant support
 
 **`rbp-transport`** — Optimal transport:
+
 - Sinkhorn iteration for near-linear Wasserstein approximation⁵
 - Greenkhorn / greedy variants for sparse distributions
 - Generic `Density` / `Support` traits over arbitrary metric spaces
 
 **`rbp-mccfr`** — Game-agnostic CFR framework:
+
 - State primitives: `CfrTurn`, `CfrEdge`, `CfrGame`, `CfrInfo`, `CfrTree`
 - Strategy representation: `CfrEncoder`, `Profile`, `InfoSet`, `Posterior`
 - Solver layer: `Solver`, `TreeBuilder`, `Decisions`, `Harvest`
@@ -151,11 +153,13 @@ let equity = obs.equity();
 ### Search & abstraction layer
 
 **`rbp-translate`** — Action translation:
+
 - Generic `Lattice` over a totally-ordered axis
 - Pseudo-harmonic translation between abstract and concrete actions⁷,⁸
 - Composable scalar and bracket primitives
 
 **`rbp-world` + `rbp-depth` + `rbp-subgame`** — Real-time search:
+
 - `WorldProfile` partitions belief into discrete worlds for safe re-solving¹²
 - `DepthEdge<E, D>` augments base edges with `D` continuation choices at the frontier
 - `Subgame` composes the two: depth-limited tree of world-tagged states
@@ -163,18 +167,21 @@ let equity = obs.equity();
 ### Domain layer
 
 **`rbp-gameplay`** — Complete poker game engine:
+
 - Full No-Limit Texas Hold'em rules
 - Side-pot, all-in, and tie handling
 - Bet-sizing abstraction via `Size::SPR(n, d)` and `Size::BBs(n)`
 - `Witness` (one player's view) vs `Perfect` (god's view) recall types
 
 **`rbp-clustering`** — Hand abstraction via clustering:
+
 - Hierarchical k-means with Elkan triangle-inequality acceleration
 - Earth Mover's Distance over child-street distributions
 - Isomorphic exhaustion of 3.1T situations⁴
 - PostgreSQL binary persistence
 
 **`rbp-nlhe`** — Concrete NLHE solver:
+
 - `Nlhe<R, W, S>` parameterised over regret, weight, and sampling schemes
 - `NlheEncoder` for state → infoset mapping
 - `NlheProfile` for regret/strategy storage
@@ -183,22 +190,26 @@ let equity = obs.equity();
 ### Infrastructure layer
 
 **`rbp-database`** — PostgreSQL persistence:
+
 - Binary format serialization for efficient storage
 - `Schema`, `Row`, `Streamable` traits with `COPY IN` for bulk inserts
 - `(Regime × Version)` table-naming macros (`table!`, `versioned!`, `regime!`)
 - Regime fingerprint check guards against silent constant drift
 
 **`rbp-gameroom`** — Async game coordination:
+
 - Room-based session management with `Engine` / `Actor` / `Channel` model
 - Pluggable player implementations: `agent`, `blueprint`, `brain`, `depth`, `dirac`, `fish`, `human`, `mount`, `solved`, `variant`, `world`, `zoo`
 - Hand-history recording and replay
 
 **`rbp-server`** — Unified backend:
+
 - Analysis API for querying training results, strategies, and topology
 - Game hosting with WebSocket support
 - Authentication integration
 
 **`rbp-autotrain`** — Training orchestration:
+
 - `Fast` (single-machine in-memory) and `Slow` (distributed workers) modes
 - Pre-training: cluster generation + persistence
 - Graceful interrupts and resumable state
@@ -224,11 +235,8 @@ let equity = obs.equity();
    - Re-solve using world-partitioned belief to preserve equilibrium¹²
    - Translate abstract action back to a concrete chip amount⁷,⁸
 
-<p align="center">
-  <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="900"/>
-</p>
-
-The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown above: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately.
+| <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650"/> | The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately. |
+| :--- | :--- |
 
 ## System Requirements
 
@@ -240,18 +248,19 @@ The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compa
 | River   | 3.02 GB          | -           |
 
 **Recommended:**
+
 - Training: 16 vCPU, 120 GB RAM
 - Database: PostgreSQL 14+ with 8 vCPU, 64 GB RAM
 - Analysis: 1 vCPU, 4 GB RAM
 
 ## Feature Flags
 
-| Feature | Description |
-|---------|-------------|
-| `database` | PostgreSQL integration |
-| `server` | Server dependencies (Actix, Tokio, Rayon, telemetry) |
-| `async` | Async MCCFR sampling/regret variants |
-| `shortdeck` | 36-card short-deck variant |
+| Feature     | Description                                          |
+| ----------- | ---------------------------------------------------- |
+| `database`  | PostgreSQL integration                               |
+| `server`    | Server dependencies (Actix, Tokio, Rayon, telemetry) |
+| `async`     | Async MCCFR sampling/regret variants                 |
+| `shortdeck` | 36-card short-deck variant                           |
 
 ## Binaries
 
@@ -287,27 +296,21 @@ A closed-source analysis frontend consumes the public APIs in this repo — `rbp
 
 ### Live gameplay
 
-<p align="center">
-  <img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/>
-  <br>
-  <em><sub>Showdown view — the abstraction cube picks the opponent's <code>depth × world × dirac</code> configuration. Backed by <code>rbp-server</code>'s WebSocket hosting API.</sub></em>
-</p>
+<img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/>
+
+*Showdown view — the abstraction cube picks the opponent's `depth × world × dirac` configuration. Backed by `rbp-server`'s WebSocket hosting API.*
 
 ### Per-decision strategy
 
-<p align="center">
-  <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="600"/>
-  <br>
-  <em><sub>Strategy lookup at flop bucket <code>F:95</code> — action distribution, visit count, EV, and subgame history. Reads <code>rbp-server</code>'s <code>/api/strategy</code>.</sub></em>
-</p>
+<img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="700"/>
+
+*Strategy lookup at flop bucket `F:95` — action distribution, visit count, EV, and subgame history. Reads `rbp-server`'s `/api/strategy`.*
 
 ### Opponent range grid
 
-<p align="center">
-  <img src="assets/images/frontend-range.png" alt="Opponent range grid" width="380"/>
-  <br>
-  <em><sub>169-cell preflop range grid; cell intensity = opponent's posterior given observed action. Validated by <a href="crates/litmus"><code>rbp-litmus</code></a>.</sub></em>
-</p>
+<img src="assets/images/frontend-range.png" alt="Opponent range grid" width="350"/>
+
+*169-cell preflop range grid; cell intensity = opponent's posterior given observed action. Validated by [`rbp-litmus`](crates/litmus).*
 
 ## References
 
