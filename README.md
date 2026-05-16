@@ -65,15 +65,17 @@ rbp-mccfr = "1.0"
 
 ```rust
 use rbp::cards::*;
-use rbp::gameplay::*;
 
-// Create a hand and evaluate it
-let hand = Hand::from("AcKsQhJdTc9h8s");
-let strength = hand.evaluate();
+// Parse a 7-card hand and read its ranking
+let hand = Hand::try_from("Ac Ks Qh Jd Tc 9h 8s").unwrap();
+let ranking = Strength::from(hand).ranking();
+println!("{:?}", ranking); // Straight(Ace)
 
-// Work with observations
-let obs = Observation::from(Street::Flop);
+// Sample a random river observation and compute hero's equity
+// over the opponent's uniform-random hole-card distribution.
+let obs = Observation::from(Street::Rive);
 let equity = obs.equity();
+println!("equity = {equity:.3}");
 ```
 
 ## Crate Overview
