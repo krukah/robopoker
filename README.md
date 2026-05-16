@@ -119,10 +119,11 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 **`rbp-mccfr`** — Game-agnostic CFR framework:
 
-- State primitives: `CfrTurn`, `CfrEdge`, `CfrGame`, `CfrInfo`, `CfrTree`
-- Strategy representation: `CfrEncoder`, `Profile`, `InfoSet`, `Posterior`
+- State primitives: `CfrTurn`, `CfrEdge`, `CfrGame`, `CfrInfo`, `CfrPublic`, `CfrSecret`, plus the concrete `Tree<T, E, G, I>`
+- Strategy layer: `CfrEncoder` (state → infoset), `RefProf` (read profile), `MutProf` (write storage), `InfoSet`, `Posterior`
+- Composed traits: `CfrFlow` (regret matching, reach, EV — blanket from `RefProf` + `CfrSampling`) and `CfrSolution` (full supertrait for `Solver`)
 - Solver layer: `Solver`, `TreeBuilder`, `Decisions`, `Harvest`
-- Schemes: `RegretSchedule` (linear, discounted, asymmetric, floored, summed), `WeightSchedule`, `SamplingScheme` (external, vanilla, targeted, pluribus, pruning)
+- Pluggable schemes: `RegretSchedule` (linear, discounted, asymmetric, floored, summed), `WeightSchedule`, `SamplingScheme` (external, vanilla, targeted, pluribus, pruning)
 
 ### Search & abstraction layer
 
