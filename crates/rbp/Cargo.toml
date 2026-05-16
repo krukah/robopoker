@@ -14,6 +14,8 @@ categories      = ["game-development", "algorithms", "mathematics"]
 default         = []
 database        = ["rbp-auth/database", "rbp-gameroom/database"]
 server          = ["rbp-auth/server"]
+async           = ["rbp-mccfr/async"]
+shortdeck       = ["rbp-cards/shortdeck"]
 
 [dependencies]
 rbp-core        = { version = "1.0", path = "../util"       }
