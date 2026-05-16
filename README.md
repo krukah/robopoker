@@ -13,12 +13,25 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
 
 ## Results
 
-| ![bb/100 per task](assets/images/competition-bb100.png) | **Final bb/100** *(~11 h pool)* <br><br> **−25**  `depth+world+dirac` <br> **−32**  `depth+dirac` <br> **−35**  `world+dirac` <br> **−45**  `dirac` <br> **−55**  `base` <br> **−85**  `depth` <br> **−92**  `depth+world` <br> **−118** `world` <br> **−140** `fish` <br><br> *Approximate end-of-session values read off the chart.* |
-|:---|:---|
+![bb/100 per task](assets/images/competition-bb100.png)
 
-Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving<sup>10</sup>), `world` (world-partitioned belief<sup>12</sup>), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search.
+Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving<sup>10</sup>), `world` (world-partitioned belief<sup>12</sup>), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against Slumbot.
 
-The striking pattern: **dirac is doing the heavy lifting.** Every variant that includes `dirac` finishes above `base`; every variant without it (except `base` itself) finishes below. `depth` and `world` add value on top of `dirac` (`depth+world+dirac` is the leader at −25 bb/100), but neither helps in isolation. This is the kind of ablation that suggests sampling temperature, not just tree depth, is the main loss source in the unaugmented blueprint — a useful direction for further work.
+| variant             |    hands |    bb/100 | 95% CI | H/hr |
+|:--------------------|---------:|----------:|-------:|-----:|
+| `depth+world+dirac` |   57.0 K | **−32.5** | ± 16.4 |  4 K |
+| `dirac`             |    480 K |     −34.3 | ±  5.7 |  —   |
+| `depth+dirac`       |   55.6 K |     −44.9 | ± 16.6 |  4 K |
+| `world+dirac`       |   56.6 K |     −47.1 | ± 16.5 |  3 K |
+| `base`              |    480 K |     −54.6 | ±  5.7 |  —   |
+| `depth`             |   55.4 K |     −89.4 | ± 16.7 |  5 K |
+| `depth+world`       |   55.9 K |     −94.4 | ± 16.6 |  4 K |
+| `world`             |   58.1 K |    −117.0 | ± 16.3 |  5 K |
+| `fish`              |    480 K |    −141.6 | ±  5.7 |  —   |
+
+**Two findings stand out.** First, every variant including `dirac` finishes above `base`, and every variant without it (except `base`) finishes below — a clean ablation across all eight combinations. Second, the dashboard's running marginal-effect estimators tell the same story numerically: Δ`depth` on–off ≈ −1.4 bb/100, Δ`world` on–off ≈ +1.4 bb/100, **Δ`dirac` on–off ≈ −96 bb/100.** Sampling temperature (the `dirac` axis), not tree depth or belief partitioning, is currently the dominant loss source in the unaugmented blueprint — a useful direction for further work.
+
+The 95 % CIs on the ablation variants overlap, so the ordering inside the `*+dirac` cluster shouldn't be over-read. The `base`, `dirac`, and `fish` tasks have run an order of magnitude longer (480 K hands each), so their estimates are much tighter (± 5.7 bb/100).
 
 ## Features
 
