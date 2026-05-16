@@ -123,7 +123,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 - Strategy layer: `CfrEncoder` (state → infoset), `RefProf` (read profile), `MutProf` (write storage), `InfoSet`, `Posterior`
 - Composed traits: `CfrFlow` (regret matching, reach, EV — blanket from `RefProf` + `CfrSampling`) and `CfrSolution` (full supertrait for `Solver`)
 - Solver layer: `Solver`, `TreeBuilder`, `Decisions`, `Harvest`
-- Pluggable schemes: `RegretSchedule` (linear, discounted, asymmetric, floored, summed), `WeightSchedule`, `SamplingScheme` (external, vanilla, targeted, pluribus, pruning)
+- Pluggable schemes: `RegretSchedule` (linear, discounted, asymmetric, floored, summed), `WeightSchedule`, `SamplingScheme` (external, vanilla, targeted, pluribus, pruning⁹,¹¹)
 
 ### Search & abstraction layer
 
