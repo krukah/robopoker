@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/ci.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/ci.yml)
 
-A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em with functional parity to Pluribus<sup>1</sup>.
+A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em with functional parity to Pluribus¹.
 
 ## Visual Tour
 
@@ -15,7 +15,7 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
 
 <p align="center"><img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="850"/></p>
 
-Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving<sup>10</sup>), `world` (world-partitioned belief<sup>12</sup>), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com).
+Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com).
 
 | variant             |   hands |    bb/100 | 95% CI | H/hr |
 |:--------------------|--------:|----------:|-------:|-----:|
@@ -38,9 +38,9 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 - **Strategic abstraction** — hierarchical k-means clustering of 3.1T poker situations
 - **Optimal transport** — Earth Mover's Distance via Sinkhorn algorithm
 - **MCCFR solver** — external sampling with dynamic tree construction, pluggable regret/policy/sampling schemes
-- **Depth-limited subgame solving<sup>10</sup>** — frontier-augmented games with biased continuation strategies
-- **Safe subgame solving<sup>12</sup>** — world-partitioned belief preserves blueprint equilibrium
-- **Action translation<sup>7,8</sup>** — pseudo-harmonic mapping over finite lattices
+- **Depth-limited subgame solving¹⁰** — frontier-augmented games with biased continuation strategies
+- **Safe subgame solving¹²** — world-partitioned belief preserves blueprint equilibrium
+- **Action translation⁷,⁸** — pseudo-harmonic mapping over finite lattices
 - **AIVAT variance reduction** — for hand-history evaluation of trained strategies
 - **PostgreSQL persistence** — binary format serialization for efficiency
 - **Short-deck support** — 36-card variant with adjusted rankings
@@ -138,7 +138,7 @@ let equity = obs.equity();
 - Short-deck (36-card) variant support
 
 **`rbp-transport`** — Optimal transport:
-- Sinkhorn iteration for near-linear Wasserstein approximation<sup>5</sup>
+- Sinkhorn iteration for near-linear Wasserstein approximation⁵
 - Greenkhorn / greedy variants for sparse distributions
 - Generic `Density` / `Support` traits over arbitrary metric spaces
 
@@ -152,11 +152,11 @@ let equity = obs.equity();
 
 **`rbp-translate`** — Action translation:
 - Generic `Lattice` over a totally-ordered axis
-- Pseudo-harmonic translation between abstract and concrete actions<sup>7,8</sup>
+- Pseudo-harmonic translation between abstract and concrete actions⁷,⁸
 - Composable scalar and bracket primitives
 
 **`rbp-world` + `rbp-depth` + `rbp-subgame`** — Real-time search:
-- `WorldProfile` partitions belief into discrete worlds for safe re-solving<sup>12</sup>
+- `WorldProfile` partitions belief into discrete worlds for safe re-solving¹²
 - `DepthEdge<E, D>` augments base edges with `D` continuation choices at the frontier
 - `Subgame` composes the two: depth-limited tree of world-tagged states
 
@@ -171,7 +171,7 @@ let equity = obs.equity();
 **`rbp-clustering`** — Hand abstraction via clustering:
 - Hierarchical k-means with Elkan triangle-inequality acceleration
 - Earth Mover's Distance over child-street distributions
-- Isomorphic exhaustion of 3.1T situations<sup>4</sup>
+- Isomorphic exhaustion of 3.1T situations⁴
 - PostgreSQL binary persistence
 
 **`rbp-nlhe`** — Concrete NLHE solver:
@@ -207,22 +207,22 @@ let equity = obs.equity();
 
 1. **Hierarchical abstraction** (per street: river → turn → flop → preflop):
    - Generate isomorphic hand clusters
-   - Initialize k-means centroids via k-means++<sup>2</sup>
+   - Initialize k-means centroids via k-means++²
    - Run clustering to group strategically similar hands
-   - Calculate EMD metrics via optimal transport<sup>5</sup>
+   - Calculate EMD metrics via optimal transport⁵
    - Save abstractions and metrics to PostgreSQL
 
-2. **MCCFR training**<sup>3</sup>:
+2. **MCCFR training**³:
    - Sample game trajectories via external sampling
    - Update regret values and compute counterfactual values
-   - Accumulate strategy with linear weighting<sup>6</sup>
+   - Accumulate strategy with linear weighting⁶
    - Checkpoint blueprint strategy to database
 
 3. **Real-time search**:
    - Load blueprint as prior
-   - Build depth-limited subgame tree from current state<sup>10</sup>
-   - Re-solve using world-partitioned belief to preserve equilibrium<sup>12</sup>
-   - Translate abstract action back to a concrete chip amount<sup>7,8</sup>
+   - Build depth-limited subgame tree from current state¹⁰
+   - Re-solve using world-partitioned belief to preserve equilibrium¹²
+   - Translate abstract action back to a concrete chip amount⁷,⁸
 
 <p align="center">
   <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="900"/>
@@ -287,21 +287,27 @@ A closed-source analysis frontend consumes the public APIs in this repo — `rbp
 
 ### Live gameplay
 
-<p align="center"><img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/></p>
-
-Showdown view with both hole cards revealed. The "abstraction cube" on the left picks the opponent's search configuration along the `depth × world × dirac` axes (the same axes evaluated in the Results section above); `Fish (random)` is the uniform fallback. Backed by `rbp-server`'s WebSocket hosting API.
+<p align="center">
+  <img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/>
+  <br>
+  <em><sub>Showdown view — the abstraction cube picks the opponent's <code>depth × world × dirac</code> configuration. Backed by <code>rbp-server</code>'s WebSocket hosting API.</sub></em>
+</p>
 
 ### Per-decision strategy
 
-<p align="center"><img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="600"/></p>
-
-Strategy lookup for a single decision point — the abstraction bucket (here `F:95`, flop bucket 95), the action distribution over Fold / Call / Shove / pot-relative raises, visit count, EV, and the subgame's action history. Reads `rbp-server`'s `/api/strategy` endpoint and renders the donut + bar chart client-side.
+<p align="center">
+  <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="600"/>
+  <br>
+  <em><sub>Strategy lookup at flop bucket <code>F:95</code> — action distribution, visit count, EV, and subgame history. Reads <code>rbp-server</code>'s <code>/api/strategy</code>.</sub></em>
+</p>
 
 ### Opponent range grid
 
-<p align="center"><img src="assets/images/frontend-range.png" alt="Opponent range grid" width="380"/></p>
-
-The 169-cell preflop range grid — suited combos above the diagonal, pocket pairs on it, offsuit below. Each cell's intensity is the opponent's posterior likelihood of holding that hand given the observed action history. This is the canonical surface that [`rbp-litmus`](crates/litmus) validates against (rank monotonicity, suited/offsuit symmetry, premium control, etc.).
+<p align="center">
+  <img src="assets/images/frontend-range.png" alt="Opponent range grid" width="380"/>
+  <br>
+  <em><sub>169-cell preflop range grid; cell intensity = opponent's posterior given observed action. Validated by <a href="crates/litmus"><code>rbp-litmus</code></a>.</sub></em>
+</p>
 
 ## References
 
