@@ -10,9 +10,9 @@ use super::*;
 pub struct LinearRegret;
 
 impl RegretSchedule for LinearRegret {
-    fn gain(accumulated: Utility, immediate: Utility, epoch: usize) -> Utility {
+    fn accumulate(accumulated: Utility, immediate: Utility, epoch: usize) -> Utility {
         let t = epoch as f32;
         let discount = t / (t + 1.0);
-        (accumulated * discount + immediate).max(REGRET_MIN)
+        accumulated * discount + immediate
     }
 }

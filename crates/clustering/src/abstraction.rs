@@ -21,6 +21,7 @@ impl From<ClusterAbs> for Abstraction {
 }
 impl std::ops::Deref for ClusterAbs {
     type Target = Abstraction;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }

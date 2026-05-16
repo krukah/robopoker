@@ -12,6 +12,6 @@ name         = "backend"
 path         = "src/main.rs"
 
 [dependencies]
-rbp-core     = { path = "../../crates/util", features = ["server"] }
-rbp-server   = { path = "../../crates/server" }
-tokio        = { version = "1", features = ["rt-multi-thread", "macros"] }
+rbp-server         = { path = "../../crates/server" }
+tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

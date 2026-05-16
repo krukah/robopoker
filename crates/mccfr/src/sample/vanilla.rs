@@ -19,14 +19,14 @@ impl SamplingScheme for VanillaSampling {
     fn sample<T, E, G, I, P>(
         _: &P,
         _: &Node<T, E, G, I>,
-        branches: Vec<Branch<E, G>>,
-    ) -> Vec<Branch<E, G>>
+        branches: Vec<Leaf<E, G>>,
+    ) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
         G: CfrGame<E = E, T = T>,
         I: CfrInfo<E = E, T = T>,
-        P: Profile<T = T, E = E, G = G, I = I>,
+        P: CfrFlow<T = T, E = E, G = G, I = I>,
     {
         branches
     }

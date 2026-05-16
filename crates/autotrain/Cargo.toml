@@ -4,28 +4,29 @@ version         = "1.0.0"
 edition         = "2024"
 rust-version    = "1.90"
 authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description     = "Automated MCCFR training pipeline orchestration with distributed workers"
+description     = "Automated MCCFR training pipeline orchestration"
 license         = "MIT"
 repository      = "https://github.com/krukah/robopoker"
-keywords        = ["training", "mccfr", "automation", "pipeline", "distributed"]
-categories      = ["algorithms", "command-line-utilities", "concurrency"]
+keywords        = ["training", "mccfr", "automation", "pipeline"]
+categories      = ["algorithms", "command-line-utilities"]
 
 [features]
 default         = []
 
 [dependencies]
-rbp-core        = { version = "1.0", path = "../util", features = ["server"] }
-rbp-cards       = { version = "1.0", path = "../cards"                       }
-rbp-clustering  = { version = "1.0", path = "../clustering", features = ["database"] }
-rbp-database    = { version = "1.0", path = "../database"                    }
-rbp-gameplay    = { version = "1.0", path = "../gameplay"                    }
-rbp-transport   = { version = "1.0", path = "../transport"                   }
-rbp-mccfr       = { version = "1.0", path = "../mccfr"                       }
-rbp-nlhe        = { version = "1.0", path = "../nlhe", features = ["database"] }
+rbp-core        = { path = "../util", features = ["server"]        }
+rbp-cards       = { path = "../cards"                              }
+rbp-clustering  = { path = "../clustering", features = ["database"]}
+rbp-database    = { path = "../database"                           }
+rbp-gameplay    = { path = "../gameplay"                           }
+rbp-mccfr       = { path = "../mccfr", features = ["async"]        }
+rbp-nlhe        = { path = "../nlhe", features = ["database"]      }
+rbp-transport   = { path = "../transport"                          }
+rbp-telemetry   = { path = "../telemetry"                          }
 tokio-postgres  = "0.7"
 async-trait     = "0.1"
 const_format    = "0.2"
 futures         = "0.3"
-log             = "0.4"
+tracing       = { workspace = true }
 num_cpus        = "1.16"
 rand            = { version = "0.9.1", features = ["small_rng"] }

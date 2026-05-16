@@ -3,6 +3,7 @@ use rbp_cards::*;
 use rbp_core::*;
 use rbp_gameplay::*;
 use rbp_transport::*;
+use std::sync::OnceLock;
 
 /// Distance metric between abstractions for a specific street.
 ///
@@ -58,6 +59,7 @@ impl Metric {
 impl Measure for Metric {
     type X = ClusterAbs;
     type Y = ClusterAbs;
+
     fn distance(&self, x: &Self::X, y: &Self::Y) -> Energy {
         self.raw_distance(x, y)
     }
@@ -103,11 +105,12 @@ impl Metric {
     }
     /// Computes Earth Mover's Distance between two histograms.
     ///
-    /// For Flop/Turn: Uses Sinkhorn entropic optimal transport.
+    /// For Flop/Turn: Uses Sinkhorn divergence (debiased entropic OT) so
+    /// that `emd(μ, μ) = 0` despite finite regularization temperature.
     /// For River: Uses total variation (integrated CDF difference).
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> Energy {
         match source.peek().street() {
-            Street::Flop | Street::Turn => Sinkhorn::from((source, target, self)).minimize().cost(),
+            Street::Flop | Street::Turn => Sinkhorn::divergence(source, target, self),
             Street::Rive => Equity::variation(source, target),
             Street::Pref => unreachable!("no preflop emd"),
         }
@@ -142,6 +145,7 @@ impl From<std::collections::BTreeMap<Pair, Energy>> for Metric {
 impl IntoIterator for Metric {
     type Item = (i32, Energy);
     type IntoIter = Box<dyn Iterator<Item = Self::Item> + Send>;
+
     fn into_iter(self) -> Self::IntoIter {
         match self {
             Metric::Pref(d) => d.into_iter(),
@@ -155,54 +159,68 @@ impl IntoIterator for Metric {
 #[cfg(feature = "database")]
 impl rbp_database::Schema for Metric {
     fn name() -> &'static str {
-        rbp_database::METRIC
+        rbp_database::metric()
     }
+
     fn columns() -> &'static [tokio_postgres::types::Type] {
         &[
             tokio_postgres::types::Type::INT4,   // tri (triangular index)
             tokio_postgres::types::Type::FLOAT4, // dx (distance)
         ]
     }
+
     fn creates() -> &'static str {
-        const_format::concatcp!(
-            "CREATE TABLE IF NOT EXISTS ",
-            rbp_database::METRIC,
-            " (
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "CREATE TABLE IF NOT EXISTS {} (
                 tri    INT  NOT NULL,
                 dx     REAL NOT NULL,
                 street SMALLINT
-            );"
-        )
+            );",
+                rbp_database::metric()
+            ))
+        })
     }
+
     fn indices() -> &'static str {
-        const_format::concatcp!(
-            "CREATE INDEX IF NOT EXISTS idx_metric_tri ON ",
-            rbp_database::METRIC,
-            " (tri);
-             CREATE INDEX IF NOT EXISTS idx_metric_street ON ",
-            rbp_database::METRIC,
-            " (street);"
-        )
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        let t = rbp_database::metric();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "CREATE INDEX IF NOT EXISTS idx_{t}_tri ON {t} (tri);
+             CREATE INDEX IF NOT EXISTS idx_{t}_street ON {t} (street);
+             CREATE INDEX IF NOT EXISTS idx_{t}_dx ON {t} (dx);"
+            ))
+        })
     }
+
     fn copy() -> &'static str {
-        const_format::concatcp!(
-            "COPY ",
-            rbp_database::METRIC,
-            " (tri, dx) FROM STDIN BINARY"
-        )
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "COPY {} (tri, dx) FROM STDIN BINARY",
+                rbp_database::metric()
+            ))
+        })
     }
+
     fn truncates() -> &'static str {
-        const_format::concatcp!("TRUNCATE TABLE ", rbp_database::METRIC, ";")
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::metric()))
+        })
     }
+
     fn freeze() -> &'static str {
-        const_format::concatcp!(
-            "ALTER TABLE ",
-            rbp_database::METRIC,
-            " SET (fillfactor = 100);
-             ALTER TABLE ",
-            rbp_database::METRIC,
-            " SET (autovacuum_enabled = false);"
-        )
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        let t = rbp_database::metric();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "ALTER TABLE {t} SET (fillfactor = 100);
+             ALTER TABLE {t} SET (autovacuum_enabled = false);"
+            ))
+        })
     }
 }
 
@@ -210,6 +228,7 @@ impl rbp_database::Schema for Metric {
 #[async_trait::async_trait]
 impl rbp_database::Streamable for Metric {
     type Row = (i32, f32);
+
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
         self.into_iter()
     }
@@ -218,7 +237,7 @@ impl rbp_database::Streamable for Metric {
 #[cfg(feature = "database")]
 impl Metric {
     pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
-        let sql = const_format::concatcp!("SELECT tri, dx FROM ", rbp_database::METRIC);
+        let sql = format!("SELECT tri, dx FROM {}", rbp_database::metric());
         let mut keys = std::collections::HashSet::new();
         for ref x in Abstraction::all(street) {
             for ref y in Abstraction::all(street) {
@@ -229,7 +248,7 @@ impl Metric {
         }
         let mut metric = Metric::new(street);
         client
-            .query(sql, &[])
+            .query(&sql, &[])
             .await
             .expect("query")
             .into_iter()

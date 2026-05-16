@@ -3,21 +3,16 @@
 //! This module defines the training loop and supporting structures:
 //! - Solver: orchestrates tree sampling and regret updates
 //! - TreeBuilder: lazy iterator-based tree construction
-//! - Counterfactual: update vectors for regret/policy
-//! - Trajectory: path replay for reach calculations
+//! - Decisions: update vectors for regret/policy
 
 mod builder;
-mod counterfactual;
+mod decisions;
 mod encounter;
+mod harvest;
 mod solver;
-mod trajectory;
-mod waypoint;
-mod waypoints;
 
 pub use builder::*;
-pub use counterfactual::*;
+pub use decisions::*;
 pub use encounter::*;
+pub use harvest::*;
 pub use solver::*;
-pub use trajectory::*;
-pub use waypoint::*;
-pub use waypoints::*;

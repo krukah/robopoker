@@ -17,11 +17,15 @@ rbp-auth       = { version = "1.0", path = "../auth", features = ["server"] }
 rbp-cards      = { version = "1.0", path = "../cards"      }
 rbp-clustering = { version = "1.0", path = "../clustering" }
 rbp-database   = { version = "1.0", path = "../database"   }
-rbp-gameroom   = { version = "1.0.1", path = "../gameroom", features = ["database"] }
+rbp-competition = { version = "1.0", path = "../competition" }
+rbp-gameroom   = { version = "1.0", path = "../gameroom", features = ["database"] }
 rbp-gameplay   = { version = "1.0", path = "../gameplay"   }
 rbp-mccfr      = { version = "1.0", path = "../mccfr"      }
-rbp-nlhe       = { version = "1.0", path = "../nlhe", features = ["database"] }
+rbp-nlhe     = { version = "1.0", path = "../nlhe"     }
+rbp-autotrain  = { version = "1.0", path = "../autotrain"  }
 rbp-transport  = { version = "1.0", path = "../transport"  }
+rbp-telemetry  = { version = "1.0", path = "../telemetry"  }
+rbp-litmus     = { version = "1.0", path = "../litmus"     }
 
 # External dependencies
 tokio-postgres = "0.7"
@@ -32,8 +36,9 @@ actix-ws       = "0.3"
 async-trait    = "0.1"
 uuid           = "1"
 futures        = "0.3"
+serde          = { version = "1", features = ["derive"] }
 serde_json     = "1"
-log            = "0.4"
+tracing       = { workspace = true }
 anyhow         = "1"
 rand           = { version = "0.9.1", features = ["small_rng"] }
 clap           = { version = "4", features = ["derive"] }

@@ -4,6 +4,7 @@
 use super::*;
 use rbp_database::*;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use tokio_postgres::Client;
 
 /// Sink defines the write interface between NLHE domain types and PostgreSQL.
@@ -14,46 +15,59 @@ pub trait Sink: Send + Sync {
     async fn advance(&self);
 }
 
+fn upsert_sql() -> &'static str {
+    static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+    *SQL.get_or_init(|| {
+        leaked(format!(
+            "INSERT INTO {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) \
+         VALUES         ($1,   $2,      $3,       $4,       $5,   $6,     $7,     $8,     $9) \
+         ON CONFLICT (past, present, choices, geometry, edge) \
+         DO UPDATE SET \
+             weight = EXCLUDED.weight, \
+             regret = EXCLUDED.regret, \
+             payoff = EXCLUDED.payoff, \
+             visits = EXCLUDED.visits",
+            blueprint()
+        ))
+    })
+}
+fn advance_sql() -> &'static str {
+    static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+    *SQL.get_or_init(|| {
+        leaked(format!(
+            "UPDATE {} SET value = value + 1 WHERE key = 'current'",
+            epoch()
+        ))
+    })
+}
+
 #[async_trait::async_trait]
 impl Sink for Client {
     async fn submit(&self, records: Vec<Record>) {
-        #[rustfmt::skip]
-        const SQL: &str = const_format::concatcp!(
-            "INSERT INTO ", BLUEPRINT, " (past, present, choices, edge, weight, regret, evalue, counts) ",
-            "VALUES                      ($1,   $2,      $3,      $4,   $5,     $6,     $7,     $8) ",
-            "ON CONFLICT (past, present, choices, edge) ",
-            "DO UPDATE SET ",
-                "weight = EXCLUDED.weight, ",
-                "regret = EXCLUDED.regret, ",
-                "evalue = EXCLUDED.evalue, ",
-                "counts = EXCLUDED.counts"
-        );
         for record in records {
             self.execute(
-                SQL,
+                upsert_sql(),
                 &[
                     &i64::from(record.info.subgame()),
                     &i16::from(record.info.bucket()),
                     &i64::from(record.info.choices()),
+                    &(record.info.geometry().tag() as i16),
                     &(u64::from(record.edge) as i64),
                     &record.weight,
                     &record.regret,
-                    &record.evalue,
-                    &(record.counts as i32),
+                    &record.payoff,
+                    &(record.visits as i32),
                 ],
             )
             .await
             .expect("blueprint upsert");
         }
     }
+
     async fn advance(&self) {
-        #[rustfmt::skip]
-        const SQL: &str = const_format::concatcp!(
-            "UPDATE ", EPOCH, " ",
-            "SET    value = value + 1 ",
-            "WHERE  key = 'current'"
-        );
-        self.execute(SQL, &[]).await.expect("epoch advance");
+        self.execute(advance_sql(), &[])
+            .await
+            .expect("epoch advance");
     }
 }
 
@@ -62,6 +76,7 @@ impl Sink for Arc<Client> {
     async fn submit(&self, records: Vec<Record>) {
         self.as_ref().submit(records).await
     }
+
     async fn advance(&self) {
         self.as_ref().advance().await
     }

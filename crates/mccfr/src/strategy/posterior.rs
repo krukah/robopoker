@@ -82,9 +82,11 @@ where
     P: CfrSecret,
 {
     type Support = P;
+
     fn density(&self, x: &P) -> Probability {
         self.0.get(x).copied().unwrap_or(0.0)
     }
+
     fn support(&self) -> impl Iterator<Item = P> {
         self.0.keys().copied()
     }
@@ -96,6 +98,7 @@ where
 {
     type Item = (P, Probability);
     type IntoIter = std::collections::btree_map::IntoIter<P, Probability>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }

@@ -66,6 +66,7 @@ impl From<Suit> for u64 {
 /// str isomorphism
 impl TryFrom<&str> for Suit {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.trim().to_lowercase().as_str() {
             "c" | "♣" => Ok(Suit::C),

@@ -31,15 +31,17 @@ pub trait Progress {
         let rates = self.infos() as f64 / self.elapsed().as_secs().max(1) as f64;
         format!(
             "{:<20}{:<20}{:<20}{:<20}",
-            format!("epoch {}", self.epoch()),
+            format!("batch {}", self.epoch()),
             format!("nodes {}", self.nodes()),
             format!("infos {}", self.infos()),
             format!("I/sec {:.1}", rates),
         )
     }
+
     fn stats(&self) -> String {
         self.format()
     }
+
     fn summary(&self) -> String {
         format!("training stopped\n{}", self.format())
     }

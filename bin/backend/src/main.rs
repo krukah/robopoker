@@ -5,8 +5,6 @@
 
 #[tokio::main]
 async fn main() {
-    rbp_core::log();
-    rbp_core::kys();
-    rbp_core::brb();
+    tracing_subscriber::fmt::init();
     rbp_server::run().await.unwrap();
 }

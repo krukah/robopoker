@@ -26,6 +26,14 @@ impl From<Hole> for Hand {
         hole.0
     }
 }
+impl IntoIterator for Hole {
+    type Item = Card;
+    type IntoIter = <Hand as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 impl From<Observation> for Hole {
     fn from(obs: Observation) -> Self {
@@ -44,11 +52,30 @@ impl From<(Card, Card)> for Hole {
 
 impl TryFrom<&str> for Hole {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let hand = Hand::try_from(s)?;
         match hand.size() {
             2 => Ok(Self(hand)),
             _ => Err("hand must contain exactly two cards".into()),
         }
+    }
+}
+
+impl serde::Serialize for Hole {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Hole {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
     }
 }

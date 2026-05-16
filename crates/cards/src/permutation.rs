@@ -56,6 +56,16 @@ impl Permutation {
             .map(|suit| self.shift(suit, hand))
             .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
     }
+    /// Computes the inverse permutation.
+    ///
+    /// If `self.map(s) = t`, then `self.inverse().map(t) = s`.
+    pub fn inverse(&self) -> Self {
+        let mut inv = [Suit::C; 4];
+        Suit::all()
+            .iter()
+            .for_each(|s| inv[self.map(s) as usize] = *s);
+        Self(inv)
+    }
     /// Comparison function for co-lexicographic ordering.
     ///
     /// Orders suits by: (1) pocket count, (2) board count,
@@ -153,9 +163,9 @@ impl std::fmt::Display for Permutation {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::suit::Suit;
     use super::super::hand::Hand;
+    use super::super::suit::Suit;
+    use super::*;
 
     #[test]
     fn map_identity() {
@@ -226,5 +236,29 @@ mod tests {
         let permutation = Permutation::identity();
         let hand = Hand::random();
         assert!(permutation.image(&hand) == hand);
+    }
+
+    #[test]
+    fn inverse_identity() {
+        let identity = Permutation::identity();
+        assert!(identity.inverse() == identity);
+    }
+
+    #[test]
+    fn inverse_round_trip() {
+        for perm in Permutation::exhaust() {
+            for suit in Suit::all() {
+                let mapped = perm.map(&suit);
+                let recovered = perm.inverse().map(&mapped);
+                assert!(recovered == suit, "p(s)=t implies p^-1(t)=s");
+            }
+        }
+    }
+
+    #[test]
+    fn inverse_involution() {
+        for perm in Permutation::exhaust() {
+            assert!(perm.inverse().inverse() == perm, "(p^-1)^-1 = p");
+        }
     }
 }

@@ -30,12 +30,15 @@ impl Session {
             revoked: false,
         }
     }
+
     pub fn user(&self) -> ID<Member> {
         self.user
     }
+
     pub fn hash(&self) -> &[u8] {
         &self.hash
     }
+
     pub fn expires_at(&self) -> std::time::SystemTime {
         self.expires
     }
@@ -45,11 +48,13 @@ impl Session {
 mod schema {
     use super::*;
     use rbp_database::*;
+    use std::sync::OnceLock;
 
     impl Schema for Session {
         fn name() -> &'static str {
-            SESSIONS
+            sessions()
         }
+
         fn columns() -> &'static [tokio_postgres::types::Type] {
             &[
                 tokio_postgres::types::Type::UUID,
@@ -59,40 +64,42 @@ mod schema {
                 tokio_postgres::types::Type::BOOL,
             ]
         }
+
         fn creates() -> &'static str {
-            const_format::concatcp!(
-                "CREATE TABLE IF NOT EXISTS ",
-                SESSIONS,
-                " (
+            static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+            *SQL.get_or_init(|| {
+                leaked(format!(
+                    "CREATE TABLE IF NOT EXISTS {} (
                     id          UUID PRIMARY KEY,
-                    user_id     UUID NOT NULL REFERENCES ",
-                USERS,
-                "(id) ON DELETE CASCADE,
+                    user_id     UUID NOT NULL REFERENCES {}(id) ON DELETE CASCADE,
                     token_hash  BYTEA NOT NULL,
                     expires_at  TIMESTAMPTZ NOT NULL,
                     revoked     BOOLEAN DEFAULT FALSE
-                );"
-            )
+                );",
+                    sessions(),
+                    users()
+                ))
+            })
         }
+
         fn indices() -> &'static str {
-            const_format::concatcp!(
-                "CREATE INDEX IF NOT EXISTS idx_sessions_user ON ",
-                SESSIONS,
-                " (user_id);
-                 CREATE INDEX IF NOT EXISTS idx_sessions_token ON ",
-                SESSIONS,
-                " (token_hash);
-                 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON ",
-                SESSIONS,
-                " (expires_at) WHERE NOT revoked;"
-            )
+            static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+            *SQL.get_or_init(|| leaked(format!(
+                "CREATE INDEX IF NOT EXISTS idx_sessions_user ON {} (user_id);
+                 CREATE INDEX IF NOT EXISTS idx_sessions_token ON {} (token_hash);
+                 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON {} (expires_at) WHERE NOT revoked;",
+                sessions(), sessions(), sessions()
+            )))
         }
+
         fn copy() -> &'static str {
             unimplemented!()
         }
+
         fn truncates() -> &'static str {
             unimplemented!()
         }
+
         fn freeze() -> &'static str {
             unimplemented!()
         }

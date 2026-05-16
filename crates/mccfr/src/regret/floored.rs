@@ -10,9 +10,10 @@ use super::*;
 pub struct FlooredRegret;
 
 impl RegretSchedule for FlooredRegret {
-    fn gain(accumulated: Utility, immediate: Utility, _: usize) -> Utility {
-        (accumulated + immediate).max(0.0)
+    fn accumulate(accumulated: Utility, immediate: Utility, _: usize) -> Utility {
+        accumulated + immediate
     }
+
     fn floor() -> Utility {
         0.0
     }

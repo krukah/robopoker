@@ -67,6 +67,7 @@ impl From<(Chips, Chips)> for Odds {
 /// For -N format, odds are N/1 (overbet or BB multiple)
 impl TryFrom<&str> for Odds {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match (s.strip_prefix('+'), s.strip_prefix('-')) {
             (Some(x), _) => Ok(Self::new(1, x.parse()?)),

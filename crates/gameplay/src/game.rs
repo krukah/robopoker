@@ -1,21 +1,22 @@
 use super::*;
 use rbp_cards::*;
 use rbp_core::*;
+use rbp_translate::Translated;
 use std::ops::Not;
 
 /// The memoryless state of a poker hand.
 ///
-/// `Game` is the core state machine for No-Limit Texas Hold'em, encoding everything
+/// `GameN` is the core state machine for No-Limit Texas Hold'em, encoding everything
 /// needed to determine legal actions and compute payoffs. It manages player stacks,
 /// the pot, community cards, and whose turn it is to act.
 ///
 /// # Architecture
 ///
-/// The design is deliberately memoryless: `Game` contains only the current state,
+/// The design is deliberately memoryless: `GameN` contains only the current state,
 /// not the history of how we got here. This makes it suitable as a CFR node
 /// representation where states can be reached via different action sequences.
 ///
-/// State transitions are functional—[`apply`](Self::apply) returns a new `Game`
+/// State transitions are functional—[`apply`](Self::apply) returns a new `GameN`
 /// rather than mutating in place. This enables tree traversal without undo logic.
 ///
 /// # Fields
@@ -23,35 +24,48 @@ use std::ops::Not;
 /// - `pot` — Total chips in the center (including current street bets)
 /// - `board` — Community cards (0–5 depending on street)
 /// - `seats` — Per-player state (stack, stake, status, hole cards)
-/// - `dealer` — Button position (0 or 1 for heads-up)
+/// - `dealer` — Button position
 /// - `ticker` — Action counter for determining whose turn it is
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Game {
+pub struct GameN<const P: usize> {
     pot: Chips,
     board: Board,
-    seats: [Seat; N],
+    seats: [Seat; P],
     dealer: Position,
     ticker: Position,
 }
 
-impl Default for Game {
+/// Heads-up game (the default configuration).
+pub type Game = GameN<{ N }>;
+/// Two-player game.
+pub type HeadsUp = GameN<2>;
+/// Six-player game.
+pub type FunTable = GameN<6>;
+/// Ten-player game.
+pub type NitTable = GameN<10>;
+
+impl<const P: usize> Default for GameN<P> {
     fn default() -> Self {
-        let mut deck = Deck::new();
-        Self {
-            pot: 0,
-            board: Board::empty(),
-            seats: [(); N]
-                .map(|_| deck.hole())
-                .map(|h| (h, STACK))
-                .map(Seat::from),
-            dealer: 0usize,
-            ticker: 0usize,
-        }
+        Self::preblind(0, [STACK; P])
     }
 }
 
 /// Game tree entry points.
-impl Game {
+impl<const P: usize> GameN<P> {
+    /// Creates a pre-blind game state with custom dealer and stacks.
+    ///
+    /// Deals random hole cards to each player but does NOT post blinds.
+    /// Use this as the base for `Witness::base()` or chain with blind posting.
+    pub fn preblind(dealer: Position, stacks: [Chips; P]) -> Self {
+        let mut deck = Deck::new();
+        Self {
+            pot: 0,
+            board: Board::empty(),
+            seats: std::array::from_fn(|i| Seat::from((deck.hole(), stacks[i]))),
+            dealer,
+            ticker: if P == 2 { 0 } else { 1 },
+        }
+    }
     /// Creates the canonical starting state for MCCFR traversal.
     ///
     /// Returns a game with blinds posted and ready for the dealer's first
@@ -61,6 +75,18 @@ impl Game {
         game.act(game.posts());
         game.act(game.posts());
         game
+    }
+    /// Creates a game with custom dealer and stacks, posts blinds.
+    pub fn from_start(dealer: Position, stacks: [Chips; P]) -> Self {
+        let mut game = Self::preblind(dealer, stacks);
+        game.act(game.posts());
+        game.act(game.posts());
+        game
+    }
+    /// Sets a specific seat's hole cards.
+    pub fn deal(mut self, position: Position, hole: Hole) -> Self {
+        self.seats[position].reset_cards(hole);
+        self
     }
     /// Replaces all players' hole cards with the given hand.
     ///
@@ -76,10 +102,9 @@ impl Game {
     /// Used for computing opponent reach: sets all non-hero seats to the
     /// assumed opponent hole while preserving hero's cards.
     ///
-    /// TODO
-    /// this might be incorrect, i don't know if it takes into considration the relativity of
-    /// dealer position in Turn.
-    pub fn assume(mut self, hero: Turn, hole: Hole) -> Self {
+    /// Seat identity is position-indexed (`Turn::Choice(i)` matches seat `i`),
+    /// independent of dealer button rotation.
+    pub fn fix(mut self, hero: Turn, hole: Hole) -> Self {
         self.seats
             .iter_mut()
             .enumerate()
@@ -120,7 +145,7 @@ impl Game {
 }
 
 /// Public state accessors.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Number of players (constant for heads-up).
     pub fn n(&self) -> usize {
         self.seats.len()
@@ -130,7 +155,7 @@ impl Game {
         self.pot
     }
     /// All player seats.
-    pub fn seats(&self) -> [Seat; N] {
+    pub fn seats(&self) -> [Seat; P] {
         self.seats
     }
     /// Community cards on the board.
@@ -158,6 +183,13 @@ impl Game {
             Hand::from(self.board()),         //
         ))
     }
+    /// The observation from a specific player's perspective.
+    pub fn sweat_at(&self, position: usize) -> Observation {
+        Observation::from((
+            Hand::from(self.seats[position].cards()),
+            Hand::from(self.board()),
+        ))
+    }
     /// The dealer position as a turn.
     pub fn dealer(&self) -> Turn {
         Turn::Choice(self.dealer)
@@ -166,10 +198,34 @@ impl Game {
     pub fn street(&self) -> Street {
         self.board.street()
     }
+    /// The acting player's Turn if it's a choice node (None for chance/terminal).
+    pub fn player(&self) -> Option<Turn> {
+        self.turn().is_choice().then_some(self.turn())
+    }
+    /// Stack sizes for all seats.
+    pub fn stacks(&self) -> [Chips; P] {
+        std::array::from_fn(|i| self.seats[i].stack())
+    }
+    /// Original stack sizes before current street bets.
+    pub fn buyins(&self) -> [Chips; P] {
+        std::array::from_fn(|i| self.seats[i].stack() + self.seats[i].stake())
+    }
+    /// Current street stakes for all seats.
+    pub fn stakes(&self) -> [Chips; P] {
+        std::array::from_fn(|i| self.seats[i].stake())
+    }
+    /// Player states for all seats (active/folding).
+    pub fn states(&self) -> [State; P] {
+        std::array::from_fn(|i| self.seats[i].state())
+    }
+    /// Community cards as a list (for display).
+    pub fn board_cards(&self) -> Vec<Card> {
+        Vec::<Card>::from(Hand::from(self.board()))
+    }
 }
 
 /// Action validation and application.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Applies an action mutably and returns a clone of the new state.
     pub fn consume(&mut self, action: Action) -> Self {
         self.act(action);
@@ -232,6 +288,16 @@ impl Game {
         debug_assert!(options.len() > 0);
         options
     }
+    /// Applies an action without validation, returning a new state.
+    ///
+    /// Bypasses `is_allowed()` for server-authoritative actions where
+    /// the local game state may have placeholder cards (e.g., client
+    /// receives a `Draw` but its random seat cards collide with board).
+    pub fn force_apply(&self, action: Action) -> Self {
+        let mut next = self.clone();
+        next.force_act(action);
+        next
+    }
     /// Checks if a specific action is legal.
     ///
     /// Performs bounds checking for raises (min/max) and draws (correct cards).
@@ -259,7 +325,7 @@ impl Game {
 }
 
 /// Hand-to-hand transitions.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Advances to the next hand if both players have sufficient stacks.
     ///
     /// Returns `None` if a player is busted (can't cover the big blind).
@@ -270,7 +336,7 @@ impl Game {
         self.settlements()
             .iter()
             .zip(self.seats())
-            .all(|(s, seat)| seat.stack() + s.pnl().reward() >= Game::bblind())
+            .all(|(s, seat)| seat.stack() + s.pnl().reward() >= Self::bblind())
             .then(|| {
                 self.give_chips();
                 self.wipe_board();
@@ -288,7 +354,7 @@ impl Game {
             .iter()
             .zip(self.seats.iter_mut())
             .enumerate()
-            .inspect(|(i, (x, s))| log::trace!("{} {} {:>7} {}", i, s.cards(), s.stack(), x.won()))
+            .inspect(|(i, (x, s))| tracing::trace!("{} {} {:>7} {}", i, s.cards(), s.stack(), x.won()))
         {
             seat.win(settlement.pnl().reward());
         }
@@ -299,6 +365,7 @@ impl Game {
         debug_assert!(self.pot() == 0);
         self.board.clear();
     }
+
     fn wipe_seats(&mut self) {
         debug_assert!(self.pot() == 0);
         debug_assert!(self.street() == Street::Pref);
@@ -317,15 +384,22 @@ impl Game {
         debug_assert!(self.street() == Street::Pref);
         self.dealer = self.dealer + 1;
         self.dealer = self.dealer % self.n();
-        self.ticker = 0;
+        self.ticker = if P == 2 { 0 } else { 1 };
     }
 }
 
 /// Private mutation methods.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Core state transition logic.
     fn act(&mut self, a: Action) {
         debug_assert!(self.is_allowed(&a));
+        self.force_act(a);
+    }
+    /// Core state transition without validation.
+    ///
+    /// Used by `force_apply` for server-authoritative actions where the
+    /// client may have placeholder cards that fail `is_allowed()` checks.
+    fn force_act(&mut self, a: Action) {
         match a {
             Action::Check => {
                 self.next_player();
@@ -348,6 +422,7 @@ impl Game {
             }
         }
     }
+
     fn bet(&mut self, bet: Chips) {
         debug_assert!(self.actor_ref().stack() >= bet);
         self.pot += bet;
@@ -356,12 +431,15 @@ impl Game {
             self.allin();
         }
     }
+
     fn allin(&mut self) {
         self.actor_mut().reset_state(State::Shoving);
     }
+
     fn fold(&mut self) {
         self.actor_mut().reset_state(State::Folding);
     }
+
     fn show(&mut self, hand: Hand) {
         self.ticker = 0;
         self.board.add(hand);
@@ -369,7 +447,7 @@ impl Game {
 }
 
 /// Street and player advancement.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Resets per-street stakes when a new street begins.
     fn next_street(&mut self) {
         for seat in self.seats.iter_mut() {
@@ -392,7 +470,7 @@ impl Game {
 }
 
 /// Termination and continuation predicates.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// True if the hand is complete (showdown or everyone folded).
     pub fn must_stop(&self) -> bool {
         if self.street() == Street::Rive {
@@ -419,11 +497,18 @@ impl Game {
     }
     /// All players have acted at least once this street.
     fn is_everyone_touched(&self) -> bool {
-        self.ticker > self.n() + if self.street() == Street::Pref { 1 } else { 0 }
+        let offset = if P == 2 { 1 } else { 2 };
+        self.ticker
+            > self.n()
+                + if self.street() == Street::Pref {
+                    offset
+                } else {
+                    0
+                }
     }
     /// All betting players are in for the effective stake.
     fn is_everyone_matched(&self) -> bool {
-        let stake = self.stakes();
+        let stake = self.max_stake();
         self.seats
             .iter()
             .filter(|s| s.state() == State::Betting)
@@ -456,7 +541,7 @@ impl Game {
     }
     /// True if checking is legal (no bet to call).
     pub fn may_check(&self) -> bool {
-        matches!(self.turn(), Turn::Choice(_)) && self.stakes() == self.actor_ref().stake()
+        matches!(self.turn(), Turn::Choice(_)) && self.max_stake() == self.actor_ref().stake()
     }
     /// True if raising is legal (have chips beyond the min-raise).
     pub fn may_raise(&self) -> bool {
@@ -469,15 +554,15 @@ impl Game {
 }
 
 /// Bet sizing constraints and action constructors.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Chips needed to call the current bet.
     pub fn to_call(&self) -> Chips {
-        self.stakes() - self.actor_ref().stake()
+        self.max_stake() - self.actor_ref().stake()
     }
-    /// Blind amount to post (SB or BB depending on position).
+    /// Blind amount to post (SB or BB depending on pot).
     pub fn to_post(&self) -> Chips {
         debug_assert!(self.street() == Street::Pref);
-        if self.actor_idx() == self.dealer {
+        if self.pot() < Self::sblind() {
             Self::sblind().min(self.actor_ref().stack())
         } else {
             Self::bblind().min(self.actor_ref().stack())
@@ -549,7 +634,7 @@ impl Game {
 }
 
 /// Showdown and payout logic.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Computes final chip distributions at a terminal node.
     pub fn settlements(&self) -> Vec<Settlement> {
         debug_assert!(self.must_stop(), "non terminal game state:\n{}", self);
@@ -559,6 +644,7 @@ impl Game {
     pub fn is_showdown(&self) -> bool {
         self.seats.iter().filter(|s| s.state().is_active()).count() > 1
     }
+
     fn ledger(&self) -> Vec<Settlement> {
         self.seats
             .iter()
@@ -566,6 +652,7 @@ impl Game {
             .map(|(position, _)| self.settlement(position))
             .collect()
     }
+
     fn settlement(&self, position: usize) -> Settlement {
         let seat = &self.seats[position];
         let strength = Strength::from(Hand::add(
@@ -577,7 +664,7 @@ impl Game {
 }
 
 /// Card operations.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Deals random cards for the next street.
     pub fn draw(&self) -> Hand {
         self.deck().deal(self.street())
@@ -593,16 +680,18 @@ impl Game {
 }
 
 /// Position tracking.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Index of the player to act.
     fn actor_idx(&self) -> Position {
         (self.dealer + self.ticker) % self.n()
     }
+
     fn actor_ref(&self) -> &Seat {
         self.seats
             .get(self.actor_idx())
             .expect("index should be in bounds bc modulo")
     }
+
     fn actor_mut(&mut self) -> &mut Seat {
         let index = self.actor_idx();
         self.seats
@@ -612,7 +701,7 @@ impl Game {
 }
 
 /// Stack and SPR calculations.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Total chips in play (pot + all stacks).
     pub fn total(&self) -> Chips {
         self.pot() + self.seats().iter().map(|s| s.stack()).sum::<Chips>()
@@ -632,7 +721,7 @@ impl Game {
         }
     }
     /// Maximum stake among all players this street.
-    fn stakes(&self) -> Chips {
+    fn max_stake(&self) -> Chips {
         self.seats
             .iter()
             .map(|s| s.stake())
@@ -648,7 +737,7 @@ impl Game {
 }
 
 /// Blind configuration.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Returns the blind posting actions [SB, BB].
     pub const fn blinds() -> [Action; 2] {
         [Action::Blind(Self::sblind()), Action::Blind(Self::bblind())]
@@ -664,7 +753,7 @@ impl Game {
 }
 
 /// Abstraction interface: mapping between concrete Actions and abstract Edges.
-impl Game {
+impl<const P: usize> GameN<P> {
     /// Returns all available edges for current game state.
     /// Expands legal actions into the discretized edge space.
     pub fn choices(&self, depth: usize) -> Path {
@@ -705,6 +794,47 @@ impl Game {
             Action::Blind(_) => Edge::Call,
             Action::Shove(_) => Edge::Shove,
             Action::Raise(chips) => self.snap_to_edge(chips, depth),
+        }
+    }
+    /// Translate an [`Action`] under a [`Translation`].
+    ///
+    /// Universal action-translation hook that returns either an on-tree
+    /// [`Edge`] (resolved to the abstraction) or an off-tree [`Action`]
+    /// (the original raise amount, only emitted by injection-style
+    /// policies like `Exact` or `EpsilonPrune`).
+    ///
+    /// Non-raise actions always map to canonical [`Edge`]s. Raise
+    /// actions delegate to [`Size::translate`], which dispatches axis
+    /// internally via [`Size::raises_grid`].
+    ///
+    /// [`Self::edgify`] is the [`Translation::Snap`] shorthand and
+    /// remains untouched; this method is purely additive.
+    pub fn translate<R>(
+        &self,
+        action: Action,
+        depth: usize,
+        policy: &Translation,
+        rng: &mut R,
+    ) -> Translated<Edge, Action>
+    where
+        R: rand::Rng + ?Sized,
+    {
+        match action {
+            Action::Fold => Translated::Snap(Edge::Fold),
+            Action::Check => Translated::Snap(Edge::Check),
+            Action::Draw(_) => Translated::Snap(Edge::Draw),
+            Action::Call(_) => Translated::Snap(Edge::Call),
+            Action::Blind(_) => Translated::Snap(Edge::Call),
+            Action::Shove(_) => Translated::Snap(Edge::Shove),
+            Action::Raise(chips) => match Size::translate(
+                Raise::new(chips, self.pot(), self.street(), depth),
+                policy,
+                rng,
+            ) {
+                Translated::Snap(Size::BBs(n)) => Translated::Snap(Edge::Open(n)),
+                Translated::Snap(Size::SPR(n, d)) => Translated::Snap(Edge::Raise(Odds::new(n, d))),
+                Translated::Free(c) => Translated::Free(Action::Raise(c)),
+            },
         }
     }
     /// Snaps a chip amount to the nearest edge in the grid.
@@ -753,8 +883,7 @@ impl Game {
     }
 }
 
-
-impl std::fmt::Display for Game {
+impl<const P: usize> std::fmt::Display for GameN<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for seat in self.seats.iter() {
             writeln!(
@@ -782,6 +911,7 @@ impl Perpetual {
 }
 impl Iterator for Perpetual {
     type Item = Action;
+
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let actions = self.0.legal();
@@ -807,6 +937,7 @@ impl Hands {
 }
 impl Iterator for Hands {
     type Item = Game;
+
     fn next(&mut self) -> Option<Self::Item> {
         while !self.0.must_stop() {
             let actions = self.0.legal();
@@ -831,6 +962,7 @@ impl Session {
 }
 impl Iterator for Session {
     type Item = Action;
+
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let actions = self.0.legal();
@@ -913,7 +1045,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
         assert!(game.is_everyone_matched() == false);
-
         // SmallB Preflop
         let game = game.apply(Action::Call(1));
         assert!(game.board().street() == Street::Pref);
@@ -925,7 +1056,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
         assert!(game.is_everyone_matched() == true); //
-
         // Dealer Preflop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Pref);
@@ -937,7 +1067,6 @@ mod tests {
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
         assert!(game.is_everyone_matched() == true);
-
         // Flop
         let flop = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(flop));
@@ -950,7 +1079,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false); //
         assert!(game.is_everyone_touched() == false); //
         assert!(game.is_everyone_matched() == true);
-
         // SmallB Flop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
@@ -962,7 +1090,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
         assert!(game.is_everyone_matched() == true);
-
         // Dealer Flop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
@@ -974,7 +1101,6 @@ mod tests {
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true); //
         assert!(game.is_everyone_matched() == true);
-
         // Turn
         let turn = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(turn));
@@ -987,7 +1113,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false); //
         assert!(game.is_everyone_touched() == false); //
         assert!(game.is_everyone_matched() == true);
-
         // SmallB Turn
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Turn);
@@ -999,7 +1124,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
         assert!(game.is_everyone_matched() == true);
-
         // Dealer Turn
         let game = game.apply(Action::Raise(4));
         assert!(game.board().street() == Street::Turn);
@@ -1011,7 +1135,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == true); //
         assert!(game.is_everyone_matched() == false); //
-
         // SmallB Turn
         let game = game.apply(Action::Call(4));
         assert!(game.board().street() == Street::Turn);
@@ -1023,7 +1146,6 @@ mod tests {
         assert!(game.is_everyone_calling() == true); //
         assert!(game.is_everyone_touched() == true);
         assert!(game.is_everyone_matched() == true);
-
         // River
         let rive = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(rive));
@@ -1036,7 +1158,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false); //
         assert!(game.is_everyone_touched() == false); //
         assert!(game.is_everyone_matched() == true); //
-
         // SmallB River
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
@@ -1048,7 +1169,6 @@ mod tests {
         assert!(game.is_everyone_calling() == false);
         assert!(game.is_everyone_touched() == false);
         assert!(game.is_everyone_matched() == true);
-
         // Dealer River
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
@@ -1387,13 +1507,19 @@ mod tests {
                 game = game.apply(Action::Draw(cards));
             }
         }
-        // total pot is 200 (100 from each), winner gets it all
+        // total pot is 2*STACK (STACK from each)
+        // either winner gets it all or split pot
         let rewards: Vec<_> = game
             .settlements()
             .iter()
             .map(|s| s.pnl().reward())
             .collect();
-        assert!(rewards.contains(&0) && rewards.contains(&200));
+        let total: Chips = rewards.iter().sum();
+        assert_eq!(total, 2 * STACK);
+        assert!(
+            (rewards.contains(&0) && rewards.contains(&(2 * STACK)))
+                || (rewards.iter().all(|&r| r == STACK))
+        );
     }
 
     /// actor_idx wraps correctly with ticker
@@ -1453,5 +1579,401 @@ mod tests {
         assert!(!game.may_check());
         assert!(game.may_call());
         assert_eq!(game.snap(Action::Check), game.calls());
+    }
+
+    // ─── Multiplayer (P > 2) ───────────────────────────────────────────
+
+    type Game3 = GameN<3>;
+    type Game6 = FunTable;
+
+    /// 3-player root: SB and BB posted, dealer acts first preflop
+    #[test]
+    fn three_player_root() {
+        let game = Game3::root();
+        assert_eq!(game.pot(), Game3::sblind() + Game3::bblind());
+        assert_eq!(game.street(), Street::Pref);
+        assert_eq!(game.n(), 3);
+        assert_eq!(game.turn(), Turn::Choice(game.dealer));
+    }
+
+    /// 6-player root: SB and BB posted, UTG (dealer+3) acts first preflop
+    #[test]
+    fn six_player_root() {
+        let game = Game6::root();
+        assert_eq!(game.pot(), Game6::sblind() + Game6::bblind());
+        assert_eq!(game.street(), Street::Pref);
+        assert_eq!(game.n(), 6);
+        assert_eq!(game.turn(), Turn::Choice((game.dealer + 3) % 6));
+    }
+
+    /// 3-player: two folds reaches terminal
+    #[test]
+    fn three_player_fold_to_terminal() {
+        let game = Game3::root();
+        let game = game.apply(Action::Fold);
+        assert!(!game.must_stop());
+        let game = game.apply(Action::Fold);
+        assert!(game.must_stop());
+        assert!(game.is_everyone_folding());
+    }
+
+    /// 6-player: five folds reaches terminal
+    #[test]
+    fn six_player_fold_to_terminal() {
+        let mut game = Game6::root();
+        for i in 0..5 {
+            assert!(!game.must_stop(), "terminal too early at fold {}", i);
+            game = game.apply(Action::Fold);
+        }
+        assert!(game.must_stop());
+        assert!(game.is_everyone_folding());
+    }
+
+    /// 3-player: full orbit of calls reaches flop
+    #[test]
+    fn three_player_call_around() {
+        let game = Game3::root();
+        // dealer calls BB (needs 2 to match, has 0 stake)
+        let game = game.apply(Action::Call(game.to_call()));
+        assert!(!game.is_everyone_touched());
+        // SB completes (needs 1 more to match BB=2)
+        let game = game.apply(Action::Call(game.to_call()));
+        assert!(!game.is_everyone_touched());
+        // BB checks (option)
+        let game = game.apply(Action::Check);
+        assert!(game.is_everyone_touched());
+        assert!(game.is_everyone_matched());
+        assert!(game.must_deal());
+        assert_eq!(game.pot(), 6); // 3 * 2
+    }
+
+    /// 6-player: full orbit of calls reaches flop
+    #[test]
+    fn six_player_call_around() {
+        let mut game = Game6::root();
+        // 4 players call (UTG through BTN)
+        for _ in 0..4 {
+            game = game.apply(Action::Call(game.to_call()));
+        }
+        // SB completes
+        game = game.apply(Action::Call(game.to_call()));
+        assert!(!game.is_everyone_touched());
+        // BB checks
+        game = game.apply(Action::Check);
+        assert!(game.is_everyone_touched());
+        assert!(game.must_deal());
+        assert_eq!(game.pot(), 12); // 6 * 2
+    }
+
+    /// 3-player: postflop action starts left of dealer
+    #[test]
+    fn three_player_postflop_order() {
+        let mut game = Game3::root();
+        game = game.apply(Action::Call(game.to_call()));
+        game = game.apply(Action::Call(game.to_call()));
+        game = game.apply(Action::Check);
+        let flop = game.deck().deal(Street::Pref);
+        let game = game.apply(Action::Draw(flop));
+        assert_eq!(game.street(), Street::Flop);
+        // first to act postflop is SB (dealer+1)
+        assert_eq!(game.turn(), Turn::Choice((game.dealer + 1) % 3));
+    }
+
+    /// 3-player: postflop skips folded player
+    #[test]
+    fn three_player_postflop_skip_folded() {
+        let mut game = Game3::root();
+        // dealer folds, SB completes, BB checks
+        game = game.apply(Action::Fold);
+        game = game.apply(Action::Call(game.to_call()));
+        game = game.apply(Action::Check);
+        assert!(game.must_deal());
+        let flop = game.deck().deal(Street::Pref);
+        let game = game.apply(Action::Draw(flop));
+        assert_eq!(game.street(), Street::Flop);
+        // SB acts first (dealer+1), dealer is folded but SB is still active
+        let actor = game.turn().position();
+        assert_ne!(actor, game.dealer); // not the folded dealer
+        assert_eq!(game.seats()[actor].state(), State::Betting);
+    }
+
+    /// 3-player: button rotates through all three seats
+    #[test]
+    fn three_player_dealer_rotation() {
+        let game = Game3::root();
+        assert_eq!(game.dealer, 0);
+        let game = game.apply(Action::Fold).apply(Action::Fold);
+        let game = game.continuation().unwrap();
+        assert_eq!(game.dealer, 1);
+        let game = game.apply(Action::Fold).apply(Action::Fold);
+        let game = game.continuation().unwrap();
+        assert_eq!(game.dealer, 2);
+        let game = game.apply(Action::Fold).apply(Action::Fold);
+        let game = game.continuation().unwrap();
+        assert_eq!(game.dealer, 0); // wraps around
+    }
+
+    /// 6-player: button rotates through all six seats
+    #[test]
+    fn six_player_dealer_rotation() {
+        let mut game = Game6::root();
+        for i in 0..6 {
+            assert_eq!(game.dealer, i % 6);
+            for _ in 0..5 {
+                game = game.apply(Action::Fold);
+            }
+            game = game.continuation().unwrap();
+        }
+        assert_eq!(game.dealer, 0);
+    }
+
+    /// 3-player: raise-call-fold dynamics
+    #[test]
+    fn three_player_raise_fold() {
+        let game = Game3::root();
+        let raise = game.to_raise();
+        let game = game.apply(Action::Raise(raise));
+        // SB folds
+        let game = game.apply(Action::Fold);
+        assert!(!game.must_stop());
+        // BB calls — now all three have acted: dealer raised, SB folded, BB called
+        let game = game.apply(Action::Call(game.to_call()));
+        assert!(game.is_everyone_touched());
+        assert!(game.must_deal());
+    }
+
+    /// 3-player: full hand through river showdown
+    #[test]
+    fn three_player_full_hand() {
+        let mut game = Game3::root();
+        // preflop: all call
+        game = game.apply(Action::Call(game.to_call()));
+        game = game.apply(Action::Call(game.to_call()));
+        game = game.apply(Action::Check);
+        // flop through river: check around
+        for street in [Street::Pref, Street::Flop, Street::Turn] {
+            assert!(game.must_deal());
+            let cards = game.deck().deal(street);
+            game = game.apply(Action::Draw(cards));
+            game = game
+                .apply(Action::Check)
+                .apply(Action::Check)
+                .apply(Action::Check);
+        }
+        assert_eq!(game.street(), Street::Rive);
+        assert!(game.must_stop());
+    }
+
+    /// 3-player: all-in showdown
+    #[test]
+    fn three_player_allin() {
+        let game = Game3::root();
+        let shove = game.to_shove();
+        let game = game.apply(Action::Shove(shove));
+        let shove = game.to_shove();
+        let game = game.apply(Action::Shove(shove));
+        let shove = game.to_shove();
+        let game = game.apply(Action::Shove(shove));
+        assert!(game.is_everyone_shoving());
+        assert!(game.must_stop() || game.must_deal());
+    }
+
+    /// 3-player: settlements sum to total chips
+    #[test]
+    fn three_player_settlements_conserve_chips() {
+        let game = Game3::root();
+        let game = game.apply(Action::Fold).apply(Action::Fold);
+        assert!(game.must_stop());
+        let total: Chips = game.settlements().iter().map(|s| s.pnl().reward()).sum();
+        assert_eq!(total, game.pot());
+    }
+
+    /// 3-player: stacks + stakes + pot = total chips invariant
+    #[test]
+    fn three_player_chip_conservation() {
+        let mut game = Game3::root();
+        let initial = game.total();
+        game = game.apply(Action::Call(game.to_call()));
+        assert_eq!(game.total(), initial);
+        game = game.apply(Action::Call(game.to_call()));
+        assert_eq!(game.total(), initial);
+        let raise = game.to_raise();
+        game = game.apply(Action::Raise(raise));
+        assert_eq!(game.total(), initial);
+    }
+
+    /// 3-player: legal actions are nonempty at choice nodes
+    #[test]
+    fn three_player_legal_nonempty() {
+        let game = Game3::root();
+        assert!(!game.legal().is_empty());
+        let game = game.apply(Action::Fold);
+        assert!(!game.legal().is_empty());
+    }
+
+    /// 6-player: multiple hands with mixed actions
+    #[test]
+    fn six_player_multi_hand() {
+        let mut game = Game6::root();
+        for hand in 0..3 {
+            assert_eq!(game.dealer, hand % 6);
+            assert_eq!(game.street(), Street::Pref);
+            // everyone folds to BB
+            for _ in 0..5 {
+                game = game.apply(Action::Fold);
+            }
+            assert!(game.must_stop());
+            game = game.continuation().unwrap();
+        }
+    }
+
+    /// 3-player: first to act preflop is always dealer
+    #[test]
+    fn three_player_preflop_actor_all_dealers() {
+        let mut game = Game3::root();
+        for expected_dealer in 0..3 {
+            assert_eq!(game.dealer, expected_dealer);
+            assert_eq!(game.turn(), Turn::Choice(expected_dealer));
+            game = game.apply(Action::Fold).apply(Action::Fold);
+            game = game.continuation().unwrap();
+        }
+    }
+
+    /// `Game::translate` under `SNAP` is behaviorally equivalent to `Game::edgify`
+    /// for raise actions — both implement classical-nearest mapping.
+    #[test]
+    fn translate_snap_matches_edgify_on_raise() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        for chips in [4, 6, 8, 10, 16] {
+            let edgify = game.edgify(Action::Raise(chips), 0);
+            let translate = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
+            assert_eq!(translate, Translated::Snap(edgify));
+        }
+    }
+
+    /// Non-raise actions always resolve OnTree, regardless of policy.
+    #[test]
+    fn translate_passes_through_non_raise() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        assert_eq!(
+            game.translate(Action::Fold, 0, &Translation::Snap, rng),
+            Translated::Snap(Edge::Fold),
+        );
+        assert_eq!(
+            game.translate(Action::Check, 0, &Translation::Phargmax, rng),
+            Translated::Snap(Edge::Check),
+        );
+        assert_eq!(
+            game.translate(Action::Call(1), 0, &Translation::Harmonic, rng),
+            Translated::Snap(Edge::Call),
+        );
+    }
+
+    /// `Phargmax` on canonical raises produces the same edge as `Snap`
+    /// (single bracket = single anchor, no harmonic computation).
+    #[test]
+    fn translate_phargmax_canonical_matches_snap() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        for chips in [4, 6, 8, 10] {
+            let snap = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
+            let phargmax = game.translate(Action::Raise(chips), 0, &Translation::Phargmax, rng);
+            assert_eq!(
+                snap, phargmax,
+                "canonical Raise({chips}): Phargmax must match Snap",
+            );
+        }
+    }
+
+    /// `Phargmax` on an off-tree raise returns one of the two bracketing
+    /// canonical edges (deterministic argmax of harmonic distribution).
+    /// Preflop depth 0: OPENS = [2, 3, 4, 5] BBs = [4, 6, 8, 10] chips.
+    /// Raise(7) = 3.5 BB, brackets are BBs(3) (= Open(3)) and BBs(4) (= Open(4)).
+    #[test]
+    fn translate_phargmax_off_tree_returns_bracketing_edge() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        let result = game.translate(Action::Raise(7), 0, &Translation::Phargmax, rng);
+        let lo = Translated::Snap(Edge::Open(3));
+        let hi = Translated::Snap(Edge::Open(4));
+        assert!(
+            result == lo || result == hi,
+            "Phargmax(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}",
+        );
+    }
+
+    /// `Harmonic` on an off-tree raise: 100 trials, every result must be
+    /// one of the two bracketing canonical edges. Low-entropy assertion
+    /// (set membership, not exact value).
+    #[test]
+    fn translate_harmonic_off_tree_always_in_bracket_set() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0xCAFEF00D);
+        let lo = Translated::Snap(Edge::Open(3));
+        let hi = Translated::Snap(Edge::Open(4));
+        for trial in 0..100 {
+            let result = game.translate(Action::Raise(7), 0, &Translation::Harmonic, rng);
+            assert!(
+                result == lo || result == hi,
+                "trial {trial}: Harmonic(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}",
+            );
+        }
+    }
+
+    /// Non-raise actions resolve to the same canonical Edge under every
+    /// translation. Exhaustive over the three variants.
+    #[test]
+    fn translate_non_raise_actions_invariant_across_translations() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        let translations = [Translation::Snap, Translation::Harmonic, Translation::Phargmax];
+        let cases = [
+            (Action::Fold, Edge::Fold),
+            (Action::Check, Edge::Check),
+            (Action::Call(1), Edge::Call),
+        ];
+        for lang in &translations {
+            for (action, expected) in &cases {
+                assert_eq!(
+                    game.translate(*action, 0, lang, rng),
+                    Translated::Snap(*expected),
+                    "translation {lang:?} on {action:?} must produce OnTree({expected:?})",
+                );
+            }
+        }
+    }
+
+    /// `Snap` on the boundary cases — chips below the smallest open and
+    /// above the largest — clamps to the extreme.
+    #[test]
+    fn translate_snap_clamps_outside_grid() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        // Below smallest: Raise(2) = 1 BB, smallest is BBs(2) = Open(2).
+        assert_eq!(
+            game.translate(Action::Raise(2), 0, &Translation::Snap, rng),
+            Translated::Snap(Edge::Open(2)),
+        );
+        // Above largest: Raise(20) = 10 BB, largest is BBs(5) = Open(5).
+        assert_eq!(
+            game.translate(Action::Raise(20), 0, &Translation::Snap, rng),
+            Translated::Snap(Edge::Open(5)),
+        );
     }
 }

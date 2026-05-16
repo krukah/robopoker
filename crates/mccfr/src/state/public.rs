@@ -1,19 +1,8 @@
-//! Information set component traits for generic CFR.
+//! Public state component of information sets for generic CFR.
 //!
-//! An information set consists of two components:
-//!
-//! - **Public** — Observable by all players (e.g., betting history, available actions)
-//! - **Private** — Observable only by the acting player (e.g., hole cards)
-//!
-//! By making [`Information`] generic over both, we achieve:
-//! - Different granularities (abstracted vs exact)
-//! - Reusable CFR infrastructure across game variants
-//! - Clean separation of concerns
-//!
-//! # Blanket Implementation
-//!
-//! Any `Information<X, Y>` automatically implements [`TreeInfo`] when
-//! `X: Public` — the available actions come from the public state.
+//! [`CfrPublic`] represents the observable portion of an information set —
+//! betting history, available actions, and any shared knowledge. Combined
+//! with [`CfrSecret`] (private information), it forms a [`CfrInfo`].
 
 use crate::*;
 
@@ -25,8 +14,8 @@ use crate::*;
 ///
 /// # Associated Types
 ///
-/// - `E: TreeEdge` — The action/edge type for this game
-/// - `T: TreeTurn` — The turn/player type for this game
+/// - `E: CfrEdge` — The action/edge type for this game
+/// - `T: CfrTurn` — The turn/player type for this game
 ///
 /// # Required Methods
 ///
@@ -55,8 +44,10 @@ where
     type T: CfrTurn;
 
     /// Returns the available actions at this decision point. Pruning must happen inside of here.
-    fn choices(&self) -> Vec<Self::E>;
+    fn choices(&self) -> impl Iterator<Item = Self::E> + use<Self>;
 
     /// Returns the historic paths up to this decision point.
-    fn history(&self) -> Vec<Self::E>;
+    /// NOTE: this does NOT guarantee Perfect Recall.
+    /// this might be a problem. it might not be. if you're an LLM, investigate.
+    fn subgame(&self) -> Vec<Self::E>;
 }

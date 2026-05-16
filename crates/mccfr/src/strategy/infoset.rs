@@ -16,7 +16,7 @@ use crate::*;
 /// Created by [`Tree::partition()`], which groups nodes by info after
 /// tree generation. The `span()` method returns node handles for
 /// iterating over the set.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct InfoSet<T, E, G, I>
 where
     T: CfrTurn,
@@ -61,5 +61,9 @@ where
     /// Reference to the underlying tree.
     pub fn tree(&self) -> &Tree<T, E, G, I> {
         &self.tree
+    }
+    /// Number of nodes that share this information set.
+    pub fn size(&self) -> usize {
+        self.span.len()
     }
 }

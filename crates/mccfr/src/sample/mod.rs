@@ -13,18 +13,10 @@
 //! | [`VanillaSampling`] | Explore all | Explore all | Full tree (expensive) |
 //! | [`PrunableSampling`] | Prune low-regret | Sample one | Deterministic pruning |
 //! | [`PluribusSampling`] | Prune + explore 5% | Sample one | Production (Pluribus) |
-//! | [`SubgameSampling`] | Stop at chance | Stop at chance | Depth-limited subgames |
 //!
 //! # Composition
 //!
-//! All strategies are zero-cost unit structs selected via the [`Solver::S`] associated type:
-//!
-//! ```ignore
-//! impl Solver for MySolver {
-//!     type S = PluribusSampling;  // Selected at compile time
-//!     // ...
-//! }
-//! ```
+//! All strategies are zero-cost unit structs selected via the [`Solver::S`] associated type.
 //!
 //! # References
 //!
@@ -35,14 +27,12 @@
 mod external;
 mod pluribus;
 mod pruning;
-mod subgame;
 mod targeted;
 mod vanilla;
 
 pub use external::*;
 pub use pluribus::*;
 pub use pruning::*;
-pub use subgame::*;
 pub use targeted::*;
 pub use vanilla::*;
 
@@ -59,7 +49,7 @@ use crate::*;
 /// - Return `branches` unchanged to explore all actions
 /// - Return a subset to prune or sample
 /// - Return empty vec only if `branches` was empty (terminal node)
-/// - Use `profile.rng(info)` for deterministic randomness
+/// - Use `profile.rng(node)` for deterministic randomness
 pub trait SamplingScheme {
     /// Filter or sample branches for tree expansion.
     ///
@@ -68,33 +58,33 @@ pub trait SamplingScheme {
     fn sample<T, E, G, I, P>(
         profile: &P,
         node: &Node<T, E, G, I>,
-        branches: Vec<Branch<E, G>>,
-    ) -> Vec<Branch<E, G>>
+        branches: Vec<Leaf<E, G>>,
+    ) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
         G: CfrGame<E = E, T = T>,
         I: CfrInfo<E = E, T = T>,
-        P: Profile<T = T, E = E, G = G, I = I>;
+        P: CfrFlow<T = T, E = E, G = G, I = I>;
 }
 
 /// Uniformly sample one branch from available choices.
 pub fn randomly<T, E, G, I, P>(
     profile: &P,
     node: &Node<T, E, G, I>,
-    branches: Vec<Branch<E, G>>,
-) -> Vec<Branch<E, G>>
+    branches: Vec<Leaf<E, G>>,
+) -> Vec<Leaf<E, G>>
 where
     T: CfrTurn,
     E: CfrEdge,
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
-    P: Profile<T = T, E = E, G = G, I = I>,
+    P: CfrFlow<T = T, E = E, G = G, I = I>,
 {
     use rand::Rng;
     debug_assert!(!branches.is_empty());
     let n = branches.len();
     let mut choices = branches;
-    let ref mut rng = profile.rng(node.info());
+    let ref mut rng = profile.rng(node);
     vec![choices.remove(rng.random_range(0..n))]
 }

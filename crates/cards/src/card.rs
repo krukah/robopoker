@@ -21,7 +21,6 @@ use super::suit::Suit;
 ///
 /// [`Hand`]: super::hand::Hand
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
 pub struct Card(u8);
 
 impl Card {
@@ -97,6 +96,7 @@ impl std::fmt::Display for Card {
 /// str isomorphism
 impl TryFrom<&str> for Card {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.trim().len() {
             2 => {
@@ -124,10 +124,28 @@ impl Card {
     }
 }
 
+impl serde::Serialize for Card {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Card {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::deck::Deck;
+    use super::*;
 
     #[test]
     fn bijective_rank_suit() {

@@ -34,18 +34,18 @@ impl NlheEdge {
     pub fn is_raise(&self) -> bool {
         self.0.is_raise()
     }
-    /// Default policy for CFR initialization.
-    pub fn default_policy(&self) -> Probability {
-        self.0.policy().0
-    }
-    /// Default regret for CFR initialization (biased warmstart).
-    pub fn default_regret(&self) -> Utility {
-        self.0.regret().1
-    }
 }
 
 impl Support for NlheEdge {}
-impl CfrEdge for NlheEdge {}
+impl CfrEdge for NlheEdge {
+    fn default_policy(&self) -> Probability {
+        self.0.policy().0
+    }
+
+    fn default_regret(&self) -> Utility {
+        self.0.regret().1
+    }
+}
 
 impl From<Edge> for NlheEdge {
     fn from(edge: Edge) -> Self {

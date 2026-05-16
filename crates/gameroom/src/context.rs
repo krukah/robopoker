@@ -10,19 +10,20 @@ use rbp_gameplay::*;
 
 /// Complete context for a hand in progress.
 /// Tracks everything needed for persistence and replay.
-/// Replaces the simpler Replay struct with richer functionality.
 #[derive(Debug, Clone)]
 pub struct HandContext {
     id: ID<HandRecord>,
     hand_number: u64,
     dealer: Position,
     seats: Vec<(Hole, Chips)>,
-    actions: Vec<(Position, Action)>,
+    actions: Vec<(Position, Action, Option<i32>)>,
+    pnl: Vec<Chips>,
 }
 
 impl HandContext {
     /// Creates context for a new hand from the current game state.
     pub fn new(hand_number: u64, game: &Game) -> Self {
+        let n = game.seats().len();
         Self {
             id: ID::default(),
             hand_number,
@@ -30,9 +31,10 @@ impl HandContext {
             seats: game
                 .seats()
                 .iter()
-                .map(|s| (s.cards(), s.stack()))
+                .map(|s| (s.cards(), s.stack() + s.stake()))
                 .collect(),
             actions: Vec::new(),
+            pnl: vec![0; n],
         }
     }
     /// Hand identifier for persistence.
@@ -52,12 +54,16 @@ impl HandContext {
         &self.seats
     }
     /// All actions recorded in the hand.
-    pub fn actions(&self) -> &[(Position, Action)] {
+    pub fn actions(&self) -> &[(Position, Action, Option<i32>)] {
         &self.actions
     }
     /// Records a player action.
-    pub fn record(&mut self, pos: Position, action: Action) {
-        self.actions.push((pos, action));
+    pub fn record(&mut self, pos: Position, action: Action, elapsed: Option<i32>) {
+        self.actions.push((pos, action, elapsed));
+    }
+    /// Stores the known PnL for a seat.
+    pub fn set_pnl(&mut self, seat: Position, pnl: Chips) {
+        self.pnl[seat] = pnl;
     }
     /// Converts to Hand record for persistence.
     pub fn to_hand(&self, room_id: ID<RoomMarker>, board: Board, pot: Chips) -> HandRecord {
@@ -71,7 +77,7 @@ impl HandContext {
         self.seats
             .iter()
             .enumerate()
-            .map(|(i, (hole, stack))| Participant::new(hand, f(i), i, *hole, *stack))
+            .map(|(i, (hole, stack))| Participant::new(hand, f(i), i, *hole, *stack, self.pnl[i]))
             .collect()
     }
     /// Generates Play records for persistence.
@@ -82,7 +88,9 @@ impl HandContext {
         self.actions
             .iter()
             .enumerate()
-            .map(|(i, (pos, action))| Play::new(hand, i as Epoch, f(*pos), *action))
+            .map(|(i, (pos, action, elapsed))| {
+                Play::new(hand, i as Epoch, f(*pos), *action, *elapsed)
+            })
             .collect()
     }
 }
@@ -95,6 +103,7 @@ impl Default for HandContext {
             dealer: 0,
             seats: Vec::new(),
             actions: Vec::new(),
+            pnl: Vec::new(),
         }
     }
 }
@@ -113,10 +122,10 @@ mod tests {
     #[test]
     fn record_actions() {
         let mut ctx = HandContext::default();
-        ctx.record(0, Action::Fold);
-        ctx.record(1, Action::Check);
+        ctx.record(0, Action::Fold, None);
+        ctx.record(1, Action::Check, Some(42));
         assert_eq!(ctx.actions().len(), 2);
-        assert_eq!(ctx.actions()[0], (0, Action::Fold));
-        assert_eq!(ctx.actions()[1], (1, Action::Check));
+        assert_eq!(ctx.actions()[0], (0, Action::Fold, None));
+        assert_eq!(ctx.actions()[1], (1, Action::Check, Some(42)));
     }
 }

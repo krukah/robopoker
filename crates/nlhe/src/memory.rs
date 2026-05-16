@@ -15,9 +15,11 @@ impl Memory {
     pub fn new(info: NlheInfo, data: Vec<(Edge, Probability, Utility, Utility, u32)>) -> Self {
         Self { info, data }
     }
+
     pub fn info(&self) -> &NlheInfo {
         &self.info
     }
+
     pub fn data(&self) -> &[(Edge, Probability, Utility, Utility, u32)] {
         &self.data
     }
@@ -39,24 +41,26 @@ impl Memory {
             .unwrap_or_else(|| edge.regret().1)
     }
     /// Lookup EV for edge, defaulting to 0.0 if not found.
-    pub fn evalue(&self, edge: &Edge) -> Utility {
+    pub fn payoff(&self, edge: &Edge) -> Utility {
         self.data()
             .iter()
             .find(|(e, _, _, _, _)| e == edge)
             .map(|(_, _, _, v, _)| *v)
             .unwrap_or_default()
     }
-    /// Lookup counts for edge, defaulting to 0 if not found.
-    pub fn counts(&self, edge: &Edge) -> u32 {
+    /// Lookup visits for edge, defaulting to 0 if not found.
+    pub fn visits(&self, edge: &Edge) -> u32 {
         self.data()
             .iter()
             .find(|(e, _, _, _, _)| e == edge)
             .map(|(_, _, _, _, c)| *c)
             .unwrap_or_default()
     }
+
     pub fn weights(&self) -> impl Iterator<Item = (Edge, Probability)> + '_ {
         self.data().iter().map(|(e, w, _, _, _)| (*e, *w))
     }
+
     pub fn regrets(&self) -> impl Iterator<Item = (Edge, Utility)> + '_ {
         self.data().iter().map(|(e, _, r, _, _)| (*e, *r))
     }

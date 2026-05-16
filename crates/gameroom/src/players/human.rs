@@ -1,43 +1,26 @@
-use rbp_core::Chips;
-use rbp_gameplay::*;
 use crate::*;
 use dialoguer::Input;
 use dialoguer::Select;
+use rbp_core::Chips;
+use rbp_gameplay::*;
 
 #[derive(Debug, Default)]
 pub struct Human;
 
 #[async_trait::async_trait]
 impl Player for Human {
-    async fn decide(&mut self, recall: &Partial) -> Action {
+    async fn decide(&mut self, recall: &Witness) -> Action {
         let game = recall.head();
         let actions = game.legal();
         let labels = actions.iter().map(Action::label).collect::<Vec<_>>();
         let choice = Self::selection(&labels, &game);
         Self::resolve(&actions[choice], &game)
     }
+
     async fn notify(&mut self, event: &Event) {
         match event {
-            Event::HandStart { hand, dealer, .. } => {
-                println!("Hand #{} (dealer P{})", hand, dealer)
-            }
-            Event::HoleCards { hole, .. } => println!("Your cards: {}", hole),
-            Event::Board { street, board, .. } => println!("{}: {}", street, board),
-            Event::Action { seat, action, .. } => println!("P{}: {}", seat, action),
-            Event::Decision { recall, .. } => println!("{}", recall),
-            Event::Reveal {
-                seat,
-                hole: Some(h),
-                ..
-            } => println!("P{}: {}", seat, h),
-            Event::Reveal {
-                seat, hole: None, ..
-            } => println!("P{}: mucks", seat),
-            Event::HandEnd { winners, .. } => {
-                for (p, c) in winners {
-                    println!("P{} wins {}", p, c);
-                }
-            }
+            Event::Decision(recall) => println!("{}", recall),
+            Event::Action(action) => println!("{}", action),
             Event::Disconnect(pos) => println!("P{}: disconnected", pos),
         }
     }
@@ -53,12 +36,14 @@ impl Human {
             .interact()
             .unwrap()
     }
+
     fn resolve(action: &Action, game: &Game) -> Action {
         match action {
             Action::Raise(_) => Self::sizing(game),
             action => *action,
         }
     }
+
     fn sizing(game: &Game) -> Action {
         let min = game.to_raise();
         let max = game.to_shove();

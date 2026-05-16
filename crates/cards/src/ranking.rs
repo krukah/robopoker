@@ -8,7 +8,7 @@ use super::rank::Rank;
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(feature = "shortdeck")]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum Ranking {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers
@@ -29,7 +29,7 @@ pub enum Ranking {
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(not(feature = "shortdeck"))]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum Ranking {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers
@@ -69,6 +69,22 @@ impl Ranking {
     }
 }
 
+impl Ranking {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::HighCard(_) => "High Card",
+            Self::OnePair(_) => "Pair",
+            Self::TwoPair(_, _) => "Two Pair",
+            Self::ThreeOAK(_) => "Trips",
+            Self::Straight(_) => "Straight",
+            Self::Flush(_) => "Flush",
+            Self::FullHouse(_, _) => "Full House",
+            Self::FourOAK(_) => "Quads",
+            Self::StraightFlush(_) => "Str. Flush",
+            Self::MAX => unreachable!(),
+        }
+    }
+}
 impl std::fmt::Display for Ranking {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

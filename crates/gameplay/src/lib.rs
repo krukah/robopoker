@@ -6,7 +6,7 @@
 //! ## State Representation
 //!
 //! - [`Game`] — The memoryless present: stacks, pot, board, and active players
-//! - [`Partial`] — The remembered past: complete action history for a hand
+//! - [`Witness`] — The remembered past: complete action history for a hand
 //! - [`Path`] — Compressed action sequence for tree traversal
 //!
 //! ## Actions
@@ -30,40 +30,54 @@
 //!
 //! ## Information Levels
 //!
-//! - [`Partial`] — Partial information: hero's cards only (concrete)
+//! - [`Witness`] — Witness information: hero's cards only (concrete)
 //! - [`Perfect`] — Complete information: both players' cards (concrete)
 mod abstraction;
 mod action;
 mod arrangement;
+mod axis;
 mod bias;
+pub mod dto;
 mod edge;
 mod game;
+mod live;
 mod odds;
-mod partial;
+mod witness;
 mod path;
 mod perfect;
 mod pnl;
+mod raise;
+mod grid;
+mod message;
 mod recall;
 mod seat;
 mod settlement;
 mod showdown;
 mod size;
+mod snapshot;
 mod turn;
 
 pub use abstraction::*;
 pub use action::*;
 pub use arrangement::*;
+pub use axis::*;
 pub use bias::*;
+pub use dto::*;
 pub use edge::*;
 pub use game::*;
+pub use live::*;
 pub use odds::*;
-pub use partial::*;
+pub use witness::*;
 pub use path::*;
 pub use perfect::*;
 pub use pnl::*;
+pub use raise::*;
+pub use grid::*;
+pub use message::*;
 pub use recall::*;
 pub use seat::*;
 pub use settlement::*;
 pub use showdown::*;
 pub use size::*;
+pub use snapshot::*;
 pub use turn::*;

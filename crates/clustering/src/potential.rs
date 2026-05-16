@@ -119,6 +119,7 @@ where
     D: Iterator<Item = Abstraction>,
 {
     type Item = Abstraction;
+
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             IterWrap::Pref(i) => i.next(),
@@ -145,6 +146,7 @@ where
     D: Iterator<Item = Entropy>,
 {
     type Item = Entropy;
+
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             IterValWrap::Pref(i) => i.next(),
@@ -157,9 +159,11 @@ where
 
 impl Density for Potential {
     type Support = ClusterAbs;
+
     fn density(&self, x: &Self::Support) -> Entropy {
         Potential::density(self, x)
     }
+
     fn support(&self) -> impl Iterator<Item = Self::Support> {
         Potential::support(self).map(ClusterAbs::from)
     }

@@ -3,15 +3,15 @@ use rbp_core::*;
 
 /// A compact sequence of abstract edges packed into 64 bits.
 ///
-/// `Path` encodes up to 16 edges in a single `u64`, using 4 bits per edge.
+/// `Path` encodes up to 12 edges in a single `u64`, using 5 bits per edge.
 /// This enables efficient storage and comparison of action sequences without
 /// heap allocation.
 ///
 /// # Encoding
 ///
-/// Each edge maps to a 4-bit nibble (values 1–15, with 0 reserved for empty).
+/// Each edge maps to a 5-bit value (values 1–31, with 0 reserved for empty).
 /// Edges are stored least-significant first, so the first action occupies
-/// bits 0–3.
+/// bits 0–4.
 ///
 /// # Use Cases
 ///
@@ -25,7 +25,7 @@ impl Path {
     const SEPARATOR: &'static str = "/";
     /// Number of edges in this path.
     pub fn length(&self) -> usize {
-        (67 - self.0.leading_zeros() as usize) / 4
+        (68 - self.0.leading_zeros() as usize) / 5
     }
     /// Aggression: count of trailing aggressive edges (for bet sizing grid selection).
     /// kinda wanna deprecate, dangerous if truncated
@@ -48,9 +48,28 @@ impl Path {
     }
 }
 
+impl serde::Serialize for Path {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Path {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 impl Arbitrary for Path {
     fn random() -> Self {
-        Self::from(rand::random::<u64>())
+        let n = rand::random_range(1..=rbp_core::MAX_PATH_EDGES);
+        (0..n).map(|_| Edge::random()).collect()
     }
 }
 
@@ -93,7 +112,11 @@ impl From<i64> for Path {
 
 impl TryFrom<&str> for Path {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
+        if s.is_empty() {
+            return Ok(Self::default());
+        }
         s.split(Self::SEPARATOR)
             .map(Edge::try_from)
             .collect::<Result<Vec<_>, _>>()
@@ -117,14 +140,15 @@ impl std::fmt::Display for Path {
 
 impl Iterator for Path {
     type Item = Edge;
+
     fn next(&mut self) -> Option<Self::Item> {
-        let x = (self.0 & 0xF) as u8;
+        let x = (self.0 & 0x1F) as u8;
         if self.0 == 0 {
             None
         } else if x == 0 {
             None
         } else {
-            self.0 >>= 4;
+            self.0 >>= 5;
             Some(Edge::from(x))
         }
     }
@@ -132,14 +156,14 @@ impl Iterator for Path {
 
 impl DoubleEndedIterator for Path {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let shift = ((63u32.saturating_sub(self.0.leading_zeros())) / 4) * 4;
-        let bloop = (self.0 >> shift) & 0xF;
+        let shift = ((63u32.saturating_sub(self.0.leading_zeros())) / 5) * 5;
+        let bloop = (self.0 >> shift) & 0x1F;
         if self.0 == 0 {
             None
         } else if bloop == 0 {
             None
         } else {
-            self.0 &= !(0xF << shift);
+            self.0 &= !(0x1F << shift);
             Some(Edge::from(bloop as u8))
         }
     }
@@ -151,11 +175,11 @@ impl std::iter::FromIterator<Edge> for Path {
         T: IntoIterator<Item = Edge>,
     {
         iter.into_iter()
-            .take(rbp_core::MAX_DEPTH_SUBGAME)
+            .take(rbp_core::MAX_PATH_EDGES)
             .map(u8::from)
             .map(|byte| byte as u64)
             .enumerate()
-            .map(|(i, byte)| byte << (i * 4))
+            .map(|(i, byte)| byte << (i * 5))
             .fold(0u64, |acc, bits| acc | bits)
             .into()
     }
@@ -170,12 +194,25 @@ mod tests {
         let paths = Vec::<Edge>::from(Path::from(edges.clone()));
         assert_eq!(edges, paths);
     }
+    #[test]
+    fn bijective_str_empty() {
+        let path = Path::default();
+        let text = path.to_string();
+        assert_eq!(text, "");
+        assert_eq!(path, Path::try_from(text.as_str()).unwrap());
+    }
+    #[test]
+    fn bijective_str_nonempty() {
+        let path = (0..).map(|_| Edge::random()).take(5).collect::<Path>();
+        let text = path.to_string();
+        assert_eq!(path, Path::try_from(text.as_str()).unwrap());
+    }
 
     #[test]
     fn bijective_path_edges() {
         let edges = (0..)
             .map(|_| Edge::random())
-            .take(rbp_core::MAX_DEPTH_SUBGAME)
+            .take(rbp_core::MAX_PATH_EDGES)
             .collect::<Vec<Edge>>();
         let paths = Vec::<Edge>::from(Path::from(edges.clone()));
         assert_eq!(edges, paths);
@@ -190,7 +227,7 @@ mod tests {
 
     #[test]
     fn length() {
-        let n = rand::random::<u64>() % (rbp_core::MAX_DEPTH_SUBGAME + 1) as u64;
+        let n = rand::random::<u64>() % (rbp_core::MAX_PATH_EDGES + 1) as u64;
         let n = n as usize;
         let path = (0..).map(|_| Edge::random()).take(n).collect::<Path>();
         assert_eq!(path.length(), n);

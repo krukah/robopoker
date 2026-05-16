@@ -9,7 +9,7 @@
 //! This module serves as a bridge between `gameplay` (core poker) and `mccfr`
 //! (generic CFR). Type aliases (`NlheEdge`, `NlheTurn`, etc.) make explicit
 //! which gameplay types are being used for CFR, preparing for potential
-//! crate separation into `nlhe`, `mccfr`, and `nlhe-mccfr`.
+//! crate separation into `holdem`, `mccfr`, and `holdem-mccfr`.
 //!
 //! # Components
 //!
@@ -21,7 +21,7 @@
 //! - [`Info`] — Information set: public + private state
 //! - [`NlheEncoder`] — Maps game states to [`Info`] using clustering
 //! - [`NlheProfile`] — Stores accumulated regrets and strategies
-//! - [`NlheSolver`] — Generic solver combining encoder and profile
+//! - [`Nlhe`] — Generic solver combining encoder and profile
 //! - [`Flagship`](crate::Flagship) — Pluribus-configured solver (top-level alias)
 //!
 //! # Abstraction
@@ -39,46 +39,54 @@
 
 mod edge;
 mod encoder;
+mod flagship;
 mod game;
+mod geometry;
 mod info;
+#[cfg(feature = "database")]
+mod lookup;
 mod memory;
+#[cfg(feature = "database")]
 mod profile;
 mod public;
 mod record;
 mod secret;
-mod solver;
-mod strategy;
-mod turn;
 #[cfg(feature = "database")]
 mod sink;
+mod solver;
 #[cfg(feature = "database")]
 mod source;
+mod strategy;
+mod turn;
 
 pub use edge::*;
 pub use encoder::*;
+pub use flagship::*;
 pub use game::*;
+pub use geometry::*;
 pub use info::*;
+#[cfg(feature = "database")]
+pub use lookup::*;
 pub use memory::*;
-pub use profile::*;
 pub use public::*;
 pub use record::*;
 pub use secret::*;
-pub use solver::*;
-pub use strategy::*;
-pub use turn::*;
 #[cfg(feature = "database")]
 pub use sink::*;
+pub use solver::*;
 #[cfg(feature = "database")]
 pub use source::*;
+pub use strategy::*;
+pub use turn::*;
 
 /// Flagship NLHE solver configuration.
 ///
-/// Uses the Pluribus algorithm configuration:
+/// Matches the Pluribus (Brown & Sandholm, Science 2019) algorithm configuration:
+/// - [`rbp_mccfr::LinearRegret`] — Linear CFR, i.e. DCFR(1, 1, 1), the variant Pluribus actually used
+/// - [`rbp_mccfr::LinearWeight`] — Linear weighting of the average strategy
 /// - [`rbp_mccfr::PluribusSampling`] — Probabilistic pruning with warm-up period
-/// - [`rbp_mccfr::PluribusRegret`] — No discount for positive regrets, t/(t+1) for negative
-/// - [`rbp_mccfr::LinearWeight`] — Emphasize more recent iterations in average strategy
-pub type Flagship = NlheSolver<
-    rbp_mccfr::PluribusRegret,   //
+pub type Flagship = Nlhe<
+    rbp_mccfr::LinearRegret,     //
     rbp_mccfr::LinearWeight,     //
     rbp_mccfr::PluribusSampling, //
 >;

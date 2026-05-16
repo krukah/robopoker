@@ -4,7 +4,7 @@ use petgraph::graph::NodeIndex;
 /// A sampled game tree for CFR traversal.
 ///
 /// Built dynamically by the [`Solver`] during training using the
-/// [`Encoder`] for state encoding and [`Profile`] for action sampling.
+/// [`CfrEncoder`] for state encoding and [`Profile`] for action sampling.
 /// Each vertex stores a `(Game, Info)` tuple; edges are labeled with actions.
 ///
 /// # Structure
@@ -27,6 +27,7 @@ where
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
 {
+    id: usize,
     graph: petgraph::graph::DiGraph<(G, I), E>,
     danny: std::marker::PhantomData<(T, I)>,
 }
@@ -38,17 +39,38 @@ where
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
 {
+    /// Construct an empty tree with the given batch-local identifier.
+    ///
+    /// The `id` is used by [`Node::seed`] to distinguish trees within a
+    /// batch at the same epoch, so two trees must get different ids if
+    /// they need independent sampling. In [`Solver::batch`], the par_iter
+    /// index is used; in tests that build a single tree, any id works.
+    pub fn new(id: usize) -> Self {
+        Self {
+            id,
+            graph: petgraph::graph::DiGraph::default(),
+            danny: std::marker::PhantomData::<(T, I)>,
+        }
+    }
     /// Number of nodes in the tree.
     pub fn n(&self) -> usize {
         self.graph.node_count()
+    }
+    /// The tree's batch-local identifier (see [`Tree::new`]).
+    pub fn id(&self) -> usize {
+        self.id
     }
     /// get all Nodes in the Tree
     pub fn all(&self) -> impl Iterator<Item = Node<'_, T, E, G, I>> {
         self.graph.node_indices().map(|n| self.at(n))
     }
+    /// Reference to the underlying petgraph DiGraph.
+    pub fn graph(&self) -> &petgraph::graph::DiGraph<(G, I), E> {
+        &self.graph
+    }
     /// get a Node by index
     pub fn at(&self, index: petgraph::graph::NodeIndex) -> Node<'_, T, E, G, I> {
-        Node::from(index, &self.graph)
+        Node::from(index, self)
     }
     /// seed a Tree by giving an (Info, Game) and getting a Node
     pub fn seed(&mut self, info: I, seed: G) -> Node<'_, T, E, G, I> {
@@ -56,7 +78,7 @@ where
         self.at(seed)
     }
     /// extend a Tree by giving a Leaf and getting a Node
-    pub fn grow(&mut self, info: I, leaf: Branch<E, G>) -> Node<'_, T, E, G, I> {
+    pub fn grow(&mut self, info: I, leaf: Leaf<E, G>) -> Node<'_, T, E, G, I> {
         let tail = self.graph.add_node((leaf.1, info));
         let edge = self.graph.add_edge(leaf.2, tail, leaf.0);
         debug_assert!(edge.index() == tail.index() - 1);
@@ -124,21 +146,6 @@ where
             self.show(f, child, &format!("{}{}", prefix, gaps))?;
         }
         Ok(())
-    }
-}
-
-impl<T, E, G, I> Default for Tree<T, E, G, I>
-where
-    T: CfrTurn,
-    E: CfrEdge,
-    G: CfrGame<E = E, T = T>,
-    I: CfrInfo<E = E, T = T>,
-{
-    fn default() -> Self {
-        Self {
-            graph: petgraph::graph::DiGraph::default(),
-            danny: std::marker::PhantomData::<(T, I)>,
-        }
     }
 }
 

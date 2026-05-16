@@ -1,36 +1,40 @@
 [package]
-name          = "rbp-gameroom"
-version       = "1.0.1"
-edition       = "2024"
-rust-version  = "1.90"
-authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description   = "Async game coordinator, player implementations, and hand history"
-license       = "MIT"
-repository    = "https://github.com/krukah/robopoker"
-keywords      = ["poker", "async", "gameroom", "multiplayer"]
-categories    = ["game-development", "asynchronous"]
+name           = "rbp-gameroom"
+version        = "1.0.0"
+edition        = "2024"
+rust-version   = "1.90"
+authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description    = "Async game coordinator for live poker sessions"
+license        = "MIT"
+repository     = "https://github.com/krukah/robopoker"
+keywords       = ["poker", "async", "gameroom", "multiplayer"]
+categories     = ["game-development", "asynchronous"]
 
 [features]
-default       = []
-database      = ["rbp-database", "rbp-nlhe/database", "tokio-postgres"]
-cli           = ["dialoguer"]
+default        = []
+database       = ["rbp-database", "rbp-nlhe", "rbp-mccfr", "rbp-subgame", "rbp-depth", "rbp-world", "rbp-transport", "rbp-telemetry"]
+cli            = ["dialoguer"]
 
 [dependencies]
-rbp-core       = { version = "1.0", path = "../util"      }
-rbp-cards      = { version = "1.0", path = "../cards"     }
-rbp-gameplay   = { version = "1.0", path = "../gameplay"  }
-rbp-auth       = { version = "1.0", path = "../auth"      }
-rbp-database   = { version = "1.0", path = "../database", optional = true }
-rbp-mccfr      = { version = "1.0", path = "../mccfr"     }
-rbp-nlhe       = { version = "1.0", path = "../nlhe"      }
-rbp-transport  = { version = "1.0", path = "../transport" }
-tokio          = { version = "1", features = ["sync", "time", "rt", "macros"] }
-tokio-postgres = { version = "0.7", features = ["with-uuid-1"], optional = true }
+rbp-core         = { path = "../util"                                         }
+rbp-cards        = { path = "../cards"                                        }
+rbp-gameplay     = { path = "../gameplay"                                     }
+rbp-auth         = { path = "../auth"                                         }
+rbp-nlhe       = { path = "../nlhe",    optional = true, features = ["database"] }
+rbp-mccfr        = { path = "../mccfr",     optional = true                   }
+rbp-subgame      = { path = "../subgame",   optional = true                   }
+rbp-depth        = { path = "../depth",    optional = true                   }
+rbp-world        = { path = "../world",    optional = true                   }
+rbp-transport    = { path = "../transport",  optional = true                  }
+rbp-database     = { path = "../database",   optional = true                  }
+rbp-telemetry    = { path = "../telemetry",  optional = true                  }
+tokio          = { version = "1",    features = ["sync", "time", "rt", "macros"] }
+tokio-postgres = { version = "0.7",  features = ["with-uuid-1"]             }
 async-trait    = "0.1"
 const_format   = "0.2"
-serde          = { version = "1", features = ["derive"] }
+serde          = { version = "1",    features = ["derive"]                   }
 serde_json     = "1"
-log            = "0.4"
+tracing       = { workspace = true }
 uuid           = "1"
-rand           = { version = "0.9.1", features = ["small_rng"] }
-dialoguer      = { version = "0.11", optional = true }
+rand           = { version = "0.9.1", features = ["small_rng"]              }
+dialoguer      = { version = "0.11", optional = true                        }

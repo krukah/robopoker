@@ -12,6 +12,7 @@ name         = "trainer"
 path         = "src/main.rs"
 
 [dependencies]
-rbp-core      = { path = "../../crates/util", features = ["server"] }
-rbp-autotrain = { path = "../../crates/autotrain" }
-tokio         = { version = "1", features = ["rt-multi-thread", "macros"] }
+rbp-autotrain      = { path = "../../crates/autotrain" }
+clap               = { version = "4", features = ["derive"] }
+tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

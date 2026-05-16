@@ -1,205 +1,264 @@
 use super::*;
-use rbp_core::Utility;
+use rbp_cards::Observation;
+use rbp_core::*;
+use rbp_depth::*;
 use rbp_gameplay::*;
 use rbp_mccfr::*;
-use rbp_mccfr::Posterior;
-use std::collections::BTreeMap;
-use std::marker::PhantomData;
+use rbp_subgame::*;
+use rbp_world::*;
 
-// TODO: Import from rbp-core or define locally
-const SUBGAME_ITERATIONS: usize = 100;
-const CFR_TREE_COUNT_NLHE: usize = 1;
-const CFR_BATCH_SIZE_NLHE: usize = 1000;
+mccfr!(
+    Nlhe,
+    NlheEncoder,
+    NlheTurn,
+    NlheEdge,
+    NlheGame,
+    NlheInfo,
+    128
+);
 
-/// Complete MCCFR solver and trained blueprint for No-Limit Hold'em.
+/// Authoritative current-street `(turn, edge)` pairs from a witness recall.
 ///
-/// Combines an [`NlheEncoder`] (for state→info mapping) with an [`NlheProfile`]
-/// (for regret/strategy storage) to form both a trainable [`Solver`] and an
-/// inference-ready blueprint for gameplay.
-///
-/// # Type Parameters
-///
-/// - `R` — [`RegretSchedule`] for regret accumulation/discounting
-/// - `W` — [`PolicySchedule`] for strategy weight accumulation
-/// - `S` — [`SamplingScheme`] for tree exploration
-///
-/// # Training (Solver trait)
-///
-/// Training loop:
-/// 1. Generate sampled game trees via the encoder
-/// 2. Compute counterfactual values using reach probabilities
-/// 3. Update regrets and strategy weights in the profile
-/// 4. Repeat, alternating the traversing player each iteration
-///
-/// # Inference (Blueprint methods)
-///
-/// After training, use [`Self::subgame`] to create a [`SubSolver`] for real-time
-/// refinement, or query strategies directly via the profile.
-///
-/// # Database Integration
-///
-/// With `database` feature, loads encoder abstractions and profile state
-/// from PostgreSQL to resume training or serve inference requests.
-pub struct NlheSolver<R, W, S>
-where
-    R: RegretSchedule,
-    W: PolicySchedule,
-    S: SamplingScheme,
-{
-    /// Encoder for mapping game states to information sets.
-    pub encoder: NlheEncoder,
-    /// Profile storing accumulated regrets and strategies.
-    pub profile: NlheProfile,
-    /// Phantom data for algorithm configuration.
-    phantom: PhantomData<fn() -> (R, W, S)>,
+/// Walks `recall.states()` alongside `recall.history()` — the state at
+/// index `i` is the game BEFORE action `i`, so its turn is the turn that
+/// owns that edge. Trims to trailing choice edges, matching
+/// [`Recall::subgame`]'s definition of "current street." This is the
+/// only safe way to get turns for a holdem prefix: replaying edges
+/// from `NlheGame::root()` would silently diverge at chip snapping or
+/// chance card draws.
+fn subgame_descents(recall: &Witness) -> Vec<Descent<NlheTurn, NlheEdge>> {
+    recall
+        .states()
+        .into_iter()
+        .zip(recall.history().iter())
+        .map(|(state, edge)| (state.turn(), *edge))
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .take_while(|(_, e)| e.is_choice())
+        .map(|(t, e)| Descent(NlheTurn::from(t), NlheEdge::from(e)))
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect()
 }
 
-impl<R, W, S> NlheSolver<R, W, S>
+impl<R, W, S> DepthSampler<{ rbp_core::FRONTIER_LEAVES }> for Nlhe<R, W, S>
 where
     R: RegretSchedule,
-    W: PolicySchedule,
+    W: WeightSchedule,
     S: SamplingScheme,
 {
-    /// Creates a new solver from profile and encoder.
-    pub fn new(profile: NlheProfile, encoder: NlheEncoder) -> Self {
-        Self {
-            profile,
-            encoder,
-            phantom: PhantomData,
-        }
-    }
-    /// Creates a subgame solver from game history.
-    ///
-    /// Computes opponent reach distribution, clusters into K worlds,
-    /// and initializes the solver from game root through the prefix.
-    pub fn subgame(
-        &self,
-        recall: &Partial,
-    ) -> SubSolver<'_, NlheProfile, NlheEncoder, SUBGAME_ITERATIONS> {
-        SubSolver::new(
-            &self.encoder,
-            &self.profile,
-            match recall.turn() {
-                Turn::Choice(0) => NlheTurn::from(1),
-                Turn::Choice(1) => NlheTurn::from(0),
-                _ => unreachable!("subgame solving requires two-player game...for now"),
-            },
-            recall.subgame().into_iter().map(NlheEdge::from).collect(),
-            ManyWorlds::cluster(self.opponent_range(recall)),
-        )
+    type Blueprint = NlheProfile;
+
+    fn blueprint(&self) -> &Self::Blueprint {
+        &self.profile
     }
 
-    /// Computes opponent observation-level range from game history.
+    fn payoffs(
+        &self,
+        prefix: &Prefix<NlheTurn, NlheEdge>,
+        game: &NlheGame,
+        internal: NlheTurn,
+    ) -> Payoffs<{ rbp_core::FRONTIER_LEAVES }> {
+        let ref encoder = self.encoder;
+        let ref profile = self.profile;
+        let rollouts = FrontierHyperParams::get().rollouts();
+        Payoffs::tabulate(|k, j| {
+            (0..rollouts)
+                .map(|_| encoder.biased_rollout(prefix, game, internal, k, j, profile))
+                .sum::<Utility>()
+                / rollouts as Utility
+        })
+    }
+}
+
+impl<R, W, S, const WORLDS: usize> WorldRestrict<WORLDS> for Nlhe<R, W, S>
+where
+    R: RegretSchedule,
+    W: WeightSchedule,
+    S: SamplingScheme,
+{
+    fn restrict(
+        &self,
+        external: Self::T,
+        world: World,
+        belief: &Belief<Secret<Self>, WORLDS>,
+        observed: &Self::G,
+    ) -> Self::G {
+        self.encoder.restrict(external, world, belief, observed)
+    }
+}
+
+impl<R, W, S> Nlhe<R, W, S>
+where
+    R: RegretSchedule,
+    W: WeightSchedule,
+    S: SamplingScheme,
+{
+    /// Creates a depth-limited solver rooted at the current decision point.
     ///
-    /// For each possible opponent observation, constructs a [`Perfect`](crate::gameplay::Perfect)
-    /// (complete info) and computes its reach probability via [`Solver::external_reach`].
+    /// No opponent range partitioning or world sampling — solves the
+    /// depth-limited tree from `recall.head()` using biased continuation
+    /// rollouts at the leaves.
+    pub fn adapt_leaf(
+        &self,
+        recall: &Witness,
+    ) -> DepthSolver<'_, Self, { rbp_core::FRONTIER_LEAVES }> {
+        let internal = NlheTurn::from(recall.turn());
+        let entry = NlheGame::from(recall.head());
+        let prefix = subgame_descents(recall);
+        DepthSolver::new(self, prefix, internal, entry)
+    }
+    /// Creates a safe subgame solver from game history (no depth limiting).
     ///
-    /// Returns a distribution since `Partial` has partial information —
-    /// we must iterate over all possible opponent hands.
+    /// Identical setup to [`Self::adapt_full`] but uses [`WorldSolver`]
+    /// which expands the full tree to terminal nodes instead of cutting
+    /// off at a depth limit.
+    pub fn adapt_safe(
+        &self,
+        recall: &Witness,
+    ) -> WorldSolver<
+        '_,
+        { rbp_core::N_WORLDS },
+        NlheProfile,
+        NlheEncoder,
+        NlheInfo,
+        NlheSecret,
+    > {
+        let (external, partition, recall) = self.setup(recall);
+        WorldSolver::new(&self.encoder, &self.profile, external, partition, recall)
+    }
+    /// Creates a combined safe + depth-limited subgame solver.
     ///
-    /// Projects observation-level range to abstraction level.
-    /// Aggregates reach by abstraction bucket for clustering into worlds.
-    pub fn opponent_range(&self, recall: &Partial) -> Posterior<NlheSecret> {
-        let hero = NlheTurn::from(recall.turn());
-        recall
-            .histories()
+    /// Computes opponent reach distribution, partitions into K worlds
+    /// with secret-to-world mapping, and initializes the solver from
+    /// game root through the prefix. The partition enables rejection
+    /// sampling of card deals to condition on the selected world.
+    pub fn adapt_full(
+        &self,
+        recall: &Witness,
+    ) -> SubGameSolver<
+        '_,
+        { rbp_core::N_WORLDS },
+        { rbp_core::FRONTIER_LEAVES },
+        Self,
+        NlheInfo,
+        NlheSecret,
+    > {
+        let (external, partition, recall) = self.setup(recall);
+        SubGameSolver::new(self, external, partition, recall)
+    }
+    /// Common setup for safe solvers: external identity, belief partition, recall.
+    fn setup(
+        &self,
+        recall: &Witness,
+    ) -> (
+        NlheTurn,
+        Belief<NlheSecret, { rbp_core::N_WORLDS }>,
+        CfrRecall<NlheGame>,
+    ) {
+        let external = match recall.turn() {
+            Turn::Choice(0) => NlheTurn::from(1),
+            Turn::Choice(1) => NlheTurn::from(0),
+            _ => unreachable!("subgame solving requires two-player game"),
+        };
+        let prior = self.opponent_range(recall);
+        let partition = prior.partition();
+        let path = subgame_descents(recall);
+        let game = NlheGame::from(recall.head());
+        (external, partition, CfrRecall::new(path, game))
+    }
+    /// External reach for one complete-info history — the product of the
+    /// blueprint's averaged policy at every external decision node along
+    /// `case`'s action sequence. This is P(actions | hand) for the single
+    /// hand encoded by `case`.
+    fn external_reach(&self, case: Perfect, internal: NlheTurn) -> Probability {
+        self.encoder
+            .replay(
+                NlheGame::from(case.root()),
+                case.history().into_iter().map(NlheEdge::from),
+            )
             .into_iter()
-            .map(|(obs, hist)| (obs, hist.root(), hist.history().into_iter()))
-            .map(|(obs, root, path)| (obs, NlheGame::from(root), path.map(NlheEdge::from)))
-            .map(|(obs, root, path)| (obs, self.external_reach(root, hero, path)))
+            .filter(|(t, _, _)| t.is_opponent(&internal))
+            .map(|(_, ref i, ref e)| self.profile.averaged_policy(i, e))
+            .product()
+    }
+
+    /// Unnormalized hole-card-level posterior — the raw `(Observation,
+    /// reach)` stream that backs both [`Self::opponent_range`] (which
+    /// projects to abstractions) and [`Self::opponent_observations`]
+    /// (which normalizes and surfaces hole cards). Walks
+    /// [`Witness::possibilities`] and computes external reach via
+    /// [`Self::external_reach`] along the observed action sequence. This
+    /// is the unnormalized P(hand | actions) ∝ P(actions | hand) × 1
+    /// from a uniform prior.
+    fn opponent_reaches(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
+        let internal = NlheTurn::from(recall.turn());
+        recall
+            .possibilities()
+            .into_iter()
+            .map(|(obs, case)| (obs, self.external_reach(case, internal)))
+            .collect()
+    }
+    /// Computes the opponent's posterior range over abstraction buckets.
+    ///
+    /// Transforms priors into posteriors through four layers:
+    ///
+    /// 1. **Uniform prior** — [`Observation::opponents`] enumerates all
+    ///    external hole cards consistent with internal's information
+    ///    (excludes internal pocket and dealt board cards), each with
+    ///    implicit weight 1.
+    ///
+    /// 2. **Likelihood** — For each external hand, [`Witness::histories`]
+    ///    builds a complete-info [`Perfect`] history, and
+    ///    [`Solver::external_reach`] computes the product of external's
+    ///    blueprint action probabilities at every external decision node
+    ///    along the observed action sequence. This is P(actions | hand).
+    ///
+    /// 3. **Unnormalized posterior** — Each (observation, reach) pair is the
+    ///    unnormalized P(hand | actions) ∝ P(actions | hand) × 1.
+    ///
+    /// 4. **Abstraction projection** — Observations are mapped to abstraction
+    ///    buckets via the encoder; reach values sharing a bucket are summed.
+    ///    The result is a `Posterior<NlheSecret>` suitable for partitioning
+    ///    into subgame worlds.
+    pub fn opponent_range(&self, recall: &Witness) -> Posterior<NlheSecret> {
+        self.opponent_reaches(recall)
+            .into_iter()
             .map(|(obs, reach)| (NlheSecret::from(self.encoder.abstraction(&obs)), reach))
             .collect::<Posterior<NlheSecret>>()
     }
-}
-
-impl<R, W, S> Solver for NlheSolver<R, W, S>
-where
-    R: RegretSchedule,
-    W: PolicySchedule,
-    S: SamplingScheme,
-{
-    type T = NlheTurn;
-    type E = NlheEdge;
-    type G = NlheGame;
-    type I = NlheInfo;
-    type X = NlhePublic;
-    type Y = NlheSecret;
-    type N = NlheEncoder;
-    type P = NlheProfile;
-    type S = S;
-    type R = R;
-    type W = W;
-
-    fn tree_count() -> usize {
-        CFR_TREE_COUNT_NLHE
-    }
-    fn batch_size() -> usize {
-        CFR_BATCH_SIZE_NLHE
-    }
-    fn advance(&mut self) {
-        self.profile.increment();
-    }
-    fn encoder(&self) -> &Self::N {
-        &self.encoder
-    }
-    fn profile(&self) -> &Self::P {
-        &self.profile
-    }
-    fn mut_weight(&mut self, info: &Self::I, edge: &Self::E) -> &mut Utility {
-        &mut self
-            .profile
-            .encounters
-            .entry(*info)
-            .or_insert_with(BTreeMap::default)
-            .entry(*edge)
-            .or_insert_with(|| Encounter::from_tuple(edge.default_policy(), edge.default_regret()))
-            .weight
-    }
-    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut Utility {
-        &mut self
-            .profile
-            .encounters
-            .entry(*info)
-            .or_insert_with(BTreeMap::default)
-            .entry(*edge)
-            .or_insert_with(|| Encounter::from_tuple(edge.default_policy(), edge.default_regret()))
-            .regret
-    }
-    fn mut_evalue(&mut self, info: &Self::I, edge: &Self::E) -> &mut Utility {
-        &mut self
-            .profile
-            .encounters
-            .entry(*info)
-            .or_insert_with(BTreeMap::default)
-            .entry(*edge)
-            .or_insert_with(|| Encounter::from_tuple(edge.default_policy(), edge.default_regret()))
-            .evalue
-    }
-    fn mut_counts(&mut self, info: &Self::I, edge: &Self::E) -> &mut u32 {
-        &mut self
-            .profile
-            .encounters
-            .entry(*info)
-            .or_insert_with(BTreeMap::default)
-            .entry(*edge)
-            .or_insert_with(|| Encounter::from_tuple(edge.default_policy(), edge.default_regret()))
-            .counts
+    /// Hole-card-level normalized opponent range.
+    ///
+    /// Same likelihood computation as [`Self::opponent_range`] but skips
+    /// the abstraction projection — yields one entry per concrete villain
+    /// hole-card combo with weights normalized to sum to 1. Intended for
+    /// surfacing the opponent's range to clients at the granularity the
+    /// frontend cares about (hole cards), not the granularity CFR
+    /// solves at (abstraction buckets).
+    pub fn opponent_observations(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
+        let raws = self.opponent_reaches(recall);
+        let total = raws.iter().map(|(_, r)| *r).sum::<Probability>();
+        match total {
+            0.0 => raws,
+            mass => raws.into_iter().map(|(obs, r)| (obs, r / mass)).collect(),
+        }
     }
 }
 
 #[cfg(feature = "database")]
 #[async_trait::async_trait]
-impl<R, W, S> rbp_database::Hydrate for NlheSolver<R, W, S>
+impl<R, W, S> rbp_database::Hydrate for Nlhe<R, W, S>
 where
     R: RegretSchedule,
-    W: PolicySchedule,
+    W: WeightSchedule,
     S: SamplingScheme,
 {
     async fn hydrate(client: std::sync::Arc<tokio_postgres::Client>) -> Self {
-        Self {
-            encoder: NlheEncoder::hydrate(client.clone()).await,
-            profile: NlheProfile::hydrate(client.clone()).await,
-            phantom: PhantomData,
-        }
+        Self::new(
+            NlheProfile::hydrate(client.clone()).await,
+            NlheEncoder::hydrate(client.clone()).await,
+        )
     }
 }

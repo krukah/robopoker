@@ -10,7 +10,11 @@ use super::*;
 pub struct SummedRegret;
 
 impl RegretSchedule for SummedRegret {
-    fn gain(accumulated: Utility, immediate: Utility, _: usize) -> Utility {
+    fn accumulate(accumulated: Utility, immediate: Utility, _: usize) -> Utility {
         accumulated + immediate
+    }
+
+    fn floor() -> Utility {
+        Utility::NEG_INFINITY
     }
 }

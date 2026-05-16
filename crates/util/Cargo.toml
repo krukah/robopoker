@@ -4,7 +4,7 @@ version      = "1.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "Core types, constants, and DTOs for robopoker"
+description  = "Core type aliases, traits, and constants for robopoker"
 license      = "MIT"
 repository   = "https://github.com/krukah/robopoker"
 keywords     = ["poker", "types", "constants"]
@@ -12,11 +12,15 @@ categories   = ["game-development"]
 
 [features]
 default = []
-server  = ["simplelog", "log", "tokio"]
+server  = ["tracing", "tokio"]
+client  = ["uuid/js"]
+cli     = ["clap"]
 
 [dependencies]
-uuid      = { version = "1", features = ["v7", "serde"] }
-serde     = { version = "1.0", features = ["derive"] }
-simplelog = { optional = true, version = "0.12.2" }
-log       = { optional = true, version = "0.4.22" }
-tokio     = { optional = true, version = "1.0", features = ["signal"] }
+rbp-translate = { path = "../translate" }
+rand    = { version = "0.9.1", features = ["small_rng"] }
+uuid    = { version = "1", features = ["v5", "v7", "serde"] }
+serde   = { version = "1.0", features = ["derive"] }
+clap    = { optional = true, workspace = true }
+tracing = { optional = true, workspace = true }
+tokio   = { optional = true, version = "1.0", features = ["signal", "rt"] }

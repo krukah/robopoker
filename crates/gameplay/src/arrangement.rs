@@ -15,9 +15,8 @@ use rbp_core::*;
 /// - Index 5: Turn
 /// - Index 6: River
 ///
-/// Empty slots are `None`, enabling partial deals (e.g., preflop-only).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
+/// Empty slots are `None`, enabling witness deals (e.g., preflop-only).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Arrangement([Option<Card>; 7]);
 
 impl Default for Arrangement {
@@ -145,7 +144,6 @@ impl Arrangement {
     /// Applies suit canonicalization and re-sorts to maintain canonical order.
     pub fn normalize_suits(&self) -> Self {
         self.permute_by(&Permutation::from(&self.observation()))
-            .normalize_sorts()
     }
     /// Applies only sorting canonicalization, preserving suits.
     pub fn normalize_sorts(&self) -> Self {
@@ -240,13 +238,13 @@ mod tests {
     }
 
     #[test]
-    fn normalize_order_preserves_observation() {
+    fn normalize_sorts_preserves_observation() {
         let arr = Arrangement::random();
         assert_eq!(arr.observation(), arr.normalize_sorts().observation());
     }
 
     #[test]
-    fn normalize_order_idempotent() {
+    fn normalize_sorts_idempotent() {
         let arr = Arrangement::random();
         assert_eq!(
             arr.normalize_sorts(),
@@ -281,13 +279,13 @@ mod tests {
     }
 
     #[test]
-    fn normalize_order_preserves_isomorphism() {
+    fn normalize_sorts_preserves_isomorphism() {
         let arr = Arrangement::random();
         assert_eq!(arr.isomorphism(), arr.normalize_sorts().isomorphism());
     }
 
     #[test]
-    fn same_observation_same_order_normalization() {
+    fn same_observation_same_sorts_normalization() {
         let arr = Arrangement::random();
         let reordered = arr.shuffle();
         assert_eq!(arr.observation(), reordered.observation()); // precondition
@@ -306,17 +304,42 @@ mod tests {
     }
 
     #[test]
-    fn normalizations_commute() {
-        let arr = Arrangement::random();
-        assert_eq!(
-            arr.normalize_sorts().normalize_suits(),
-            arr.normalize_suits().normalize_sorts()
-        );
-    }
-
-    #[test]
     fn normalize_equals_composition() {
         let arr = Arrangement::random();
-        assert_eq!(arr.normalize(), arr.normalize_sorts().normalize_suits());
+        assert_eq!(
+            arr.normalize(),
+            arr.normalize_sorts().normalize_suits().normalize_sorts()
+        );
+    }
+    /// Arrangement from Observation is deterministic: same Observation
+    /// always produces the same per-street card assignment.
+    #[test]
+    fn from_observation_deterministic() {
+        let obs = Observation::from(Street::Rive);
+        assert_eq!(Arrangement::from(obs), Arrangement::from(obs));
+    }
+    /// Round-tripping Observation → Arrangement → Observation preserves
+    /// the card set even though within-street order may change.
+    #[test]
+    fn observation_roundtrip_preserves_cards() {
+        let arr = Arrangement::random();
+        let roundtrip = Arrangement::from(arr.observation());
+        assert_eq!(arr.observation(), roundtrip.observation());
+    }
+    /// Arrangement from Observation assigns cards to correct street slots:
+    /// first 2 = pocket, next 3 = flop, next 1 = turn, next 1 = river.
+    #[test]
+    fn from_observation_street_assignment() {
+        let obs = Observation::from(Street::Rive);
+        let arr = Arrangement::from(obs);
+        assert_eq!(arr.pocket().len(), 2);
+        assert_eq!(arr.revealed(Street::Flop).len(), 3);
+        assert_eq!(arr.revealed(Street::Turn).len(), 1);
+        assert_eq!(arr.revealed(Street::Rive).len(), 1);
+        let all = Hand::from(arr.pocket())
+            + Hand::from(arr.revealed(Street::Flop))
+            + Hand::from(arr.revealed(Street::Turn))
+            + Hand::from(arr.revealed(Street::Rive));
+        assert_eq!(all, Hand::from(arr));
     }
 }

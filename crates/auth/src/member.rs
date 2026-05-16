@@ -17,9 +17,11 @@ impl Member {
             email,
         }
     }
+
     pub fn username(&self) -> &str {
         &self.username
     }
+
     pub fn email(&self) -> &str {
         &self.email
     }
@@ -35,13 +37,15 @@ impl Unique for Member {
 mod schema {
     use super::*;
     use rbp_database::*;
+    use std::sync::OnceLock;
 
     /// Schema implementation for Member (users table).
     /// Note: hashword is a database-only field, not part of Member domain type.
     impl Schema for Member {
         fn name() -> &'static str {
-            USERS
+            users()
         }
+
         fn columns() -> &'static [tokio_postgres::types::Type] {
             &[
                 tokio_postgres::types::Type::UUID,
@@ -50,34 +54,42 @@ mod schema {
                 tokio_postgres::types::Type::TEXT,
             ]
         }
+
         fn creates() -> &'static str {
-            const_format::concatcp!(
-                "CREATE TABLE IF NOT EXISTS ",
-                USERS,
-                " (
+            static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+            *SQL.get_or_init(|| {
+                leaked(format!(
+                    "CREATE TABLE IF NOT EXISTS {} (
                     id          UUID PRIMARY KEY,
                     username    VARCHAR(32) UNIQUE NOT NULL,
                     email       VARCHAR(255) UNIQUE NOT NULL,
                     hashword    TEXT NOT NULL
-                );"
-            )
+                );",
+                    users()
+                ))
+            })
         }
+
         fn indices() -> &'static str {
-            const_format::concatcp!(
-                "CREATE INDEX IF NOT EXISTS idx_users_username ON ",
-                USERS,
-                " (username);
-                 CREATE INDEX IF NOT EXISTS idx_users_email ON ",
-                USERS,
-                " (email);"
-            )
+            static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+            *SQL.get_or_init(|| {
+                leaked(format!(
+                    "CREATE INDEX IF NOT EXISTS idx_users_username ON {} (username);
+                 CREATE INDEX IF NOT EXISTS idx_users_email ON {} (email);",
+                    users(),
+                    users()
+                ))
+            })
         }
+
         fn copy() -> &'static str {
             unimplemented!()
         }
+
         fn truncates() -> &'static str {
             unimplemented!()
         }
+
         fn freeze() -> &'static str {
             unimplemented!()
         }

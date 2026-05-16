@@ -1,13 +1,13 @@
 use super::*;
-use rbp_core::Chips;
 use rbp_cards::*;
+use rbp_core::Chips;
 
 /// A player's final result including hand strength.
 ///
 /// Combines the public [`PnL`] (chips risked/won) with the private
 /// [`Strength`] (hand ranking). Used by [`Showdown`] to determine
 /// pot distributions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Settlement {
     revealed: PnL,
     strength: Strength,

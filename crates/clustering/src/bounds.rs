@@ -68,7 +68,8 @@ impl<const K: usize> Bounds<K> {
     }
     /// Updates bounds after centroids move (Steps 5-6).
     /// Lowers are decreased by movement; upper is increased.
-    pub fn update(&mut self, movements: &[f32; K]) {
+    pub fn update(&mut self, drift: &super::Drift<K>) {
+        let movements = drift.as_array();
         self.lower
             .iter_mut()
             .zip(movements.iter())

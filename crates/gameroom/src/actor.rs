@@ -1,6 +1,11 @@
 use super::*;
 use tokio::sync::mpsc::*;
 
+enum Outcome {
+    Decided(rbp_gameplay::Action),
+    Restart(rbp_gameplay::Witness),
+}
+
 /// Wrapper that runs a Player in its own async task.
 /// Handles message passing between Room and Player implementation.
 ///
@@ -28,40 +33,69 @@ impl Actor {
             sender,
             getter: rx,
         };
-        tokio::spawn(actor.run());
+        let handle = tokio::spawn(actor.run());
+        tokio::spawn(async move {
+            handle
+                .await
+                .inspect_err(|e| tracing::error!(seat = id, error = %e, "actor task panicked"))
+                .ok();
+        });
         tx
     }
+
+    #[tracing::instrument(skip_all, fields(seat = self.id))]
     async fn run(mut self) {
         loop {
             match self.getter.recv().await {
-                Some(ref event @ Event::Decision { ref recall, .. }) => {
-                    log::debug!("[actor P{}] received Decision", self.id);
+                Some(ref event @ Event::Decision(ref recall)) => {
+                    tracing::debug!("received Decision");
                     self.player.notify(event).await;
                     self.act(recall).await;
                     if !self.player.alive() {
-                        log::info!("[actor P{}] player disconnected", self.id);
+                        tracing::info!("player disconnected");
                         let _ = self.sender.send((self.id, Event::Disconnect(self.id)));
                         break;
                     }
                 }
                 Some(ref event) => {
-                    log::trace!("[actor P{}] received {}", self.id, event);
+                    tracing::trace!(%event, "received event");
                     self.player.notify(event).await;
                 }
                 None => break,
             }
         }
     }
-    async fn act(&mut self, recall: &rbp_gameplay::Partial) {
-        log::debug!("[actor P{}] calling decide", self.id);
-        let action = self.player.decide(recall).await;
-        log::debug!("[actor P{}] decided {}", self.id, action);
-        let event = Event::Action {
-            hand: 0,
-            seat: self.id,
-            action,
-            pot: 0,
+
+    async fn act(&mut self, initial: &rbp_gameplay::Witness) {
+        tracing::debug!("calling decide");
+        let pace = self.player.pace();
+        let mut recall = initial.clone();
+        let action = loop {
+            let outcome = {
+                let decide = self.player.decide(&recall);
+                tokio::pin!(decide);
+                loop {
+                    tokio::select! {
+                        biased;
+                        action = &mut decide => break Outcome::Decided(action),
+                        event = self.getter.recv() => {
+                            if let Some(Event::Decision(next)) = event {
+                                break Outcome::Restart(next);
+                            }
+                        }
+                    }
+                }
+            };
+            match outcome {
+                Outcome::Decided(action) => break action,
+                Outcome::Restart(next) => {
+                    tracing::debug!("restarting decide (stale recall replaced)");
+                    recall = next;
+                }
+            }
         };
-        let _ = self.sender.send((self.id, event));
+        tracing::debug!(%action, "decided");
+        tokio::time::sleep(pace).await;
+        let _ = self.sender.send((self.id, Event::Action(action)));
     }
 }

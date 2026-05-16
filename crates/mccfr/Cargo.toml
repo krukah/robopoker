@@ -11,13 +11,19 @@ keywords      = ["mccfr", "cfr", "game-theory", "nash-equilibrium", "solver"]
 categories    = ["algorithms", "mathematics", "game-development"]
 
 [features]
-default       = []
-server        = ["rbp-core/server", "rayon"]
+default       = ["server"]
+server        = ["rbp-core/server", "rayon", "rbp-telemetry"]
+async         = ["async-trait", "futures"]
 
 [dependencies]
-rbp-core      = { version = "1.0", path = "../util"      }
-rbp-transport = { version = "1.0", path = "../transport" }
+rbp-core      = { path = "../util" }
+rbp-gameplay  = { path = "../gameplay" }
+rbp-transport = { path = "../transport" }
+rbp-telemetry = { path = "../telemetry", optional = true }
+rbp-hyperparams = { workspace = true }
 rand          = { version = "0.9.1", features = ["small_rng"] }
 petgraph      = "0.7"
 paste         = "1.0"
 rayon         = { optional = true, version = "1.10" }
+async-trait   = { optional = true, version = "0.1" }
+futures       = { optional = true, version = "0.3" }

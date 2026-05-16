@@ -24,10 +24,10 @@ pub trait CfrInfo:
     type E: CfrEdge;
     /// Turn type for this game.
     type T: CfrTurn;
-    /// Public state type.
-    type X: CfrPublic<E = Self::E, T = Self::T>;
     /// Private state type.
     type Y: CfrSecret;
+    /// Public state type.
+    type X: CfrPublic<E = Self::E, T = Self::T>;
 
     /// Access the public component.
     fn public(&self) -> Self::X;
@@ -35,11 +35,11 @@ pub trait CfrInfo:
     fn secret(&self) -> Self::Y;
 
     /// Available actions at this decision point.
-    fn choices(&self) -> Vec<Self::E> {
+    fn choices(&self) -> impl Iterator<Item = Self::E> + use<Self> {
         self.public().choices()
     }
     /// Edge history leading to this point (current phase only).
     fn history(&self) -> Vec<Self::E> {
-        self.public().history()
+        self.public().subgame()
     }
 }

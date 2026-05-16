@@ -4,19 +4,19 @@
 //! Simpler than [`PluribusSampling`] but lacks warm-up and exploration.
 
 use super::*;
-use rbp_core::PRUNING_THRESHOLD;
 
 /// Deterministic regret-based pruning (RBP) sampling strategy.
 ///
-/// Prunes branches whose regret has fallen below [`PRUNING_THRESHOLD`],
-/// reducing tree size while preserving convergence. Actions that have
-/// accumulated enough negative regret are unlikely to be played, so
-/// skipping them saves computation without significantly affecting results.
+/// Prunes branches whose regret has fallen below
+/// [`PruningHyperParams::threshold`], reducing tree size while preserving
+/// convergence. Actions that have accumulated enough negative regret are
+/// unlikely to be played, so skipping them saves computation without
+/// significantly affecting results.
 ///
 /// # Algorithm
 ///
 /// At walker decision nodes:
-/// 1. Filter branches where `cum_regret(info, edge) > PRUNING_THRESHOLD`
+/// 1. Filter branches where `cum_regret(info, edge) > PruningHyperParams::threshold`
 /// 2. If all branches would be pruned, keep all (safety fallback)
 /// 3. Expand only the surviving branches
 ///
@@ -44,16 +44,17 @@ impl SamplingScheme for PrunableSampling {
     fn sample<T, E, G, I, P>(
         profile: &P,
         node: &Node<T, E, G, I>,
-        branches: Vec<Branch<E, G>>,
-    ) -> Vec<Branch<E, G>>
+        branches: Vec<Leaf<E, G>>,
+    ) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
         G: CfrGame<E = E, T = T>,
         I: CfrInfo<E = E, T = T>,
-        P: Profile<T = T, E = E, G = G, I = I>,
+        P: CfrFlow<T = T, E = E, G = G, I = I>,
     {
         let ref info = node.info();
+        let threshold = PruningHyperParams::get().threshold();
         if branches.is_empty() {
             return vec![];
         }
@@ -62,7 +63,7 @@ impl SamplingScheme for PrunableSampling {
         }
         let pruned = branches
             .iter()
-            .filter(|(edge, _, _)| profile.cum_regret(info, edge) > PRUNING_THRESHOLD)
+            .filter(|(edge, _, _)| profile.cum_regret(info, edge) > threshold)
             .cloned()
             .collect::<Vec<_>>();
         if pruned.is_empty() { branches } else { pruned }

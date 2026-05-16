@@ -1,6 +1,6 @@
 //! Slow distributed training session
-use crate::*;
 use crate::workers::*;
+use crate::*;
 use std::sync::Arc;
 use tokio_postgres::Client;
 
@@ -15,6 +15,8 @@ pub struct SlowSession {
 impl SlowSession {
     pub async fn new(client: Arc<Client>) -> Self {
         PreTraining::run(&client).await;
+        crate::ensure_all(&client).await;
+        Fingerprint::check(&client).await;
         Self {
             pool: Pool::new(client.clone()).await,
             client,
@@ -27,18 +29,27 @@ impl Trainer for SlowSession {
     fn client(&self) -> &Arc<Client> {
         &self.client
     }
+
+    fn session_type(&self) -> &'static str {
+        "slow"
+    }
+
     async fn step(&mut self) {
         self.pool.step().await;
     }
+
     async fn epoch(&self) -> usize {
         self.pool.epoch()
     }
-    async fn checkpoint(&self) -> Option<String> {
+
+    async fn checkpoint(&self) -> Option<rbp_mccfr::Checkpoint> {
         self.pool.checkpoint()
     }
+
     async fn summary(&self) -> String {
         self.pool.summary()
     }
+
     async fn sync(self) {
         // SlowSession writes directly to DB, no sync needed
     }

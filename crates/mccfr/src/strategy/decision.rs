@@ -16,7 +16,9 @@ where
     /// Accumulated probability mass (not normalized).
     pub mass: Probability,
     /// Number of times this action was encountered during training.
-    pub counts: u32,
+    pub visits: u32,
+    /// Expected value of the information set for this action.
+    pub payoff: Utility,
 }
 
 impl<E> Decision<E>
@@ -28,7 +30,8 @@ where
         Self {
             edge: self.edge,
             mass: self.mass / denom,
-            counts: self.counts,
+            visits: self.visits,
+            payoff: self.payoff,
         }
     }
 }

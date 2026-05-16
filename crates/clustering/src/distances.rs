@@ -73,6 +73,7 @@ impl<const T: usize> Distances<T> {
 impl<const T: usize> IntoIterator for Distances<T> {
     type Item = (i32, Energy);
     type IntoIter = Box<dyn Iterator<Item = Self::Item> + Send>;
+
     fn into_iter(self) -> Self::IntoIter {
         let street = self.street;
         Box::new(

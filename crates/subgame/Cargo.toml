@@ -1,0 +1,20 @@
+[package]
+name          = "rbp-subgame"
+version       = "1.0.0"
+edition       = "2024"
+rust-version  = "1.90"
+authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description   = "Safe + depth-limited subgame solving (composes rbp-world and rbp-depth)"
+license       = "MIT"
+repository    = "https://github.com/krukah/robopoker"
+keywords      = ["subgame", "cfr", "game-theory", "pluribus"]
+categories    = ["algorithms", "mathematics", "game-development"]
+
+[dependencies]
+tracing       = { workspace = true }
+rbp-core      = { path = "../util" }
+rbp-mccfr     = { path = "../mccfr", default-features = false }
+rbp-depth     = { path = "../depth" }
+rbp-hyperparams = { workspace = true }
+rbp-world     = { path = "../world" }
+rand          = "0.9"

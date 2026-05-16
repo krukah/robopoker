@@ -25,13 +25,15 @@
 //! Constants for all persistent entities: abstractions, blueprints,
 //! metrics, hands, sessions, and more.
 mod check;
+mod measure;
 mod schema;
 mod stage;
 mod traits;
 
 pub use check::*;
-pub use stage::*;
+pub use measure::measure;
 // schema module provides trait impls, no items to re-export
+pub use stage::*;
 pub use traits::*;
 
 use std::sync::Arc;
@@ -50,13 +52,18 @@ use tokio_postgres::Client;
 ///
 /// Panics if `DB_URL` is not set or if connection fails.
 pub async fn db() -> Arc<Client> {
-    log::info!("connecting to database");
+    tracing::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
     let ref url = std::env::var("DB_URL").expect("DB_URL must be set");
     let (client, connection) = tokio_postgres::connect(url, tls)
         .await
         .expect("database connection failed");
-    tokio::spawn(connection);
+    tokio::spawn(async move {
+        connection
+            .await
+            .inspect_err(|e| tracing::error!(error = %e, "database connection lost"))
+            .ok();
+    });
     client
         .execute("SET client_min_messages TO WARNING", &[])
         .await
@@ -67,45 +74,145 @@ pub async fn db() -> Arc<Client> {
 /// PostgreSQL error type alias.
 pub type PgErr = tokio_postgres::Error;
 
-/// Table for abstraction bucket definitions.
-#[rustfmt::skip]
-pub const ABSTRACTION: &str = "abstraction";
-/// Table for game actions (bets, raises, folds, etc.).
-#[rustfmt::skip]
-pub const ACTIONS:     &str = "actions";
-/// Table for MCCFR blueprint strategies (policy + regret).
-#[rustfmt::skip]
-pub const BLUEPRINT:   &str = "blueprint";
-/// Table for training epoch metadata and progress.
-#[rustfmt::skip]
-pub const EPOCH:       &str = "epoch";
-/// Table for completed poker hands.
-#[rustfmt::skip]
-pub const HANDS:       &str = "hands";
-/// Table for isomorphism → abstraction mappings.
-#[rustfmt::skip]
-pub const ISOMORPHISM: &str = "isomorphism";
-/// Table for pairwise abstraction distances.
-#[rustfmt::skip]
-pub const METRIC:      &str = "metric";
-/// Table for player participation in hands.
-#[rustfmt::skip]
-pub const PLAYERS:     &str = "players";
-/// Table for active game rooms.
-#[rustfmt::skip]
-pub const ROOMS:       &str = "rooms";
-/// Table for user authentication sessions.
-#[rustfmt::skip]
-pub const SESSIONS:    &str = "sessions";
-/// Table for staging data during bulk operations.
-#[rustfmt::skip]
-pub const STAGING:     &str = "staging";
-/// Table for street-specific metadata.
-#[rustfmt::skip]
-pub const STREET:      &str = "street";
-/// Table for abstraction transition probabilities.
-#[rustfmt::skip]
-pub const TRANSITIONS: &str = "transitions";
-/// Table for registered user accounts.
-#[rustfmt::skip]
-pub const USERS:       &str = "users";
+use std::sync::OnceLock;
+
+/// Leaks a formatted string to obtain a `&'static str`.
+/// Used once per table name at process startup.
+pub fn leaked(s: String) -> &'static str {
+    Box::leak(s.into_boxed_str())
+}
+
+/// Shared table: name is always the literal default. Emits both a runtime
+/// accessor `$name()` and a compile-time constant `[<$name:upper>]` so the
+/// literal can be embedded in `const_format::concatcp!` for static SQL.
+macro_rules! table {
+    ($name:ident, $default:expr, $doc:expr) => {
+        paste::paste! {
+            #[doc = $doc]
+            pub const [<$name:upper>]: &str = $default;
+
+            #[doc = $doc]
+            pub fn $name() -> &'static str {
+                [<$name:upper>]
+            }
+        }
+    };
+}
+/// Version-dependent table: name gets a suffix from the active abstraction version.
+macro_rules! versioned {
+    ($name:ident, $default:expr, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name() -> &'static str {
+            static T: OnceLock<&str> = OnceLock::<&str>::new();
+            *T.get_or_init(|| leaked(format!("{}{}", $default, rbp_core::version().suffix())))
+        }
+    };
+}
+/// Training-derived table: name gets the regime suffix (bet sizing)
+/// plus the version suffix (abstraction family). Every table that
+/// depends on a trained strategy is keyed by InfoIds that embed
+/// abstraction IDs from the active version, so regime-only suffixing
+/// would let two versions corrupt each other's strategy data.
+///
+/// Regime suffix comes first; V0's empty version suffix preserves
+/// existing `<base>_<regime>` table names.
+macro_rules! regime {
+    ($name:ident, $default:expr, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name() -> &'static str {
+            static T: OnceLock<&str> = OnceLock::<&str>::new();
+            *T.get_or_init(|| {
+                leaked(format!(
+                    "{}{}{}",
+                    $default,
+                    rbp_core::regime().suffix(),
+                    rbp_core::version().suffix(),
+                ))
+            })
+        }
+    };
+}
+
+// ── Shared tables (game-level / auth — invariant under V × R) ───────────────
+table!(
+    actions,
+    "actions",
+    "Table for game actions (bets, raises, folds, etc.)."
+);
+table!(hands, "hands", "Table for completed poker hands.");
+table!(
+    players,
+    "players",
+    "Table for player participation in hands."
+);
+table!(rooms, "rooms", "Table for active game rooms.");
+table!(
+    sessions,
+    "sessions",
+    "Table for user authentication sessions."
+);
+table!(
+    users,
+    "users",
+    "Table for registered user accounts and identity."
+);
+
+// ── Versioned tables (abstraction-derived — depend on K-means params) ───────
+versioned!(
+    abstraction,
+    "abstraction",
+    "Table for abstraction bucket definitions."
+);
+versioned!(
+    isomorphism,
+    "isomorphism",
+    "Table for isomorphism → abstraction mappings."
+);
+versioned!(street, "street", "Table for street-specific metadata.");
+versioned!(
+    transitions,
+    "transitions",
+    "Table for abstraction transition probabilities."
+);
+versioned!(
+    metric,
+    "metric",
+    "Table for pairwise abstraction distances. Versioned because EMD \
+     between buckets is meaningless across abstractions with different K."
+);
+
+// ── Regime × Version tables (training-derived — depend on K-means × bet sizing)
+regime!(
+    blueprint,
+    "blueprint",
+    "Table for MCCFR blueprint strategies (policy + regret). Keyed by \
+     (Edge, InfoId) where InfoId embeds abstraction IDs from the active \
+     version, hence the version suffix in addition to regime."
+);
+regime!(
+    epoch,
+    "epoch",
+    "Table for training epoch metadata and progress."
+);
+regime!(
+    snapshot,
+    "snapshot",
+    "Table for training snapshot statistics (append-only)."
+);
+regime!(
+    staging,
+    "staging",
+    "Buffer for COPY-IN during periodic blueprint flushes. Suffixed so \
+     concurrent training runs at different (regime, version) tuples \
+     don't corrupt each other's bulk-write buffers."
+);
+regime!(
+    fingerprint,
+    "fingerprint",
+    "Single-row table storing a textual fingerprint of regime-affecting \
+     constants at the time the blueprint was first written. Trainer \
+     panics on startup if the live fingerprint differs from the stored \
+     one — guards against silent drift in bet-sizing / stack constants \
+     that share Edge serialization but change action semantics. Run \
+     `--mode reset` to clear and re-fingerprint."
+);

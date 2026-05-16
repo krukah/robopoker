@@ -53,9 +53,11 @@ impl HandIterator {
         let  h = /* 001_000 <- 001_000 || 000_000 */ b | g;
         h
     }
+
     fn look(&self) -> Hand {
         Hand::from(self.next)
     }
+
     fn advance(&mut self) {
         loop {
             self.next = self.permute();
@@ -68,6 +70,7 @@ impl HandIterator {
 
 impl Iterator for HandIterator {
     type Item = Hand;
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.exhausted() {
             None
@@ -77,6 +80,7 @@ impl Iterator for HandIterator {
             Some(last)
         }
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         let combos = self.combinations();
         (combos, Some(combos))

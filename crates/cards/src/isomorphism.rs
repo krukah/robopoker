@@ -72,10 +72,10 @@ impl std::fmt::Display for Isomorphism {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::hand::Hand;
     use super::super::permutation::Permutation;
     use super::super::street::Street;
+    use super::*;
 
     #[test]
     fn false_positives() {

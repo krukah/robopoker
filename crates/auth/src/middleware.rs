@@ -1,10 +1,10 @@
 use super::*;
-use rbp_core::ID;
-use rbp_database::*;
 use actix_web::FromRequest;
 use actix_web::HttpRequest;
 use actix_web::dev::Payload;
 use actix_web::web;
+use rbp_core::ID;
+use rbp_database::*;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ impl Auth {
     pub fn claims(&self) -> &Claims {
         &self.0
     }
+
     pub fn user(&self) -> ID<Member> {
         self.0.user()
     }
@@ -26,6 +27,7 @@ impl Auth {
 impl FromRequest for Auth {
     type Error = actix_web::Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let token_service = req.app_data::<web::Data<Crypto>>().cloned();
         let db = req.app_data::<web::Data<Arc<Client>>>().cloned();
@@ -53,11 +55,9 @@ impl FromRequest for Auth {
             let db = db.ok_or_else(|| {
                 actix_web::error::ErrorInternalServerError("database not configured")
             })?;
+            let sql = format!("SELECT revoked FROM {} WHERE id = $1", sessions());
             let row = db
-                .query_opt(
-                    const_format::concatcp!("SELECT revoked FROM ", SESSIONS, " WHERE id = $1"),
-                    &[&claims.session().inner()],
-                )
+                .query_opt(&sql, &[&claims.session().inner()])
                 .await
                 .map_err(|_| actix_web::error::ErrorInternalServerError("database error"))?
                 .ok_or_else(|| actix_web::error::ErrorUnauthorized("session not found"))?;
@@ -77,6 +77,7 @@ impl MaybeAuth {
     pub fn claims(&self) -> Option<&Claims> {
         self.0.as_ref()
     }
+
     pub fn user(&self) -> Option<ID<Member>> {
         self.0.as_ref().map(|c| c.user())
     }
@@ -85,6 +86,7 @@ impl MaybeAuth {
 impl FromRequest for MaybeAuth {
     type Error = actix_web::Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
         let auth_future = Auth::from_request(req, payload);
         Box::pin(async move {

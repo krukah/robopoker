@@ -3,6 +3,7 @@ use rayon::prelude::*;
 use rbp_cards::*;
 use rbp_gameplay::*;
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 /// Mapping from hand isomorphisms to abstraction buckets.
 ///
@@ -76,58 +77,78 @@ impl Lookup {
 #[cfg(feature = "database")]
 impl rbp_database::Schema for Lookup {
     fn name() -> &'static str {
-        rbp_database::ISOMORPHISM
+        rbp_database::isomorphism()
     }
+
     fn columns() -> &'static [tokio_postgres::types::Type] {
         &[
             tokio_postgres::types::Type::INT8, // obs (observation/isomorphism)
             tokio_postgres::types::Type::INT2, // abs (abstraction bucket)
         ]
     }
+
     fn creates() -> &'static str {
-        const_format::concatcp!(
-            "CREATE TABLE IF NOT EXISTS ",
-            rbp_database::ISOMORPHISM,
-            " (
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "CREATE TABLE IF NOT EXISTS {} (
                 obs      BIGINT   NOT NULL,
                 abs      SMALLINT NOT NULL,
                 equity   REAL,
                 position INT DEFAULT 0
-            );"
-        )
+            );",
+                rbp_database::isomorphism()
+            ))
+        })
     }
+
     fn indices() -> &'static str {
-        const_format::concatcp!(
-            "CREATE INDEX IF NOT EXISTS idx_isomorphism_obs ON ",
-            rbp_database::ISOMORPHISM,
-            " (obs);
-             CREATE INDEX IF NOT EXISTS idx_isomorphism_abs ON ",
-            rbp_database::ISOMORPHISM,
-            " (abs);
-             CREATE INDEX IF NOT EXISTS idx_isomorphism_abs_pos ON ",
-            rbp_database::ISOMORPHISM,
-            " (abs, position);"
-        )
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        let t = rbp_database::isomorphism();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "WITH numbered AS (
+                SELECT obs, (ROW_NUMBER() OVER (PARTITION BY abs ORDER BY obs) - 1)::INTEGER AS pos
+                FROM {t}
+             )
+             UPDATE {t} i SET position = n.pos
+             FROM numbered n
+             WHERE i.obs = n.obs AND i.position IS DISTINCT FROM n.pos;
+             CREATE INDEX IF NOT EXISTS idx_{t}_obs ON {t} (obs);
+             CREATE INDEX IF NOT EXISTS idx_{t}_abs ON {t} (abs);
+             CREATE INDEX IF NOT EXISTS idx_{t}_abs_pos ON {t} (abs, position);
+             CREATE INDEX IF NOT EXISTS idx_{t}_abs_obs ON {t} (abs, obs);
+             CREATE INDEX IF NOT EXISTS idx_{t}_covering ON {t} (obs, abs) INCLUDE (abs);"
+            ))
+        })
     }
+
     fn copy() -> &'static str {
-        const_format::concatcp!(
-            "COPY ",
-            rbp_database::ISOMORPHISM,
-            " (obs, abs) FROM STDIN BINARY"
-        )
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "COPY {} (obs, abs) FROM STDIN BINARY",
+                rbp_database::isomorphism()
+            ))
+        })
     }
+
     fn truncates() -> &'static str {
-        const_format::concatcp!("TRUNCATE TABLE ", rbp_database::ISOMORPHISM, ";")
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::isomorphism()))
+        })
     }
+
     fn freeze() -> &'static str {
-        const_format::concatcp!(
-            "ALTER TABLE ",
-            rbp_database::ISOMORPHISM,
-            " SET (fillfactor = 100);
-             ALTER TABLE ",
-            rbp_database::ISOMORPHISM,
-            " SET (autovacuum_enabled = false);"
-        )
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        let t = rbp_database::isomorphism();
+        *SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "ALTER TABLE {t} SET (fillfactor = 100);
+             ALTER TABLE {t} SET (autovacuum_enabled = false);"
+            ))
+        })
     }
 }
 
@@ -135,6 +156,7 @@ impl rbp_database::Schema for Lookup {
 #[async_trait::async_trait]
 impl rbp_database::Streamable for Lookup {
     type Row = (i64, i16);
+
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
         self.0
             .into_iter()
@@ -145,9 +167,9 @@ impl rbp_database::Streamable for Lookup {
 #[cfg(feature = "database")]
 impl Lookup {
     pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
-        let sql = const_format::concatcp!("SELECT obs, abs FROM ", rbp_database::ISOMORPHISM);
+        let sql = format!("SELECT obs, abs FROM {}", rbp_database::isomorphism());
         client
-            .query(sql, &[])
+            .query(&sql, &[])
             .await
             .expect("query")
             .into_iter()

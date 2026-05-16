@@ -17,9 +17,7 @@ use std::hash::Hash;
 /// Packed as `[8 bits street][8 bits index]` in a `u16`, enabling efficient
 /// storage and comparison.
 #[derive(Default, Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
-#[cfg_attr(feature = "client", derive(serde::Serialize, serde::Deserialize))]
 pub struct Abstraction(u16);
-
 
 const INDEX_MASK: u16 = 0xFF;
 const STREET_BITS: u16 = 8;
@@ -59,9 +57,11 @@ impl Abstraction {
             (0..street.k()).map(|i| Self::from((street, i))).collect()
         }
     }
+
     fn quantize(p: Probability) -> usize {
         (p * Self::N as Probability).round() as usize
     }
+
     fn floatize(q: usize) -> Probability {
         q as Probability / Self::N as Probability
     }
@@ -136,6 +136,7 @@ impl From<i16> for Abstraction {
 /// string isomorphism
 impl TryFrom<&str> for Abstraction {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let s = s.trim().split(Self::DELIM).collect::<Vec<_>>();
         let a = s
@@ -170,6 +171,24 @@ impl Arbitrary for Abstraction {
         let k = street.k();
         let i = rand::random_range(0..k);
         Abstraction::from((street, i))
+    }
+}
+
+impl serde::Serialize for Abstraction {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Abstraction {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
     }
 }
 
@@ -220,4 +239,3 @@ mod tests {
         }
     }
 }
-

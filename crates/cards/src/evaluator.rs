@@ -69,18 +69,23 @@ impl Evaluator {
             }
         }
     }
+
     fn find_1_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(1).map(Ranking::HighCard)
     }
+
     fn find_2_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(2).map(Ranking::OnePair) // unreachable
     }
+
     fn find_3_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(3).map(Ranking::ThreeOAK)
     }
+
     fn find_4_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(4).map(Ranking::FourOAK)
     }
+
     fn find_2_oak_2_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(2).and_then(|hi| {
             self.find_rank_of_n_oak_skip(2, Some(hi))
@@ -88,15 +93,18 @@ impl Evaluator {
                 .or_else(|| Some(Ranking::OnePair(hi))) // this makes OnePair unreachable
         })
     }
+
     fn find_3_oak_2_oak(&self) -> Option<Ranking> {
         self.find_rank_of_n_oak(3).and_then(|triple| {
             self.find_rank_of_n_oak_skip(2, Some(triple))
                 .map(|paired| Ranking::FullHouse(triple, paired))
         })
     }
+
     fn find_straight(&self) -> Option<Ranking> {
         self.find_rank_of_straight(self.0).map(Ranking::Straight)
     }
+
     fn find_flush(&self) -> Option<Ranking> {
         self.find_suit_of_flush().map(|suit| {
             let bits = u16::from(self.0.of(&suit));
@@ -104,12 +112,14 @@ impl Evaluator {
             Ranking::Flush(rank)
         })
     }
+
     fn find_straight_flush(&self) -> Option<Ranking> {
         self.find_suit_of_flush().and_then(|suit| {
             self.find_rank_of_straight_flush(suit)
                 .map(Ranking::StraightFlush)
         })
     }
+
     fn find_rank_of_straight(&self, hand: Hand) -> Option<Rank> {
         let wheel = WHEEL;
         let ranks = u16::from(hand);
@@ -126,10 +136,12 @@ impl Evaluator {
             None
         }
     }
+
     fn find_rank_of_straight_flush(&self, suit: Suit) -> Option<Rank> {
         let hand = self.0.of(&suit);
         self.find_rank_of_straight(hand)
     }
+
     fn find_suit_of_flush(&self) -> Option<Suit> {
         Suit::all()
             .map(|s| u64::from(s))
@@ -139,9 +151,11 @@ impl Evaluator {
             .position(|&n| n >= 5)
             .map(|i| Suit::from(i as u8))
     }
+
     fn find_rank_of_n_oak(&self, n: usize) -> Option<Rank> {
         self.find_rank_of_n_oak_skip(n, None)
     }
+
     fn find_rank_of_n_oak_skip(&self, n: usize, skip: Option<Rank>) -> Option<Rank> {
         let mut high = u64::from(Rank::Ace) << 4;
         while high > 0 {
@@ -168,8 +182,8 @@ impl Evaluator {
 #[cfg(test)]
 #[cfg(not(feature = "shortdeck"))]
 mod tests {
-    use super::*;
     use super::super::hand::Hand;
+    use super::*;
 
     #[rustfmt::skip]
     #[test]
@@ -348,8 +362,8 @@ mod tests {
 #[cfg(test)]
 #[cfg(feature = "shortdeck")]
 mod tests_shortdeck {
-    use super::*;
     use super::super::hand::Hand;
+    use super::*;
     #[test]
     fn shortdeck_wheel_straight() {
         let eval = Evaluator::from(Hand::try_from("6s 7h 8d 9c As").unwrap());

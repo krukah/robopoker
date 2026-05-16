@@ -15,12 +15,11 @@ pub use quadratic::*;
 use rbp_core::*;
 
 /// Trait for strategy weighting schemes in CFR.
-pub trait PolicySchedule {
-    /// Updates policy value with the new policy weight.
-    fn learn(accumulated: Probability, immediate: Probability, epoch: usize) -> Probability;
-    /// Returns the discount factor for accumulated policies.
-    fn discount(epoch: usize) -> Probability {
-        let _ = epoch;
-        1.0
+pub trait WeightSchedule {
+    /// Raw accumulation before epsilon floor.
+    fn accumulate(accumulated: Probability, immediate: Probability, epoch: usize) -> Probability;
+    /// Floored accumulation (never below EPSILON).
+    fn learn(accumulated: Probability, immediate: Probability, epoch: usize) -> Probability {
+        Self::accumulate(accumulated, immediate, epoch).max(EPSILON)
     }
 }

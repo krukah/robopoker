@@ -38,7 +38,7 @@ impl TestLayer {
             kmeans: std::array::from_fn(|_| Histogram::empty(Street::Rive)),
             bounds: vec![Bounds::default(); N].try_into().expect("N"),
         };
-        km.kmeans = km.init_kmeans();
+        km.kmeans = km.init_centroids();
         km.bounds = km.init_bounds();
         km
     }
@@ -48,7 +48,8 @@ impl TestLayer {
         let next = vec![Bounds::default(); N].try_into().expect("N");
         let ref mut curr = self.bounds;
         let ref mut prev = std::mem::replace(curr, next);
-        self.kmeans = Elkan::step_elkan(self, prev);
+        let (kmeans, _drifts) = Elkan::step_elkan(self, prev);
+        self.kmeans = kmeans;
         let ref mut curr = self.bounds;
         std::mem::swap(prev, curr);
         self.heal();
@@ -72,24 +73,31 @@ impl TestLayer {
 
 impl Elkan<K, N> for TestLayer {
     type P = Histogram;
+
     fn t(&self) -> usize {
         Self::t()
     }
+
     fn points(&self) -> &[Histogram; N] {
         &self.points
     }
-    fn kmeans(&self) -> &[Histogram; K] {
+
+    fn centroids(&self) -> &[Histogram; K] {
         &self.kmeans
     }
-    fn bounds(&self) -> &[Bounds<K>; N] {
+
+    fn boundings(&self) -> &[Bounds<K>; N] {
         &self.bounds
     }
+
     fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
         self.metric.emd(h1, h2)
     }
-    fn init_kmeans(&self) -> [Histogram; K] {
+
+    fn init_centroids(&self) -> [Histogram; K] {
         std::array::from_fn(|_| Histogram::from(Observation::from(Street::Turn)))
     }
+
     fn rms(&self) -> Energy {
         use rayon::prelude::*;
         ((0..N)

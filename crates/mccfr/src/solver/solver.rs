@@ -2,10 +2,10 @@ use crate::*;
 
 /// The core training orchestrator for Monte Carlo CFR.
 ///
-/// Given access to a [`Profile`] and [`Encoder`], the `Solver` trait encapsulates:
+/// Given access to a [`CfrSolution`] and [`CfrEncoder`], the `Solver` trait encapsulates:
 /// 1. Sampling game trees via [`SamplingScheme`]
-/// 2. Computing [`Counterfactual`] regret vectors at each [`InfoSet`]
-/// 3. Updating the [`Profile`] after each batch using [`RegretSchedule`] and [`PolicySchedule`]
+/// 2. Computing [`Decisions`] regret vectors at each [`InfoSet`]
+/// 3. Updating the [`CfrSolution`] after each batch using [`RegretSchedule`] and [`WeightSchedule`]
 ///
 /// # Associated Types
 ///
@@ -24,17 +24,17 @@ use crate::*;
 ///   (external sampling, targeted, uniform)
 /// - **`R: RegretSchedule`** — How regrets are accumulated and discounted
 ///   (vanilla, CFR+, discounted, linear)
-/// - **`W: PolicySchedule`** — How strategy weights are accumulated across iterations
+/// - **`W: WeightSchedule`** — How strategy weights are accumulated across iterations
 ///   (constant, linear, quadratic, exponential)
 ///
 /// # Implementation
 ///
 /// To implement a solver for a new game:
 /// 1. Define game types (Turn, Edge, Game, Info, Public, Secret)
-/// 2. Implement [`Encoder`] and [`Profile`] for your game
+/// 2. Implement [`CfrEncoder`] and [`CfrSolution`] for your game
 /// 3. Select algorithm variants via `S`, `R`, `W`
 /// 4. Implement required methods: `batch_size`, `tree_count`, `encoder`, `profile`,
-///    `advance`, `mut_regret`, `mut_weight`
+///    `storage`, `advance`
 pub trait Solver: Send + Sync {
     /// Turn type classifying nodes as player, chance, or terminal.
     type T: CfrTurn;
@@ -51,20 +51,20 @@ pub trait Solver: Send + Sync {
     /// Private state observable only by the acting player.
     type Y: CfrSecret;
 
-    /// Profile type storing accumulated regrets and strategy weights.
-    type P: Profile<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
-    /// Encoder type mapping game states to information set identifiers.
-    type N: Encoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
+    /// Solution type storing accumulated regrets and strategy weights.
+    type P: CfrSolution<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
+    /// CfrEncoder type mapping game states to information set identifiers.
+    type N: CfrEncoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
     /// Strategy weighting scheme for average strategy computation.
     ///
     /// Controls how each iteration's strategy contributes to the final average.
     /// Common choices: [`LinearWeight`] (emphasize recent), [`ConstantWeight`] (uniform).
-    type W: PolicySchedule;
+    type W: WeightSchedule;
     /// Regret update scheme determining CFR variant.
     ///
     /// Controls how regrets are accumulated and discounted over time.
-    /// Common choices: [`DiscountedRegret`] (DCFR), [`FlooredRegret`] (CFR+).
+    /// Common choices: [`LinearRegret`] (Pluribus / LCFR), [`DiscountedRegret`] (DCFR), [`FlooredRegret`] (CFR+).
     type R: RegretSchedule;
     /// Sampling strategy for tree traversal.
     ///
@@ -76,10 +76,6 @@ pub trait Solver: Send + Sync {
     /// Batching allows for more efficient parallel processing of game trees.
     fn batch_size() -> usize;
 
-    /// Returns the total number of game trees to generate and process during training.
-    /// More trees generally leads to better strategy convergence.
-    fn tree_count() -> usize;
-
     /// Returns a reference to the encoder used for converting game states to information sets.
     /// The encoder handles abstraction of game states into trainable buckets.
     fn encoder(&self) -> &Self::N;
@@ -88,47 +84,35 @@ pub trait Solver: Send + Sync {
     /// The profile tracks accumulated regrets and policies that define the strategy.
     fn profile(&self) -> &Self::P;
 
+    /// Returns a mutable reference to the strategy profile for write access.
+    fn storage(&mut self) -> &mut Self::P;
+
     /// Advances the trainer state to the next iteration
     fn advance(&mut self);
 
-    /// Returns a mutable reference to the accumulated regret value for the given infoset/edge pair.
-    /// This allows updating the historical regret values that drive strategy updates.
-    fn mut_regret(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-
-    /// Returns a mutable reference to the accumulated weight for the given infoset/edge pair.
-    /// This allows updating the historical action weights that determine the final strategy.
-    fn mut_weight(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-
-    /// Returns a mutable reference to the accumulated expected value for the given infoset/edge pair.
-    /// This enables frontier evaluation for depth-limited search and safe subgame solving.
-    fn mut_evalue(&mut self, info: &Self::I, edge: &Self::E) -> &mut f32;
-
-    /// Returns a mutable reference to the encounter counts for the given infoset/edge pair.
-    /// This tracks how many times each info-action pair has been visited during training.
-    fn mut_counts(&mut self, info: &Self::I, edge: &Self::E) -> &mut u32;
-
     // automatic implementation
 
-    /// Run one training iteration: batch, update regrets/weight/evalue/count, advance epoch.
+    /// Run one training iteration: batch, update regrets/weight/payoff/count, advance epoch.
     fn step(&mut self) {
         for ref update in self.batch() {
             self.update_regret(update);
             self.update_weight(update);
-            self.update_evalue(update);
-            self.update_counts(update);
+            self.update_payoff(update);
+            self.update_visits(update);
         }
         self.profile().metrics().inspect(|m| m.inc_epoch());
         self.advance();
     }
 
-    /// Updates trainer state based on regret vectors from Profile.
-    /// NOTE: For production training, use trainer binary which provides unified
-    /// interrupt handling and postgres integration.
-    fn solve(mut self) -> Self
+    /// Runs training for a fixed number of game trees.
+    ///
+    /// Processes `trees / batch_size` batches, checking for interrupt between each.
+    /// For production training, use the trainer binary which calls `step()` directly.
+    fn solve(mut self, trees: usize) -> Self
     where
         Self: Sized,
     {
-        for _ in 0..Self::iterations() {
+        for _ in 0..trees / Self::batch_size() {
             self.step();
             if rbp_core::interrupted() {
                 break;
@@ -137,84 +121,91 @@ pub trait Solver: Send + Sync {
         self
     }
 
+    /// Run `step()` in a tight loop until `deadline` expires.
+    ///
+    /// Returns the iteration count and wall-clock elapsed. Used by realtime
+    /// / subgame players to burn a fixed wall-clock budget on Monte Carlo
+    /// CFR refinement; per-decision regret is harvested at the relevant
+    /// infoset via [`Harvest`](super::Harvest).
+    fn spend(&mut self, deadline: std::time::Duration) -> (usize, std::time::Duration) {
+        let t0 = std::time::Instant::now();
+        let iterations = std::iter::repeat(())
+            .take_while(|_| t0.elapsed() < deadline)
+            .map(|_| self.step())
+            .count();
+        (iterations, t0.elapsed())
+    }
+
     /// Updates accumulated regret values for each edge in the counterfactual.
     ///
     /// Uses the [`RegretSchedule`] associated type (`R`) to determine how regrets
     /// are updated (vanilla, CFR+, discounted, linear).
-    fn update_regret(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
+    fn update_regret(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
         let ref vector = cfr.regret;
-        let epoch = self.profile().epochs();
+        let epoch = self.profile().t();
         for (edge, delta) in vector.iter() {
             let total = self.profile().cum_regret(info, edge);
             let updated = Self::R::gain(total, *delta, epoch);
-            *self.mut_regret(info, edge) = updated;
+            *self.storage().mut_regret(info, edge) = updated;
         }
     }
 
     /// Updates accumulated weights for each edge in the counterfactual.
     ///
-    /// Uses the [`PolicySchedule`] associated type (`W`) to determine how weights
+    /// Uses the [`WeightSchedule`] associated type (`W`) to determine how weights
     /// are accumulated (constant, linear, quadratic, exponential).
-    fn update_weight(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
+    fn update_weight(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
         let ref vector = cfr.policy;
-        let epoch = self.profile().epochs();
+        let epoch = self.profile().t();
         for (edge, delta) in vector.iter() {
             let total = self.profile().cum_weight(info, edge);
             let updated = Self::W::learn(total, *delta, epoch);
-            *self.mut_weight(info, edge) = updated;
+            *self.storage().mut_weight(info, edge) = updated;
         }
     }
 
-    /// Updates accumulated expected values for each edge in the counterfactual.
+    /// Updates the incremental mean expected value for each edge in the counterfactual.
     ///
-    /// Stores the infoset-level EV (V(I)) redundantly for each action.
-    /// This denormalization enables quick frontier evaluation without a
-    /// separate infoset->EV map. Uses [`PolicySchedule`] (`W`) for weighting.
-    fn update_evalue(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
+    /// Stores the infoset-level EV (V(I)) redundantly for each action as a running
+    /// mean. Uses Welford's incremental update: ev += (sample - ev) / (n + 1).
+    /// Runs before `update_visits`, so `cum_visits` holds the pre-increment count.
+    fn update_payoff(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
-        let ref info_ev = cfr.evalue;
-        for ref edge in info.choices() {
-            *self.mut_evalue(info, edge) = *info_ev;
+        for edge in info.choices() {
+            let n = self.profile().cum_visits(info, &edge);
+            let ev = self.storage().mut_payoff(info, &edge);
+            *ev += (cfr.payoff - *ev) / (n + 1) as rbp_core::Utility;
         }
     }
 
-    /// Updates encounter counts for each edge in the counterfactual.
+    /// Updates encounter visits for each edge in the counterfactual.
     ///
-    /// Increments the counts for each action in the infoset to track
+    /// Increments the visits for each action in the infoset to track
     /// how many times this info-action pair has been visited during training.
-    fn update_counts(&mut self, cfr: &Counterfactual<Self::E, Self::I>) {
+    fn update_visits(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
-        for ref edge in info.choices() {
-            *self.mut_counts(info, edge) += 1;
+        for edge in info.choices() {
+            *self.storage().mut_visits(info, &edge) += 1;
         }
     }
 
-    /// Computes external (opponent) reach probability along a linear edge path.
+    /// Product of external (opponent) strategy probabilities along a linear edge path.
     ///
-    /// Iterates through edges, tracking game state. For each opponent decision
-    /// point (not hero, not chance), looks up the averaged policy probability.
-    /// Returns the product of all opponent action probabilities.
+    /// Uses [`CfrEncoder::replay`] to walk **downward** from root, yielding the same
+    /// `(T, I, E)` triples as [`Node::decisions`] (which walks **upward**).
     fn external_reach(
         &self,
-        node: Self::G,
+        root: Self::G,
         hero: Self::T,
         path: impl IntoIterator<Item = Self::E>,
     ) -> rbp_core::Probability {
-        path.into_iter()
-            .scan((node, Vec::new()), |(game, past), edge| {
-                past.push(edge);
-                *game = game.apply(edge);
-                match game.turn() {
-                    t if t == hero => None,
-                    t if t.is_chance() => None,
-                    _ => {
-                        let info = self.encoder().resume(past, game);
-                        Some(self.profile().averaged(&info, &edge))
-                    }
-                }
-            })
+        self.encoder()
+            .replay(root, path)
+            .into_iter()
+            .filter(|(t, _, _)| t.is_opponent(&hero))
+            .map(|(_, ref i, ref e)| self.profile().averaged_policy(i, e))
             .product()
     }
 
@@ -231,67 +222,107 @@ pub trait Solver: Send + Sync {
     /// it would be nice to do a kind of parameter sweep across
     /// these different settings. i should checkout if criterion supports.
     #[cfg(feature = "server")]
-    fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
+    fn batch(&self) -> Vec<Decisions<Self::E, Self::I>> {
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
         // @parallelizable
         (0..Self::batch_size())
-            // specify batch size in trait implementation
             .into_par_iter()
-            .map(|_| self.tree())
-            .collect::<Vec<_>>()
-            // partition tree into infosets, and only update one player regrets at a time
-            .into_iter()
-            .inspect(|t| self.inc_nodes(t.n()))
-            .flat_map(|tree| tree.partition().into_values())
-            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
-            .inspect(|_| self.inc_infos(1))
-            .collect::<Vec<_>>()
-            // calculate CFR vectors (policy, regret) for each infoset
+            .map(|i| self.tree(i))
+            .map(|t| self.record_tree(t))
+            .collect::<Vec<Tree<_, _, _, _>>>()
             .into_par_iter()
-            .map(|infoset| self.counterfactual(infoset))
-            .collect::<Vec<_>>()
+            .flat_map(|tree| self.record_infosets(tree))
+            .collect::<Vec<InfoSet<_, _, _, _>>>()
+            .into_par_iter()
+            .map(|infoset| self.update_vector(infoset))
+            .collect()
     }
     #[cfg(not(feature = "server"))]
-    fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
+    fn batch(&self) -> Vec<Decisions<Self::E, Self::I>> {
         (0..Self::batch_size())
-            // specify batch size in trait implementation
             .into_iter()
-            .map(|_| self.tree())
-            .inspect(|t| self.inc_nodes(t.n()))
-            // partition tree into infosets, and only update one player regrets at a time
-            .flat_map(|tree| tree.partition().into_values())
-            .filter(|infoset| infoset.head().game().turn() == self.profile().walker())
-            .inspect(|_| self.inc_infos(1))
-            // calculate CFR vectors (policy, regret) for each infoset
-            .map(|infoset| self.counterfactual(infoset))
-            .collect::<Vec<_>>()
+            .map(|i| self.tree(i))
+            .map(|tree| self.record_tree(tree))
+            .flat_map(|tree| self.record_infosets(tree))
+            .map(|infoset| self.update_vector(infoset))
+            .collect()
+    }
+
+    /// Records tree-level telemetry (`tree_size`, increments node
+    /// counter) and returns the tree unchanged so it can be partitioned
+    /// downstream.
+    fn record_tree(
+        &self,
+        tree: Tree<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Tree<Self::T, Self::E, Self::G, Self::I> {
+        let n = tree.n();
+        self.inc_nodes(n);
+        #[cfg(feature = "server")]
+        rbp_telemetry::metrics::get()
+            .mccfr_tree_size
+            .record(n as u64, &[]);
+        tree
+    }
+
+    /// Partitions a tree by infoset, applies the walker filter, and
+    /// records infoset-level telemetry (`infosets_per_tree` per tree,
+    /// `infoset_size` per infoset, increments infoset counter).
+    fn record_infosets(
+        &self,
+        tree: Tree<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Vec<InfoSet<Self::T, Self::E, Self::G, Self::I>> {
+        let walker = self.profile().walker();
+        let infosets: Vec<_> = tree
+            .partition()
+            .into_values()
+            .filter(|infoset| infoset.head().game().turn() == walker)
+            .collect();
+        #[cfg(feature = "server")]
+        {
+            let tel = rbp_telemetry::metrics::get();
+            tel.mccfr_infosets_per_tree
+                .record(infosets.len() as u64, &[]);
+            infosets.iter().for_each(|infoset| {
+                tel.mccfr_infoset_size.record(infoset.size() as u64, &[]);
+                self.inc_infos(1);
+            });
+        }
+        #[cfg(not(feature = "server"))]
+        infosets.iter().for_each(|_| self.inc_infos(1));
+        infosets
     }
 
     /// Generate a single tree by growing it DFS from root to leaves.
     ///
-    /// Delegates to [`TreeBuilder`] for lazy, iterator-based construction.
-    fn tree(&self) -> Tree<Self::T, Self::E, Self::G, Self::I> {
+    /// `id` is the tree's batch-local identifier (see [`Tree::new`]);
+    /// `Solver::batch` passes the par_iter index so trees within a batch
+    /// get distinct, deterministic ids.
+    fn tree(&self, id: usize) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         TreeBuilder::<_, _, _, _, _, _, Self::S>::new(
             self.encoder(), // embed raw game nodes into abstract Self::Game
             self.profile(), // the current state of the strategy solution
             self.root(),    // root node of the tree
+            id,
         )
         .build()
     }
 
     /// generate the update vectors at a given [InfoSet]. specifically,
     /// calculate the regret and policy for each action, along with
-    /// the associated [Info] and expected value
-    fn counterfactual(
+    /// the associated [Info] and expected value.
+    /// uses fused regret_and_value to avoid redundant tree traversal.
+    fn update_vector(
         &self,
         ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Counterfactual<Self::E, Self::I> {
-        Counterfactual {
+    ) -> Decisions<Self::E, Self::I> {
+        let policy = self.profile().policy_vector(infoset);
+        let (regret, payoff) = self.profile().dfs(infoset);
+        Decisions {
             info: infoset.info(),
-            regret: self.profile().regret_vector(infoset),
-            policy: self.profile().policy_vector(infoset),
-            evalue: self.profile().infoset_value(infoset),
+            regret,
+            policy,
+            payoff,
         }
     }
 
@@ -304,18 +335,12 @@ pub trait Solver: Send + Sync {
         Self::G::root()
     }
 
-    /// Returns the number of iterations to run the training loop.
-    /// This is calculated as the total number of trees to generate
-    /// divided by the batch size.
-    fn iterations() -> usize {
-        Self::tree_count() / Self::batch_size()
-    }
-
     // metrics logging helpers
 
     fn inc_nodes(&self, n: usize) {
         self.profile().metrics().inspect(|m| m.add_nodes(n));
     }
+
     fn inc_infos(&self, n: usize) {
         self.profile().metrics().inspect(|m| m.add_infos(n));
     }
@@ -326,9 +351,26 @@ pub trait Solver: Send + Sync {
             TreeBuilder::<_, _, _, _, _, _, VanillaSampling>::new(
                 self.encoder(),
                 self.profile(),
-                self.root(),
+                Self::G::exploitability_root(),
+                0,
             )
             .build(),
         )
+    }
+    /// Monte Carlo exploitability estimate.
+    ///
+    /// Samples `n` random deals, builds a VanillaSampling tree for each,
+    /// computes per-deal exploitability, and averages. Each call to
+    /// `exploitability_root()` generates a fresh random deal, so the
+    /// average converges to the true expected exploitability at O(1/√n).
+    ///
+    /// Returns an upper bound on true exploitability because per-deal
+    /// best response is less constrained than per-info-set best response
+    /// (Jensen's inequality).
+    fn mxploitability(&self, n: usize) -> rbp_core::Utility {
+        (0..n)
+            .map(|_| self.exploitability())
+            .sum::<rbp_core::Utility>()
+            / n as rbp_core::Utility
     }
 }

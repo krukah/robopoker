@@ -63,6 +63,45 @@ impl Observation {
     pub fn simulate(&self, _: usize) -> Probability {
         todo!("run out some number of simulations and take equity as average")
     }
+    /// Equity of `self` vs a specific villain pocket on the shared board.
+    ///
+    /// Runs `trials` Monte Carlo runouts from the current street through
+    /// the river. Returns wins (ties = 0.5) divided by trials. On the
+    /// river the comparison is exact (no remaining cards) and `trials`
+    /// is ignored.
+    pub fn equity_vs(&self, villain: Hand, trials: usize) -> Probability {
+        use rand::seq::IndexedRandom;
+        let need = 5 - self.public.size();
+        if need == 0 {
+            let h = Strength::from(Hand::from(*self));
+            let v = Strength::from(Hand::add(villain, self.public));
+            return match h.cmp(&v) {
+                Ordering::Greater => 1.0,
+                Ordering::Equal => 0.5,
+                Ordering::Less => 0.0,
+            };
+        }
+        let used = Hand::add(Hand::from(*self), villain);
+        let candidates: Vec<Card> = used.complement().collect();
+        let ref mut rng = rand::rng();
+        let total: Probability = (0..trials)
+            .map(|_| {
+                let runout: Hand = candidates
+                    .choose_multiple(rng, need)
+                    .copied()
+                    .collect();
+                let board = Hand::add(self.public, runout);
+                let h = Strength::from(Hand::add(self.pocket, board));
+                let v = Strength::from(Hand::add(villain, board));
+                match h.cmp(&v) {
+                    Ordering::Greater => 1.0,
+                    Ordering::Equal => 0.5,
+                    Ordering::Less => 0.0,
+                }
+            })
+            .sum();
+        total / trials as Probability
+    }
     /// Infers the street from total observed cards.
     pub fn street(&self) -> Street {
         Street::from(self.public().size() + self.pocket().size())
@@ -75,10 +114,12 @@ impl Observation {
     pub fn public(&self) -> &Hand {
         &self.public
     }
-    /// Iterates over all possible opponent observations.
+    /// Iterates over all possible opponent observations (uniform prior).
     ///
-    /// Returns observations with the same board but different hole cards,
-    /// excluding any cards already visible to hero. For river, this yields
+    /// Returns observations sharing this board but with different hole cards,
+    /// drawn from cards not in hero's pocket or on the board. Each observation
+    /// has equal implicit weight, forming the uniform prior over villain
+    /// holdings conditioned on hero's information. For river, this yields
     /// C(45, 2) = 990 possible opponent holdings.
     pub fn opponents(&self) -> impl Iterator<Item = Self> + '_ {
         HandIterator::from((2, Hand::from(*self)))
@@ -178,6 +219,7 @@ impl From<(Hole, Board)> for Observation {
 /// losing ordering information, reduce revealed cards into Observation
 impl TryFrom<Vec<Card>> for Observation {
     type Error = String;
+
     fn try_from(cards: Vec<Card>) -> Result<Self, Self::Error> {
         if cards
             .iter()
@@ -200,6 +242,7 @@ impl TryFrom<Vec<Card>> for Observation {
 
 impl TryFrom<&str> for Observation {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let (pocket, public) = s
             .trim()
@@ -230,6 +273,24 @@ impl std::fmt::Display for Observation {
     }
 }
 
+impl serde::Serialize for Observation {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Observation {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,6 +301,11 @@ mod tests {
         assert!(random == Observation::from(i64::from(random)));
     }
 
+    /// Counts assume the full 52-card deck. Under `shortdeck` the
+    /// candidate pool drops to 36, so C(45,2) becomes C(29,2) etc. —
+    /// gated rather than parameterized since the nearby HandIterator
+    /// tests follow the same convention.
+    #[cfg(not(feature = "shortdeck"))]
     #[test]
     fn opponents_count() {
         assert_eq!(Observation::from(Street::Rive).opponents().count(), 0990); // C(45, 2)

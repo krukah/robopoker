@@ -43,6 +43,18 @@ impl<const K: usize, const N: usize> Layer<K, N> {
     fn abstraction(&self, i: usize) -> Abstraction {
         Abstraction::from((self.street(), i))
     }
+
+    /// Mutable handle to the bounds buffer — used by `Kmeans` to
+    /// swap a placeholder in / the worked-on buffer back out.
+    pub(crate) fn boundings_mut(&mut self) -> &mut Box<[Bounds<K>; N]> {
+        &mut self.bounds
+    }
+
+    /// Mutable handle to the centroids — used by `Kmeans` to
+    /// install each iteration's new centroid array.
+    pub(crate) fn centroids_mut(&mut self) -> &mut Box<[Histogram; K]> {
+        &mut self.kmeans
+    }
 }
 
 impl<const K: usize, const N: usize> Layer<K, N> {
@@ -51,7 +63,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
     where
         Self: Elkan<K, N>,
     {
-        log::info!("{:<32}{:<32}", "calculating lookup", self.street());
+        tracing::info!(street = %self.street(), phase = crate::telemetry::phase::LOOKUP, "kmeans phase begin");
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
         match self.street() {
@@ -71,7 +83,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
 
     /// Computes pairwise distances between all learned cluster centroids.
     fn metric(&self) -> Metric {
-        log::info!("{:<32}{:<32}", "calculating metric", self.street());
+        tracing::info!(street = %self.street(), phase = crate::telemetry::phase::METRIC, "kmeans phase begin");
         let mut metric = BTreeMap::new();
         for (i, x) in self.kmeans.iter().enumerate() {
             for (j, y) in self.kmeans.iter().enumerate() {
@@ -90,8 +102,8 @@ impl<const K: usize, const N: usize> Layer<K, N> {
 
     /// Builds the transition future hand mapping abstractions to their centroid histograms.
     fn future(&self) -> Future {
-        log::info!("{:<32}{:<32}", "calculating transitions", self.street());
-        self.kmeans()
+        tracing::info!(street = %self.street(), phase = crate::telemetry::phase::FUTURE, "kmeans phase begin");
+        self.centroids()
             .iter()
             .cloned()
             .enumerate()
@@ -106,18 +118,18 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
     type P = Histogram;
 
     fn t(&self) -> usize {
-        self.street().t()
+        crate::KmeansHyperParams::DEFAULT.iterations(self.street())
     }
 
     fn points(&self) -> &[Histogram; N] {
         &self.points
     }
 
-    fn kmeans(&self) -> &[Histogram; K] {
+    fn centroids(&self) -> &[Histogram; K] {
         &self.kmeans
     }
 
-    fn bounds(&self) -> &[Bounds<K>; N] {
+    fn boundings(&self) -> &[Bounds<K>; N] {
         &self.bounds
     }
 
@@ -125,7 +137,7 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
         self.metric.emd(h1, h2)
     }
 
-    fn init_kmeans(&self) -> [Histogram; K] {
+    fn init_centroids(&self) -> [Histogram; K] {
         use rand::SeedableRng;
         use rand::distr::Distribution;
         use rand::distr::weighted::WeightedIndex;
@@ -169,30 +181,73 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
     }
 }
 
+impl<const K: usize, const N: usize> Layer<K, N> {
+    /// Drive Elkan iterations as a stream of `Step<K>`. See `Kmeans`
+    /// for the fluent builder API: `.with_bound(t)`, `.with_threshold(thr)`.
+    pub fn kmeans(&mut self) -> Kmeans<'_, K, N> {
+        Kmeans::new(self)
+    }
+}
+
 #[cfg(feature = "database")]
 impl<const K: usize, const N: usize> Layer<K, N> {
     /// Internal clustering implementation for a specific K, N.
     pub async fn cluster(street: Street, client: &tokio_postgres::Client) -> Artifacts {
-        log::info!("{:<32}{:<32}", "kmeans hydrating", street);
+        use crate::telemetry::phase;
+        use std::time::Instant;
+        let tel = crate::telemetry::ClusterTelemetry::new(street);
+        tracing::info!(%street, phase = phase::HYDRATE, "kmeans phase begin");
+        let t = Instant::now();
         let mut layer = Self::build(street, client).await;
-        log::info!("{:<32}{:<32}", "kmeans initializing", street);
-        layer.kmeans = Box::new(layer.init_kmeans());
-        log::info!("{:<32}{:<32}", "kmeans bounding", street);
+        tel.phase(t, phase::HYDRATE);
+        tracing::info!(%street, phase = phase::INIT, "kmeans phase begin");
+        let t = Instant::now();
+        layer.kmeans = Box::new(layer.init_centroids());
+        tel.phase(t, phase::INIT);
+        tracing::info!(%street, phase = phase::BOUND, "kmeans phase begin");
+        let t = Instant::now();
         layer.bounds = layer.init_bounds();
-        log::info!("{:<32}{:<32}", "kmeans iterating", street);
-        let new = vec![Bounds::default(); N].try_into().expect("N");
-        let ref mut old = layer.bounds;
-        let ref mut old = std::mem::replace(old, new);
-        for i in 0..layer.t() {
-            layer.kmeans = Box::new(layer.step_elkan(old));
-            log::debug!("{:3}", i);
+        tel.phase(t, phase::BOUND);
+        tracing::info!(%street, phase = phase::ITERATE, "kmeans phase begin");
+        let iterate = Instant::now();
+        let total = layer.t();
+        let iter = layer
+            .kmeans()
+            .with_bound(total)
+            .with_threshold(crate::KmeansHyperParams::DEFAULT.drift_threshold());
+        // `for step in iter` consumes iter; Kmeans::Drop fires at the
+        // end of the for-loop's implicit scope, releasing the &mut
+        // borrow on layer before the downstream lookup/metric/future.
+        for step in iter {
+            tel.iteration(step.elapsed, &step.drift);
+            tel.reassignment(step.reassignment);
+            tel.cluster_sizes(&step.sizes);
+            tracing::debug!(
+                %street,
+                iter = step.index,
+                drift_max = step.drift.max(),
+                reassignment = step.reassignment,
+                "kmeans step",
+            );
+            step.frozen
+                .then_some(step.index)
+                .inspect(|_| tel.early_terminated())
+                .inspect(|i| tracing::info!(%street, iter = i + 1, total, "kmeans freeze"));
         }
-        let ref mut new = layer.bounds;
-        std::mem::swap(new, old);
+        tel.phase(iterate, phase::ITERATE);
+        let t = Instant::now();
+        let lookup = layer.lookup();
+        tel.phase(t, phase::LOOKUP);
+        let t = Instant::now();
+        let metric = layer.metric();
+        tel.phase(t, phase::METRIC);
+        let t = Instant::now();
+        let future = layer.future();
+        tel.phase(t, phase::FUTURE);
         Artifacts {
-            lookup: layer.lookup(),
-            metric: layer.metric(),
-            future: layer.future(),
+            lookup,
+            metric,
+            future,
         }
     }
     /// Build layer dependencies from postgres (not disk).

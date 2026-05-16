@@ -1,9 +1,7 @@
 use rbp_core::Arbitrary;
 use rbp_core::KMEANS_EQTY_CLUSTER_COUNT;
 use rbp_core::KMEANS_FLOP_CLUSTER_COUNT;
-use rbp_core::KMEANS_FLOP_TRAINING_ITERATIONS;
 use rbp_core::KMEANS_TURN_CLUSTER_COUNT;
-use rbp_core::KMEANS_TURN_TRAINING_ITERATIONS;
 
 /// The four betting rounds in Texas Hold'em.
 ///
@@ -78,15 +76,6 @@ impl Street {
             Self::Rive => 0,
         }
     }
-    /// Number of k-means training iterations.
-    pub const fn t(&self) -> usize {
-        match self {
-            Self::Pref => 0,
-            Self::Flop => KMEANS_FLOP_TRAINING_ITERATIONS,
-            Self::Turn => KMEANS_TURN_TRAINING_ITERATIONS,
-            Self::Rive => 0,
-        }
-    }
     /// Total cards visible to a player (hole + board).
     pub const fn n_observed(&self) -> usize {
         match self {
@@ -157,6 +146,7 @@ impl Street {
             Self::Rive => panic!("terminal"),
         }
     }
+
     pub const fn n_isomorphisms(&self) -> usize {
         match self {
             Self::Pref => 0__________81,
@@ -165,6 +155,7 @@ impl Street {
             Self::Rive => 0___7_723_728,
         }
     }
+
     pub const fn n_observations(&self) -> usize {
         match self {
             Self::Pref => 0_________630,
@@ -239,6 +230,7 @@ impl std::fmt::Display for Street {
 
 impl TryFrom<&str> for Street {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.to_uppercase().chars().next() {
             Some('P') => Ok(Self::Pref),
@@ -247,6 +239,24 @@ impl TryFrom<&str> for Street {
             Some('R') => Ok(Self::Rive),
             _ => Err("invalid street character".to_string()),
         }
+    }
+}
+
+impl serde::Serialize for Street {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Street {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
     }
 }
 
@@ -260,4 +270,3 @@ impl Arbitrary for Street {
         }
     }
 }
-

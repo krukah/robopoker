@@ -10,7 +10,7 @@ use super::ranking::Ranking;
 /// first, then kickers.
 ///
 /// Constructed from a [`Hand`] by running the [`Evaluator`].
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct Strength {
     value: Ranking,
     pub kicks: Kickers,
@@ -30,6 +30,11 @@ impl From<Evaluator> for Strength {
     }
 }
 
+impl Strength {
+    pub fn ranking(&self) -> Ranking {
+        self.value
+    }
+}
 impl From<(Ranking, Kickers)> for Strength {
     fn from((value, kicks): (Ranking, Kickers)) -> Self {
         Self { value, kicks }

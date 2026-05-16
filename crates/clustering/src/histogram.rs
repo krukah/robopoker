@@ -23,7 +23,7 @@ use rbp_transport::*;
 /// 2. Cluster histograms using k-means with EMD distance
 /// 3. Each cluster centroid becomes an abstraction bucket
 /// 4. The histogram→bucket mapping becomes the [`Lookup`] table
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Histogram {
     Pref(BinsPref),
     Flop(BinsFlop),
@@ -107,6 +107,7 @@ impl Histogram {
         self.merge(other);
         self
     }
+
     pub fn merge(&mut self, other: &Self) {
         match (self, other) {
             (Histogram::Pref(a), Histogram::Pref(b)) => a.merge(b),
@@ -182,6 +183,7 @@ where
     D: Iterator<Item = Abstraction>,
 {
     type Item = Abstraction;
+
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             IterWrap::Pref(i) => i.next(),
@@ -212,9 +214,11 @@ impl From<Vec<Abstraction>> for Histogram {
 
 impl Density for Histogram {
     type Support = ClusterAbs;
+
     fn density(&self, x: &Self::Support) -> f32 {
         Histogram::density(self, x)
     }
+
     fn support(&self) -> impl Iterator<Item = Self::Support> {
         Histogram::support(self).map(ClusterAbs::from)
     }

@@ -5,7 +5,7 @@ use rbp_gameplay::*;
 use rbp_mccfr::*;
 
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
-type NlheBranch = Branch<NlheEdge, NlheGame>;
+type NlheLeaf = Leaf<NlheEdge, NlheGame>;
 
 /// NLHE information set: what a player knows at a decision point.
 ///
@@ -17,13 +17,13 @@ type NlheBranch = Branch<NlheEdge, NlheGame>;
 /// | Context | Recall | Info | Secret |
 /// |---------|--------|------|--------|
 /// | Training (CFR) | Perfect (both hands) | NlheInfo | Abstraction bucket |
-/// | Inference (play) | Partial (hero only) | NlheInfo | Abstraction bucket |
+/// | Inference (play) | Witness (hero only) | NlheInfo | Abstraction bucket |
 ///
 /// At **training time**, `Perfect` recall knows both players' cards but CFR
 /// only indexes by `NlheInfo` (public edges + private bucket). The secret
 /// bucket is derived from the acting player's observation at each node.
 ///
-/// At **inference time**, `Partial` recall knows only hero's cards. Strategy
+/// At **inference time**, `Witness` recall knows only hero's cards. Strategy
 /// lookup uses `NlheInfo::from((&recall, abstraction))` for policy queries.
 ///
 /// # Action Space
@@ -32,38 +32,51 @@ type NlheBranch = Branch<NlheEdge, NlheGame>;
 /// identity. Two states with identical `(subgame, secret)` but different available
 /// actions are distinct info sets. This handles cases where different game tree
 /// paths lead to different betting options due to stack constraints.
+/// Newtype over [`Composite<NlhePublic, NlheSecret>`] so NLHE-specific
+/// inherent methods (`street`, `aggression`, `subgame`, `choices`, `bucket`)
+/// and `From` constructors live in this crate. Conceptually identical to
+/// `Composite<NlhePublic, NlheSecret>`; the newtype exists only because
+/// the orphan rule prevents this crate from hanging those methods and
+/// impls on the generic `Composite` from `rbp_mccfr`.
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct NlheInfo {
-    public: NlhePublic,
-    secret: NlheSecret,
-}
+pub struct NlheInfo(Composite<NlhePublic, NlheSecret>);
 
 impl NlheInfo {
+    fn new(public: NlhePublic, secret: NlheSecret) -> Self {
+        Self(Composite::new(public, secret))
+    }
     /// The current street (from secret's embedded street).
     pub fn street(&self) -> Street {
-        self.secret.street()
+        self.0.secret().street()
     }
     /// Depth (trailing aggressive actions) for bet sizing grid selection.
     pub fn aggression(&self) -> usize {
-        self.public.aggression()
+        self.0.public().aggression()
     }
     /// Current-street historical edges as a Path.
     pub fn subgame(&self) -> Path {
-        self.public.subgame()
+        self.0.public().subgame()
     }
     /// Available actions at this decision point.
     pub fn choices(&self) -> Path {
-        self.public.choices().into_iter().map(Edge::from).collect()
+        CfrPublic::choices(&self.0.public())
+            .map(Edge::from)
+            .collect()
     }
     /// The private abstraction bucket.
     pub fn bucket(&self) -> NlheSecret {
-        self.secret
+        self.0.secret()
+    }
+    /// Pot-geometry bucket at this decision point. Discrete SPR axis on
+    /// the infoset key — see [`Geometry`].
+    pub fn geometry(&self) -> Geometry {
+        self.0.public().geometry()
     }
 }
 
 impl std::fmt::Display for NlheInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}>>{}", self.street(), self.subgame(), self.secret)
+        write!(f, "{}:{}>>{}", self.street(), self.subgame(), self.bucket())
     }
 }
 
@@ -72,11 +85,13 @@ impl CfrInfo for NlheInfo {
     type Y = NlheSecret;
     type E = NlheEdge;
     type T = NlheTurn;
+
     fn public(&self) -> Self::X {
-        self.public
+        self.0.public()
     }
+
     fn secret(&self) -> Self::Y {
-        self.secret
+        self.0.secret()
     }
 }
 
@@ -90,27 +105,35 @@ where
 {
     /// Constructs info set for policy lookup from recall history.
     ///
-    /// Critically, `choices()` is computed from the **edge-derived** game state,
-    /// not the actual action-derived state. This ensures consistency with training:
-    /// - Training applies edges via `CfrGame::apply(edge)` → canonical chip amounts
-    /// - Inference must do the same, even if user took off-grid bet sizes
+    /// `choices()` is computed from the live recall state (`recall.head()`).
+    /// An earlier design replayed the recall's edge sequence through
+    /// `CfrGame::apply` and used the resulting canonical state, on the
+    /// rationale that training also applies edges with snapped chip amounts
+    /// — so canonical chip amounts ought to match the trained infosets even
+    /// for off-grid recall actions.
     ///
-    /// Without this, a custom raise of 19 chips (snapped to "1:2 pot" edge) would
-    /// produce different `choices()` than training, causing info set mismatch.
+    /// In practice, accumulated chip drift on aggressive multi-raise lines
+    /// occasionally pushes the canonical replay into a different game-tree
+    /// turn than the live recall (e.g. `1:1` pot-bet sizing on a snap-
+    /// inflated pot lands canonical all-in while recall still has stack).
+    /// The resulting infoset has `choices = [Edge::Draw]`, which crashes the
+    /// blueprint's regret default. Using `recall.head()` keeps the lookup
+    /// on the actual decision point at the cost of (rare) info-set
+    /// mismatch when canonical and recall disagree on the legal-action mask
+    /// at a non-divergent turn.
     fn from((recall, secret): (&R, Abstraction)) -> Self {
+        let head = recall.head();
         let subgame = recall.subgame();
-        let canonical = recall
-            .history()
-            .into_iter()
-            .map(NlheEdge::from)
-            .fold(NlheGame::root(), |game, edge| CfrGame::apply(&game, edge));
-        let choices = Game::from(canonical).choices(subgame.aggression());
-        Self::from((subgame, secret, choices))
+        let choices = head.choices(subgame.aggression());
+        let geometry = Geometry::from_game(&head);
+        Self::from((subgame, secret, choices, geometry))
     }
 }
 
-impl From<(Path, Abstraction, Path)> for NlheInfo {
-    fn from((subgame, secret, choices): (Path, Abstraction, Path)) -> Self {
+impl From<(Path, Abstraction, Path, Geometry)> for NlheInfo {
+    fn from(
+        (subgame, secret, choices, geometry): (Path, Abstraction, Path, Geometry),
+    ) -> Self {
         let subgame = subgame
             .into_iter()
             .rev()
@@ -119,20 +142,20 @@ impl From<(Path, Abstraction, Path)> for NlheInfo {
             .into_iter()
             .rev()
             .collect::<Path>();
-        let public = NlhePublic::new(subgame, choices);
+        let public = NlhePublic::new(subgame, choices, geometry);
         let secret = NlheSecret::from(secret);
-        Self { public, secret }
+        Self::new(public, secret)
     }
 }
 
-impl From<(&NlheEncoder, &NlheTree, NlheBranch)> for NlheInfo {
+impl From<(&NlheEncoder, &NlheTree, NlheLeaf)> for NlheInfo {
     /// Creates an info set during tree expansion.
-    /// Used by [`Encoder::info`] to compute info for new tree nodes.
+    /// Used by [`CfrEncoder::info`] to compute info for new tree nodes.
     /// Collects current-street edge history from tree traversal.
-    fn from((encoder, tree, leaf): (&NlheEncoder, &NlheTree, NlheBranch)) -> Self {
+    fn from((encoder, tree, leaf): (&NlheEncoder, &NlheTree, NlheLeaf)) -> Self {
         let (edge, ref game, head) = leaf;
         let subgame = std::iter::once(edge)
-            .chain(tree.at(head).map(|(_, e)| e))
+            .chain(tree.at(head).map(|a| a.edge()))
             .take_while(|e| e.is_choice())
             .collect::<Vec<_>>()
             .into_iter()
@@ -141,8 +164,9 @@ impl From<(&NlheEncoder, &NlheTree, NlheBranch)> for NlheInfo {
             .collect::<Path>();
         let choices = game.as_ref().choices(subgame.aggression());
         let secret = NlheSecret::from(encoder.abstraction(&game.sweat()));
-        let public = NlhePublic::new(subgame, choices);
-        Self { public, secret }
+        let geometry = Geometry::from_game(game.as_ref());
+        let public = NlhePublic::new(subgame, choices, geometry);
+        Self::new(public, secret)
     }
 }
 
@@ -183,10 +207,8 @@ impl Arbitrary for NlheInfo {
             let choices = game.choices(subgame.aggression());
             if choices.length() > 0 {
                 let secret = NlheSecret::from(Abstraction::from(street));
-                return Self {
-                    public: NlhePublic::new(subgame, choices),
-                    secret,
-                };
+                let geometry = Geometry::from_game(&game);
+                return Self::new(NlhePublic::new(subgame, choices, geometry), secret);
             }
         }
     }
@@ -295,11 +317,13 @@ mod tests {
             Path::from(i64::from(info.subgame())),
             Abstraction::from(i16::from(info.bucket())),
             Path::from(i64::from(info.choices())),
+            info.geometry(),
         ));
         assert_eq!(info.subgame(), deserialized.subgame());
         assert_eq!(info.street(), deserialized.street());
         assert_eq!(info.bucket(), deserialized.bucket());
         assert_eq!(info.choices(), deserialized.choices());
+        assert_eq!(info.geometry(), deserialized.geometry());
     }
 
     #[test]
@@ -336,14 +360,19 @@ mod tests {
 
     #[test]
     fn from_path_filters_to_current_street() {
-        let recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
+        let recall = Witness::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
             .push(Action::Call(1))
             .push(Action::Check)
             .push(Action::Raise(3))
             .push(Action::Raise(9))
             .push(Action::Call(6));
         let abs = Abstraction::random();
-        let info = NlheInfo::from((recall.subgame(), abs, recall.choices()));
+        let info = NlheInfo::from((
+            recall.subgame(),
+            abs,
+            recall.choices(),
+            Geometry::from_game(&recall.head()),
+        ));
         let current = recall
             .subgame()
             .into_iter()
@@ -355,30 +384,21 @@ mod tests {
         assert_eq!(info.subgame(), current);
     }
     #[test]
-    fn canonical_choices_from_edge_reconstruction() {
-        // Build a recall with arbitrary (potentially off-grid) actions
-        let recall = Partial::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
+    fn choices_from_live_recall_state() {
+        // Build a recall with arbitrary (potentially off-grid) actions.
+        let recall = Witness::from((Turn::Choice(0), Arrangement::from(Street::Flop)))
             .push(Action::Call(1))
             .push(Action::Check)
-            .push(Action::Raise(7)); // arbitrary amount
-        // The actual game state has pot reflecting 7-chip raise
-        let _actual_game = recall.head();
-        // The canonical game state reconstructs from edges
-        let canonical_game = recall
-            .history()
-            .into_iter()
-            .map(NlheEdge::from)
-            .fold(NlheGame::root(), |g, e| CfrGame::apply(&g, e));
-        let canonical_choices = Game::from(canonical_game).choices(recall.subgame().aggression());
-        // NlheInfo should use canonical choices, not actual choices
+            .push(Action::Raise(7));
+        // NlheInfo::from should use recall.head().choices(...), not a
+        // canonical edge-replay. See the doc comment on the impl.
+        let live_choices = recall.head().choices(recall.subgame().aggression());
         let abs = Abstraction::from(Street::Flop);
         let info = NlheInfo::from((&recall, abs));
         assert_eq!(
             info.choices(),
-            canonical_choices,
-            "info should use canonical choices"
+            live_choices,
+            "info should reflect live recall state",
         );
-        // Only assert actual != canonical if they're actually different (depends on snapping)
-        // The key assertion is that info uses canonical, regardless of whether they differ
     }
 }

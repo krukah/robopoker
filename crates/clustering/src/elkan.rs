@@ -18,7 +18,7 @@ use rbp_core::Energy;
 ///
 /// - `step_elkan()` — Single iteration with bound maintenance
 /// - `step_naive()` — Reference implementation for verification
-/// - `init_kmeans()` — K-means++ initialization for better convergence
+/// - `init_centroids()` — K-means++ initialization for better convergence
 ///
 /// # Type Parameters
 ///
@@ -30,11 +30,11 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// Returns the data points to cluster.
     fn points(&self) -> &[Self::P; N];
     /// Returns current centroid positions.
-    fn kmeans(&self) -> &[Self::P; K];
+    fn centroids(&self) -> &[Self::P; K];
     /// Returns per-point distance bounds.
-    fn bounds(&self) -> &[Bounds<K>; N];
+    fn boundings(&self) -> &[Bounds<K>; N];
     /// Initializes centroids (typically k-means++).
-    fn init_kmeans(&self) -> [Self::P; K];
+    fn init_centroids(&self) -> [Self::P; K];
     /// Initializes bounds by computing all point-centroid distances.
     fn init_bounds(&self) -> Box<[Bounds<K>; N]> {
         (0..N)
@@ -53,12 +53,12 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
         &self.points()[i]
     }
     /// Gets centroid by index.
-    fn kmean(&self, j: usize) -> &Self::P {
-        &self.kmeans()[j]
+    fn centroid(&self, j: usize) -> &Self::P {
+        &self.centroids()[j]
     }
     /// Gets bounds for point by index.
     fn bound(&self, i: usize) -> &Bounds<K> {
-        &self.bounds()[i]
+        &self.boundings()[i]
     }
     /// Number of iterations to run.
     fn t(&self) -> usize {
@@ -67,7 +67,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// Finds nearest centroid for a point (O(K) distance calls).
     fn neighbor(&self, i: usize) -> (usize, f32) {
         let ref x = self.point(i);
-        self.kmeans()
+        self.centroids()
             .iter()
             .enumerate()
             .map(|(i, c)| (i, self.distance(c, x)))
@@ -92,7 +92,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
         if i == j {
             0.0
         } else {
-            self.distance(self.kmean(i), self.kmean(j))
+            self.distance(self.centroid(i), self.centroid(j))
         }
     }
 
@@ -109,33 +109,42 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     }
 
     /// Computes how far each centroid moved this iteration.
-    fn drift(&self, news: &[Self::P]) -> [f32; K] {
-        std::array::from_fn(|i| self.distance(&news[i], self.kmean(i)))
+    fn drift(&self, news: &[Self::P]) -> Drift<K> {
+        Drift::from_array(std::array::from_fn(|i| {
+            self.distance(&news[i], self.centroid(i))
+        }))
     }
 
     /// Refreshes stale upper bound before triangle inequality check.
     fn refresh(&self, b: &mut Bounds<K>, x: &Self::P) {
         if b.stale() {
-            b.refresh(self.distance(x, self.kmean(b.j())));
+            b.refresh(self.distance(x, self.centroid(b.j())));
         }
     }
     /// Updates bound for point-centroid pair, possibly reassigning.
     fn rebound(&self, b: &mut Bounds<K>, j: usize, metric: &[[f32; K]; K], x: &Self::P) {
         if b.has_shifted(metric, j) {
-            b.witness(self.distance(x, self.kmean(j)), j);
+            b.witness(self.distance(x, self.centroid(j)), j);
         }
     }
 
-    /// Computes new centroids from current assignments.
-    fn centroids(&self, bounds: &[Bounds<K>]) -> [Self::P; K] {
-        std::array::from_fn(|j| {
-            bounds
-                .iter()
-                .enumerate()
-                .filter(|(_, b)| b.j() == j)
-                .map(|(i, _)| self.point(i))
-                .fold(self.kmean(j).identity(), Self::P::absorb)
-        })
+    /// Computes new centroids from current assignments. Each new
+    /// centroid is the result of absorbing every point assigned to
+    /// that cluster into the running mean.
+    fn recompute(&self, bounds: &[Bounds<K>]) -> [Self::P; K] {
+        use rayon::prelude::*;
+        let centroids = (0..K)
+            .into_par_iter()
+            .map(|j| {
+                bounds
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.j() == j)
+                    .map(|(i, _)| self.point(i))
+                    .fold(self.centroid(j).identity(), Self::P::absorb)
+            })
+            .collect::<Vec<_>>();
+        std::array::from_fn(|j| centroids[j])
     }
 
     /// Executes one Elkan iteration with bound maintenance.
@@ -144,7 +153,10 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// 2. Compute new centroids from updated assignments
     /// 3. Compute drift (how far each centroid moved)
     /// 4. Shift bounds to account for centroid movement
-    fn step_elkan(&self, bounds: &mut [Bounds<K>; N]) -> [Self::P; K] {
+    ///
+    /// Returns `(new_centroids, drift)` so the caller can report convergence
+    /// telemetry without recomputing distances.
+    fn step_elkan(&self, bounds: &mut [Bounds<K>; N]) -> ([Self::P; K], Drift<K>) {
         let pairwise = self.pairwises();
         let midpoints = self.midpoints(&pairwise);
         bounds
@@ -155,15 +167,15 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
                 self.refresh(b, self.point(i));
                 (0..K).for_each(|j| self.rebound(b, j, &pairwise, self.point(i)))
             });
-        let kmeans = self.centroids(bounds);
-        let drifts = self.drift(&kmeans);
-        bounds.par_iter_mut().for_each(|b| b.update(&drifts));
-        kmeans
+        let centroids = self.recompute(bounds);
+        let drift = self.drift(&centroids);
+        bounds.par_iter_mut().for_each(|b| b.update(&drift));
+        (centroids, drift)
     }
 
     /// Executes one naive iteration (for verification/benchmarking).
     fn step_naive(&self) -> [Self::P; K] {
-        let identity = self.kmean(0).identity();
+        let identity = self.centroid(0).identity();
         let assignments = (0..N)
             .into_par_iter()
             .map(|i| self.neighbor(i).0)
@@ -178,17 +190,25 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
         })
     }
 
-    /// Computes root-mean-square error (convergence metric).
-    fn rms(&self) -> Energy {
-        (self
-            .bounds()
+    /// Computes root-mean-square error against an explicit bounds buffer.
+    /// Pulled out of `rms()` so callers that own the bounds (e.g. an
+    /// in-progress iteration that has swapped it out of the layer) can
+    /// still report convergence.
+    fn rms_with(&self, bounds: &[Bounds<K>; N]) -> Energy {
+        (bounds
             .par_iter()
             .enumerate()
-            .map(|(i, b)| self.distance(self.point(i), self.kmean(b.j())))
+            .map(|(i, b)| self.distance(self.point(i), self.centroid(b.j())))
             .map(|d| d * d)
             .sum::<Energy>()
             / N as Energy)
             .sqrt()
+    }
+
+    /// Computes root-mean-square error using the layer's own bounds.
+    /// Convenience wrapper around `rms_with(self.bounds())`.
+    fn rms(&self) -> Energy {
+        self.rms_with(self.boundings())
     }
 }
 
@@ -256,7 +276,7 @@ mod tests {
             elkan.step();
             naive.naive();
             assert_eq!(elkan.rms(), naive.rms());
-            assert_eq!(elkan.kmeans(), naive.kmeans());
+            assert_eq!(elkan.centroids(), naive.centroids());
         }
     }
 }

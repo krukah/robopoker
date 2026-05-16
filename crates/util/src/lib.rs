@@ -4,8 +4,19 @@
 //! used throughout the robopoker workspace.
 #![allow(dead_code)]
 
-pub mod dto;
-pub use dto::*;
+mod id;
+mod translation;
+mod metrics;
+mod regime;
+mod variant;
+mod version;
+
+pub use id::*;
+pub use translation::*;
+pub use metrics::*;
+pub use regime::*;
+pub use variant::*;
+pub use version::*;
 
 // ============================================================================
 // TYPE ALIASES
@@ -40,150 +51,130 @@ pub trait Unique<T = Self> {
 }
 
 // ============================================================================
-// IDENTITY TYPES
-// ============================================================================
-use std::cmp::Ordering;
-use std::fmt::Debug;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::marker::PhantomData;
-
-/// Generic ID wrapper providing compile-time type safety over uuid::Uuid.
-pub struct ID<T> {
-    inner: uuid::Uuid,
-    marker: PhantomData<T>,
-}
-
-impl<T> ID<T> {
-    pub fn inner(&self) -> uuid::Uuid {
-        self.inner
-    }
-    /// Cast ID<T> to ID<U> while preserving the underlying UUID.
-    /// Useful for converting between marker types.
-    pub fn cast<U>(self) -> ID<U> {
-        ID {
-            inner: self.inner,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T> From<ID<T>> for uuid::Uuid {
-    fn from(id: ID<T>) -> Self {
-        id.inner()
-    }
-}
-impl<T> From<uuid::Uuid> for ID<T> {
-    fn from(inner: uuid::Uuid) -> Self {
-        Self {
-            inner,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T> Default for ID<T> {
-    fn default() -> Self {
-        Self {
-            inner: uuid::Uuid::now_v7(),
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T> Copy for ID<T> {}
-impl<T> Clone for ID<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> Eq for ID<T> {}
-impl<T> PartialEq for ID<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.inner == other.inner
-    }
-}
-
-impl<T> Ord for ID<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.inner.cmp(&other.inner)
-    }
-}
-impl<T> PartialOrd for ID<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<T> Hash for ID<T> {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.inner.hash(state);
-    }
-}
-
-impl<T> Debug for ID<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("ID").field(&self.inner).finish()
-    }
-}
-impl<T> Display for ID<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.inner, f)
-    }
-}
-
-// ============================================================================
 // GAME TREE PARAMETERS
 // ============================================================================
 /// Number of players at the table.
 pub const N: usize = 2;
-/// Starting stack size in big blinds.
-pub const STACK: Chips = 100;
+/// Starting stack size in chips.
+pub const STACK: Chips = 200;
 /// Big blind amount.
 pub const B_BLIND: Chips = 2;
 /// Small blind amount.
 pub const S_BLIND: Chips = 1;
 /// Maximum re-raises per betting round (limits tree width).
 pub const MAX_RAISE_REPEATS: usize = 3;
-/// Maximum tree depth for real-time subgame solving.
-pub const MAX_DEPTH_SUBGAME: usize = 16;
-/// Maximum tree depth for full game abstraction.
-pub const MAX_DEPTH_ALLGAME: usize = 32;
-
-/// Timeout for voluntary card reveal at showdown (seconds).
-pub const SHOWDOWN_TIMEOUT: u64 = 5;
+/// Maximum edges in a packed Path (12 nibbles × 5 bits = 60 bits ≤ 64 bits).
+/// Data-representation limit, not a solver depth knob — the subgame tree's
+/// effective depth is controlled by where [`DepthGame::at_frontier`] fires
+/// (first chance node past origin), not by this constant.
+pub const MAX_PATH_EDGES: usize = 12;
 
 // ============================================================================
-// SINKHORN OPTIMAL TRANSPORT
-// Entropy-regularized EMD for comparing hand distributions across abstractions.
+// BET SIZING ABSTRACTION
+// RAISES is the canonical pool; SIZE_* select subsets via index.
+// To change the game tree, edit RAISES or the index arrays below.
 // ============================================================================
-/// Entropy regularization strength. Lower = closer to true EMD, higher = faster convergence.
-pub const SINKHORN_TEMPERATURE: Entropy = 0.025;
-/// Maximum Sinkhorn-Knopp iterations before stopping.
-pub const SINKHORN_ITERATIONS: usize = 128;
-/// Early stopping threshold on marginal constraint violation.
-pub const SINKHORN_TOLERANCE: Energy = 0.001;
+/// Preflop open sizes in BB units (depth=0 only).
+pub const OPENS: [Chips; 4] = [2, 3, 4, 5];
+/// Canonical raise pool as pot-relative (numerator, denominator) fractions.
+/// Index position = u8 encoding offset from 10. 1:1 with Odds::GRID.
+///   0     1     2     3     4     5     6     7     8     9
+///  25%   33%   50%   67%   75%  100%  125%  150%  200%  300%
+pub const RAISES: [(Chips, Chips); 10] = [
+    (1, 4),
+    (1, 3),
+    (1, 2),
+    (2, 3),
+    (3, 4),
+    (1, 1),
+    (5, 4),
+    (3, 2),
+    (2, 1),
+    (3, 1),
+];
+const fn pick<const N: usize>(idx: [usize; N]) -> [(Chips, Chips); N] {
+    let mut r = [(0, 0); N];
+    let mut i = 0;
+    while i < N {
+        r[i] = RAISES[idx[i]];
+        i += 1;
+    }
+    r
+}
+/// Preflop depth=1: 3-bet sizing (1x, 2x, 3x).
+pub const SIZE_PREF_1: [(Chips, Chips); 3] = pick([5, 8, 9]);
+/// Preflop depth=2+: 4-bet+ (1x, 3x).
+pub const SIZE_PREF_N: [(Chips, Chips); 2] = pick([5, 9]);
+/// Flop depth=0: probe bets (1/4, 1/2, 3/4, 1x, 2x). 75% added in v1
+/// to fill the 50%→100% gap — canonical modern HU 100bb sizing. Live
+/// grid-usage on the prior blueprint had 1:2=11.5% wgt and 1:1=6.6% wgt
+/// adjacent to the gap, both healthy, so 3/4 has room without
+/// cannibalizing either.
+pub const SIZE_FLOP_0: [(Chips, Chips); 5] = pick([0, 2, 4, 5, 8]);
+/// Flop depth=1: after first raise (1/2, 1x). 3:1 retired (avg 1.27% / w 1.00% in v1).
+pub const SIZE_FLOP_1: [(Chips, Chips); 2] = pick([2, 5]);
+/// Flop depth=2+: deep raise wars (1x, 3x).
+pub const SIZE_FLOP_N: [(Chips, Chips); 2] = pick([5, 9]);
+/// Turn depth=0: geometric setup (1/3, 1x, 2x, 3x).
+pub const SIZE_TURN_0: [(Chips, Chips); 4] = pick([1, 5, 8, 9]);
+/// Turn depth=1: value raises (1x, 2x, 3x).
+pub const SIZE_TURN_1: [(Chips, Chips); 3] = pick([5, 8, 9]);
+/// Turn depth=2+: deep raise wars (1x, 3x).
+pub const SIZE_TURN_N: [(Chips, Chips); 2] = pick([5, 9]);
+/// River depth=0: polar bet ladder (2x, 3x). Half-pot (0.15% / 0.15%) and pot
+/// (1.59% / 1.71%) retired in v1 — river collapses to polarized lines.
+pub const SIZE_RIVE_0: [(Chips, Chips); 2] = pick([8, 9]);
+/// River depth=1: raise sizes (1x, 2x, 3x).
+pub const SIZE_RIVE_1: [(Chips, Chips); 3] = pick([5, 8, 9]);
+/// River depth=2+: deep raise wars (1x, 3x).
+pub const SIZE_RIVE_N: [(Chips, Chips); 2] = pick([5, 9]);
 
 // ============================================================================
-// K-MEANS CLUSTERING
-// Hierarchical abstraction: river equity → turn clusters → flop clusters.
+// SLUMBOT BET SIZING (regime-specific)
+// Slumbot UI offers exactly: Min Bet, 1/2 Pot, Pot, All In (+ free-form).
+// Same grid at every street and depth. All pot-relative, no BB opens.
+// Min-raise and all-in are handled by Edge::Raise(min) and Edge::Shove.
 // ============================================================================
-/// Lloyd's algorithm iterations for flop clustering.
-pub const KMEANS_FLOP_TRAINING_ITERATIONS: usize = 20;
-/// Lloyd's algorithm iterations for turn clustering.
-pub const KMEANS_TURN_TRAINING_ITERATIONS: usize = 24;
+/// Slumbot sizing: 1/2 pot, full pot. Uniform across all streets and depths.
+pub const SLUMBOT_SIZES: [(Chips, Chips); 2] = pick([2, 5]);
+
+// GAME PACING (milliseconds)
+/// Delay after hand start before dealing hole cards.
+pub const PACE_DEAL_HOLE: u64 = 0;
+/// Delay after dealing community cards.
+pub const PACE_DEAL_BOARD: u64 = 0;
+/// Simulated think time for bot actions.
+pub const PACE_BOT_THINK: u64 = 0;
+/// Window for voluntary card reveals at showdown.
+pub const PACE_SHOWDOWN: u64 = 0;
+/// Pause between hands (after settlement, before next deal).
+pub const PACE_RESULTS: u64 = 4000;
+/// Timeout for human player decisions.
+pub const PACE_DECISION: u64 = 10000;
+/// Timeout for room startup (waiting for WebSocket connection).
+pub const PACE_ROOM_STARTUP: u64 = 30000;
+/// Maximum consecutive all-timeout hands before ending session.
+pub const MAX_IDLE_HANDS: usize = 3;
+
+// ============================================================================
+// K-MEANS CLUSTERING — STRUCTURAL CONSTANTS
+// Cluster counts are const-generic / array-size; can't be runtime config.
+// Tuning knobs (iterations, RMS interval, drift threshold) live in
+// `KmeansHyperParams` (rbp-clustering); Sinkhorn knobs in
+// `SinkhornHyperParams`.
+// ============================================================================
+/// Maximum clusters per street. Bound by Abstraction's 8-bit index field
+/// (0..=255 = 256 distinct values).
+pub const KMEANS_MAX_CLUSTER_COUNT: usize = 256;
 /// Number of flop buckets (distributions over turn clusters).
-pub const KMEANS_FLOP_CLUSTER_COUNT: usize = 128;
+pub const KMEANS_FLOP_CLUSTER_COUNT: usize = 256;
 /// Number of turn buckets (distributions over river equity).
-pub const KMEANS_TURN_CLUSTER_COUNT: usize = 144;
+pub const KMEANS_TURN_CLUSTER_COUNT: usize = 256;
 /// Equity histogram resolution (0%, 1%, ..., 100%).
 pub const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
+const _: () = assert!(KMEANS_FLOP_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
+const _: () = assert!(KMEANS_TURN_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
+const _: () = assert!(KMEANS_EQTY_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
 
 // ============================================================================
 // MCCFR SOLVER CONFIGURATIONS
@@ -191,113 +182,31 @@ pub const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 // ============================================================================
 /// Asymmetric payoff for RPS test game (rock beats scissors by 2x).
 pub const ASYMMETRIC_UTILITY: f32 = 2.0;
-/// Trees sampled per RPS iteration.
-pub const CFR_BATCH_SIZE_RPS: usize = 1;
-/// Total RPS training budget (small game converges fast).
-pub const CFR_TREE_COUNT_RPS: usize = 8192;
-/// Trees sampled per NLHE iteration (parallelized across threads).
-pub const CFR_BATCH_SIZE_NLHE: usize = 128;
-/// Total NLHE training budget (~268M trees for production).
-pub const CFR_TREE_COUNT_NLHE: usize = 0x10000000;
-/// Trees sampled per river-only iteration (testing/debugging).
-pub const CFR_BATCH_SIZE_RIVER: usize = 16;
-/// River-only training budget (~65K trees).
-pub const CFR_TREE_COUNT_RIVER: usize = 0x10000;
-
-// ============================================================================
-// AVERAGE STRATEGY SAMPLING
-// Biased sampling from cumulative policy: σ'(a) = max(ε, (τ·σ(a) + β) / (Σσ + β))
-// ============================================================================
-/// Temperature (T) - controls sampling entropy via policy scaling.
-/// Higher T → more uniform (exploratory); lower T → more peaked (greedy).
-/// Formula: σ'(a) = max(ε, (σ(a)/T + β) / (Σσ + β)).
-pub const SAMPLING_TEMPERATURE: Entropy = 2.0;
-/// Smoothing (β) - pseudocount added to numerator and denominator.
-/// Higher values pull sampling toward uniform (maximum entropy prior).
-pub const SAMPLING_SMOOTHING: Energy = 0.5;
-/// Epsilon (ε) - minimum sampling probability floor.
-/// Ensures every action retains at least ε probability for exploration.
-pub const SAMPLING_CURIOSITY: Probability = 0.01;
 
 // ============================================================================
 // REGRET MATCHING
-// Convert cumulative regrets to current iteration strategy via normalization.
 // ============================================================================
 /// Minimum policy weight to prevent division by zero in normalization.
-pub const POLICY_MIN: Probability = Probability::MIN_POSITIVE;
-/// Floor for cumulative regret storage (prevents unbounded negative growth).
-pub const REGRET_MIN: Utility = -4e6;
+pub const EPSILON: Probability = Probability::MIN_POSITIVE;
 
 // ============================================================================
-// PROBABILISTIC PRUNING (see `mccfr::PluribusSampling`)
-// Skip sampling low-regret actions to accelerate convergence.
-// PRUNING_THRESHOLD > REGRET_MIN so floored actions can recover via exploration.
+// SUBGAME SOLVING — STRUCTURAL CONSTANTS
+// `N_WORLDS` and `FRONTIER_LEAVES` are const-generic depths in the world /
+// depth solvers; they can't be runtime config. Tuning knobs live in
+// `SubgameHyperParams` (rbp-subgame) and `FrontierHyperParams` (rbp-depth).
 // ============================================================================
-/// Actions with regret below this are candidates for pruning (-300k ≈ 3× max pot).
-pub const PRUNING_THRESHOLD: Utility = -3e5;
-/// Probability of sampling pruned actions anyway (prevents permanent lock-out).
-pub const PRUNING_EXPLORE: Probability = 0.05;
-/// Warm-up epochs before pruning activates (let regrets stabilize first).
-pub const PRUNING_WARMUP: usize = 524288;
-
-// ============================================================================
-// SUBGAME SOLVING (see `mccfr::subgame`)
-// Real-time refinement of blueprint strategy at decision points.
-// ============================================================================
-/// Alternative hands in the gadget game (Pluribus uses 4).
-pub const SUBGAME_ALTS: usize = 4;
-/// CFR iterations for real-time subgame refinement.
-pub const SUBGAME_ITERATIONS: usize = 1024;
-
-// ============================================================================
-// TRAINING INFRASTRUCTURE
-// ============================================================================
-/// Interval between progress log messages during training.
-pub const TRAINING_LOG_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
-
-// ============================================================================
-// REGRET INITIALIZATION BIAS
-// Weights (not probabilities) for initial regret seeding. Only ratios matter.
-// With k=4 raises: p(fold)≈50%, p(raises)≈33%, p(other)≈17%.
-// ============================================================================
-/// Initial regret weight for fold actions (high = fold more often early).
-pub const BIAS_FOLDS: Utility = 3.0;
-/// Initial regret weight for raise actions (low = raise less often early).
-pub const BIAS_RAISE: Utility = 0.5;
-/// Initial regret weight for call/check actions (baseline).
-pub const BIAS_OTHER: Utility = 1.0;
+/// Alternative opponent hand partitions in the subgame (safe subgame solving).
+/// Each world represents a partition of the opponent's range conditioned on
+/// the observed action sequence. More worlds = finer range partitioning =
+/// more robust strategy, but higher memory and slower convergence.
+pub const N_WORLDS: usize = 4;
+/// Number of biased continuation strategies at depth-limited frontiers.
+/// D=4: unmodified blueprint + fold-biased + call-biased + raise-biased (Pluribus).
+pub const FRONTIER_LEAVES: usize = 4;
 
 // ============================================================================
 // RUNTIME UTILITIES
 // ============================================================================
-/// Initialize dual logging (terminal + file) with timestamped log files.
-/// Creates `logs/` directory and writes DEBUG level to file, INFO to terminal.
-#[cfg(feature = "server")]
-pub fn log() {
-    std::fs::create_dir_all("logs").expect("create logs directory");
-    let config = simplelog::ConfigBuilder::new()
-        .set_location_level(log::LevelFilter::Off)
-        .set_target_level(log::LevelFilter::Off)
-        .set_thread_level(log::LevelFilter::Off)
-        .build();
-    let time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("time moves slow")
-        .as_secs();
-    let file = simplelog::WriteLogger::new(
-        log::LevelFilter::Debug,
-        config.clone(),
-        std::fs::File::create(format!("logs/{}.log", time)).expect("create log file"),
-    );
-    let term = simplelog::TermLogger::new(
-        log::LevelFilter::Info,
-        config.clone(),
-        simplelog::TerminalMode::Mixed,
-        simplelog::ColorChoice::Auto,
-    );
-    simplelog::CombinedLogger::init(vec![term, file]).expect("initialize logger");
-}
-
 /// Register Ctrl+C handler for immediate (non-graceful) termination.
 /// Use when you need hard shutdown without waiting for current batch.
 #[cfg(feature = "server")]
@@ -305,7 +214,7 @@ pub fn kys() {
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.unwrap();
         println!();
-        log::warn!("violent interrupt received, exiting immediately");
+        tracing::warn!("violent interrupt received, exiting immediately");
         std::process::exit(0);
     });
 }
@@ -315,7 +224,8 @@ pub fn kys() {
 static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// Optional training deadline from TRAIN_DURATION env var.
 #[cfg(feature = "server")]
-static DEADLINE: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+static DEADLINE: std::sync::OnceLock<std::time::Instant> =
+    std::sync::OnceLock::<std::time::Instant>::new();
 /// Check if graceful shutdown was requested (via stdin "Q") or deadline reached.
 #[cfg(feature = "server")]
 pub fn interrupted() -> bool {
@@ -330,24 +240,34 @@ pub fn interrupted() -> bool {
     false
 }
 /// Register graceful interrupt handler. Type "Q" + Enter to stop after current batch.
+/// Also handles SIGTERM (sent by ECS stop-task) for graceful remote shutdown.
 /// Optionally set TRAIN_DURATION env var (e.g., "2h", "30m") for timed runs.
 #[cfg(feature = "server")]
 pub fn brb() {
-    if let Ok(duration) = std::env::var("TRAIN_DURATION") {
-        if let Some(deadline) = parse_duration(&duration) {
-            let _ = DEADLINE.set(std::time::Instant::now() + deadline);
-            log::info!("training will stop after {}", duration);
-        }
-    }
+    std::env::var("TRAIN_DURATION")
+        .ok()
+        .and_then(|d| parse_duration(&d).map(|dur| (d, dur)))
+        .inspect(|(s, dur)| {
+            let _ = DEADLINE.set(std::time::Instant::now() + *dur);
+            tracing::info!(duration = %s, "training will stop after duration");
+        });
+    tokio::spawn(async move {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to register SIGTERM handler")
+            .recv()
+            .await;
+        tracing::warn!("SIGTERM received, finishing current batch...");
+        INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);
+    });
     std::thread::spawn(|| {
         loop {
             let ref mut buffer = String::new();
-            if let Ok(_) = std::io::stdin().read_line(buffer) {
-                if buffer.trim().to_uppercase() == "Q" {
-                    log::warn!("graceful interrupt requested, finishing current batch...");
-                    INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);
-                    break;
-                }
+            if std::io::stdin().read_line(buffer).is_ok()
+                && buffer.trim().eq_ignore_ascii_case("Q")
+            {
+                tracing::warn!("graceful interrupt requested, finishing current batch...");
+                INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);
+                break;
             }
         }
     });
@@ -357,7 +277,10 @@ pub fn brb() {
 fn parse_duration(s: &str) -> Option<std::time::Duration> {
     let s = s.trim();
     let (num, unit) = s.split_at(s.len().saturating_sub(1));
-    let value: u64 = num.parse().ok()?;
+    let value: u64 = num
+        .parse()
+        .inspect_err(|e| tracing::warn!(input = %num, error = %e, "parse_duration: number parse failed"))
+        .ok()?;
     match unit {
         "s" => Some(std::time::Duration::from_secs(value)),
         "m" => Some(std::time::Duration::from_secs(value * 60)),

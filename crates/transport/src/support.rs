@@ -10,3 +10,5 @@ pub trait Support: Clone {}
 
 /// usize implements Support for use as world indices in subgame solving.
 impl Support for usize {}
+/// Unit type as trivial support for games with no private information.
+impl Support for () {}

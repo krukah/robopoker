@@ -10,6 +10,6 @@ pub struct Record {
     pub edge: Edge,
     pub weight: Probability,
     pub regret: Utility,
-    pub evalue: Utility,
-    pub counts: u32,
+    pub payoff: Utility,
+    pub visits: u32,
 }

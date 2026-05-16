@@ -25,8 +25,13 @@ impl CfrTurn for NlheTurn {
     fn chance() -> Self {
         Self(Turn::Chance)
     }
+
     fn terminal() -> Self {
         Self(Turn::Terminal)
+    }
+
+    fn players() -> usize {
+        rbp_core::N
     }
 }
 

@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 
 /// Lazily builds a game tree by yielding node indices during construction.
 ///
-/// Holds a [`Tree`] internally and borrows an [`Encoder`] and [`Profile`]
+/// Holds a [`Tree`] internally and borrows an [`CfrEncoder`] and [`CfrSolution`]
 /// for state encoding and action sampling. Implements [`Iterator`] to yield
 /// [`NodeIndex`] values as nodes are added.
 ///
@@ -45,12 +45,12 @@ where
     E: CfrEdge,
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
-    N: Encoder<T = T, E = E, G = G, I = I>,
-    P: Profile<T = T, E = E, G = G, I = I>,
+    N: CfrEncoder<T = T, E = E, G = G, I = I>,
+    P: CfrFlow<T = T, E = E, G = G, I = I>,
     S: SamplingScheme,
 {
     tree: Tree<T, E, G, I>,
-    todo: Vec<Branch<E, G>>,
+    todo: Vec<Leaf<E, G>>,
     encoder: &'growth N,
     profile: &'growth P,
     sampling: PhantomData<S>,
@@ -62,16 +62,17 @@ where
     E: CfrEdge,
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
-    N: Encoder<T = T, E = E, G = G, I = I>,
-    P: Profile<T = T, E = E, G = G, I = I>,
+    N: CfrEncoder<T = T, E = E, G = G, I = I>,
+    P: CfrFlow<T = T, E = E, G = G, I = I>,
     S: SamplingScheme,
 {
     /// Creates a new tree builder starting from the given root game state.
     ///
     /// Seeds the tree with the root node and initializes the todo stack
-    /// with its child branches.
-    pub fn new(encoder: &'growth N, profile: &'growth P, root: G) -> Self {
-        let mut tree = Tree::default();
+    /// with its child branches. `id` is the batch-local tree identifier
+    /// threaded through to [`Node::seed`] for RNG seeding.
+    pub fn new(encoder: &'growth N, profile: &'growth P, root: G, id: usize) -> Self {
+        let mut tree = Tree::new(id);
         let info = encoder.seed(&root);
         let node = tree.seed(info, root);
         let children = encoder.branches(&node);
@@ -89,7 +90,7 @@ where
     ///
     /// This should be called after iteration is complete (i.e., after
     /// the iterator returns `None`). Calling it mid-iteration will
-    /// return a partial tree.
+    /// return a witness tree.
     pub fn finish(self) -> Tree<T, E, G, I> {
         self.tree
     }
@@ -131,8 +132,8 @@ where
     E: CfrEdge,
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
-    N: Encoder<T = T, E = E, G = G, I = I>,
-    P: Profile<T = T, E = E, G = G, I = I>,
+    N: CfrEncoder<T = T, E = E, G = G, I = I>,
+    P: CfrFlow<T = T, E = E, G = G, I = I>,
     S: SamplingScheme,
 {
     type Item = NodeIndex;
@@ -140,6 +141,23 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let leaf = self.todo.pop()?;
         let info = self.encoder.info(&self.tree, leaf);
+        #[cfg(debug_assertions)]
+        if N::CHECK_RECALL {
+            let (edge, game, head) = leaf;
+            let mut past = self
+                .tree
+                .at(head)
+                .into_iter()
+                .map(|a| a.edge())
+                .collect::<Vec<_>>();
+            past.reverse();
+            past.push(edge);
+            let replayed = self.encoder.resume(past, &game);
+            debug_assert!(
+                info == replayed,
+                "PerfectRecall violation: CfrEncoder::info(tree, leaf) disagreed with CfrEncoder::resume(past, head)"
+            );
+        }
         let node = self.tree.grow(info, leaf);
         let children = self.encoder.branches(&node);
         let children = S::sample(self.profile, &node, children);

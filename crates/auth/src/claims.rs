@@ -24,6 +24,7 @@ impl Claims {
             exp: now + Crypto::duration().as_secs() as i64,
         }
     }
+
     pub fn expired(&self) -> bool {
         self.exp
             < std::time::SystemTime::now()
@@ -31,12 +32,15 @@ impl Claims {
                 .expect("time")
                 .as_secs() as i64
     }
+
     pub fn user(&self) -> ID<Member> {
         ID::from(self.sub)
     }
+
     pub fn session(&self) -> ID<Session> {
         ID::from(self.sid)
     }
+
     pub fn username(&self) -> &str {
         &self.usr
     }

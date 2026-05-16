@@ -29,3 +29,5 @@ where
     Self: std::hash::Hash,
 {
 }
+/// Unit secret for games with no private information.
+impl CfrSecret for () {}

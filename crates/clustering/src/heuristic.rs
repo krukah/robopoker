@@ -48,6 +48,7 @@ impl Coupling for Heuristic<'_> {
     fn cost(&self) -> Probability {
         self.plan.values().sum()
     }
+
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Probability {
         let ref index = Pair::from((&**x, &**y));
         self.plan
@@ -55,6 +56,7 @@ impl Coupling for Heuristic<'_> {
             .copied()
             .expect("missing in transport plan")
     }
+
     fn minimize(mut self) -> Self {
         self.plan.clear();
         let ref mut pile = Potential::derive(self.source);

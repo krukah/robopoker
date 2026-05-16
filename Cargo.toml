@@ -9,7 +9,13 @@ members  = [
     "crates/gameplay",
     "crates/clustering",
     "crates/translate",
+    "crates/world",
+    "crates/depth",
+    "crates/subgame",
     "crates/nlhe",
+    "crates/leduc",
+    "crates/kuhn",
+    "crates/rps",
     # Infrastructure crates
     "crates/database",
     "crates/auth",
@@ -19,6 +25,10 @@ members  = [
     "crates/gameroom",
     "crates/server",
     "crates/autotrain",
+    "crates/competition",
+    "crates/slumbot",
+    # Validation
+    "crates/litmus",
     # Facade crate
     "crates/rbp",
     # Binary crates
@@ -45,7 +55,16 @@ rbp-mccfr       = { version = "1.0", path = "crates/mccfr"       }
 rbp-gameplay    = { version = "1.0", path = "crates/gameplay"    }
 rbp-clustering  = { version = "1.0", path = "crates/clustering"  }
 rbp-translate   = { version = "1.0", path = "crates/translate"   }
+rbp-world       = { version = "1.0", path = "crates/world"       }
+rbp-depth       = { version = "1.0", path = "crates/depth"       }
+rbp-subgame     = { version = "1.0", path = "crates/subgame"     }
 rbp-nlhe        = { version = "1.0", path = "crates/nlhe"        }
+rbp-leduc       = { version = "1.0", path = "crates/leduc"       }
+rbp-kuhn        = { version = "1.0", path = "crates/kuhn"        }
+rbp-rps         = { version = "1.0", path = "crates/rps"         }
+rbp-competition = { version = "1.0", path = "crates/competition" }
+rbp-slumbot     = { version = "1.0", path = "crates/slumbot"     }
+rbp-litmus      = { version = "1.0", path = "crates/litmus"      }
 rbp-database    = { version = "1.0", path = "crates/database"    }
 rbp-auth        = { version = "1.0", path = "crates/auth"        }
 rbp-telemetry   = { version = "1.0", path = "crates/telemetry"   }

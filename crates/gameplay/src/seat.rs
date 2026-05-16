@@ -1,5 +1,5 @@
-use rbp_core::Chips;
 use rbp_cards::*;
+use rbp_core::Chips;
 
 /// A player's state at the table.
 ///
@@ -66,18 +66,23 @@ impl Seat {
         self.stake += bet;
         self.spent += bet;
     }
+
     pub fn reset_state(&mut self, state: State) {
         self.state = state;
     }
+
     pub fn reset_cards(&mut self, cards: Hole) {
         self.cards = cards;
     }
+
     pub fn reset_stake(&mut self) {
         self.stake = 0;
     }
+
     pub fn reset_spent(&mut self) {
         self.spent = 0;
     }
+
     pub fn reset_stack(&mut self) {
         self.stack = rbp_core::STACK;
     }
@@ -100,7 +105,8 @@ impl std::fmt::Display for Seat {
 /// - `Betting` — Active and can still make decisions
 /// - `Shoving` — All-in, no more decisions but still in the pot
 /// - `Folding` — Out of the hand
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum State {
     Betting,
     Shoving,
@@ -116,6 +122,7 @@ impl State {
 
 impl TryFrom<&str> for State {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.to_uppercase().as_str() {
             "P" => Ok(State::Betting),

@@ -60,9 +60,9 @@ impl From<usize> for Turn {
     }
 }
 
-
 impl TryFrom<&str> for Turn {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
             "XX" => Ok(Self::Terminal),
@@ -82,6 +82,24 @@ impl std::fmt::Display for Turn {
             Self::Terminal => write!(f, "-"),
             Self::Chance => write!(f, "?"),
         }
+    }
+}
+
+impl serde::Serialize for Turn {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Turn {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
     }
 }
 

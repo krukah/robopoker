@@ -1,0 +1,25 @@
+[package]
+name            = "rbp-litmus"
+version         = "1.0.0"
+edition         = "2024"
+rust-version    = "1.90"
+authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+license         = "MIT"
+description     = "Strategic litmus tests for blueprint validation. Composable, type-safe scenario catalog with a typed Ops trait that the server (or any backend) implements."
+
+[lib]
+name = "rbp_litmus"
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]
+rbp-cards    = { path = "../cards" }
+rbp-gameplay = { path = "../gameplay" }
+
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+anyhow      = "1"
+chrono      = { version = "0.4", default-features = false, features = ["clock"] }
+async-trait = "0.1"

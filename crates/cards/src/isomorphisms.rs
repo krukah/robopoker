@@ -11,6 +11,7 @@ pub struct IsomorphismIterator(ObservationIterator);
 
 impl Iterator for IsomorphismIterator {
     type Item = Isomorphism;
+
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(observation) = self.0.next() {
             if Isomorphism::is_canonical(&observation) {
@@ -19,6 +20,7 @@ impl Iterator for IsomorphismIterator {
         }
         None
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = self.0.street().n_isomorphisms();
         (n, Some(n))

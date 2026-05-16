@@ -1,6 +1,6 @@
-use rbp_core::Chips;
-use rbp_cards::*;
 use crate::*;
+use rbp_cards::*;
+use rbp_core::Chips;
 
 /// Computes chip distributions at showdown.
 ///
@@ -50,6 +50,7 @@ impl Showdown {
         }
         self.payouts
     }
+
     fn strongest(&self) -> Option<Strength> {
         self.payouts
             .iter()
@@ -59,6 +60,7 @@ impl Showdown {
             .max()
             .cloned()
     }
+
     fn remaining(&mut self) -> Option<Chips> {
         self.distributed = self.distributing;
         self.payouts
@@ -69,6 +71,7 @@ impl Showdown {
             .map(|p| p.pnl().risked())
             .min()
     }
+
     fn winnings(&self) -> Chips {
         self.payouts
             .iter()
@@ -77,6 +80,7 @@ impl Showdown {
             .map(|s| (s - self.distributed).max(0))
             .sum()
     }
+
     fn distribute(&mut self) {
         let chips = self.winnings();
         let mut winners = self
@@ -96,6 +100,7 @@ impl Showdown {
             winner.add(1);
         }
     }
+
     fn is_complete(&self) -> bool {
         let staked = self.payouts.iter().map(|p| p.pnl().risked()).sum::<Chips>();
         let reward = self.payouts.iter().map(|p| p.pnl().reward()).sum::<Chips>();
@@ -111,15 +116,19 @@ mod tests {
     fn ace_high() -> Strength {
         Strength::from((Ranking::HighCard(Rank::Ace), Kickers::default()))
     }
+
     fn one_pair() -> Strength {
         Strength::from((Ranking::OnePair(Rank::Ace), Kickers::default()))
     }
+
     fn two_pair() -> Strength {
         Strength::from((Ranking::TwoPair(Rank::Ace, Rank::King), Kickers::default()))
     }
+
     fn triplets() -> Strength {
         Strength::from((Ranking::ThreeOAK(Rank::Ace), Kickers::default()))
     }
+
     fn the_nuts() -> Strength {
         Strength::from((Ranking::Straight(Rank::Ace), Kickers::default()))
     }

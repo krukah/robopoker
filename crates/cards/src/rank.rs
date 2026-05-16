@@ -6,7 +6,7 @@
 /// - `u8`: Direct index `0..13` for array access
 /// - `u16`: Bitmask with one bit per rank for straight detection
 /// - `u64`: Four-bit mask repeated across suits for n-of-a-kind detection
-#[derive(Debug, Default, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Default, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd, serde::Serialize, serde::Deserialize)]
 pub enum Rank {
     #[default]
     Two = 0,
@@ -93,6 +93,7 @@ impl From<Rank> for u64 {
 /// str isomorphism
 impl TryFrom<&str> for Rank {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.trim().to_uppercase().as_str() {
             "2" => Ok(Rank::Two),

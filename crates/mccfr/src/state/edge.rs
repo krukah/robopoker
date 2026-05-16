@@ -24,4 +24,12 @@ pub trait CfrEdge:
     + std::hash::Hash // can be ignored
     + std::fmt::Debug
 {
+    /// Default initial policy weight for CFR warmstart (0.0 = uniform).
+    fn default_policy(&self) -> rbp_core::Probability {
+        0.0
+    }
+    /// Default initial regret for CFR warmstart (0.0 = no bias).
+    fn default_regret(&self) -> rbp_core::Utility {
+        0.0
+    }
 }

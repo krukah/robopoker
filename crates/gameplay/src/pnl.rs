@@ -11,7 +11,7 @@ use rbp_core::Chips;
 /// - `reward` — Total chips received from pot
 /// - `risked` — Total chips committed to pot
 /// - `status` — Final betting state (for determining eligibility)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PnL {
     reward: Chips,
     risked: Chips,

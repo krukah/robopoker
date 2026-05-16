@@ -87,6 +87,7 @@ impl Action {
             Action::Shove(n) => format!("S{}", n),
         }
     }
+
     pub fn label(&self) -> &'static str {
         match self {
             Action::Fold => "Fold",
@@ -98,6 +99,7 @@ impl Action {
             Action::Blind(_) => "Blind",
         }
     }
+
     pub fn abbrev(&self) -> &'static str {
         match self {
             Action::Fold => "-",
@@ -171,9 +173,11 @@ impl From<Action> for u32 {
 }
 impl TryFrom<&str> for Action {
     type Error = &'static str;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let parts: Vec<&str> = s.split_whitespace().collect();
-        match parts[0].to_uppercase().as_str() {
+        let head = parts.first().ok_or("empty action string")?;
+        match head.to_uppercase().as_str() {
             "CHECK" => Ok(Action::Check),
             "FOLD" => Ok(Action::Fold),
             "CALL" => parts
@@ -203,6 +207,24 @@ impl TryFrom<&str> for Action {
         }
     }
 }
+impl serde::Serialize for Action {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Action {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 impl std::fmt::Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

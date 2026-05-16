@@ -46,7 +46,7 @@ const DEFAULT_OTLP_ENDPOINT: &str = "http://localhost:4317";
 /// Info-by-default for everything. This keeps lifecycle events (task
 /// start/stop, hand-complete, metric handle registration, exploit
 /// checkpoints, etc.) while dropping per-event debug chatter that used
-/// to drive 99% of CloudWatch ingestion cost. Per-hand session detail
+/// to drive 99% of log ingestion cost. Per-hand session detail
 /// lines in slumbot, per-node visit traces, and similar hot-path logs
 /// are `debug!` or `trace!` and are now suppressed by default.
 ///

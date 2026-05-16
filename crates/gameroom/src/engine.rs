@@ -1,10 +1,13 @@
 use super::*;
-use rbp_cards::*;
 use rbp_core::*;
 use rbp_gameplay::*;
 use std::collections::HashSet;
 use std::marker::PhantomData;
+use std::sync::Arc;
+use tokio::sync::Notify;
 use tokio::sync::mpsc::*;
+
+type Inbox = (usize, Event);
 
 /// Phase: accepting players before game starts.
 pub struct Seating;
@@ -15,249 +18,417 @@ pub struct Showdown;
 /// Phase: game is over (a player busted).
 pub struct Finished;
 
+/// Shared state across all engine phases.
+struct EngineCore {
+    live: LiveGame,
+    timing: TimerConfig,
+    skip: Arc<Notify>,
+    tx: UnboundedSender<Inbox>,
+    rx: UnboundedReceiver<Inbox>,
+    players: Vec<UnboundedSender<Event>>,
+    wires: Vec<Option<UnboundedSender<String>>>,
+    history: Vec<CompletedHand>,
+    disconnected: HashSet<usize>,
+    showoffs: HashSet<usize>,
+}
+
+impl EngineCore {
+    async fn interruptible(&self, duration: std::time::Duration) {
+        tokio::select! {
+            biased;
+            _ = self.skip.notified() => {},
+            _ = tokio::time::sleep(duration) => {},
+        }
+    }
+
+    fn apply_action(&mut self, action: Action) {
+        self.live.act(action);
+    }
+
+    fn recall(&self, pos: Position) -> Witness {
+        let cards = self
+            .live
+            .game()
+            .seats()
+            .get(pos)
+            .unwrap()
+            .cards()
+            .into_iter()
+            .chain(self.live.dealt())
+            .collect::<Vec<_>>();
+        self.live
+            .actions()
+            .iter()
+            .filter(|a| a.is_choice())
+            .cloned()
+            .fold(
+                Witness::initial_with(
+                    Turn::Choice(pos),
+                    Arrangement::from(cards),
+                    self.live.root().buyins(),
+                    self.live.root().dealer().position(),
+                ),
+                |r, a| r.push(a),
+            )
+    }
+
+    fn snapshot(&self, pos: Position) -> Snapshot {
+        Snapshot {
+            hand: self.live.epoch(),
+            phase: self.live.phase(),
+            witness: self.recall(pos),
+            reveals: (0..self.live.holes().len())
+                .map(|i| if i == pos { None } else { self.live.shown(i) })
+                .collect(),
+            settlements: self.live.settlements().to_vec(),
+            history: self.history.clone(),
+        }
+    }
+
+    fn push_snapshots(&self) {
+        for pos in 0..self.wires.len() {
+            self.send_wire(pos, ServerMessage::Snapshot(self.snapshot(pos)));
+        }
+    }
+
+    fn push_session_end(&self, stacks: [Chips; N], reason: Reason) {
+        for pos in 0..self.wires.len() {
+            self.send_wire(pos, ServerMessage::session_end(stacks, reason));
+        }
+    }
+
+    fn send_wire(&self, pos: Position, msg: ServerMessage) {
+        if let Some(tx) = self.wires.get(pos).and_then(|w| w.as_ref()) {
+            if let Err(e) = tx.send(msg.to_json()) {
+                tracing::warn!(seat = pos, error = ?e, "wire send failed");
+            }
+        }
+    }
+
+    fn record_hand_closing(&mut self) {
+        self.history.push(CompletedHand {
+            epoch: self.live.epoch(),
+            settlements: self.live.settlements().to_vec(),
+        });
+    }
+
+    async fn commence(&mut self) {
+        self.interruptible(self.timing.deal_hole).await;
+        for i in 0..self.players.len() {
+            let hole = self.live.game().seats()[i].cards();
+            self.live.deal_hole(i, hole);
+        }
+        self.push_snapshots();
+    }
+
+    fn unicast(&self, i: usize, event: Event) {
+        tracing::trace!(seat = i, %event, "unicast");
+        match self.players.get(i).map(|inbox| inbox.send(event)) {
+            Some(Ok(())) => {}
+            Some(Err(e)) => tracing::warn!(seat = i, error = ?e, "unicast failed"),
+            None => tracing::warn!(seat = i, "unicast: no such player"),
+        }
+    }
+}
+
+impl Recall for EngineCore {
+    fn root(&self) -> Game {
+        *self.live.root()
+    }
+
+    fn actions(&self) -> &[Action] {
+        self.live.actions()
+    }
+}
+
 /// Functional core for a live poker game.
 /// Maintains game state, enforces rules, and coordinates player communication.
 /// Driven by Room (imperative shell) which handles persistence concerns.
 ///
 /// Uses typestate pattern to encode valid phase transitions at compile time.
-#[derive(Debug)]
 pub struct Engine<Phase> {
-    hand: u64,
-    game: Game,
-    history: Vec<Action>,
-    channel: Channel<(usize, Event)>,
-    players: Vec<UnboundedSender<Event>>,
-    disconnected: HashSet<usize>,
+    core: EngineCore,
     phase: PhantomData<Phase>,
 }
 
 impl Default for Engine<Seating> {
     fn default() -> Self {
         Self {
-            hand: 0,
-            game: Game::root(),
-            channel: Channel::default(),
-            players: Vec::new(),
-            history: Vec::new(),
-            disconnected: HashSet::new(),
+            core: {
+                let (tx, rx) = unbounded_channel();
+                EngineCore {
+                    live: LiveGame::default(),
+                    timing: TimerConfig::default(),
+                    skip: Arc::new(Notify::new()),
+                    tx,
+                    rx,
+                    players: Vec::new(),
+                    wires: Vec::new(),
+                    history: Vec::new(),
+                    disconnected: HashSet::new(),
+                    showoffs: HashSet::new(),
+                }
+            },
             phase: PhantomData,
         }
     }
 }
 
-impl<T> Engine<T> {
-    pub fn game(&self) -> &Game {
-        &self.game
+impl<T> Recall for Engine<T> {
+    fn root(&self) -> Game {
+        *self.core.live.root()
     }
-    pub fn players(&self) -> &Vec<UnboundedSender<Event>> {
-        &self.players
+
+    fn actions(&self) -> &[Action] {
+        self.core.live.actions()
+    }
+}
+
+/// Phase-agnostic accessors available in any phase.
+impl<T> Engine<T> {
+    pub fn game(&self) -> Game {
+        self.core.live.game()
+    }
+
+    pub fn hand(&self) -> u64 {
+        self.core.live.epoch()
+    }
+
+    pub fn timing(&self) -> &TimerConfig {
+        &self.core.timing
+    }
+
+    pub fn skip(&self) -> &Arc<Notify> {
+        &self.core.skip
+    }
+
+    pub fn is_disconnected(&self, pos: usize) -> bool {
+        self.core.disconnected.contains(&pos)
+    }
+
+    pub fn final_stacks(&self) -> [Chips; N] {
+        let game = self.core.live.game();
+        let settlements = game.settlements();
+        let seats = game.seats();
+        std::array::from_fn(|i| seats[i].stack() + settlements[i].pnl().reward())
+    }
+
+    pub fn end_session(&self, stacks: [Chips; N], reason: Reason) {
+        self.core.push_session_end(stacks, reason);
     }
 }
 
 /// Seating phase: accepting players.
 impl Engine<Seating> {
-    pub fn sit<P>(&mut self, player: P)
+    pub fn set_skip(&mut self, skip: Arc<Notify>) {
+        self.core.skip = skip;
+    }
+
+    pub fn sit<P>(&mut self, player: P, wire: Option<UnboundedSender<String>>)
     where
         P: Player + 'static,
     {
-        self.players.push(Actor::spawn(
-            self.players.len(),
+        let pos = self.core.players.len();
+        if player.shows() {
+            self.core.showoffs.insert(pos);
+        }
+        self.core.players.push(Actor::spawn(
+            pos,
             Box::new(player),
-            self.channel.tx().clone(),
+            self.core.tx.clone(),
         ));
+        self.core.wires.push(wire);
     }
+
     /// Transition to Dealing phase. Broadcasts hand start and hole cards.
-    pub fn start(self) -> Engine<Dealing> {
-        let mut engine = Engine {
-            hand: self.hand,
-            game: self.game,
-            history: self.history,
-            channel: self.channel,
-            players: self.players,
-            disconnected: self.disconnected,
+    pub async fn start(mut self) -> Engine<Dealing> {
+        self.core.commence().await;
+        Engine {
+            core: self.core,
             phase: PhantomData,
-        };
-        engine.commence();
-        engine
+        }
     }
 }
 
 /// Dealing phase: hand in progress.
 impl Engine<Dealing> {
     pub fn turn(&self) -> Turn {
-        self.game.turn()
+        self.core.live.game().turn()
     }
-    pub fn hand(&self) -> u64 {
-        self.hand
+
+    /// Returns the most recent Draw action, if the last action was a draw.
+    pub fn last_draw(&self) -> Option<Action> {
+        self.core
+            .live
+            .actions()
+            .last()
+            .filter(|a| a.is_chance())
+            .copied()
     }
-    pub fn history(&self) -> &[Action] {
-        &self.history
-    }
+
     /// Deal next community cards (chance node).
     pub async fn deal(&mut self) {
-        let reveal = self.game.reveal();
-        log::debug!("[engine] dealing {}", reveal);
-        self.apply(reveal);
-        self.broadcast(Event::Board {
-            hand: self.hand,
-            street: self.game.street(),
-            board: Hand::from(self.game.board()),
-        });
+        let hand = self.core.live.game().reveal().hand().unwrap();
+        tracing::debug!(?hand, "dealing");
+        self.core.live.deal(hand);
+        self.core.push_snapshots();
+        self.core.interruptible(self.core.timing.deal_board).await;
     }
+
     /// Get decision from player at position (choice node).
-    pub async fn ask(&mut self, pos: Position) -> Action {
-        log::debug!("[engine] asking P{} for action", pos);
-        self.unicast(
-            pos,
-            Event::Decision {
-                hand: self.hand,
-                recall: self.recall(pos),
-            },
+    /// Returns the action taken and how it was prompted.
+    pub async fn ask(&mut self, pos: Position) -> (Action, Prompt) {
+        tracing::debug!(seat = pos, "asking for action");
+        // Tell the player actor it's their turn so internal Players can decide.
+        self.core.unicast(pos, Event::Decision(self.core.recall(pos)));
+        // Push fresh snapshot so the wire learns who to_act is + sees legal moves.
+        self.core.push_snapshots();
+        let (action, prompt) = self.next_action(pos).await;
+        tracing::debug!(
+            seat = pos,
+            %action,
+            timeout = prompt.expired(),
+            "player chose"
         );
-        let action = self.next_action(pos).await;
-        log::debug!("[engine] P{} chose {}", pos, action);
-        self.apply(action);
-        self.broadcast(Event::Action {
-            hand: self.hand,
-            seat: pos,
-            action,
-            pot: self.game.pot(),
-        });
-        action
+        self.core.apply_action(action);
+        // Action committed: push snapshot reflecting the new state.
+        self.core.push_snapshots();
+        (action, prompt)
     }
+
     /// Transition to Showdown phase when hand is terminal.
     pub fn into_showdown(self) -> Engine<Showdown> {
         Engine {
-            hand: self.hand,
-            game: self.game,
-            history: self.history,
-            channel: self.channel,
-            players: self.players,
-            disconnected: self.disconnected,
+            core: self.core,
             phase: PhantomData,
+        }
+    }
+
+    async fn next_action(&mut self, pos: Position) -> (Action, Prompt) {
+        loop {
+            match self.poll_action(pos).await {
+                Some((a, prompt)) if self.core.live.game().is_allowed(&a) => return (a, prompt),
+                Some((a, _)) => tracing::warn!(seat = pos, action = %a, "action rejected"),
+                None => {}
+            }
+        }
+    }
+
+    async fn poll_action(&mut self, pos: Position) -> Option<(Action, Prompt)> {
+        match tokio::time::timeout(self.core.timing.decision, self.core.rx.recv()).await {
+            Err(_) => {
+                tracing::debug!(seat = pos, "player timed out");
+                Some((self.core.live.game().passive(), Prompt::Expired))
+            }
+            Ok(inbox) => inbox.filter(|(j, _)| *j == pos).and_then(|(_, e)| match e {
+                Event::Action(action) => Some((action, Prompt::Acted)),
+                Event::Disconnect(p) => {
+                    self.core.disconnected.insert(p);
+                    Some((self.core.live.game().passive(), Prompt::Acted))
+                }
+                Event::Decision(_) => None,
+            }),
         }
     }
 }
 
 /// Showdown phase: revealing cards and settling.
 impl Engine<Showdown> {
-    pub fn hand(&self) -> u64 {
-        self.hand
-    }
-    pub fn history(&self) -> &[Action] {
-        &self.history
-    }
-    /// Check if human player (position 0) has disconnected.
-    pub fn human_disconnected(&self) -> bool {
-        self.disconnected.contains(&0)
-    }
     /// Returns true if this is a showdown (multiple players remain).
     pub fn is_showdown(&self) -> bool {
-        self.game.is_showdown()
+        self.core.live.game().is_showdown()
     }
+
     /// Executes showdown reveal sequence.
     pub async fn showdown(&mut self) {
-        if !self.game.is_showdown() {
+        if !self.core.live.game().is_showdown() {
+            for &p in self.core.showoffs.clone().iter() {
+                self.reveal(p, true);
+            }
+            self.core.push_snapshots();
+            if self.core.disconnected.is_empty() {
+                tokio::select! {
+                    biased;
+                    _ = self.core.skip.notified() => {},
+                    _ = tokio::time::sleep(self.core.timing.results) => {},
+                }
+            }
             return;
         }
         let forced = self.forced_reveals();
         let order = self.showdown_order();
         let mut showed = Vec::new();
-        let deadline = tokio::time::Instant::now() + Self::showdown_timeout();
+        let deadline = tokio::time::Instant::now() + self.core.timing.showdown;
         loop {
             tokio::select! {
                 biased;
                 _ = tokio::time::sleep_until(deadline) => break,
-                msg = self.channel.rx().recv() => {
+                _ = self.core.skip.notified() => break,
+                msg = self.core.rx.recv() => {
                     if let Some((pos, _)) = msg {
                         if !showed.contains(&pos) && order.contains(&pos) {
-                            let hole = self.game.seats()[pos].cards();
-                            self.broadcast(Event::Reveal {
-                                hand: self.hand,
-                                seat: pos,
-                                hole: Some(hole),
-                            });
+                            self.reveal(pos, true);
+                            self.core.push_snapshots();
                             showed.push(pos);
                         }
                     }
                 }
             }
         }
-        forced
+        for p in forced
             .into_iter()
             .filter(|p| !showed.contains(p))
             .collect::<Vec<_>>()
-            .into_iter()
-            .for_each(|p| {
-                self.broadcast(Event::Reveal {
-                    hand: self.hand,
-                    seat: p,
-                    hole: Some(self.game.seats()[p].cards()),
-                });
-                showed.push(p);
-            });
-        order
-            .into_iter()
-            .filter(|p| !showed.contains(p))
-            .for_each(|p| {
-                self.broadcast(Event::Reveal {
-                    hand: self.hand,
-                    seat: p,
-                    hole: None,
-                })
-            });
+        {
+            self.reveal(p, true);
+            showed.push(p);
+        }
+        // Players who never showed are mucking — no event is needed for that.
+        self.core.push_snapshots();
     }
-    /// Broadcast hand end with winners.
-    pub fn settle(&self) {
-        let winners = self
-            .game
-            .settlements()
-            .iter()
-            .enumerate()
-            .filter(|(_, s)| s.pnl().reward() > 0)
-            .map(|(i, s)| (i, s.pnl().reward() as Chips))
-            .collect();
-        self.broadcast(Event::HandEnd {
-            hand: self.hand,
-            winners,
-        });
+
+    fn reveal(&mut self, seat: Position, show: bool) {
+        if show {
+            let hole = self.core.live.game().seats()[seat].cards();
+            self.core.live.show(seat, hole);
+        }
     }
+
+    /// Apply settlement and push hand-end snapshot.
+    pub fn settle(&mut self) {
+        let settlements = self.core.live.game().settlements();
+        tracing::debug!(?settlements, "settle");
+        self.core.live.settle(settlements);
+        self.core.record_hand_closing();
+        self.core.push_snapshots();
+    }
+
     /// Advance to next hand or finish.
-    pub fn conclude(mut self) -> Result<Engine<Dealing>, Engine<Finished>> {
-        match self.game.continuation() {
+    pub async fn conclude(mut self) -> Result<Engine<Dealing>, Engine<Finished>> {
+        match self.core.live.game().continuation() {
             Some(next) => {
-                self.game = next;
-                self.history.clear();
-                self.hand += 1;
-                let mut engine = Engine {
-                    hand: self.hand,
-                    game: self.game,
-                    history: self.history,
-                    channel: self.channel,
-                    players: self.players,
-                    disconnected: self.disconnected,
+                self.core.live.start(self.core.live.epoch() + 1, next);
+                self.core.commence().await;
+                Ok(Engine {
+                    core: self.core,
                     phase: PhantomData,
-                };
-                engine.commence();
-                Ok(engine)
+                })
             }
             None => {
-                log::info!("[engine] game over - a player is busted");
+                tracing::info!("game over - a player is busted");
                 Err(Engine {
-                    hand: self.hand,
-                    game: self.game,
-                    history: self.history,
-                    channel: self.channel,
-                    players: self.players,
-                    disconnected: self.disconnected,
+                    core: self.core,
                     phase: PhantomData,
                 })
             }
         }
     }
+
     fn forced_reveals(&self) -> Vec<Position> {
-        let settlements = self.game.settlements();
-        self.game
+        let settlements = self.core.live.game().settlements();
+        self.core
+            .live
+            .game()
             .seats()
             .iter()
             .enumerate()
@@ -265,208 +436,36 @@ impl Engine<Showdown> {
             .filter(|(i, seat)| {
                 seat.state() == State::Shoving
                     || settlements.get(*i).map_or(false, |s| s.pnl().reward() > 0)
+                    || self.core.showoffs.contains(i)
             })
             .map(|(i, _)| i)
             .collect()
     }
+
     fn showdown_order(&self) -> Vec<Position> {
-        let n = self.game.n();
+        let n = self.core.live.game().n();
         let first = self
+            .core
             .recall(0)
             .aggressor()
-            .unwrap_or_else(|| (self.game.dealer().position() + 1) % n);
+            .unwrap_or_else(|| (self.core.live.game().dealer().position() + 1) % n);
         (0..n)
             .map(|i| (first + i) % n)
-            .filter(|i| self.game.seats()[*i].state().is_active())
+            .filter(|i| self.core.live.game().seats()[*i].state().is_active())
             .collect()
-    }
-    fn showdown_timeout() -> std::time::Duration {
-        std::time::Duration::from_secs(SHOWDOWN_TIMEOUT)
-    }
-}
-
-/// Finished phase: game is over.
-impl Engine<Finished> {}
-
-/// Private helpers shared across phases via macro.
-macro_rules! impl_engine_internals {
-    ($($phase:ty),*) => {
-        $(
-            impl Engine<$phase> {
-                #[allow(dead_code)]
-                fn apply(&mut self, action: Action) {
-                    self.history.push(action);
-                    self.game = self.game.apply(action);
-                }
-                fn recall(&self, pos: Position) -> Partial {
-                    Partial::from((
-                        Turn::Choice(pos),
-                        Observation::from((
-                            Hand::from(self.game.seats().get(pos).expect("bounds").cards()),
-                            Hand::from(self.game.board()),
-                        )),
-                        self.history
-                            .iter()
-                            .filter(|a| a.is_choice())
-                            .cloned()
-                            .collect(),
-                    ))
-                }
-                #[allow(dead_code)]
-                fn unicast(&self, i: usize, event: Event) {
-                    log::debug!("[engine] unicast to P{}: {}", i, event);
-                    match self.players.get(i).map(|inbox| inbox.send(event)) {
-                        Some(Ok(())) => log::debug!("[engine] unicast to P{} succeeded", i),
-                        Some(Err(e)) => log::warn!("[engine] unicast to P{} failed: {:?}", i, e),
-                        None => log::warn!("[engine] unicast to P{}: no such player", i),
-                    }
-                }
-                fn broadcast(&self, event: Event) {
-                    log::debug!("[engine] broadcast: {}", event);
-                    self.players
-                        .iter()
-                        .enumerate()
-                        .for_each(|(i, inbox)| match inbox.send(event.clone()) {
-                            Ok(()) => {}
-                            Err(e) => log::warn!("[engine] broadcast to P{} failed: {:?}", i, e),
-                        });
-                }
-            }
-        )*
-    };
-}
-impl_engine_internals!(Dealing, Showdown);
-
-/// Dealing-specific private helpers.
-impl Engine<Dealing> {
-    fn commence(&mut self) {
-        self.broadcast(Event::HandStart {
-            hand: self.hand,
-            dealer: self.game.dealer().position(),
-            stacks: self.game.seats().iter().map(|s| s.stack()).collect(),
-        });
-        self.game.seats().iter().enumerate().for_each(|(i, seat)| {
-            self.unicast(
-                i,
-                Event::HoleCards {
-                    hand: self.hand,
-                    hole: seat.cards(),
-                },
-            )
-        });
-    }
-    async fn next_action(&mut self, pos: Position) -> Action {
-        loop {
-            match self
-                .poll_action(pos)
-                .await
-                .and_then(|a| self.validate(a).ok())
-            {
-                Some(a) => return a,
-                None => continue,
-            }
-        }
-    }
-    async fn poll_action(&mut self, pos: Position) -> Option<Action> {
-        tokio::time::timeout(Self::timeout(), self.channel.rx().recv())
-            .await
-            .inspect_err(|_| log::debug!("[engine] P{} timed out", pos))
-            .unwrap_or_else(|_| {
-                Some((
-                    pos,
-                    Event::Action {
-                        hand: self.hand,
-                        seat: pos,
-                        action: self.game.passive(),
-                        pot: self.game.pot(),
-                    },
-                ))
-            })
-            .filter(|(j, _)| *j == pos)
-            .and_then(|(_, e)| match e {
-                Event::Disconnect(p) => {
-                    self.disconnected.insert(p);
-                    Some(self.game.passive())
-                }
-                _ => e.action(),
-            })
-    }
-    fn validate(&self, action: Action) -> Result<Action, Action> {
-        self.game
-            .is_allowed(&action)
-            .then_some(action)
-            .ok_or(action)
-    }
-    fn timeout() -> std::time::Duration {
-        std::time::Duration::from_secs(10)
-    }
-}
-
-/// Wrapper enum for Room to hold Engine in any phase.
-pub enum EngineState {
-    Seating(Engine<Seating>),
-    Dealing(Engine<Dealing>),
-    Showdown(Engine<Showdown>),
-    Finished(Engine<Finished>),
-}
-
-impl Default for EngineState {
-    fn default() -> Self {
-        Self::Seating(Engine::default())
-    }
-}
-
-impl EngineState {
-    /// Unwrap as Seating phase, panics if wrong phase.
-    pub fn as_seating(&mut self) -> &mut Engine<Seating> {
-        match self {
-            Self::Seating(e) => e,
-            _ => panic!("expected Seating phase"),
-        }
-    }
-    /// Take ownership and transition Seating -> Dealing.
-    pub fn start(&mut self) {
-        let state = std::mem::replace(self, EngineState::default());
-        match state {
-            Self::Seating(e) => *self = Self::Dealing(e.start()),
-            _ => panic!("can only start from Seating phase"),
-        }
-    }
-    /// Take ownership and transition Dealing -> Showdown.
-    pub fn into_showdown(&mut self) {
-        let state = std::mem::replace(self, EngineState::default());
-        match state {
-            Self::Dealing(e) => *self = Self::Showdown(e.into_showdown()),
-            _ => panic!("can only enter showdown from Dealing phase"),
-        }
-    }
-    /// Take ownership and transition Showdown -> Dealing or Finished.
-    pub fn conclude(&mut self) {
-        let state = std::mem::replace(self, EngineState::default());
-        match state {
-            Self::Showdown(e) => match e.conclude() {
-                Ok(dealing) => *self = Self::Dealing(dealing),
-                Err(finished) => *self = Self::Finished(finished),
-            },
-            _ => panic!("can only conclude from Showdown phase"),
-        }
-    }
-    pub fn is_finished(&self) -> bool {
-        matches!(self, Self::Finished(_))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn engine_default_is_seating() {
         let engine = Engine::<Seating>::default();
-        assert_eq!(engine.game.pot(), Game::sblind() + Game::bblind());
-    }
-    #[test]
-    fn engine_state_default_is_seating() {
-        let state = EngineState::default();
-        assert!(matches!(state, EngineState::Seating(_)));
+        assert_eq!(
+            engine.core.live.game().pot(),
+            Game::sblind() + Game::bblind()
+        );
     }
 }

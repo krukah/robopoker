@@ -1,4 +1,5 @@
 use super::*;
+use rbp_core::Utility;
 use std::sync::Arc;
 use tokio_postgres::Client;
 
@@ -9,6 +10,15 @@ pub trait Stage: Send + Sync {
     async fn stage(&self);
     async fn merge(&self);
     async fn stamp(&self, n: usize);
+    async fn snapshot(
+        &self,
+        epoch: i64,
+        infos: i64,
+        nodes: i64,
+        exploit: Utility,
+        elapsed: i64,
+        stamped: i64,
+    );
 }
 
 #[async_trait::async_trait]
@@ -17,35 +27,72 @@ impl Stage for Client {
         let sql = format!(
             "DROP   TABLE IF EXISTS {t2};
              CREATE UNLOGGED TABLE  {t2} (LIKE {t1});",
-            t1 = BLUEPRINT,
-            t2 = STAGING
+            t1 = blueprint(),
+            t2 = staging()
         );
-        self.batch_execute(&sql).await.expect("create staging");
+        measure("stage.create", self.batch_execute(&sql))
+            .await
+            .expect("create staging");
     }
+
     async fn merge(&self) {
         let sql = format!(
-            "INSERT INTO   {t1} (past, present, choices, edge, weight, regret, evalue, counts)
-             SELECT              past, present, choices, edge, weight, regret, evalue, counts FROM {t2}
-             ON CONFLICT  (past, present, choices, edge)
+            "INSERT INTO   {t1} (past, present, choices, geometry, edge, weight, regret, payoff, visits)
+             SELECT              past, present, choices, geometry, edge, weight, regret, payoff, visits FROM {t2}
+             ON CONFLICT  (past, present, choices, geometry, edge)
              DO UPDATE SET
                  weight = EXCLUDED.weight,
                  regret = EXCLUDED.regret,
-                 evalue = EXCLUDED.evalue,
-                 counts = EXCLUDED.counts;
+                 payoff = EXCLUDED.payoff,
+                 visits = EXCLUDED.visits;
              DROP TABLE    {t2};",
-            t1 = BLUEPRINT,
-            t2 = STAGING
+            t1 = blueprint(),
+            t2 = staging()
         );
-        self.batch_execute(&sql).await.expect("upsert blueprint");
+        measure("stage.merge", self.batch_execute(&sql))
+            .await
+            .expect("upsert blueprint");
     }
+
     async fn stamp(&self, n: usize) {
         let sql = format!(
-            "UPDATE {t} SET value = value + $1 WHERE key = 'current'",
-            t = EPOCH
+            "UPDATE {t} SET value = $1 WHERE key = 'current'",
+            t = epoch()
         );
-        self.execute(&sql, &[&(n as i64)])
+        measure("stage.stamp", self.execute(&sql, &[&(n as i64)]))
             .await
             .expect("update epoch");
+    }
+
+    async fn snapshot(
+        &self,
+        epoch: i64,
+        infos: i64,
+        nodes: i64,
+        exploit: Utility,
+        elapsed: i64,
+        stamped: i64,
+    ) {
+        let sql = format!(
+            "INSERT INTO {t} (epoch, infos, nodes, exploit, elapsed, stamped) VALUES ($1, $2, $3, $4, $5, $6)",
+            t = snapshot()
+        );
+        measure(
+            "stage.snapshot",
+            self.execute(
+                &sql,
+                &[
+                    &epoch,
+                    &infos,
+                    &nodes,
+                    &(exploit as f32),
+                    &elapsed,
+                    &stamped,
+                ],
+            ),
+        )
+        .await
+        .expect("insert snapshot");
     }
 }
 
@@ -54,10 +101,26 @@ impl Stage for Arc<Client> {
     async fn stage(&self) {
         self.as_ref().stage().await
     }
+
     async fn merge(&self) {
         self.as_ref().merge().await
     }
+
     async fn stamp(&self, n: usize) {
         self.as_ref().stamp(n).await
+    }
+
+    async fn snapshot(
+        &self,
+        epoch: i64,
+        infos: i64,
+        nodes: i64,
+        exploit: Utility,
+        elapsed: i64,
+        stamped: i64,
+    ) {
+        self.as_ref()
+            .snapshot(epoch, infos, nodes, exploit, elapsed, stamped)
+            .await
     }
 }

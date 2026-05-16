@@ -1,13 +1,9 @@
 use super::*;
-use rbp_core::Probability;
 use rbp_core::*;
 use rbp_gameplay::*;
 use rbp_mccfr::*;
 use rbp_transport::*;
 use std::collections::BTreeMap;
-
-// TODO: Import from rbp-core or define locally
-const POLICY_MIN: Probability = 1e-6;
 
 /// A trained strategy for a specific information set.
 ///
@@ -29,7 +25,8 @@ const POLICY_MIN: Probability = 1e-6;
 pub struct Strategy {
     info: NlheInfo,
     accumulated: BTreeMap<Edge, Probability>,
-    counts: BTreeMap<Edge, u32>,
+    visits: BTreeMap<Edge, u32>,
+    payoff: f32,
 }
 
 impl Strategy {
@@ -41,9 +38,14 @@ impl Strategy {
     pub fn accumulated(&self) -> &BTreeMap<Edge, Probability> {
         &self.accumulated
     }
-    /// Encounter counts per action.
-    pub fn counts(&self) -> &BTreeMap<Edge, u32> {
-        &self.counts
+    /// Encounter visits per action.
+    pub fn visits(&self) -> &BTreeMap<Edge, u32> {
+        &self.visits
+    }
+    /// Expected value of this information set.
+    /// Stored as an incremental mean, directly readable.
+    pub fn payoff(&self) -> f32 {
+        self.payoff
     }
     /// Normalized action probabilities (sums to 1).
     /// Applies minimum probability floor to prevent zero weights.
@@ -51,28 +53,60 @@ impl Strategy {
         let denom = self
             .accumulated
             .values()
-            .map(|&p| p.max(POLICY_MIN))
+            .map(|&p| p.max(EPSILON))
             .sum::<Probability>();
         self.accumulated
             .iter()
-            .map(|(&edge, &policy)| (edge, policy.max(POLICY_MIN) / denom))
+            .map(|(&edge, &policy)| (edge, policy.max(EPSILON) / denom))
             .collect()
     }
+    /// Argmax (Dirac-sharpened) copy: all probability mass collapses
+    /// onto the highest-mass edge, others zero. Pure post-processing
+    /// on the policy distribution — visits and payoff describe the
+    /// underlying training and stay untouched.
+    pub fn argmax(&self) -> Self {
+        Self {
+            info: self.info.clone(),
+            accumulated: argmax(&self.accumulated),
+            visits: self.visits.clone(),
+            payoff: self.payoff,
+        }
+    }
+}
+
+/// Collapses a probability distribution to a Dirac delta on its mode:
+/// the max-mass key gets 1.0, all others 0.0. Ties broken by
+/// `BTreeMap` ordering. Reused by [`Strategy::argmax`] and the
+/// `Dirac` brain in `rbp_gameroom` so they share semantics.
+pub fn argmax<K>(probs: &BTreeMap<K, Probability>) -> BTreeMap<K, Probability>
+where
+    K: Ord + Copy,
+{
+    let mode = probs
+        .iter()
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+        .map(|(k, _)| *k);
+    probs
+        .keys()
+        .map(|k| (*k, if Some(*k) == mode { 1.0 } else { 0.0 }))
+        .collect()
 }
 
 impl Density for Strategy {
     type Support = NlheEdge;
+
     fn density(&self, edge: &Self::Support) -> Probability {
         let denom = self
             .accumulated
             .values()
-            .map(|&p| p.max(POLICY_MIN))
+            .map(|&p| p.max(EPSILON))
             .sum::<Probability>();
         self.accumulated
             .get(edge.as_ref())
-            .map(|&p| p.max(POLICY_MIN) / denom)
+            .map(|&p| p.max(EPSILON) / denom)
             .unwrap_or(0.)
     }
+
     fn support(&self) -> impl Iterator<Item = Self::Support> {
         self.accumulated.keys().copied().map(NlheEdge::from)
     }
@@ -80,6 +114,7 @@ impl Density for Strategy {
 
 impl From<(NlheInfo, Vec<Decision<NlheEdge>>)> for Strategy {
     fn from((info, decisions): (NlheInfo, Vec<Decision<NlheEdge>>)) -> Self {
+        let payoff = decisions.first().map(|d| d.payoff).unwrap_or(0.0);
         let accumulated = info
             .choices()
             .into_iter()
@@ -94,7 +129,7 @@ impl From<(NlheInfo, Vec<Decision<NlheEdge>>)> for Strategy {
                 )
             })
             .collect::<BTreeMap<_, _>>();
-        let counts = info
+        let visits = info
             .choices()
             .into_iter()
             .map(|edge| {
@@ -103,33 +138,30 @@ impl From<(NlheInfo, Vec<Decision<NlheEdge>>)> for Strategy {
                     decisions
                         .iter()
                         .find(|d| Edge::from(d.edge) == edge)
-                        .map(|d| d.counts)
+                        .map(|d| d.visits)
                         .expect("empty decision tree"),
                 )
             })
             .collect::<BTreeMap<_, _>>();
-        Self { info, accumulated, counts }
+        Self {
+            info,
+            accumulated,
+            visits,
+            payoff,
+        }
     }
 }
 
-impl TryFrom<ApiStrategy> for Strategy {
-    type Error = anyhow::Error;
-    fn try_from(api: ApiStrategy) -> Result<Self, Self::Error> {
-        let subgame = Path::from(api.history as u64);
-        let present = Abstraction::from(api.present);
-        let choices = Path::from(api.choices as u64);
-        let info = NlheInfo::from((subgame, present, choices));
-        let accumulated = api
-            .accumulated
-            .into_iter()
-            .map(|(edge_str, policy)| Edge::try_from(edge_str.as_str()).map(|edge| (edge, policy)))
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
-        let counts = api
-            .counts
-            .into_iter()
-            .map(|(edge_str, count)| Edge::try_from(edge_str.as_str()).map(|edge| (edge, count)))
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
-        Ok(Self { info, accumulated, counts })
+impl From<ApiStrategy> for Strategy {
+    fn from(api: ApiStrategy) -> Self {
+        let geometry = Geometry::from(api.geometry);
+        let info = NlheInfo::from((api.history, api.present, api.choices, geometry));
+        Self {
+            info,
+            accumulated: api.accumulated,
+            visits: api.visits,
+            payoff: api.payoff,
+        }
     }
 }
 
@@ -140,13 +172,20 @@ mod tests {
 
     fn build(data: &[(Action, Probability)]) -> Strategy {
         let accumulated = data.iter().map(|(a, p)| (Edge::from(*a), *p)).collect();
-        let counts = data.iter().map(|(a, _)| (Edge::from(*a), 0u32)).collect();
+        let visits = data.iter().map(|(a, _)| (Edge::from(*a), 0u32)).collect();
         let info = NlheInfo::random();
-        Strategy { info, accumulated, counts }
+        Strategy {
+            info,
+            accumulated,
+            visits,
+            payoff: 0.0,
+        }
     }
+
     fn sums(s: &Strategy) -> Probability {
         s.policy().values().sum()
     }
+
     fn close(a: Probability, b: Probability) -> bool {
         (a - b).abs() < 1e-6
     }
@@ -220,14 +259,15 @@ mod tests {
             .map(|(idx, edge)| Decision {
                 edge,
                 mass: (idx + 1) as f32 * 10.0,
-                counts: idx as u32,
+                visits: idx as u32,
+                payoff: 0.0,
             })
             .collect();
         let expected = d.len();
         let s = Strategy::from((i.clone(), d));
         assert_eq!(s.info(), &i);
         assert_eq!(s.accumulated().len(), expected);
-        assert_eq!(s.counts().len(), expected);
+        assert_eq!(s.visits().len(), expected);
         assert!(close(sums(&s), 1.0));
     }
 

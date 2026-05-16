@@ -1,6 +1,7 @@
 use super::*;
 use rbp_cards::*;
 use rbp_core::*;
+use rbp_translate::*;
 
 /// Abstract bet sizing for Edge::Raise.
 ///
@@ -21,46 +22,6 @@ impl Size {
             Self::BBs(n) => n * rbp_core::B_BLIND,
         }
     }
-    /// Snaps a chip amount to the nearest canonical size.
-    /// At opening spots, snaps to BB; otherwise pot-relative.
-    pub fn from_chips(
-        chips: Chips,
-        pot: Chips,
-        opening: bool,
-        street: Street,
-        depth: usize,
-    ) -> Self {
-        let raises = Self::raises(street, depth);
-        if opening {
-            Self::nearest_bb(chips, raises)
-        } else {
-            Self::nearest_pot(chips, pot, raises)
-        }
-    }
-    fn nearest_bb(chips: Chips, raises: &[Self]) -> Self {
-        let target = chips / rbp_core::B_BLIND;
-        raises
-            .iter()
-            .filter_map(|s| match s {
-                Self::BBs(n) => Some((*n, *s)),
-                Self::SPR(..) => None,
-            })
-            .min_by_key(|(n, _)| (target as i64 - *n as i64).abs())
-            .map(|(_, s)| s)
-            .unwrap_or(Self::BBs(2))
-    }
-    fn nearest_pot(chips: Chips, pot: Chips, raises: &[Self]) -> Self {
-        let target = chips as Utility / pot as Utility;
-        raises
-            .iter()
-            .filter_map(|s| match s {
-                Self::SPR(n, d) => Some((*n as Probability / *d as Probability, *s)),
-                Self::BBs(_) => None,
-            })
-            .min_by(|(a, _), (b, _)| (target - a).abs().partial_cmp(&(target - b).abs()).unwrap())
-            .map(|(_, s)| s)
-            .unwrap_or(Self::SPR(1, 1))
-    }
     /// Converts to Odds for interop with code expecting Odds type.
     /// BBs variant returns synthetic n:1 odds.
     pub fn odds(self) -> Odds {
@@ -77,12 +38,103 @@ impl Size {
             spr => spr,
         }
     }
-    /// Returns available raise sizes for a given street and depth.
-    /// This is the **single source of truth** for which betting edges exist.
+    /// Translate a [`Raise`] under a [`Translation`].
+    ///
+    /// Holdem-specific adapter over [`rbp_translate`]: dispatches to the
+    /// appropriate axis (BB-relative for opening spots, pot-fraction
+    /// otherwise) via [`Self::grid`] and resolves through the
+    /// policy. Returns [`Translated::Snap`] if the resolved anchor is
+    /// a canonical `Size`, or [`Translated::Free`] if the policy
+    /// injected the observed amount as a fresh anchor.
+    pub fn translate<R>(
+        raise: Raise,
+        policy: &Translation,
+        rng: &mut R,
+    ) -> Translated<Self, Chips>
+    where
+        R: rand::Rng + ?Sized,
+    {
+        match Self::grid(raise.street(), raise.depth()) {
+            None => Translated::Snap(Self::SPR(1, 1)),
+            Some(Grid::Opening(bbs)) => Self::translate_axis::<BB, _>(
+                raise.chips(),
+                raise.chips() as f64 / rbp_core::B_BLIND as f64,
+                bbs.iter().map(|&n| (n as f64, Self::BBs(n))),
+                policy,
+                rng,
+            ),
+            Some(Grid::Postflop(prs)) => Self::translate_axis::<PotFraction, _>(
+                raise.chips(),
+                raise.chips() as f64 / raise.pot() as f64,
+                prs.iter().map(|&(n, d)| (n as f64 / d as f64, Self::SPR(n, d))),
+                policy,
+                rng,
+            ),
+        }
+    }
+
+    fn translate_axis<A, R>(
+        chips: Chips,
+        observed: f64,
+        pairs: impl IntoIterator<Item = (f64, Self)>,
+        policy: &Translation,
+        rng: &mut R,
+    ) -> Translated<Self, Chips>
+    where
+        A: Axis,
+        R: rand::Rng + ?Sized,
+    {
+        let lat = pairs.into_iter().collect::<Lattice<A, Self>>();
+        let obs = Scalar::<A>::new(observed);
+        policy.resolve(obs, &lat, chips, rng)
+    }
+
+    /// Returns the axis-typed raise grid for a given street and depth.
+    /// `None` if depth exceeds [`rbp_core::MAX_RAISE_REPEATS`]. The
+    /// variant tag is the axis discriminant — no `opening: bool` needed.
+    pub fn grid(street: Street, depth: usize) -> Option<Grid> {
+        if depth > rbp_core::MAX_RAISE_REPEATS {
+            None
+        } else {
+            match rbp_core::regime() {
+                rbp_core::Regime::Pluribus => Some(Self::pluribus_grid(street, depth)),
+                rbp_core::Regime::Slumbot => Some(Grid::Postflop(&SLUMBOT_SIZES)),
+            }
+        }
+    }
+
+    fn pluribus_grid(street: Street, depth: usize) -> Grid {
+        match (street, depth) {
+            (Street::Pref, 0) => Grid::Opening(&OPENS),
+            (Street::Pref, 1) => Grid::Postflop(&SIZE_PREF_1),
+            (Street::Pref, _) => Grid::Postflop(&SIZE_PREF_N),
+            (Street::Flop, 0) => Grid::Postflop(&SIZE_FLOP_0),
+            (Street::Flop, 1) => Grid::Postflop(&SIZE_FLOP_1),
+            (Street::Flop, _) => Grid::Postflop(&SIZE_FLOP_N),
+            (Street::Turn, 0) => Grid::Postflop(&SIZE_TURN_0),
+            (Street::Turn, 1) => Grid::Postflop(&SIZE_TURN_1),
+            (Street::Turn, _) => Grid::Postflop(&SIZE_TURN_N),
+            (Street::Rive, 0) => Grid::Postflop(&SIZE_RIVE_0),
+            (Street::Rive, 1) => Grid::Postflop(&SIZE_RIVE_1),
+            (Street::Rive, _) => Grid::Postflop(&SIZE_RIVE_N),
+        }
+    }
+
+    /// Returns available raise sizes as a flat slice of [`Size`].
+    /// Convenience wrapper over [`Self::grid`] for callers that
+    /// don't need axis-typed dispatch.
     pub fn raises(street: Street, depth: usize) -> &'static [Self] {
         if depth > rbp_core::MAX_RAISE_REPEATS {
-            return &[];
+            &[]
+        } else {
+            match rbp_core::regime() {
+                rbp_core::Regime::Pluribus => Self::pluribus(street, depth),
+                rbp_core::Regime::Slumbot => Self::slumbot(street, depth),
+            }
         }
+    }
+
+    fn pluribus(street: Street, depth: usize) -> &'static [Self] {
         match (street, depth) {
             (Street::Pref, 0) => &Self::PREF_0,
             (Street::Pref, 1) => &Self::PREF_1,
@@ -91,39 +143,49 @@ impl Size {
             (Street::Flop, 1) => &Self::FLOP_1,
             (Street::Flop, _) => &Self::FLOP_N,
             (Street::Turn, 0) => &Self::TURN_0,
+            (Street::Turn, 1) => &Self::TURN_1,
             (Street::Turn, _) => &Self::TURN_N,
             (Street::Rive, 0) => &Self::RIVE_0,
             (Street::Rive, 1) => &Self::RIVE_1,
             (Street::Rive, _) => &Self::RIVE_N,
         }
     }
-}
 
-/// Blinds values used in preflop opening (must fit in u8 6-9).
-const BLINDS_GRID: [Chips; 4] = [2, 3, 4, 8];
-/// Pot-relative sizes actually used in raises (must fit in u8 10-15, Path uses 4-bit encoding).
-const SPR_GRID: [Size; 6] = [
-    Size::SPR(1, 3), // 0.33 pot
-    Size::SPR(1, 2), // 0.50 pot
-    Size::SPR(2, 3), // 0.66 pot
-    Size::SPR(1, 1), // 1.00 pot
-    Size::SPR(3, 2), // 1.50 pot
-    Size::SPR(2, 1), // 2.00 pot
-];
+    fn slumbot(_street: Street, _depth: usize) -> &'static [Self] {
+        &Self::SLUMBOT
+    }
+}
 
 #[rustfmt::skip]
 impl Size {
-    const PREF_0: [Self; 4] = [Self::BBs(2), Self::BBs(3), Self::BBs(4), Self::BBs(8)];             // Preflop depth=0: BB opens
-    const PREF_1: [Self; 3] = [Self::SPR(1, 1), Self::SPR(3, 2), Self::SPR(2, 1)];                  // Preflop depth=1: 3-bet sizing (1x, 1.5x, 2x pot)
-    const PREF_N: [Self; 2] = [Self::SPR(1, 1), Self::SPR(2, 1)];                                   // Preflop depth=2+: 4-bet+ (1x, 2x pot)
-    const FLOP_0: [Self; 4] = [Self::SPR(1, 3), Self::SPR(1, 2), Self::SPR(1, 1), Self::SPR(2, 1)]; // Flop depth=0: probe bet (1/3 instead of 1/4 due to encoding limit)
-    const FLOP_1: [Self; 3] = [Self::SPR(2, 3), Self::SPR(1, 1), Self::SPR(3, 2)];                  // Flop depth=1: after first raise (2/3x, 1x, 1.5x)
-    const FLOP_N: [Self; 2] = [Self::SPR(1, 1), Self::SPR(3, 2)];                                   // Flop depth=2+: simplified (1x, 1.5x pot)
-    const TURN_0: [Self; 4] = [Self::SPR(1, 3), Self::SPR(2, 3), Self::SPR(1, 1), Self::SPR(2, 1)]; // Turn depth=0: geometric sizing for river setup
-    const TURN_N: [Self; 2] = [Self::SPR(1, 1), Self::SPR(3, 2)];                                   // Turn depth=1+: simplified (1x, 1.5x pot)
-    const RIVE_0: [Self; 4] = [Self::SPR(1, 3), Self::SPR(1, 2), Self::SPR(1, 1), Self::SPR(2, 1)]; // River depth=0: full range including overbets
-    const RIVE_1: [Self; 3] = [Self::SPR(2, 3), Self::SPR(1, 1), Self::SPR(2, 1)];                  // River depth=1: raise (2/3x, 1x, 2x pot)
-    const RIVE_N: [Self; 1] = [Self::SPR(1, 1)];                                                    // River depth=2+: minimal
+    const fn opens<const M: usize>(bbs: [Chips; M]) -> [Self; M] {
+        let mut r = [Self::BBs(0); M];
+        let mut i = 0;
+        while i < M { r[i] = Self::BBs(bbs[i]); i += 1; }
+        r
+    }
+
+    const fn sprs<const M: usize>(ratios: [(Chips, Chips); M]) -> [Self; M] {
+        let mut r = [Self::SPR(0, 0); M];
+        let mut i = 0;
+        while i < M { r[i] = Self::SPR(ratios[i].0, ratios[i].1); i += 1; }
+        r
+    }
+    const PREF_0: [Self; 4] = Self::opens(OPENS);    // Preflop depth=0: BB opens
+    const PREF_1: [Self; 3] = Self::sprs(SIZE_PREF_1);  // Preflop depth=1: 3-bet sizing
+    const PREF_N: [Self; 2] = Self::sprs(SIZE_PREF_N);  // Preflop depth=2+: 4-bet+
+    const FLOP_0: [Self; 5] = Self::sprs(SIZE_FLOP_0);  // Flop depth=0: probe bets
+    const FLOP_1: [Self; 2] = Self::sprs(SIZE_FLOP_1);  // Flop depth=1: after first raise
+    const FLOP_N: [Self; 2] = Self::sprs(SIZE_FLOP_N);  // Flop depth=2+: deep raise wars
+    const TURN_0: [Self; 4] = Self::sprs(SIZE_TURN_0);  // Turn depth=0: geometric setup
+    const TURN_1: [Self; 3] = Self::sprs(SIZE_TURN_1);  // Turn depth=1: value raises
+    const TURN_N: [Self; 2] = Self::sprs(SIZE_TURN_N);  // Turn depth=2+: deep raise wars
+    const RIVE_0: [Self; 2] = Self::sprs(SIZE_RIVE_0);  // River depth=0: bet ladder
+    const RIVE_1: [Self; 3] = Self::sprs(SIZE_RIVE_1);  // River depth=1: raise sizes
+    const RIVE_N: [Self; 2] = Self::sprs(SIZE_RIVE_N);  // River depth=2+: deep raise wars
+    // Slumbot regime: 1/2 pot, full pot at every street/depth.
+    // Min-raise and all-in handled separately by Edge (fold/check/call/shove).
+    const SLUMBOT: [Self; 2] = Self::sprs(SLUMBOT_SIZES);
 }
 
 impl From<Odds> for Size {
@@ -132,21 +194,21 @@ impl From<Odds> for Size {
     }
 }
 
-/// u8 bijection: encodes to values 6-15 to avoid collision with Edge's 1-5.
-/// Layout: 6-9 = BBs(BLINDS_GRID[i-6]), 10-15 = SPR(SPR_GRID[i-10])
+/// u8 bijection: encodes to values 6-19 to avoid collision with Edge's 1-5.
+/// Layout: 6-9 = BBs(OPENS[i-6]), 10-19 = SPR(RAISES[i-10])
 impl From<Size> for u8 {
     fn from(size: Size) -> Self {
         match size {
             Size::BBs(n) => {
-                6 + BLINDS_GRID
+                6 + OPENS
                     .iter()
                     .position(|&b| b == n)
                     .expect("invalid blinds value") as u8
             }
-            Size::SPR(..) => {
-                10 + SPR_GRID
+            Size::SPR(n, d) => {
+                10 + RAISES
                     .iter()
-                    .position(|&s| s == size)
+                    .position(|&(rn, rd)| rn == n && rd == d)
                     .expect("invalid SPR value") as u8
             }
         }
@@ -155,8 +217,11 @@ impl From<Size> for u8 {
 impl From<u8> for Size {
     fn from(value: u8) -> Self {
         match value {
-            6..=9 => Self::BBs(BLINDS_GRID[value as usize - 6]),
-            10..=15 => SPR_GRID[value as usize - 10],
+            6..=9 => Self::BBs(OPENS[value as usize - 6]),
+            10..=19 => {
+                let (n, d) = RAISES[value as usize - 10];
+                Self::SPR(n, d)
+            }
             _ => panic!("invalid size encoding: {}", value),
         }
     }
@@ -192,6 +257,7 @@ impl std::fmt::Display for Size {
 }
 impl TryFrom<&str> for Size {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         if let Some(bb) = s.strip_suffix("bb") {
             return bb
@@ -215,10 +281,10 @@ impl Arbitrary for Size {
     fn random() -> Self {
         use rand::prelude::IndexedRandom;
         let ref mut rng = rand::rng();
-        let all_sizes: Vec<Self> = BLINDS_GRID
+        let all_sizes: Vec<Self> = OPENS
             .iter()
             .map(|&n| Self::BBs(n))
-            .chain(SPR_GRID.iter().copied())
+            .chain(RAISES.iter().map(|&(n, d)| Self::SPR(n, d)))
             .collect();
         *all_sizes.choose(rng).expect("sizes empty")
     }
@@ -227,26 +293,34 @@ impl Arbitrary for Size {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::SeedableRng;
+    use rand::rngs::SmallRng;
     use rbp_core::MAX_RAISE_REPEATS;
+
+    fn seeded() -> SmallRng {
+        SmallRng::seed_from_u64(0xF00DCAFE)
+    }
     /// Verify the raises grid returns expected counts per street/depth.
     /// This is the authoritative spec for action abstraction branching factor.
     #[test]
     fn raises_grid_counts() {
         // Preflop: BB opens with BB-relative sizes, then pot-relative
-        assert_eq!(Size::raises(Street::Pref, 0).len(), 4); // 2BB, 3BB, 4BB, 8BB
-        assert_eq!(Size::raises(Street::Pref, 1).len(), 3); // 1x, 1.5x, 2x pot
-        assert_eq!(Size::raises(Street::Pref, 2).len(), 2); // 1x, 2x pot
-        assert_eq!(Size::raises(Street::Pref, 3).len(), 2); // 1x, 2x pot
+        assert_eq!(Size::raises(Street::Pref, 0).len(), 4); // 2BB, 3BB, 4BB, 5BB
+        assert_eq!(Size::raises(Street::Pref, 1).len(), 3); // 1x, 2x, 3x pot
+        assert_eq!(Size::raises(Street::Pref, 2).len(), 2); // 1x, 3x pot
+        assert_eq!(Size::raises(Street::Pref, 3).len(), 2); // 1x, 3x pot
         // Flop: includes probe bets at depth=0
-        assert_eq!(Size::raises(Street::Flop, 0).len(), 4); // 1/3, 1/2, 1x, 2x
-        assert_eq!(Size::raises(Street::Flop, 1).len(), 3); // 2/3, 1x, 1.5x
-        assert_eq!(Size::raises(Street::Flop, 2).len(), 2); // 1x, 1.5x
+        assert_eq!(Size::raises(Street::Flop, 0).len(), 5); // 1/4, 1/2, 3/4, 1x, 2x
+        assert_eq!(Size::raises(Street::Flop, 1).len(), 2); // 1/2, 1x
+        assert_eq!(Size::raises(Street::Flop, 2).len(), 2); // 1x, 3x
         // Turn: geometric sizing for river setup
-        assert_eq!(Size::raises(Street::Turn, 0).len(), 4); // 1/3, 2/3, 1x, 2x
-        assert_eq!(Size::raises(Street::Turn, 1).len(), 2); // 1x, 1.5x
-        // River: overbets matter more
-        assert_eq!(Size::raises(Street::Rive, 0).len(), 4); // 1/3, 1/2, 1x, 2x
-        assert_eq!(Size::raises(Street::Rive, 1).len(), 3); // 2/3, 1x, 2x
+        assert_eq!(Size::raises(Street::Turn, 0).len(), 4); // 1/3, 1x, 2x, 3x
+        assert_eq!(Size::raises(Street::Turn, 1).len(), 3); // 1x, 2x, 3x
+        assert_eq!(Size::raises(Street::Turn, 2).len(), 2); // 1x, 3x
+        // River: polar bet ladder only
+        assert_eq!(Size::raises(Street::Rive, 0).len(), 2); // 2x, 3x
+        assert_eq!(Size::raises(Street::Rive, 1).len(), 3); // 1x, 2x, 3x
+        assert_eq!(Size::raises(Street::Rive, 2).len(), 2); // 1x, 3x
         // Beyond MAX_RAISE_REPEATS: empty (no more raises allowed)
         assert_eq!(Size::raises(Street::Pref, MAX_RAISE_REPEATS + 1).len(), 0);
     }
@@ -304,22 +378,24 @@ mod tests {
     /// u8 bijection: encode then decode preserves value.
     #[test]
     fn bijective_u8() {
-        for &n in &BLINDS_GRID {
+        for &n in &OPENS {
             let size = Size::BBs(n);
             assert_eq!(size, Size::from(u8::from(size)));
         }
-        for &size in &SPR_GRID {
+        for &(n, d) in &RAISES {
+            let size = Size::SPR(n, d);
             assert_eq!(size, Size::from(u8::from(size)));
         }
     }
     /// u64 bijection: encode then decode preserves value.
     #[test]
     fn bijective_u64() {
-        for &n in &BLINDS_GRID {
+        for &n in &OPENS {
             let size = Size::BBs(n);
             assert_eq!(size, Size::from(u64::from(size)));
         }
-        for &size in &SPR_GRID {
+        for &(n, d) in &RAISES {
+            let size = Size::SPR(n, d);
             assert_eq!(size, Size::from(u64::from(size)));
         }
     }
@@ -329,7 +405,7 @@ mod tests {
         let pot = 100; // ignored for BBs
         assert_eq!(Size::BBs(2).into_chips(pot), 2 * rbp_core::B_BLIND);
         assert_eq!(Size::BBs(3).into_chips(pot), 3 * rbp_core::B_BLIND);
-        assert_eq!(Size::BBs(8).into_chips(pot), 8 * rbp_core::B_BLIND);
+        assert_eq!(Size::BBs(5).into_chips(pot), 5 * rbp_core::B_BLIND);
     }
     /// into_chips: SPR variant multiplies pot by fraction.
     #[test]
@@ -344,32 +420,32 @@ mod tests {
     fn from_chips_snaps_to_nearest() {
         let pot = 100;
         // Opening spot (preflop depth=0): snaps to BBs
-        let size = Size::from_chips(5, pot, true, Street::Pref, 0);
+        let size = Size::from(Raise::new(5, pot, Street::Pref, 0));
         assert!(matches!(size, Size::BBs(2) | Size::BBs(3)));
         // Non-opening: snaps to SPR
-        let size = Size::from_chips(75, pot, false, Street::Flop, 0);
+        let size = Size::from(Raise::new(75, pot, Street::Flop, 0));
         assert!(matches!(size, Size::SPR(..)));
     }
-    /// SPR_GRID must contain all SPR sizes used in any raises() call.
+    /// RAISES must contain all SPR sizes used in any raises() call.
     #[test]
-    fn spr_grid_is_complete() {
+    fn raise_grid_is_complete() {
         let mut all_spr = std::collections::HashSet::new();
         for street in [Street::Pref, Street::Flop, Street::Turn, Street::Rive] {
             for depth in 0..=MAX_RAISE_REPEATS {
                 for &size in Size::raises(street, depth) {
-                    if matches!(size, Size::SPR(..)) {
-                        all_spr.insert(size);
+                    if let Size::SPR(n, d) = size {
+                        all_spr.insert((n, d));
                     }
                 }
             }
         }
-        for size in all_spr {
-            assert!(SPR_GRID.contains(&size), "SPR_GRID missing {:?}", size);
+        for pair in all_spr {
+            assert!(RAISES.contains(&pair), "RAISES missing {:?}", pair);
         }
     }
-    /// BLINDS_GRID must contain all BB values used in raises().
+    /// OPENS_GRID must contain all BB values used in raises().
     #[test]
-    fn blinds_grid_is_complete() {
+    fn opens_grid_is_complete() {
         let mut all_bbs = std::collections::HashSet::new();
         for street in [Street::Pref, Street::Flop, Street::Turn, Street::Rive] {
             for depth in 0..=MAX_RAISE_REPEATS {
@@ -381,7 +457,7 @@ mod tests {
             }
         }
         for n in all_bbs {
-            assert!(BLINDS_GRID.contains(&n), "BLINDS_GRID missing {}", n);
+            assert!(OPENS.contains(&n), "OPENS_GRID missing {}", n);
         }
     }
     /// Display format: BBs shows "Nbb", SPR shows ratio format.
@@ -392,18 +468,93 @@ mod tests {
         assert_eq!(format!("{}", Size::SPR(1, 1)), "1:1");
         assert_eq!(format!("{}", Size::SPR(3, 2)), "3:2");
         assert_eq!(format!("{}", Size::SPR(2, 1)), "2:1");
-        assert_eq!(format!("{}", Size::SPR(1, 3)), "1:3");
-        assert_eq!(format!("{}", Size::SPR(2, 3)), "2:3");
+        assert_eq!(format!("{}", Size::SPR(1, 4)), "1:4");
+        assert_eq!(format!("{}", Size::SPR(3, 4)), "3:4");
+    }
+    /// Opening spot: `translate` with classical+nearest matches the BB-count axis.
+    /// B_BLIND = 2, OPENS = [2, 3, 4, 5]. chips=7 → observed 3.5 BB → ties between BBs(3) and BBs(4); lower wins.
+    #[test]
+    fn translate_opening_classical_nearest_ties_low() {
+        let ref mut rng = seeded();
+        let out = Size::translate(
+            Raise::new(7, 0, Street::Pref, 0),
+            &Translation::Snap,
+            rng,
+        );
+        assert_eq!(out, Translated::Snap(Size::BBs(3)));
+    }
+    /// Opening spot: below the smallest open clamps to BBs(2).
+    #[test]
+    fn translate_opening_clamps_low() {
+        let ref mut rng = seeded();
+        let out = Size::translate(
+            Raise::new(1, 0, Street::Pref, 0),
+            &Translation::Snap,
+            rng,
+        );
+        assert_eq!(out, Translated::Snap(Size::BBs(2)));
+    }
+    /// Opening spot: above the largest open clamps to BBs(5).
+    #[test]
+    fn translate_opening_clamps_high() {
+        let ref mut rng = seeded();
+        let out = Size::translate(
+            Raise::new(20, 0, Street::Pref, 0),
+            &Translation::Snap,
+            rng,
+        );
+        assert_eq!(out, Translated::Snap(Size::BBs(5)));
+    }
+    /// Post-flop: classical+nearest snaps to the closest pot-fraction anchor.
+    /// FLOP_0 = [1/4, 1/2, 1, 2]. chips=60, pot=100 → 0.6 closer to 1/2 than 1 → SPR(1,2).
+    #[test]
+    fn translate_postflop_classical_nearest_snaps_to_half() {
+        let ref mut rng = seeded();
+        let out = Size::translate(
+            Raise::new(60, 100, Street::Flop, 0),
+            &Translation::Snap,
+            rng,
+        );
+        assert_eq!(out, Translated::Snap(Size::SPR(1, 2)));
+    }
+    /// `Harmonic` policy converges on the GS formula empirically across many samples.
+    /// FLOP_0 bracketing 0.5 and 1.0 for observed 0.75 → p(0.5) = 0.25·1.5 / 0.5·1.75 ≈ 0.4286.
+    #[test]
+    fn translate_harmonic_monte_carlo() {
+        let ref mut rng = seeded();
+        // Observed 60% pot lands between 50% (L) and 75% (U) anchors after
+        // PR #201 introduced 3:4. Harmonic translation distributes between
+        // them per Ganzfried-Sandholm 2013.
+        let trials = 50_000;
+        let mut half_pot_hits = 0;
+        for _ in 0..trials {
+            match Size::translate(
+                Raise::new(60, 100, Street::Flop, 0),
+                &Translation::Harmonic,
+                rng,
+            ) {
+                Translated::Snap(Size::SPR(1, 2)) => half_pot_hits += 1,
+                Translated::Snap(Size::SPR(3, 4)) => {}
+                other => panic!("unexpected: {:?}", other),
+            }
+        }
+        let empirical = half_pot_hits as f64 / trials as f64;
+        let expected = (0.75 - 0.60) * (1.0 + 0.5) / ((0.75 - 0.5) * (1.0 + 0.60));
+        assert!(
+            (empirical - expected).abs() < 0.01,
+            "empirical {empirical} vs expected {expected}"
+        );
     }
     /// String parsing roundtrip: parse(display(size)) == size.
     #[test]
     fn string_roundtrip() {
-        for &n in &BLINDS_GRID {
+        for &n in &OPENS {
             let size = Size::BBs(n);
             let s = size.to_string();
             assert_eq!(Size::try_from(s.as_str()).unwrap(), size);
         }
-        for &size in &SPR_GRID {
+        for &(n, d) in &RAISES {
+            let size = Size::SPR(n, d);
             let s = size.to_string();
             assert_eq!(Size::try_from(s.as_str()).unwrap(), size);
         }

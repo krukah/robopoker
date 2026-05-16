@@ -24,6 +24,7 @@ pub struct Equity;
 impl Measure for Equity {
     type X = ClusterAbs;
     type Y = ClusterAbs;
+
     fn distance(&self, x: &Self::X, y: &Self::Y) -> f32 {
         (Probability::from(**x) - Probability::from(**y)).abs()
     }

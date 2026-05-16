@@ -124,10 +124,11 @@ impl Hand {
     }
 }
 
-/// we can empty a hand from high to low
-/// by removing the highest card until the hand is empty
+/// Yields cards from lowest to highest index (2c → As)
+/// by popping the lowest set bit until the hand is empty.
 impl Iterator for Hand {
     type Item = Card;
+
     fn next(&mut self) -> Option<Self::Item> {
         match self.size() {
             0 => None,
@@ -156,23 +157,10 @@ impl From<Hand> for u64 {
     }
 }
 
-/// Vec<Card> isomorphism (up to Vec permutation, this always comes out sorted)
-/// we SUM/OR the cards to get the bitstring
-/// [2c, Ts, Jc, Js]
-/// xxxxxxxxxxxx 0000000010011000000000000000000000000000000000000001
+/// Collects cards in low-to-high order, matching [`Hand`]'s [`Iterator`] impl.
 impl From<Hand> for Vec<Card> {
     fn from(h: Hand) -> Self {
-        let mut value = h.0;
-        let mut index = 0u8;
-        let mut cards = Vec::new();
-        while value > 0 {
-            if value & 1 == 1 {
-                cards.push(Card::from(index));
-            }
-            value = value >> 1;
-            index = index + 1;
-        }
-        cards
+        h.collect()
     }
 }
 impl From<Vec<Card>> for Hand {
@@ -207,6 +195,7 @@ impl From<Card> for Hand {
 /// this follows from Vec<Card> isomorphism
 impl TryFrom<&str> for Hand {
     type Error = String;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         Ok(Self::from(Card::parse(s)?))
     }
@@ -214,6 +203,7 @@ impl TryFrom<&str> for Hand {
 
 impl std::ops::Add<Self> for Hand {
     type Output = Self;
+
     fn add(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
@@ -236,6 +226,24 @@ impl Arbitrary for Hand {
     }
 }
 
+impl serde::Serialize for Hand {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Hand {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -254,6 +262,13 @@ mod tests {
         assert_eq!(iter.next(), Some(Card::try_from("Jc").unwrap()));
         assert_eq!(iter.next(), Some(Card::try_from("Js").unwrap()));
         assert_eq!(iter.next(), None);
+    }
+    #[test]
+    fn vec_from_matches_iterator() {
+        let hand = Hand::try_from("Jc Ts 2c Js").unwrap();
+        let from_vec = Vec::<Card>::from(hand);
+        let from_iter = hand.collect::<Vec<Card>>();
+        assert_eq!(from_vec, from_iter);
     }
 
     #[test]

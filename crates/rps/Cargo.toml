@@ -1,0 +1,25 @@
+[package]
+name          = "rbp-rps"
+version       = "1.0.0"
+edition       = "2024"
+rust-version  = "1.90"
+authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description   = "Rock-Paper-Scissors solver for MCCFR framework validation"
+license       = "MIT"
+repository    = "https://github.com/krukah/robopoker"
+keywords      = ["rps", "cfr", "game-theory", "solver"]
+categories    = ["algorithms", "mathematics", "game-development"]
+
+[[bin]]
+name = "rps"
+path = "src/main.rs"
+
+[dependencies]
+rbp-core      = { path = "../util" }
+rbp-mccfr     = { path = "../mccfr" }
+rbp-subgame   = { path = "../subgame" }
+rbp-depth     = { path = "../depth" }
+rbp-world     = { path = "../world" }
+rbp-transport = { path = "../transport" }
+paste         = "1.0"
+rand          = { workspace = true }

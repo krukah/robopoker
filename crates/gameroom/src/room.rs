@@ -2,9 +2,11 @@ use super::*;
 use rbp_auth::Member;
 use rbp_auth::User;
 use rbp_core::*;
-use rbp_gameplay::Turn;
 use rbp_database::*;
+use rbp_gameplay::Reason;
+use rbp_gameplay::Turn;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use tokio_postgres::Client;
 
 /// Live poker room coordinator.
@@ -14,9 +16,9 @@ pub struct Room {
     id: ID<Self>,
     db: Arc<Client>,
     stakes: Chips,
-    engine: EngineState,
     context: HandContext,
     users: Vec<User>,
+    idle: usize,
 }
 
 impl Room {
@@ -26,79 +28,115 @@ impl Room {
             db,
             stakes,
             users: Vec::new(),
-            engine: EngineState::default(),
             context: HandContext::default(),
+            idle: 0,
         }
     }
+
     pub fn stakes(&self) -> Chips {
         self.stakes
     }
-    pub fn sit<P, U>(&mut self, player: P, user: U)
-    where
+
+    pub fn sit<P, U>(
+        &mut self,
+        engine: &mut Engine<Seating>,
+        player: P,
+        user: U,
+        wire: Option<tokio::sync::mpsc::UnboundedSender<String>>,
+    ) where
         P: Player + 'static,
         U: Into<User>,
     {
-        self.engine.as_seating().sit(player);
+        engine.sit(player, wire);
         self.users.push(user.into());
     }
 }
 
 impl Room {
-    pub async fn run(
-        mut self,
-        start: tokio::sync::oneshot::Receiver<()>,
-        done: tokio::sync::oneshot::Sender<()>,
-    ) {
-        log::debug!("[room {}] waiting for player", self.id);
-        let _ = start.await;
-        log::debug!("[room {}] starting game loop", self.id);
-        self.engine.start();
-        loop {
-            self.reset_hand();
-            self.play_hand().await;
-            self.engine.into_showdown();
-            self.run_showdown().await;
-            self.flush_hand().await;
-            if self.should_stop() {
-                break;
-            }
-            self.engine.conclude();
-            if self.engine.is_finished() {
-                log::info!("[room {}] game over", self.id);
-                break;
+    #[tracing::instrument(skip_all, fields(room = %self.id))]
+    pub async fn run(mut self, engine: Engine<Seating>, start: tokio::sync::oneshot::Receiver<()>) {
+        tracing::debug!("waiting for player");
+        match tokio::time::timeout(std::time::Duration::from_millis(PACE_ROOM_STARTUP), start).await
+        {
+            Ok(Ok(())) => {}
+            _ => {
+                tracing::warn!("startup timeout, no player connected");
+                return;
             }
         }
-        let _ = done.send(());
+        tracing::debug!("starting game loop");
+        let mut dealing = engine.start().await;
+        loop {
+            self.reset_hand(&dealing);
+            let acted = self.play_hand(&mut dealing).await;
+            let mut showdown = dealing.into_showdown();
+            self.run_showdown(&mut showdown).await;
+            self.flush_hand(&showdown).await;
+            if self.should_stop(&showdown) {
+                showdown.end_session(showdown.final_stacks(), Reason::Left);
+                break;
+            }
+            self.idle = if acted { 0 } else { self.idle + 1 };
+            if self.idle >= MAX_IDLE_HANDS {
+                tracing::info!(idle = self.idle, "idle limit reached");
+                showdown.end_session(showdown.final_stacks(), Reason::Idle);
+                break;
+            }
+            tokio::select! {
+                _ = tokio::time::sleep(showdown.timing().results) => {},
+                _ = showdown.skip().notified() => {},
+            }
+            if self.should_stop(&showdown) {
+                showdown.end_session(showdown.final_stacks(), Reason::Left);
+                break;
+            }
+            match showdown.conclude().await {
+                Ok(next) => dealing = next,
+                Err(finished) => {
+                    tracing::info!("game over");
+                    finished.end_session(finished.final_stacks(), Reason::Busted);
+                    break;
+                }
+            }
+        }
     }
-    async fn play_hand(&mut self) {
-        let engine = match &mut self.engine {
-            EngineState::Dealing(e) => e,
-            _ => panic!("play_hand called in wrong phase"),
-        };
+    /// Returns whether the human player actively decided at least once.
+    async fn play_hand(&mut self, engine: &mut Engine<Dealing>) -> bool {
+        let mut acted = false;
         loop {
             match engine.turn() {
-                Turn::Chance => engine.deal().await,
+                Turn::Chance => {
+                    engine.deal().await;
+                    if let Some(draw) = engine.last_draw() {
+                        self.context.record(0, draw, None);
+                    }
+                }
                 Turn::Choice(p) => {
-                    let action = engine.ask(p).await;
-                    self.context.record(p, action);
+                    let start = std::time::Instant::now();
+                    let (action, prompt) = engine.ask(p).await;
+                    self.context
+                        .record(p, action, Some(start.elapsed().as_millis() as i32));
+                    if p == 0 && !prompt.expired() {
+                        acted = true;
+                    }
                 }
                 Turn::Terminal => break,
             }
         }
+        acted
     }
-    async fn run_showdown(&mut self) {
-        let engine = match &mut self.engine {
-            EngineState::Showdown(e) => e,
-            _ => panic!("run_showdown called in wrong phase"),
-        };
+
+    async fn run_showdown(&mut self, engine: &mut Engine<Showdown>) {
         engine.showdown().await;
         engine.settle();
     }
-    fn should_stop(&self) -> bool {
-        match &self.engine {
-            EngineState::Showdown(e) => e.human_disconnected(),
-            _ => false,
-        }
+
+    fn should_stop<T>(&self, engine: &Engine<T>) -> bool {
+        (0..self.users.len())
+            .filter(|pos| engine.is_disconnected(*pos))
+            .inspect(|pos| tracing::info!(seat = pos, "player disconnected"))
+            .next()
+            .is_some()
     }
 }
 
@@ -106,36 +144,38 @@ impl Room {
     fn user(&self, pos: Position) -> Option<ID<Member>> {
         self.users.get(pos).and_then(User::id)
     }
-    fn reset_hand(&mut self) {
-        let (hand_number, game) = match &self.engine {
-            EngineState::Dealing(e) => (e.hand(), e.game()),
-            _ => panic!("reset_hand called in wrong phase"),
-        };
-        self.context = HandContext::new(hand_number, game);
+
+    fn reset_hand(&mut self, engine: &Engine<Dealing>) {
+        self.context = HandContext::new(engine.hand(), &engine.game());
     }
-    async fn flush_hand(&self) {
-        let game = match &self.engine {
-            EngineState::Showdown(e) => e.game(),
-            _ => panic!("flush_hand called in wrong phase"),
-        };
-        let hand = self.context.to_hand(self.id().cast(), game.board(), game.pot());
+
+    async fn flush_hand(&mut self, engine: &Engine<Showdown>) {
+        for (i, s) in engine.game().settlements().iter().enumerate() {
+            self.context.set_pnl(i, s.won());
+        }
+        let hand =
+            self.context
+                .to_hand(self.id().cast(), engine.game().board(), engine.game().pot());
         self.db
             .create_hand(&hand)
             .await
-            .expect("failed to record hand");
+            .inspect_err(|e| tracing::error!(error = %e, "failed to record hand"))
+            .ok();
         for ref player in self.context.participants(hand.id(), |p| self.user(p)) {
             self.db
                 .create_player(player)
                 .await
-                .expect("failed to record player");
+                .inspect_err(|e| tracing::error!(error = %e, "failed to record player"))
+                .ok();
         }
         for ref play in self.context.plays(hand.id(), |p| self.user(p)) {
             self.db
                 .create_action(play)
                 .await
-                .expect("failed to record action");
+                .inspect_err(|e| tracing::error!(error = %e, "failed to record action"))
+                .ok();
         }
-        log::info!("recorded hand {}", hand.id());
+        tracing::info!(hand = %hand.id(), "recorded hand");
     }
 }
 
@@ -147,33 +187,41 @@ impl Unique for Room {
 
 impl Schema for Room {
     fn name() -> &'static str {
-        ROOMS
+        rooms()
     }
+
     fn columns() -> &'static [tokio_postgres::types::Type] {
         &[
             tokio_postgres::types::Type::UUID,
             tokio_postgres::types::Type::INT2,
         ]
     }
+
     fn creates() -> &'static str {
-        const_format::concatcp!(
-            "CREATE TABLE IF NOT EXISTS ",
-            ROOMS,
-            " (
+        static SQL: OnceLock<&str> = OnceLock::<&str>::new();
+        *SQL.get_or_init(|| {
+            leaked(format!(
+                "CREATE TABLE IF NOT EXISTS {} (
                 id          UUID PRIMARY KEY,
                 stakes      SMALLINT NOT NULL
-            );"
-        )
+            );",
+                rooms()
+            ))
+        })
     }
+
     fn indices() -> &'static str {
         ""
     }
+
     fn copy() -> &'static str {
         unimplemented!()
     }
+
     fn truncates() -> &'static str {
         unimplemented!()
     }
+
     fn freeze() -> &'static str {
         unimplemented!()
     }

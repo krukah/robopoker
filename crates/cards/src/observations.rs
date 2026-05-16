@@ -28,7 +28,6 @@ impl From<Street> for ObservationIterator {
         // need to make it work with Street::Pref (Hand::empty())
         // and it should compose well with a separate HandIterator, so
         // ObsIterator can reap the benefit
-
         // start with first card
         let pocket = Self::start();
         let inner = HandIterator::from((street.n_observed() - 2, pocket));
@@ -48,6 +47,7 @@ impl From<Street> for ObservationIterator {
 
 impl Iterator for ObservationIterator {
     type Item = Observation;
+
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner.next() {
             Some(next) => self.inner(next),
@@ -57,6 +57,7 @@ impl Iterator for ObservationIterator {
             },
         }
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = self.combinations();
         (n, Some(n))
@@ -72,6 +73,7 @@ impl ObservationIterator {
     pub fn street(&self) -> Street {
         self.street
     }
+
     fn start() -> Hand {
         // 2c 2d
         #[cfg(not(feature = "shortdeck"))]
@@ -81,9 +83,11 @@ impl ObservationIterator {
         let pocket = Hand::from(0x30000);
         pocket
     }
+
     fn inner(&mut self, public: Hand) -> Option<Observation> {
         Some(Observation::from((self.pocket, public)))
     }
+
     fn outer(&mut self, pocket: Hand) -> Option<Observation> {
         self.pocket = pocket;
         match self.street {

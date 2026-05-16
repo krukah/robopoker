@@ -26,7 +26,6 @@ pub enum Edge {
     Shove,
 }
 
-
 impl Edge {
     /// True if this is an all-in bet.
     pub fn is_shove(&self) -> bool {
@@ -58,14 +57,16 @@ impl Edge {
     /// Initial regret bounds for CFR warmstart.
     ///
     /// Returns (min, max) regret to bias exploration toward certain actions.
+    /// Per-action weights — only ratios matter.
     pub fn regret(&self) -> (Utility, Utility) {
+        let b = BiasHyperParams::get();
         match self {
-            Edge::Open(_) => (Utility::default(), BIAS_RAISE),
-            Edge::Raise(_) => (Utility::default(), BIAS_RAISE),
-            Edge::Check => (Utility::default(), BIAS_OTHER),
-            Edge::Shove => (Utility::default(), BIAS_RAISE),
-            Edge::Call => (Utility::default(), BIAS_OTHER),
-            Edge::Fold => (Utility::default(), BIAS_FOLDS),
+            Edge::Open(_) => (Utility::default(), b.raise()),
+            Edge::Raise(_) => (Utility::default(), b.raise()),
+            Edge::Check => (Utility::default(), b.other()),
+            Edge::Shove => (Utility::default(), b.shove()),
+            Edge::Call => (Utility::default(), b.other()),
+            Edge::Fold => (Utility::default(), b.folds()),
             Edge::Draw => panic!("chance edges have no learned regret"),
         }
     }
@@ -95,70 +96,17 @@ impl From<Odds> for Edge {
     }
 }
 
-/// Preflop open sizes in BB units.
-const OPENS_GRID: [Chips; 4] = [2, 3, 4, 8];
-/// Pot-relative raise sizes as Odds (must fit in u8 10-15, Path uses 4-bit encoding).
-const RAISE_GRID: [Odds; 6] = [
-    Odds::new(1, 3), // 0.33 pot
-    Odds::new(1, 2), // 0.50 pot
-    Odds::new(2, 3), // 0.66 pot
-    Odds::new(1, 1), // 1.00 pot
-    Odds::new(3, 2), // 1.50 pot
-    Odds::new(2, 1), // 2.00 pot
-];
-
 impl Edge {
     /// Returns available raise/open edges for a given street and depth.
-    /// This is the **single source of truth** for which betting edges exist.
+    /// Derives from Size::raises() which dispatches on the active profile.
     pub fn raises(street: Street, depth: usize) -> Vec<Self> {
-        if depth > MAX_RAISE_REPEATS {
-            return vec![];
-        }
-        match (street, depth) {
-            // Preflop depth=0: BB opens
-            (Street::Pref, 0) => OPENS_GRID.iter().map(|&n| Edge::Open(n)).collect(),
-            // Preflop depth>=1: pot-relative 3-bets/4-bets (1x, 1.5x, 2x pot)
-            (Street::Pref, 1) => vec![
-                Edge::Raise(Odds::new(1, 1)),
-                Edge::Raise(Odds::new(3, 2)),
-                Edge::Raise(Odds::new(2, 1)),
-            ],
-            (Street::Pref, _) => vec![Edge::Raise(Odds::new(1, 1)), Edge::Raise(Odds::new(2, 1))],
-            // Flop (1/3 probe bet instead of 1/4 due to 4-bit Path encoding limit)
-            (Street::Flop, 0) => vec![
-                Edge::Raise(Odds::new(1, 3)),
-                Edge::Raise(Odds::new(1, 2)),
-                Edge::Raise(Odds::new(1, 1)),
-                Edge::Raise(Odds::new(2, 1)),
-            ],
-            (Street::Flop, 1) => vec![
-                Edge::Raise(Odds::new(2, 3)),
-                Edge::Raise(Odds::new(1, 1)),
-                Edge::Raise(Odds::new(3, 2)),
-            ],
-            (Street::Flop, _) => vec![Edge::Raise(Odds::new(1, 1)), Edge::Raise(Odds::new(3, 2))],
-            // Turn
-            (Street::Turn, 0) => vec![
-                Edge::Raise(Odds::new(1, 3)),
-                Edge::Raise(Odds::new(2, 3)),
-                Edge::Raise(Odds::new(1, 1)),
-                Edge::Raise(Odds::new(2, 1)),
-            ],
-            (Street::Turn, _) => vec![Edge::Raise(Odds::new(1, 1)), Edge::Raise(Odds::new(3, 2))],
-            // River
-            (Street::Rive, 0) => vec![
-                Edge::Raise(Odds::new(1, 3)),
-                Edge::Raise(Odds::new(1, 2)),
-                Edge::Raise(Odds::new(1, 1)),
-                Edge::Raise(Odds::new(2, 1)),
-            ],
-            (Street::Rive, 1) => vec![
-                Edge::Raise(Odds::new(2, 3)),
-                Edge::Raise(Odds::new(1, 1)),
-                Edge::Raise(Odds::new(2, 1)),
-            ],
-            (Street::Rive, _) => vec![Edge::Raise(Odds::new(1, 1))],
-        }
+        Size::raises(street, depth)
+            .iter()
+            .map(|s| match s {
+                Size::BBs(n) => Edge::Open(*n),
+                Size::SPR(n, d) => Edge::Raise(Odds::new(*n, *d)),
+            })
+            .collect()
     }
     /// Converts edge to chip amount given pot size.
     pub fn into_chips(self, pot: Chips) -> Chips {
@@ -171,7 +119,7 @@ impl Edge {
 }
 
 /// u8 bijection
-/// Layout: 1-5 = basic edges, 6-9 = Open(OPENS_GRID), 10-15 = Raise(RAISE_GRID)
+/// Layout: 1-5 = basic edges, 6-9 = Open(OPENS), 10-19 = Raise(RAISES)
 impl From<Edge> for u8 {
     fn from(edge: Edge) -> Self {
         match edge {
@@ -181,15 +129,15 @@ impl From<Edge> for u8 {
             Edge::Call => 4,
             Edge::Shove => 5,
             Edge::Open(n) => {
-                6 + OPENS_GRID
+                6 + OPENS
                     .iter()
                     .position(|&b| b == n)
                     .expect("invalid open size") as u8
             }
             Edge::Raise(odds) => {
-                10 + RAISE_GRID
+                10 + RAISES
                     .iter()
-                    .position(|&o| o == odds)
+                    .position(|&(n, d)| n == odds.numer() && d == odds.denom())
                     .expect("invalid raise odds") as u8
             }
         }
@@ -203,8 +151,11 @@ impl From<u8> for Edge {
             3 => Edge::Check,
             4 => Edge::Call,
             5 => Edge::Shove,
-            6..=9 => Edge::Open(OPENS_GRID[value as usize - 6]),
-            10..=15 => Edge::Raise(RAISE_GRID[value as usize - 10]),
+            6..=9 => Edge::Open(OPENS[value as usize - 6]),
+            10..=19 => {
+                let (n, d) = RAISES[value as usize - 10];
+                Edge::Raise(Odds::new(n, d))
+            }
             _ => unreachable!("invalid edge encoding: {}", value),
         }
     }
@@ -255,6 +206,7 @@ impl From<Edge> for u64 {
 
 impl TryFrom<&str> for Edge {
     type Error = anyhow::Error;
+
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
             "?" => Ok(Edge::Draw),
@@ -303,8 +255,8 @@ mod tests {
     #[test]
     fn bijective_u8() {
         let edges = vec![Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove];
-        let opens = OPENS_GRID.iter().map(|&n| Edge::Open(n));
-        let raises = RAISE_GRID.iter().map(|&o| Edge::Raise(o));
+        let opens = OPENS.iter().map(|&n| Edge::Open(n));
+        let raises = RAISES.iter().map(|&(n, d)| Edge::Raise(Odds::new(n, d)));
         for edge in edges.into_iter().chain(opens).chain(raises) {
             assert_eq!(
                 edge,
@@ -317,8 +269,8 @@ mod tests {
     #[test]
     fn bijective_u64() {
         let edges = vec![Edge::Draw, Edge::Fold, Edge::Check, Edge::Call, Edge::Shove];
-        let opens = OPENS_GRID.iter().map(|&n| Edge::Open(n));
-        let raises = RAISE_GRID.iter().map(|&o| Edge::Raise(o));
+        let opens = OPENS.iter().map(|&n| Edge::Open(n));
+        let raises = RAISES.iter().map(|&(n, d)| Edge::Raise(Odds::new(n, d)));
         for edge in edges.into_iter().chain(opens).chain(raises) {
             assert_eq!(
                 edge,
@@ -352,11 +304,11 @@ mod tests {
     }
     #[test]
     fn backwards_compat_u64_bbs() {
-        // Old encoding: Edge::Raise(Size::BBs(8)) = 4 | (1 << 19) | (8 << 3)
-        let old_bbs_8 = 4u64 | (1 << 19) | (8 << 3);
-        assert_eq!(Edge::from(old_bbs_8), Edge::Open(8));
-        let old_bbs_2 = 4u64 | (1 << 19) | (2 << 3);
-        assert_eq!(Edge::from(old_bbs_2), Edge::Open(2));
+        // Encoding: Edge::Open(5) = 4 | (1 << 19) | (5 << 3)
+        let bbs_5 = 4u64 | (1 << 19) | (5 << 3);
+        assert_eq!(Edge::from(bbs_5), Edge::Open(5));
+        let bbs_2 = 4u64 | (1 << 19) | (2 << 3);
+        assert_eq!(Edge::from(bbs_2), Edge::Open(2));
     }
     #[test]
     fn raises_preflop_depth0_returns_opens() {
@@ -375,6 +327,24 @@ mod tests {
     }
 }
 
+impl serde::Serialize for Edge {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Edge {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 impl Arbitrary for Edge {
     fn random() -> Self {
         use rand::prelude::IndexedRandom;
@@ -384,10 +354,12 @@ impl Arbitrary for Edge {
             2 => Self::Check,
             3 => Self::Call,
             4 => Self::Shove,
-            5 => Self::Open(*OPENS_GRID.choose(&mut rand::rng()).unwrap()),
-            6 => Self::Raise(*RAISE_GRID.choose(&mut rand::rng()).unwrap()),
+            5 => Self::Open(*OPENS.choose(&mut rand::rng()).unwrap()),
+            6 => {
+                let &(n, d) = RAISES.choose(&mut rand::rng()).unwrap();
+                Self::Raise(Odds::new(n, d))
+            }
             _ => unreachable!(),
         }
     }
 }
-

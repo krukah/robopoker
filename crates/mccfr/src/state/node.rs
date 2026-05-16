@@ -1,6 +1,7 @@
 use crate::*;
 use petgraph::graph::DiGraph;
 use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
 use std::ops::Not;
 
 /// A lightweight handle to a node in the game tree.
@@ -30,8 +31,7 @@ where
     I: CfrInfo<E = E, T = T>,
 {
     index: NodeIndex,
-    graph: &'tree DiGraph<(G, I), E>,
-    danny: std::marker::PhantomData<(T, I)>,
+    tree: &'tree Tree<T, E, G, I>,
 }
 
 impl<'tree, T, E, G, I> Node<'tree, T, E, G, I>
@@ -41,13 +41,9 @@ where
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
 {
-    /// Creates a node handle from an index and graph reference.
-    pub fn from(index: NodeIndex, graph: &'tree DiGraph<(G, I), E>) -> Self {
-        Self {
-            index,
-            graph,
-            danny: std::marker::PhantomData::<(T, I)>,
-        }
+    /// Creates a node handle from an index and its owning tree.
+    pub fn from(index: NodeIndex, tree: &'tree Tree<T, E, G, I>) -> Self {
+        Self { index, tree }
     }
     /// The petgraph index of this node.
     pub fn index(&self) -> NodeIndex {
@@ -55,32 +51,38 @@ where
     }
     /// Reference to the underlying graph.
     pub fn graph(&self) -> &'tree DiGraph<(G, I), E> {
-        self.graph
+        self.tree.graph()
+    }
+    /// Stable identity for the tree this node belongs to.
+    /// Assigned explicitly at Tree construction (see [`Tree::new`]); the
+    /// caller — typically the par_iter index in `Solver::batch` — provides
+    /// a batch-local id so trees in one batch sample independently.
+    pub fn seed(&self) -> usize {
+        self.tree.id()
     }
     /// Unchecked access to node weight via raw_nodes slice.
-    fn weight(&self) -> &(G, I) {
+    fn raw(&self) -> &'tree (G, I) {
         unsafe {
             &self
-                .graph
+                .graph()
                 .raw_nodes()
                 .get_unchecked(self.index.index())
                 .weight
         }
     }
     /// The game state at this node.
-    pub fn game(&self) -> &G {
-        &self.weight().0
+    pub fn game(&self) -> &'tree G {
+        &self.raw().0
     }
     /// The information set identifier at this node.
-    pub fn info(&self) -> &I {
-        &self.weight().1
+    pub fn info(&self) -> &'tree I {
+        &self.raw().1
     }
     /// Creates a node handle at a different index in the same tree.
     pub fn at(&self, index: NodeIndex) -> Node<'tree, T, E, G, I> {
         Self {
             index,
-            graph: self.graph(),
-            danny: std::marker::PhantomData::<(T, I)>,
+            tree: self.tree,
         }
     }
     /// Returns parent node and incoming edge, if not at root.
@@ -106,7 +108,21 @@ where
             .next()
             .map(|edge| edge.weight())
     }
+    /// Iterator over (child_index, &edge_weight) — zero allocation.
+    pub fn edges(&self) -> impl Iterator<Item = (NodeIndex, &'tree E)> {
+        self.graph()
+            .edges_directed(self.index(), petgraph::Direction::Outgoing)
+            .map(|e| (e.target(), e.weight()))
+    }
+    /// Find child by matching outgoing edge weight — no intermediate Vec.
+    pub fn step(&self, edge: &E) -> Option<Node<'tree, T, E, G, I>> {
+        self.graph()
+            .edges_directed(self.index(), petgraph::Direction::Outgoing)
+            .find(|e| e.weight() == edge)
+            .map(|e| self.at(e.target()))
+    }
     /// Child reached by taking a specific edge.
+    #[deprecated]
     pub fn follow(&self, edge: &E) -> Option<Node<'tree, T, E, G, I>> {
         self.children()
             .iter()
@@ -135,10 +151,9 @@ where
         }
     }
     /// Computes child branches: (edge, resulting game, this index).
-    pub fn branches(&self) -> Vec<Branch<E, G>> {
+    pub fn branches(&self) -> Vec<Leaf<E, G>> {
         self.info()
             .choices()
-            .into_iter()
             .map(|e| (e.clone(), self.game().apply(e), self.index()))
             .collect()
     }
@@ -151,15 +166,28 @@ where
     /// Actions on current street: count edges up to (but not including) last chance node.
     pub fn depth(&self) -> usize {
         self.into_iter()
-            .take_while(|(p, _)| p.game().turn().is_chance().not())
+            .take_while(|a| a.node().game().turn().is_chance().not())
             .count()
+    }
+    /// Upward walk yielding only decision points: `(turn, info, edge)`.
+    /// Skips chance nodes. Dual of [`CfrEncoder::replay`], which walks downward.
+    /// Both yield `(T, I, E)` triples for uniform consumption by reach functions.
+    pub fn decisions(self) -> impl Iterator<Item = (T, I, E)> + 'tree
+    where
+        T: 'tree,
+    {
+        self.into_iter()
+            .filter(|a| !a.node().game().turn().is_chance())
+            .map(|Ascent(e, p)| (p.game().turn(), *p.info(), e))
     }
 }
 
 /// Node naturally implements Iterator by recursing upward through its tree.
-/// Each iteration yields a tuple of (Node, Edge) representing the parent node
-/// and the edge taken to reach the current node. This allows traversing
-/// from any node back to the root of the tree.
+/// Each iteration yields an [`Ascent`] pair: the edge that was just traversed
+/// in reverse, paired with the parent node we've now arrived at. The
+/// iterator's direction (leaf-to-root) is encoded in the type: consumers
+/// that want a root-to-leaf [`Descent`] sequence must collect + reverse,
+/// not silently flip pairs in place.
 impl<'tree, T, E, G, I> Iterator for Node<'tree, T, E, G, I>
 where
     T: CfrTurn,
@@ -167,11 +195,12 @@ where
     G: CfrGame<E = E, T = T>,
     I: CfrInfo<E = E, T = T>,
 {
-    type Item = (Self, E);
+    type Item = Ascent<E, Self>;
+
     fn next(&mut self) -> Option<Self::Item> {
         let (ref mut parent, edge) = self.up()?;
         std::mem::swap(self, parent);
-        Some((self.clone(), edge.clone()))
+        Some(Ascent(edge.clone(), self.clone()))
     }
 }
 
@@ -208,7 +237,7 @@ where
     I: CfrInfo<E = E, T = T>,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.index() == other.index() && std::ptr::eq(self.graph(), other.graph())
+        self.index() == other.index()
     }
 }
 impl<'tree, T, E, G, I> Eq for Node<'tree, T, E, G, I>

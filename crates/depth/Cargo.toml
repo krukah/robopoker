@@ -1,0 +1,19 @@
+[package]
+name          = "rbp-depth"
+version       = "1.0.0"
+edition       = "2024"
+rust-version  = "1.90"
+authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description   = "Depth-limited solving with biased continuation strategies"
+license       = "MIT"
+repository    = "https://github.com/krukah/robopoker"
+keywords      = ["depth-limited", "cfr", "game-theory", "frontier"]
+categories    = ["algorithms", "mathematics", "game-development"]
+
+[dependencies]
+tracing       = { workspace = true }
+rbp-core      = { path = "../util" }
+rbp-transport = { path = "../transport" }
+rbp-mccfr     = { path = "../mccfr", default-features = false }
+rbp-hyperparams = { workspace = true }
+petgraph      = "0.7"

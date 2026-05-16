@@ -4,27 +4,27 @@
 //!
 //! | Type | Perspective | Context |
 //! |------|-------------|---------|
-//! | `Partial` | Hero only | Inference (strategy lookup) |
+//! | `Witness` | Hero only | Inference (strategy lookup) |
 //! | `Perfect` | Both hands | Training (CFR traversal) |
 //!
 //! During CFR training, we traverse the game tree knowing both players' cards
-//! (god's view), but strategies are indexed only by `NlheInfo` (public edges +
+//! (god's view), but strategies are indexed only by `HoldemInfo` (public edges +
 //! private bucket). `Perfect` stores the complete root state needed for reach
 //! probability computation and counterfactual value calculation.
 //!
 //! # Conversions
 //!
 //! ```text
-//! Perfect::from((partial, hole))  ────►  Perfect     (add opponent info)
+//! Perfect::from((witness, hole))  ────►  Perfect     (add opponent info)
 //!                                 ◄────
-//! perfect.partial(hero)                              (erase opponent info)
+//! perfect.witness(hero)                              (erase opponent info)
 //!
-//! partial.histories() ─────►  Vec<(Obs, Perfect)>  (iterate all opponents)
+//! witness.histories() ─────►  Vec<(Obs, Perfect)>  (iterate all opponents)
 //! ```
 //!
 //! # Blind Handling
 //!
-//! Like `Partial`, blinds are constant and NOT stored in `actions`.
+//! Like `Witness`, blinds are constant and NOT stored in `actions`.
 //! The `root` field stores a POST-blind game state.
 use super::*;
 use rbp_cards::*;
@@ -39,22 +39,22 @@ pub struct Perfect {
     actions: Vec<Action>,
 }
 
-impl From<(&Partial, Hole)> for Perfect {
-    /// Creates history from partial with assumed opponent hole.
+impl From<(&Witness, Hole)> for Perfect {
+    /// Creates history from witness with assumed opponent hole.
     ///
-    /// Hero is derived from `partial.turn()`. The root game has:
-    /// - Hero's cards from `partial.seen()`
+    /// Hero is derived from `witness.turn()`. The root game has:
+    /// - Hero's cards from `witness.seen()`
     /// - Opponent's cards from `hole` parameter
     /// - Blinds already posted (POST-blind state)
-    fn from((partial, hole): (&Partial, Hole)) -> Self {
-        debug_assert!(partial.base().n() == 2);
-        let preblind = partial.base().assume(partial.turn(), hole);
+    fn from((witness, hole): (&Witness, Hole)) -> Self {
+        debug_assert!(witness.base().n() == 2);
+        let preblind = witness.base().fix(witness.turn(), hole);
         let root = Game::blinds()
             .into_iter()
             .fold(preblind, |mut g, a| g.consume(a));
         Self {
             root,
-            actions: partial.actions().to_vec(),
+            actions: witness.actions().to_vec(),
         }
     }
 }
@@ -63,6 +63,7 @@ impl Recall for Perfect {
     fn root(&self) -> Game {
         self.root
     }
+
     fn actions(&self) -> &[Action] {
         &self.actions
     }
@@ -72,18 +73,22 @@ impl Recall for Perfect {
 impl Perfect {
     /// Erases opponent information, returning hero's perspective.
     ///
-    /// Extracts hero's hole cards and board from root, discarding
-    /// opponent's cards. Inverse of construction from `(&Partial, Hole)`.
-    fn erase(&self, hero: Turn) -> Partial {
+    /// Reconstructs the [`Arrangement`] from hero's hole cards and the
+    /// [`Draw`](Action::Draw) actions in the history, preserving the
+    /// per-street card assignment from the original [`Witness`].
+    fn erase(&self, hero: Turn) -> Witness {
         let hole = self.root.seats()[hero.position()].cards();
-        let board = Hand::from(self.root.board());
-        let observation = Observation::from((Hand::from(hole), board));
+        let reveals = Arrangement::from(
+            Hand::from(hole)
+                .chain(self.actions.iter().filter_map(|a| a.hand()).flatten())
+                .collect::<Vec<Card>>(),
+        );
         let actions = self
             .actions
             .iter()
             .filter(|a| a.is_choice())
             .cloned()
             .collect();
-        Partial::from((hero, observation, actions))
+        Witness::try_arrange(hero, reveals, actions).expect("valid erase")
     }
 }

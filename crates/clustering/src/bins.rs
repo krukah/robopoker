@@ -26,7 +26,7 @@ pub type BinsRive = Bins<N_RIVE>;
 /// The array size `N` is determined at compile time based on the street's
 /// abstraction count. This enables stack allocation while supporting
 /// different sizes per street (e.g., 169 preflop vs 200 flop buckets).
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Bins<const N: usize> {
     /// The street these bins represent.
     street: Street,
