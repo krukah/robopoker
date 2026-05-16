@@ -13,25 +13,24 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
 
 ## Results
 
-![bb/100 per task](assets/images/competition-bb100.png)
+<p align="center"><img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="850"/></p>
 
-Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving<sup>10</sup>), `world` (world-partitioned belief<sup>12</sup>), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against Slumbot.
+Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving<sup>10</sup>), `world` (world-partitioned belief<sup>12</sup>), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com).
 
-| variant             |    hands |    bb/100 | 95% CI | H/hr |
-|:--------------------|---------:|----------:|-------:|-----:|
-| `depth+world+dirac` |   57.0 K | **−32.5** | ± 16.4 |  4 K |
-| `dirac`             |    480 K |     −34.3 | ±  5.7 |  —   |
-| `depth+dirac`       |   55.6 K |     −44.9 | ± 16.6 |  4 K |
-| `world+dirac`       |   56.6 K |     −47.1 | ± 16.5 |  3 K |
-| `base`              |    480 K |     −54.6 | ±  5.7 |  —   |
-| `depth`             |   55.4 K |     −89.4 | ± 16.7 |  5 K |
-| `depth+world`       |   55.9 K |     −94.4 | ± 16.6 |  4 K |
-| `world`             |   58.1 K |    −117.0 | ± 16.3 |  5 K |
-| `fish`              |    480 K |    −141.6 | ±  5.7 |  —   |
+| variant             |   hands |    bb/100 | 95% CI | H/hr |
+|:--------------------|--------:|----------:|-------:|-----:|
+| `world+dirac`       |  23.1 K | **−22.8** | ± 25.8 |  4 K |
+| `dirac`             |   480 K |     −26.6 | ±  5.7 |  —   |
+| `depth+dirac`       |  23.0 K |     −28.6 | ± 25.9 |  3 K |
+| `base`              |   480 K |     −32.8 | ±  5.7 |  —   |
+| `depth+world+dirac` |  3.76 K |     −33.7 | ± 64.0 |  —   |
+| `depth`             |  5.93 K |     −48.2 | ± 50.9 |  —   |
+| `world`             |  24.2 K |     −68.1 | ± 25.2 |  1 K |
+| `depth+world`       |  21.8 K |     −76.1 | ± 26.6 |  —   |
 
-**Two findings stand out.** First, every variant including `dirac` finishes above `base`, and every variant without it (except `base`) finishes below — a clean ablation across all eight combinations. Second, the dashboard's running marginal-effect estimators tell the same story numerically: Δ`depth` on–off ≈ −1.4 bb/100, Δ`world` on–off ≈ +1.4 bb/100, **Δ`dirac` on–off ≈ −96 bb/100.** Sampling temperature (the `dirac` axis), not tree depth or belief partitioning, is currently the dominant loss source in the unaugmented blueprint — a useful direction for further work.
+**Every variant with `dirac` is at or above `base`; every variant without `dirac` (except `base` itself) is well below it.** The leader is `world+dirac` at −22.8 bb/100 — ten bb/100 ahead of `base` and ~50 bb/100 ahead of `depth+world`. The dashboard's running marginal-effect estimator agrees: turning `dirac` on improves bb/100 by an order of magnitude more than turning `depth` or `world` on. Sampling temperature, not tree depth or belief partitioning, is currently the dominant loss source in the unaugmented blueprint — a useful direction for further work.
 
-The 95 % CIs on the ablation variants overlap, so the ordering inside the `*+dirac` cluster shouldn't be over-read. The `base`, `dirac`, and `fish` tasks have run an order of magnitude longer (480 K hands each), so their estimates are much tighter (± 5.7 bb/100).
+CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on the 3.76 K-hand `depth+world+dirac` task), so the ordering within the `*+dirac` cluster isn't yet statistically separated. The three reference tasks — `base`, `dirac`, and `fish` — have run an order of magnitude longer (480 K hands each), so their estimates are tight (± 5.7).
 
 ## Features
 
@@ -288,13 +287,13 @@ A closed-source analysis frontend consumes the public APIs in this repo — `rbp
 
 ### Live gameplay
 
-![Live game UI](assets/images/frontend-table.png)
+<p align="center"><img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/></p>
 
 Showdown view with both hole cards revealed. The "abstraction cube" on the left picks the opponent's search configuration along the `depth × world × dirac` axes (the same axes evaluated in the Results section above); `Fish (random)` is the uniform fallback. Backed by `rbp-server`'s WebSocket hosting API.
 
 ### Per-decision strategy
 
-![Per-decision strategy view](assets/images/frontend-strategy.png)
+<p align="center"><img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="600"/></p>
 
 Strategy lookup for a single decision point — the abstraction bucket (here `F:95`, flop bucket 95), the action distribution over Fold / Call / Shove / pot-relative raises, visit count, EV, and the subgame's action history. Reads `rbp-server`'s `/api/strategy` endpoint and renders the donut + bar chart client-side.
 
