@@ -40,6 +40,6 @@ serde          = { version = "1", features = ["derive"] }
 serde_json     = "1"
 tracing       = { workspace = true }
 anyhow         = "1"
-rand           = { version = "0.9.1", features = ["small_rng"] }
+rand           = { workspace = true }
 clap           = { version = "4", features = ["derive"] }
 const_format   = "0.2"

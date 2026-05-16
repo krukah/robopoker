@@ -15,4 +15,4 @@ tracing       = { workspace = true }
 rbp-core      = { path = "../util" }
 rbp-transport = { path = "../transport" }
 rbp-mccfr     = { path = "../mccfr", default-features = false }
-rand          = "0.9"
+rand          = { workspace = true }

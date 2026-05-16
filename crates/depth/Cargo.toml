@@ -16,4 +16,4 @@ rbp-core      = { path = "../util" }
 rbp-transport = { path = "../transport" }
 rbp-mccfr     = { path = "../mccfr", default-features = false }
 rbp-hyperparams = { workspace = true }
-petgraph      = "0.7"
+petgraph      = { workspace = true }

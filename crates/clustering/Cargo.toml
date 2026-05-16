@@ -26,4 +26,4 @@ tokio-postgres = { version = "0.7", optional = true }
 const_format   = { version = "0.2", optional = true }
 async-trait    = { version = "0.1", optional = true }
 rayon          = "1.10"
-rand           = { version = "0.9.1", features = ["small_rng"] }
+rand           = { workspace = true }

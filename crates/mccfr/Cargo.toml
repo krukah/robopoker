@@ -21,8 +21,8 @@ rbp-gameplay  = { path = "../gameplay" }
 rbp-transport = { path = "../transport" }
 rbp-telemetry = { path = "../telemetry", optional = true }
 rbp-hyperparams = { workspace = true }
-rand          = { version = "0.9.1", features = ["small_rng"] }
-petgraph      = "0.7"
+rand          = { workspace = true }
+petgraph      = { workspace = true }
 paste         = "1.0"
 rayon         = { optional = true, version = "1.10" }
 async-trait   = { optional = true, version = "0.1" }

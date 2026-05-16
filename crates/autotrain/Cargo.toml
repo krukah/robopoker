@@ -29,4 +29,4 @@ const_format    = "0.2"
 futures         = "0.3"
 tracing       = { workspace = true }
 num_cpus        = "1.16"
-rand            = { version = "0.9.1", features = ["small_rng"] }
+rand            = { workspace = true }

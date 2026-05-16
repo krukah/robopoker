@@ -21,7 +21,7 @@ rbp-database   = { path = "../database", optional = true     }
 jsonwebtoken   = "9"
 argon2         = { version = "0.5",   features = ["rand"]        }
 sha2           = "0.10"
-rand           = { version = "0.9.1", features = ["small_rng"]   }
+rand           = { workspace = true }
 serde          = { version = "1.0",   features = ["derive"]      }
 uuid           = { version = "1",     features = ["v5", "v7", "serde"] }
 tokio-postgres = { version = "0.7",   optional = true            }

@@ -27,7 +27,7 @@ rbp-depth       = { path = "../depth" }
 rbp-world       = { path = "../world" }
 rbp-database    = { path = "../database", optional = true }
 paste          = "1.0"
-rand           = { version = "0.9.1", features = ["small_rng"] }
+rand           = { workspace = true }
 anyhow         = "1.0"
 tokio-postgres = { version = "0.7", optional = true }
 const_format   = { version = "0.2", optional = true }
