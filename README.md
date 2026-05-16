@@ -28,7 +28,7 @@ A Rust toolkit for game-theoretically optimal poker strategies, implementing sta
   <img src="assets/images/competition-bb100.png" alt="bb/100 per task — head-to-head bot competition" width="850"/>
 </p>
 
-Head-to-head competition over twelve hours. Each color is a different combination of search techniques from `rbp-depth`, `rbp-world`, and the `dirac` zero-temperature player. The full real-time-search stack (`depth+world+dirac`) climbs from a deep deficit toward break-even against the random `fish` baseline, while the unaugmented blueprint (`base`) plateaus around −55 bb/100 — a direct measurement of how much each technique contributes on top of an MCCFR-trained blueprint.
+Net bb/100 per bot over an eleven-hour competition pool. Each colored series is a different combination of search techniques from `rbp-depth`, `rbp-world`, and the `dirac` zero-temperature player; `fish` plays uniformly at random and `base` is the unaugmented MCCFR blueprint. The full real-time-search stack (`depth+world+dirac`) tops the chart at roughly −25 bb/100, more than 100 bb/100 ahead of `fish` and ~30 bb/100 ahead of `base` alone — a direct measurement of how much each technique contributes on top of the blueprint.
 
 ## Features
 
@@ -226,7 +226,7 @@ let equity = obs.equity();
   <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="900"/>
 </p>
 
-The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown above: forty hours of MCCFR training — sum-regret tightening, throughput holding at ~309 decisions/sec, tree and infoset size distributions evolving as the regret table fills out. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately.
+The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown above: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately.
 
 ## System Requirements
 
@@ -285,20 +285,22 @@ A closed-source analysis frontend consumes the public APIs in this repo — `rbp
 
 <table align="center">
 <tr>
-<td align="center" width="33%">
-    <img src="assets/images/frontend-table.png" alt="Live game UI" width="280"/>
+<td align="center" width="50%">
+    <img src="assets/images/frontend-table.png" alt="Live game UI" width="420"/>
     <br>
-    <em>Live gameplay UI — player seats, hole cards, table state, and an abstraction-axis selector (depth × world × dirac) for choosing the opponent's search configuration. Backed by `rbp-server`'s WebSocket hosting API.</em>
+    <em>Live gameplay UI — showdown view with both hole cards revealed, an "abstraction cube" picking which opponent configuration (depth × world × dirac) to face, and a Fish-random fallback. Backed by <code>rbp-server</code>'s WebSocket hosting API.</em>
 </td>
-<td align="center" width="33%">
-    <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="280"/>
+<td align="center" width="50%">
+    <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="420"/>
     <br>
-    <em>Per-decision strategy lookup — abstraction bucket, action distribution, EV, visit count, subgame context. Reads `rbp-server`'s `/api/strategy` endpoint.</em>
+    <em>Per-decision strategy lookup — abstraction bucket (here, flop bucket 95), action distribution over Fold / Call / Shove / pot-relative raises, visit count, EV, and the subgame's action history. Reads <code>rbp-server</code>'s <code>/api/strategy</code> endpoint.</em>
 </td>
-<td align="center" width="33%">
-    <img src="assets/images/frontend-range.png" alt="Opponent range grid" width="280"/>
+</tr>
+<tr>
+<td align="center" colspan="2">
+    <img src="assets/images/frontend-range.png" alt="Opponent range grid" width="360"/>
     <br>
-    <em>The 169-cell preflop range grid plus the observed-cards strip. This is the canonical surface that <a href="crates/litmus"><code>rbp-litmus</code></a> validates against (rank monotonicity, suited/offsuit symmetry, premium control, etc.).</em>
+    <em>The 169-cell preflop range grid (suited above the diagonal, pairs on it, offsuit below). Each cell's intensity is the opponent's likelihood of holding that hand given the observed action history. This is the canonical surface that <a href="crates/litmus"><code>rbp-litmus</code></a> validates against (rank monotonicity, suited/offsuit symmetry, premium control, etc.).</em>
 </td>
 </tr>
 </table>
