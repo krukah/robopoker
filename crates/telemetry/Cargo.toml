@@ -1,0 +1,22 @@
+[package]
+name         = "rbp-telemetry"
+version      = "1.0.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "OpenTelemetry + tracing init and metric registry for robopoker binaries"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "telemetry", "opentelemetry", "tracing"]
+categories   = ["game-development", "development-tools::debugging"]
+
+[dependencies]
+tracing       = { workspace = true }
+tracing-subscriber                = { version = "0.3", features = ["env-filter", "fmt", "json", "registry", "tracing-log"] }
+tracing-log                       = "0.2"
+tracing-opentelemetry             = "0.28"
+opentelemetry                     = { version = "0.27", features = ["metrics", "trace", "logs"] }
+opentelemetry_sdk                 = { version = "0.27", features = ["rt-tokio", "metrics", "trace", "logs", "spec_unstable_metrics_views"] }
+opentelemetry-otlp                = { version = "0.27", features = ["grpc-tonic", "metrics", "trace", "logs"] }
+opentelemetry-semantic-conventions = "0.27"
+tokio                             = { version = "1",   features = ["rt"] }

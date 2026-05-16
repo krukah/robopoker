@@ -13,6 +13,8 @@ members  = [
     # Infrastructure crates
     "crates/database",
     "crates/auth",
+    "crates/telemetry",
+    "crates/hyperparams",
     # Application crates
     "crates/gameroom",
     "crates/server",
@@ -46,6 +48,8 @@ rbp-translate   = { version = "1.0", path = "crates/translate"   }
 rbp-nlhe        = { version = "1.0", path = "crates/nlhe"        }
 rbp-database    = { version = "1.0", path = "crates/database"    }
 rbp-auth        = { version = "1.0", path = "crates/auth"        }
+rbp-telemetry   = { version = "1.0", path = "crates/telemetry"   }
+rbp-hyperparams = { version = "1.0", path = "crates/hyperparams" }
 rbp-gameroom    = { version = "1.0", path = "crates/gameroom"    }
 rbp-server      = { version = "1.0", path = "crates/server"      }
 rbp-autotrain   = { version = "1.0", path = "crates/autotrain"   }
@@ -62,6 +66,7 @@ serde_json      = "1"
 const_format    = "0.2"
 uuid            = { version = "1", features = ["v7", "serde"] }
 rand            = { version = "0.9.1", features = ["small_rng"] }
+tracing         = "0.1"
 rayon           = "1"
 petgraph        = "0.6"
 byteorder       = "1.5"

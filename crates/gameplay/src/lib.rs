@@ -35,6 +35,7 @@
 mod abstraction;
 mod action;
 mod arrangement;
+mod bias;
 mod edge;
 mod game;
 mod odds;
@@ -52,6 +53,7 @@ mod turn;
 pub use abstraction::*;
 pub use action::*;
 pub use arrangement::*;
+pub use bias::*;
 pub use edge::*;
 pub use game::*;
 pub use odds::*;
