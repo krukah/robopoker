@@ -56,7 +56,7 @@ where
     }
     /// The shared information set identifier.
     pub fn info(&self) -> I {
-        self.head().info().clone()
+        *self.head().info()
     }
     /// Reference to the underlying tree.
     pub fn tree(&self) -> &Tree<T, E, G, I> {

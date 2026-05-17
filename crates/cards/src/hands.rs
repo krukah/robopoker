@@ -50,8 +50,8 @@ impl HandIterator {
         let  e = /* 000_111 <-                    */ d - 1;
         let  f = /*         << xxx                */ 1 + x.trailing_zeros();
         let  g = /* 000_000 <-                    */ e >> f;
-        let  h = /* 001_000 <- 001_000 || 000_000 */ b | g;
-        h
+
+        b | g
     }
 
     fn look(&self) -> Hand {
@@ -170,7 +170,7 @@ mod tests {
         assert!(iter.next() == Some(Hand::from(0b1100_00_1)));
         assert!(iter.next() == Some(Hand::from(0b1101_00_0)));
         assert!(iter.next() == Some(Hand::from(0b1110_00_0)));
-        assert!(iter.next() == None);
+        assert!(iter.next().is_none());
     }
 }
 

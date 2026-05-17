@@ -63,7 +63,7 @@ where
         writeln!(f, "{:<12} {:>5}  {:>+10}  {:>10}  {:>10}  {:>10}", "Info", "Edge", "Regret", "Weight", "Instant", "Average")?;
         writeln!(f, "{}", "-".repeat(72))?;
         for (info, edges) in &self.profile.encounters {
-            for (edge, _) in edges {
+            for edge in edges.keys() {
                 writeln!(
                     f,
                     "{:<12} {:>5}  {:>+10.2}  {:>10.2}  {:>10.2}  {:>10.2}",
@@ -197,14 +197,14 @@ mod tests {
         for (info, edges) in &solver.profile.encounters {
             let s = format!("{}", info);
             if s == "J|" || s == "Q|" || s == "K|" {
-                for (edge, _) in edges {
+                for edge in edges.keys() {
                     println!("  {} {:>5}  avg={:.3}", s, edge, profile.averaged_policy(info, edge));
                 }
             }
         }
         println!("\n=== Full Solution ===");
         for (info, edges) in &solver.profile.encounters {
-            for (edge, _) in edges {
+            for edge in edges.keys() {
                 println!(
                     "{:>12} {:>5}  avg={:.3}  inst={:.3}",
                     format!("{}", info), format!("{}", edge),
@@ -332,8 +332,8 @@ mod tests {
     /// Subgame with prefix replaying P0's check preserves Nash properties.
     #[test]
     fn subgame_after_check() {
-        let ref blueprint =
-            Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint =
+            &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = KuhnTurn::Player(0);
         let root = KuhnGame::root();
         let entry = root.apply(KuhnEdge::Check);
@@ -352,8 +352,8 @@ mod tests {
     /// Subgame with prefix replaying P0's bet preserves Nash properties.
     #[test]
     fn subgame_after_bet() {
-        let ref blueprint =
-            Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint =
+            &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = KuhnTurn::Player(0);
         let root = KuhnGame::root();
         let entry = root.apply(KuhnEdge::Bet);
@@ -374,10 +374,8 @@ mod tests {
     fn subgame_convergence_curve() {
         let n_weak: usize = 1 << 8;
         let n_strong: usize = 1 << 16;
-        let ref weak =
-            Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(n_weak);
-        let ref strong =
-            Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let weak = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(n_weak);
+        let strong = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         eprintln!("\n=== blueprint exploitability ===");
         eprintln!("  weak   (2^8):  {:.6}", Solver::exploitability(weak));
         eprintln!("  strong (2^18): {:.6}", Solver::exploitability(strong));
@@ -470,8 +468,8 @@ mod tests {
     /// that facing a K-heavy range, J should fold at CheckBet.
     #[test]
     fn subgame_with_reach_conditioned_posterior() {
-        let ref blueprint =
-            Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint =
+            &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let internal = KuhnTurn::Player(0);
         let external = KuhnTurn::Player(1);
         let root = KuhnGame::root();

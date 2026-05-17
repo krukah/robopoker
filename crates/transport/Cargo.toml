@@ -12,3 +12,6 @@ categories   = ["algorithms", "mathematics"]
 
 [dependencies]
 rbp-core = { path = "../util" }
+
+[lints]
+workspace = true

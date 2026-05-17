@@ -28,7 +28,11 @@ async fn main() {
     println!("loading Flop centroids (histograms over Turn abs)...");
     let t0 = Instant::now();
     let centroids = load_centroids(&client, Street::Flop).await;
-    println!("loaded {} centroids in {:.2?}", centroids.len(), t0.elapsed());
+    println!(
+        "loaded {} centroids in {:.2?}",
+        centroids.len(),
+        t0.elapsed()
+    );
     if centroids.is_empty() {
         eprintln!("no centroids found — is the transitions table populated?");
         std::process::exit(1);
@@ -39,7 +43,10 @@ async fn main() {
     let mut self_times: Vec<Duration> = Vec::with_capacity(n_self);
     let mut cross_costs: Vec<Energy> = Vec::with_capacity(n_cross);
     let mut cross_times: Vec<Duration> = Vec::with_capacity(n_cross);
-    println!("\nrunning self-cost OT_eps(mu, mu) on {} centroids...", n_self);
+    println!(
+        "\nrunning self-cost OT_eps(mu, mu) on {} centroids...",
+        n_self
+    );
     for (k, (_abs, hist)) in centroids.iter().enumerate() {
         let t0 = Instant::now();
         let cost = metric.emd(hist, hist);
@@ -47,10 +54,18 @@ async fn main() {
         self_costs.push(cost);
         self_times.push(dt);
         if k < 5 {
-            println!("  centroid #{}: self-cost = {:.6}, support = {}", k, cost, hist.n());
+            println!(
+                "  centroid #{}: self-cost = {:.6}, support = {}",
+                k,
+                cost,
+                hist.n()
+            );
         }
     }
-    println!("\nrunning cross-cost OT_eps(mu, nu) on {} random pairs...", n_cross);
+    println!(
+        "\nrunning cross-cost OT_eps(mu, nu) on {} random pairs...",
+        n_cross
+    );
     let mut sampled = 0usize;
     while sampled < n_cross {
         let i = rand::random_range(0..centroids.len());
@@ -84,10 +99,10 @@ async fn main() {
     println!("max(self)  / mean(cross) = {:.4}", max_self / mean_cross);
     println!("max(self)  / min(cross)  = {:.4}", max_self / min_cross);
     println!("\n--- timing ---");
-    let mean_self_us = self_times.iter().map(Duration::as_micros).sum::<u128>() as f64
-        / self_times.len() as f64;
-    let mean_cross_us = cross_times.iter().map(Duration::as_micros).sum::<u128>() as f64
-        / cross_times.len() as f64;
+    let mean_self_us =
+        self_times.iter().map(Duration::as_micros).sum::<u128>() as f64 / self_times.len() as f64;
+    let mean_cross_us =
+        cross_times.iter().map(Duration::as_micros).sum::<u128>() as f64 / cross_times.len() as f64;
     println!("mean Sinkhorn call (self):  {:.1} µs", mean_self_us);
     println!("mean Sinkhorn call (cross): {:.1} µs", mean_cross_us);
     println!("\n--- debias cost projection ---");

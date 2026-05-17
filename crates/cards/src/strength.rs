@@ -10,7 +10,9 @@ use super::ranking::Ranking;
 /// first, then kickers.
 ///
 /// Constructed from a [`Hand`] by running the [`Evaluator`].
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct Strength {
     value: Ranking,
     pub kicks: Kickers,

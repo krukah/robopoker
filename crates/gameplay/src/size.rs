@@ -46,11 +46,7 @@ impl Size {
     /// policy. Returns [`Translated::Snap`] if the resolved anchor is
     /// a canonical `Size`, or [`Translated::Free`] if the policy
     /// injected the observed amount as a fresh anchor.
-    pub fn translate<R>(
-        raise: Raise,
-        policy: &Translation,
-        rng: &mut R,
-    ) -> Translated<Self, Chips>
+    pub fn translate<R>(raise: Raise, policy: &Translation, rng: &mut R) -> Translated<Self, Chips>
     where
         R: rand::Rng + ?Sized,
     {
@@ -66,7 +62,8 @@ impl Size {
             Some(Grid::Postflop(prs)) => Self::translate_axis::<PotFraction, _>(
                 raise.chips(),
                 raise.chips() as f64 / raise.pot() as f64,
-                prs.iter().map(|&(n, d)| (n as f64 / d as f64, Self::SPR(n, d))),
+                prs.iter()
+                    .map(|&(n, d)| (n as f64 / d as f64, Self::SPR(n, d))),
                 policy,
                 rng,
             ),
@@ -280,7 +277,7 @@ impl TryFrom<&str> for Size {
 impl Arbitrary for Size {
     fn random() -> Self {
         use rand::prelude::IndexedRandom;
-        let ref mut rng = rand::rng();
+        let rng = &mut rand::rng();
         let all_sizes: Vec<Self> = OPENS
             .iter()
             .map(|&n| Self::BBs(n))
@@ -475,41 +472,29 @@ mod tests {
     /// B_BLIND = 2, OPENS = [2, 3, 4, 5]. chips=7 → observed 3.5 BB → ties between BBs(3) and BBs(4); lower wins.
     #[test]
     fn translate_opening_classical_nearest_ties_low() {
-        let ref mut rng = seeded();
-        let out = Size::translate(
-            Raise::new(7, 0, Street::Pref, 0),
-            &Translation::Snap,
-            rng,
-        );
+        let rng = &mut seeded();
+        let out = Size::translate(Raise::new(7, 0, Street::Pref, 0), &Translation::Snap, rng);
         assert_eq!(out, Translated::Snap(Size::BBs(3)));
     }
     /// Opening spot: below the smallest open clamps to BBs(2).
     #[test]
     fn translate_opening_clamps_low() {
-        let ref mut rng = seeded();
-        let out = Size::translate(
-            Raise::new(1, 0, Street::Pref, 0),
-            &Translation::Snap,
-            rng,
-        );
+        let rng = &mut seeded();
+        let out = Size::translate(Raise::new(1, 0, Street::Pref, 0), &Translation::Snap, rng);
         assert_eq!(out, Translated::Snap(Size::BBs(2)));
     }
     /// Opening spot: above the largest open clamps to BBs(5).
     #[test]
     fn translate_opening_clamps_high() {
-        let ref mut rng = seeded();
-        let out = Size::translate(
-            Raise::new(20, 0, Street::Pref, 0),
-            &Translation::Snap,
-            rng,
-        );
+        let rng = &mut seeded();
+        let out = Size::translate(Raise::new(20, 0, Street::Pref, 0), &Translation::Snap, rng);
         assert_eq!(out, Translated::Snap(Size::BBs(5)));
     }
     /// Post-flop: classical+nearest snaps to the closest pot-fraction anchor.
     /// FLOP_0 = [1/4, 1/2, 1, 2]. chips=60, pot=100 → 0.6 closer to 1/2 than 1 → SPR(1,2).
     #[test]
     fn translate_postflop_classical_nearest_snaps_to_half() {
-        let ref mut rng = seeded();
+        let rng = &mut seeded();
         let out = Size::translate(
             Raise::new(60, 100, Street::Flop, 0),
             &Translation::Snap,
@@ -521,7 +506,7 @@ mod tests {
     /// FLOP_0 bracketing 0.5 and 1.0 for observed 0.75 → p(0.5) = 0.25·1.5 / 0.5·1.75 ≈ 0.4286.
     #[test]
     fn translate_harmonic_monte_carlo() {
-        let ref mut rng = seeded();
+        let rng = &mut seeded();
         // Observed 60% pot lands between 50% (L) and 75% (U) anchors after
         // PR #201 introduced 3:4. Harmonic translation distributes between
         // them per Ganzfried-Sandholm 2013.

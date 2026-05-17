@@ -10,7 +10,7 @@ use rbp_gameplay::*;
 
 /// Complete context for a hand in progress.
 /// Tracks everything needed for persistence and replay.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct HandContext {
     id: ID<HandRecord>,
     hand_number: u64,
@@ -92,19 +92,6 @@ impl HandContext {
                 Play::new(hand, i as Epoch, f(*pos), *action, *elapsed)
             })
             .collect()
-    }
-}
-
-impl Default for HandContext {
-    fn default() -> Self {
-        Self {
-            id: ID::default(),
-            hand_number: 0,
-            dealer: 0,
-            seats: Vec::new(),
-            actions: Vec::new(),
-            pnl: Vec::new(),
-        }
     }
 }
 

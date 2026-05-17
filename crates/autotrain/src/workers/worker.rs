@@ -1,8 +1,8 @@
 use rbp_cards::*;
 use rbp_core::*;
 use rbp_gameplay::*;
-use rbp_nlhe::*;
 use rbp_mccfr::*;
+use rbp_nlhe::*;
 use rbp_transport::Density;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
@@ -193,7 +193,7 @@ impl Worker {
         let subgame = std::iter::once(edge)
             .chain(tree.at(head).map(|a| a.edge()))
             .take_while(|e| e.is_choice())
-            .map(|e| Edge::from(e))
+            .map(Edge::from)
             .collect::<Path>()
             .rev()
             .collect::<Path>();
@@ -262,15 +262,12 @@ impl Worker {
         ]
     }
 
-    fn rng(
-        &self,
-        node: &Node<'_, NlheTurn, NlheEdge, NlheGame, NlheInfo>,
-    ) -> rand::rngs::SmallRng {
+    fn rng(&self, node: &Node<'_, NlheTurn, NlheEdge, NlheGame, NlheInfo>) -> rand::rngs::SmallRng {
         use rand::SeedableRng;
         use std::collections::hash_map::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
-        let ref mut hasher = DefaultHasher::new();
+        let hasher = &mut DefaultHasher::new();
         AsyncProfile::iteration(self).hash(hasher);
         node.info().hash(hasher);
         node.seed().hash(hasher);
@@ -282,7 +279,7 @@ impl Worker {
 impl Worker {
     pub async fn tree(&self) -> Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo> {
         let mut todo = Vec::new();
-        let ref root = Game::root();
+        let root = &Game::root();
         // Workers create one tree per batch; id only has to differ from
         // concurrent trees at the same epoch. Since each worker runs
         // independently and the epoch is already in the RNG hash, 0 is fine.
@@ -319,9 +316,9 @@ impl Worker {
 // update calculations
 impl Worker {
     async fn updates(&self, cfr: Decisions<NlheEdge, NlheInfo>) -> Vec<Record> {
-        let ref info = cfr.info;
-        let ref regret_vector = cfr.regret;
-        let ref policy_vector = cfr.policy;
+        let info = &cfr.info;
+        let regret_vector = &cfr.regret;
+        let policy_vector = &cfr.policy;
         let infoset_payoff = cfr.payoff;
         let epoch = self.epoch();
         let memory = self.client.memory(*info).await;

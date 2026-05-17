@@ -8,8 +8,8 @@
 use crate::Player;
 
 use super::Fish;
-use super::zoo;
 use super::Tag;
+use super::zoo;
 use rbp_auth::Member;
 use rbp_auth::User;
 use rbp_core::Config;
@@ -70,10 +70,7 @@ impl VariantExt for Variant {
     }
     /// Build the concrete `Player` for this variant. Consumes `self` —
     /// each Variant materializes exactly one player.
-    fn into_player(
-        self,
-        flagship: Option<&'static rbp_nlhe::Flagship>,
-    ) -> Box<dyn Player> {
+    fn into_player(self, flagship: Option<&'static rbp_nlhe::Flagship>) -> Box<dyn Player> {
         match self.tag() {
             None => Box::new(Fish),
             Some(tag) => zoo(tag, flagship.expect("bot variant requires flagship")),
@@ -87,7 +84,10 @@ pub fn slumbot_opponent() -> Member {
     Member::new(
         ID::from(slumbot_opponent_uuid()),
         slumbot_opponent_username().to_string(),
-        format!("{}@robopoker.io", slumbot_opponent_username().trim_start_matches("bot:")),
+        format!(
+            "{}@robopoker.io",
+            slumbot_opponent_username().trim_start_matches("bot:")
+        ),
     )
 }
 

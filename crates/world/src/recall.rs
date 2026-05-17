@@ -34,10 +34,7 @@ where
     /// Build a recall from authoritative `(turn, edge)` pairs plus the
     /// current game state. Caller is responsible for ensuring the
     /// descents faithfully describe the trajectory into `game`.
-    pub fn new(
-        descents: impl IntoIterator<Item = Descent<G::T, G::E>>,
-        game: G,
-    ) -> Self {
+    pub fn new(descents: impl IntoIterator<Item = Descent<G::T, G::E>>, game: G) -> Self {
         Self {
             descents: descents.into_iter().collect(),
             game,

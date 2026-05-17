@@ -1,8 +1,8 @@
 use rbp_auth::*;
 use rbp_core::*;
 use rbp_gameplay::*;
-use rbp_gameroom::*;
 use rbp_gameroom::slumbot_opponent_id;
+use rbp_gameroom::*;
 use std::sync::Arc;
 
 pub struct Recorder {
@@ -20,7 +20,7 @@ impl Recorder {
         let room = ID::<records::Room>::default();
         db.execute(
             "INSERT INTO rooms (id, stakes) VALUES ($1, $2)",
-            &[&room.inner(), &(STACK as i16)],
+            &[&room.inner(), &{ STACK }],
         )
         .await
         .expect("failed to create room");

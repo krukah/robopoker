@@ -9,7 +9,10 @@ use actix_web::{HttpResponse, Responder, web};
 use rbp_litmus::{Litmus, Scenarios};
 use std::sync::Arc;
 
-pub async fn run(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>) -> impl Responder {
+pub async fn run(
+    api: web::Data<Arc<Litmus<Backend>>>,
+    req: web::Json<Scenarios>,
+) -> impl Responder {
     match api.run(&req).await {
         Ok(outcomes) => HttpResponse::Ok().json(outcomes),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),

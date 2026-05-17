@@ -53,4 +53,3 @@ impl Default for PruningHyperParams {
         }
     }
 }
-

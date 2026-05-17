@@ -66,7 +66,7 @@ impl Strategy {
     /// underlying training and stay untouched.
     pub fn argmax(&self) -> Self {
         Self {
-            info: self.info.clone(),
+            info: self.info,
             accumulated: argmax(&self.accumulated),
             visits: self.visits.clone(),
             payoff: self.payoff,
@@ -264,7 +264,7 @@ mod tests {
             })
             .collect();
         let expected = d.len();
-        let s = Strategy::from((i.clone(), d));
+        let s = Strategy::from((i, d));
         assert_eq!(s.info(), &i);
         assert_eq!(s.accumulated().len(), expected);
         assert_eq!(s.visits().len(), expected);

@@ -63,6 +63,12 @@ pub struct Client {
     throttle: Option<Throttle>,
 }
 
+impl Default for Client {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Client {
     pub fn new() -> Self {
         Self {

@@ -27,7 +27,7 @@ impl RegretSchedule for DiscountedRegret {
     fn accumulate(accumulated: Utility, immediate: Utility, epoch: usize) -> Utility {
         let t = epoch as f32;
         let p = Self::PERIOD as f32;
-        if (epoch % Self::PERIOD) != 0 {
+        if !epoch.is_multiple_of(Self::PERIOD) {
             accumulated + immediate
         } else if accumulated > 0.0 {
             let x = (t / p).powf(Self::ALPHA);

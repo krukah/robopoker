@@ -199,7 +199,7 @@ impl Schema for Room {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 id          UUID PRIMARY KEY,

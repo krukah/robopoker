@@ -33,3 +33,6 @@ tokio-postgres = { version = "0.7", optional = true }
 const_format   = { version = "0.2", optional = true }
 async-trait    = { version = "0.1", optional = true }
 futures        = { version = "0.3", optional = true }
+
+[lints]
+workspace = true

@@ -43,3 +43,6 @@ anyhow         = "1"
 rand           = { workspace = true }
 clap           = { version = "4", features = ["derive"] }
 const_format   = "0.2"
+
+[lints]
+workspace = true

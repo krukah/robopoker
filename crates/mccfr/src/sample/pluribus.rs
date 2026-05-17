@@ -81,7 +81,7 @@ impl SamplingScheme for PluribusSampling {
         I: CfrInfo<E = E, T = T>,
         P: CfrFlow<T = T, E = E, G = G, I = I>,
     {
-        let ref info = node.info();
+        let info = node.info();
         let hyper = PruningHyperParams::get();
         if branches.is_empty() {
             return vec![];

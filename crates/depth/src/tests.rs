@@ -68,7 +68,7 @@ mod tests {
                 MiniTurn::Terminal
             } else if self.actions >= 2 {
                 MiniTurn::Chance
-            } else if self.actions % 2 == 0 {
+            } else if self.actions.is_multiple_of(2) {
                 MiniTurn::P0
             } else {
                 MiniTurn::P1

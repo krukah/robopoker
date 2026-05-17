@@ -125,9 +125,15 @@ mod tests {
     #[test]
     fn snap_picks_nearest() {
         let l = lat([0.5, 1.0, 2.0]);
-        let ref mut rng = seeded();
-        assert_eq!(Translation::Snap.resolve(obs(0.4), &l, (), rng), Translated::Snap(()));
-        assert_eq!(Translation::Snap.resolve(obs(0.8), &l, (), rng), Translated::Snap(()));
+        let rng = &mut seeded();
+        assert_eq!(
+            Translation::Snap.resolve(obs(0.4), &l, (), rng),
+            Translated::Snap(())
+        );
+        assert_eq!(
+            Translation::Snap.resolve(obs(0.8), &l, (), rng),
+            Translated::Snap(())
+        );
         assert_eq!(l.snap(obs(0.4)), Anchor::new(0));
         assert_eq!(l.snap(obs(0.8)), Anchor::new(1));
         assert_eq!(l.snap(obs(3.0)), Anchor::new(2));
@@ -143,7 +149,7 @@ mod tests {
     #[test]
     fn harmonic_clamps_below() {
         let l = lat([0.5, 1.0, 2.0]);
-        let ref mut rng = seeded();
+        let rng = &mut seeded();
         for _ in 0..50 {
             assert_eq!(l.harmonic(obs(0.1), rng), Anchor::new(0));
         }
@@ -152,7 +158,7 @@ mod tests {
     #[test]
     fn harmonic_clamps_above() {
         let l = lat([0.5, 1.0, 2.0]);
-        let ref mut rng = seeded();
+        let rng = &mut seeded();
         for _ in 0..50 {
             assert_eq!(l.harmonic(obs(10.0), rng), Anchor::new(2));
         }
@@ -161,7 +167,7 @@ mod tests {
     #[test]
     fn harmonic_monte_carlo_matches_formula() {
         let l = lat([0.5, 1.0]);
-        let ref mut rng = seeded();
+        let rng = &mut seeded();
         let trials = 200_000;
         let lo_hits = (0..trials)
             .filter(|_| l.harmonic(obs(0.75), rng) == Anchor::new(0))
@@ -180,7 +186,7 @@ mod tests {
         let l: Lattice<T, &'static str> = [(0.5, "lo"), (1.0, "mid"), (2.0, "hi")]
             .into_iter()
             .collect();
-        let ref mut rng = seeded();
+        let rng = &mut seeded();
         assert_eq!(
             Translation::Snap.resolve(obs(0.4), &l, 0u32, rng),
             Translated::Snap("lo"),

@@ -50,7 +50,7 @@ impl Pair {
     /// Converts triangular index back to (i, j) indices.
     /// Uses inverse triangular number formula.
     pub const fn split(t: usize) -> (usize, usize) {
-        let j = ((1 + (1 + 8 * t).isqrt()) / 2) as usize;
+        let j = (1 + 8 * t).isqrt().div_ceil(2);
         let i = t - j * (j - 1) / 2;
         (i, j)
     }

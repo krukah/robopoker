@@ -60,7 +60,7 @@ impl Action {
     /// Extracts the dealt cards from a Draw action.
     pub fn hand(&self) -> Option<Hand> {
         if let Action::Draw(hand) = self {
-            Some(hand.clone())
+            Some(*hand)
         } else {
             None
         }
@@ -78,8 +78,8 @@ impl Action {
     /// Compact symbol for path serialization (e.g., "C100", "R50").
     pub fn symbol(&self) -> String {
         match self {
-            Action::Fold => format!("F"),
-            Action::Check => format!("X"),
+            Action::Fold => "F".to_string(),
+            Action::Check => "X".to_string(),
             Action::Draw(h) => format!("{}", h),
             Action::Call(n) => format!("C{}", n),
             Action::Blind(n) => format!("B{}", n),
@@ -139,8 +139,8 @@ impl From<u32> for Action {
                     .map(|x| x & MASK)
                     .filter(|&x| x > 0)
                     .map(|x| x as u8 - 1)
-                    .map(|c| Card::from(c))
-                    .map(|c| Hand::from(c))
+                    .map(Card::from)
+                    .map(Hand::from)
                     .fold(Hand::empty(), Hand::add),
             ),
             _ => panic!("at the disco"),
@@ -161,7 +161,7 @@ impl From<Action> for u32 {
                 6 | (hand
                     .into_iter()
                     .take(3)
-                    .map(|c| u8::from(c))
+                    .map(u8::from)
                     .map(|c| c as u32 + 1)
                     .enumerate()
                     .map(|(i, x)| x << (i as u32 * BITS))

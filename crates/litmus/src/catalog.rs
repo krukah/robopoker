@@ -74,10 +74,7 @@ pub fn build_witness(
     let past = history
         .past
         .iter()
-        .map(|s| {
-            Action::try_from(s.as_str())
-                .map_err(|e| anyhow::anyhow!("action `{s}`: {e}"))
-        })
+        .map(|s| Action::try_from(s.as_str()).map_err(|e| anyhow::anyhow!("action `{s}`: {e}")))
         .collect::<anyhow::Result<Vec<_>>>()?;
 
     Witness::try_build(turn, observation, past)

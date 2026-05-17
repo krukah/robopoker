@@ -7,19 +7,13 @@ use rbp_transport::Support;
 /// NLHE private information: the player's hand abstraction bucket.
 ///
 /// Newtype wrapper around gameplay `Abstraction` for NLHE-specific CFR.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct NlheSecret(Abstraction);
 
 impl NlheSecret {
     /// The street this abstraction belongs to.
     pub fn street(&self) -> Street {
         self.0.street()
-    }
-}
-
-impl Default for NlheSecret {
-    fn default() -> Self {
-        Self(Abstraction::default())
     }
 }
 

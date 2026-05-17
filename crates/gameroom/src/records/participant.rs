@@ -140,7 +140,7 @@ mod schema {
 
         fn creates() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-            *SQL.get_or_init(|| {
+            SQL.get_or_init(|| {
                 leaked(format!(
                     "CREATE TABLE IF NOT EXISTS {} (
                     hand_id     UUID NOT NULL REFERENCES {}(id) ON DELETE CASCADE,
@@ -161,7 +161,7 @@ mod schema {
 
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-            *SQL.get_or_init(|| {
+            SQL.get_or_init(|| {
                 leaked(format!(
                     "CREATE INDEX IF NOT EXISTS idx_players_user_hand ON {} (user_id, hand_id);",
                     players()

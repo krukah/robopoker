@@ -1,7 +1,7 @@
 use rbp_gameplay::Action;
 use rbp_gameplay::Recall;
-use rbp_gameplay::Witness;
 use rbp_gameplay::ServerMessage;
+use rbp_gameplay::Witness;
 use rbp_gameroom::Player;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

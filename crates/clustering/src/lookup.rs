@@ -89,7 +89,7 @@ impl rbp_database::Schema for Lookup {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 obs      BIGINT   NOT NULL,
@@ -105,7 +105,7 @@ impl rbp_database::Schema for Lookup {
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::isomorphism();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "WITH numbered AS (
                 SELECT obs, (ROW_NUMBER() OVER (PARTITION BY abs ORDER BY obs) - 1)::INTEGER AS pos
@@ -125,7 +125,7 @@ impl rbp_database::Schema for Lookup {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "COPY {} (obs, abs) FROM STDIN BINARY",
                 rbp_database::isomorphism()
@@ -135,7 +135,7 @@ impl rbp_database::Schema for Lookup {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::isomorphism()))
         })
     }
@@ -143,7 +143,7 @@ impl rbp_database::Schema for Lookup {
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::isomorphism();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"

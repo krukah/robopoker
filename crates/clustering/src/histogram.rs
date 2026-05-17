@@ -246,10 +246,10 @@ impl std::fmt::Display for Histogram {
         debug_assert!(matches!(self.peek().street(), Street::Rive));
         // 1. interpret each key of the Histogram as probability
         // 2. they should already be sorted bc BTreeMap
-        let ref pdf = self.pdf();
+        let pdf = &self.pdf();
         // 3. Create 32 bins for the x-axis
         let n_x_bins = 32;
-        let ref mut bins = vec![0.0; n_x_bins];
+        let bins = &mut vec![0.0; n_x_bins];
         for (key, value) in pdf {
             let x = key * n_x_bins as f32;
             let x = x.floor() as usize;

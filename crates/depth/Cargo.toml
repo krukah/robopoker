@@ -17,3 +17,6 @@ rbp-transport = { path = "../transport" }
 rbp-mccfr     = { path = "../mccfr", default-features = false }
 rbp-hyperparams = { workspace = true }
 petgraph      = { workspace = true }
+
+[lints]
+workspace = true

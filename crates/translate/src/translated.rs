@@ -1,7 +1,7 @@
 //! Unified resolution result type.
 
-/// Outcome of running a [`crate::Translation`] policy against a
-/// [`crate::Lattice`] and a [`crate::Scalar`].
+/// Outcome of running a :Translation`]:`Translation`::Translation`] policy against a
+/// :Translation`]:`Translation`::Lattice`] and a :Translation`]:`Translation`::Scalar`].
 ///
 /// - [`Self::Snap`] — resolved to a canonical lattice payload (the
 ///   common case under all current policies).

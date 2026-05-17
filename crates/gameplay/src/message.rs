@@ -19,19 +19,10 @@ pub enum Reason {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerMessage {
-    Welcome {
-        room: String,
-        seat: Position,
-    },
+    Welcome { room: String, seat: Position },
     Snapshot(Snapshot),
-    Rejected {
-        reason: String,
-        legal: Vec<Action>,
-    },
-    SessionEnd {
-        stacks: [Chips; N],
-        reason: Reason,
-    },
+    Rejected { reason: String, legal: Vec<Action> },
+    SessionEnd { stacks: [Chips; N], reason: Reason },
 }
 
 impl ServerMessage {

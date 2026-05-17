@@ -48,7 +48,7 @@ impl Arbitrary for EMD {
                         .chain(p.support())
                         .chain(q.support())
                         .chain(r.support())
-                        .map(move |y| (x.clone(), y))
+                        .map(move |y| (x, y))
                 })
                 .filter(|(x, y)| x > y)
                 .map(|(x, y)| Pair::from((&x, &y)))
@@ -72,8 +72,8 @@ mod tests {
     #[test]
     fn is_equity_emd_symmetric() {
         let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        let h1 = &Histogram::from(Observation::from(Street::Turn));
+        let h2 = &Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
         assert!(d12 == d21);
@@ -81,8 +81,8 @@ mod tests {
     #[test]
     fn is_equity_emd_positive() {
         let metric = Metric::default();
-        let ref h1 = Histogram::from(Observation::from(Street::Turn));
-        let ref h2 = Histogram::from(Observation::from(Street::Turn));
+        let h1 = &Histogram::from(Observation::from(Street::Turn));
+        let h2 = &Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
         assert!(d12 > 0.);

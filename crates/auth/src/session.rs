@@ -67,7 +67,7 @@ mod schema {
 
         fn creates() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-            *SQL.get_or_init(|| {
+            SQL.get_or_init(|| {
                 leaked(format!(
                     "CREATE TABLE IF NOT EXISTS {} (
                     id          UUID PRIMARY KEY,
@@ -84,7 +84,7 @@ mod schema {
 
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-            *SQL.get_or_init(|| leaked(format!(
+            SQL.get_or_init(|| leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_sessions_user ON {} (user_id);
                  CREATE INDEX IF NOT EXISTS idx_sessions_token ON {} (token_hash);
                  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON {} (expires_at) WHERE NOT revoked;",

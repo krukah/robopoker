@@ -16,9 +16,9 @@ use rbp_cards::Street;
 use rbp_core::Probability;
 use rbp_core::Utility;
 use rbp_gameplay::*;
-use rbp_nlhe::*;
 use rbp_mccfr::RefProf;
 use rbp_mccfr::Solver;
+use rbp_nlhe::*;
 use rbp_subgame::SubgameHyperParams;
 
 use super::Solved;
@@ -84,12 +84,17 @@ pub trait Brain: Send {
             None => return self.policy(recall),
             Some(s) => s,
         };
-        let visits = solved.visits().values().map(|&v| v as Utility).sum::<Utility>().max(1.0);
+        let visits = solved
+            .visits()
+            .values()
+            .map(|&v| v as Utility)
+            .sum::<Utility>()
+            .max(1.0);
         let relative = solved.regret() / visits / game.pot().max(1) as Utility;
         span.record("iterations", solved.iterations());
         span.record("regret_norm", relative);
         solved.emit_postflop(tag, game.street(), game.pot(), relative);
-        let ref policy = self.policy(recall);
+        let policy = &self.policy(recall);
         solved.extract(policy, tag, game.street())
     }
 }

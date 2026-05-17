@@ -3,8 +3,8 @@ use crate::recorder::*;
 use crate::result::*;
 use crate::session::*;
 use rbp_core::Variant;
-use rbp_gameroom::VariantExt;
 use rbp_gameplay::Turn;
+use rbp_gameroom::VariantExt;
 use rbp_telemetry::KeyValue;
 use tracing::Instrument;
 
@@ -86,10 +86,15 @@ impl Benchmark {
         let mut errors = 0u32;
         loop {
             if rbp_core::interrupted() {
-                tracing::info!(variant = label, hands = bench.results.len(), "slumbot interrupted");
+                tracing::info!(
+                    variant = label,
+                    hands = bench.results.len(),
+                    "slumbot interrupted"
+                );
                 break;
             }
-            let span = tracing::info_span!("slumbot.hand", variant = label, index = bench.results.len());
+            let span =
+                tracing::info_span!("slumbot.hand", variant = label, index = bench.results.len());
             let outcome = Session::play(&mut client, player, recorder)
                 .instrument(span)
                 .await;
@@ -98,7 +103,7 @@ impl Benchmark {
                     record_hand(variant, &result);
                     bench.results.push(result);
                     errors = 0;
-                    if bench.results.len() % 100 == 0 {
+                    if bench.results.len().is_multiple_of(100) {
                         tracing::info!(
                             variant = label,
                             played = bench.results.len(),

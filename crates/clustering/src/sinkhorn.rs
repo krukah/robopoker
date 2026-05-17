@@ -77,12 +77,12 @@ impl Sinkhorn<'_> {
     fn sinkhorn(&mut self) {
         #[allow(unused)]
         for t in 0..self.iterations() {
-            let ref mut next = self.lhs();
-            let ref mut prev = self.lhs;
+            let next = &mut self.lhs();
+            let prev = &mut self.lhs;
             let lhs_err = Self::delta(prev, next);
             std::mem::swap(prev, next);
-            let ref mut next = self.rhs();
-            let ref mut prev = self.rhs;
+            let next = &mut self.rhs();
+            let prev = &mut self.rhs;
             let rhs_err = Self::delta(prev, next);
             std::mem::swap(prev, next);
             if lhs_err + rhs_err < self.tolerance() {
@@ -173,7 +173,7 @@ impl Sinkhorn<'_> {
     /// with the metric's street, since two metrics on different streets
     /// over the same histogram shape would yield different self-costs.
     fn self_cost(h: &Histogram, metric: &Metric) -> Energy {
-        let ref mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let hasher = &mut std::collections::hash_map::DefaultHasher::new();
         h.hash(hasher);
         metric.street().hash(hasher);
         let key = hasher.finish();

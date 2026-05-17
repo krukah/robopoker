@@ -140,7 +140,7 @@ impl TryFrom<&str> for Abstraction {
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let s = s.trim().split(Self::DELIM).collect::<Vec<_>>();
         let a = s
-            .get(0)
+            .first()
             .copied()
             .ok_or_else(|| anyhow::anyhow!("broken delimiter"))?;
         let b = s

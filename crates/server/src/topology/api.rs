@@ -117,8 +117,7 @@ impl TopologyAPI {
             .query_one(sql.as_str(), &[&iso])
             .await
             .map_err(|e| anyhow::anyhow!("fetch observation equity: {}", e))?
-            .get::<_, f32>(0)
-            .into())
+            .get::<_, f32>(0))
     }
 }
 
@@ -496,7 +495,7 @@ impl TopologyAPI {
 impl TopologyAPI {
     pub async fn nbr_any_wrt_abs(&self, wrt: Abstraction) -> anyhow::Result<ApiSample> {
         use rand::prelude::IndexedRandom;
-        let ref mut rng = rand::rng();
+        let rng = &mut rand::rng();
         let abs = Abstraction::all(wrt.street())
             .into_iter()
             .filter(|&x| x != wrt)
@@ -868,7 +867,7 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let ref abs = i16::from(abs);
+        let abs = &i16::from(abs);
         let rows = self
             .0
             .query(sql.as_str(), &[abs])
@@ -903,7 +902,7 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let ref abs = i16::from(abs);
+        let abs = &i16::from(abs);
         let rows = self
             .0
             .query(sql.as_str(), &[abs])

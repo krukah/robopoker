@@ -20,9 +20,9 @@ use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::Resource;
-use opentelemetry_sdk::metrics::PeriodicReader;
 use opentelemetry_sdk::metrics::Aggregation;
 use opentelemetry_sdk::metrics::Instrument;
+use opentelemetry_sdk::metrics::PeriodicReader;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::metrics::Stream;
 use opentelemetry_sdk::metrics::View;
@@ -175,14 +175,25 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         histogram_view(
             "rbp.subgame.iterations",
             &[
-                100.0, 500.0, 1000.0, 5000.0, 10000.0, 25000.0, 50000.0, 100000.0,
-                250000.0, 500000.0, 1_000_000.0,
+                100.0,
+                500.0,
+                1000.0,
+                5000.0,
+                10000.0,
+                25000.0,
+                50000.0,
+                100000.0,
+                250000.0,
+                500000.0,
+                1_000_000.0,
             ],
         ),
         // L1 distance between two probability distributions — bounded 0..=2.
         histogram_view(
             "rbp.subgame.policy_deviation",
-            &[0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
+            &[
+                0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0,
+            ],
         ),
         // regret / pot — observed 0.5 to 2000+ in smokes. Log-ish buckets so
         // we have resolution at both the "converged" and "diverged" ends.
@@ -195,23 +206,29 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         histogram_view(
             "rbp.slumbot.hand_bb",
             &[
-                -200.0, -150.0, -100.0, -50.0, -20.0, -10.0, -5.0, -2.0, -1.0, 0.0,
-                1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0,
+                -200.0, -150.0, -100.0, -50.0, -20.0, -10.0, -5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0,
+                10.0, 20.0, 50.0, 100.0, 200.0,
             ],
         ),
         // Subgame decision wall-clock — budget-capped at SubgameHyperParams::timeout_ms (default 5000).
         histogram_view(
             "rbp.subgame.decision_ms",
             &[
-                1.0, 10.0, 100.0, 500.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0,
-                6000.0, 10000.0,
+                1.0, 10.0, 100.0, 500.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 10000.0,
             ],
         ),
         // K-means iteration wall-clock — single iter typically <60s, full street caps ~30min.
         histogram_view(
             "rbp.kmeans.iteration_ms",
             &[
-                100.0, 500.0, 1000.0, 5000.0, 10000.0, 30000.0, 60000.0, 300000.0,
+                100.0,
+                500.0,
+                1000.0,
+                5000.0,
+                10000.0,
+                30000.0,
+                60000.0,
+                300000.0,
                 1_800_000.0,
             ],
         ),
@@ -219,23 +236,33 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         histogram_view(
             "rbp.kmeans.phase_ms",
             &[
-                100.0, 1000.0, 10000.0, 60000.0, 300000.0, 1_800_000.0, 7_200_000.0,
+                100.0,
+                1000.0,
+                10000.0,
+                60000.0,
+                300000.0,
+                1_800_000.0,
+                7_200_000.0,
             ],
         ),
         // K-means cluster sizes — N varies wildly by street (preflop ~1k, turn ~1.3M).
         histogram_view(
             "rbp.kmeans.cluster_size",
             &[
-                10.0, 100.0, 1000.0, 10000.0, 100000.0, 1_000_000.0, 10_000_000.0,
+                10.0,
+                100.0,
+                1000.0,
+                10000.0,
+                100000.0,
+                1_000_000.0,
+                10_000_000.0,
             ],
         ),
         // K-means per-cluster drift values — log-spaced; drift typically
         // descends from ~0.1 toward ~1e-5 over iterations.
         histogram_view(
             "rbp.kmeans.drift_dist",
-            &[
-                1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0,
-            ],
+            &[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0],
         ),
         // MCCFR flush duration — periodic DB-snapshot wall-clock.
         // Empirically a unimodal distribution centered at ~14s, all
@@ -246,8 +273,8 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         histogram_view(
             "rbp.mccfr.flush_duration_ms",
             &[
-                5_000.0, 10_000.0, 15_000.0, 20_000.0, 25_000.0, 30_000.0,
-                35_000.0, 40_000.0, 45_000.0, 50_000.0, 55_000.0, 60_000.0,
+                5_000.0, 10_000.0, 15_000.0, 20_000.0, 25_000.0, 30_000.0, 35_000.0, 40_000.0,
+                45_000.0, 50_000.0, 55_000.0, 60_000.0,
             ],
         ),
         // MCCFR tree size — log-spaced; depends on game tree depth and
@@ -255,25 +282,19 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         // nodes; spikes flag tree-depth pathologies.
         histogram_view(
             "rbp.mccfr.tree_size",
-            &[
-                10.0, 100.0, 1000.0, 10_000.0, 100_000.0, 1_000_000.0,
-            ],
+            &[10.0, 100.0, 1000.0, 10_000.0, 100_000.0, 1_000_000.0],
         ),
         // MCCFR infoset size — most infosets are small (1-5 nodes); long
         // tail of pathologically big infosets is the diagnostic of
         // interest.
         histogram_view(
             "rbp.mccfr.infoset_size",
-            &[
-                1.0, 2.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 10_000.0,
-            ],
+            &[1.0, 2.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 10_000.0],
         ),
         // MCCFR infosets per tree — same magnitude as tree_size.
         histogram_view(
             "rbp.mccfr.infosets_per_tree",
-            &[
-                10.0, 100.0, 1000.0, 10_000.0, 100_000.0,
-            ],
+            &[10.0, 100.0, 1000.0, 10_000.0, 100_000.0],
         ),
     ];
     views.into_iter().flatten().collect()

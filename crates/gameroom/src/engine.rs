@@ -98,10 +98,10 @@ impl EngineCore {
     }
 
     fn send_wire(&self, pos: Position, msg: ServerMessage) {
-        if let Some(tx) = self.wires.get(pos).and_then(|w| w.as_ref()) {
-            if let Err(e) = tx.send(msg.to_json()) {
-                tracing::warn!(seat = pos, error = ?e, "wire send failed");
-            }
+        if let Some(tx) = self.wires.get(pos).and_then(|w| w.as_ref())
+            && let Err(e) = tx.send(msg.to_json())
+        {
+            tracing::warn!(seat = pos, error = ?e, "wire send failed");
         }
     }
 
@@ -232,11 +232,9 @@ impl Engine<Seating> {
         if player.shows() {
             self.core.showoffs.insert(pos);
         }
-        self.core.players.push(Actor::spawn(
-            pos,
-            Box::new(player),
-            self.core.tx.clone(),
-        ));
+        self.core
+            .players
+            .push(Actor::spawn(pos, Box::new(player), self.core.tx.clone()));
         self.core.wires.push(wire);
     }
 
@@ -280,7 +278,8 @@ impl Engine<Dealing> {
     pub async fn ask(&mut self, pos: Position) -> (Action, Prompt) {
         tracing::debug!(seat = pos, "asking for action");
         // Tell the player actor it's their turn so internal Players can decide.
-        self.core.unicast(pos, Event::Decision(self.core.recall(pos)));
+        self.core
+            .unicast(pos, Event::Decision(self.core.recall(pos)));
         // Push fresh snapshot so the wire learns who to_act is + sees legal moves.
         self.core.push_snapshots();
         let (action, prompt) = self.next_action(pos).await;
@@ -365,13 +364,12 @@ impl Engine<Showdown> {
                 _ = tokio::time::sleep_until(deadline) => break,
                 _ = self.core.skip.notified() => break,
                 msg = self.core.rx.recv() => {
-                    if let Some((pos, _)) = msg {
-                        if !showed.contains(&pos) && order.contains(&pos) {
+                    if let Some((pos, _)) = msg
+                        && !showed.contains(&pos) && order.contains(&pos) {
                             self.reveal(pos, true);
                             self.core.push_snapshots();
                             showed.push(pos);
                         }
-                    }
                 }
             }
         }
@@ -435,7 +433,7 @@ impl Engine<Showdown> {
             .filter(|(_, seat)| seat.state() != State::Folding)
             .filter(|(i, seat)| {
                 seat.state() == State::Shoving
-                    || settlements.get(*i).map_or(false, |s| s.pnl().reward() > 0)
+                    || settlements.get(*i).is_some_and(|s| s.pnl().reward() > 0)
                     || self.core.showoffs.contains(i)
             })
             .map(|(i, _)| i)

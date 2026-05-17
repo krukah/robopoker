@@ -43,7 +43,7 @@ impl rbp_database::Schema for Future {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 prev SMALLINT NOT NULL,
@@ -58,7 +58,7 @@ impl rbp_database::Schema for Future {
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::transitions();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_{t}_prev ON {t} (prev);
              CREATE INDEX IF NOT EXISTS idx_{t}_next ON {t} (next);
@@ -73,7 +73,7 @@ impl rbp_database::Schema for Future {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "COPY {} (prev, next, dx) FROM STDIN BINARY",
                 rbp_database::transitions()
@@ -83,7 +83,7 @@ impl rbp_database::Schema for Future {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::transitions()))
         })
     }
@@ -91,7 +91,7 @@ impl rbp_database::Schema for Future {
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::transitions();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"

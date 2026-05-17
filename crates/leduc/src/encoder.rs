@@ -74,7 +74,7 @@ impl<const W: usize> WorldRestrict<W> for LeducEncoder {
         Card::ALL
             .into_iter()
             .filter(|&c| c != observed.hole_card(1 - actor))
-            .filter(|&c| observed.board().map_or(true, |b| b != c))
+            .filter(|&c| observed.board() != Some(c))
             .map(|c| observed.with_card(actor, c))
             .map(|root| (root, root.hole_rank(actor)))
             .find(|(_, secret)| belief.remember(secret, world))
@@ -91,7 +91,7 @@ impl LeducEncoder {
         Card::ALL
             .into_iter()
             .filter(|&c| c != game.hole_card(1 - actor))
-            .filter(|&c| game.board().map_or(true, |b| b != c))
+            .filter(|&c| game.board() != Some(c))
             .map(|c| c.rank())
             .fold(Posterior::default(), |post, rank| post.add(rank, 1.0))
     }

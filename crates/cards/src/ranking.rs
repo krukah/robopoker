@@ -8,7 +8,9 @@ use super::rank::Rank;
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(feature = "shortdeck")]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum Ranking {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers
@@ -29,7 +31,9 @@ pub enum Ranking {
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(not(feature = "shortdeck"))]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum Ranking {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers

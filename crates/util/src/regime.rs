@@ -82,10 +82,17 @@ pub fn config_string(r: Regime) -> String {
              SIZE_FLOP_0={:?};SIZE_FLOP_1={:?};SIZE_FLOP_N={:?};\
              SIZE_TURN_0={:?};SIZE_TURN_1={:?};SIZE_TURN_N={:?};\
              SIZE_RIVE_0={:?};SIZE_RIVE_1={:?};SIZE_RIVE_N={:?}",
-            SIZE_PREF_1, SIZE_PREF_N,
-            SIZE_FLOP_0, SIZE_FLOP_1, SIZE_FLOP_N,
-            SIZE_TURN_0, SIZE_TURN_1, SIZE_TURN_N,
-            SIZE_RIVE_0, SIZE_RIVE_1, SIZE_RIVE_N,
+            SIZE_PREF_1,
+            SIZE_PREF_N,
+            SIZE_FLOP_0,
+            SIZE_FLOP_1,
+            SIZE_FLOP_N,
+            SIZE_TURN_0,
+            SIZE_TURN_1,
+            SIZE_TURN_N,
+            SIZE_RIVE_0,
+            SIZE_RIVE_1,
+            SIZE_RIVE_N,
         ),
         Regime::Slumbot => format!("{common};SLUMBOT_SIZES={:?}", SLUMBOT_SIZES),
     }

@@ -49,7 +49,10 @@ pub async fn evaluate<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) -> Ou
 }
 
 fn merged_expect(catalog: &Catalog, case: &Case) -> Expect {
-    Expect::merged(catalog.category_default(&case.category), case.expect.as_ref())
+    Expect::merged(
+        catalog.category_default(&case.category),
+        case.expect.as_ref(),
+    )
 }
 
 fn fmt_pct(p: Option<f32>) -> String {
@@ -128,23 +131,23 @@ async fn evaluate_single<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) ->
     let max = expect.acceptable_max;
     let min = expect.acceptable_min;
 
-    if let Some(m) = max {
-        if prob > m {
-            return outcome(
-                Status::Fail,
-                format!("{} > {}", fmt_pct(Some(prob)), fmt_pct(Some(m))),
-                observed,
-            );
-        }
+    if let Some(m) = max
+        && prob > m
+    {
+        return outcome(
+            Status::Fail,
+            format!("{} > {}", fmt_pct(Some(prob)), fmt_pct(Some(m))),
+            observed,
+        );
     }
-    if let Some(m) = min {
-        if prob < m {
-            return outcome(
-                Status::Fail,
-                format!("{} < {}", fmt_pct(Some(prob)), fmt_pct(Some(m))),
-                observed,
-            );
-        }
+    if let Some(m) = min
+        && prob < m
+    {
+        return outcome(
+            Status::Fail,
+            format!("{} < {}", fmt_pct(Some(prob)), fmt_pct(Some(m))),
+            observed,
+        );
     }
 
     let bound = match (max, min) {
@@ -169,7 +172,11 @@ async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     };
 
     let Some(hands) = case.hands.as_ref() else {
-        return mk(Status::Error, "pair_diff requires `hands` (length 2)".into(), vec![]);
+        return mk(
+            Status::Error,
+            "pair_diff requires `hands` (length 2)".into(),
+            vec![],
+        );
     };
     if hands.len() != 2 {
         return mk(
@@ -207,7 +214,13 @@ async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     let expect = merged_expect(catalog, case);
     let bound = match expect.max_abs_diff {
         Some(b) => b,
-        None => return mk(Status::Error, "pair_diff missing max_abs_diff".into(), observed),
+        None => {
+            return mk(
+                Status::Error,
+                "pair_diff missing max_abs_diff".into(),
+                observed,
+            );
+        }
     };
 
     let obs_str = format!(
@@ -248,7 +261,11 @@ async fn evaluate_monotonic<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     };
 
     let Some(hands) = case.hands.as_ref() else {
-        return mk(Status::Error, "monotonic requires `hands` (length ≥2)".into(), vec![]);
+        return mk(
+            Status::Error,
+            "monotonic requires `hands` (length ≥2)".into(),
+            vec![],
+        );
     };
     if hands.len() < 2 {
         return mk(

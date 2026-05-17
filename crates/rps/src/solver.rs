@@ -25,12 +25,7 @@ where
         &self.profile
     }
 
-    fn payoffs(
-        &self,
-        prefix: &Prefix<Self::T, Self::E>,
-        game: &Self::G,
-        _: Self::T,
-    ) -> Payoffs<L> {
+    fn payoffs(&self, prefix: &Prefix<Self::T, Self::E>, game: &Self::G, _: Self::T) -> Payoffs<L> {
         Payoffs::uniform(
             self.profile
                 .frontier_payoff(&self.resume(prefix.into_iter().edges(), game)),
@@ -68,7 +63,7 @@ where
         writeln!(f, "│ Turn │ Edge │ ∑ Regret │ ∑ Weight │  Instant │  Average │")?;
         writeln!(f, "├──────┼──────┼──────────┼──────────┼──────────┼──────────┤")?;
         for (turn, edges) in &self.profile.encounters {
-            for (edge, _) in edges {
+            for edge in edges.keys() {
                 writeln!(
                     f,
                     "│ {:>4} │ {:>4} │ {:>+8.2} │ {:>8.2} │ {:>8.2} │ {:>8.2} │",

@@ -106,15 +106,15 @@ fn render_failure_block(o: &Outcome, out: &mut String) {
     if let Some(desired) = &o.case.desired {
         out.push_str(&format!("**Desired**: {desired}\n\n"));
     }
-    if matches!(o.status, Status::Fail | Status::Error) {
-        if let Some(diag) = &o.case.diagnosis_if_violated {
-            out.push_str(&format!("**Diagnosis**: {diag}\n\n"));
-        }
+    if matches!(o.status, Status::Fail | Status::Error)
+        && let Some(diag) = &o.case.diagnosis_if_violated
+    {
+        out.push_str(&format!("**Diagnosis**: {diag}\n\n"));
     }
-    if let Some(historical) = &o.case.historical {
-        if let Some(ctx) = &historical.context {
-            out.push_str(&format!("**Historical**: {ctx}\n\n"));
-        }
+    if let Some(historical) = &o.case.historical
+        && let Some(ctx) = &historical.context
+    {
+        out.push_str(&format!("**Historical**: {ctx}\n\n"));
     }
 }
 

@@ -5,16 +5,16 @@
 #![allow(dead_code)]
 
 mod id;
-mod translation;
 mod metrics;
 mod regime;
+mod translation;
 mod variant;
 mod version;
 
 pub use id::*;
-pub use translation::*;
 pub use metrics::*;
 pub use regime::*;
+pub use translation::*;
 pub use variant::*;
 pub use version::*;
 
@@ -65,7 +65,7 @@ pub const S_BLIND: Chips = 1;
 pub const MAX_RAISE_REPEATS: usize = 3;
 /// Maximum edges in a packed Path (12 nibbles × 5 bits = 60 bits ≤ 64 bits).
 /// Data-representation limit, not a solver depth knob — the subgame tree's
-/// effective depth is controlled by where [`DepthGame::at_frontier`] fires
+/// effective depth is controlled by where `DepthGame::at_frontier` fires
 /// (first chance node past origin), not by this constant.
 pub const MAX_PATH_EDGES: usize = 12;
 
@@ -232,7 +232,7 @@ pub fn interrupted() -> bool {
     INTERRUPTED.load(std::sync::atomic::Ordering::Relaxed)
         || DEADLINE
             .get()
-            .map_or(false, |d| std::time::Instant::now() >= *d)
+            .is_some_and(|d| std::time::Instant::now() >= *d)
 }
 /// No-op interrupt check when server feature disabled.
 #[cfg(not(feature = "server"))]
@@ -261,9 +261,8 @@ pub fn brb() {
     });
     std::thread::spawn(|| {
         loop {
-            let ref mut buffer = String::new();
-            if std::io::stdin().read_line(buffer).is_ok()
-                && buffer.trim().eq_ignore_ascii_case("Q")
+            let buffer = &mut String::new();
+            if std::io::stdin().read_line(buffer).is_ok() && buffer.trim().eq_ignore_ascii_case("Q")
             {
                 tracing::warn!("graceful interrupt requested, finishing current batch...");
                 INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -279,7 +278,9 @@ fn parse_duration(s: &str) -> Option<std::time::Duration> {
     let (num, unit) = s.split_at(s.len().saturating_sub(1));
     let value: u64 = num
         .parse()
-        .inspect_err(|e| tracing::warn!(input = %num, error = %e, "parse_duration: number parse failed"))
+        .inspect_err(
+            |e| tracing::warn!(input = %num, error = %e, "parse_duration: number parse failed"),
+        )
         .ok()?;
     match unit {
         "s" => Some(std::time::Duration::from_secs(value)),

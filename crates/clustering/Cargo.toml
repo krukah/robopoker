@@ -27,3 +27,5 @@ const_format   = { version = "0.2", optional = true }
 async-trait    = { version = "0.1", optional = true }
 rayon          = "1.10"
 rand           = { workspace = true }
+[lints]
+workspace = true

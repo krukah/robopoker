@@ -16,3 +16,6 @@ rbp-core      = { path = "../../crates/util", features = ["server"] }
 rbp-server    = { path = "../../crates/server" }
 rbp-telemetry = { path = "../../crates/telemetry" }
 tokio         = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

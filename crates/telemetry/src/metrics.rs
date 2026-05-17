@@ -76,19 +76,17 @@ fn build(meter: &Meter) -> Handles {
     Handles {
         mccfr_steps: meter
             .u64_counter("rbp.mccfr.steps")
-            .with_description("MCCFR training steps completed (cumulative). Use rate() for steps/sec.")
+            .with_description(
+                "MCCFR training steps completed (cumulative). Use rate() for steps/sec.",
+            )
             .build(),
         mccfr_nodes: meter
             .u64_counter("rbp.mccfr.nodes")
-            .with_description(
-                "Game tree nodes explored (cumulative). Use rate() for nodes/sec.",
-            )
+            .with_description("Game tree nodes explored (cumulative). Use rate() for nodes/sec.")
             .build(),
         mccfr_infos: meter
             .u64_counter("rbp.mccfr.infos")
-            .with_description(
-                "Information sets visited (cumulative). Use rate() for infos/sec.",
-            )
+            .with_description("Information sets visited (cumulative). Use rate() for infos/sec.")
             .build(),
         mccfr_sum_regret: meter
             .f64_gauge("rbp.mccfr.sum_regret")
@@ -148,7 +146,9 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         kmeans_iterations: meter
             .u64_counter("rbp.kmeans.iterations")
-            .with_description("K-means iterations completed (cumulative). Use rate() for iters/sec.")
+            .with_description(
+                "K-means iterations completed (cumulative). Use rate() for iters/sec.",
+            )
             .build(),
         kmeans_early_terminated: meter
             .u64_counter("rbp.kmeans.early_terminated")
@@ -181,7 +181,7 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         subgame_decision_ms: meter
             .f64_histogram("rbp.subgame.decision_ms")
-.with_description("Wall time per subgame decision")
+            .with_description("Wall time per subgame decision")
             .build(),
         subgame_iterations: meter
             .u64_histogram("rbp.subgame.iterations")
@@ -204,7 +204,7 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         http_duration_ms: meter
             .f64_histogram("rbp.http.duration_ms")
-.with_description("HTTP request duration")
+            .with_description("HTTP request duration")
             .build(),
         db_queries: meter
             .u64_counter("rbp.db.queries")
@@ -212,7 +212,7 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         db_query_ms: meter
             .f64_histogram("rbp.db.query_ms")
-.with_description("Database query duration")
+            .with_description("Database query duration")
             .build(),
         slumbot_hands: meter
             .u64_counter("rbp.slumbot.hands")
@@ -220,7 +220,9 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         slumbot_hand_bb: meter
             .f64_histogram("rbp.slumbot.hand_bb")
-            .with_description("Winnings per hand in big blinds (signed; use _bucket for distribution, not _sum)")
+            .with_description(
+                "Winnings per hand in big blinds (signed; use _bucket for distribution, not _sum)",
+            )
             .build(),
         slumbot_hand_bb_won: meter
             .f64_counter("rbp.slumbot.hand_bb_won")

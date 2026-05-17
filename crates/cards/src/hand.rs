@@ -82,8 +82,8 @@ impl Hand {
     /// Returns the cards in random order.
     pub fn shuffle(&self) -> Vec<Card> {
         use rand::seq::SliceRandom;
-        let ref mut rng = rand::rng();
-        let mut cards = Vec::<Card>::from(self.clone());
+        let rng = &mut rand::rng();
+        let mut cards = Vec::<Card>::from(*self);
         cards.shuffle(rng);
         cards
     }
@@ -97,7 +97,7 @@ impl Hand {
         x |= x >> 2;
         x &= 0x1111111111111;
         let mut y = 0u64;
-        y |= (x >> 00) & 0b_0000000000001;
+        y |= x & 0b_0000000000001;
         y |= (x >> 03) & 0b_0000000000010;
         y |= (x >> 06) & 0b_0000000000100;
         y |= (x >> 09) & 0b_0000000001000;

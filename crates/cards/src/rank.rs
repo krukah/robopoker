@@ -6,7 +6,19 @@
 /// - `u8`: Direct index `0..13` for array access
 /// - `u16`: Bitmask with one bit per rank for straight detection
 /// - `u64`: Four-bit mask repeated across suits for n-of-a-kind detection
-#[derive(Debug, Default, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Hash,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum Rank {
     #[default]
     Two = 0,
@@ -31,7 +43,7 @@ impl Rank {
     }
     /// Extracts the lowest rank from a Hand's u64 representation.
     pub fn lo(bits: u64) -> Self {
-        let rank = (00 + 0 + bits.trailing_zeros()) as u8 / 4;
+        let rank = bits.trailing_zeros() as u8 / 4;
         Rank::from(rank)
     }
     /// Extracts the highest rank from a Hand's u64 representation.

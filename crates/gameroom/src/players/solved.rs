@@ -9,10 +9,10 @@ use rbp_core::Chips;
 use rbp_core::Probability;
 use rbp_core::Utility;
 use rbp_gameplay::Edge;
-use rbp_nlhe::NlheEdge;
-use rbp_nlhe::NlheInfo;
 use rbp_mccfr::Harvest;
 use rbp_mccfr::Solver;
+use rbp_nlhe::NlheEdge;
+use rbp_nlhe::NlheInfo;
 use rbp_subgame::SubgameHyperParams;
 use rbp_telemetry::KeyValue;
 

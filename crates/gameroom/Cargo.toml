@@ -38,3 +38,6 @@ tracing       = { workspace = true }
 uuid           = "1"
 rand           = { workspace = true }
 dialoguer      = { version = "0.11", optional = true                        }
+
+[lints]
+workspace = true

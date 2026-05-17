@@ -18,3 +18,5 @@ rbp-depth     = { path = "../depth" }
 rbp-hyperparams = { workspace = true }
 rbp-world     = { path = "../world" }
 rand          = { workspace = true }
+[lints]
+workspace = true

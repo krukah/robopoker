@@ -100,8 +100,8 @@ pub trait CfrFlow: RefProf + CfrSampling {
         &self,
         infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
     ) -> Policy<Self::E> {
-        let ref span = infoset.span();
-        let ref expected = span
+        let span = &infoset.span();
+        let expected = &span
             .iter()
             .map(|r| self.expected_value(r))
             .collect::<Vec<_>>();
@@ -318,7 +318,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
-        let ref mut hasher = DefaultHasher::new();
+        let hasher = &mut DefaultHasher::new();
         self.t().hash(hasher);
         node.info().hash(hasher);
         node.seed().hash(hasher);

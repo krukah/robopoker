@@ -13,7 +13,7 @@ impl Iterator for IsomorphismIterator {
     type Item = Isomorphism;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(observation) = self.0.next() {
+        for observation in self.0.by_ref() {
             if Isomorphism::is_canonical(&observation) {
                 return Some(Isomorphism::from(observation));
             }

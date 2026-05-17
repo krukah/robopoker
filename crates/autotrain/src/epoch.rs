@@ -12,7 +12,7 @@ impl rbp_database::Schema for EpochMeta {
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::epoch();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {t} (
                 key   TEXT PRIMARY KEY,
@@ -35,7 +35,7 @@ impl rbp_database::Schema for EpochMeta {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "UPDATE {} SET value = 0 WHERE key = 'current'",
                 rbp_database::epoch()

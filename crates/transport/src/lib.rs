@@ -6,8 +6,8 @@
 //!
 //! ## Algorithms
 //!
-//! - [`Greenkhorn`] — Sinkhorn-like algorithm with greedy row/column updates
-//! - [`Greedy`] — Fast approximate coupling via greedy matching
+//! - `Greenkhorn` — Sinkhorn-like algorithm with greedy row/column updates
+//! - `Greedy` — Fast approximate coupling via greedy matching
 //!
 //! ## Core Types
 //!

@@ -248,6 +248,43 @@ impl std::fmt::Display for Edge {
     }
 }
 
+impl serde::Serialize for Edge {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.to_string())
+    }
+}
+impl<'de> serde::Deserialize<'de> for Edge {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: String = serde::Deserialize::deserialize(d)?;
+        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
+impl Arbitrary for Edge {
+    fn random() -> Self {
+        use rand::prelude::IndexedRandom;
+        match rand::random_range(0..7) {
+            0 => Self::Draw,
+            1 => Self::Fold,
+            2 => Self::Check,
+            3 => Self::Call,
+            4 => Self::Shove,
+            5 => Self::Open(*OPENS.choose(&mut rand::rng()).unwrap()),
+            6 => {
+                let &(n, d) = RAISES.choose(&mut rand::rng()).unwrap();
+                Self::Raise(Odds::new(n, d))
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -323,43 +360,6 @@ mod tests {
                 let edges = Edge::raises(street, depth);
                 assert!(edges.iter().all(|e| matches!(e, Edge::Raise(_))));
             }
-        }
-    }
-}
-
-impl serde::Serialize for Edge {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        s.serialize_str(&self.to_string())
-    }
-}
-impl<'de> serde::Deserialize<'de> for Edge {
-    fn deserialize<D>(d: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s: String = serde::Deserialize::deserialize(d)?;
-        Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
-    }
-}
-
-impl Arbitrary for Edge {
-    fn random() -> Self {
-        use rand::prelude::IndexedRandom;
-        match rand::random_range(0..7) {
-            0 => Self::Draw,
-            1 => Self::Fold,
-            2 => Self::Check,
-            3 => Self::Call,
-            4 => Self::Shove,
-            5 => Self::Open(*OPENS.choose(&mut rand::rng()).unwrap()),
-            6 => {
-                let &(n, d) = RAISES.choose(&mut rand::rng()).unwrap();
-                Self::Raise(Odds::new(n, d))
-            }
-            _ => unreachable!(),
         }
     }
 }

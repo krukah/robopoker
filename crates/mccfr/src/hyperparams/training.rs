@@ -60,4 +60,3 @@ impl Default for TrainingHyperParams {
         }
     }
 }
-

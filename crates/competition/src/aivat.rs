@@ -102,43 +102,41 @@ impl Aivat {
             }
             // Intercept chance nodes for chance corrections before advancing
             while walker.game().turn() == Turn::Chance {
-                if walker.game().street() != Street::Pref {
-                    if let Some(observed) = walker.peek_deal() {
-                        if let Some(delta) = self
-                            .chance_node_correction(
-                                &hero_recall,
-                                &villain_recall,
-                                walker.game(),
-                                hero_hand,
-                                villain_hand,
-                                observed,
-                                seat,
-                            )
-                            .await?
-                        {
-                            chance_total += delta;
-                        }
-                    }
+                if walker.game().street() != Street::Pref
+                    && let Some(observed) = walker.peek_deal()
+                    && let Some(delta) = self
+                        .chance_node_correction(
+                            &hero_recall,
+                            &villain_recall,
+                            walker.game(),
+                            hero_hand,
+                            villain_hand,
+                            observed,
+                            seat,
+                        )
+                        .await?
+                {
+                    chance_total += delta;
                 }
                 walker.deal_one()?;
             }
             // Hero action-node correction
-            if walker.game().turn() == hero && play.action().is_choice() {
-                if let Some(delta) = self
+            if walker.game().turn() == hero
+                && play.action().is_choice()
+                && let Some(delta) = self
                     .action_node_correction(&hero_recall, walker.game(), play.action())
                     .await?
-                {
-                    hero_total += delta;
-                }
+            {
+                hero_total += delta;
             }
             // Villain action-node correction (negated for hero's perspective)
-            if walker.game().turn() == villain && play.action().is_choice() {
-                if let Some(delta) = self
+            if walker.game().turn() == villain
+                && play.action().is_choice()
+                && let Some(delta) = self
                     .action_node_correction(&villain_recall, walker.game(), play.action())
                     .await?
-                {
-                    villain_total -= delta;
-                }
+            {
+                villain_total -= delta;
             }
             hero_recall = hero_recall
                 .try_push(play.action())

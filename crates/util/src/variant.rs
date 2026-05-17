@@ -53,7 +53,9 @@ pub struct Config {
 /// derived from the axis triple.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Variant {
+    #[default]
     Fish,
     Bot {
         depth: bool,
@@ -83,7 +85,15 @@ impl Variant {
     pub fn config(self) -> Option<Config> {
         match self {
             Self::Fish => None,
-            Self::Bot { depth, world, dirac } => Some(Config { depth, world, dirac }),
+            Self::Bot {
+                depth,
+                world,
+                dirac,
+            } => Some(Config {
+                depth,
+                world,
+                dirac,
+            }),
         }
     }
     /// One-line description for UI tooltips and history filter rows.
@@ -150,12 +160,6 @@ impl Variant {
     }
 }
 
-impl Default for Variant {
-    fn default() -> Self {
-        Self::Fish
-    }
-}
-
 /// Parse a `+`-joined flag token like `depth+dirac` or
 /// `depth+world+dirac`. Each flag toggles one axis; flags must appear
 /// in canonical order (`depth` < `world` < `dirac`) so a token has
@@ -186,7 +190,11 @@ fn parse_flags(token: &str) -> Option<Variant> {
         }
         last = pos;
     }
-    Some(Variant::Bot { depth, world, dirac })
+    Some(Variant::Bot {
+        depth,
+        world,
+        dirac,
+    })
 }
 
 /// The slumbot.com adversary identity, recorded as a fixed pseudo-bot

@@ -24,3 +24,6 @@ serde   = { version = "1.0", features = ["derive"] }
 clap    = { optional = true, workspace = true }
 tracing = { optional = true, workspace = true }
 tokio   = { optional = true, version = "1.0", features = ["signal", "rt"] }
+
+[lints]
+workspace = true

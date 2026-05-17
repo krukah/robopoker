@@ -37,7 +37,7 @@ impl IntoIterator for Hole {
 
 impl From<Observation> for Hole {
     fn from(obs: Observation) -> Self {
-        Self(Hand::from(obs.pocket().clone()))
+        Self(*obs.pocket())
     }
 }
 

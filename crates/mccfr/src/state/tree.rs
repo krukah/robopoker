@@ -89,7 +89,7 @@ where
         let tree = std::sync::Arc::new(self);
         let mut info = std::collections::HashMap::new();
         for node in tree.all().filter(|n| n.width() > 0) {
-            info.entry(node.info().clone())
+            info.entry(*node.info())
                 .or_insert_with(|| InfoSet::from(tree.clone()))
                 .push(node.index());
         }

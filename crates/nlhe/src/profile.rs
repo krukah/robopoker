@@ -33,7 +33,7 @@ impl rbp_database::Schema for NlheProfile {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| rbp_database::leaked(format!(
+        SQL.get_or_init(|| rbp_database::leaked(format!(
             "COPY {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
             rbp_database::blueprint()
         )))
@@ -41,7 +41,7 @@ impl rbp_database::Schema for NlheProfile {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 edge       BIGINT,
@@ -63,7 +63,7 @@ impl rbp_database::Schema for NlheProfile {
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::blueprint();
-        *SQL.get_or_init(|| rbp_database::leaked(format!(
+        SQL.get_or_init(|| rbp_database::leaked(format!(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_{t}_upsert  ON {t} (present, past, choices, geometry, edge);
              CREATE        INDEX IF NOT EXISTS idx_{t}_bucket  ON {t} (present, past, choices, geometry);
              CREATE        INDEX IF NOT EXISTS idx_{t}_present ON {t} (present);
@@ -74,7 +74,7 @@ impl rbp_database::Schema for NlheProfile {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::blueprint()))
         })
     }
@@ -82,7 +82,7 @@ impl rbp_database::Schema for NlheProfile {
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::blueprint();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"
@@ -149,9 +149,7 @@ impl rbp_database::Hydrate for NlheProfile {
 
 #[cfg(feature = "database")]
 impl NlheProfile {
-    pub fn rows(
-        &self,
-    ) -> impl Iterator<Item = (i64, i16, i64, i16, i64, f32, f32, f32, i32)> + '_ {
+    pub fn rows(&self) -> impl Iterator<Item = (i64, i16, i64, i16, i64, f32, f32, f32, i32)> + '_ {
         self.encounters.iter().flat_map(|(info, edges)| {
             let present = i16::from(info.bucket());
             let subgame = i64::from(info.subgame());

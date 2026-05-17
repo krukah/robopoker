@@ -54,7 +54,7 @@ use tokio_postgres::Client;
 pub async fn db() -> Arc<Client> {
     tracing::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
-    let ref url = std::env::var("DB_URL").expect("DB_URL must be set");
+    let url = &std::env::var("DB_URL").expect("DB_URL must be set");
     let (client, connection) = tokio_postgres::connect(url, tls)
         .await
         .expect("database connection failed");

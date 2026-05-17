@@ -17,7 +17,7 @@ pub trait Sink: Send + Sync {
 
 fn upsert_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    *SQL.get_or_init(|| {
+    SQL.get_or_init(|| {
         leaked(format!(
             "INSERT INTO {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) \
          VALUES         ($1,   $2,      $3,       $4,       $5,   $6,     $7,     $8,     $9) \
@@ -33,7 +33,7 @@ fn upsert_sql() -> &'static str {
 }
 fn advance_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    *SQL.get_or_init(|| {
+    SQL.get_or_init(|| {
         leaked(format!(
             "UPDATE {} SET value = value + 1 WHERE key = 'current'",
             epoch()

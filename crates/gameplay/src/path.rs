@@ -129,7 +129,7 @@ impl std::fmt::Display for Path {
         write!(
             f,
             "{}",
-            self.clone()
+            (*self)
                 .into_iter()
                 .map(|e| e.to_string())
                 .collect::<Vec<_>>()
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn double_ended_iterator() {
         let path = (0..).map(|_| Edge::random()).take(5).collect::<Path>();
-        let forward = path.clone();
+        let forward = path;
         let reverse = path
             .into_iter()
             .rev()

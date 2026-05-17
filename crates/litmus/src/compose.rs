@@ -44,9 +44,7 @@ fn expand(family: &Family) -> anyhow::Result<Vec<Case>> {
     Ok(cases)
 }
 
-fn cartesian<'a>(
-    lists: &'a [&'a Vec<serde_json::Value>],
-) -> Vec<Vec<&'a serde_json::Value>> {
+fn cartesian<'a>(lists: &'a [&'a Vec<serde_json::Value>]) -> Vec<Vec<&'a serde_json::Value>> {
     if lists.is_empty() {
         return vec![vec![]];
     }
@@ -112,7 +110,10 @@ fn instantiate(
                 case.edge = s.to_string();
             }
             other => {
-                anyhow::bail!("unknown matrix key `{other}` in family `{}`", family.name_template);
+                anyhow::bail!(
+                    "unknown matrix key `{other}` in family `{}`",
+                    family.name_template
+                );
             }
         }
     }
@@ -162,14 +163,13 @@ fn render_name(
 
     // {hands_a}, {hands_b}, {hands}
     if let Some(pair_v) = assignments.get("hand_pair") {
-        if let Some(arr) = pair_v.as_array() {
-            if arr.len() == 2 {
-                if let (Some(a), Some(b)) = (arr[0].as_str(), arr[1].as_str()) {
-                    out = out.replace("{hands_a}", a);
-                    out = out.replace("{hands_b}", b);
-                    out = out.replace("{hands}", &format!("{a},{b}"));
-                }
-            }
+        if let Some(arr) = pair_v.as_array()
+            && arr.len() == 2
+            && let (Some(a), Some(b)) = (arr[0].as_str(), arr[1].as_str())
+        {
+            out = out.replace("{hands_a}", a);
+            out = out.replace("{hands_b}", b);
+            out = out.replace("{hands}", &format!("{a},{b}"));
         }
     } else if let Some(hands) = &case.hands {
         if hands.len() >= 2 {

@@ -52,7 +52,7 @@ impl Arrangement {
     }
     /// True if the card is in this arrangement.
     pub fn contains(&self, card: &Card) -> bool {
-        self.0.iter().any(|&c| c == Some(*card))
+        self.0.contains(&Some(*card))
     }
     /// Iterates over dealt cards.
     pub fn iter(&self) -> impl Iterator<Item = Card> + '_ {
@@ -65,7 +65,7 @@ impl Arrangement {
     /// Converts to canonical form (normalized suits and order).
     pub fn normalize(&self) -> Self {
         Self::from(Observation::from(Isomorphism::from(Observation::from(
-            self.clone(),
+            *self,
         ))))
     }
 
@@ -73,7 +73,7 @@ impl Arrangement {
         Street::all()
             .into_iter()
             .skip(1)
-            .take_while(|s| s.clone() <= self.street())
+            .take_while(|s| *s <= self.street())
             .map(|s| self.revealed(s))
             .map(Hand::from)
             .map(Action::Draw)
@@ -172,8 +172,8 @@ impl From<Arrangement> for Observation {
 impl From<Observation> for Arrangement {
     fn from(obs: Observation) -> Self {
         std::iter::empty()
-            .chain(obs.pocket().clone())
-            .chain(obs.public().clone())
+            .chain(*obs.pocket())
+            .chain(*obs.public())
             .collect::<Vec<Card>>()
             .into()
     }

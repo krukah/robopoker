@@ -6,7 +6,7 @@ use argon2::password_hash::SaltString;
 
 fn salt() -> SaltString {
     use rand::Rng;
-    let ref mut bytes = [0u8; 16];
+    let bytes = &mut [0u8; 16];
     rand::rng().fill(bytes);
     SaltString::encode_b64(bytes).expect("salt")
 }

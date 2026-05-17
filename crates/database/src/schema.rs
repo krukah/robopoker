@@ -14,7 +14,7 @@ impl Schema for Street {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 street     SMALLINT,
@@ -34,7 +34,7 @@ impl Schema for Street {
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_{0}_st ON {0} (street);",
                 street()
@@ -48,12 +48,12 @@ impl Schema for Street {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| leaked(format!("TRUNCATE TABLE {};", street())))
+        SQL.get_or_init(|| leaked(format!("TRUNCATE TABLE {};", street())))
     }
 
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "ALTER TABLE {} SET (fillfactor = 100);
             ALTER TABLE {} SET (autovacuum_enabled = false);",
@@ -93,7 +93,7 @@ impl Schema for Abstraction {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 abs         SMALLINT,
@@ -128,7 +128,7 @@ impl Schema for Abstraction {
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_{0}_abs ON {0} (abs);
              CREATE INDEX IF NOT EXISTS idx_{0}_st  ON {0} (street);
@@ -145,12 +145,12 @@ impl Schema for Abstraction {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| leaked(format!("TRUNCATE TABLE {};", abstraction())))
+        SQL.get_or_init(|| leaked(format!("TRUNCATE TABLE {};", abstraction())))
     }
 
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             leaked(format!(
                 "ALTER TABLE {} SET (fillfactor = 100);
             ALTER TABLE {} SET (autovacuum_enabled = false);",

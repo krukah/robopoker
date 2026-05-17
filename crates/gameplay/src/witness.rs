@@ -95,7 +95,7 @@ impl Witness {
             stacks: self.stacks,
             dealer: self.dealer,
             actions: self.actions.clone(),
-            reveals: self.reveals.clone(),
+            reveals: self.reveals,
         }
     }
 }
@@ -135,7 +135,7 @@ impl Witness {
         self.seen()
             .opponents()
             .map(|villain| {
-                let hole = Hole::from(villain.pocket().clone());
+                let hole = Hole::from(*villain.pocket());
                 (villain, Perfect::from((self, hole)))
             })
             .collect()
@@ -235,7 +235,7 @@ impl Witness {
     }
     /// The card arrangement for this recall.
     pub fn arr(&self) -> Arrangement {
-        self.reveals.clone()
+        self.reveals
     }
     /// The observation (hole cards + board) for this recall.
     pub fn seen(&self) -> Observation {
@@ -247,7 +247,7 @@ impl Witness {
             pov: self.turn(),
             stacks: self.stacks,
             dealer: self.dealer,
-            reveals: self.reveals.clone(),
+            reveals: self.reveals,
             actions: Vec::new(),
         }
     }
@@ -260,11 +260,8 @@ impl Witness {
         self.states()
             .windows(2)
             .zip(self.actions().iter().cloned())
-            .filter_map(|(pair, action)| {
-                action
-                    .is_choice()
-                    .then(|| (pair[0].turn().position(), action, pair[0].street()))
-            })
+            .filter(|&(_pair, action)| action.is_choice())
+            .map(|(pair, action)| (pair[0].turn().position(), action, pair[0].street()))
             .collect()
     }
     /// Finds the last aggressor on the final betting street.
@@ -273,12 +270,12 @@ impl Witness {
         self.plays()
             .into_iter()
             .filter_map(|(pos, action, _)| action.is_aggro().then_some(pos))
-            .last()
+            .next_back()
     }
     /// Truncates actions to a specific street.
     pub fn truncate(&self, street: Street) -> Self {
         let pov = self.turn();
-        let reveals = self.reveals.clone();
+        let reveals = self.reveals;
         let actions = self
             .states()
             .into_iter()
@@ -375,7 +372,7 @@ impl Witness {
 
     /// True if observation's public cards match the dealt draw actions.
     pub fn aligned(&self) -> bool {
-        self.seen().public().clone()
+        *self.seen().public()
             == self
                 .actions()
                 .iter()
@@ -562,7 +559,7 @@ impl std::fmt::Display for Witness {
             .collect::<Vec<_>>()
             .join(" ");
         let cards = if board.is_empty() {
-            format!("{}", hole)
+            hole.to_string()
         } else {
             format!("{} │ {}", hole, board)
         };

@@ -66,7 +66,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     }
     /// Finds nearest centroid for a point (O(K) distance calls).
     fn neighbor(&self, i: usize) -> (usize, f32) {
-        let ref x = self.point(i);
+        let x = self.point(i);
         self.centroids()
             .iter()
             .enumerate()

@@ -5,7 +5,18 @@ use super::rank::Rank;
 /// After the primary hand ranking is determined, remaining high cards
 /// are used to break ties. The bitmask representation enables fast
 /// lexicographic comparison.
-#[derive(Debug, Clone, Default, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    Copy,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct Kickers(u16);
 
 /// u32 isomorphism
@@ -34,26 +45,21 @@ impl From<Kickers> for Vec<Rank> {
             if value & 1 == 1 {
                 ranks.push(Rank::from(index));
             }
-            value = value >> 1;
-            index = index + 1;
+            value >>= 1;
+            index += 1;
         }
         ranks
     }
 }
 impl From<Vec<Rank>> for Kickers {
     fn from(ranks: Vec<Rank>) -> Self {
-        Self(
-            ranks
-                .into_iter()
-                .map(|r| u16::from(r))
-                .fold(0u16, |a, b| a | b),
-        )
+        Self(ranks.into_iter().map(u16::from).fold(0u16, |a, b| a | b))
     }
 }
 
 impl std::fmt::Display for Kickers {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for rank in Vec::<Rank>::from(self.clone()) {
+        for rank in Vec::<Rank>::from(*self) {
             write!(f, "{} ", rank)?;
         }
         Ok(())

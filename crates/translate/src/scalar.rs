@@ -21,7 +21,9 @@ where
     A: Axis,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Scalar").field("value", &self.value).finish()
+        f.debug_struct("Scalar")
+            .field("value", &self.value)
+            .finish()
     }
 }
 
@@ -44,7 +46,10 @@ where
     /// to validate at the system boundary, not pass NaN/inf in.
     pub fn new(value: f64) -> Self {
         assert!(value.is_finite(), "Scalar must be finite, got {value}");
-        Self { value, axis: PhantomData }
+        Self {
+            value,
+            axis: PhantomData,
+        }
     }
 
     /// Raw value.

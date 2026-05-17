@@ -81,14 +81,7 @@ impl Stage for Client {
             "stage.snapshot",
             self.execute(
                 &sql,
-                &[
-                    &epoch,
-                    &infos,
-                    &nodes,
-                    &(exploit as f32),
-                    &elapsed,
-                    &stamped,
-                ],
+                &[&epoch, &infos, &nodes, &{ exploit }, &elapsed, &stamped],
             ),
         )
         .await

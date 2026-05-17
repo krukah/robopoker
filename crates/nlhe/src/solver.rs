@@ -61,8 +61,8 @@ where
         game: &NlheGame,
         internal: NlheTurn,
     ) -> Payoffs<{ rbp_core::FRONTIER_LEAVES }> {
-        let ref encoder = self.encoder;
-        let ref profile = self.profile;
+        let encoder = &self.encoder;
+        let profile = &self.profile;
         let rollouts = FrontierHyperParams::get().rollouts();
         Payoffs::tabulate(|k, j| {
             (0..rollouts)
@@ -118,14 +118,8 @@ where
     pub fn adapt_safe(
         &self,
         recall: &Witness,
-    ) -> WorldSolver<
-        '_,
-        { rbp_core::N_WORLDS },
-        NlheProfile,
-        NlheEncoder,
-        NlheInfo,
-        NlheSecret,
-    > {
+    ) -> WorldSolver<'_, { rbp_core::N_WORLDS }, NlheProfile, NlheEncoder, NlheInfo, NlheSecret>
+    {
         let (external, partition, recall) = self.setup(recall);
         WorldSolver::new(&self.encoder, &self.profile, external, partition, recall)
     }

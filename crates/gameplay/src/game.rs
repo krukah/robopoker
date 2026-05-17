@@ -229,7 +229,7 @@ impl<const P: usize> GameN<P> {
     /// Applies an action mutably and returns a clone of the new state.
     pub fn consume(&mut self, action: Action) -> Self {
         self.act(action);
-        self.clone()
+        *self
     }
     /// Returns a new game state with the action applied.
     ///
@@ -249,7 +249,7 @@ impl<const P: usize> GameN<P> {
                 self.turn()
             ));
         }
-        let mut child = self.clone();
+        let mut child = *self;
         child.act(action);
         Ok(child)
     }
@@ -285,7 +285,7 @@ impl<const P: usize> GameN<P> {
         if self.may_check() {
             options.push(self.check());
         }
-        debug_assert!(options.len() > 0);
+        debug_assert!(!options.is_empty());
         options
     }
     /// Applies an action without validation, returning a new state.
@@ -294,7 +294,7 @@ impl<const P: usize> GameN<P> {
     /// the local game state may have placeholder cards (e.g., client
     /// receives a `Draw` but its random seat cards collide with board).
     pub fn force_apply(&self, action: Action) -> Self {
-        let mut next = self.clone();
+        let mut next = *self;
         next.force_act(action);
         next
     }
@@ -310,8 +310,8 @@ impl<const P: usize> GameN<P> {
                 self.may_raise()
                     && self.must_stop().not()
                     && self.must_deal().not()
-                    && raise.clone() >= self.to_raise()
-                    && raise.clone() <= self.to_shove() - 1
+                    && *raise >= self.to_raise()
+                    && *raise < self.to_shove()
             }
             Action::Draw(cards) => {
                 self.must_deal()
@@ -354,7 +354,9 @@ impl<const P: usize> GameN<P> {
             .iter()
             .zip(self.seats.iter_mut())
             .enumerate()
-            .inspect(|(i, (x, s))| tracing::trace!("{} {} {:>7} {}", i, s.cards(), s.stack(), x.won()))
+            .inspect(|(i, (x, s))| {
+                tracing::trace!("{} {} {:>7} {}", i, s.cards(), s.stack(), x.won())
+            })
         {
             seat.win(settlement.pnl().reward());
         }
@@ -382,8 +384,8 @@ impl<const P: usize> GameN<P> {
         debug_assert!(self.pot() == 0);
         debug_assert!(self.seats.len() == self.n());
         debug_assert!(self.street() == Street::Pref);
-        self.dealer = self.dealer + 1;
-        self.dealer = self.dealer % self.n();
+        self.dealer += 1;
+        self.dealer %= self.n();
         self.ticker = if P == 2 { 0 } else { 1 };
     }
 }
@@ -920,7 +922,7 @@ impl Iterator for Perpetual {
                 self.0 = self.0.apply(action);
                 return Some(action);
             }
-            self.0 = self.0.clone().continuation().unwrap_or_else(Game::root);
+            self.0 = self.0.continuation().unwrap_or_else(Game::root);
         }
     }
 }
@@ -944,8 +946,8 @@ impl Iterator for Hands {
             let action = actions[rand::random_range(0..actions.len())];
             self.0 = self.0.apply(action);
         }
-        let terminal = self.0.clone();
-        self.0 = self.0.clone().continuation()?;
+        let terminal = self.0;
+        self.0 = self.0.continuation()?;
         Some(terminal)
     }
 }
@@ -971,7 +973,7 @@ impl Iterator for Session {
                 self.0 = self.0.apply(action);
                 return Some(action);
             }
-            self.0 = self.0.clone().continuation()?;
+            self.0 = self.0.continuation()?;
         }
     }
 }
@@ -1009,11 +1011,11 @@ mod tests {
     fn everyone_folds_pref() {
         let game = Game::root();
         let game = game.apply(Action::Fold);
-        assert!(game.is_everyone_folding() == true);
-        assert!(game.is_everyone_alright() == true);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.must_deal() == true); // ambiguous
-        assert!(game.must_stop() == true);
+        assert!(game.is_everyone_folding());
+        assert!(game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(game.must_deal()); // ambiguous
+        assert!(game.must_stop());
     }
 
     #[test]
@@ -1025,11 +1027,11 @@ mod tests {
         let game = game.apply(Action::Draw(flop));
         let game = game.apply(Action::Raise(10));
         let game = game.apply(Action::Fold);
-        assert!(game.is_everyone_folding() == true);
-        assert!(game.is_everyone_alright() == true);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.must_deal() == true); // ambiguous
-        assert!(game.must_stop() == true);
+        assert!(game.is_everyone_folding());
+        assert!(game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(game.must_deal()); // ambiguous
+        assert!(game.must_stop());
     }
 
     #[test]
@@ -1038,148 +1040,148 @@ mod tests {
         let game = Game::root();
         assert!(game.board().street() == Street::Pref);
         assert!(game.pot() == 3);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == false);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.is_everyone_touched() == false);
-        assert!(game.is_everyone_matched() == false);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal());
+        assert!(!game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(!game.is_everyone_touched());
+        assert!(!game.is_everyone_matched());
         // SmallB Preflop
         let game = game.apply(Action::Call(1));
         assert!(game.board().street() == Street::Pref);
         assert!(game.pot() == 4); //
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == false);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.is_everyone_touched() == false);
-        assert!(game.is_everyone_matched() == true); //
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal());
+        assert!(!game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(!game.is_everyone_touched());
+        assert!(game.is_everyone_matched()); //
         // Dealer Preflop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Pref);
         assert!(game.pot() == 4);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == true); //
-        assert!(game.is_everyone_alright() == true); //
-        assert!(game.is_everyone_calling() == true); //
-        assert!(game.is_everyone_touched() == true); //
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(game.must_deal()); //
+        assert!(game.is_everyone_alright()); //
+        assert!(game.is_everyone_calling()); //
+        assert!(game.is_everyone_touched()); //
+        assert!(game.is_everyone_matched());
         // Flop
         let flop = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(flop));
         assert!(game.board().street() == Street::Flop); //
         assert!(game.pot() == 4);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false); //
-        assert!(game.is_everyone_alright() == false); //
-        assert!(game.is_everyone_calling() == false); //
-        assert!(game.is_everyone_touched() == false); //
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal()); //
+        assert!(!game.is_everyone_alright()); //
+        assert!(!game.is_everyone_calling()); //
+        assert!(!game.is_everyone_touched()); //
+        assert!(game.is_everyone_matched());
         // SmallB Flop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
         assert!(game.pot() == 4);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == false);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.is_everyone_touched() == false);
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal());
+        assert!(!game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(!game.is_everyone_touched());
+        assert!(game.is_everyone_matched());
         // Dealer Flop
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Flop);
         assert!(game.pot() == 4);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == true); //
-        assert!(game.is_everyone_alright() == true); //
-        assert!(game.is_everyone_calling() == true); //
-        assert!(game.is_everyone_touched() == true); //
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(game.must_deal()); //
+        assert!(game.is_everyone_alright()); //
+        assert!(game.is_everyone_calling()); //
+        assert!(game.is_everyone_touched()); //
+        assert!(game.is_everyone_matched());
         // Turn
         let turn = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(turn));
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 4);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false); //
-        assert!(game.is_everyone_alright() == false); //
-        assert!(game.is_everyone_calling() == false); //
-        assert!(game.is_everyone_touched() == false); //
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal()); //
+        assert!(!game.is_everyone_alright()); //
+        assert!(!game.is_everyone_calling()); //
+        assert!(!game.is_everyone_touched()); //
+        assert!(game.is_everyone_matched());
         // SmallB Turn
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 4);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == false);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.is_everyone_touched() == false);
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal());
+        assert!(!game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(!game.is_everyone_touched());
+        assert!(game.is_everyone_matched());
         // Dealer Turn
         let game = game.apply(Action::Raise(4));
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 8);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == false);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.is_everyone_touched() == true); //
-        assert!(game.is_everyone_matched() == false); //
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal());
+        assert!(!game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(game.is_everyone_touched()); //
+        assert!(!game.is_everyone_matched()); //
         // SmallB Turn
         let game = game.apply(Action::Call(4));
         assert!(game.board().street() == Street::Turn);
         assert!(game.pot() == 12); //
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == true); //
-        assert!(game.is_everyone_alright() == true); //
-        assert!(game.is_everyone_calling() == true); //
-        assert!(game.is_everyone_touched() == true);
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(game.must_deal()); //
+        assert!(game.is_everyone_alright()); //
+        assert!(game.is_everyone_calling()); //
+        assert!(game.is_everyone_touched());
+        assert!(game.is_everyone_matched());
         // River
         let rive = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(rive));
         assert!(game.board().street() == Street::Rive); //
         assert!(game.pot() == 12);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false); //
-        assert!(game.is_everyone_alright() == false); //
-        assert!(game.is_everyone_calling() == false); //
-        assert!(game.is_everyone_touched() == false); //
-        assert!(game.is_everyone_matched() == true); //
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal()); //
+        assert!(!game.is_everyone_alright()); //
+        assert!(!game.is_everyone_calling()); //
+        assert!(!game.is_everyone_touched()); //
+        assert!(game.is_everyone_matched()); //
         // SmallB River
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
         assert!(game.pot() == 12);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == false);
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == false);
-        assert!(game.is_everyone_calling() == false);
-        assert!(game.is_everyone_touched() == false);
-        assert!(game.is_everyone_matched() == true);
+        assert!(!game.must_post());
+        assert!(!game.must_stop());
+        assert!(!game.must_deal());
+        assert!(!game.is_everyone_alright());
+        assert!(!game.is_everyone_calling());
+        assert!(!game.is_everyone_touched());
+        assert!(game.is_everyone_matched());
         // Dealer River
         let game = game.apply(Action::Check);
         assert!(game.board().street() == Street::Rive);
         assert!(game.pot() == 12);
-        assert!(game.must_post() == false);
-        assert!(game.must_stop() == true); //
-        assert!(game.must_deal() == false);
-        assert!(game.is_everyone_alright() == true); //
-        assert!(game.is_everyone_calling() == true); //
-        assert!(game.is_everyone_touched() == true); //
-        assert!(game.is_everyone_matched() == true); //
+        assert!(!game.must_post());
+        assert!(game.must_stop()); //
+        assert!(!game.must_deal());
+        assert!(game.is_everyone_alright()); //
+        assert!(game.is_everyone_calling()); //
+        assert!(game.is_everyone_touched()); //
+        assert!(game.is_everyone_matched()); //
     }
 
     /// next() resets game state correctly after terminal
@@ -1846,7 +1848,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0);
+        let rng = &mut SmallRng::seed_from_u64(0);
         for chips in [4, 6, 8, 10, 16] {
             let edgify = game.edgify(Action::Raise(chips), 0);
             let translate = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
@@ -1860,7 +1862,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0);
+        let rng = &mut SmallRng::seed_from_u64(0);
         assert_eq!(
             game.translate(Action::Fold, 0, &Translation::Snap, rng),
             Translated::Snap(Edge::Fold),
@@ -1882,7 +1884,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0);
+        let rng = &mut SmallRng::seed_from_u64(0);
         for chips in [4, 6, 8, 10] {
             let snap = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
             let phargmax = game.translate(Action::Raise(chips), 0, &Translation::Phargmax, rng);
@@ -1902,7 +1904,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0);
+        let rng = &mut SmallRng::seed_from_u64(0);
         let result = game.translate(Action::Raise(7), 0, &Translation::Phargmax, rng);
         let lo = Translated::Snap(Edge::Open(3));
         let hi = Translated::Snap(Edge::Open(4));
@@ -1920,7 +1922,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0xCAFEF00D);
+        let rng = &mut SmallRng::seed_from_u64(0xCAFEF00D);
         let lo = Translated::Snap(Edge::Open(3));
         let hi = Translated::Snap(Edge::Open(4));
         for trial in 0..100 {
@@ -1939,8 +1941,12 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0);
-        let translations = [Translation::Snap, Translation::Harmonic, Translation::Phargmax];
+        let rng = &mut SmallRng::seed_from_u64(0);
+        let translations = [
+            Translation::Snap,
+            Translation::Harmonic,
+            Translation::Phargmax,
+        ];
         let cases = [
             (Action::Fold, Edge::Fold),
             (Action::Check, Edge::Check),
@@ -1964,7 +1970,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let ref mut rng = SmallRng::seed_from_u64(0);
+        let rng = &mut SmallRng::seed_from_u64(0);
         // Below smallest: Raise(2) = 1 BB, smallest is BBs(2) = Open(2).
         assert_eq!(
             game.translate(Action::Raise(2), 0, &Translation::Snap, rng),

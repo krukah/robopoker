@@ -52,11 +52,7 @@ impl ClusterTelemetry {
     /// from the values already produced by `step_elkan` for the
     /// bound update — recording is K sub-µs OTLP records, free
     /// relative to step_elkan's EMD work.
-    pub(crate) fn iteration<const K: usize>(
-        &self,
-        elapsed: Duration,
-        drift: &crate::Drift<K>,
-    ) {
+    pub(crate) fn iteration<const K: usize>(&self, elapsed: Duration, drift: &crate::Drift<K>) {
         self.handles
             .kmeans_iteration_ms
             .record(elapsed.as_secs_f64() * 1000.0, &self.labels);
@@ -64,10 +60,11 @@ impl ClusterTelemetry {
         self.handles
             .kmeans_drift_max
             .record(drift.max() as f64, &self.labels);
-        drift
-            .as_array()
-            .iter()
-            .for_each(|&d| self.handles.kmeans_drift_dist.record(d as f64, &self.labels));
+        drift.as_array().iter().for_each(|&d| {
+            self.handles
+                .kmeans_drift_dist
+                .record(d as f64, &self.labels)
+        });
     }
 
     /// Records the per-iter reassignment fraction (fraction of points

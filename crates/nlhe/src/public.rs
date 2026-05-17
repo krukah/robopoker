@@ -86,8 +86,8 @@ mod tests {
         let public = NlhePublic::new(subgame, choices, super::Geometry::default());
         let history = public.subgame().into_iter().collect::<Vec<_>>();
         assert_eq!(history.len(), 2);
-        assert_eq!(Edge::from(history[0]), Edge::Check);
-        assert_eq!(Edge::from(history[1]), Edge::Raise(Odds::new(1, 2)));
+        assert_eq!(history[0], Edge::Check);
+        assert_eq!(history[1], Edge::Raise(Odds::new(1, 2)));
     }
     #[test]
     fn choices_returns_stored_choices() {

@@ -22,3 +22,6 @@ rbp-slumbot        = { path = "../../crates/slumbot" }
 clap               = { workspace = true }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[lints]
+workspace = true

@@ -38,13 +38,13 @@ pub async fn hydrate_blueprint(
 #[cfg(feature = "database")]
 mod agent;
 #[cfg(feature = "database")]
-mod dirac;
-#[cfg(feature = "database")]
 mod blueprint;
 #[cfg(feature = "database")]
 mod brain;
 #[cfg(feature = "database")]
 mod depth;
+#[cfg(feature = "database")]
+mod dirac;
 mod fish;
 #[cfg(feature = "cli")]
 mod human;
@@ -62,13 +62,13 @@ mod zoo;
 #[cfg(feature = "database")]
 pub use agent::*;
 #[cfg(feature = "database")]
-pub use dirac::*;
-#[cfg(feature = "database")]
 pub use blueprint::*;
 #[cfg(feature = "database")]
 pub use brain::*;
 #[cfg(feature = "database")]
 pub use depth::*;
+#[cfg(feature = "database")]
+pub use dirac::*;
 pub use fish::*;
 #[cfg(feature = "cli")]
 pub use human::*;

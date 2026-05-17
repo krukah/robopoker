@@ -47,8 +47,14 @@ pub trait Check: Send + Sync {
             ));
         }
         out.push_str("\n├────────────┼───────────────┤");
-        out.push_str(&format!("\n│ Epoch      │ {:>13} │", commas(self.epochs().await)));
-        out.push_str(&format!("\n│ Blueprint  │ {:>13} │", commas(self.blueprint().await)));
+        out.push_str(&format!(
+            "\n│ Epoch      │ {:>13} │",
+            commas(self.epochs().await)
+        ));
+        out.push_str(&format!(
+            "\n│ Blueprint  │ {:>13} │",
+            commas(self.blueprint().await)
+        ));
         out.push_str("\n├────────────┼───────────────┤");
         let (hands, players, actions) = self.histories().await;
         out.push_str(&format!("\n│ Hands      │ {:>13} │", commas(hands)));
@@ -61,16 +67,28 @@ pub trait Check: Send + Sync {
             out.push_str("\n┌────────────────────────────────┐");
             out.push_str("\n│ Latest Snapshot                │");
             out.push_str("\n├────────────┬───────────────────┤");
-            out.push_str(&format!("\n│ Epoch      │ {:>17} │", commas(epoch as usize)));
-            out.push_str(&format!("\n│ Infos      │ {:>17} │", commas(infos as usize)));
-            out.push_str(&format!("\n│ Nodes      │ {:>17} │", commas(nodes as usize)));
+            out.push_str(&format!(
+                "\n│ Epoch      │ {:>17} │",
+                commas(epoch as usize)
+            ));
+            out.push_str(&format!(
+                "\n│ Infos      │ {:>17} │",
+                commas(infos as usize)
+            ));
+            out.push_str(&format!(
+                "\n│ Nodes      │ {:>17} │",
+                commas(nodes as usize)
+            ));
             out.push_str(&format!(
                 "\n│ Exploit    │ {:>17} │",
                 exploit
                     .map(|e| format!("{:.6}", e))
                     .unwrap_or_else(|| "N/A".to_string())
             ));
-            out.push_str(&format!("\n│ Elapsed    │ {:>15}s │", commas(elapsed as usize)));
+            out.push_str(&format!(
+                "\n│ Elapsed    │ {:>15}s │",
+                commas(elapsed as usize)
+            ));
             out.push_str("\n└────────────┴───────────────────┘");
         }
         tracing::info!("{}", out);

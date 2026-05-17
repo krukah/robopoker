@@ -40,7 +40,7 @@ impl Deck {
         while ones < i {
             card = deck.trailing_zeros() as u8;
             deck = deck & (deck - 1);
-            ones = ones + 1;
+            ones += 1;
         }
         let card = Card::from(card);
         self.0.remove(card);

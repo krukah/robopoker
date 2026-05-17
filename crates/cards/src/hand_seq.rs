@@ -90,7 +90,7 @@ impl IntoIterator for HandSeq {
         self.perm.arrange(self.hand)
     }
 }
-impl<'a> IntoIterator for &'a HandSeq {
+impl IntoIterator for &HandSeq {
     type Item = Card;
     type IntoIter = CardSeq;
 

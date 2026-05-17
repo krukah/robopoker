@@ -238,9 +238,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "finite")]
     fn rejects_non_finite() {
-        let _: Lattice<T, _> = [(0.0, ()), (f64::NAN, ()), (1.0, ())]
-            .into_iter()
-            .collect();
+        let _: Lattice<T, _> = [(0.0, ()), (f64::NAN, ()), (1.0, ())].into_iter().collect();
     }
 
     #[test]

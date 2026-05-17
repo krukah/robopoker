@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 
 fn abs_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    *SQL.get_or_init(|| {
+    SQL.get_or_init(|| {
         rbp_database::leaked(format!(
             "SELECT abs FROM {} WHERE obs = $1",
             rbp_database::isomorphism()
@@ -20,11 +20,13 @@ fn abs_sql() -> &'static str {
 }
 fn policy_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    *SQL.get_or_init(|| rbp_database::leaked(format!(
-        "SELECT edge, weight, visits, payoff FROM {} \
+    SQL.get_or_init(|| {
+        rbp_database::leaked(format!(
+            "SELECT edge, weight, visits, payoff FROM {} \
          WHERE past = $1 AND present = $2 AND choices = $3 AND geometry = $4",
-        rbp_database::blueprint()
-    )))
+            rbp_database::blueprint()
+        ))
+    })
 }
 
 /// Looks up the trained blueprint strategy for a given recall state.
@@ -45,10 +47,10 @@ pub async fn lookup(client: &tokio_postgres::Client, recall: &Witness) -> Option
         .ok()?;
     let info = NlheInfo::from((recall, abs));
     let sql = policy_sql();
-    let ref history = i64::from(info.subgame());
-    let ref present = i16::from(info.bucket());
-    let ref choices = i64::from(info.choices());
-    let ref geometry = info.geometry().tag() as i16;
+    let history = &i64::from(info.subgame());
+    let present = &i16::from(info.bucket());
+    let choices = &i64::from(info.choices());
+    let geometry = &(info.geometry().tag() as i16);
     let rows = client
         .query(sql, &[history, present, choices, geometry])
         .await

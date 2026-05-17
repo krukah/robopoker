@@ -85,7 +85,7 @@ mod tests {
             Permutation::exhaust()
                 .iter()
                 .map(|p| p.permute(observation))
-                .map(|o| Isomorphism::from(o))
+                .map(Isomorphism::from)
                 .all(|i| i == isomorphism)
         );
     }

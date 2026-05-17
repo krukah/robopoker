@@ -80,7 +80,7 @@ pub trait Recall {
     /// player that consumes off-tree actions).
     fn history(&self) -> Vec<Edge> {
         let translation = rbp_core::translation();
-        let ref mut rng = rand::rng();
+        let rng = &mut rand::rng();
         self.states()
             .into_iter()
             .zip(self.actions().iter())
@@ -93,11 +93,7 @@ pub trait Recall {
                          off-tree-emitting translation",
                     ),
                 };
-                *past = past
-                    .clone()
-                    .into_iter()
-                    .chain(std::iter::once(edge))
-                    .collect();
+                *past = (*past).into_iter().chain(std::iter::once(edge)).collect();
                 Some(edge)
             })
             .collect()
@@ -170,11 +166,7 @@ mod tests {
             .zip(recall.actions().iter())
             .scan(Path::default(), |past, (game, action)| {
                 let edge = game.edgify(*action, past.aggression());
-                *past = past
-                    .clone()
-                    .into_iter()
-                    .chain(std::iter::once(edge))
-                    .collect();
+                *past = (*past).into_iter().chain(std::iter::once(edge)).collect();
                 Some(edge)
             })
             .collect::<Vec<_>>();

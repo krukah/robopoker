@@ -101,6 +101,36 @@ clap            = { version = "4", features = ["derive"] }
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(tarpaulin_include)"] }
 
+# Clippy: any NEW warning fails CI (-D warnings), but the lints below
+# are deliberately allowed because they conflict with the codebase's
+# accepted style (visual digit grouping for alignment, intentional
+# `if same-then-else` for readability, bitset addition via `|`, etc.).
+# To re-enable any of these globally, delete the entry; to silence in
+# one spot, prefer #[allow(...)] over adding to this list.
+[workspace.lints.clippy]
+# Visual alignment / dense numeric literals
+zero_prefixed_literal       = "allow"
+inconsistent_digit_grouping = "allow"
+unusual_byte_groupings      = "allow"
+# Generic-heavy framework patterns
+type_complexity             = "allow"
+too_many_arguments          = "allow"
+module_inception            = "allow"
+# Intentional patterns
+toplevel_ref_arg            = "allow"   # `let ref x = ...` is fine
+if_same_then_else           = "allow"   # parallel-branch clarity
+suspicious_arithmetic_impl  = "allow"   # Hand uses bitset `|` as addition
+should_implement_trait      = "allow"   # method-name clashes with stdlib traits
+needless_range_loop         = "allow"   # indexing-paired arrays
+len_without_is_empty        = "allow"   # `len` exists where `is_empty` doesn't fit
+new_without_default         = "allow"   # `new` may take non-trivial args
+ptr_arg                     = "allow"   # `&Vec<T>` chosen for clarity in spots
+option_map_unit_fn          = "allow"   # `.map(side-effect-closure)` pattern
+inspect_for_each            = "allow"   # `.inspect().for_each()` chain
+suspicious_map              = "allow"   # `.map().count()` is the intended length
+unit_arg                    = "allow"
+format_in_format_args       = "allow"
+
 [profile.dev]
 panic     = "unwind"
 opt-level = 3

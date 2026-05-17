@@ -88,8 +88,8 @@ impl<const K: usize, const N: usize> Layer<K, N> {
         for (i, x) in self.kmeans.iter().enumerate() {
             for (j, y) in self.kmeans.iter().enumerate() {
                 if i > j {
-                    let ref a = self.abstraction(i);
-                    let ref b = self.abstraction(j);
+                    let a = &self.abstraction(i);
+                    let b = &self.abstraction(j);
                     let index = Pair::from((a, b));
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.;
@@ -153,9 +153,9 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
             return std::array::from_fn(|i| self.points()[i]);
         }
         // deterministic pseudo-random clustering
-        let ref mut hasher = DefaultHasher::default();
+        let hasher = &mut DefaultHasher::default();
         self.street().hash(hasher);
-        let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
+        let rng = &mut SmallRng::seed_from_u64(hasher.finish());
         // kmeans++ initialization
         let mut potentials = vec![1.; N];
         let mut histograms = Vec::with_capacity(K);
@@ -169,7 +169,7 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
             potentials = self
                 .points()
                 .par_iter()
-                .map(|h| self.distance(&x, &h))
+                .map(|h| self.distance(&x, h))
                 .map(|p| p * p)
                 .collect::<Vec<Energy>>()
                 .iter()
@@ -202,7 +202,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
         tel.phase(t, phase::HYDRATE);
         tracing::info!(%street, phase = phase::INIT, "kmeans phase begin");
         let t = Instant::now();
-        layer.kmeans = Box::new(layer.init_centroids());
+        *layer.kmeans = layer.init_centroids();
         tel.phase(t, phase::INIT);
         tracing::info!(%street, phase = phase::BOUND, "kmeans phase begin");
         let t = Instant::now();

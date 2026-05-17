@@ -21,3 +21,6 @@ rbp-telemetry  = { path = "../../crates/telemetry" }
 tokio          = { version = "1", features = ["rt-multi-thread", "macros"] }
 tokio-postgres = { workspace = true }
 rand           = { workspace = true }
+
+[lints]
+workspace = true

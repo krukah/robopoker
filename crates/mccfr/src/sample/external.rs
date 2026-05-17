@@ -53,9 +53,9 @@ where
     I: CfrInfo<E = E, T = T>,
     P: CfrFlow<T = T, E = E, G = G, I = I>,
 {
-    let ref info = node.info();
-    let ref mut rng = profile.rng(node);
-    let ref samples = profile.sampling_distribution(info);
+    let info = node.info();
+    let rng = &mut profile.rng(node);
+    let samples = &profile.sampling_distribution(info);
     let mut choices = branches;
     let weights = choices
         .iter()

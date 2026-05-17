@@ -29,7 +29,7 @@ impl PreTraining {
             tracing::info!(%street, "beginning clustering");
             Self::cluster(street, client).await.stream(client).await;
         }
-        if streets.len() > 0 {
+        if !streets.is_empty() {
             Self::index(client).await;
         }
         Self::derive::<Abstraction>(client).await;
@@ -69,15 +69,15 @@ impl PreTraining {
     #[allow(unused)]
     async fn truncate(client: &Arc<Client>) {
         client
-            .batch_execute(&Metric::truncates())
+            .batch_execute(Metric::truncates())
             .await
             .expect("truncate table metric");
         client
-            .batch_execute(&Future::truncates())
+            .batch_execute(Future::truncates())
             .await
             .expect("truncate table transitions");
         client
-            .batch_execute(&Lookup::truncates())
+            .batch_execute(Lookup::truncates())
             .await
             .expect("truncate table isomorphism");
     }

@@ -217,7 +217,7 @@ impl rbp_database::Hydrate for NlheEncoder {
             let abs = Abstraction::from(row.get::<_, i16>(1));
             lookup.insert(obs, abs);
             count += 1;
-            if count % 10_000_000 == 0 {
+            if count.is_multiple_of(10_000_000) {
                 tracing::info!(
                     "{:<32}{:<32}",
                     format!("{:>16} isomorphisms", count),

@@ -24,7 +24,7 @@ pub struct Permutation([Suit; 4]);
 impl From<&Observation> for Permutation {
     fn from(observation: &Observation) -> Self {
         let mut permutation = Suit::all();
-        let mut colex = Suit::all().map(|suit| Self::colex(&observation, &suit));
+        let mut colex = Suit::all().map(|suit| Self::colex(observation, &suit));
         colex.sort_by(Self::order);
         colex
             .into_iter()
@@ -54,7 +54,7 @@ impl Permutation {
         Suit::all()
             .iter()
             .map(|suit| self.shift(suit, hand))
-            .fold(Hand::empty(), |acc, x| Hand::add(acc, x))
+            .fold(Hand::empty(), Hand::add)
     }
     /// Computes the inverse permutation.
     ///
@@ -101,7 +101,7 @@ impl Permutation {
         if shift >= 0 {
             Hand::from(cards << shift as u64)
         } else {
-            Hand::from(cards >> shift.abs() as u64)
+            Hand::from(cards >> shift.unsigned_abs() as u64)
         }
     }
     /// Maps a suit through the permutation.
@@ -146,7 +146,7 @@ impl Permutation {
 impl Arbitrary for Permutation {
     fn random() -> Self {
         use rand::prelude::IndexedRandom;
-        let ref mut rng = rand::rng();
+        let rng = &mut rand::rng();
         Self::exhaust().choose(rng).copied().unwrap()
     }
 }
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn permute_unique() {
-        let ref hand = Hand::try_from("Ac Kd Qh Js").unwrap();
+        let hand = &Hand::try_from("Ac Kd Qh Js").unwrap();
         let mut unique = std::collections::HashSet::new();
         let n = Permutation::exhaust()
             .into_iter()

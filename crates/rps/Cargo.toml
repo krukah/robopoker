@@ -23,3 +23,6 @@ rbp-world     = { path = "../world" }
 rbp-transport = { path = "../transport" }
 paste         = "1.0"
 rand          = { workspace = true }
+
+[lints]
+workspace = true

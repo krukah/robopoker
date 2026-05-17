@@ -8,21 +8,21 @@
 //! - [`hosting`]   — WebSocket game hosting infrastructure
 //! - [`training`]  — MCCFR training observability
 
-pub mod topology;
 pub mod gameplay;
 pub mod hosting;
 pub mod litmus;
 mod metrics;
 pub mod strategy;
+pub mod topology;
 pub mod training;
 
-pub use topology::TopologyAPI;
-pub use topology::CLI;
-pub use topology::Query;
 pub use gameplay::GameplayAPI;
 pub use hosting::Casino;
 pub use hosting::RoomHandle;
 pub use strategy::StrategyAPI;
+pub use topology::CLI;
+pub use topology::Query;
+pub use topology::TopologyAPI;
 pub use training::TrainingAPI;
 
 use actix_cors::Cors;

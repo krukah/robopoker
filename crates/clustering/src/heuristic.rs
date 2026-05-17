@@ -50,7 +50,7 @@ impl Coupling for Heuristic<'_> {
     }
 
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Probability {
-        let ref index = Pair::from((&**x, &**y));
+        let index = &Pair::from((&**x, &**y));
         self.plan
             .get(index)
             .copied()
@@ -59,8 +59,8 @@ impl Coupling for Heuristic<'_> {
 
     fn minimize(mut self) -> Self {
         self.plan.clear();
-        let ref mut pile = Potential::derive(self.source);
-        let ref mut sink = Potential::derive(self.target);
+        let pile = &mut Potential::derive(self.source);
+        let sink = &mut Potential::derive(self.target);
         'cost: while pile.values().any(|v| v > 0.) {
             'pile: for x in Potential::support(pile)
                 .filter(|x| Potential::density(pile, x) > 0.)

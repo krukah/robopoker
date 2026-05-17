@@ -29,7 +29,7 @@ pub trait CfrNash: RefProf {
     /// A Nash equilibrium has exploitability of 0. Lower values indicate
     /// strategies closer to equilibrium.
     fn exploitability(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        let ref partition = tree.partition();
+        let partition = &tree.partition();
         (0..Self::T::players())
             .map(Self::T::from)
             .map(|i| self.optimal_response_payoff(partition, i))
@@ -48,7 +48,7 @@ pub trait CfrNash: RefProf {
     /// but it's convenient to store it bound to the EDGE where we already
     /// keep track of regret, weight, visits
     fn frontier_payoff(&self, info: &Self::I) -> Utility {
-        let ref edge = info
+        let edge = &info
             .choices()
             .next()
             .expect("has actions, all of which have the same EV! next is good enough");
@@ -169,16 +169,16 @@ pub trait CfrNash: RefProf {
         partition: &HashMap<Self::I, InfoSet<Self::T, Self::E, Self::G, Self::I>>,
         hero: Self::T,
     ) -> Utility {
-        let ref root = partition
+        let root = &partition
             .values()
             .next()
             .expect("partition")
             .tree()
             .at(petgraph::graph::NodeIndex::new(0));
-        let ref response = partition
+        let response = &partition
             .iter()
             .filter(|(_, infoset)| infoset.head().game().turn() == hero)
-            .map(|(info, infoset)| (info.clone(), self.optimal_cfactual_choice(infoset, hero)))
+            .map(|(info, infoset)| (*info, self.optimal_cfactual_choice(infoset, hero)))
             .collect::<HashMap<_, _>>();
         self.response_payoff(root, hero, response)
     }
@@ -207,7 +207,7 @@ pub trait CfrNash: RefProf {
         infoset
             .info()
             .choices()
-            .map(|edge| (edge, self.optimal_cfactual_payoff(&infoset, &edge, &hero)))
+            .map(|edge| (edge, self.optimal_cfactual_payoff(infoset, &edge, &hero)))
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).expect("good values"))
             .expect("info set has actions")
             .0

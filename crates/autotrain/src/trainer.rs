@@ -44,23 +44,31 @@ pub trait Trainer: Send + Sync + Sized {
         let mut last_infos = 0usize;
         loop {
             let epoch = self.epoch().await;
-            let step_span = tracing::info_span!(
-                "mccfr.step",
-                session_type = self.session_type(),
-                epoch,
-            );
+            let step_span =
+                tracing::info_span!("mccfr.step", session_type = self.session_type(), epoch,);
             self.step().instrument(step_span).await;
             metrics.mccfr_steps.add(1, &labels);
-            self.checkpoint().await
-                .inspect(|cp| tracing::info!(nodes = cp.nodes(), infos = cp.infos(), "checkpoint: {}", cp))
-                .inspect(|cp| metrics.mccfr_nodes.add(cp.nodes().saturating_sub(last_nodes) as u64, &labels))
-                .inspect(|cp| metrics.mccfr_infos.add(cp.infos().saturating_sub(last_infos) as u64, &labels))
-                .inspect(|cp| { last_nodes = cp.nodes(); last_infos = cp.infos(); });
-            let flush_span = tracing::info_span!(
-                "mccfr.flush",
-                session_type = self.session_type(),
-                epoch,
-            );
+            self.checkpoint()
+                .await
+                .inspect(|cp| {
+                    tracing::info!(nodes = cp.nodes(), infos = cp.infos(), "checkpoint: {}", cp)
+                })
+                .inspect(|cp| {
+                    metrics
+                        .mccfr_nodes
+                        .add(cp.nodes().saturating_sub(last_nodes) as u64, &labels)
+                })
+                .inspect(|cp| {
+                    metrics
+                        .mccfr_infos
+                        .add(cp.infos().saturating_sub(last_infos) as u64, &labels)
+                })
+                .inspect(|cp| {
+                    last_nodes = cp.nodes();
+                    last_infos = cp.infos();
+                });
+            let flush_span =
+                tracing::info_span!("mccfr.flush", session_type = self.session_type(), epoch,);
             self.flush().instrument(flush_span).await;
             if rbp_core::interrupted() {
                 tracing::info!("{}", self.summary().await);

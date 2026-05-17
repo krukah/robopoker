@@ -21,7 +21,7 @@ impl CLI {
         let cli = Self(TopologyAPI::from(rbp_database::db().await));
         loop {
             print!("> ");
-            let ref mut input = String::new();
+            let input = &mut String::new();
             std::io::stdout().flush().unwrap();
             std::io::stdin().read_line(input).unwrap();
             match input.trim() {

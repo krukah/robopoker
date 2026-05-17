@@ -156,7 +156,7 @@ pub fn parse_actions(raw: &str, old: &str, game: &Game) -> anyhow::Result<Vec<Ac
     let mut parse = ParseState::new();
     parse.advance(old);
     let mut actions = Vec::new();
-    let mut state = game.clone();
+    let mut state = *game;
     let mut rest = suffix;
     while !rest.is_empty() {
         if rest.starts_with('/') {

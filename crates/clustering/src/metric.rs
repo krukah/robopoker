@@ -171,7 +171,7 @@ impl rbp_database::Schema for Metric {
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 tri    INT  NOT NULL,
@@ -186,7 +186,7 @@ impl rbp_database::Schema for Metric {
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::metric();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_{t}_tri ON {t} (tri);
              CREATE INDEX IF NOT EXISTS idx_{t}_street ON {t} (street);
@@ -197,7 +197,7 @@ impl rbp_database::Schema for Metric {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "COPY {} (tri, dx) FROM STDIN BINARY",
                 rbp_database::metric()
@@ -207,7 +207,7 @@ impl rbp_database::Schema for Metric {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::metric()))
         })
     }
@@ -215,7 +215,7 @@ impl rbp_database::Schema for Metric {
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::metric();
-        *SQL.get_or_init(|| {
+        SQL.get_or_init(|| {
             rbp_database::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"

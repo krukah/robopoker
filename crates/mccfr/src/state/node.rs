@@ -146,7 +146,7 @@ where
     /// All leaf nodes reachable from this node (recursive).
     pub fn descendants(&self) -> Vec<Node<'tree, T, E, G, I>> {
         match self.width() {
-            0 => vec![self.clone()],
+            0 => vec![*self],
             _ => self.children().iter().flat_map(Self::descendants).collect(),
         }
     }
@@ -154,7 +154,7 @@ where
     pub fn branches(&self) -> Vec<Leaf<E, G>> {
         self.info()
             .choices()
-            .map(|e| (e.clone(), self.game().apply(e), self.index()))
+            .map(|e| (e, self.game().apply(e), self.index()))
             .collect()
     }
     /// Count of direct child nodes (no allocation).
@@ -200,7 +200,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let (ref mut parent, edge) = self.up()?;
         std::mem::swap(self, parent);
-        Some(Ascent(edge.clone(), self.clone()))
+        Some(Ascent(*edge, *self))
     }
 }
 

@@ -41,3 +41,6 @@ rbp-autotrain   = { version = "1.0", path = "../autotrain"  }
 rbp-competition = { version = "1.0", path = "../competition" }
 rbp-slumbot     = { version = "1.0", path = "../slumbot"    }
 rbp-litmus      = { version = "1.0", path = "../litmus"     }
+
+[lints]
+workspace = true

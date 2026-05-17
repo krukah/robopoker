@@ -84,8 +84,8 @@ impl<const K: usize, const N: usize> Iterator for Kmeans<'_, K, N> {
             return None;
         }
         let t = Instant::now();
-        let (centroids, drift) = (&*self.layer).step_elkan(&mut self.bounds);
-        *self.layer.centroids_mut() = Box::new(centroids);
+        let (centroids, drift) = (*self.layer).step_elkan(&mut self.bounds);
+        **self.layer.centroids_mut() = centroids;
         let elapsed = t.elapsed();
         let index = self.index;
         let frozen = matches!(self.threshold, Some(thr) if drift.frozen(thr));

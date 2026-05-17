@@ -141,8 +141,8 @@ pub trait Solver: Send + Sync {
     /// Uses the [`RegretSchedule`] associated type (`R`) to determine how regrets
     /// are updated (vanilla, CFR+, discounted, linear).
     fn update_regret(&mut self, cfr: &Decisions<Self::E, Self::I>) {
-        let ref info = cfr.info;
-        let ref vector = cfr.regret;
+        let info = &cfr.info;
+        let vector = &cfr.regret;
         let epoch = self.profile().t();
         for (edge, delta) in vector.iter() {
             let total = self.profile().cum_regret(info, edge);
@@ -156,8 +156,8 @@ pub trait Solver: Send + Sync {
     /// Uses the [`WeightSchedule`] associated type (`W`) to determine how weights
     /// are accumulated (constant, linear, quadratic, exponential).
     fn update_weight(&mut self, cfr: &Decisions<Self::E, Self::I>) {
-        let ref info = cfr.info;
-        let ref vector = cfr.policy;
+        let info = &cfr.info;
+        let vector = &cfr.policy;
         let epoch = self.profile().t();
         for (edge, delta) in vector.iter() {
             let total = self.profile().cum_weight(info, edge);
@@ -172,7 +172,7 @@ pub trait Solver: Send + Sync {
     /// mean. Uses Welford's incremental update: ev += (sample - ev) / (n + 1).
     /// Runs before `update_visits`, so `cum_visits` holds the pre-increment count.
     fn update_payoff(&mut self, cfr: &Decisions<Self::E, Self::I>) {
-        let ref info = cfr.info;
+        let info = &cfr.info;
         for edge in info.choices() {
             let n = self.profile().cum_visits(info, &edge);
             let ev = self.storage().mut_payoff(info, &edge);
@@ -185,7 +185,7 @@ pub trait Solver: Send + Sync {
     /// Increments the visits for each action in the infoset to track
     /// how many times this info-action pair has been visited during training.
     fn update_visits(&mut self, cfr: &Decisions<Self::E, Self::I>) {
-        let ref info = cfr.info;
+        let info = &cfr.info;
         for edge in info.choices() {
             *self.storage().mut_visits(info, &edge) += 1;
         }

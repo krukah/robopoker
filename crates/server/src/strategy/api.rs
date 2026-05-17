@@ -1,8 +1,8 @@
 use rbp_database::*;
 use rbp_gameplay::*;
 use rbp_gameroom::Solved;
-use rbp_nlhe::*;
 use rbp_mccfr::Solver;
+use rbp_nlhe::*;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
@@ -166,9 +166,9 @@ impl StrategyAPI {
     /// was attached via [`Self::with_blueprint`].
     pub fn range(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
         let recall = recall.validate()?;
-        let blueprint = self.blueprint.ok_or_else(|| {
-            anyhow::anyhow!("range endpoint requires in-memory blueprint")
-        })?;
+        let blueprint = self
+            .blueprint
+            .ok_or_else(|| anyhow::anyhow!("range endpoint requires in-memory blueprint"))?;
         Ok(ApiOpponentRange {
             entries: blueprint
                 .opponent_observations(&recall)

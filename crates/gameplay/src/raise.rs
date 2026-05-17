@@ -20,7 +20,12 @@ pub struct Raise {
 
 impl Raise {
     pub fn new(chips: Chips, pot: Chips, street: Street, depth: usize) -> Self {
-        Self { chips, pot, street, depth }
+        Self {
+            chips,
+            pot,
+            street,
+            depth,
+        }
     }
 
     pub fn chips(&self) -> Chips {
@@ -76,4 +81,3 @@ impl From<Raise> for Size {
         }
     }
 }
-

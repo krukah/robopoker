@@ -20,7 +20,6 @@ use super::Mount;
 use super::Solved;
 use super::Tag;
 
-
 pub struct Dirac<B>
 where
     B: Brain,

@@ -1,9 +1,9 @@
 //! Fast in-memory training session
 use crate::*;
 use rbp_database::*;
+use rbp_mccfr::*;
 use rbp_nlhe::Flagship;
 use rbp_nlhe::NlheProfile;
-use rbp_mccfr::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;

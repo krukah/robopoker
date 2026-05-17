@@ -59,8 +59,12 @@ impl Runtime {
             eprintln!("        `base` is the sentinel name for the empty flag-set cell)");
             eprintln!("       per-variant session override: trailing `*N` on a token");
             eprintln!("         example: base*1,dirac*1,depth+dirac*4,depth+world*4");
-            eprintln!("       --sessions: default session count when no `*N` suffix is given (default 1).");
-            eprintln!("                   set to task vCPU count to saturate CPU during CFR think.");
+            eprintln!(
+                "       --sessions: default session count when no `*N` suffix is given (default 1)."
+            );
+            eprintln!(
+                "                   set to task vCPU count to saturate CPU during CFR think."
+            );
             std::process::exit(1);
         }
         let default = default_sessions.max(1);
@@ -103,9 +107,8 @@ impl Runtime {
                 let throttle = throttle.clone();
                 let mode = self.mode;
                 tokio::spawn(
-                    async move { execute(v, db, flagship, throttle, mode).await }.instrument(
-                        tracing::info_span!("variant", name = v.label(), session),
-                    ),
+                    async move { execute(v, db, flagship, throttle, mode).await }
+                        .instrument(tracing::info_span!("variant", name = v.label(), session)),
                 )
             })
             .collect();
@@ -179,7 +182,11 @@ fn parse_list(raw: &str) -> Vec<(Variant, Option<usize>)> {
     for token in raw.split(',').filter(|t| !t.is_empty()) {
         let (token, sessions) = parse_session_suffix(token.trim());
         match Variant::parse(token) {
-            Some(v) if !out.iter().any(|(existing, _)| existing.label() == v.label()) => {
+            Some(v)
+                if !out
+                    .iter()
+                    .any(|(existing, _)| existing.label() == v.label()) =>
+            {
                 out.push((v, sessions))
             }
             Some(_) => {}
@@ -204,4 +211,3 @@ fn parse_session_suffix(token: &str) -> (&str, Option<usize>) {
         None => (token, None),
     }
 }
-

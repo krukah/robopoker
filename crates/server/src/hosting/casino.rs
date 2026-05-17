@@ -84,7 +84,9 @@ impl Casino {
             .await
             .remove(&id)
             .map(|h| {
-                h.bridge.map(|b| b.abort());
+                if let Some(b) = h.bridge {
+                    b.abort()
+                }
             })
             .ok_or_else(|| anyhow::anyhow!("room not found"))
     }

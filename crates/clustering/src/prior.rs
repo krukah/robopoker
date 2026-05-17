@@ -32,10 +32,7 @@ impl<const N: usize> Prior<N> {
     /// points whose assignment changed since the last call, updates
     /// the snapshot inline. Returns `(sizes, reassignment_rate)`
     /// where `reassignment_rate` is in `[0.0, 1.0]`.
-    pub(crate) fn tally<const K: usize>(
-        &mut self,
-        bounds: &[Bounds<K>; N],
-    ) -> ([u64; K], f64) {
+    pub(crate) fn tally<const K: usize>(&mut self, bounds: &[Bounds<K>; N]) -> ([u64; K], f64) {
         let mut sizes = [0u64; K];
         let mut moved = 0u64;
         bounds.iter().enumerate().for_each(|(i, b)| {

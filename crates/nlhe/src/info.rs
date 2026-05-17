@@ -131,9 +131,7 @@ where
 }
 
 impl From<(Path, Abstraction, Path, Geometry)> for NlheInfo {
-    fn from(
-        (subgame, secret, choices, geometry): (Path, Abstraction, Path, Geometry),
-    ) -> Self {
+    fn from((subgame, secret, choices, geometry): (Path, Abstraction, Path, Geometry)) -> Self {
         let subgame = subgame
             .into_iter()
             .rev()
@@ -186,11 +184,11 @@ impl Arbitrary for NlheInfo {
                         .choose(&mut rand::rng())
                         .map(|&e| {
                             game = game.apply(game.snap(game.actionize(e)));
-                            depth = e
-                                .is_chance()
-                                .not()
-                                .then(|| depth + e.is_aggro() as usize)
-                                .unwrap_or(0);
+                            depth = if e.is_chance().not() {
+                                depth + e.is_aggro() as usize
+                            } else {
+                                0
+                            };
                             e
                         })
                 })?

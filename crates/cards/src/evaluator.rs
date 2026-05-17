@@ -90,7 +90,7 @@ impl Evaluator {
         self.find_rank_of_n_oak(2).and_then(|hi| {
             self.find_rank_of_n_oak_skip(2, Some(hi))
                 .map(|lo| Ranking::TwoPair(hi, lo))
-                .or_else(|| Some(Ranking::OnePair(hi))) // this makes OnePair unreachable
+                .or(Some(Ranking::OnePair(hi))) // this makes OnePair unreachable
         })
     }
 
@@ -144,7 +144,7 @@ impl Evaluator {
 
     fn find_suit_of_flush(&self) -> Option<Suit> {
         Suit::all()
-            .map(|s| u64::from(s))
+            .map(u64::from)
             .map(|u| u64::from(self.0) & u)
             .map(|n| n.count_ones() as u8)
             .iter()

@@ -100,13 +100,12 @@ impl GameplayAPI {
         let mut recaps = Vec::with_capacity(bundles.len());
         let mut results = Vec::with_capacity(bundles.len());
         for (h, p, a) in bundles.iter() {
-            if let Some(s) = seat_of(p, uid) {
-                if let Ok(recap) = replay(h, p, a, s) {
-                    if let Ok(result) = aivat.evaluate(h, p, a, s, &recap).await {
-                        recaps.push(recap);
-                        results.push(result);
-                    }
-                }
+            if let Some(s) = seat_of(p, uid)
+                && let Ok(recap) = replay(h, p, a, s)
+                && let Ok(result) = aivat.evaluate(h, p, a, s, &recap).await
+            {
+                recaps.push(recap);
+                results.push(result);
             }
         }
         let summary = summarize(&recaps);

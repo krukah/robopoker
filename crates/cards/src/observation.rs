@@ -83,13 +83,10 @@ impl Observation {
         }
         let used = Hand::add(Hand::from(*self), villain);
         let candidates: Vec<Card> = used.complement().collect();
-        let ref mut rng = rand::rng();
+        let rng = &mut rand::rng();
         let total: Probability = (0..trials)
             .map(|_| {
-                let runout: Hand = candidates
-                    .choose_multiple(rng, need)
-                    .copied()
-                    .collect();
+                let runout: Hand = candidates.choose_multiple(rng, need).copied().collect();
                 let board = Hand::add(self.public, runout);
                 let h = Strength::from(Hand::add(self.pocket, board));
                 let v = Strength::from(Hand::add(villain, board));
@@ -136,8 +133,8 @@ impl Observation {
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
         std::iter::empty::<Card>()
-            .chain(observation.public.into_iter())
-            .chain(observation.pocket.into_iter())
+            .chain(observation.public)
+            .chain(observation.pocket)
             .map(|card| 1 + u8::from(card) as u64) // distinguish 0x00 and 2c
             .fold(0u64, |acc, card| acc << 8 | card) as i64 // next card
     }
@@ -251,7 +248,7 @@ impl TryFrom<&str> for Observation {
         let pocket = Hand::try_from(pocket)?;
         let public = Hand::try_from(public)?;
         if Hand::overlaps(&pocket, &public) {
-            return Err(format!("duplicate cards between pocket and board"));
+            return Err("duplicate cards between pocket and board".to_string());
         }
         match (pocket.size(), public.size()) {
             (2, 0) | (2, 3) | (2, 4) | (2, 5) => Ok(Self::from((pocket, public))),

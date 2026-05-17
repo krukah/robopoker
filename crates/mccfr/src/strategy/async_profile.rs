@@ -79,7 +79,7 @@ pub trait AsyncProfile: Send + Sync {
         let path = root
             .decisions()
             .filter(|(t, _, _)| *t != self.traverser())
-            .map(|(_, i, e)| (i.clone(), e))
+            .map(|(_, i, e)| (i, e))
             .collect::<Vec<_>>();
         let (policies, samples) = futures::future::join(
             futures::future::join_all(path.iter().map(|(i, _)| self.policy(i))),
@@ -144,7 +144,7 @@ pub trait AsyncProfile: Send + Sync {
             let mut actions = Vec::new();
             for (child, edge) in root.edges() {
                 let v = reach * self.recursed_value(root, &root.at(child), 1.0, 1.0).await;
-                actions.push((edge.clone(), v));
+                actions.push((*edge, v));
             }
             let ev = actions
                 .iter()

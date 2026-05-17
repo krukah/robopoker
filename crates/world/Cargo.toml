@@ -16,3 +16,5 @@ rbp-core      = { path = "../util" }
 rbp-transport = { path = "../transport" }
 rbp-mccfr     = { path = "../mccfr", default-features = false }
 rand          = { workspace = true }
+[lints]
+workspace = true

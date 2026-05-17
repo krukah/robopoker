@@ -30,3 +30,5 @@ futures         = "0.3"
 tracing       = { workspace = true }
 num_cpus        = "1.16"
 rand            = { workspace = true }
+[lints]
+workspace = true

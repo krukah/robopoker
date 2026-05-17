@@ -182,7 +182,11 @@ mod tests {
 
     #[test]
     fn count_edges_predicate() {
-        let s = vec![Descent(T(0), E(1)), Descent(T(0), E(2)), Descent(T(0), E(3))];
+        let s = vec![
+            Descent(T(0), E(1)),
+            Descent(T(0), E(2)),
+            Descent(T(0), E(3)),
+        ];
         assert_eq!(s.count_edges(|e| e.0 > 1), 2);
     }
 }
