@@ -250,6 +250,18 @@ cargo run --bin trainer --features database -- --fast
 
 # Run the unified backend (analysis API + game hosting)
 BIND_ADDR=0.0.0.0:8888 cargo run --bin backend --features database
+
+# Interactive CLI for type conversions and database queries
+cargo run --bin convert
+
+# Run the litmus catalog against a trained blueprint, emit a markdown report
+cargo run --bin litmus -- --scenarios bin/litmus/scenarios.json --out report.md
+
+# Benchmark a blueprint against the Slumbot API
+cargo run --bin slumbot -- --variants base,dirac,depth+world+dirac --hands 1000
+
+# Measure Sinkhorn's entropic-bias on the trained Turn metric (diagnostic)
+cargo run --bin sinkhorn-bias
 ```
 
 `trainer` modes: `--status`, `--fast`, `--slow`, `--cluster`, `--reset`, `--forget`.

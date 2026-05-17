@@ -1,0 +1,23 @@
+[package]
+name         = "sinkhorn-bias"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Diagnostic: measure entropic bias of Sinkhorn EMD on real centroids"
+license      = "MIT"
+
+[[bin]]
+name = "sinkhorn-bias"
+path = "src/main.rs"
+
+[dependencies]
+rbp-core       = { path = "../../crates/util" }
+rbp-cards      = { path = "../../crates/cards" }
+rbp-gameplay   = { path = "../../crates/gameplay" }
+rbp-clustering = { path = "../../crates/clustering", features = ["database"] }
+rbp-database   = { path = "../../crates/database" }
+rbp-telemetry  = { path = "../../crates/telemetry" }
+tokio          = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio-postgres = { workspace = true }
+rand           = { workspace = true }

@@ -1,0 +1,368 @@
+{
+  "_meta": {
+    "description": "Compositional strategic litmus tests. Cases reference shared hands/histories/categories instead of inlining; families expand a template across a matrix to generate multiple cases. The runner emits a flat report so the composition is invisible at read time.",
+    "schema_version": 4,
+    "kinds": {
+      "single": "One state, one edge, one threshold. Default kind.",
+      "pair_diff": "Two states' edge probabilities should be within max_abs_diff. Symmetry checks.",
+      "monotonic": "N states in order; probabilities monotonic increasing or decreasing.",
+      "exists": "Like 'single' with acceptable_min — grid-slot integrity checks."
+    },
+    "case_fields": {
+      "name": "Required. Human-readable label.",
+      "category": "Required. Tag from the `categories` map.",
+      "kind": "Optional, default 'single'.",
+      "hand": "Reference into `hands` (single-state kinds).",
+      "hands": "Pair of refs into `hands` (pair_diff/monotonic kinds).",
+      "history": "Dotted ref into `histories` (e.g., 'preflop.bb_defends_2bb').",
+      "edge": "Edge label to measure ('F', 'O', '*', '!', 'n:d', 'Nbb').",
+      "expect": "Tolerance object — overrides category default. Fields: acceptable_max, acceptable_min, max_abs_diff, direction.",
+      "desired": "Required. What good play looks like.",
+      "diagnosis_if_violated": "Required. What a failure tells us.",
+      "historical": "Optional. {baseline_value, context} audit trail."
+    },
+    "family_fields": {
+      "name_template": "Used to generate per-instance names. Substitutions: {hand}, {hands}, {history}, {edge}.",
+      "matrix": "Object mapping field name to list of values. Cartesian product expanded into cases.",
+      "All other fields": "Same as case_fields. Anything in matrix is filled in per-instance."
+    }
+  },
+
+  "hands": {
+    "AA":   {"cards": "AcAs", "name": "Pocket Aces"},
+    "KK":   {"cards": "KcKs", "name": "Pocket Kings"},
+    "QQ":   {"cards": "QcQs", "name": "Pocket Queens"},
+    "JJ":   {"cards": "JcJs", "name": "Pocket Jacks"},
+    "TT":   {"cards": "TcTs", "name": "Pocket Tens"},
+    "AKs":  {"cards": "AcKc", "name": "AK suited"},
+    "AKo":  {"cards": "AcKd", "name": "AK offsuit"},
+    "AQs":  {"cards": "AcQc", "name": "AQ suited"},
+    "AQo":  {"cards": "AcQd", "name": "AQ offsuit"},
+    "KQs":  {"cards": "KcQc", "name": "KQ suited"},
+    "KQo":  {"cards": "KcQd", "name": "KQ offsuit"},
+    "87s":  {"cards": "8h7h", "name": "87 suited"},
+    "87o":  {"cards": "8h7c", "name": "87 offsuit"},
+    "76s":  {"cards": "7h6h", "name": "76 suited"},
+    "76o":  {"cards": "7h6c", "name": "76 offsuit"},
+    "72o":  {"cards": "7h2c", "name": "The worst HU starting hand"},
+    "73o":  {"cards": "7h3c", "name": "73 offsuit"},
+    "75o":  {"cards": "7h5c", "name": "75 offsuit"},
+    "62o":  {"cards": "6h2c", "name": "62 offsuit"},
+    "63o":  {"cards": "6h3c", "name": "63 offsuit"},
+    "83o":  {"cards": "8h3c", "name": "83 offsuit"}
+  },
+
+  "histories": {
+    "preflop": {
+      "sb_open":         {"turn": "P0", "past": [], "desc": "SB first to act preflop."},
+      "bb_defends_2bb":  {"turn": "P1", "past": ["RAISE 4"], "desc": "BB facing SB 2bb open."},
+      "bb_defends_3bb":  {"turn": "P1", "past": ["RAISE 6"], "desc": "BB facing SB 3bb open."},
+      "bb_defends_4bb":  {"turn": "P1", "past": ["RAISE 8"], "desc": "BB facing SB 4bb open."},
+      "bb_defends_5bb":  {"turn": "P1", "past": ["RAISE 10"], "desc": "BB facing SB 5bb open."}
+    },
+    "flop": {
+      "bb_first_raised_K72r": {
+        "turn": "P1",
+        "_seen": "* ~ Kh 7d 2c",
+        "past": ["RAISE 4", "CALL 3"],
+        "desc": "BB first to act, single-raised pot, dry rainbow K-7-2 board (suits Kh/7d/2c chosen to avoid common hand-encoding conflicts with AcKd)."
+      },
+      "bb_first_raised_8c8d2s_paired": {
+        "turn": "P1",
+        "_seen": "* ~ 8h 4d 2s",
+        "past": ["RAISE 4", "CALL 3"],
+        "desc": "BB first to act, raised pot, low dry board (good for set/overpair tests)."
+      },
+      "bb_first_limped_AKQss": {
+        "turn": "P1",
+        "_seen": "* ~ As Ks Qs",
+        "past": ["CALL 1", "CHECK"],
+        "desc": "BB first to act, limped pot, AKQ all spades (monotone)."
+      },
+      "bb_first_raised_AKQ_rainbow": {
+        "turn": "P1",
+        "_seen": "* ~ As Kh Qd",
+        "past": ["RAISE 4", "CALL 3"],
+        "desc": "BB first to act, raised pot, AKQ rainbow."
+      }
+    },
+    "turn": {
+      "sb_facing_check_KTs2s7d": {
+        "turn": "P0",
+        "_seen": "* ~ Ks Ts 2s 7d",
+        "past": ["RAISE 4", "CALL 3", "CHECK", "CHECK", "CHECK"],
+        "desc": "SB to act on turn after preflop raise, flop check-check."
+      }
+    },
+    "river": {
+      "bb_first_checkdown_Js9s2s7d4s": {
+        "turn": "P1",
+        "_seen": "* ~ Js 9s 2s 7d 4s",
+        "past": ["RAISE 4", "CALL 3", "CHECK", "CHECK", "CHECK", "CHECK"],
+        "desc": "BB first to act on river, single-raised pot, fully checked-down (4-flush spade runout)."
+      },
+      "bb_facing_big_bet_AsKcQh8s4d": {
+        "turn": "P1",
+        "_seen": "* ~ As Kc Qh 8s 4d",
+        "past": ["RAISE 4", "CALL 3", "CHECK", "CHECK", "CHECK", "CHECK", "CHECK", "RAISE 10"],
+        "desc": "BB facing SB pot-sized river bet on AKQT4 board (mostly bricked)."
+      },
+      "bb_facing_big_bet_9c4s4hTs2c_paired": {
+        "turn": "P1",
+        "_seen": "* ~ 9c 4s 4h Ts 2c",
+        "past": ["RAISE 4", "CALL 3", "CHECK", "CHECK", "CHECK", "CHECK", "CHECK", "RAISE 10"],
+        "desc": "BB facing SB pot bet on 9-4-4-T-2 paired runout."
+      },
+      "bb_facing_jam_Kd7s2c5d9h": {
+        "turn": "P1",
+        "_seen": "* ~ Kd 7s 2c 5d 9h",
+        "past": ["RAISE 4", "CALL 3", "CHECK", "CHECK", "CHECK", "CHECK", "CHECK", "RAISE 90"],
+        "desc": "BB facing SB river jam on dry K-7-2-5-9 runout."
+      }
+    }
+  },
+
+  "categories": {
+    "preflop_overjam": {
+      "description": "Strong defending hands collapsing to all-in instead of 3-betting at 100bb HU. Failure means action grid has a cliff between max non-jam raise and all-in, OR postflop EV makes shoving look artificially good.",
+      "default_expect": {"acceptable_max": 0.30}
+    },
+    "preflop_premium_control": {
+      "description": "Hands that should stay aggressive but never need to jam (AKs, AA). Failure means we regressed something previously correct.",
+      "default_expect": {"acceptable_max": 0.10}
+    },
+    "preflop_weak_rags": {
+      "description": "Worst HU starting hands (72o, 83o, 62o, ...). Real GTO opens >95% of hands; >50% fold here is a stuck-bucket signature.",
+      "default_expect": {"acceptable_max": 0.50}
+    },
+    "suited_offsuit_symmetry": {
+      "description": "Same rank pair, suited and offsuit, should play similarly. Asymmetry diagnoses the postflop abstraction losing suit-specific equity-realization.",
+      "default_expect": {"max_abs_diff": 0.20}
+    },
+    "rank_monotonicity": {
+      "description": "Across an ordered hand-strength sequence, the strategy should move monotonically. Non-monotonicity is the signature of a bucket-specific stuck state."
+    },
+    "flop_value": {
+      "description": "Strong made hands on appropriate boards (TPTK, set, flush) should not fold/check at structurally implausible rates."
+    },
+    "flop_air": {
+      "description": "Air on bad boards should check, not over-bet."
+    },
+    "turn_value": {
+      "description": "Strong turn hands (nut flush, set) should bet with non-trivial frequency."
+    },
+    "river_value": {
+      "description": "Strong rivered hands (nut flush, full house) should bet/raise; never fold to a single bet."
+    },
+    "river_air": {
+      "description": "Air vs significant river bet should fold."
+    },
+    "river_invariant": {
+      "description": "TPTK vs all-in must call (no fold equity to extract by folding)."
+    },
+    "structural_grid": {
+      "description": "Each grid slot should appear at non-trivial frequency somewhere. A slot used at <2% everywhere is dead and should be retired in v3."
+    }
+  },
+
+  "_postflop_holes_note": "Postflop scenarios pair a hole-card hand with a board-specific history. The history's `_seen` field carries the board (after `~`). The runner combines hand.cards + ' ~ ' + board to form the API's `seen` parameter.",
+
+  "tests": [
+    {
+      "name": "QQ overpair on K72r: never fold first-to-act",
+      "category": "flop_value",
+      "hand": "QQ",
+      "history": "flop.bb_first_raised_K72r",
+      "edge": "F",
+      "expect": {"acceptable_max": 0.05},
+      "desired": "QQ underpair on K-high flop (K beats Q) is awkward but should never fold first-to-act when there's no bet to fold to. Anti-pathology check: F% must be 0 if there's no current bet.",
+      "diagnosis_if_violated": "If QQ folds first-to-act on any flop, the strategy lookup is conflating no-bet states with facing-bet states. Lookup or schema bug."
+    },
+
+    {
+      "name": "Bet-size diversity: 1:4 (quarter-pot) lives somewhere on flop",
+      "category": "structural_grid",
+      "kind": "exists",
+      "hand": "AKo",
+      "history": "flop.bb_first_raised_K72r",
+      "edge": "1:4",
+      "expect": {"acceptable_min": 0.02},
+      "desired": "1:4 should appear at >2% in at least some flop spots. Canonical TPTK on dry board is the most likely spot for small probe bets.",
+      "diagnosis_if_violated": "1:4 dead at TPTK suggests the slot is dead generally. Sample more flop spots before retiring it in v3."
+    },
+    {
+      "name": "Bet-size diversity: 3:1 (overbet) lives somewhere postflop",
+      "category": "structural_grid",
+      "kind": "exists",
+      "hand": "AKo",
+      "history": "preflop.bb_defends_2bb",
+      "edge": "3:1",
+      "expect": {"acceptable_min": 0.05},
+      "desired": "AKo BB-defending should use 3:1 at >5% — it's the new recommended 4-bet size in this spot.",
+      "diagnosis_if_violated": "3:1 below 5% on AKo BB-defends-2bb means the new size from PR #155 isn't getting used; check whether it's available in the action grid or whether CFR routes around it."
+    }
+  ],
+
+  "families": [
+    {
+      "name_template": "{hand} BB-defends-2bb: jam frequency",
+      "category": "preflop_overjam",
+      "edge": "!",
+      "history": "preflop.bb_defends_2bb",
+      "matrix": {"hand": ["AKo", "AQo", "JJ", "QQ"]},
+      "desired": "Real HU GTO: 0-5% jam at 100bb. Hands defend by 3-betting to 1.5x-3x pot, not by jamming.",
+      "diagnosis_if_violated": "Above the 30% category threshold: structural over-jam from action-grid `2:1 → !` cliff or postflop EV pessimism. Mitigations: bigger non-jam raise size, better postflop abstraction, or `bias_shove=0` on next retrain."
+    },
+    {
+      "name_template": "{hand} BB-defends-2bb: jam frequency (control)",
+      "category": "preflop_premium_control",
+      "edge": "!",
+      "history": "preflop.bb_defends_2bb",
+      "matrix": {"hand": ["AKs", "AA"]},
+      "expect": {"acceptable_max": 0.20},
+      "desired": "Control. AKs and AA were always correct pre-fix; should stay at near-zero jam.",
+      "diagnosis_if_violated": "Regression. AKs/AA collapsing to all-in means a previously-fine spot broke."
+    },
+    {
+      "name_template": "{hands_a} vs {hands_b} jam asymmetry @ {history}",
+      "category": "suited_offsuit_symmetry",
+      "kind": "pair_diff",
+      "edge": "!",
+      "matrix": {
+        "hand_pair": [["AKo", "AKs"], ["AQo", "AQs"], ["KQo", "KQs"]],
+        "history": ["preflop.bb_defends_2bb", "preflop.bb_defends_3bb"]
+      },
+      "desired": "Suited and offsuit versions of the same rank-pair should play similarly. Real GTO: identical strategies (both ~0% jam at these depths).",
+      "diagnosis_if_violated": "Big gap = postflop abstraction is losing suit-specific equity-realization information. AKs has flush-draw paths AKo doesn't. If clusters collapse them, AKo's polarized lines (jam) win regret share. Fix: refine postflop clustering or higher K."
+    },
+    {
+      "name_template": "{hand} SB-open: fold frequency",
+      "category": "preflop_weak_rags",
+      "edge": "F",
+      "history": "preflop.sb_open",
+      "matrix": {"hand": ["72o", "73o", "75o", "62o", "63o", "83o"]},
+      "desired": "Real HU GTO opens >95% from SB. Weak rags can mix open/fold but should rarely fold pure.",
+      "diagnosis_if_violated": "Stuck-fold via Linear-CFR's positive-regret-undiscounted weighting. F edge accumulates more regret than competing edges can overcome. Consider DCFR with negative-regret discount."
+    },
+    {
+      "name_template": "Pocket pair monotonicity ({history})",
+      "category": "rank_monotonicity",
+      "kind": "monotonic",
+      "edge": "!",
+      "matrix": {"history": ["preflop.bb_defends_2bb", "preflop.bb_defends_3bb"]},
+      "hands_seq": ["AA", "KK", "QQ", "JJ"],
+      "expect": {"direction": "increasing"},
+      "desired": "Jam frequency should increase from AA (weakest reason to jam) to JJ (most reason to take immediate fold equity). Real GTO has all near 0%, but the GRADIENT should hold.",
+      "diagnosis_if_violated": "Non-monotonic = bucket-specific equilibrium quirk. If AA jams more than KK, AA's payoff calculation is broken."
+    },
+    {
+      "name_template": "Weak-rag SB-open fold monotonicity",
+      "category": "rank_monotonicity",
+      "kind": "monotonic",
+      "edge": "F",
+      "history": "preflop.sb_open",
+      "hands_seq": ["72o", "73o", "75o", "76o"],
+      "expect": {"direction": "decreasing"},
+      "desired": "Worst hand folds most; better hands fold less. Linear gradient of fold rate.",
+      "diagnosis_if_violated": "Non-monotonic gradient (e.g., 72o folds 50% but 73o folds 0%) is a bucket-specific stuck-fold artifact."
+    },
+    {
+      "name_template": "Flop air on monotone board: must check",
+      "category": "flop_air",
+      "edge": "O",
+      "matrix": {
+        "hand": ["72o", "62o"],
+        "history": ["flop.bb_first_limped_AKQss"]
+      },
+      "expect": {"acceptable_min": 0.70},
+      "desired": "Bottom-of-range hand on monotone high-card flop is a classic give-up spot.",
+      "diagnosis_if_violated": "Below 70% check means bot is over-bluffing the worst spots."
+    },
+    {
+      "name_template": "Flop air on draw-heavy board: must check",
+      "category": "flop_air",
+      "edge": "O",
+      "matrix": {
+        "hand": ["72o", "62o"],
+        "history": ["flop.bb_first_raised_AKQ_rainbow"]
+      },
+      "expect": {"acceptable_min": 0.70},
+      "desired": "Trash hand on AKQ rainbow with no equity should rarely bet."
+    },
+    {
+      "name_template": "{hand} Flop TPTK in raised pot: never fold first-to-act",
+      "category": "flop_value",
+      "edge": "F",
+      "matrix": {
+        "hand": ["AKo", "AKs"],
+        "history": ["flop.bb_first_raised_K72r"]
+      },
+      "expect": {"acceptable_max": 0.10},
+      "desired": "TPTK never folds when first to act on a dry flop (no bet to fold to; F frequency should be 0 if F is even available).",
+      "diagnosis_if_violated": "Folding TPTK first-to-act suggests the strategy is treating no-bet-yet states like facing-bet states. Lookup bug or strategy artifact."
+    },
+    {
+      "name_template": "Flop set in raised pot: not pure-check",
+      "category": "flop_value",
+      "edge": "O",
+      "hand": "QQ",
+      "history": "flop.bb_first_raised_8c8d2s_paired",
+      "expect": {"acceptable_min": 0.10, "acceptable_max": 0.95},
+      "desired": "Overpair on low dry board: bet/check is a valid mix. Pure check (>95%) means no value-bet line; pure bet (<10% check) means no slowplay. Want something in between.",
+      "matrix": {}
+    },
+
+    {
+      "name_template": "River nut flush in checked-down pot: bet often",
+      "category": "river_value",
+      "hand": "AKs",
+      "history": "river.bb_first_checkdown_Js9s2s7d4s",
+      "edge": "O",
+      "expect": {"acceptable_max": 0.50},
+      "desired": "BB rivered nut flush after a checked-down street. Should bet across some size at >50% frequency. Pure check is correct only as deception in tournaments at very deep stacks; in cash HU, betting dominates.",
+      "diagnosis_if_violated": "Pure check with the nuts on river leaves money on the table. The cluster might be averaging across hands of varying strength, but pure-check still means structural under-betting.",
+      "matrix": {}
+    },
+    {
+      "name_template": "River full house facing big bet: never fold",
+      "category": "river_value",
+      "hand": "JJ",
+      "history": "river.bb_facing_big_bet_9c4s4hTs2c_paired",
+      "edge": "F",
+      "expect": {"acceptable_max": 0.05},
+      "desired": "Folding the second-nuts to a single bet is the cardinal river sin.",
+      "diagnosis_if_violated": "If full house folds: postflop abstraction is collapsing strong hands into the same cluster as bluff-catchers, losing all signal.",
+      "matrix": {}
+    },
+    {
+      "name_template": "River air vs big bet: high fold",
+      "category": "river_air",
+      "hand": "72o",
+      "history": "river.bb_facing_big_bet_AsKcQh8s4d",
+      "edge": "F",
+      "expect": {"acceptable_min": 0.70},
+      "desired": "Total air vs big river bet on a board where nothing improved should fold a clear majority.",
+      "matrix": {}
+    },
+    {
+      "name_template": "River TPTK vs all-in: must call",
+      "category": "river_invariant",
+      "hand": "AKs",
+      "history": "river.bb_facing_jam_Kd7s2c5d9h",
+      "edge": "*",
+      "expect": {"acceptable_min": 0.70},
+      "desired": "TPTK on dry blank runout vs jam beats most of villain's value range; calling station is correct since fold-equity is zero post-jam.",
+      "matrix": {}
+    },
+    {
+      "name_template": "Turn nut flush in raised pot: bet often",
+      "category": "turn_value",
+      "hand": "AKs",
+      "history": "turn.sb_facing_check_KTs2s7d",
+      "edge": "O",
+      "expect": {"acceptable_max": 0.60},
+      "desired": "SB rivered the nut flush on the turn (KsTs2s7d, AsKs in hand). Should bet across some size at >40% frequency. Pure check is wrong.",
+      "matrix": {}
+    }
+  ]
+}

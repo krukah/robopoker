@@ -1,0 +1,24 @@
+[package]
+name         = "slumbot"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Slumbot benchmark binary"
+license      = "MIT"
+
+[[bin]]
+name         = "slumbot"
+path         = "src/main.rs"
+
+[features]
+# `database` is a no-op alias kept so external invocations that still pass
+# `--features database` keep working; slumbot always builds with DB support.
+default  = []
+database = []
+
+[dependencies]
+rbp-slumbot        = { path = "../../crates/slumbot" }
+clap               = { workspace = true }
+tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

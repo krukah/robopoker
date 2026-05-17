@@ -1,0 +1,23 @@
+[package]
+name         = "litmus"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "CLI wrapper around rbp-litmus. Loads scenarios, runs the catalog, writes a markdown report."
+license      = "MIT"
+
+[[bin]]
+name         = "litmus"
+path         = "src/main.rs"
+
+[dependencies]
+rbp-litmus    = { path = "../../crates/litmus" }
+rbp-server    = { path = "../../crates/server" }
+rbp-database  = { path = "../../crates/database" }
+rbp-core      = { path = "../../crates/util" }
+
+tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
+clap               = { version = "4", features = ["derive"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+anyhow             = "1"

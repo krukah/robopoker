@@ -615,6 +615,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert"
+version = "0.1.0"
+dependencies = [
+ "rbp-core",
+ "rbp-server",
+ "rbp-telemetry",
+ "tokio",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1524,6 +1534,20 @@ name = "litemap"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
+
+[[package]]
+name = "litmus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rbp-core",
+ "rbp-database",
+ "rbp-litmus",
+ "rbp-server",
+ "tokio",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "local-channel"
@@ -2902,6 +2926,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sinkhorn-bias"
+version = "0.1.0"
+dependencies = [
+ "rand 0.9.2",
+ "rbp-cards",
+ "rbp-clustering",
+ "rbp-core",
+ "rbp-database",
+ "rbp-gameplay",
+ "rbp-telemetry",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
 name = "siphasher"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2912,6 +2951,16 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
+name = "slumbot"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "rbp-slumbot",
+ "tokio",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "smallvec"
