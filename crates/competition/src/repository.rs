@@ -11,16 +11,8 @@ use tokio_postgres::Client;
 /// Bulk data access for evaluation queries.
 #[allow(async_fn_in_trait)]
 pub trait EvaluationRepository {
-    async fn eval_hands(
-        &self,
-        user: ID<Member>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_bundle(
-        &self,
-        hand: ID<HandRecord>,
-    ) -> Result<(HandRecord, Vec<Participant>, Vec<Play>), PgErr>;
+    async fn eval_hands(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<ID<HandRecord>>, PgErr>;
+    async fn eval_bundle(&self, hand: ID<HandRecord>) -> Result<(HandRecord, Vec<Participant>, Vec<Play>), PgErr>;
     async fn eval_bundles(
         &self,
         hands: &[ID<HandRecord>],
@@ -39,12 +31,7 @@ pub trait EvaluationRepository {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_pnl(
-        &self,
-        user: ID<Member>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<(Chips, Chips)>, PgErr>;
+    async fn eval_pnl(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<(Chips, Chips)>, PgErr>;
     async fn eval_pnl_against(
         &self,
         user: ID<Member>,
@@ -86,21 +73,11 @@ pub trait EvaluationRepository {
         offset: i64,
     ) -> Result<Vec<ID<HandRecord>>, PgErr>;
     async fn eval_count(&self, user: ID<Member>) -> Result<i64, PgErr>;
-    async fn eval_count_against(&self, user: ID<Member>, against: ID<Member>)
-    -> Result<i64, PgErr>;
+    async fn eval_count_against(&self, user: ID<Member>, against: ID<Member>) -> Result<i64, PgErr>;
     async fn eval_count_by_stakes(&self, user: ID<Member>, stakes: i16) -> Result<i64, PgErr>;
     async fn eval_count_human_hero(&self, bots: &[uuid::Uuid]) -> Result<i64, PgErr>;
-    async fn eval_count_human_against(
-        &self,
-        user: ID<Member>,
-        bots: &[uuid::Uuid],
-    ) -> Result<i64, PgErr>;
-    async fn eval_policy(
-        &self,
-        past: i64,
-        present: i16,
-        choices: i64,
-    ) -> Result<Vec<(i64, f32, f32)>, PgErr>;
+    async fn eval_count_human_against(&self, user: ID<Member>, bots: &[uuid::Uuid]) -> Result<i64, PgErr>;
+    async fn eval_policy(&self, past: i64, present: i16, choices: i64) -> Result<Vec<(i64, f32, f32)>, PgErr>;
     async fn eval_abstraction(&self, iso: i64) -> Result<Option<i16>, PgErr>;
     async fn eval_abstractions(&self, isos: &[i64]) -> Result<Vec<(i64, i16)>, PgErr>;
     async fn eval_chance_correction(
@@ -113,12 +90,7 @@ pub trait EvaluationRepository {
 }
 
 impl EvaluationRepository for Arc<Client> {
-    async fn eval_hands(
-        &self,
-        user: ID<Member>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<ID<HandRecord>>, PgErr> {
+    async fn eval_hands(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<ID<HandRecord>>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!(
             "SELECT h.id FROM {} h JOIN {} p ON p.hand_id = h.id WHERE p.user_id = $1 ORDER BY h.id DESC LIMIT $2 OFFSET $3",
@@ -126,34 +98,27 @@ impl EvaluationRepository for Arc<Client> {
         ));
         self.query(sql.as_str(), &[&user.inner(), &limit, &offset])
             .await
-            .map(|rows| {
-                rows.iter()
-                    .map(|r| ID::from(r.get::<_, uuid::Uuid>(0)))
-                    .collect()
-            })
+            .map(|rows| rows.iter().map(|r| ID::from(r.get::<_, uuid::Uuid>(0))).collect())
     }
 
-    async fn eval_bundle(
-        &self,
-        hand: ID<HandRecord>,
-    ) -> Result<(HandRecord, Vec<Participant>, Vec<Play>), PgErr> {
+    async fn eval_bundle(&self, hand: ID<HandRecord>) -> Result<(HandRecord, Vec<Participant>, Vec<Play>), PgErr> {
         static SQL_H: OnceLock<String> = OnceLock::<String>::new();
         static SQL_P: OnceLock<String> = OnceLock::<String>::new();
         static SQL_A: OnceLock<String> = OnceLock::<String>::new();
-        let sql_h = SQL_H.get_or_init(|| {
+        let sql_h =
+            SQL_H.get_or_init(|| format!("SELECT id, room_id, board, pot, dealer FROM {} WHERE id = $1", hands()));
+        let sql_p = SQL_P.get_or_init(|| {
             format!(
-                "SELECT id, room_id, board, pot, dealer FROM {} WHERE id = $1",
-                hands()
+                "SELECT hand_id, user_id, seat, hole, stack, visibility, pnl FROM {} WHERE hand_id = $1 ORDER BY seat",
+                players()
             )
         });
-        let sql_p = SQL_P.get_or_init(|| format!(
-            "SELECT hand_id, user_id, seat, hole, stack, visibility, pnl FROM {} WHERE hand_id = $1 ORDER BY seat",
-            players()
-        ));
-        let sql_a = SQL_A.get_or_init(|| format!(
-            "SELECT hand_id, seq, player_id, encoded, elapsed_ms FROM {} WHERE hand_id = $1 ORDER BY seq",
-            actions()
-        ));
+        let sql_a = SQL_A.get_or_init(|| {
+            format!(
+                "SELECT hand_id, seq, player_id, encoded, elapsed_ms FROM {} WHERE hand_id = $1 ORDER BY seq",
+                actions()
+            )
+        });
         let record = self
             .query_one(sql_h.as_str(), &[&hand.inner()])
             .await
@@ -194,15 +159,10 @@ impl EvaluationRepository for Arc<Client> {
         let hrows = self.query(sql_h.as_str(), &[&uuids]).await?;
         let prows = self.query(sql_p.as_str(), &[&uuids]).await?;
         let arows = self.query(sql_a.as_str(), &[&uuids]).await?;
-        let mut players: std::collections::HashMap<uuid::Uuid, Vec<Participant>> =
-            std::collections::HashMap::new();
-        let mut actions: std::collections::HashMap<uuid::Uuid, Vec<Play>> =
-            std::collections::HashMap::new();
+        let mut players: std::collections::HashMap<uuid::Uuid, Vec<Participant>> = std::collections::HashMap::new();
+        let mut actions: std::collections::HashMap<uuid::Uuid, Vec<Play>> = std::collections::HashMap::new();
         for row in &prows {
-            players
-                .entry(row.get(0))
-                .or_default()
-                .push(participant_from(row));
+            players.entry(row.get(0)).or_default().push(participant_from(row));
         }
         for row in &arows {
             actions.entry(row.get(0)).or_default().push(play_from(row));
@@ -211,11 +171,7 @@ impl EvaluationRepository for Arc<Client> {
             .iter()
             .map(|hr| {
                 let hid: uuid::Uuid = hr.get(0);
-                (
-                    hand_from(hr),
-                    players.remove(&hid).unwrap_or_default(),
-                    actions.remove(&hid).unwrap_or_default(),
-                )
+                (hand_from(hr), players.remove(&hid).unwrap_or_default(), actions.remove(&hid).unwrap_or_default())
             })
             .collect())
     }
@@ -232,16 +188,9 @@ impl EvaluationRepository for Arc<Client> {
             "SELECT h.id FROM {} h JOIN {} p1 ON p1.hand_id = h.id JOIN {} p2 ON p2.hand_id = h.id WHERE p1.user_id = $1 AND p2.user_id = $2 ORDER BY h.id DESC LIMIT $3 OFFSET $4",
             hands(), players(), players()
         ));
-        self.query(
-            sql.as_str(),
-            &[&user.inner(), &against.inner(), &limit, &offset],
-        )
-        .await
-        .map(|rows| {
-            rows.iter()
-                .map(|r| ID::from(r.get::<_, uuid::Uuid>(0)))
-                .collect()
-        })
+        self.query(sql.as_str(), &[&user.inner(), &against.inner(), &limit, &offset])
+            .await
+            .map(|rows| rows.iter().map(|r| ID::from(r.get::<_, uuid::Uuid>(0))).collect())
     }
 
     async fn eval_hands_by_stakes(
@@ -258,19 +207,10 @@ impl EvaluationRepository for Arc<Client> {
         ));
         self.query(sql.as_str(), &[&user.inner(), &stakes, &limit, &offset])
             .await
-            .map(|rows| {
-                rows.iter()
-                    .map(|r| ID::from(r.get::<_, uuid::Uuid>(0)))
-                    .collect()
-            })
+            .map(|rows| rows.iter().map(|r| ID::from(r.get::<_, uuid::Uuid>(0))).collect())
     }
 
-    async fn eval_pnl(
-        &self,
-        user: ID<Member>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<(Chips, Chips)>, PgErr> {
+    async fn eval_pnl(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<(Chips, Chips)>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!(
             "SELECT p.pnl, h.pot FROM {} h JOIN {} p ON p.hand_id = h.id WHERE p.user_id = $1 ORDER BY h.id DESC LIMIT $2 OFFSET $3",
@@ -293,12 +233,9 @@ impl EvaluationRepository for Arc<Client> {
             "SELECT p.pnl, h.pot FROM {} h JOIN {} p ON p.hand_id = h.id AND p.user_id = $1 JOIN {} p2 ON p2.hand_id = h.id AND p2.user_id = $2 ORDER BY h.id DESC LIMIT $3 OFFSET $4",
             hands(), players(), players()
         ));
-        self.query(
-            sql.as_str(),
-            &[&user.inner(), &against.inner(), &limit, &offset],
-        )
-        .await
-        .map(|rows| rows.iter().map(|r| (r.get(0), r.get(1))).collect())
+        self.query(sql.as_str(), &[&user.inner(), &against.inner(), &limit, &offset])
+            .await
+            .map(|rows| rows.iter().map(|r| (r.get(0), r.get(1))).collect())
     }
 
     async fn eval_pnl_by_stakes(
@@ -364,11 +301,7 @@ impl EvaluationRepository for Arc<Client> {
         ));
         self.query(sql.as_str(), &[&limit, &offset])
             .await
-            .map(|rows| {
-                rows.iter()
-                    .map(|r| ID::from(r.get::<_, uuid::Uuid>(0)))
-                    .collect()
-            })
+            .map(|rows| rows.iter().map(|r| ID::from(r.get::<_, uuid::Uuid>(0))).collect())
     }
 
     async fn eval_hands_human_against(
@@ -385,27 +318,18 @@ impl EvaluationRepository for Arc<Client> {
         ));
         self.query(sql.as_str(), &[&user.inner(), &limit, &offset])
             .await
-            .map(|rows| {
-                rows.iter()
-                    .map(|r| ID::from(r.get::<_, uuid::Uuid>(0)))
-                    .collect()
-            })
+            .map(|rows| rows.iter().map(|r| ID::from(r.get::<_, uuid::Uuid>(0))).collect())
     }
 
     async fn eval_count(&self, user: ID<Member>) -> Result<i64, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql =
-            SQL.get_or_init(|| format!("SELECT COUNT(*) FROM {} WHERE user_id = $1", players()));
+        let sql = SQL.get_or_init(|| format!("SELECT COUNT(*) FROM {} WHERE user_id = $1", players()));
         self.query_one(sql.as_str(), &[&user.inner()])
             .await
             .map(|row| row.get(0))
     }
 
-    async fn eval_count_against(
-        &self,
-        user: ID<Member>,
-        against: ID<Member>,
-    ) -> Result<i64, PgErr> {
+    async fn eval_count_against(&self, user: ID<Member>, against: ID<Member>) -> Result<i64, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!(
             "SELECT COUNT(*) FROM {} p JOIN {} p2 ON p2.hand_id = p.hand_id AND p2.user_id = $2 WHERE p.user_id = $1",
@@ -429,18 +353,11 @@ impl EvaluationRepository for Arc<Client> {
 
     async fn eval_count_human_hero(&self, _: &[uuid::Uuid]) -> Result<i64, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql =
-            SQL.get_or_init(|| format!("SELECT COUNT(*) FROM {} WHERE user_id IS NULL", players()));
-        self.query_one(sql.as_str(), &[])
-            .await
-            .map(|row| row.get(0))
+        let sql = SQL.get_or_init(|| format!("SELECT COUNT(*) FROM {} WHERE user_id IS NULL", players()));
+        self.query_one(sql.as_str(), &[]).await.map(|row| row.get(0))
     }
 
-    async fn eval_count_human_against(
-        &self,
-        user: ID<Member>,
-        _: &[uuid::Uuid],
-    ) -> Result<i64, PgErr> {
+    async fn eval_count_human_against(&self, user: ID<Member>, _: &[uuid::Uuid]) -> Result<i64, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!(
             "SELECT COUNT(*) FROM {} p WHERE p.user_id = $1 AND EXISTS (SELECT 1 FROM {} p2 WHERE p2.hand_id = p.hand_id AND p2.user_id IS NULL)",
@@ -451,24 +368,17 @@ impl EvaluationRepository for Arc<Client> {
             .map(|row| row.get(0))
     }
 
-    async fn eval_policy(
-        &self,
-        past: i64,
-        present: i16,
-        choices: i64,
-    ) -> Result<Vec<(i64, f32, f32)>, PgErr> {
+    async fn eval_policy(&self, past: i64, present: i16, choices: i64) -> Result<Vec<(i64, f32, f32)>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql = SQL.get_or_init(|| format!(
-            "SELECT edge, weight, payoff FROM {} WHERE past = $1 AND present = $2 AND choices = $3",
-            blueprint()
-        ));
+        let sql = SQL.get_or_init(|| {
+            format!(
+                "SELECT edge, weight, payoff FROM {} WHERE past = $1 AND present = $2 AND choices = $3",
+                blueprint()
+            )
+        });
         self.query(sql.as_str(), &[&past, &present, &choices])
             .await
-            .map(|rows| {
-                rows.iter()
-                    .map(|r| (r.get(0), r.get(1), r.get(2)))
-                    .collect()
-            })
+            .map(|rows| rows.iter().map(|r| (r.get(0), r.get(1), r.get(2))).collect())
     }
 
     async fn eval_abstraction(&self, iso: i64) -> Result<Option<i16>, PgErr> {
@@ -481,8 +391,7 @@ impl EvaluationRepository for Arc<Client> {
 
     async fn eval_abstractions(&self, isos: &[i64]) -> Result<Vec<(i64, i16)>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql = SQL
-            .get_or_init(|| format!("SELECT obs, abs FROM {} WHERE obs = ANY($1)", isomorphism()));
+        let sql = SQL.get_or_init(|| format!("SELECT obs, abs FROM {} WHERE obs = ANY($1)", isomorphism()));
         self.query(sql.as_str(), &[&isos])
             .await
             .map(|rows| rows.iter().map(|r| (r.get(0), r.get(1))).collect())

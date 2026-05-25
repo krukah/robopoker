@@ -39,14 +39,7 @@ pub struct Participant {
 }
 
 impl Participant {
-    pub fn new(
-        hand: ID<Hand>,
-        user: Option<ID<Member>>,
-        seat: Position,
-        hole: Hole,
-        stack: Chips,
-        pnl: Chips,
-    ) -> Self {
+    pub fn new(hand: ID<Hand>, user: Option<ID<Member>>, seat: Position, hole: Hole, stack: Chips, pnl: Chips) -> Self {
         Self {
             hand,
             user,
@@ -162,10 +155,7 @@ mod schema {
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!(
-                    "CREATE INDEX IF NOT EXISTS idx_players_user_hand ON {} (user_id, hand_id);",
-                    players()
-                ))
+                leaked(format!("CREATE INDEX IF NOT EXISTS idx_players_user_hand ON {} (user_id, hand_id);", players()))
             })
         }
 

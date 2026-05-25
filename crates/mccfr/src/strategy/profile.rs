@@ -38,20 +38,14 @@ pub trait RefProf: CfrRule {
     /// Historical weighted average strategy (Nash approximation).
     /// Derived from accumulated weights. Override to apply perturbation.
     fn averaged_distribution(&self, info: &Self::I) -> Policy<Self::E> {
-        let all = info
-            .choices()
-            .map(|e| (e, self.weight(info, &e)))
-            .collect::<Vec<_>>();
+        let all = info.choices().map(|e| (e, self.weight(info, &e))).collect::<Vec<_>>();
         let sum = all.iter().map(|(_, w)| *w).sum::<Probability>();
         all.into_iter().map(|(e, w)| (e, w / sum)).collect()
     }
     /// Current iteration strategy via regret matching.
     /// Derived from accumulated regrets.
     fn iterated_distribution(&self, info: &Self::I) -> Policy<Self::E> {
-        let raw = info
-            .choices()
-            .map(|e| (e, self.regret(info, &e)))
-            .collect::<Vec<_>>();
+        let raw = info.choices().map(|e| (e, self.regret(info, &e))).collect::<Vec<_>>();
         let denom = raw.iter().map(|(_, r)| r).sum::<Utility>();
         raw.into_iter().map(|(e, r)| (e, r / denom)).collect()
     }

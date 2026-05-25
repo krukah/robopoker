@@ -48,9 +48,7 @@ pub async fn enter(
             Ok(()) => response.map_into_left_body(),
             Err(e) => {
                 tracing::warn!(room = %id, error = %e, "bridge failed for room");
-                HttpResponse::NotFound()
-                    .body(e.to_string())
-                    .map_into_right_body()
+                HttpResponse::NotFound().body(e.to_string()).map_into_right_body()
             }
         },
         Err(e) => {

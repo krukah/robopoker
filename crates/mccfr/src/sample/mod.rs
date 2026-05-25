@@ -55,11 +55,7 @@ pub trait SamplingScheme {
     ///
     /// Called by [`TreeBuilder`] at each node during tree construction.
     /// The returned branches will be added to the expansion queue.
-    fn sample<T, E, G, I, P>(
-        profile: &P,
-        node: &Node<T, E, G, I>,
-        branches: Vec<Leaf<E, G>>,
-    ) -> Vec<Leaf<E, G>>
+    fn sample<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
@@ -69,11 +65,7 @@ pub trait SamplingScheme {
 }
 
 /// Uniformly sample one branch from available choices.
-pub fn randomly<T, E, G, I, P>(
-    profile: &P,
-    node: &Node<T, E, G, I>,
-    branches: Vec<Leaf<E, G>>,
-) -> Vec<Leaf<E, G>>
+pub fn randomly<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
 where
     T: CfrTurn,
     E: CfrEdge,

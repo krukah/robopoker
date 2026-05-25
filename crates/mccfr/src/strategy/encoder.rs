@@ -48,11 +48,7 @@ pub trait CfrEncoder {
     /// alone — see [`EmbeddedHistory`]. Encoders whose info depends on tree
     /// context (e.g. when the `resume` path cannot reconstruct the full
     /// current-phase history from `head` alone) must override this method.
-    fn info(
-        &self,
-        _: &Tree<Self::T, Self::E, Self::G, Self::I>,
-        leaf: Leaf<Self::E, Self::G>,
-    ) -> Self::I {
+    fn info(&self, _: &Tree<Self::T, Self::E, Self::G, Self::I>, leaf: Leaf<Self::E, Self::G>) -> Self::I {
         let (_, game, _) = leaf;
         self.resume(std::iter::empty(), &game)
     }
@@ -73,11 +69,7 @@ pub trait CfrEncoder {
     ///
     /// Produces the same `(T, I, E)` triples, enabling reach computations
     /// to consume either direction through the same iterator interface.
-    fn replay(
-        &self,
-        root: Self::G,
-        path: impl IntoIterator<Item = Self::E>,
-    ) -> Vec<(Self::T, Self::I, Self::E)> {
+    fn replay(&self, root: Self::G, path: impl IntoIterator<Item = Self::E>) -> Vec<(Self::T, Self::I, Self::E)> {
         let mut game = root;
         let mut past: Vec<Self::E> = Vec::new();
         path.into_iter()
@@ -92,10 +84,7 @@ pub trait CfrEncoder {
     }
     /// Delegates branching to the node, which has all the necessary
     /// information to compute the valid edges and resulting game states.
-    fn branches(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Vec<Leaf<Self::E, Self::G>> {
+    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         node.branches()
     }
 }
@@ -115,11 +104,7 @@ where
         (*self).seed(game)
     }
 
-    fn info(
-        &self,
-        tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
-        leaf: Leaf<Self::E, Self::G>,
-    ) -> Self::I {
+    fn info(&self, tree: &Tree<Self::T, Self::E, Self::G, Self::I>, leaf: Leaf<Self::E, Self::G>) -> Self::I {
         (*self).info(tree, leaf)
     }
 
@@ -130,10 +115,7 @@ where
         (*self).resume(past, game)
     }
 
-    fn branches(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Vec<Leaf<Self::E, Self::G>> {
+    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         (*self).branches(node)
     }
 }

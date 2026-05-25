@@ -332,8 +332,7 @@ mod tests {
     /// Subgame with prefix replaying P0's check preserves Nash properties.
     #[test]
     fn subgame_after_check() {
-        let blueprint =
-            &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = KuhnTurn::Player(0);
         let root = KuhnGame::root();
         let entry = root.apply(KuhnEdge::Check);
@@ -352,8 +351,7 @@ mod tests {
     /// Subgame with prefix replaying P0's bet preserves Nash properties.
     #[test]
     fn subgame_after_bet() {
-        let blueprint =
-            &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = KuhnTurn::Player(0);
         let root = KuhnGame::root();
         let entry = root.apply(KuhnEdge::Bet);
@@ -385,12 +383,8 @@ mod tests {
         let external = KuhnTurn::Player(1);
         let root = KuhnGame::root();
         let prior = weak.encoder().baseline(&root, external);
-        let mut solver = SubGameSolver::<_, 1, _, _, _>::new(
-            weak,
-            external,
-            prior.partition::<2>(),
-            CfrRecall::new(vec![], root),
-        );
+        let mut solver =
+            SubGameSolver::<_, 1, _, _, _>::new(weak, external, prior.partition::<2>(), CfrRecall::new(vec![], root));
         for i in 1..=n_strong {
             solver.step();
             if i.count_ones() == 1 {
@@ -399,25 +393,14 @@ mod tests {
         }
         let profile = solver.profile();
         eprintln!("\n=== final subgame policies (averaged over worlds) ===");
-        eprintln!(
-            "{:>6} {:>10} {:>6} {:>10} {:>10}",
-            "rank", "node", "edge", "subgame", "nash"
-        );
-        eprintln!(
-            "{:>6} {:>10} {:>6} {:>10} {:>10}",
-            "----", "----", "----", "-------", "----"
-        );
+        eprintln!("{:>6} {:>10} {:>6} {:>10} {:>10}", "rank", "node", "edge", "subgame", "nash");
+        eprintln!("{:>6} {:>10} {:>6} {:>10} {:>10}", "----", "----", "----", "-------", "----");
         let nash = |r, h, e: KuhnEdge| {
             let p = strong.profile();
             CfrNash::averaged_policy(p, &view(r, h), &e)
         };
         for rank in [Rank::J, Rank::Q, Rank::K] {
-            for node in [
-                History::Open,
-                History::Check,
-                History::Bet,
-                History::CheckBet,
-            ] {
+            for node in [History::Open, History::Check, History::Bet, History::CheckBet] {
                 for edge in CfrInfo::choices(&view(rank, node)) {
                     eprintln!(
                         "{:>6} {:>10} {:>6} {:>10.4} {:>10.4}",
@@ -434,14 +417,8 @@ mod tests {
         let regret = profile.sum_regret();
         eprintln!("  regret converged: {:.6} (< 0.001)", regret);
         assert!(regret < 0.001, "subgame regret {regret:.6} >= 0.001");
-        assert!(
-            subpolicy(profile, Rank::K, History::Bet, KuhnEdge::Call) > 0.90,
-            "K|B call"
-        );
-        assert!(
-            subpolicy(profile, Rank::K, History::CheckBet, KuhnEdge::Call) > 0.90,
-            "K|XB call"
-        );
+        assert!(subpolicy(profile, Rank::K, History::Bet, KuhnEdge::Call) > 0.90, "K|B call");
+        assert!(subpolicy(profile, Rank::K, History::CheckBet, KuhnEdge::Call) > 0.90, "K|XB call");
         eprintln!("  K always calls facing bet ✓");
         eprintln!("\n  note: other policies are deal-specific (uniform belief = one fixed deal)");
         eprintln!("  this is expected — game-level Nash requires a real posterior/belief");
@@ -468,8 +445,7 @@ mod tests {
     /// that facing a K-heavy range, J should fold at CheckBet.
     #[test]
     fn subgame_with_reach_conditioned_posterior() {
-        let blueprint =
-            &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let internal = KuhnTurn::Player(0);
         let external = KuhnTurn::Player(1);
         let root = KuhnGame::root();
@@ -506,12 +482,7 @@ mod tests {
         let regret = profile.sum_regret();
         eprintln!("\n=== subgame results (regret={regret:.6}) ===");
         for rank in [Rank::J, Rank::Q, Rank::K] {
-            for node in [
-                History::Open,
-                History::Check,
-                History::Bet,
-                History::CheckBet,
-            ] {
+            for node in [History::Open, History::Check, History::Bet, History::CheckBet] {
                 for edge in CfrInfo::choices(&view(rank, node)) {
                     eprintln!(
                         "  {} {:>10} {:>6} {:>8.4}",
@@ -525,10 +496,7 @@ mod tests {
         }
         eprintln!("\n=== structural checks ===");
         assert!(regret < 0.01, "regret {regret:.6} >= 0.01");
-        assert!(
-            subpolicy(&profile, Rank::K, History::CheckBet, KuhnEdge::Call) > 0.90,
-            "K|XB call"
-        );
+        assert!(subpolicy(&profile, Rank::K, History::CheckBet, KuhnEdge::Call) > 0.90, "K|XB call");
         eprintln!("  regret < 0.01 ✓");
         eprintln!("  K|XB calls ✓");
     }

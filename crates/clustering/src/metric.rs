@@ -44,12 +44,10 @@ impl Metric {
             0.
         } else {
             match (x.street(), y.street()) {
-                (Street::Pref, Street::Pref)
-                | (Street::Flop, Street::Flop)
-                | (Street::Turn, Street::Turn) => self.lookup(x, y),
-                (Street::Rive, Street::Rive) => {
-                    (Probability::from(*x) - Probability::from(*y)).abs()
+                (Street::Pref, Street::Pref) | (Street::Flop, Street::Flop) | (Street::Turn, Street::Turn) => {
+                    self.lookup(x, y)
                 }
+                (Street::Rive, Street::Rive) => (Probability::from(*x) - Probability::from(*y)).abs(),
                 _ => unreachable!("mismatched streets"),
             }
         }
@@ -197,19 +195,12 @@ impl rbp_database::Schema for Metric {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            rbp_database::leaked(format!(
-                "COPY {} (tri, dx) FROM STDIN BINARY",
-                rbp_database::metric()
-            ))
-        })
+        SQL.get_or_init(|| rbp_database::leaked(format!("COPY {} (tri, dx) FROM STDIN BINARY", rbp_database::metric())))
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::metric()))
-        })
+        SQL.get_or_init(|| rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::metric())))
     }
 
     fn freeze() -> &'static str {

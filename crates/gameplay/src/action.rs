@@ -59,19 +59,14 @@ impl Action {
 impl Action {
     /// Extracts the dealt cards from a Draw action.
     pub fn hand(&self) -> Option<Hand> {
-        if let Action::Draw(hand) = self {
-            Some(*hand)
-        } else {
-            None
-        }
+        if let Action::Draw(hand) = self { Some(*hand) } else { None }
     }
     /// Extracts the chip amount from betting actions.
     pub fn amount(&self) -> Option<Chips> {
         match *self {
-            Action::Call(amount)
-            | Action::Raise(amount)
-            | Action::Shove(amount)
-            | Action::Blind(amount) => Some(amount),
+            Action::Call(amount) | Action::Raise(amount) | Action::Shove(amount) | Action::Blind(amount) => {
+                Some(amount)
+            }
             _ => None,
         }
     }

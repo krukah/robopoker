@@ -13,10 +13,7 @@ pub fn derive_hyper_params(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let ty = &input.ident;
     let raw = ty.to_string();
-    let short = raw
-        .strip_suffix("HyperParams")
-        .unwrap_or(&raw)
-        .to_uppercase();
+    let short = raw.strip_suffix("HyperParams").unwrap_or(&raw).to_uppercase();
     let static_ident = format_ident!("{}", short);
     let expanded = quote! {
         static #static_ident: ::std::sync::OnceLock<#ty> = ::std::sync::OnceLock::new();

@@ -224,15 +224,12 @@ pub fn kys() {
 static INTERRUPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// Optional training deadline from TRAIN_DURATION env var.
 #[cfg(feature = "server")]
-static DEADLINE: std::sync::OnceLock<std::time::Instant> =
-    std::sync::OnceLock::<std::time::Instant>::new();
+static DEADLINE: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::<std::time::Instant>::new();
 /// Check if graceful shutdown was requested (via stdin "Q") or deadline reached.
 #[cfg(feature = "server")]
 pub fn interrupted() -> bool {
     INTERRUPTED.load(std::sync::atomic::Ordering::Relaxed)
-        || DEADLINE
-            .get()
-            .is_some_and(|d| std::time::Instant::now() >= *d)
+        || DEADLINE.get().is_some_and(|d| std::time::Instant::now() >= *d)
 }
 /// No-op interrupt check when server feature disabled.
 #[cfg(not(feature = "server"))]
@@ -262,8 +259,7 @@ pub fn brb() {
     std::thread::spawn(|| {
         loop {
             let buffer = &mut String::new();
-            if std::io::stdin().read_line(buffer).is_ok() && buffer.trim().eq_ignore_ascii_case("Q")
-            {
+            if std::io::stdin().read_line(buffer).is_ok() && buffer.trim().eq_ignore_ascii_case("Q") {
                 tracing::warn!("graceful interrupt requested, finishing current batch...");
                 INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);
                 break;
@@ -278,9 +274,7 @@ fn parse_duration(s: &str) -> Option<std::time::Duration> {
     let (num, unit) = s.split_at(s.len().saturating_sub(1));
     let value: u64 = num
         .parse()
-        .inspect_err(
-            |e| tracing::warn!(input = %num, error = %e, "parse_duration: number parse failed"),
-        )
+        .inspect_err(|e| tracing::warn!(input = %num, error = %e, "parse_duration: number parse failed"))
         .ok()?;
     match unit {
         "s" => Some(std::time::Duration::from_secs(value)),

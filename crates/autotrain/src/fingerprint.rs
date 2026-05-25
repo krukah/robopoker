@@ -32,9 +32,7 @@ impl rbp_database::Schema for Fingerprint {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::fingerprint()))
-        })
+        SQL.get_or_init(|| rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::fingerprint())))
     }
 
     fn indices() -> &'static str {
@@ -85,10 +83,7 @@ impl Fingerprint {
 
     async fn read(client: &Client) -> Option<String> {
         client
-            .query_opt(
-                &format!("SELECT config FROM {} LIMIT 1", rbp_database::fingerprint()),
-                &[],
-            )
+            .query_opt(&format!("SELECT config FROM {} LIMIT 1", rbp_database::fingerprint()), &[])
             .await
             .expect("query fingerprint")
             .map(|row| row.get::<_, String>(0))
@@ -100,13 +95,7 @@ impl Fingerprint {
             .await
             .expect("truncate fingerprint");
         client
-            .execute(
-                &format!(
-                    "INSERT INTO {} (config) VALUES ($1);",
-                    rbp_database::fingerprint(),
-                ),
-                &[&config],
-            )
+            .execute(&format!("INSERT INTO {} (config) VALUES ($1);", rbp_database::fingerprint(),), &[&config])
             .await
             .expect("insert fingerprint");
     }
@@ -116,13 +105,7 @@ fn diff_lines(stored: &str, live: &str) -> String {
     let s = stored.split(';').collect::<std::collections::HashSet<_>>();
     let l = live.split(';').collect::<std::collections::HashSet<_>>();
     s.symmetric_difference(&l)
-        .map(|p| {
-            if s.contains(p) {
-                format!("  - {p}")
-            } else {
-                format!("  + {p}")
-            }
-        })
+        .map(|p| if s.contains(p) { format!("  - {p}") } else { format!("  + {p}") })
         .collect::<Vec<_>>()
         .join("\n")
 }

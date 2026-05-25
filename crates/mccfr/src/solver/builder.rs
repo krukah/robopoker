@@ -144,12 +144,7 @@ where
         #[cfg(debug_assertions)]
         if N::CHECK_RECALL {
             let (edge, game, head) = leaf;
-            let mut past = self
-                .tree
-                .at(head)
-                .into_iter()
-                .map(|a| a.edge())
-                .collect::<Vec<_>>();
+            let mut past = self.tree.at(head).into_iter().map(|a| a.edge()).collect::<Vec<_>>();
             past.reverse();
             past.push(edge);
             let replayed = self.encoder.resume(past, &game);

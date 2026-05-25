@@ -14,11 +14,7 @@ impl CfrEncoder for KuhnEncoder {
 
     fn seed(&self, game: &Self::G) -> Self::I {
         let acting = matches!(game.turn(), KuhnTurn::Player(_));
-        kuhn_info(
-            acting,
-            if acting { game.hole_rank(0) } else { Rank::J },
-            History::Open,
-        )
+        kuhn_info(acting, if acting { game.hole_rank(0) } else { Rank::J }, History::Open)
     }
 
     fn resume<P>(&self, _past: P, game: &Self::G) -> Self::I
@@ -33,22 +29,13 @@ impl CfrEncoder for KuhnEncoder {
         kuhn_info(acting, game.hole_rank(actor), game.history())
     }
 
-    fn branches(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Vec<Leaf<Self::E, Self::G>> {
+    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         match node.game().turn() {
             KuhnTurn::Terminal => vec![],
             KuhnTurn::Chance => node
                 .game()
                 .deals()
-                .map(|c| {
-                    (
-                        KuhnEdge::Deal(c),
-                        node.game().apply(KuhnEdge::Deal(c)),
-                        node.index(),
-                    )
-                })
+                .map(|c| (KuhnEdge::Deal(c), node.game().apply(KuhnEdge::Deal(c)), node.index()))
                 .collect(),
             _ => node.branches(),
         }

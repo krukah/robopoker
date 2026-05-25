@@ -62,13 +62,7 @@ where
     }
     /// Unchecked access to node weight via raw_nodes slice.
     fn raw(&self) -> &'tree (G, I) {
-        unsafe {
-            &self
-                .graph()
-                .raw_nodes()
-                .get_unchecked(self.index.index())
-                .weight
-        }
+        unsafe { &self.graph().raw_nodes().get_unchecked(self.index.index()).weight }
     }
     /// The game state at this node.
     pub fn game(&self) -> &'tree G {
@@ -80,10 +74,7 @@ where
     }
     /// Creates a node handle at a different index in the same tree.
     pub fn at(&self, index: NodeIndex) -> Node<'tree, T, E, G, I> {
-        Self {
-            index,
-            tree: self.tree,
-        }
+        Self { index, tree: self.tree }
     }
     /// Returns parent node and incoming edge, if not at root.
     pub fn up(&self) -> Option<(Node<'tree, T, E, G, I>, &'tree E)> {
@@ -215,13 +206,7 @@ where
     I: CfrInfo<E = E, T = T>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:?} ({}/{})",
-            self.info(),
-            self.index().index(),
-            self.graph().node_count()
-        )
+        write!(f, "{:?} ({}/{})", self.info(), self.index().index(), self.graph().node_count())
     }
 }
 

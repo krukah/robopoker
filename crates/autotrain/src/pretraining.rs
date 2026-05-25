@@ -35,10 +35,7 @@ impl PreTraining {
         Self::derive::<Abstraction>(client).await;
         Self::derive::<Street>(client).await;
         tracing::info!("vacuum analyze all tables");
-        client
-            .batch_execute("VACUUM ANALYZE;")
-            .await
-            .expect("vacuum analyze");
+        client.batch_execute("VACUUM ANALYZE;").await.expect("vacuum analyze");
     }
 
     /// Cluster a street via k-means. Dependencies loaded from postgres.

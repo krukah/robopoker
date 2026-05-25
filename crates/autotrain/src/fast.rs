@@ -37,11 +37,7 @@ impl FastSession {
         let profile = self.solver.profile();
         let epochs = profile.t();
         let infos = profile.encounters_ref().len() as i64;
-        let nodes = profile
-            .encounters_ref()
-            .values()
-            .map(|e| e.len() as i64)
-            .sum::<i64>();
+        let nodes = profile.encounters_ref().values().map(|e| e.len() as i64).sum::<i64>();
         let exploit = *self.exploit.lock().expect("poison");
         let elapsed = self.started.elapsed().as_secs() as i64;
         let stamped = std::time::SystemTime::now()
@@ -53,10 +49,8 @@ impl FastSession {
             "COPY {t} (past, present, choices, geometry, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
             t = rbp_database::staging()
         );
-        let writer = BinaryCopyInWriter::new(
-            self.client.copy_in(&copy).await.expect("copy_in"),
-            NlheProfile::columns(),
-        );
+        let writer =
+            BinaryCopyInWriter::new(self.client.copy_in(&copy).await.expect("copy_in"), NlheProfile::columns());
         futures::pin_mut!(writer);
         for row in self.solver.profile().rows() {
             row.write(writer.as_mut()).await;

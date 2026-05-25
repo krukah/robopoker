@@ -70,10 +70,7 @@ impl Perm {
     }
     /// Index of the k-th set bit in a bitmask.
     fn nth_set_bit(mask: u8, k: u8) -> u8 {
-        (0..8u8)
-            .filter(|bit| mask & (1 << bit) != 0)
-            .nth(k as usize)
-            .unwrap()
+        (0..8u8).filter(|bit| mask & (1 << bit) != 0).nth(k as usize).unwrap()
     }
 
     pub(crate) fn factorial(n: usize) -> u8 {
@@ -223,10 +220,7 @@ mod tests {
         assert_eq!(Perm::of(&[]), Perm::identity());
         let card = Card::try_from("Ah").unwrap();
         assert_eq!(Perm::of(&[card]), Perm::identity());
-        assert_eq!(
-            Perm::from(0).arrange(Hand::from(card)).collect::<Vec<_>>(),
-            vec![card]
-        );
+        assert_eq!(Perm::from(0).arrange(Hand::from(card)).collect::<Vec<_>>(), vec![card]);
     }
     /// FromIterator<Card> agrees with Perm::of
     #[test]

@@ -38,10 +38,7 @@ impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
 impl Lookup {
     /// Looks up the abstraction for a hand isomorphism.
     pub fn lookup(&self, iso: &Isomorphism) -> Abstraction {
-        self.0
-            .get(iso)
-            .cloned()
-            .expect("precomputed abstraction in lookup")
+        self.0.get(iso).cloned().expect("precomputed abstraction in lookup")
     }
 
     /// Generates histograms for all isomorphisms at the previous street.
@@ -126,18 +123,13 @@ impl rbp_database::Schema for Lookup {
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            rbp_database::leaked(format!(
-                "COPY {} (obs, abs) FROM STDIN BINARY",
-                rbp_database::isomorphism()
-            ))
+            rbp_database::leaked(format!("COPY {} (obs, abs) FROM STDIN BINARY", rbp_database::isomorphism()))
         })
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::isomorphism()))
-        })
+        SQL.get_or_init(|| rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::isomorphism())))
     }
 
     fn freeze() -> &'static str {
@@ -158,9 +150,7 @@ impl rbp_database::Streamable for Lookup {
     type Row = (i64, i16);
 
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
-        self.0
-            .into_iter()
-            .map(|(iso, abs)| (i64::from(iso), i16::from(abs)))
+        self.0.into_iter().map(|(iso, abs)| (i64::from(iso), i16::from(abs)))
     }
 }
 

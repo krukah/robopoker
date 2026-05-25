@@ -14,11 +14,7 @@ use rbp_transport::Density;
 pub struct ExternalSampling;
 
 impl SamplingScheme for ExternalSampling {
-    fn sample<T, E, G, I, P>(
-        profile: &P,
-        node: &Node<T, E, G, I>,
-        branches: Vec<Leaf<E, G>>,
-    ) -> Vec<Leaf<E, G>>
+    fn sample<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
@@ -41,11 +37,7 @@ impl SamplingScheme for ExternalSampling {
 }
 
 /// Sample one branch weighted by sampling distribution.
-fn weighted<T, E, G, I, P>(
-    profile: &P,
-    node: &Node<T, E, G, I>,
-    branches: Vec<Leaf<E, G>>,
-) -> Vec<Leaf<E, G>>
+fn weighted<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
 where
     T: CfrTurn,
     E: CfrEdge,

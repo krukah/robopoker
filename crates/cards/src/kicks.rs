@@ -5,18 +5,7 @@ use super::rank::Rank;
 /// After the primary hand ranking is determined, remaining high cards
 /// are used to break ties. The bitmask representation enables fast
 /// lexicographic comparison.
-#[derive(
-    Debug,
-    Clone,
-    Default,
-    Copy,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Debug, Clone, Default, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct Kickers(u16);
 
 /// u32 isomorphism

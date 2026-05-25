@@ -72,11 +72,7 @@ impl<'sesh> Session<'sesh> {
             session.recorder.set_pnl(villain(hero), -to_chips(w));
             session
                 .recorder
-                .flush(
-                    &session.witness,
-                    session.witness.head().board(),
-                    session.witness.head().pot(),
-                )
+                .flush(&session.witness, session.witness.head().board(), session.witness.head().pot())
                 .await;
             return Ok(HandResult {
                 winnings_bb: to_bb(w),
@@ -91,10 +87,7 @@ impl<'sesh> Session<'sesh> {
     }
     /// Hero decides, encodes, sends to API, parses response.
     /// Returns `Some(HandResult)` if the hand is over.
-    async fn act(
-        &mut self,
-        player: &mut dyn rbp_gameroom::Player,
-    ) -> anyhow::Result<Option<HandResult>> {
+    async fn act(&mut self, player: &mut dyn rbp_gameroom::Player) -> anyhow::Result<Option<HandResult>> {
         match self.witness.head().turn() {
             Turn::Terminal => anyhow::bail!("reached terminal without winnings from Slumbot"),
             Turn::Chance => anyhow::bail!("unexpected chance node in session loop"),
@@ -149,11 +142,7 @@ impl<'sesh> Session<'sesh> {
                     self.recorder.set_pnl(p, to_chips(w));
                     self.recorder.set_pnl(villain(self.hero), -to_chips(w));
                     self.recorder
-                        .flush(
-                            &self.witness,
-                            self.witness.head().board(),
-                            self.witness.head().pot(),
-                        )
+                        .flush(&self.witness, self.witness.head().board(), self.witness.head().pot())
                         .await;
                     return Ok(Some(HandResult {
                         winnings_bb: to_bb(w),

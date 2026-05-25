@@ -36,10 +36,7 @@ impl rbp_database::Schema for EpochMeta {
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            rbp_database::leaked(format!(
-                "UPDATE {} SET value = 0 WHERE key = 'current'",
-                rbp_database::epoch()
-            ))
+            rbp_database::leaked(format!("UPDATE {} SET value = 0 WHERE key = 'current'", rbp_database::epoch()))
         })
     }
 

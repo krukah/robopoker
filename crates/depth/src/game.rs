@@ -77,10 +77,7 @@ where
     }
     /// True iff in the middle of the frontier normal-form game (not yet resolved).
     pub fn is_choosing(&self) -> bool {
-        matches!(
-            self.phase,
-            DepthPhase::Frontier(_) | DepthPhase::Internal(_, _)
-        )
+        matches!(self.phase, DepthPhase::Frontier(_) | DepthPhase::Internal(_, _))
     }
 }
 
@@ -118,11 +115,7 @@ where
                 phase: DepthPhase::External(*payoffs, *k, j),
                 ..*self
             },
-            _ => unreachable!(
-                "invalid frontier transition: {:?} + {:?}",
-                self.phase(),
-                edge
-            ),
+            _ => unreachable!("invalid frontier transition: {:?} + {:?}", self.phase(), edge),
         }
     }
 

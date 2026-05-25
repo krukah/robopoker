@@ -34,11 +34,8 @@ fn expand(family: &Family) -> anyhow::Result<Vec<Case>> {
 
     let mut cases = Vec::new();
     for combo in cartesian(&value_lists) {
-        let assignments: HashMap<&str, &serde_json::Value> = keys
-            .iter()
-            .map(|k| k.as_str())
-            .zip(combo.iter().copied())
-            .collect();
+        let assignments: HashMap<&str, &serde_json::Value> =
+            keys.iter().map(|k| k.as_str()).zip(combo.iter().copied()).collect();
         cases.push(instantiate(family, &assignments)?);
     }
     Ok(cases)
@@ -61,10 +58,7 @@ fn cartesian<'a>(lists: &'a [&'a Vec<serde_json::Value>]) -> Vec<Vec<&'a serde_j
     out
 }
 
-fn instantiate(
-    family: &Family,
-    assignments: &HashMap<&str, &serde_json::Value>,
-) -> anyhow::Result<Case> {
+fn instantiate(family: &Family, assignments: &HashMap<&str, &serde_json::Value>) -> anyhow::Result<Case> {
     let mut case = Case {
         name: String::new(),
         category: family.category.clone(),
@@ -110,10 +104,7 @@ fn instantiate(
                 case.edge = s.to_string();
             }
             other => {
-                anyhow::bail!(
-                    "unknown matrix key `{other}` in family `{}`",
-                    family.name_template
-                );
+                anyhow::bail!("unknown matrix key `{other}` in family `{}`", family.name_template);
             }
         }
     }
@@ -147,11 +138,7 @@ fn as_pair(v: &serde_json::Value, key: &str) -> anyhow::Result<Vec<String>> {
 
 /// Substitute `{hand}`, `{hands_a}`, `{hands_b}`, `{history}`, `{edge}` etc
 /// in the template using the per-instance assignments and resolved case fields.
-fn render_name(
-    template: &str,
-    assignments: &HashMap<&str, &serde_json::Value>,
-    case: &Case,
-) -> String {
+fn render_name(template: &str, assignments: &HashMap<&str, &serde_json::Value>, case: &Case) -> String {
     let mut out = template.to_string();
 
     // {hand}
@@ -188,10 +175,7 @@ fn render_name(
     out = out.replace("{history}", history_short);
 
     // {edge}
-    let edge = assignments
-        .get("edge")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&case.edge);
+    let edge = assignments.get("edge").and_then(|v| v.as_str()).unwrap_or(&case.edge);
     out = out.replace("{edge}", edge);
 
     out

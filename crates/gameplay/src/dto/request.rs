@@ -62,12 +62,7 @@ impl From<&Witness> for GetPolicy {
         Self {
             turn: recall.turn(),
             seen: recall.seen(),
-            past: recall
-                .actions()
-                .iter()
-                .filter(|a| a.is_choice())
-                .copied()
-                .collect(),
+            past: recall.actions().iter().filter(|a| a.is_choice()).copied().collect(),
         }
     }
 }

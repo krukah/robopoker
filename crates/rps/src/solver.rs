@@ -150,9 +150,7 @@ mod tests {
             (0..WORLDS)
                 .map(World::from)
                 .map(|w| WorldInfo::new(w, rbp_depth::DepthInfo::<_, 1>::Game(turn)))
-                .map(|i| {
-                    CfrNash::averaged_policy(self, &i, &rbp_depth::DepthEdge::<_, 1>::Game(edge))
-                })
+                .map(|i| CfrNash::averaged_policy(self, &i, &rbp_depth::DepthEdge::<_, 1>::Game(edge)))
                 .sum::<Probability>()
                 / WORLDS as Probability
         }
@@ -255,9 +253,7 @@ mod tests {
 
     #[test]
     fn exploitability() {
-        let e16 = Solver::exploitability(
-            &Rps::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N16),
-        );
+        let e16 = Solver::exploitability(&Rps::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N16));
         println!("N16={:.4}", e16);
         assert!(e16 < 0.03, "2^16 iters: {:.4} >= 0.03", e16);
     }

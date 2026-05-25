@@ -64,10 +64,7 @@ impl From<(Observation, Perm)> for ObservationSeq {
 impl From<(Hole, &[Card])> for ObservationSeq {
     fn from((hole, board): (Hole, &[Card])) -> Self {
         Self {
-            observation: Observation::from((
-                Hand::from(hole),
-                board.iter().copied().collect::<Hand>(),
-            )),
+            observation: Observation::from((Hand::from(hole), board.iter().copied().collect::<Hand>())),
             perm: Perm::of(board),
         }
     }
@@ -95,10 +92,7 @@ mod tests {
     fn identity_board_is_canonical() {
         let obs = Observation::try_from("AcKs~QhJhTd").unwrap();
         let seq = ObservationSeq::from(obs);
-        assert_eq!(
-            seq.board().cards().collect::<Vec<_>>(),
-            Vec::<Card>::from(*obs.public())
-        );
+        assert_eq!(seq.board().cards().collect::<Vec<_>>(), Vec::<Card>::from(*obs.public()));
     }
     #[test]
     fn from_ordered_board() {

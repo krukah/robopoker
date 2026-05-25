@@ -100,13 +100,10 @@ impl KuhnGame {
 
     pub fn all_roots() -> impl Iterator<Item = Self> {
         Card::ALL.into_iter().flat_map(|c0| {
-            Card::ALL
-                .into_iter()
-                .filter(move |c1| *c1 != c0)
-                .map(move |c1| Self {
-                    hole: [c0, c1],
-                    node: Node::Open,
-                })
+            Card::ALL.into_iter().filter(move |c1| *c1 != c0).map(move |c1| Self {
+                hole: [c0, c1],
+                node: Node::Open,
+            })
         })
     }
 }

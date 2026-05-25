@@ -3,18 +3,12 @@ use clap::Parser;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub enum Query {
-    #[command(
-        about = "Find the abstractions of any given observation",
-        alias = "abs"
-    )]
+    #[command(about = "Find the abstractions of any given observation", alias = "abs")]
     Abstraction {
         #[arg(required = true)]
         target: String,
     },
-    #[command(
-        about = "Find the distance between two targets (obs~obs or abs~abs)",
-        alias = "dst"
-    )]
+    #[command(about = "Find the distance between two targets (obs~obs or abs~abs)", alias = "dst")]
     Distance {
         #[arg(required = true)]
         target1: String,
@@ -37,26 +31,17 @@ pub enum Query {
         #[arg(required = true)]
         target: String,
     },
-    #[command(
-        about = "Find the equity of any given observation or abstraction",
-        alias = "eqt"
-    )]
+    #[command(about = "Find the equity of any given observation or abstraction", alias = "eqt")]
     Equity {
         #[arg(required = true)]
         target: String,
     },
-    #[command(
-        about = "Find the population of any given observation or abstraction",
-        alias = "pop"
-    )]
+    #[command(about = "Find the population of any given observation or abstraction", alias = "pop")]
     Population {
         #[arg(required = true)]
         target: String,
     },
-    #[command(
-        about = "Find the histogram of any given observation or abstraction",
-        alias = "hst"
-    )]
+    #[command(about = "Find the histogram of any given observation or abstraction", alias = "hst")]
     Composition {
         #[arg(required = true)]
         target: String,
@@ -71,26 +56,17 @@ pub enum Query {
         #[arg(required = true)]
         value: u8,
     },
-    #[command(
-        about = "Convert an integer to an Abstraction representation",
-        alias = "abi"
-    )]
+    #[command(about = "Convert an integer to an Abstraction representation", alias = "abi")]
     AbsFromInt {
         #[arg(required = true)]
         value: i16,
     },
-    #[command(
-        about = "Convert an integer to an Observation representation",
-        alias = "obi"
-    )]
+    #[command(about = "Convert an integer to an Observation representation", alias = "obi")]
     ObsFromInt {
         #[arg(required = true)]
         value: i64,
     },
-    #[command(
-        about = "Convert an integer to an Isomorphism representation",
-        alias = "iso"
-    )]
+    #[command(about = "Convert an integer to an Isomorphism representation", alias = "iso")]
     Isomorphism {
         #[arg(required = true)]
         value: i64,

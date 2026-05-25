@@ -209,20 +209,14 @@ mod tests {
     }
     #[test]
     fn clear_resets() {
-        let mut seq = Card::parse("Qh 5d Td")
-            .unwrap()
-            .into_iter()
-            .collect::<HandSeq>();
+        let mut seq = Card::parse("Qh 5d Td").unwrap().into_iter().collect::<HandSeq>();
         seq.clear();
         assert_eq!(seq.size(), 0);
         assert_eq!(seq.perm(), Perm::identity());
     }
     #[test]
     fn ref_into_iter() {
-        let seq = Card::parse("Td Qh 5d")
-            .unwrap()
-            .into_iter()
-            .collect::<HandSeq>();
+        let seq = Card::parse("Td Qh 5d").unwrap().into_iter().collect::<HandSeq>();
         let first = (&seq).into_iter().collect::<Vec<_>>();
         let second = (&seq).into_iter().collect::<Vec<_>>();
         assert_eq!(first, second);

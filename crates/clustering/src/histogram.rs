@@ -207,8 +207,7 @@ impl From<Observation> for Histogram {
 impl From<Vec<Abstraction>> for Histogram {
     fn from(a: Vec<Abstraction>) -> Self {
         let street = a.first().unwrap().street();
-        a.into_iter()
-            .fold(Histogram::empty(street), Histogram::increment)
+        a.into_iter().fold(Histogram::empty(street), Histogram::increment)
     }
 }
 

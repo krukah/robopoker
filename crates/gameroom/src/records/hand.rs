@@ -86,12 +86,7 @@ mod schema {
 
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-            SQL.get_or_init(|| {
-                leaked(format!(
-                    "CREATE INDEX IF NOT EXISTS idx_hands_room ON {} (room_id);",
-                    hands()
-                ))
-            })
+            SQL.get_or_init(|| leaked(format!("CREATE INDEX IF NOT EXISTS idx_hands_room ON {} (room_id);", hands())))
         }
 
         fn copy() -> &'static str {

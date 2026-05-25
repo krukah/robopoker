@@ -10,10 +10,7 @@ pub async fn status(api: web::Data<TrainingAPI>) -> impl Responder {
         Ok(s) => HttpResponse::Ok().json(s),
     }
 }
-pub async fn snapshots(
-    api: web::Data<TrainingAPI>,
-    req: web::Json<GetSnapshots>,
-) -> impl Responder {
+pub async fn snapshots(api: web::Data<TrainingAPI>, req: web::Json<GetSnapshots>) -> impl Responder {
     match api.snapshots(req.limit, req.offset).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(s) => HttpResponse::Ok().json(s),
@@ -43,10 +40,7 @@ pub async fn hot(api: web::Data<TrainingAPI>, req: web::Json<GetColdHot>) -> imp
         Ok(s) => HttpResponse::Ok().json(s),
     }
 }
-pub async fn convergence(
-    api: web::Data<TrainingAPI>,
-    req: web::Json<GetSnapshots>,
-) -> impl Responder {
+pub async fn convergence(api: web::Data<TrainingAPI>, req: web::Json<GetSnapshots>) -> impl Responder {
     match api.convergence(req.limit).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(s) => HttpResponse::Ok().json(s),

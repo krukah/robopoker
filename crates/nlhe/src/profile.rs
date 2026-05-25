@@ -33,10 +33,12 @@ impl rbp_database::Schema for NlheProfile {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| rbp_database::leaked(format!(
-            "COPY {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
-            rbp_database::blueprint()
-        )))
+        SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "COPY {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
+                rbp_database::blueprint()
+            ))
+        })
     }
 
     fn creates() -> &'static str {
@@ -63,20 +65,20 @@ impl rbp_database::Schema for NlheProfile {
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = rbp_database::blueprint();
-        SQL.get_or_init(|| rbp_database::leaked(format!(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_{t}_upsert  ON {t} (present, past, choices, geometry, edge);
+        SQL.get_or_init(|| {
+            rbp_database::leaked(format!(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_{t}_upsert  ON {t} (present, past, choices, geometry, edge);
              CREATE        INDEX IF NOT EXISTS idx_{t}_bucket  ON {t} (present, past, choices, geometry);
              CREATE        INDEX IF NOT EXISTS idx_{t}_present ON {t} (present);
              CREATE        INDEX IF NOT EXISTS idx_{t}_edge    ON {t} (edge);
              CREATE        INDEX IF NOT EXISTS idx_{t}_past    ON {t} (past);"
-        )))
+            ))
+        })
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::blueprint()))
-        })
+        SQL.get_or_init(|| rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::blueprint())))
     }
 
     fn freeze() -> &'static str {
@@ -96,10 +98,7 @@ impl rbp_database::Schema for NlheProfile {
 impl rbp_database::Hydrate for NlheProfile {
     async fn hydrate(client: std::sync::Arc<tokio_postgres::Client>) -> Self {
         tracing::info!("{:<32}{:<32}", "loading blueprint", "from database");
-        let epoch_sql = format!(
-            "SELECT value FROM {} WHERE key = 'current'",
-            rbp_database::epoch()
-        );
+        let epoch_sql = format!("SELECT value FROM {} WHERE key = 'current'", rbp_database::epoch());
         let epochs = client
             .query_opt(&epoch_sql, &[])
             .await
@@ -133,11 +132,7 @@ impl rbp_database::Hydrate for NlheProfile {
                 .entry(edge)
                 .or_insert(Encounter::new(weight, regret, payoff, visits));
         }
-        tracing::info!(
-            "{:<32}{:<32}",
-            format!("{} infos", encounters.len()),
-            "from database"
-        );
+        tracing::info!("{:<32}{:<32}", format!("{} infos", encounters.len()), "from database");
         tracing::info!("{:<32}{:<32}", format!("{} iters", epochs), "from database");
         Self {
             epochs,

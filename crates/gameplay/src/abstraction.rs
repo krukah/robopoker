@@ -139,14 +139,8 @@ impl TryFrom<&str> for Abstraction {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let s = s.trim().split(Self::DELIM).collect::<Vec<_>>();
-        let a = s
-            .first()
-            .copied()
-            .ok_or_else(|| anyhow::anyhow!("broken delimiter"))?;
-        let b = s
-            .get(1)
-            .copied()
-            .ok_or_else(|| anyhow::anyhow!("broken delimiter"))?;
+        let a = s.first().copied().ok_or_else(|| anyhow::anyhow!("broken delimiter"))?;
+        let b = s.get(1).copied().ok_or_else(|| anyhow::anyhow!("broken delimiter"))?;
         let street = Street::try_from(a).map_err(|e| anyhow::anyhow!(e))?;
         let index = usize::from_str_radix(b, 16).map_err(|e| anyhow::anyhow!(e))?;
         Ok(Abstraction::from((street, index)))
@@ -155,13 +149,7 @@ impl TryFrom<&str> for Abstraction {
 
 impl std::fmt::Display for Abstraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}{}{:02x}",
-            self.street().symbol(),
-            Self::DELIM,
-            self.index()
-        )
+        write!(f, "{}{}{:02x}", self.street().symbol(), Self::DELIM, self.index())
     }
 }
 

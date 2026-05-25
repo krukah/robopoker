@@ -28,9 +28,7 @@
 /// - **Slumbot one-container runner**: load once in
 ///   `rbp_slumbot::Runtime::run`; share across all spawned variant tasks.
 #[cfg(feature = "database")]
-pub async fn hydrate_blueprint(
-    client: std::sync::Arc<tokio_postgres::Client>,
-) -> &'static rbp_nlhe::Flagship {
+pub async fn hydrate_blueprint(client: std::sync::Arc<tokio_postgres::Client>) -> &'static rbp_nlhe::Flagship {
     use rbp_database::Hydrate;
     Box::leak(Box::new(rbp_nlhe::Flagship::hydrate(client).await))
 }

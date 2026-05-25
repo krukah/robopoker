@@ -90,9 +90,7 @@ pub trait AsyncProfile: Send + Sync {
             .iter()
             .zip(policies.iter())
             .zip(samples.iter())
-            .fold((1.0, 1.0), |(cf, sm), (((_, e), pol), smp)| {
-                (cf * pol.density(e), sm * smp.density(e))
-            });
+            .fold((1.0, 1.0), |(cf, sm), (((_, e), pol), smp)| (cf * pol.density(e), sm * smp.density(e)));
         cf / sm
     }
     /// Async recursive DFS accumulating reach during descent.
@@ -110,16 +108,8 @@ pub trait AsyncProfile: Send + Sync {
         }
         let chance = node.game().turn() == Self::T::chance();
         let walker = node.game().turn() == self.traverser();
-        let policy = if !chance {
-            Some(self.policy(node.info()).await)
-        } else {
-            None
-        };
-        let sample = if !chance && !walker {
-            Some(self.sample(node.info()).await)
-        } else {
-            None
-        };
+        let policy = if !chance { Some(self.policy(node.info()).await) } else { None };
+        let sample = if !chance && !walker { Some(self.sample(node.info()).await) } else { None };
         let mut total = 0.0;
         for (child, edge) in node.edges() {
             let r = rel * policy.as_ref().map_or(1.0, |p| p.density(edge));
@@ -131,10 +121,7 @@ pub trait AsyncProfile: Send + Sync {
     /// Fused regret + EV in one pass per information set.
     /// Per root: one ancestor_reach, one policy fetch, recursed_value per edge,
     /// then derives both regret and EV without redundant tree traversal.
-    async fn dfs(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> (Policy<Self::E>, Utility) {
+    async fn dfs(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> (Policy<Self::E>, Utility) {
         let span = infoset.span();
         let mut regrets = std::collections::HashMap::<Self::E, Utility>::new();
         let mut payoff = 0.0;
@@ -146,10 +133,7 @@ pub trait AsyncProfile: Send + Sync {
                 let v = reach * self.recursed_value(root, &root.at(child), 1.0, 1.0).await;
                 actions.push((*edge, v));
             }
-            let ev = actions
-                .iter()
-                .map(|(e, v)| policy.density(e) * v)
-                .sum::<Utility>();
+            let ev = actions.iter().map(|(e, v)| policy.density(e) * v).sum::<Utility>();
             payoff += ev;
             for (edge, cfv) in actions {
                 debug_assert!(!cfv.is_nan());
@@ -166,41 +150,27 @@ pub trait AsyncProfile: Send + Sync {
         let policy = self.policy(root.info()).await;
         let mut total = 0.0;
         for (child, edge) in root.edges() {
-            total +=
-                policy.density(edge) * self.recursed_value(root, &root.at(child), 1.0, 1.0).await;
+            total += policy.density(edge) * self.recursed_value(root, &root.at(child), 1.0, 1.0).await;
         }
         reach * total
     }
     /// Counterfactual value of taking an action at a node.
-    async fn cfactual_value(
-        &self,
-        root: &Node<'_, Self::T, Self::E, Self::G, Self::I>,
-        edge: &Self::E,
-    ) -> Utility {
+    async fn cfactual_value(&self, root: &Node<'_, Self::T, Self::E, Self::G, Self::I>, edge: &Self::E) -> Utility {
         debug_assert!(self.traverser() == root.game().turn());
         let reach = self.ancestor_reach(root).await;
         let child = root.step(edge).expect("edge belongs to outgoing branches");
         reach * self.recursed_value(root, &child, 1.0, 1.0).await
     }
     /// Expected value of an information set under current strategy.
-    async fn infoset_value(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Utility {
+    async fn infoset_value(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Utility {
         self.dfs(infoset).await.1
     }
     /// Compute regret gains for all edges in an information set.
-    async fn regret_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
+    async fn regret_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         self.dfs(infoset).await.0
     }
     /// Compute policy vector for an information set.
-    async fn policy_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
+    async fn policy_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         self.policy(&infoset.info()).await
     }
 }
@@ -270,10 +240,7 @@ where
         CfrFlow::recursed_value(self, root, node, rel, smp)
     }
 
-    async fn dfs(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> (Policy<Self::E>, Utility) {
+    async fn dfs(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> (Policy<Self::E>, Utility) {
         CfrFlow::dfs(self, infoset)
     }
 
@@ -281,32 +248,19 @@ where
         CfrFlow::expected_value(self, root)
     }
 
-    async fn cfactual_value(
-        &self,
-        root: &Node<'_, Self::T, Self::E, Self::G, Self::I>,
-        edge: &Self::E,
-    ) -> Utility {
+    async fn cfactual_value(&self, root: &Node<'_, Self::T, Self::E, Self::G, Self::I>, edge: &Self::E) -> Utility {
         CfrFlow::cfactual_value(self, root, edge)
     }
 
-    async fn infoset_value(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Utility {
+    async fn infoset_value(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Utility {
         CfrFlow::infoset_value(self, infoset)
     }
 
-    async fn regret_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
+    async fn regret_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         CfrFlow::regret_vector(self, infoset)
     }
 
-    async fn policy_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
+    async fn policy_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         CfrFlow::policy_vector(self, infoset)
     }
 }

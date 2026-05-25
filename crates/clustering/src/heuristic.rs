@@ -51,10 +51,7 @@ impl Coupling for Heuristic<'_> {
 
     fn flow(&self, x: &Self::X, y: &Self::Y) -> Probability {
         let index = &Pair::from((&**x, &**y));
-        self.plan
-            .get(index)
-            .copied()
-            .expect("missing in transport plan")
+        self.plan.get(index).copied().expect("missing in transport plan")
     }
 
     fn minimize(mut self) -> Self {

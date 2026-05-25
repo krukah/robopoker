@@ -8,9 +8,7 @@ use super::rank::Rank;
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(feature = "shortdeck")]
-#[derive(
-    Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum Ranking {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers
@@ -31,9 +29,7 @@ pub enum Ranking {
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(not(feature = "shortdeck"))]
-#[derive(
-    Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum Ranking {
     HighCard(Rank),        // 4 kickers
     OnePair(Rank),         // 3 kickers
@@ -64,10 +60,9 @@ impl Ranking {
     pub fn mask(&self) -> u16 {
         match *self {
             Ranking::TwoPair(hi, lo) => !(u16::from(hi) | u16::from(lo)),
-            Ranking::HighCard(hi)
-            | Ranking::OnePair(hi)
-            | Ranking::FourOAK(hi)
-            | Ranking::ThreeOAK(hi) => !(u16::from(hi)),
+            Ranking::HighCard(hi) | Ranking::OnePair(hi) | Ranking::FourOAK(hi) | Ranking::ThreeOAK(hi) => {
+                !(u16::from(hi))
+            }
             _ => unreachable!(),
         }
     }

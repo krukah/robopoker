@@ -30,9 +30,7 @@ where
     P: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Lattice")
-            .field("pairs", &self.pairs)
-            .finish()
+        f.debug_struct("Lattice").field("pairs", &self.pairs).finish()
     }
 }
 
@@ -62,10 +60,7 @@ where
     {
         let mut pairs = iter.into_iter().collect::<Vec<_>>();
         assert!(!pairs.is_empty(), "Lattice must be non-empty");
-        assert!(
-            pairs.iter().all(|(s, _)| s.is_finite()),
-            "Lattice scalars must be finite",
-        );
+        assert!(pairs.iter().all(|(s, _)| s.is_finite()), "Lattice scalars must be finite",);
         pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("finite scalar keys"));
         assert!(
             pairs.windows(2).all(|w| w[0].0 < w[1].0),
@@ -142,12 +137,7 @@ where
         let i = self
             .scalars()
             .enumerate()
-            .min_by(|(_, a), (_, b)| {
-                (a - x)
-                    .abs()
-                    .partial_cmp(&(b - x).abs())
-                    .expect("finite anchors")
-            })
+            .min_by(|(_, a), (_, b)| (a - x).abs().partial_cmp(&(b - x).abs()).expect("finite anchors"))
             .map(|(i, _)| i)
             .expect("non-empty lattice");
         Anchor::new(i)

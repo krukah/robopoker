@@ -123,11 +123,7 @@ impl LiveGame {
     }
 
     pub fn visible(&self, seat: Position, hero: Position) -> Option<Hole> {
-        if seat == hero {
-            self.hole(seat)
-        } else {
-            self.shown(seat)
-        }
+        if seat == hero { self.hole(seat) } else { self.shown(seat) }
     }
 
     pub fn opening(&self) -> [Chips; N] {

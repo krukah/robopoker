@@ -74,18 +74,13 @@ impl rbp_database::Schema for Future {
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            rbp_database::leaked(format!(
-                "COPY {} (prev, next, dx) FROM STDIN BINARY",
-                rbp_database::transitions()
-            ))
+            rbp_database::leaked(format!("COPY {} (prev, next, dx) FROM STDIN BINARY", rbp_database::transitions()))
         })
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::transitions()))
-        })
+        SQL.get_or_init(|| rbp_database::leaked(format!("TRUNCATE TABLE {};", rbp_database::transitions())))
     }
 
     fn freeze() -> &'static str {

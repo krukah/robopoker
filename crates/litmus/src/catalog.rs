@@ -52,11 +52,7 @@ impl<'a> Catalog<'a> {
 /// Failures at this step are typically (a) bad hand encoding, (b) unknown
 /// reference, (c) board/hole conflict (same card in both), or (d) action
 /// sequence the rules engine considers illegal.
-pub fn build_witness(
-    catalog: &Catalog,
-    hand_ref: &str,
-    history_ref: &str,
-) -> anyhow::Result<Witness> {
+pub fn build_witness(catalog: &Catalog, hand_ref: &str, history_ref: &str) -> anyhow::Result<Witness> {
     let hand = catalog.hand(hand_ref)?;
     let history = catalog.history(history_ref)?;
 
@@ -67,10 +63,9 @@ pub fn build_witness(
         Some(tmpl) => tmpl.replacen('*', &hand.cards, 1),
     };
 
-    let turn = Turn::try_from(history.turn.as_str())
-        .map_err(|e| anyhow::anyhow!("turn `{}`: {e}", history.turn))?;
-    let observation = Observation::try_from(seen_str.as_str())
-        .map_err(|e| anyhow::anyhow!("observation `{seen_str}`: {e:?}"))?;
+    let turn = Turn::try_from(history.turn.as_str()).map_err(|e| anyhow::anyhow!("turn `{}`: {e}", history.turn))?;
+    let observation =
+        Observation::try_from(seen_str.as_str()).map_err(|e| anyhow::anyhow!("observation `{seen_str}`: {e:?}"))?;
     let past = history
         .past
         .iter()

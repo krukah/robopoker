@@ -252,16 +252,11 @@ pub trait Solver: Send + Sync {
     /// Records tree-level telemetry (`tree_size`, increments node
     /// counter) and returns the tree unchanged so it can be partitioned
     /// downstream.
-    fn record_tree(
-        &self,
-        tree: Tree<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Tree<Self::T, Self::E, Self::G, Self::I> {
+    fn record_tree(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let n = tree.n();
         self.inc_nodes(n);
         #[cfg(feature = "server")]
-        rbp_telemetry::metrics::get()
-            .mccfr_tree_size
-            .record(n as u64, &[]);
+        rbp_telemetry::metrics::get().mccfr_tree_size.record(n as u64, &[]);
         tree
     }
 
@@ -281,8 +276,7 @@ pub trait Solver: Send + Sync {
         #[cfg(feature = "server")]
         {
             let tel = rbp_telemetry::metrics::get();
-            tel.mccfr_infosets_per_tree
-                .record(infosets.len() as u64, &[]);
+            tel.mccfr_infosets_per_tree.record(infosets.len() as u64, &[]);
             infosets.iter().for_each(|infoset| {
                 tel.mccfr_infoset_size.record(infoset.size() as u64, &[]);
                 self.inc_infos(1);
@@ -312,10 +306,7 @@ pub trait Solver: Send + Sync {
     /// calculate the regret and policy for each action, along with
     /// the associated [Info] and expected value.
     /// uses fused regret_and_value to avoid redundant tree traversal.
-    fn update_vector(
-        &self,
-        ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Decisions<Self::E, Self::I> {
+    fn update_vector(&self, ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Decisions<Self::E, Self::I> {
         let policy = self.profile().policy_vector(infoset);
         let (regret, payoff) = self.profile().dfs(infoset);
         Decisions {
@@ -368,9 +359,6 @@ pub trait Solver: Send + Sync {
     /// best response is less constrained than per-info-set best response
     /// (Jensen's inequality).
     fn mxploitability(&self, n: usize) -> rbp_core::Utility {
-        (0..n)
-            .map(|_| self.exploitability())
-            .sum::<rbp_core::Utility>()
-            / n as rbp_core::Utility
+        (0..n).map(|_| self.exploitability()).sum::<rbp_core::Utility>() / n as rbp_core::Utility
     }
 }

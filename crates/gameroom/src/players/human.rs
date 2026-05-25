@@ -66,10 +66,6 @@ impl Human {
             .unwrap()
             .parse::<Chips>()
             .unwrap();
-        if bet == max {
-            Action::Shove(max)
-        } else {
-            Action::Raise(bet)
-        }
+        if bet == max { Action::Shove(max) } else { Action::Raise(bet) }
     }
 }

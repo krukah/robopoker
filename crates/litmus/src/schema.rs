@@ -178,9 +178,8 @@ pub struct Family {
 
 /// Load and parse `scenarios.json` from a path.
 pub fn load(path: &std::path::Path) -> anyhow::Result<Scenarios> {
-    let text = std::fs::read_to_string(path)
-        .map_err(|e| anyhow::anyhow!("read {}: {}", path.display(), e))?;
-    let scenarios: Scenarios = serde_json::from_str(&text)
-        .map_err(|e| anyhow::anyhow!("parse {}: {}", path.display(), e))?;
+    let text = std::fs::read_to_string(path).map_err(|e| anyhow::anyhow!("read {}: {}", path.display(), e))?;
+    let scenarios: Scenarios =
+        serde_json::from_str(&text).map_err(|e| anyhow::anyhow!("parse {}: {}", path.display(), e))?;
     Ok(scenarios)
 }

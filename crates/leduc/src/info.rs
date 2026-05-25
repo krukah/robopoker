@@ -18,12 +18,7 @@ pub struct LeducPublic {
 
 impl LeducPublic {
     pub fn new(acting: bool, board: Option<Rank>, r1: Spot, r2: Option<Spot>) -> Self {
-        Self {
-            acting,
-            board,
-            r1,
-            r2,
-        }
+        Self { acting, board, r1, r2 }
     }
 }
 
@@ -94,12 +89,6 @@ impl CfrSecret for Rank {}
 pub type LeducInfo = Composite<LeducPublic, Rank>;
 
 /// Constructor that mirrors the pre-[`Composite`] ergonomics.
-pub fn leduc_info(
-    acting: bool,
-    rank: Rank,
-    board: Option<Rank>,
-    r1: Spot,
-    r2: Option<Spot>,
-) -> LeducInfo {
+pub fn leduc_info(acting: bool, rank: Rank, board: Option<Rank>, r1: Spot, r2: Option<Spot>) -> LeducInfo {
     Composite::new(LeducPublic::new(acting, board, r1, r2), rank)
 }

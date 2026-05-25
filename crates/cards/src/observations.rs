@@ -94,9 +94,7 @@ impl ObservationIterator {
             Street::Pref => Some(Observation::from((self.pocket, Hand::empty()))),
             street => {
                 self.inner = HandIterator::from((street.n_observed() - 2, self.pocket));
-                self.inner
-                    .next()
-                    .map(|public| Observation::from((self.pocket, public)))
+                self.inner.next().map(|public| Observation::from((self.pocket, public)))
             }
         }
     }

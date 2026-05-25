@@ -62,11 +62,7 @@ where
             .map(|(e, p)| format!("{}={:.3}", e, p))
             .collect::<Vec<_>>()
             .join(" ");
-        let entropy = weights
-            .iter()
-            .filter(|p| **p > 0.0)
-            .map(|p| -p * p.ln())
-            .sum::<f32>();
+        let entropy = weights.iter().filter(|p| **p > 0.0).map(|p| -p * p.ln()).sum::<f32>();
         tracing::debug!(
             player = label,
             policy = %policy,

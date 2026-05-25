@@ -244,11 +244,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
         let t = Instant::now();
         let future = layer.future();
         tel.phase(t, phase::FUTURE);
-        Artifacts {
-            lookup,
-            metric,
-            future,
-        }
+        Artifacts { lookup, metric, future }
     }
     /// Build layer dependencies from postgres (not disk).
     async fn build(street: Street, client: &tokio_postgres::Client) -> Self {
@@ -258,9 +254,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
                 metric: Box::new(Metric::default()),
                 kmeans: Box::new(std::array::from_fn(|_| Histogram::empty(Street::Rive))),
                 bounds: vec![Bounds::default(); N].try_into().expect("N"),
-                points: vec![Histogram::empty(Street::Rive); N]
-                    .try_into()
-                    .expect("N"),
+                points: vec![Histogram::empty(Street::Rive); N].try_into().expect("N"),
             }
         } else {
             Self {

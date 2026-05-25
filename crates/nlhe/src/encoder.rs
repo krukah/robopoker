@@ -108,11 +108,7 @@ impl NlheEncoder {
                 Turn::Choice(i) => {
                     let info = self.resume((&story).edges(), &NlheGame::from(game));
                     let dist = profile.averaged_distribution(&info);
-                    let bias = if i == pos {
-                        internal_bias
-                    } else {
-                        external_bias
-                    };
+                    let bias = if i == pos { internal_bias } else { external_bias };
                     let edge = Self::sample_biased(&dist, bias);
                     let action = game.actionize(Edge::from(edge));
                     story.push(Descent(NlheTurn::from(i), edge));
@@ -170,10 +166,7 @@ impl<const W: usize> WorldRestrict<W> for NlheEncoder {
         const MAX_REJECTIONS: usize = 10_000;
         let position = Turn::from(external).position();
         let baseline = Game::from(*observed);
-        let available = Hand::or(
-            Hand::from(baseline.deck()),
-            Hand::from(baseline.seats()[position].cards()),
-        );
+        let available = Hand::or(Hand::from(baseline.deck()), Hand::from(baseline.seats()[position].cards()));
         std::iter::repeat_with(|| Deck::from(available).hole())
             .take(MAX_REJECTIONS)
             .map(|hole| baseline.deal(position, hole))
@@ -204,10 +197,7 @@ impl rbp_database::Hydrate for NlheEncoder {
         tracing::info!("{:<32}{:<32}", "loading isomorphism", "from database");
         let sql = format!("SELECT obs, abs FROM {}", rbp_database::isomorphism());
         let params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![];
-        let stream = client
-            .query_raw(&sql, params)
-            .await
-            .expect("isomorphism query");
+        let stream = client.query_raw(&sql, params).await.expect("isomorphism query");
         futures::pin_mut!(stream);
         let mut lookup = BTreeMap::new();
         let mut count = 0usize;
@@ -218,18 +208,10 @@ impl rbp_database::Hydrate for NlheEncoder {
             lookup.insert(obs, abs);
             count += 1;
             if count.is_multiple_of(10_000_000) {
-                tracing::info!(
-                    "{:<32}{:<32}",
-                    format!("{:>16} isomorphisms", count),
-                    "from database"
-                );
+                tracing::info!("{:<32}{:<32}", format!("{:>16} isomorphisms", count), "from database");
             }
         }
-        tracing::info!(
-            "{:<32}{:<32}",
-            format!("{:>16} isomorphisms", count),
-            "from database"
-        );
+        tracing::info!("{:<32}{:<32}", format!("{:>16} isomorphisms", count), "from database");
         Self(lookup)
     }
 }

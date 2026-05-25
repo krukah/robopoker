@@ -88,9 +88,7 @@ impl HandContext {
         self.actions
             .iter()
             .enumerate()
-            .map(|(i, (pos, action, elapsed))| {
-                Play::new(hand, i as Epoch, f(*pos), *action, *elapsed)
-            })
+            .map(|(i, (pos, action, elapsed))| Play::new(hand, i as Epoch, f(*pos), *action, *elapsed))
             .collect()
     }
 }

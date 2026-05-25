@@ -151,16 +151,13 @@ impl From<i64> for Observation {
                 .map(Card::from)
                 .map(Hand::from)
                 .enumerate()
-                .fold(
-                    (Hand::empty(), Hand::empty()),
-                    |(pocket, public), (i, hand)| {
-                        if i < 2 {
-                            (Hand::add(pocket, hand), public)
-                        } else {
-                            (pocket, Hand::add(public, hand))
-                        }
-                    },
-                ),
+                .fold((Hand::empty(), Hand::empty()), |(pocket, public), (i, hand)| {
+                    if i < 2 {
+                        (Hand::add(pocket, hand), public)
+                    } else {
+                        (pocket, Hand::add(public, hand))
+                    }
+                }),
         )
     }
 }
@@ -218,17 +215,9 @@ impl TryFrom<Vec<Card>> for Observation {
     type Error = String;
 
     fn try_from(cards: Vec<Card>) -> Result<Self, Self::Error> {
-        if cards
-            .iter()
-            .collect::<std::collections::BTreeSet<_>>()
-            .len()
-            == cards.len()
-        {
+        if cards.iter().collect::<std::collections::BTreeSet<_>>().len() == cards.len() {
             match cards.len() {
-                2 | 5 | 6 | 7 => Ok(Self::from((
-                    Hand::from(cards[..2].to_vec()),
-                    Hand::from(cards[2..].to_vec()),
-                ))),
+                2 | 5 | 6 | 7 => Ok(Self::from((Hand::from(cards[..2].to_vec()), Hand::from(cards[2..].to_vec())))),
                 _ => Err(format!("invalid card count: {}", cards.len())),
             }
         } else {
@@ -241,10 +230,7 @@ impl TryFrom<&str> for Observation {
     type Error = String;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let (pocket, public) = s
-            .trim()
-            .split_once(Self::SEPARATOR)
-            .unwrap_or((s.trim(), ""));
+        let (pocket, public) = s.trim().split_once(Self::SEPARATOR).unwrap_or((s.trim(), ""));
         let pocket = Hand::try_from(pocket)?;
         let public = Hand::try_from(public)?;
         if Hand::overlaps(&pocket, &public) {

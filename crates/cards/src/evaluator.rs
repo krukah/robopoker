@@ -114,10 +114,8 @@ impl Evaluator {
     }
 
     fn find_straight_flush(&self) -> Option<Ranking> {
-        self.find_suit_of_flush().and_then(|suit| {
-            self.find_rank_of_straight_flush(suit)
-                .map(Ranking::StraightFlush)
-        })
+        self.find_suit_of_flush()
+            .and_then(|suit| self.find_rank_of_straight_flush(suit).map(Ranking::StraightFlush))
     }
 
     fn find_rank_of_straight(&self, hand: Hand) -> Option<Rank> {

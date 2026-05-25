@@ -35,30 +35,21 @@ impl GameplayAPI {
         let uid = ID::<Member>::from(user);
         let bots = Self::bot_uuids();
         let (rows, population) = match (hero_human, against_human, against, stakes) {
-            (true, _, _, _) => (
-                self.0.eval_pnl_human_hero(&bots, limit, offset).await?,
-                self.0.eval_count_human_hero(&bots).await?,
-            ),
+            (true, _, _, _) => {
+                (self.0.eval_pnl_human_hero(&bots, limit, offset).await?, self.0.eval_count_human_hero(&bots).await?)
+            }
             (_, true, _, _) => (
-                self.0
-                    .eval_pnl_human_against(uid, &bots, limit, offset)
-                    .await?,
+                self.0.eval_pnl_human_against(uid, &bots, limit, offset).await?,
                 self.0.eval_count_human_against(uid, &bots).await?,
             ),
             (_, _, Some(opp), _) => (
-                self.0
-                    .eval_pnl_against(uid, ID::from(opp), limit, offset)
-                    .await?,
+                self.0.eval_pnl_against(uid, ID::from(opp), limit, offset).await?,
                 self.0.eval_count_against(uid, ID::from(opp)).await?,
             ),
-            (_, _, _, Some(s)) => (
-                self.0.eval_pnl_by_stakes(uid, s, limit, offset).await?,
-                self.0.eval_count_by_stakes(uid, s).await?,
-            ),
-            _ => (
-                self.0.eval_pnl(uid, limit, offset).await?,
-                self.0.eval_count(uid).await?,
-            ),
+            (_, _, _, Some(s)) => {
+                (self.0.eval_pnl_by_stakes(uid, s, limit, offset).await?, self.0.eval_count_by_stakes(uid, s).await?)
+            }
+            _ => (self.0.eval_pnl(uid, limit, offset).await?, self.0.eval_count(uid).await?),
         };
         let mut summary = summarize_pnl(&rows);
         summary.population = population as usize;
@@ -77,21 +68,13 @@ impl GameplayAPI {
     ) -> anyhow::Result<AivatDelta> {
         let uid = ID::<Member>::from(user);
         let hands = match (hero_human, against_human, against, stakes) {
-            (true, _, _, _) => {
-                self.0
-                    .eval_hands_human_hero(&Self::bot_uuids(), limit, offset)
-                    .await?
-            }
+            (true, _, _, _) => self.0.eval_hands_human_hero(&Self::bot_uuids(), limit, offset).await?,
             (_, true, _, _) => {
                 self.0
                     .eval_hands_human_against(uid, &Self::bot_uuids(), limit, offset)
                     .await?
             }
-            (_, _, Some(opp), _) => {
-                self.0
-                    .eval_hands_against(uid, ID::from(opp), limit, offset)
-                    .await?
-            }
+            (_, _, Some(opp), _) => self.0.eval_hands_against(uid, ID::from(opp), limit, offset).await?,
             (_, _, _, Some(s)) => self.0.eval_hands_by_stakes(uid, s, limit, offset).await?,
             _ => self.0.eval_hands(uid, limit, offset).await?,
         };
@@ -121,12 +104,7 @@ impl GameplayAPI {
             .join(" ");
         let obs = Observation::from((Hand::from(parts[0].hole()), Hand::from(hand.board())));
         let witness = plays.iter().filter(|p| !p.action().is_blind()).try_fold(
-            Witness::initial_with(
-                Turn::Choice(0),
-                Arrangement::from(obs),
-                stacks(&parts)?,
-                hand.dealer(),
-            ),
+            Witness::initial_with(Turn::Choice(0), Arrangement::from(obs), stacks(&parts)?, hand.dealer()),
             |r, p| r.try_push(p.action()),
         )?;
         let actions = witness
@@ -161,8 +139,5 @@ impl GameplayAPI {
 }
 
 fn seat_of(parts: &[Participant], uid: ID<Member>) -> Option<Position> {
-    parts
-        .iter()
-        .find(|p| p.user() == Some(uid))
-        .map(|p| p.seat())
+    parts.iter().find(|p| p.user() == Some(uid)).map(|p| p.seat())
 }

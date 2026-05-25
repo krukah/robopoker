@@ -6,15 +6,7 @@ use rbp_gameplay::*;
 
 pub async fn summary(api: web::Data<GameplayAPI>, req: web::Json<GetSummary>) -> impl Responder {
     match api
-        .summary(
-            req.user,
-            req.limit,
-            req.offset,
-            req.against,
-            req.stakes,
-            req.hero_human,
-            req.against_human,
-        )
+        .summary(req.user, req.limit, req.offset, req.against, req.stakes, req.hero_human, req.against_human)
         .await
     {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -23,15 +15,7 @@ pub async fn summary(api: web::Data<GameplayAPI>, req: web::Json<GetSummary>) ->
 }
 pub async fn aivat(api: web::Data<GameplayAPI>, req: web::Json<GetSummary>) -> impl Responder {
     match api
-        .aivat(
-            req.user,
-            req.limit,
-            req.offset,
-            req.against,
-            req.stakes,
-            req.hero_human,
-            req.against_human,
-        )
+        .aivat(req.user, req.limit, req.offset, req.against, req.stakes, req.hero_human, req.against_human)
         .await
     {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),

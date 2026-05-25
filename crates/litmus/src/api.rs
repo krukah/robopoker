@@ -36,13 +36,7 @@ impl<O: Ops> Litmus<O> {
         let outcomes = self.run(scenarios).await?;
         let status = self.ops.status().await.ok();
         let grid_usage = self.ops.grid_usage().await.ok();
-        Ok(render::render(
-            api_label,
-            status.as_ref(),
-            scenarios,
-            &outcomes,
-            grid_usage.as_deref(),
-        ))
+        Ok(render::render(api_label, status.as_ref(), scenarios, &outcomes, grid_usage.as_deref()))
     }
 
     pub async fn status(&self) -> anyhow::Result<ApiStatus> {

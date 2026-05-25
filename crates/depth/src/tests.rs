@@ -57,10 +57,7 @@ mod tests {
         type T = MiniTurn;
 
         fn root() -> Self {
-            Self {
-                street: 0,
-                actions: 0,
-            }
+            Self { street: 0, actions: 0 }
         }
 
         fn turn(&self) -> Self::T {
@@ -98,11 +95,7 @@ mod tests {
         }
 
         fn depth(&self) -> usize {
-            if self.turn() == MiniTurn::Chance {
-                self.street + 1
-            } else {
-                self.street
-            }
+            if self.turn() == MiniTurn::Chance { self.street + 1 } else { self.street }
         }
     }
 
@@ -213,11 +206,7 @@ mod tests {
             self.0.seed(game)
         }
 
-        fn info(
-            &self,
-            tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
-            branch: Leaf<Self::E, Self::G>,
-        ) -> Self::I {
+        fn info(&self, tree: &Tree<Self::T, Self::E, Self::G, Self::I>, branch: Leaf<Self::E, Self::G>) -> Self::I {
             self.0.info(tree, branch)
         }
 
@@ -235,16 +224,8 @@ mod tests {
             &self.1
         }
 
-        fn payoffs(
-            &self,
-            prefix: &Prefix<Self::T, Self::E>,
-            game: &Self::G,
-            _: Self::T,
-        ) -> Payoffs<N> {
-            Payoffs::uniform(
-                self.1
-                    .frontier_payoff(&self.resume(prefix.into_iter().edges(), game)),
-            )
+        fn payoffs(&self, prefix: &Prefix<Self::T, Self::E>, game: &Self::G, _: Self::T) -> Payoffs<N> {
+            Payoffs::uniform(self.1.frontier_payoff(&self.resume(prefix.into_iter().edges(), game)))
         }
     }
 
@@ -294,22 +275,13 @@ mod tests {
         let encoder = DepthEncoder::<_, D>::new(&MiniSolver(MiniEncoder, MiniBlueprint), vec![]);
         let profile = LeafMiniProfile;
         let root: DepthGame<_, D> = DepthGame::new(MiniGame::root(), MiniTurn::P0, Some(0));
-        let tree =
-            TreeBuilder::<_, _, _, _, _, _, ExternalSampling>::new(&encoder, &profile, root, 0)
-                .build();
-        assert!(
-            tree.n() > 4,
-            "tree should have frontier expansion: {} nodes",
-            tree.n()
-        );
+        let tree = TreeBuilder::<_, _, _, _, _, _, ExternalSampling>::new(&encoder, &profile, root, 0).build();
+        assert!(tree.n() > 4, "tree should have frontier expansion: {} nodes", tree.n());
         let terminals = (0..tree.n())
             .map(|i| tree.at(petgraph::graph::NodeIndex::new(i)))
             .filter(|n| n.game().turn().is_terminal())
             .count();
-        assert!(
-            terminals > 0,
-            "should have terminal nodes from frontier resolution"
-        );
+        assert!(terminals > 0, "should have terminal nodes from frontier resolution");
     }
 
     #[test]
@@ -342,9 +314,7 @@ mod tests {
         let encoder = DepthEncoder::<_, D>::new(&MiniSolver(MiniEncoder, MiniBlueprint), vec![]);
         let profile = LeafMiniProfile;
         let root: DepthGame<_, D> = DepthGame::new(MiniGame::root(), MiniTurn::P0, Some(0));
-        let tree =
-            TreeBuilder::<_, _, _, _, _, _, ExternalSampling>::new(&encoder, &profile, root, 0)
-                .build();
+        let tree = TreeBuilder::<_, _, _, _, _, _, ExternalSampling>::new(&encoder, &profile, root, 0).build();
         let root_node = tree.at(petgraph::graph::NodeIndex::new(0));
         assert_eq!(root_node.width(), 2, "root should have 2 game branches");
     }

@@ -32,11 +32,7 @@ impl HandIterator {
     }
     /// Tests whether iteration is complete.
     fn exhausted(&self) -> bool {
-        if self.next == 0 {
-            true
-        } else {
-            (64 - 52) > self.next.leading_zeros()
-        }
+        if self.next == 0 { true } else { (64 - 52) > self.next.leading_zeros() }
     }
     /// Gosper's hack for next bit permutation with same popcount.
     ///

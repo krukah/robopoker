@@ -56,20 +56,15 @@ impl EngineCore {
             .into_iter()
             .chain(self.live.dealt())
             .collect::<Vec<_>>();
-        self.live
-            .actions()
-            .iter()
-            .filter(|a| a.is_choice())
-            .cloned()
-            .fold(
-                Witness::initial_with(
-                    Turn::Choice(pos),
-                    Arrangement::from(cards),
-                    self.live.root().buyins(),
-                    self.live.root().dealer().position(),
-                ),
-                |r, a| r.push(a),
-            )
+        self.live.actions().iter().filter(|a| a.is_choice()).cloned().fold(
+            Witness::initial_with(
+                Turn::Choice(pos),
+                Arrangement::from(cards),
+                self.live.root().buyins(),
+                self.live.root().dealer().position(),
+            ),
+            |r, a| r.push(a),
+        )
     }
 
     fn snapshot(&self, pos: Position) -> Snapshot {
@@ -256,12 +251,7 @@ impl Engine<Dealing> {
 
     /// Returns the most recent Draw action, if the last action was a draw.
     pub fn last_draw(&self) -> Option<Action> {
-        self.core
-            .live
-            .actions()
-            .last()
-            .filter(|a| a.is_chance())
-            .copied()
+        self.core.live.actions().last().filter(|a| a.is_chance()).copied()
     }
 
     /// Deal next community cards (chance node).
@@ -278,8 +268,7 @@ impl Engine<Dealing> {
     pub async fn ask(&mut self, pos: Position) -> (Action, Prompt) {
         tracing::debug!(seat = pos, "asking for action");
         // Tell the player actor it's their turn so internal Players can decide.
-        self.core
-            .unicast(pos, Event::Decision(self.core.recall(pos)));
+        self.core.unicast(pos, Event::Decision(self.core.recall(pos)));
         // Push fresh snapshot so the wire learns who to_act is + sees legal moves.
         self.core.push_snapshots();
         let (action, prompt) = self.next_action(pos).await;
@@ -373,11 +362,7 @@ impl Engine<Showdown> {
                 }
             }
         }
-        for p in forced
-            .into_iter()
-            .filter(|p| !showed.contains(p))
-            .collect::<Vec<_>>()
-        {
+        for p in forced.into_iter().filter(|p| !showed.contains(p)).collect::<Vec<_>>() {
             self.reveal(p, true);
             showed.push(p);
         }
@@ -461,9 +446,6 @@ mod tests {
     #[test]
     fn engine_default_is_seating() {
         let engine = Engine::<Seating>::default();
-        assert_eq!(
-            engine.core.live.game().pot(),
-            Game::sblind() + Game::bblind()
-        );
+        assert_eq!(engine.core.live.game().pot(), Game::sblind() + Game::bblind());
     }
 }

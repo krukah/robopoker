@@ -21,8 +21,5 @@ fn main() {
     simplex::generate(&p1snaps, &p2snaps, "target/simplex.html");
     simplex::generate_3d(&p1snaps, &p2snaps, "target/simplex3d.html");
     simplex::generate_dual(&p1snaps, &p2snaps, "target/simplex-dual.html");
-    println!(
-        "wrote target/simplex{{,.3d,-dual}}.html ({} snapshots)",
-        p1snaps.len()
-    );
+    println!("wrote target/simplex{{,.3d,-dual}}.html ({} snapshots)", p1snaps.len());
 }

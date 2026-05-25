@@ -14,11 +14,7 @@ pub fn parse_card(s: &str) -> anyhow::Result<Card> {
 }
 
 pub fn parse_hole(cards: &[String]) -> anyhow::Result<(Card, Card)> {
-    anyhow::ensure!(
-        cards.len() == 2,
-        "expected 2 hole cards, got {}",
-        cards.len()
-    );
+    anyhow::ensure!(cards.len() == 2, "expected 2 hole cards, got {}", cards.len());
     Ok((parse_card(&cards[0])?, parse_card(&cards[1])?))
 }
 
@@ -79,11 +75,7 @@ impl ParseState {
     fn fraction(&self, total: i64) -> f64 {
         let above = total - self.stakes[self.actor] - self.to_call();
         let denom = self.pot + self.to_call();
-        if denom <= 0 || above <= 0 {
-            0.0
-        } else {
-            above as f64 / denom as f64
-        }
+        if denom <= 0 || above <= 0 { 0.0 } else { above as f64 / denom as f64 }
     }
     /// Advance through a slumbot action string prefix.
     fn advance(&mut self, actions: &str) {
@@ -132,10 +124,7 @@ impl ParseState {
                 Ok((Action::Call(game.to_call()), 1))
             }
             b'b' => {
-                let n = token[1..]
-                    .chars()
-                    .take_while(|c| c.is_ascii_digit())
-                    .count();
+                let n = token[1..].chars().take_while(|c| c.is_ascii_digit()).count();
                 anyhow::ensure!(n > 0, "b without amount");
                 let total = token[1..1 + n].parse::<i64>()?;
                 let fraction = self.fraction(total);
@@ -177,8 +166,7 @@ pub fn parse_actions(raw: &str, old: &str, game: &Game) -> anyhow::Result<Vec<Ac
 
 /// Convert a pot-fraction raise into an Action in our chip scale.
 fn fraction_to_action(fraction: f64, game: &Game) -> Action {
-    let total =
-        game.to_call() as i64 + (fraction * (game.pot() + game.to_call()) as f64).round() as i64;
+    let total = game.to_call() as i64 + (fraction * (game.pot() + game.to_call()) as f64).round() as i64;
     if total >= game.actor().stack() as i64 {
         Action::Shove(game.to_shove())
     } else if total < game.to_raise() as i64 {
@@ -198,11 +186,7 @@ pub(crate) fn encode_action(action: Action, game: &Game) -> String {
         Action::Shove(n) | Action::Raise(n) => {
             let call = game.to_call() as i64;
             let base = game.pot() as i64 + call;
-            let fraction = if base > 0 {
-                (n as i64 - call) as f64 / base as f64
-            } else {
-                1.0
-            };
+            let fraction = if base > 0 { (n as i64 - call) as f64 / base as f64 } else { 1.0 };
             let p = game.turn().position();
             let scall = call * SCALE;
             let sbase = base * SCALE;

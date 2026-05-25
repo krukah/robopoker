@@ -22,10 +22,7 @@ pub fn render(
             .exploit
             .map(|v| format!("{v:.1}"))
             .unwrap_or_else(|| "n/a".to_string());
-        out.push_str(&format!(
-            "**Blueprint**: epoch={}  infosets={}  sum_regret={exp}\n\n",
-            s.epoch, s.infosets,
-        ));
+        out.push_str(&format!("**Blueprint**: epoch={}  infosets={}  sum_regret={exp}\n\n", s.epoch, s.infosets,));
     }
 
     let mut pass = 0usize;
@@ -131,11 +128,7 @@ fn render_grid_usage(rows: &[ApiGridUsage], out: &mut String) {
             if r.street == street && r.edge == "!" {
                 let n_dec = r.n_decisions_with_edge;
                 let n_dom = r.n_dominant;
-                let dom_pct = if n_dec > 0 {
-                    (n_dom as f64) / (n_dec as f64) * 100.0
-                } else {
-                    0.0
-                };
+                let dom_pct = if n_dec > 0 { (n_dom as f64) / (n_dec as f64) * 100.0 } else { 0.0 };
                 out.push_str(&format!(
                     "| {} | {} | {} | {:.1}% | {:.1}% | {:.2}% |\n",
                     street,

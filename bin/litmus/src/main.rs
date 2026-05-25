@@ -49,13 +49,7 @@ async fn main() -> anyhow::Result<()> {
     let api_label = format!("rbp-{} {}", rbp_core::regime(), rbp_core::version());
     let status = litmus.status().await.ok();
     let grid_usage = litmus.grid_usage().await.ok();
-    let report = rbp_litmus::render(
-        &api_label,
-        status.as_ref(),
-        &scenarios,
-        &outcomes,
-        grid_usage.as_deref(),
-    );
+    let report = rbp_litmus::render(&api_label, status.as_ref(), &scenarios, &outcomes, grid_usage.as_deref());
 
     if let Some(path) = &cli.out {
         if let Some(parent) = path.parent() {

@@ -49,9 +49,7 @@ impl From<(&Witness, Hole)> for Perfect {
     fn from((witness, hole): (&Witness, Hole)) -> Self {
         debug_assert!(witness.base().n() == 2);
         let preblind = witness.base().fix(witness.turn(), hole);
-        let root = Game::blinds()
-            .into_iter()
-            .fold(preblind, |mut g, a| g.consume(a));
+        let root = Game::blinds().into_iter().fold(preblind, |mut g, a| g.consume(a));
         Self {
             root,
             actions: witness.actions().to_vec(),
@@ -83,12 +81,7 @@ impl Perfect {
                 .chain(self.actions.iter().filter_map(|a| a.hand()).flatten())
                 .collect::<Vec<Card>>(),
         );
-        let actions = self
-            .actions
-            .iter()
-            .filter(|a| a.is_choice())
-            .cloned()
-            .collect();
+        let actions = self.actions.iter().filter(|a| a.is_choice()).cloned().collect();
         Witness::try_arrange(hero, reveals, actions).expect("valid erase")
     }
 }

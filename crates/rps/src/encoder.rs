@@ -34,13 +34,7 @@ impl RpsEncoder {
 }
 
 impl<const W: usize> WorldRestrict<W> for RpsEncoder {
-    fn restrict(
-        &self,
-        _: Self::T,
-        _: World,
-        _: &Belief<Secret<Self>, W>,
-        observed: &Self::G,
-    ) -> Self::G {
+    fn restrict(&self, _: Self::T, _: World, _: &Belief<Secret<Self>, W>, observed: &Self::G) -> Self::G {
         *observed
     }
 }

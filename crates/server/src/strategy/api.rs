@@ -119,9 +119,7 @@ impl StrategyAPI {
 
     pub async fn policy(&self, recall: Witness) -> anyhow::Result<Option<ApiStrategy>> {
         let recall = recall.validate()?;
-        Ok(rbp_nlhe::lookup(&self.client, &recall)
-            .await
-            .map(api_strategy_from))
+        Ok(rbp_nlhe::lookup(&self.client, &recall).await.map(api_strategy_from))
     }
 
     /// Runs a depth-limited subgame solve from the recall's current

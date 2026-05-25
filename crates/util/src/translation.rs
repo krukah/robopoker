@@ -93,11 +93,7 @@ pub fn translation() -> Translation {
 /// queries it. Panics if called twice with different values.
 pub fn init_translation(l: Translation) {
     if let Err(existing) = TRANSLATION.set(l) {
-        assert_eq!(
-            existing, l,
-            "translation already set to {:?}, cannot change to {:?}",
-            existing, l,
-        );
+        assert_eq!(existing, l, "translation already set to {:?}, cannot change to {:?}", existing, l,);
     }
 }
 
@@ -126,14 +122,8 @@ mod tests {
     fn snap_picks_nearest() {
         let l = lat([0.5, 1.0, 2.0]);
         let rng = &mut seeded();
-        assert_eq!(
-            Translation::Snap.resolve(obs(0.4), &l, (), rng),
-            Translated::Snap(())
-        );
-        assert_eq!(
-            Translation::Snap.resolve(obs(0.8), &l, (), rng),
-            Translated::Snap(())
-        );
+        assert_eq!(Translation::Snap.resolve(obs(0.4), &l, (), rng), Translated::Snap(()));
+        assert_eq!(Translation::Snap.resolve(obs(0.8), &l, (), rng), Translated::Snap(()));
         assert_eq!(l.snap(obs(0.4)), Anchor::new(0));
         assert_eq!(l.snap(obs(0.8)), Anchor::new(1));
         assert_eq!(l.snap(obs(3.0)), Anchor::new(2));
@@ -175,25 +165,14 @@ mod tests {
         let empirical = lo_hits as f64 / trials as f64;
         let bracket = l.bracket(obs(0.75));
         let expected = l.pharmonic(bracket, obs(0.75));
-        assert!(
-            (empirical - expected).abs() < 0.005,
-            "empirical {empirical} vs expected {expected}",
-        );
+        assert!((empirical - expected).abs() < 0.005, "empirical {empirical} vs expected {expected}",);
     }
 
     #[test]
     fn resolve_returns_payload() {
-        let l: Lattice<T, &'static str> = [(0.5, "lo"), (1.0, "mid"), (2.0, "hi")]
-            .into_iter()
-            .collect();
+        let l: Lattice<T, &'static str> = [(0.5, "lo"), (1.0, "mid"), (2.0, "hi")].into_iter().collect();
         let rng = &mut seeded();
-        assert_eq!(
-            Translation::Snap.resolve(obs(0.4), &l, 0u32, rng),
-            Translated::Snap("lo"),
-        );
-        assert_eq!(
-            Translation::Phargmax.resolve(obs(1.9), &l, 0u32, rng),
-            Translated::Snap("hi"),
-        );
+        assert_eq!(Translation::Snap.resolve(obs(0.4), &l, 0u32, rng), Translated::Snap("lo"),);
+        assert_eq!(Translation::Phargmax.resolve(obs(1.9), &l, 0u32, rng), Translated::Snap("hi"),);
     }
 }

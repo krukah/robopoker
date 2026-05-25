@@ -29,11 +29,7 @@ pub fn version() -> Version {
 /// Panics if called twice with different values.
 pub fn init_version(v: Version) {
     if let Err(existing) = VERSION.set(v) {
-        assert_eq!(
-            existing, v,
-            "version already set to {:?}, cannot change to {:?}",
-            existing, v
-        );
+        assert_eq!(existing, v, "version already set to {:?}, cannot change to {:?}", existing, v);
     }
 }
 

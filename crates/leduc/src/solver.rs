@@ -3,15 +3,7 @@ use rbp_depth::*;
 use rbp_mccfr::*;
 use rbp_world::*;
 
-mccfr!(
-    Leduc,
-    LeducEncoder,
-    LeducTurn,
-    LeducEdge,
-    LeducGame,
-    LeducInfo,
-    1
-);
+mccfr!(Leduc, LeducEncoder, LeducTurn, LeducEdge, LeducGame, LeducInfo, 1);
 
 impl<R, W, S, const D: usize> DepthSampler<D> for Leduc<R, W, S>
 where
@@ -142,12 +134,7 @@ mod tests {
             let s = format!("{}", info);
             if s == "J|" || s == "Q|" || s == "K|" {
                 for edge in edges.keys() {
-                    println!(
-                        "  {} {:>5}  avg={:.3}",
-                        s,
-                        edge,
-                        profile.averaged_policy(info, edge)
-                    );
+                    println!("  {} {:>5}  avg={:.3}", s, edge, profile.averaged_policy(info, edge));
                 }
             }
         }
@@ -208,8 +195,7 @@ mod tests {
     /// Subgame with prefix replaying P0's check converges.
     #[test]
     fn subgame_after_check() {
-        let blueprint =
-            &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = LeducTurn::Player(0);
         let root = LeducGame::root();
         let entry = root.apply(LeducEdge::Check);
@@ -229,8 +215,7 @@ mod tests {
     /// Subgame with prefix replaying P0's raise converges.
     #[test]
     fn subgame_after_raise() {
-        let blueprint =
-            &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = LeducTurn::Player(0);
         let root = LeducGame::root();
         let entry = root.apply(LeducEdge::Raise);
@@ -267,8 +252,7 @@ mod tests {
     /// converge with the conditioned belief.
     #[test]
     fn subgame_with_reach_conditioned_posterior() {
-        let blueprint =
-            &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let internal = LeducTurn::Player(0);
         let external = LeducTurn::Player(1);
         let root = LeducGame::root();
@@ -311,15 +295,11 @@ mod tests {
     #[test]
     fn depth_limited_tree_has_front_nodes() {
         use rbp_depth::*;
-        let blueprint =
-            &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let encoder = DepthEncoder::<_, 4>::new(blueprint, vec![]);
         let profile: DepthView<'_, _, 4> = DepthView::new(DepthSampler::<4>::blueprint(blueprint));
-        let root: DepthGame<_, 4> =
-            DepthGame::new(LeducGame::root(), LeducTurn::Player(0), Some(0));
-        let tree =
-            TreeBuilder::<_, _, _, _, _, _, ExternalSampling>::new(&encoder, &profile, root, 0)
-                .build();
+        let root: DepthGame<_, 4> = DepthGame::new(LeducGame::root(), LeducTurn::Player(0), Some(0));
+        let tree = TreeBuilder::<_, _, _, _, _, _, ExternalSampling>::new(&encoder, &profile, root, 0).build();
         let n = tree.n();
         assert!(n > 10, "depth-limited tree should have front nodes: {n}");
     }

@@ -89,15 +89,11 @@ impl Solved {
         let labels = with_street(tag, street);
         let metrics = rbp_telemetry::metrics::get();
         metrics.subgame_decisions.add(1, &labels);
-        metrics
-            .subgame_iterations
-            .record(self.iterations as u64, &labels);
+        metrics.subgame_iterations.record(self.iterations as u64, &labels);
         metrics
             .subgame_decision_ms
             .record(self.elapsed.as_secs_f64() * 1000.0, &labels);
-        metrics
-            .subgame_relative_regret
-            .record(relative as f64, &labels);
+        metrics.subgame_relative_regret.record(relative as f64, &labels);
         tracing::debug!(
             variant = tag.label,
             street = %street,
@@ -120,14 +116,12 @@ impl Solved {
         street: Street,
     ) -> BTreeMap<Edge, Probability> {
         let total: u64 = self.visits.values().map(|&v| v as u64).sum();
-        tracing::info_span!("subgame.extract", variant = tag.label, total_visits = total).in_scope(
-            || {
-                let blend = self.blend(policy);
-                self.emit_verify(tag, policy, &blend);
-                self.emit_extraction_stats(tag, street, policy, &blend, total);
-                blend
-            },
-        )
+        tracing::info_span!("subgame.extract", variant = tag.label, total_visits = total).in_scope(|| {
+            let blend = self.blend(policy);
+            self.emit_verify(tag, policy, &blend);
+            self.emit_extraction_stats(tag, street, policy, &blend, total);
+            blend
+        })
     }
 
     /// Per-edge visits-weighted convex mix of `self.refined` and `blueprint`:
@@ -153,11 +147,7 @@ impl Solved {
                 (e, w * sg + (1.0 - w) * bp)
             })
             .collect::<Vec<_>>();
-        let total = raw
-            .iter()
-            .map(|(_, p)| p)
-            .sum::<Probability>()
-            .max(rbp_core::EPSILON);
+        let total = raw.iter().map(|(_, p)| p).sum::<Probability>().max(rbp_core::EPSILON);
         raw.into_iter().map(|(e, p)| (e, p / total)).collect()
     }
 
@@ -165,12 +155,7 @@ impl Solved {
     /// for a single postflop decision. Emitted at `trace!` — workspace
     /// default filter is `info,rbp=debug`, so this stays off in production
     /// (log aggregator) until enabled with `RUST_LOG=rbp_gameroom=trace`.
-    fn emit_verify(
-        &self,
-        tag: Tag,
-        blueprint: &BTreeMap<Edge, Probability>,
-        refined: &BTreeMap<Edge, Probability>,
-    ) {
+    fn emit_verify(&self, tag: Tag, blueprint: &BTreeMap<Edge, Probability>, refined: &BTreeMap<Edge, Probability>) {
         let fmt = |m: &BTreeMap<Edge, Probability>| -> String {
             m.iter()
                 .map(|(e, p)| format!("{}={:.3}", e, p))
@@ -196,11 +181,7 @@ impl Solved {
     ) {
         let labels = with_street(tag, street);
         let metrics = rbp_telemetry::metrics::get();
-        let edges = blueprint
-            .keys()
-            .chain(refined.keys())
-            .copied()
-            .collect::<BTreeSet<_>>();
+        let edges = blueprint.keys().chain(refined.keys()).copied().collect::<BTreeSet<_>>();
         let l1 = edges
             .iter()
             .map(|e| {

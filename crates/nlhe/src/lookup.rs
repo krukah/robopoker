@@ -11,12 +11,7 @@ use std::sync::OnceLock;
 
 fn abs_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    SQL.get_or_init(|| {
-        rbp_database::leaked(format!(
-            "SELECT abs FROM {} WHERE obs = $1",
-            rbp_database::isomorphism()
-        ))
-    })
+    SQL.get_or_init(|| rbp_database::leaked(format!("SELECT abs FROM {} WHERE obs = $1", rbp_database::isomorphism())))
 }
 fn policy_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
@@ -58,9 +53,7 @@ pub async fn lookup(client: &tokio_postgres::Client, recall: &Witness) -> Option
         .ok()?;
     match rows.len() {
         0 => {
-            tracing::debug!(
-                "blueprint miss: past={history} present={present} choices={choices} geometry={geometry}"
-            );
+            tracing::debug!("blueprint miss: past={history} present={present} choices={choices} geometry={geometry}");
             None
         }
         _ => Some(Strategy::from((

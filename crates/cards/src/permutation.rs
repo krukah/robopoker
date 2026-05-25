@@ -41,10 +41,7 @@ impl Permutation {
     /// Both hole cards and board cards are relabeled according to
     /// the suit mapping.
     pub fn permute(&self, observation: Observation) -> Observation {
-        Observation::from((
-            self.image(observation.pocket()),
-            self.image(observation.public()),
-        ))
+        Observation::from((self.image(observation.pocket()), self.image(observation.public())))
     }
     /// Applies the permutation to a hand's suits.
     ///
@@ -61,9 +58,7 @@ impl Permutation {
     /// If `self.map(s) = t`, then `self.inverse().map(t) = s`.
     pub fn inverse(&self) -> Self {
         let mut inv = [Suit::C; 4];
-        Suit::all()
-            .iter()
-            .for_each(|s| inv[self.map(s) as usize] = *s);
+        Suit::all().iter().for_each(|s| inv[self.map(s) as usize] = *s);
         Self(inv)
     }
     /// Comparison function for co-lexicographic ordering.

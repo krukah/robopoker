@@ -53,9 +53,7 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let t0 = Instant::now();
         let method = req.method().as_str().to_owned();
-        let route = req
-            .match_pattern()
-            .unwrap_or_else(|| "unmatched".to_string());
+        let route = req.match_pattern().unwrap_or_else(|| "unmatched".to_string());
         let fut = self.service.call(req);
         Box::pin(async move {
             let res = fut.await?;

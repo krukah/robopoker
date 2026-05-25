@@ -44,16 +44,14 @@ impl CLI {
                 Err("invalid abstraction target".into())
             }
             Query::Distance { target1, target2 } => {
-                if let (Ok(o1), Ok(o2)) = (
-                    Observation::try_from(target1.as_str()),
-                    Observation::try_from(target2.as_str()),
-                ) {
+                if let (Ok(o1), Ok(o2)) =
+                    (Observation::try_from(target1.as_str()), Observation::try_from(target2.as_str()))
+                {
                     return Ok(println!("{:.4}", self.0.obs_distance(o1, o2).await?));
                 }
-                if let (Ok(a1), Ok(a2)) = (
-                    Abstraction::try_from(target1.as_str()),
-                    Abstraction::try_from(target2.as_str()),
-                ) {
+                if let (Ok(a1), Ok(a2)) =
+                    (Abstraction::try_from(target1.as_str()), Abstraction::try_from(target2.as_str()))
+                {
                     return Ok(println!("{:.4}", self.0.abs_distance(a1, a2).await?));
                 }
                 Err("invalid distance targets".into())

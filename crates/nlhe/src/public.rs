@@ -66,13 +66,9 @@ mod tests {
     use super::*;
     #[test]
     fn aggression_counts_from_path() {
-        let subgame = [
-            Edge::Check,
-            Edge::Raise(Odds::new(1, 2)),
-            Edge::Raise(Odds::new(1, 1)),
-        ]
-        .into_iter()
-        .collect::<Path>();
+        let subgame = [Edge::Check, Edge::Raise(Odds::new(1, 2)), Edge::Raise(Odds::new(1, 1))]
+            .into_iter()
+            .collect::<Path>();
         let choices = Path::default();
         let public = NlhePublic::new(subgame, choices, super::Geometry::default());
         assert_eq!(public.aggression(), 2);
@@ -92,9 +88,7 @@ mod tests {
     #[test]
     fn choices_returns_stored_choices() {
         let subgame = Path::default();
-        let choices = [Edge::Fold, Edge::Call, Edge::Shove]
-            .into_iter()
-            .collect::<Path>();
+        let choices = [Edge::Fold, Edge::Call, Edge::Shove].into_iter().collect::<Path>();
         let public = NlhePublic::new(subgame, choices, super::Geometry::default());
         assert_eq!(public.choices().count(), 3);
     }

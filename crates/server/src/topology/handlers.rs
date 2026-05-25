@@ -5,28 +5,19 @@ use actix_web::web;
 use rbp_cards::*;
 use rbp_gameplay::*;
 
-pub async fn replace_obs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceObs>,
-) -> impl Responder {
+pub async fn replace_obs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceObs>) -> impl Responder {
     match api.replace_obs(req.obs).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(new) => HttpResponse::Ok().json(new),
     }
 }
-pub async fn exp_wrt_str(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<SetStreets>,
-) -> impl Responder {
+pub async fn exp_wrt_str(api: web::Data<TopologyAPI>, req: web::Json<SetStreets>) -> impl Responder {
     match api.exp_wrt_str(req.street).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(row) => HttpResponse::Ok().json(row),
     }
 }
-pub async fn exp_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceAbs>,
-) -> impl Responder {
+pub async fn exp_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceAbs>) -> impl Responder {
     match api.exp_wrt_abs(req.wrt).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(row) => HttpResponse::Ok().json(row),
@@ -38,55 +29,37 @@ pub async fn exp_wrt_obs(api: web::Data<TopologyAPI>, req: web::Json<RowWrtObs>)
         Ok(row) => HttpResponse::Ok().json(row),
     }
 }
-pub async fn nbr_any_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceAbs>,
-) -> impl Responder {
+pub async fn nbr_any_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceAbs>) -> impl Responder {
     match api.nbr_any_wrt_abs(req.wrt).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(row) => HttpResponse::Ok().json(row),
     }
 }
-pub async fn nbr_abs_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceOne>,
-) -> impl Responder {
+pub async fn nbr_abs_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceOne>) -> impl Responder {
     match api.nbr_abs_wrt_abs(req.wrt, req.abs).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(row) => HttpResponse::Ok().json(row),
     }
 }
-pub async fn nbr_obs_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceRow>,
-) -> impl Responder {
+pub async fn nbr_obs_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceRow>) -> impl Responder {
     match api.nbr_obs_wrt_abs(req.wrt, req.obs).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(row) => HttpResponse::Ok().json(row),
     }
 }
-pub async fn kfn_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceAbs>,
-) -> impl Responder {
+pub async fn kfn_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceAbs>) -> impl Responder {
     match api.kfn_wrt_abs(req.wrt).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(rows) => HttpResponse::Ok().json(rows),
     }
 }
-pub async fn knn_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceAbs>,
-) -> impl Responder {
+pub async fn knn_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceAbs>) -> impl Responder {
     match api.knn_wrt_abs(req.wrt).await {
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
         Ok(rows) => HttpResponse::Ok().json(rows),
     }
 }
-pub async fn kgn_wrt_abs(
-    api: web::Data<TopologyAPI>,
-    req: web::Json<ReplaceAll>,
-) -> impl Responder {
+pub async fn kgn_wrt_abs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceAll>) -> impl Responder {
     let obs = req
         .neighbors
         .iter()

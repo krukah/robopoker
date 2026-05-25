@@ -13,11 +13,7 @@ use rbp_transport::Density;
 pub struct TargetedSampling;
 
 impl SamplingScheme for TargetedSampling {
-    fn sample<T, E, G, I, P>(
-        profile: &P,
-        node: &Node<T, E, G, I>,
-        branches: Vec<Leaf<E, G>>,
-    ) -> Vec<Leaf<E, G>>
+    fn sample<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
@@ -40,11 +36,7 @@ impl SamplingScheme for TargetedSampling {
 }
 
 /// Sample one branch with exploration bias toward high-policy actions.
-fn explored<T, E, G, I, P>(
-    profile: &P,
-    node: &Node<T, E, G, I>,
-    branches: Vec<Leaf<E, G>>,
-) -> Vec<Leaf<E, G>>
+fn explored<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
 where
     T: CfrTurn,
     E: CfrEdge,

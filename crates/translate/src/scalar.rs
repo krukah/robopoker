@@ -21,9 +21,7 @@ where
     A: Axis,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Scalar")
-            .field("value", &self.value)
-            .finish()
+        f.debug_struct("Scalar").field("value", &self.value).finish()
     }
 }
 

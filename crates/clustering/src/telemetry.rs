@@ -40,10 +40,9 @@ impl ClusterTelemetry {
 
     /// Records `phase_ms` for one named clustering phase.
     pub(crate) fn phase(&self, t0: Instant, name: &'static str) {
-        self.handles.kmeans_phase_ms.record(
-            t0.elapsed().as_secs_f64() * 1000.0,
-            &[self.labels[0].clone(), KeyValue::new("phase", name)],
-        );
+        self.handles
+            .kmeans_phase_ms
+            .record(t0.elapsed().as_secs_f64() * 1000.0, &[self.labels[0].clone(), KeyValue::new("phase", name)]);
     }
 
     /// Records iteration time, increments the iteration counter,
@@ -57,22 +56,17 @@ impl ClusterTelemetry {
             .kmeans_iteration_ms
             .record(elapsed.as_secs_f64() * 1000.0, &self.labels);
         self.handles.kmeans_iterations.add(1, &self.labels);
-        self.handles
-            .kmeans_drift_max
-            .record(drift.max() as f64, &self.labels);
-        drift.as_array().iter().for_each(|&d| {
-            self.handles
-                .kmeans_drift_dist
-                .record(d as f64, &self.labels)
-        });
+        self.handles.kmeans_drift_max.record(drift.max() as f64, &self.labels);
+        drift
+            .as_array()
+            .iter()
+            .for_each(|&d| self.handles.kmeans_drift_dist.record(d as f64, &self.labels));
     }
 
     /// Records the per-iter reassignment fraction (fraction of points
     /// whose cluster assignment changed since the previous step).
     pub(crate) fn reassignment(&self, fraction: f64) {
-        self.handles
-            .kmeans_reassignment
-            .record(fraction, &self.labels);
+        self.handles.kmeans_reassignment.record(fraction, &self.labels);
     }
 
     /// Increments the early-termination counter. Called when the loop

@@ -203,10 +203,7 @@ impl Worker {
         NlheInfo::from((subgame, present, choices, geometry))
     }
 
-    fn branches(
-        &self,
-        node: &Node<NlheTurn, NlheEdge, NlheGame, NlheInfo>,
-    ) -> Vec<Leaf<NlheEdge, NlheGame>> {
+    fn branches(&self, node: &Node<NlheTurn, NlheEdge, NlheGame, NlheInfo>) -> Vec<Leaf<NlheEdge, NlheGame>> {
         node.branches()
     }
 }

@@ -20,11 +20,7 @@ where
 
     fn choices(&self) -> impl Iterator<Item = Self::E> + use<X, D> {
         match self {
-            Self::Game(x) => x
-                .choices()
-                .map(DepthEdge::Game)
-                .collect::<Vec<_>>()
-                .into_iter(),
+            Self::Game(x) => x.choices().map(DepthEdge::Game).collect::<Vec<_>>().into_iter(),
             Self::Pick(_) => Continuation::all::<D>()
                 .map(DepthEdge::Pick)
                 .collect::<Vec<_>>()

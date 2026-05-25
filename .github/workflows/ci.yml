@@ -1,9 +1,11 @@
-name: Checks
+name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # Cancel superseded runs on the same ref (e.g. PR push during in-flight build).
 concurrency:
@@ -13,53 +15,81 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_DEV_CODEGEN_UNITS: 256
   RUST_BACKTRACE: short
 
 jobs:
-  fmt:
+  format:
     name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  clippy:
+  lint:
     name: Clippy
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        with:
+          shared-key: robopoker-ci
+          cache-all-crates: true
+      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
 
-  check:
-    name: Compile
+  compile:
+    name: Compile (${{ matrix.features }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - --no-default-features
+          - --features server
+          - --features database
+          - --all-features
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --workspace --all-targets --all-features
+        with:
+          shared-key: robopoker-ci-${{ matrix.features }}
+          cache-all-crates: true
+      - run: cargo check ${{ matrix.features }}
 
   test:
-    name: Test
+    name: Test (unit)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --lib --quiet
+        with:
+          shared-key: robopoker-ci
+          cache-all-crates: true
+      - uses: taiki-e/install-action@nextest
+      - run: cargo nextest run --workspace --lib
 
   docs:
     name: Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: robopoker-ci
+          cache-all-crates: true
       - run: cargo doc --workspace --no-deps --all-features

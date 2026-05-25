@@ -56,11 +56,7 @@ impl Aivat {
             won,
             stderr,
             reduction: if adj > 0.0 { raw / adj } else { 1.0 },
-            pvalue: if stderr > 0.0 {
-                2.0 * normal_cdf(-mean.abs() / stderr)
-            } else {
-                1.0
-            },
+            pvalue: if stderr > 0.0 { 2.0 * normal_cdf(-mean.abs() / stderr) } else { 1.0 },
         }
     }
     /// Compute corrections at hero actions, villain actions, and chance nodes.
@@ -87,10 +83,9 @@ impl Aivat {
         let villain = Turn::Choice(villain_seat);
         let hero_arr = plays_arrangement(hero_hole, hand.board(), plays);
         let villain_arr = plays_arrangement(villain_hole, hand.board(), plays);
-        let mut hero_recall = Witness::try_arrange(hero, hero_arr, Vec::new())
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        let mut villain_recall = Witness::try_arrange(villain, villain_arr, Vec::new())
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let mut hero_recall = Witness::try_arrange(hero, hero_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{}", e))?;
+        let mut villain_recall =
+            Witness::try_arrange(villain, villain_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{}", e))?;
         let hero_hand = rbp_cards::Hand::from(hero_hole);
         let villain_hand = rbp_cards::Hand::from(villain_hole);
         let mut hero_total = 0.0f32;
@@ -183,10 +178,8 @@ impl Aivat {
             .map(|d| Observation::from((pocket, rbp_cards::Hand::add(board, *d))))
             .map(|o| i64::from(Isomorphism::from(o)))
             .collect();
-        let observed_iso = i64::from(Isomorphism::from(Observation::from((
-            pocket,
-            rbp_cards::Hand::add(board, observed),
-        ))));
+        let observed_iso =
+            i64::from(Isomorphism::from(Observation::from((pocket, rbp_cards::Hand::add(board, observed)))));
         let info = NlheInfo::from((recall, Abstraction::default()));
         let past = i64::from(info.subgame());
         let choices = i64::from(info.choices());
@@ -222,11 +215,7 @@ impl Aivat {
         let info = NlheInfo::from((recall, abs));
         let rows = self
             .0
-            .eval_policy(
-                i64::from(info.subgame()),
-                i16::from(info.bucket()),
-                i64::from(info.choices()),
-            )
+            .eval_policy(i64::from(info.subgame()), i16::from(info.bucket()), i64::from(info.choices()))
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         if rows.is_empty() {
@@ -237,9 +226,7 @@ impl Aivat {
             return Ok(None);
         }
         let edge = NlheEdge::from(game.edgify(observed, recall.aggression()));
-        let idx = rows
-            .iter()
-            .position(|(e, _, _)| NlheEdge::from(*e as u64) == edge);
+        let idx = rows.iter().position(|(e, _, _)| NlheEdge::from(*e as u64) == edge);
         Ok(Some(action_correction(&policy, idx)))
     }
 }

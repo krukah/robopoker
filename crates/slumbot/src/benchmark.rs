@@ -25,9 +25,7 @@ impl Benchmark {
         throttle: Throttle,
     ) -> anyhow::Result<Self> {
         let label = variant.label();
-        let mut bench = Self {
-            results: Vec::new(),
-        };
+        let mut bench = Self { results: Vec::new() };
         let mut client = Client::new().with_throttle(throttle.clone());
         for i in 0..hands {
             if rbp_core::interrupted() {
@@ -40,9 +38,7 @@ impl Benchmark {
                 break;
             }
             let span = tracing::info_span!("slumbot.hand", variant = label, index = i);
-            let outcome = Session::play(&mut client, player, recorder)
-                .instrument(span)
-                .await;
+            let outcome = Session::play(&mut client, player, recorder).instrument(span).await;
             match outcome {
                 Ok(result) => {
                     record_hand(variant, &result);
@@ -79,25 +75,16 @@ impl Benchmark {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(500u64);
-        let mut bench = Self {
-            results: Vec::new(),
-        };
+        let mut bench = Self { results: Vec::new() };
         let mut client = Client::new().with_throttle(throttle.clone());
         let mut errors = 0u32;
         loop {
             if rbp_core::interrupted() {
-                tracing::info!(
-                    variant = label,
-                    hands = bench.results.len(),
-                    "slumbot interrupted"
-                );
+                tracing::info!(variant = label, hands = bench.results.len(), "slumbot interrupted");
                 break;
             }
-            let span =
-                tracing::info_span!("slumbot.hand", variant = label, index = bench.results.len());
-            let outcome = Session::play(&mut client, player, recorder)
-                .instrument(span)
-                .await;
+            let span = tracing::info_span!("slumbot.hand", variant = label, index = bench.results.len());
+            let outcome = Session::play(&mut client, player, recorder).instrument(span).await;
             match outcome {
                 Ok(result) => {
                     record_hand(variant, &result);
@@ -125,10 +112,7 @@ impl Benchmark {
                         "slumbot hand failed",
                     );
                     client = Client::new().with_throttle(throttle.clone());
-                    tokio::time::sleep(std::time::Duration::from_secs(
-                        2u64.pow(errors.min(8)).min(300),
-                    ))
-                    .await;
+                    tokio::time::sleep(std::time::Duration::from_secs(2u64.pow(errors.min(8)).min(300))).await;
                 }
             }
         }
@@ -151,12 +135,7 @@ impl Benchmark {
             return 0.0;
         }
         let mean = self.total_bb() / self.results.len() as f64;
-        (self
-            .results
-            .iter()
-            .map(|r| (r.winnings_bb - mean).powi(2))
-            .sum::<f64>()
-            / (self.results.len() - 1) as f64)
+        (self.results.iter().map(|r| (r.winnings_bb - mean).powi(2)).sum::<f64>() / (self.results.len() - 1) as f64)
             .sqrt()
     }
 
@@ -177,16 +156,8 @@ impl Benchmark {
     }
 
     pub fn report(&self) {
-        let bb = self
-            .results
-            .iter()
-            .filter(|r| r.hero == Turn::Choice(1))
-            .count();
-        let sb = self
-            .results
-            .iter()
-            .filter(|r| r.hero == Turn::Choice(0))
-            .count();
+        let bb = self.results.iter().filter(|r| r.hero == Turn::Choice(1)).count();
+        let sb = self.results.iter().filter(|r| r.hero == Turn::Choice(0)).count();
         tracing::info!(
             hands = self.results.len(),
             bb_hero = bb,
@@ -205,13 +176,7 @@ impl Benchmark {
 /// Standard slumbot metric label set: cube coordinate (4 keys) + regime.
 fn labels(variant: Variant) -> [KeyValue; 5] {
     let [v, p, d, w] = variant.keys();
-    [
-        v,
-        p,
-        d,
-        w,
-        KeyValue::new("regime", rbp_core::regime().to_string()),
-    ]
+    [v, p, d, w, KeyValue::new("regime", rbp_core::regime().to_string())]
 }
 
 fn record_hand(variant: Variant, result: &HandResult) {

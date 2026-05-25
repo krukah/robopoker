@@ -37,24 +37,20 @@ impl FromRequest for Auth {
             .and_then(|h| h.to_str().ok())
             .map(|s| s.to_owned());
         Box::pin(async move {
-            let header = auth_header.ok_or_else(|| {
-                actix_web::error::ErrorUnauthorized("missing authorization header")
-            })?;
-            let token = header.strip_prefix("Bearer ").ok_or_else(|| {
-                actix_web::error::ErrorUnauthorized("invalid authorization format")
-            })?;
-            let service = token_service.ok_or_else(|| {
-                actix_web::error::ErrorInternalServerError("token service not configured")
-            })?;
+            let header =
+                auth_header.ok_or_else(|| actix_web::error::ErrorUnauthorized("missing authorization header"))?;
+            let token = header
+                .strip_prefix("Bearer ")
+                .ok_or_else(|| actix_web::error::ErrorUnauthorized("invalid authorization format"))?;
+            let service = token_service
+                .ok_or_else(|| actix_web::error::ErrorInternalServerError("token service not configured"))?;
             let claims = service
                 .decode(token)
                 .map_err(|_| actix_web::error::ErrorUnauthorized("invalid token"))?;
             if claims.expired() {
                 return Err(actix_web::error::ErrorUnauthorized("token expired"));
             }
-            let db = db.ok_or_else(|| {
-                actix_web::error::ErrorInternalServerError("database not configured")
-            })?;
+            let db = db.ok_or_else(|| actix_web::error::ErrorInternalServerError("database not configured"))?;
             let sql = format!("SELECT revoked FROM {} WHERE id = $1", sessions());
             let row = db
                 .query_opt(&sql, &[&claims.session().inner()])

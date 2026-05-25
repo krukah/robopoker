@@ -80,8 +80,7 @@ impl Drop for TelemetryGuard {
 /// work on it). The four rbp binaries are `#[tokio::main]` so this holds.
 pub fn init() -> TelemetryGuard {
     let service = service_name();
-    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .unwrap_or_else(|_| DEFAULT_OTLP_ENDPOINT.to_string());
+    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").unwrap_or_else(|_| DEFAULT_OTLP_ENDPOINT.to_string());
     let disabled = std::env::var("RBP_TELEMETRY_DISABLED")
         .ok()
         .map(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes"))
@@ -90,14 +89,10 @@ pub fn init() -> TelemetryGuard {
     let (tracer_provider, meter_provider) = if disabled {
         (None, None)
     } else {
-        (
-            install_tracer(&endpoint, resource.clone()),
-            install_meter(&endpoint, resource.clone()),
-        )
+        (install_tracer(&endpoint, resource.clone()), install_meter(&endpoint, resource.clone()))
     };
     let _ = tracing_log::LogTracer::init();
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(DEFAULT_FILTER));
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_target(true)
         .with_thread_ids(false)
@@ -155,9 +150,7 @@ fn install_meter(endpoint: &str, resource: Resource) -> Option<SdkMeterProvider>
     let reader = PeriodicReader::builder(exporter, runtime::Tokio)
         .with_interval(METRICS_INTERVAL)
         .build();
-    let mut builder = SdkMeterProvider::builder()
-        .with_resource(resource)
-        .with_reader(reader);
+    let mut builder = SdkMeterProvider::builder().with_resource(resource).with_reader(reader);
     for view in histogram_views() {
         builder = builder.with_view(view);
     }
@@ -191,23 +184,18 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         // L1 distance between two probability distributions — bounded 0..=2.
         histogram_view(
             "rbp.subgame.policy_deviation",
-            &[
-                0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0,
-            ],
+            &[0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
         ),
         // regret / pot — observed 0.5 to 2000+ in smokes. Log-ish buckets so
         // we have resolution at both the "converged" and "diverged" ends.
-        histogram_view(
-            "rbp.subgame.relative_regret",
-            &[0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0],
-        ),
+        histogram_view("rbp.subgame.relative_regret", &[0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0]),
         // bb/hand on Slumbot — signed, stack depth ~200 bb. Default OTel
         // buckets are positive-only; custom covers loss cases.
         histogram_view(
             "rbp.slumbot.hand_bb",
             &[
-                -200.0, -150.0, -100.0, -50.0, -20.0, -10.0, -5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0,
-                10.0, 20.0, 50.0, 100.0, 200.0,
+                -200.0, -150.0, -100.0, -50.0, -20.0, -10.0, -5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0,
+                100.0, 200.0,
             ],
         ),
         // Subgame decision wall-clock — budget-capped at SubgameHyperParams::timeout_ms (default 5000).
@@ -233,37 +221,12 @@ fn histogram_views() -> Vec<Box<dyn View>> {
             ],
         ),
         // K-means phase wall-clock — same upper bound; init/iterate dominate, others are quick.
-        histogram_view(
-            "rbp.kmeans.phase_ms",
-            &[
-                100.0,
-                1000.0,
-                10000.0,
-                60000.0,
-                300000.0,
-                1_800_000.0,
-                7_200_000.0,
-            ],
-        ),
+        histogram_view("rbp.kmeans.phase_ms", &[100.0, 1000.0, 10000.0, 60000.0, 300000.0, 1_800_000.0, 7_200_000.0]),
         // K-means cluster sizes — N varies wildly by street (preflop ~1k, turn ~1.3M).
-        histogram_view(
-            "rbp.kmeans.cluster_size",
-            &[
-                10.0,
-                100.0,
-                1000.0,
-                10000.0,
-                100000.0,
-                1_000_000.0,
-                10_000_000.0,
-            ],
-        ),
+        histogram_view("rbp.kmeans.cluster_size", &[10.0, 100.0, 1000.0, 10000.0, 100000.0, 1_000_000.0, 10_000_000.0]),
         // K-means per-cluster drift values — log-spaced; drift typically
         // descends from ~0.1 toward ~1e-5 over iterations.
-        histogram_view(
-            "rbp.kmeans.drift_dist",
-            &[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0],
-        ),
+        histogram_view("rbp.kmeans.drift_dist", &[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0]),
         // MCCFR flush duration — periodic DB-snapshot wall-clock.
         // Empirically a unimodal distribution centered at ~14s, all
         // observations in 10-30s (167K-infoset blueprint). Linear 5s
@@ -273,29 +236,20 @@ fn histogram_views() -> Vec<Box<dyn View>> {
         histogram_view(
             "rbp.mccfr.flush_duration_ms",
             &[
-                5_000.0, 10_000.0, 15_000.0, 20_000.0, 25_000.0, 30_000.0, 35_000.0, 40_000.0,
-                45_000.0, 50_000.0, 55_000.0, 60_000.0,
+                5_000.0, 10_000.0, 15_000.0, 20_000.0, 25_000.0, 30_000.0, 35_000.0, 40_000.0, 45_000.0, 50_000.0,
+                55_000.0, 60_000.0,
             ],
         ),
         // MCCFR tree size — log-spaced; depends on game tree depth and
         // pruning. Hold'em batches typically produce trees of 1k-100k
         // nodes; spikes flag tree-depth pathologies.
-        histogram_view(
-            "rbp.mccfr.tree_size",
-            &[10.0, 100.0, 1000.0, 10_000.0, 100_000.0, 1_000_000.0],
-        ),
+        histogram_view("rbp.mccfr.tree_size", &[10.0, 100.0, 1000.0, 10_000.0, 100_000.0, 1_000_000.0]),
         // MCCFR infoset size — most infosets are small (1-5 nodes); long
         // tail of pathologically big infosets is the diagnostic of
         // interest.
-        histogram_view(
-            "rbp.mccfr.infoset_size",
-            &[1.0, 2.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 10_000.0],
-        ),
+        histogram_view("rbp.mccfr.infoset_size", &[1.0, 2.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 10_000.0]),
         // MCCFR infosets per tree — same magnitude as tree_size.
-        histogram_view(
-            "rbp.mccfr.infosets_per_tree",
-            &[10.0, 100.0, 1000.0, 10_000.0, 100_000.0],
-        ),
+        histogram_view("rbp.mccfr.infosets_per_tree", &[10.0, 100.0, 1000.0, 10_000.0, 100_000.0]),
     ];
     views.into_iter().flatten().collect()
 }

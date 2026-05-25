@@ -18,10 +18,7 @@ impl Pool {
     pub async fn new(client: Arc<Client>) -> Self {
         let now = Instant::now();
         Self {
-            workers: (0..num_cpus::get())
-                .map(|_| client.clone())
-                .map(Worker::new)
-                .collect(),
+            workers: (0..num_cpus::get()).map(|_| client.clone()).map(Worker::new).collect(),
             started: now,
             prior: Mutex::new((now, 0)),
         }

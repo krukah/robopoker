@@ -128,12 +128,7 @@ impl From<Edge> for u8 {
             Edge::Check => 3,
             Edge::Call => 4,
             Edge::Shove => 5,
-            Edge::Open(n) => {
-                6 + OPENS
-                    .iter()
-                    .position(|&b| b == n)
-                    .expect("invalid open size") as u8
-            }
+            Edge::Open(n) => 6 + OPENS.iter().position(|&b| b == n).expect("invalid open size") as u8,
             Edge::Raise(odds) => {
                 10 + RAISES
                     .iter()
@@ -178,10 +173,7 @@ impl From<u64> for Edge {
                     Self::Open(((value >> 3) & 0xFF) as Chips)
                 } else {
                     // SPR format: Raise(Odds(n, d))
-                    Self::Raise(Odds::new(
-                        ((value >> 3) & 0xFF) as Chips,
-                        ((value >> 11) & 0xFF) as Chips,
-                    ))
+                    Self::Raise(Odds::new(((value >> 3) & 0xFF) as Chips, ((value >> 11) & 0xFF) as Chips))
                 }
             }
             5 => Self::Shove,
@@ -295,12 +287,7 @@ mod tests {
         let opens = OPENS.iter().map(|&n| Edge::Open(n));
         let raises = RAISES.iter().map(|&(n, d)| Edge::Raise(Odds::new(n, d)));
         for edge in edges.into_iter().chain(opens).chain(raises) {
-            assert_eq!(
-                edge,
-                Edge::from(u8::from(edge)),
-                "u8 roundtrip failed for {:?}",
-                edge
-            );
+            assert_eq!(edge, Edge::from(u8::from(edge)), "u8 roundtrip failed for {:?}", edge);
         }
     }
     #[test]
@@ -309,12 +296,7 @@ mod tests {
         let opens = OPENS.iter().map(|&n| Edge::Open(n));
         let raises = RAISES.iter().map(|&(n, d)| Edge::Raise(Odds::new(n, d)));
         for edge in edges.into_iter().chain(opens).chain(raises) {
-            assert_eq!(
-                edge,
-                Edge::from(u64::from(edge)),
-                "u64 roundtrip failed for {:?}",
-                edge
-            );
+            assert_eq!(edge, Edge::from(u64::from(edge)), "u64 roundtrip failed for {:?}", edge);
         }
     }
     #[test]

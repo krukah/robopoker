@@ -84,10 +84,7 @@ pub fn slumbot_opponent() -> Member {
     Member::new(
         ID::from(slumbot_opponent_uuid()),
         slumbot_opponent_username().to_string(),
-        format!(
-            "{}@robopoker.io",
-            slumbot_opponent_username().trim_start_matches("bot:")
-        ),
+        format!("{}@robopoker.io", slumbot_opponent_username().trim_start_matches("bot:")),
     )
 }
 

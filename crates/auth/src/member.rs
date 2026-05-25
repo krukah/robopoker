@@ -11,11 +11,7 @@ pub struct Member {
 
 impl Member {
     pub fn new(id: ID<Self>, username: String, email: String) -> Self {
-        Self {
-            id,
-            username,
-            email,
-        }
+        Self { id, username, email }
     }
 
     pub fn username(&self) -> &str {

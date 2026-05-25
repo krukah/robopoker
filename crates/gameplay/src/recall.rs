@@ -170,9 +170,6 @@ mod tests {
                 Some(edge)
             })
             .collect::<Vec<_>>();
-        assert_eq!(
-            translated, manual_edgify_walk,
-            "default Snap must reproduce the historical edgify path",
-        );
+        assert_eq!(translated, manual_edgify_walk, "default Snap must reproduce the historical edgify path",);
     }
 }

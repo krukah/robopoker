@@ -41,11 +41,7 @@ use super::*;
 pub struct PrunableSampling;
 
 impl SamplingScheme for PrunableSampling {
-    fn sample<T, E, G, I, P>(
-        profile: &P,
-        node: &Node<T, E, G, I>,
-        branches: Vec<Leaf<E, G>>,
-    ) -> Vec<Leaf<E, G>>
+    fn sample<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,

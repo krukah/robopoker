@@ -69,11 +69,7 @@ impl<const N: usize> Bins<N> {
     /// Increments the count for an abstraction by 1.
     pub fn increment(&mut self, abs: Abstraction) {
         self.weight.add_assign(1usize);
-        unsafe {
-            self.counts
-                .get_unchecked_mut(abs.index())
-                .add_assign(1usize)
-        }
+        unsafe { self.counts.get_unchecked_mut(abs.index()).add_assign(1usize) }
     }
     /// Merges another bin array into this one.
     pub fn merge<const M: usize>(&mut self, other: &Bins<M>) {
@@ -115,10 +111,7 @@ impl<const N: usize> Bins<N> {
     }
     /// Returns (abstraction, density) pairs sorted by density descending.
     pub fn distribution(&self) -> Vec<(Abstraction, Probability)> {
-        let mut distribution = self
-            .support()
-            .map(|abs| (abs, self.density(&abs)))
-            .collect::<Vec<_>>();
+        let mut distribution = self.support().map(|abs| (abs, self.density(&abs))).collect::<Vec<_>>();
         distribution.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         distribution
     }

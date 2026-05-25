@@ -44,12 +44,7 @@ where
     I: CfrInfo<E = N::E, T = N::T, Y = Y>,
     Y: CfrSecret,
 {
-    pub fn new(
-        source: &'blueprint N,
-        external: N::T,
-        belief: Belief<Y, W>,
-        recall: CfrRecall<N::G>,
-    ) -> Self {
+    pub fn new(source: &'blueprint N, external: N::T, belief: Belief<Y, W>, recall: CfrRecall<N::G>) -> Self {
         Self::build(source, external, belief, recall, None)
     }
 
@@ -105,8 +100,7 @@ where
     }
 }
 
-impl<'blueprint, const W: usize, const L: usize, N, I, Y> Solver
-    for SubGameSolver<'blueprint, W, L, N, I, Y>
+impl<'blueprint, const W: usize, const L: usize, N, I, Y> Solver for SubGameSolver<'blueprint, W, L, N, I, Y>
 where
     N: WorldRestrict<W, I = I> + DepthSampler<L, Blueprint: CfrSolution<I = I>> + Sync,
     N::Blueprint: Sync,
@@ -152,10 +146,10 @@ where
     fn step(&mut self) {
         let world = Self::sample(&self.belief);
         self.encoder.with_world(world);
-        let inner =
-            self.encoder
-                .inner()
-                .restrict(self.external, world, &self.belief, &self.recall.game());
+        let inner = self
+            .encoder
+            .inner()
+            .restrict(self.external, world, &self.belief, &self.recall.game());
         self.entry = DepthGame::<_, L>::new(inner, self.internal, self.origin);
         let updates = self.batch();
         let n = updates.len();
@@ -179,8 +173,7 @@ where
     }
 }
 
-impl<'blueprint, const W: usize, const L: usize, N, I, Y> Harvest
-    for SubGameSolver<'blueprint, W, L, N, I, Y>
+impl<'blueprint, const W: usize, const L: usize, N, I, Y> Harvest for SubGameSolver<'blueprint, W, L, N, I, Y>
 where
     N: WorldRestrict<W, I = I> + DepthSampler<L, Blueprint: CfrSolution<I = I>> + Sync,
     N::Blueprint: Sync,

@@ -18,12 +18,9 @@ pub struct Recorder {
 impl Recorder {
     pub async fn new(db: Arc<tokio_postgres::Client>, hero: ID<Member>) -> Self {
         let room = ID::<records::Room>::default();
-        db.execute(
-            "INSERT INTO rooms (id, stakes) VALUES ($1, $2)",
-            &[&room.inner(), &{ STACK }],
-        )
-        .await
-        .expect("failed to create room");
+        db.execute("INSERT INTO rooms (id, stakes) VALUES ($1, $2)", &[&room.inner(), &{ STACK }])
+            .await
+            .expect("failed to create room");
         Self {
             db,
             room,
@@ -54,27 +51,18 @@ impl Recorder {
         let hero = self.hero;
         let villain = self.villain;
         let seat = self.seat;
-        self.db
-            .create_hand(&hand)
-            .await
-            .expect("failed to record hand");
+        self.db.create_hand(&hand).await.expect("failed to record hand");
         for ref player in self
             .context
             .participants(hand.id(), |p| Some(if p == seat { hero } else { villain }))
         {
-            self.db
-                .create_player(player)
-                .await
-                .expect("failed to record player");
+            self.db.create_player(player).await.expect("failed to record player");
         }
         for ref play in self
             .context
             .plays(hand.id(), |p| Some(if p == seat { hero } else { villain }))
         {
-            self.db
-                .create_action(play)
-                .await
-                .expect("failed to record action");
+            self.db.create_action(play).await.expect("failed to record action");
         }
         for line in format!("{witness}").lines() {
             tracing::trace!("{line}");

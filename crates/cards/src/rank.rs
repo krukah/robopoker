@@ -6,19 +6,7 @@
 /// - `u8`: Direct index `0..13` for array access
 /// - `u16`: Bitmask with one bit per rank for straight detection
 /// - `u64`: Four-bit mask repeated across suits for n-of-a-kind detection
-#[derive(
-    Debug,
-    Default,
-    Clone,
-    Copy,
-    Hash,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Debug, Default, Clone, Copy, Hash, Eq, PartialEq, Ord, PartialOrd, serde::Serialize, serde::Deserialize)]
 pub enum Rank {
     #[default]
     Two = 0,

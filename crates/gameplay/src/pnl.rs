@@ -21,11 +21,7 @@ pub struct PnL {
 impl PnL {
     /// Creates a PnL with initial values.
     pub fn new(reward: Chips, risked: Chips, status: State) -> Self {
-        Self {
-            reward,
-            risked,
-            status,
-        }
+        Self { reward, risked, status }
     }
     /// Adds chips to reward.
     pub fn add(&mut self, amount: Chips) {

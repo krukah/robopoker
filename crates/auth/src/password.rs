@@ -21,10 +21,6 @@ pub fn verify(password: &str, hashword: &str) -> bool {
     PasswordHash::new(hashword)
         .ok()
         .as_ref()
-        .map(|hash| {
-            Argon2::default()
-                .verify_password(password.as_bytes(), hash)
-                .is_ok()
-        })
+        .map(|hash| Argon2::default().verify_password(password.as_bytes(), hash).is_ok())
         .unwrap_or(false)
 }

@@ -79,8 +79,7 @@ impl TopologyAPI {
 impl TopologyAPI {
     pub async fn abs_equity(&self, abs: Abstraction) -> anyhow::Result<Probability> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql =
-            SQL.get_or_init(|| format!("SELECT equity FROM {} WHERE abs = $1", abstraction()));
+        let sql = SQL.get_or_init(|| format!("SELECT equity FROM {} WHERE abs = $1", abstraction()));
         let abs = i16::from(abs);
         self.0
             .query_one(sql.as_str(), &[&abs])
@@ -92,8 +91,7 @@ impl TopologyAPI {
     pub async fn obs_equity(&self, obs: Observation) -> anyhow::Result<Probability> {
         static RIVER: OnceLock<String> = OnceLock::<String>::new();
         static OTHER: OnceLock<String> = OnceLock::<String>::new();
-        let river =
-            RIVER.get_or_init(|| format!("SELECT equity FROM {} WHERE obs = $1", isomorphism()));
+        let river = RIVER.get_or_init(|| format!("SELECT equity FROM {} WHERE obs = $1", isomorphism()));
         let other = OTHER.get_or_init(|| {
             format!(
                 "SELECT SUM(t.dx * a.equity) \
@@ -107,11 +105,7 @@ impl TopologyAPI {
             )
         });
         let iso = i64::from(Isomorphism::from(obs));
-        let sql = if obs.street() == Street::Rive {
-            river
-        } else {
-            other
-        };
+        let sql = if obs.street() == Street::Rive { river } else { other };
         Ok(self
             .0
             .query_one(sql.as_str(), &[&iso])
@@ -123,11 +117,7 @@ impl TopologyAPI {
 
 // distance calculations
 impl TopologyAPI {
-    pub async fn abs_distance(
-        &self,
-        abs1: Abstraction,
-        abs2: Abstraction,
-    ) -> anyhow::Result<Energy> {
+    pub async fn abs_distance(&self, abs1: Abstraction, abs2: Abstraction) -> anyhow::Result<Energy> {
         if abs1.street() != abs2.street() {
             return Err(anyhow::anyhow!("abstractions must be from the same street"));
         }
@@ -145,37 +135,21 @@ impl TopologyAPI {
             .map_err(|e| anyhow::anyhow!("fetch distance: {}", e))
     }
 
-    pub async fn obs_distance(
-        &self,
-        obs1: Observation,
-        obs2: Observation,
-    ) -> anyhow::Result<Energy> {
+    pub async fn obs_distance(&self, obs1: Observation, obs2: Observation) -> anyhow::Result<Energy> {
         if obs1.street() != obs2.street() {
             return Err(anyhow::anyhow!("observations must be from the same street"));
         }
-        let (ref hx, ref hy, ref metric) = tokio::try_join!(
-            self.obs_histogram(obs1),
-            self.obs_histogram(obs2),
-            self.metric(obs1.street().next())
-        )?;
+        let (ref hx, ref hy, ref metric) =
+            tokio::try_join!(self.obs_histogram(obs1), self.obs_histogram(obs2), self.metric(obs1.street().next()))?;
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
 
-    pub async fn obs_abs_distance(
-        &self,
-        obs: Observation,
-        abs: Abstraction,
-    ) -> anyhow::Result<Energy> {
+    pub async fn obs_abs_distance(&self, obs: Observation, abs: Abstraction) -> anyhow::Result<Energy> {
         if obs.street() != abs.street() {
-            return Err(anyhow::anyhow!(
-                "observation and abstraction must be from the same street"
-            ));
+            return Err(anyhow::anyhow!("observation and abstraction must be from the same street"));
         }
-        let (ref hx, ref hy, ref metric) = tokio::try_join!(
-            self.obs_histogram(obs),
-            self.abs_histogram(abs),
-            self.metric(obs.street().next())
-        )?;
+        let (ref hx, ref hy, ref metric) =
+            tokio::try_join!(self.obs_histogram(obs), self.abs_histogram(abs), self.metric(obs.street().next()))?;
         Ok(Sinkhorn::from((hx, hy, metric)).minimize().cost())
     }
 }
@@ -184,8 +158,7 @@ impl TopologyAPI {
 impl TopologyAPI {
     pub async fn abs_population(&self, abs: Abstraction) -> anyhow::Result<usize> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql =
-            SQL.get_or_init(|| format!("SELECT population FROM {} WHERE abs = $1", abstraction()));
+        let sql = SQL.get_or_init(|| format!("SELECT population FROM {} WHERE abs = $1", abstraction()));
         let abs = i16::from(abs);
         self.0
             .query_one(sql.as_str(), &[&abs])
@@ -220,8 +193,7 @@ impl TopologyAPI {
 impl TopologyAPI {
     pub async fn abs_histogram(&self, abs: Abstraction) -> anyhow::Result<Histogram> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql =
-            SQL.get_or_init(|| format!("SELECT next, dx FROM {} WHERE prev = $1", transitions()));
+        let sql = SQL.get_or_init(|| format!("SELECT next, dx FROM {} WHERE prev = $1", transitions()));
         let abs_i = i16::from(abs);
         let street = abs.street().next();
         let rows = self
@@ -506,11 +478,7 @@ impl TopologyAPI {
         self.nbr_abs_wrt_abs(wrt, abs).await
     }
 
-    pub async fn nbr_abs_wrt_abs(
-        &self,
-        wrt: Abstraction,
-        abs: Abstraction,
-    ) -> anyhow::Result<ApiSample> {
+    pub async fn nbr_abs_wrt_abs(&self, wrt: Abstraction, abs: Abstraction) -> anyhow::Result<ApiSample> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| {
             format!(
@@ -556,11 +524,7 @@ impl TopologyAPI {
         Ok(api_sample_from_row(row))
     }
 
-    pub async fn nbr_obs_wrt_abs(
-        &self,
-        wrt: Abstraction,
-        obs: Observation,
-    ) -> anyhow::Result<ApiSample> {
+    pub async fn nbr_obs_wrt_abs(&self, wrt: Abstraction, obs: Observation) -> anyhow::Result<ApiSample> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| {
             format!(
@@ -681,11 +645,7 @@ impl TopologyAPI {
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 
-    pub async fn kgn_wrt_abs(
-        &self,
-        wrt: Abstraction,
-        nbr: Vec<Observation>,
-    ) -> anyhow::Result<Vec<ApiSample>> {
+    pub async fn kgn_wrt_abs(&self, wrt: Abstraction, nbr: Vec<Observation>) -> anyhow::Result<Vec<ApiSample>> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| {
             format!(
@@ -825,13 +785,10 @@ impl TopologyAPI {
             .map(|x| x.ok_or_else(|| anyhow::anyhow!("observation not found in database")))
             .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
-            .fold(
-                std::collections::BTreeMap::<_, _>::new(),
-                |mut btree, (obs, (abs, eqy))| {
-                    btree.entry(abs).or_insert((obs, *eqy, 0)).2 += 1;
-                    btree
-                },
-            )
+            .fold(std::collections::BTreeMap::<_, _>::new(), |mut btree, (obs, (abs, eqy))| {
+                btree.entry(abs).or_insert((obs, *eqy, 0)).2 += 1;
+                btree
+            })
             .into_iter()
             .map(|(abs, (obs, eqy, pop))| ApiSample {
                 obs,

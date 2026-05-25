@@ -37,10 +37,7 @@ pub struct CompletedHand {
 
 impl CompletedHand {
     pub fn pnl(&self, seat: Position) -> Chips {
-        self.settlements
-            .get(seat)
-            .map(|s| s.pnl().won())
-            .unwrap_or(0)
+        self.settlements.get(seat).map(|s| s.pnl().won()).unwrap_or(0)
     }
 }
 

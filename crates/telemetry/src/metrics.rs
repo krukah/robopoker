@@ -76,9 +76,7 @@ fn build(meter: &Meter) -> Handles {
     Handles {
         mccfr_steps: meter
             .u64_counter("rbp.mccfr.steps")
-            .with_description(
-                "MCCFR training steps completed (cumulative). Use rate() for steps/sec.",
-            )
+            .with_description("MCCFR training steps completed (cumulative). Use rate() for steps/sec.")
             .build(),
         mccfr_nodes: meter
             .u64_counter("rbp.mccfr.nodes")
@@ -146,9 +144,7 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         kmeans_iterations: meter
             .u64_counter("rbp.kmeans.iterations")
-            .with_description(
-                "K-means iterations completed (cumulative). Use rate() for iters/sec.",
-            )
+            .with_description("K-means iterations completed (cumulative). Use rate() for iters/sec.")
             .build(),
         kmeans_early_terminated: meter
             .u64_counter("rbp.kmeans.early_terminated")
@@ -220,9 +216,7 @@ fn build(meter: &Meter) -> Handles {
             .build(),
         slumbot_hand_bb: meter
             .f64_histogram("rbp.slumbot.hand_bb")
-            .with_description(
-                "Winnings per hand in big blinds (signed; use _bucket for distribution, not _sum)",
-            )
+            .with_description("Winnings per hand in big blinds (signed; use _bucket for distribution, not _sum)")
             .build(),
         slumbot_hand_bb_won: meter
             .f64_counter("rbp.slumbot.hand_bb_won")

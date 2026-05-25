@@ -56,9 +56,7 @@ impl<const K: usize> Bounds<K> {
     /// 3. u(x) > d(c(x),j)/2 — upper bound exceeds half inter-centroid distance
     pub fn has_shifted(&self, pairs: &[[f32; K]; K], j: usize) -> bool {
         unsafe {
-            self.j() != j
-                && self.u() > self.lower(j)
-                && self.u() > 0.5 * pairs.get_unchecked(self.j()).get_unchecked(j)
+            self.j() != j && self.u() > self.lower(j) && self.u() > 0.5 * pairs.get_unchecked(self.j()).get_unchecked(j)
         }
     }
     /// Checks if this point can skip Step 3 entirely.

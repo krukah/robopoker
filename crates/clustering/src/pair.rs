@@ -71,10 +71,7 @@ impl Pair {
     pub fn abstractions(&self) -> (Abstraction, Abstraction) {
         let (i, j) = self.indices();
         let street = self.street();
-        (
-            Abstraction::from((street, i)),
-            Abstraction::from((street, j)),
-        )
+        (Abstraction::from((street, i)), Abstraction::from((street, j)))
     }
 }
 

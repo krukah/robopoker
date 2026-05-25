@@ -29,13 +29,7 @@ struct Cli {
 async fn main() {
     tracing_subscriber::fmt::init();
     let cli = Cli::parse();
-    rbp_slumbot::Runtime::new(
-        &cli.variants,
-        cli.hands,
-        cli.continuous,
-        cli.throttle,
-        cli.sessions,
-    )
-    .run()
-    .await;
+    rbp_slumbot::Runtime::new(&cli.variants, cli.hands, cli.continuous, cli.throttle, cli.sessions)
+        .run()
+        .await;
 }

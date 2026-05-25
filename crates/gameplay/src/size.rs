@@ -62,8 +62,7 @@ impl Size {
             Some(Grid::Postflop(prs)) => Self::translate_axis::<PotFraction, _>(
                 raise.chips(),
                 raise.chips() as f64 / raise.pot() as f64,
-                prs.iter()
-                    .map(|&(n, d)| (n as f64 / d as f64, Self::SPR(n, d))),
+                prs.iter().map(|&(n, d)| (n as f64 / d as f64, Self::SPR(n, d))),
                 policy,
                 rng,
             ),
@@ -196,12 +195,7 @@ impl From<Odds> for Size {
 impl From<Size> for u8 {
     fn from(size: Size) -> Self {
         match size {
-            Size::BBs(n) => {
-                6 + OPENS
-                    .iter()
-                    .position(|&b| b == n)
-                    .expect("invalid blinds value") as u8
-            }
+            Size::BBs(n) => 6 + OPENS.iter().position(|&b| b == n).expect("invalid blinds value") as u8,
             Size::SPR(n, d) => {
                 10 + RAISES
                     .iter()
@@ -237,10 +231,7 @@ impl From<u64> for Size {
         if value & (1 << 19) != 0 {
             Self::BBs(((value >> 3) & 0xFF) as Chips)
         } else {
-            Self::SPR(
-                ((value >> 3) & 0xFF) as Chips,
-                ((value >> 11) & 0xFF) as Chips,
-            )
+            Self::SPR(((value >> 3) & 0xFF) as Chips, ((value >> 11) & 0xFF) as Chips)
         }
     }
 }
@@ -325,11 +316,7 @@ mod tests {
     #[test]
     fn preflop_opening_uses_bbs() {
         for size in Size::raises(Street::Pref, 0) {
-            assert!(
-                matches!(size, Size::BBs(_)),
-                "preflop depth=0 should use BBs, got {:?}",
-                size
-            );
+            assert!(matches!(size, Size::BBs(_)), "preflop depth=0 should use BBs, got {:?}", size);
         }
     }
     /// Post-flop and preflop depth>0 must use SPR variant (pot-relative).
@@ -350,12 +337,7 @@ mod tests {
         }
         for depth in 1..=MAX_RAISE_REPEATS {
             for size in Size::raises(Street::Pref, depth) {
-                assert!(
-                    matches!(size, Size::SPR(..)),
-                    "preflop depth={} should use SPR, got {:?}",
-                    depth,
-                    size
-                );
+                assert!(matches!(size, Size::SPR(..)), "preflop depth={} should use SPR, got {:?}", depth, size);
             }
         }
     }
@@ -495,11 +477,7 @@ mod tests {
     #[test]
     fn translate_postflop_classical_nearest_snaps_to_half() {
         let rng = &mut seeded();
-        let out = Size::translate(
-            Raise::new(60, 100, Street::Flop, 0),
-            &Translation::Snap,
-            rng,
-        );
+        let out = Size::translate(Raise::new(60, 100, Street::Flop, 0), &Translation::Snap, rng);
         assert_eq!(out, Translated::Snap(Size::SPR(1, 2)));
     }
     /// `Harmonic` policy converges on the GS formula empirically across many samples.
@@ -513,11 +491,7 @@ mod tests {
         let trials = 50_000;
         let mut half_pot_hits = 0;
         for _ in 0..trials {
-            match Size::translate(
-                Raise::new(60, 100, Street::Flop, 0),
-                &Translation::Harmonic,
-                rng,
-            ) {
+            match Size::translate(Raise::new(60, 100, Street::Flop, 0), &Translation::Harmonic, rng) {
                 Translated::Snap(Size::SPR(1, 2)) => half_pot_hits += 1,
                 Translated::Snap(Size::SPR(3, 4)) => {}
                 other => panic!("unexpected: {:?}", other),
@@ -525,10 +499,7 @@ mod tests {
         }
         let empirical = half_pot_hits as f64 / trials as f64;
         let expected = (0.75 - 0.60) * (1.0 + 0.5) / ((0.75 - 0.5) * (1.0 + 0.60));
-        assert!(
-            (empirical - expected).abs() < 0.01,
-            "empirical {empirical} vs expected {expected}"
-        );
+        assert!((empirical - expected).abs() < 0.01, "empirical {empirical} vs expected {expected}");
     }
     /// String parsing roundtrip: parse(display(size)) == size.
     #[test]

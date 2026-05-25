@@ -63,11 +63,7 @@ pub trait CfrNash: RefProf {
     ///    decision ancestor's V(I), which is populated during blueprint training.
     ///    Walks up past consecutive chance nodes (e.g. multi-street runouts).
     /// 3. **Decision frontier** (sampler chose not to expand): this node's V(I)
-    fn terminal_value(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-        hero: Self::T,
-    ) -> Utility {
+    fn terminal_value(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Utility {
         let turn = node.game().turn();
         if turn.is_terminal() {
             node.game().payoff(hero)
@@ -87,11 +83,7 @@ pub trait CfrNash: RefProf {
     /// **Recursive descent** through tree children, weighting by opponent's
     /// averaged strategy at each external node. Handles terminal, frontier,
     /// and chance nodes. Contrast with upward iteration in [`CfrNash::averaged`].
-    fn external_payoff(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-        hero: Self::T,
-    ) -> Utility {
+    fn external_payoff(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Utility {
         self.subgamed_payoff(node, hero, None)
     }
 
@@ -130,17 +122,12 @@ pub trait CfrNash: RefProf {
                     .expect("edge seen in BR"),
                 None => kids
                     .iter()
-                    .map(|x| {
-                        self.averaged_policy(node.info(), x.incoming().expect("non-root"))
-                            * recurse(x)
-                    })
+                    .map(|x| self.averaged_policy(node.info(), x.incoming().expect("non-root")) * recurse(x))
                     .sum(),
             },
             _ => kids
                 .iter()
-                .map(|x| {
-                    self.averaged_policy(node.info(), x.incoming().expect("non-root")) * recurse(x)
-                })
+                .map(|x| self.averaged_policy(node.info(), x.incoming().expect("non-root")) * recurse(x))
                 .sum(),
         }
     }
@@ -151,11 +138,7 @@ pub trait CfrNash: RefProf {
     /// to opponent decision points and multiplying averaged probabilities.
     /// Dual of [`Solver::external_reach`](super::super::solver::Solver::external_reach),
     /// which walks **downward** from root replaying edges forward.
-    fn external_reach(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-        hero: Self::T,
-    ) -> Probability {
+    fn external_reach(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Probability {
         node.decisions()
             .filter(|(t, _, _)| *t != hero)
             .map(|(_, ref i, ref e)| self.averaged_policy(i, e))
@@ -199,11 +182,7 @@ pub trait CfrNash: RefProf {
     }
 
     /// Best action at an info set: argmax over actions of counterfactual value.
-    fn optimal_cfactual_choice(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-        hero: Self::T,
-    ) -> Self::E {
+    fn optimal_cfactual_choice(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Self::E {
         infoset
             .info()
             .choices()

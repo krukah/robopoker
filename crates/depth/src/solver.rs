@@ -18,12 +18,7 @@ impl<'blueprint, N, const D: usize> DepthSolver<'blueprint, N, D>
 where
     N: DepthSampler<D>,
 {
-    pub fn new(
-        source: &'blueprint N,
-        prefix: Vec<Descent<N::T, N::E>>,
-        internal: N::T,
-        entry: N::G,
-    ) -> Self {
+    pub fn new(source: &'blueprint N, prefix: Vec<Descent<N::T, N::E>>, internal: N::T, entry: N::G) -> Self {
         let origin = Some(entry.depth());
         Self {
             encoder: DepthEncoder::new(source, prefix),
@@ -87,12 +82,7 @@ where
             self.update_payoff(update);
             self.update_visits(update);
         }
-        tracing::trace!(
-            "[leaf] t={:<6} infos={:<4} regret={:.4}",
-            self.profile.t(),
-            n,
-            self.profile.sum_regret(),
-        );
+        tracing::trace!("[leaf] t={:<6} infos={:<4} regret={:.4}", self.profile.t(), n, self.profile.sum_regret(),);
         self.profile().metrics().inspect(|m| m.inc_epoch());
         self.advance();
     }
@@ -123,11 +113,7 @@ where
             .collect();
         let regret = refined
             .keys()
-            .map(|e| {
-                self.profile()
-                    .cum_regret(&info, &DepthEdge::Game(*e))
-                    .max(0.0)
-            })
+            .map(|e| self.profile().cum_regret(&info, &DepthEdge::Game(*e)).max(0.0))
             .sum();
         Harvested {
             refined,

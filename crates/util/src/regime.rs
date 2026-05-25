@@ -27,11 +27,7 @@ pub fn regime() -> Regime {
 /// Panics if called twice with different values.
 pub fn init_regime(r: Regime) {
     if let Err(existing) = REGIME.set(r) {
-        assert_eq!(
-            existing, r,
-            "regime already set to {:?}, cannot change to {:?}",
-            existing, r
-        );
+        assert_eq!(existing, r, "regime already set to {:?}, cannot change to {:?}", existing, r);
     }
 }
 

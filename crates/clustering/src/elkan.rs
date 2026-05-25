@@ -89,11 +89,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
 
     /// Computes distance between two centroids.
     fn pairwise(&self, i: usize, j: usize) -> f32 {
-        if i == j {
-            0.0
-        } else {
-            self.distance(self.centroid(i), self.centroid(j))
-        }
+        if i == j { 0.0 } else { self.distance(self.centroid(i), self.centroid(j)) }
     }
 
     /// Computes s(c) = (1/2) min_{c'≠c} d(c, c') for each centroid.
@@ -110,9 +106,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
 
     /// Computes how far each centroid moved this iteration.
     fn drift(&self, news: &[Self::P]) -> Drift<K> {
-        Drift::from_array(std::array::from_fn(|i| {
-            self.distance(&news[i], self.centroid(i))
-        }))
+        Drift::from_array(std::array::from_fn(|i| self.distance(&news[i], self.centroid(i))))
     }
 
     /// Refreshes stale upper bound before triangle inequality check.
@@ -233,12 +227,7 @@ mod tests {
             rms.push(km.rms());
         }
         for window in rms.windows(2) {
-            assert!(
-                window[0] >= window[1],
-                "RMS increasing: {} -> {}",
-                window[0],
-                window[1]
-            );
+            assert!(window[0] >= window[1], "RMS increasing: {} -> {}", window[0], window[1]);
         }
     }
 
@@ -255,12 +244,7 @@ mod tests {
         let r1 = km.rms();
         km.step();
         let r2 = km.rms();
-        assert!(
-            (r1 - r2).abs() <= 0.01,
-            "RMS is unlikely large: {} -> {}",
-            r1,
-            r2
-        );
+        assert!((r1 - r2).abs() <= 0.01, "RMS is unlikely large: {} -> {}", r1, r2);
     }
 
     #[test]

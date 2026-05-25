@@ -127,10 +127,7 @@ where
         if x == NodeIndex::new(0) {
             writeln!(f, "\nROOT   {:?}", self.at(x).info())?;
         }
-        let children = self
-            .graph
-            .neighbors_directed(x, petgraph::Outgoing)
-            .collect::<Vec<_>>();
+        let children = self.graph.neighbors_directed(x, petgraph::Outgoing).collect::<Vec<_>>();
         let n = children.len();
         for (i, child) in children.into_iter().rev().enumerate() {
             let last = i == n - 1;
@@ -138,10 +135,7 @@ where
             let stem = if last { "└" } else { "├" };
             let node = self.at(child);
             let head = node.info();
-            let edge = self
-                .graph
-                .edge_weight(self.graph.find_edge(x, child).unwrap())
-                .unwrap();
+            let edge = self.graph.edge_weight(self.graph.find_edge(x, child).unwrap()).unwrap();
             writeln!(f, "{}{}──{:?} → {:?}", prefix, stem, edge, head)?;
             self.show(f, child, &format!("{}{}", prefix, gaps))?;
         }

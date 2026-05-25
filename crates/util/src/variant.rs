@@ -85,15 +85,7 @@ impl Variant {
     pub fn config(self) -> Option<Config> {
         match self {
             Self::Fish => None,
-            Self::Bot {
-                depth,
-                world,
-                dirac,
-            } => Some(Config {
-                depth,
-                world,
-                dirac,
-            }),
+            Self::Bot { depth, world, dirac } => Some(Config { depth, world, dirac }),
         }
     }
     /// One-line description for UI tooltips and history filter rows.
@@ -190,11 +182,7 @@ fn parse_flags(token: &str) -> Option<Variant> {
         }
         last = pos;
     }
-    Some(Variant::Bot {
-        depth,
-        world,
-        dirac,
-    })
+    Some(Variant::Bot { depth, world, dirac })
 }
 
 /// The slumbot.com adversary identity, recorded as a fixed pseudo-bot

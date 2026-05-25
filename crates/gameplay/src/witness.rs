@@ -74,12 +74,7 @@ impl Witness {
         }
     }
     /// Creates a recall with explicit stacks and dealer (for live gameplay).
-    pub fn initial_with(
-        pov: Turn,
-        reveals: Arrangement,
-        stacks: [Chips; N],
-        dealer: Position,
-    ) -> Self {
+    pub fn initial_with(pov: Turn, reveals: Arrangement, stacks: [Chips; N], dealer: Position) -> Self {
         Self {
             pov,
             stacks,
@@ -102,9 +97,7 @@ impl Witness {
 
 impl Recall for Witness {
     fn root(&self) -> Game {
-        Game::blinds()
-            .into_iter()
-            .fold(self.base(), |mut g, a| g.consume(a))
+        Game::blinds().into_iter().fold(self.base(), |mut g, a| g.consume(a))
     }
 
     fn actions(&self) -> &[Action] {
@@ -197,11 +190,7 @@ impl Witness {
     ///
     /// The `actions` parameter should NOT include blinds or draws —
     /// draws are auto-inserted by `sprout` based on the arrangement.
-    pub fn try_arrange(
-        pov: Turn,
-        reveals: Arrangement,
-        actions: Vec<Action>,
-    ) -> anyhow::Result<Self> {
+    pub fn try_arrange(pov: Turn, reveals: Arrangement, actions: Vec<Action>) -> anyhow::Result<Self> {
         actions.into_iter().try_fold(
             Self {
                 pov,
@@ -406,13 +395,11 @@ impl Witness {
     /// For Chance turns: [Edge::Draw]
     /// For Terminal: empty
     fn edges_at(&self, i: usize) -> Vec<Edge> {
-        self.states()
-            .get(i)
-            .map_or(Vec::new(), |game| match game.turn() {
-                Turn::Chance => vec![Edge::Draw],
-                Turn::Terminal => Vec::new(),
-                Turn::Choice(_) => game.choices(self.aggression_at(i)).into_iter().collect(),
-            })
+        self.states().get(i).map_or(Vec::new(), |game| match game.turn() {
+            Turn::Chance => vec![Edge::Draw],
+            Turn::Terminal => Vec::new(),
+            Turn::Choice(_) => game.choices(self.aggression_at(i)).into_iter().collect(),
+        })
     }
     /// Returns the edge taken at a specific state index, if any.
     fn taken_at(&self, i: usize) -> Option<Edge> {
@@ -430,9 +417,7 @@ impl Witness {
             .enumerate()
             .map(|(i, _)| {
                 let edges = self.edges_at(i);
-                let taken = self
-                    .taken_at(i)
-                    .and_then(|te| edges.iter().position(|e| *e == te));
+                let taken = self.taken_at(i).and_then(|te| edges.iter().position(|e| *e == te));
                 (edges, taken)
             })
             .collect()
@@ -458,11 +443,7 @@ impl Witness {
     /// enabling graceful error handling instead of panicking.
     pub fn try_push(&self, action: Action) -> anyhow::Result<Self> {
         if !self.can_push(&action) {
-            return Err(anyhow::anyhow!(
-                "illegal action {:?} at {:?}",
-                action,
-                self.head().turn()
-            ));
+            return Err(anyhow::anyhow!("illegal action {:?} at {:?}", action, self.head().turn()));
         }
         let mut copy = self.clone();
         copy.actions.push(action);
@@ -564,13 +545,7 @@ impl std::fmt::Display for Witness {
             format!("{} │ {}", hole, board)
         };
         writeln!(f, "┌{}┬{}┐", "─".repeat(L), "─".repeat(R))?;
-        writeln!(
-            f,
-            "│ {:>2} │ {:<w$} │",
-            self.turn().label(),
-            cards,
-            w = R - 2
-        )?;
+        writeln!(f, "│ {:>2} │ {:<w$} │", self.turn().label(), cards, w = R - 2)?;
         writeln!(f, "├{}┼{}┤", "─".repeat(L), "─".repeat(R))?;
         Street::all()
             .iter()
@@ -764,8 +739,7 @@ mod tests {
     /// when not hero's turn, head().turn() != pov
     #[test]
     fn playability_not_our_turn() {
-        let r =
-            Witness::from((Turn::Choice(0), Arrangement::from(Street::Pref))).push(Action::Call(1));
+        let r = Witness::from((Turn::Choice(0), Arrangement::from(Street::Pref))).push(Action::Call(1));
         assert_eq!(r.head().turn(), Turn::Choice(1));
     }
 
@@ -818,12 +792,7 @@ mod tests {
     #[test]
     fn empty_means_no_decisions() {
         assert!(Witness::initial(Turn::Choice(0)).empty());
-        assert!(
-            Witness::initial(Turn::Choice(0))
-                .push(Action::Call(1))
-                .empty()
-                .not()
-        );
+        assert!(Witness::initial(Turn::Choice(0)).push(Action::Call(1)).empty().not());
     }
 
     /// aggression counts trailing aggressive edges
@@ -901,17 +870,14 @@ mod tests {
         let obs = Observation::from(Street::Flop);
         let actions = vec![Action::Call(1), Action::Check];
         let from_build = Witness::try_build(Turn::Choice(0), obs, actions.clone()).unwrap();
-        let from_arrange =
-            Witness::try_arrange(Turn::Choice(0), Arrangement::from(obs), actions).unwrap();
+        let from_arrange = Witness::try_arrange(Turn::Choice(0), Arrangement::from(obs), actions).unwrap();
         assert_eq!(from_build, from_arrange);
     }
     /// Draw actions inserted by sprout match the arrangement's revealed cards
     #[test]
     fn sprout_draws_match_arrangement() {
         let arr = Arrangement::from(Street::Rive);
-        let recall =
-            Witness::try_arrange(Turn::Choice(0), arr, vec![Action::Call(1), Action::Check])
-                .unwrap();
+        let recall = Witness::try_arrange(Turn::Choice(0), arr, vec![Action::Call(1), Action::Check]).unwrap();
         let draws: Vec<Hand> = recall.actions().iter().filter_map(|a| a.hand()).collect();
         assert_eq!(draws.len(), 1);
         assert_eq!(draws[0], Hand::from(arr.revealed(Street::Flop)));

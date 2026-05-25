@@ -122,58 +122,25 @@ macro_rules! regime {
         pub fn $name() -> &'static str {
             static T: OnceLock<&str> = OnceLock::<&str>::new();
             *T.get_or_init(|| {
-                leaked(format!(
-                    "{}{}{}",
-                    $default,
-                    rbp_core::regime().suffix(),
-                    rbp_core::version().suffix(),
-                ))
+                leaked(format!("{}{}{}", $default, rbp_core::regime().suffix(), rbp_core::version().suffix(),))
             })
         }
     };
 }
 
 // ── Shared tables (game-level / auth — invariant under V × R) ───────────────
-table!(
-    actions,
-    "actions",
-    "Table for game actions (bets, raises, folds, etc.)."
-);
+table!(actions, "actions", "Table for game actions (bets, raises, folds, etc.).");
 table!(hands, "hands", "Table for completed poker hands.");
-table!(
-    players,
-    "players",
-    "Table for player participation in hands."
-);
+table!(players, "players", "Table for player participation in hands.");
 table!(rooms, "rooms", "Table for active game rooms.");
-table!(
-    sessions,
-    "sessions",
-    "Table for user authentication sessions."
-);
-table!(
-    users,
-    "users",
-    "Table for registered user accounts and identity."
-);
+table!(sessions, "sessions", "Table for user authentication sessions.");
+table!(users, "users", "Table for registered user accounts and identity.");
 
 // ── Versioned tables (abstraction-derived — depend on K-means params) ───────
-versioned!(
-    abstraction,
-    "abstraction",
-    "Table for abstraction bucket definitions."
-);
-versioned!(
-    isomorphism,
-    "isomorphism",
-    "Table for isomorphism → abstraction mappings."
-);
+versioned!(abstraction, "abstraction", "Table for abstraction bucket definitions.");
+versioned!(isomorphism, "isomorphism", "Table for isomorphism → abstraction mappings.");
 versioned!(street, "street", "Table for street-specific metadata.");
-versioned!(
-    transitions,
-    "transitions",
-    "Table for abstraction transition probabilities."
-);
+versioned!(transitions, "transitions", "Table for abstraction transition probabilities.");
 versioned!(
     metric,
     "metric",
@@ -189,16 +156,8 @@ regime!(
      (Edge, InfoId) where InfoId embeds abstraction IDs from the active \
      version, hence the version suffix in addition to regime."
 );
-regime!(
-    epoch,
-    "epoch",
-    "Table for training epoch metadata and progress."
-);
-regime!(
-    snapshot,
-    "snapshot",
-    "Table for training snapshot statistics (append-only)."
-);
+regime!(epoch, "epoch", "Table for training epoch metadata and progress.");
+regime!(snapshot, "snapshot", "Table for training snapshot statistics (append-only).");
 regime!(
     staging,
     "staging",

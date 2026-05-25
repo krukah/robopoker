@@ -16,11 +16,7 @@ use super::*;
 pub struct VanillaSampling;
 
 impl SamplingScheme for VanillaSampling {
-    fn sample<T, E, G, I, P>(
-        _: &P,
-        _: &Node<T, E, G, I>,
-        branches: Vec<Leaf<E, G>>,
-    ) -> Vec<Leaf<E, G>>
+    fn sample<T, E, G, I, P>(_: &P, _: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,

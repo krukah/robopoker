@@ -7,15 +7,7 @@ use rbp_mccfr::*;
 use rbp_subgame::*;
 use rbp_world::*;
 
-mccfr!(
-    Nlhe,
-    NlheEncoder,
-    NlheTurn,
-    NlheEdge,
-    NlheGame,
-    NlheInfo,
-    128
-);
+mccfr!(Nlhe, NlheEncoder, NlheTurn, NlheEdge, NlheGame, NlheInfo, 128);
 
 /// Authoritative current-street `(turn, edge)` pairs from a witness recall.
 ///
@@ -101,10 +93,7 @@ where
     /// No opponent range partitioning or world sampling — solves the
     /// depth-limited tree from `recall.head()` using biased continuation
     /// rollouts at the leaves.
-    pub fn adapt_leaf(
-        &self,
-        recall: &Witness,
-    ) -> DepthSolver<'_, Self, { rbp_core::FRONTIER_LEAVES }> {
+    pub fn adapt_leaf(&self, recall: &Witness) -> DepthSolver<'_, Self, { rbp_core::FRONTIER_LEAVES }> {
         let internal = NlheTurn::from(recall.turn());
         let entry = NlheGame::from(recall.head());
         let prefix = subgame_descents(recall);
@@ -118,8 +107,7 @@ where
     pub fn adapt_safe(
         &self,
         recall: &Witness,
-    ) -> WorldSolver<'_, { rbp_core::N_WORLDS }, NlheProfile, NlheEncoder, NlheInfo, NlheSecret>
-    {
+    ) -> WorldSolver<'_, { rbp_core::N_WORLDS }, NlheProfile, NlheEncoder, NlheInfo, NlheSecret> {
         let (external, partition, recall) = self.setup(recall);
         WorldSolver::new(&self.encoder, &self.profile, external, partition, recall)
     }
@@ -132,26 +120,12 @@ where
     pub fn adapt_full(
         &self,
         recall: &Witness,
-    ) -> SubGameSolver<
-        '_,
-        { rbp_core::N_WORLDS },
-        { rbp_core::FRONTIER_LEAVES },
-        Self,
-        NlheInfo,
-        NlheSecret,
-    > {
+    ) -> SubGameSolver<'_, { rbp_core::N_WORLDS }, { rbp_core::FRONTIER_LEAVES }, Self, NlheInfo, NlheSecret> {
         let (external, partition, recall) = self.setup(recall);
         SubGameSolver::new(self, external, partition, recall)
     }
     /// Common setup for safe solvers: external identity, belief partition, recall.
-    fn setup(
-        &self,
-        recall: &Witness,
-    ) -> (
-        NlheTurn,
-        Belief<NlheSecret, { rbp_core::N_WORLDS }>,
-        CfrRecall<NlheGame>,
-    ) {
+    fn setup(&self, recall: &Witness) -> (NlheTurn, Belief<NlheSecret, { rbp_core::N_WORLDS }>, CfrRecall<NlheGame>) {
         let external = match recall.turn() {
             Turn::Choice(0) => NlheTurn::from(1),
             Turn::Choice(1) => NlheTurn::from(0),
@@ -169,10 +143,7 @@ where
     /// hand encoded by `case`.
     fn external_reach(&self, case: Perfect, internal: NlheTurn) -> Probability {
         self.encoder
-            .replay(
-                NlheGame::from(case.root()),
-                case.history().into_iter().map(NlheEdge::from),
-            )
+            .replay(NlheGame::from(case.root()), case.history().into_iter().map(NlheEdge::from))
             .into_iter()
             .filter(|(t, _, _)| t.is_opponent(&internal))
             .map(|(_, ref i, ref e)| self.profile.averaged_policy(i, e))
@@ -250,9 +221,6 @@ where
     S: SamplingScheme,
 {
     async fn hydrate(client: std::sync::Arc<tokio_postgres::Client>) -> Self {
-        Self::new(
-            NlheProfile::hydrate(client.clone()).await,
-            NlheEncoder::hydrate(client.clone()).await,
-        )
+        Self::new(NlheProfile::hydrate(client.clone()).await, NlheEncoder::hydrate(client.clone()).await)
     }
 }

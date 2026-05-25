@@ -47,10 +47,7 @@ impl Casino {
     /// Spawns the room task (waits for start signal) and returns the room ID.
     pub async fn start(self: &Arc<Self>, variant: Variant) -> anyhow::Result<ID<Room>> {
         if variant.requires_blueprint() && self.blueprint.is_none() {
-            anyhow::bail!(
-                "variant {} needs a blueprint but this Casino was started without one",
-                variant.label()
-            );
+            anyhow::bail!("variant {} needs a blueprint but this Casino was started without one", variant.label());
         }
         let id = ID::default();
         let channels = RoomHandle::pair(id);
@@ -59,12 +56,7 @@ impl Casino {
         let mut room = Room::new(id, 2, self.db.clone());
         self.db.create_room(&room).await?;
         self.rooms.write().await.insert(id, channels.handle);
-        room.sit(
-            &mut engine,
-            channels.client,
-            Lurker::default(),
-            Some(channels.mirror),
-        );
+        room.sit(&mut engine, channels.client, Lurker::default(), Some(channels.mirror));
         let player = variant.into_player(self.blueprint);
         room.sit(&mut engine, player, variant.user(), None);
         let handle = tokio::spawn(room.run(engine, channels.start));
@@ -94,12 +86,7 @@ impl Casino {
     pub async fn channels(
         &self,
         id: ID<Room>,
-    ) -> anyhow::Result<(
-        Tx,
-        Rx,
-        Arc<tokio::sync::Notify>,
-        Option<tokio::sync::oneshot::Sender<()>>,
-    )> {
+    ) -> anyhow::Result<(Tx, Rx, Arc<tokio::sync::Notify>, Option<tokio::sync::oneshot::Sender<()>>)> {
         self.rooms
             .write()
             .await

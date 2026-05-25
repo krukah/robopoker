@@ -36,10 +36,7 @@ where
 {
     /// Creates an empty info set backed by the given tree.
     pub fn from(tree: std::sync::Arc<Tree<T, E, G, I>>) -> Self {
-        Self {
-            span: Vec::new(),
-            tree,
-        }
+        Self { span: Vec::new(), tree }
     }
     /// Adds a node index to this info set.
     pub fn push(&mut self, index: petgraph::graph::NodeIndex) {
@@ -51,8 +48,7 @@ where
     }
     /// First node in the set (representative for info lookup).
     pub fn head(&self) -> Node<'_, T, E, G, I> {
-        self.tree
-            .at(self.span.first().copied().expect("nodes in info"))
+        self.tree.at(self.span.first().copied().expect("nodes in info"))
     }
     /// The shared information set identifier.
     pub fn info(&self) -> I {

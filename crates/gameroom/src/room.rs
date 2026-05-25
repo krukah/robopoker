@@ -56,8 +56,7 @@ impl Room {
     #[tracing::instrument(skip_all, fields(room = %self.id))]
     pub async fn run(mut self, engine: Engine<Seating>, start: tokio::sync::oneshot::Receiver<()>) {
         tracing::debug!("waiting for player");
-        match tokio::time::timeout(std::time::Duration::from_millis(PACE_ROOM_STARTUP), start).await
-        {
+        match tokio::time::timeout(std::time::Duration::from_millis(PACE_ROOM_STARTUP), start).await {
             Ok(Ok(())) => {}
             _ => {
                 tracing::warn!("startup timeout, no player connected");
@@ -114,8 +113,7 @@ impl Room {
                 Turn::Choice(p) => {
                     let start = std::time::Instant::now();
                     let (action, prompt) = engine.ask(p).await;
-                    self.context
-                        .record(p, action, Some(start.elapsed().as_millis() as i32));
+                    self.context.record(p, action, Some(start.elapsed().as_millis() as i32));
                     if p == 0 && !prompt.expired() {
                         acted = true;
                     }
@@ -153,9 +151,9 @@ impl Room {
         for (i, s) in engine.game().settlements().iter().enumerate() {
             self.context.set_pnl(i, s.won());
         }
-        let hand =
-            self.context
-                .to_hand(self.id().cast(), engine.game().board(), engine.game().pot());
+        let hand = self
+            .context
+            .to_hand(self.id().cast(), engine.game().board(), engine.game().pot());
         self.db
             .create_hand(&hand)
             .await
@@ -191,10 +189,7 @@ impl Schema for Room {
     }
 
     fn columns() -> &'static [tokio_postgres::types::Type] {
-        &[
-            tokio_postgres::types::Type::UUID,
-            tokio_postgres::types::Type::INT2,
-        ]
+        &[tokio_postgres::types::Type::UUID, tokio_postgres::types::Type::INT2]
     }
 
     fn creates() -> &'static str {

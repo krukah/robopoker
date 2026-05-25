@@ -59,9 +59,7 @@ impl NlheInfo {
     }
     /// Available actions at this decision point.
     pub fn choices(&self) -> Path {
-        CfrPublic::choices(&self.0.public())
-            .map(Edge::from)
-            .collect()
+        CfrPublic::choices(&self.0.public()).map(Edge::from).collect()
     }
     /// The private abstraction bucket.
     pub fn bucket(&self) -> NlheSecret {
@@ -184,11 +182,7 @@ impl Arbitrary for NlheInfo {
                         .choose(&mut rand::rng())
                         .map(|&e| {
                             game = game.apply(game.snap(game.actionize(e)));
-                            depth = if e.is_chance().not() {
-                                depth + e.is_aggro() as usize
-                            } else {
-                                0
-                            };
+                            depth = if e.is_chance().not() { depth + e.is_aggro() as usize } else { 0 };
                             e
                         })
                 })?
@@ -290,13 +284,9 @@ mod tests {
         .into_iter()
         .collect();
         assert_eq!(2, path1.aggression());
-        let path2: Path = [
-            Edge::Raise(Odds::new(1, 1)),
-            Edge::Raise(Odds::new(1, 2)),
-            Edge::Shove,
-        ]
-        .into_iter()
-        .collect();
+        let path2: Path = [Edge::Raise(Odds::new(1, 1)), Edge::Raise(Odds::new(1, 2)), Edge::Shove]
+            .into_iter()
+            .collect();
         assert_eq!(3, path2.aggression());
         let path3: Path = [
             Edge::Check, //
@@ -332,11 +322,7 @@ mod tests {
             let e1 = NlheEdge::from(game.edgify(a1, depth));
             let a2 = game.actionize(Edge::from(e1));
             let e2 = NlheEdge::from(game.edgify(a2, depth));
-            assert_eq!(
-                e1, e2,
-                "Roundtrip failed: {:?} -> {:?} -> {:?} -> {:?}",
-                a1, e1, a2, e2
-            );
+            assert_eq!(e1, e2, "Roundtrip failed: {:?} -> {:?} -> {:?} -> {:?}", a1, e1, a2, e2);
         }
     }
 
@@ -365,12 +351,7 @@ mod tests {
             .push(Action::Raise(9))
             .push(Action::Call(6));
         let abs = Abstraction::random();
-        let info = NlheInfo::from((
-            recall.subgame(),
-            abs,
-            recall.choices(),
-            Geometry::from_game(&recall.head()),
-        ));
+        let info = NlheInfo::from((recall.subgame(), abs, recall.choices(), Geometry::from_game(&recall.head())));
         let current = recall
             .subgame()
             .into_iter()
@@ -393,10 +374,6 @@ mod tests {
         let live_choices = recall.head().choices(recall.subgame().aggression());
         let abs = Abstraction::from(Street::Flop);
         let info = NlheInfo::from((&recall, abs));
-        assert_eq!(
-            info.choices(),
-            live_choices,
-            "info should reflect live recall state",
-        );
+        assert_eq!(info.choices(), live_choices, "info should reflect live recall state",);
     }
 }

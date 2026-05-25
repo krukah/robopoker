@@ -50,11 +50,7 @@ impl Strategy {
     /// Normalized action probabilities (sums to 1).
     /// Applies minimum probability floor to prevent zero weights.
     pub fn policy(&self) -> BTreeMap<Edge, Probability> {
-        let denom = self
-            .accumulated
-            .values()
-            .map(|&p| p.max(EPSILON))
-            .sum::<Probability>();
+        let denom = self.accumulated.values().map(|&p| p.max(EPSILON)).sum::<Probability>();
         self.accumulated
             .iter()
             .map(|(&edge, &policy)| (edge, policy.max(EPSILON) / denom))
@@ -96,11 +92,7 @@ impl Density for Strategy {
     type Support = NlheEdge;
 
     fn density(&self, edge: &Self::Support) -> Probability {
-        let denom = self
-            .accumulated
-            .values()
-            .map(|&p| p.max(EPSILON))
-            .sum::<Probability>();
+        let denom = self.accumulated.values().map(|&p| p.max(EPSILON)).sum::<Probability>();
         self.accumulated
             .get(edge.as_ref())
             .map(|&p| p.max(EPSILON) / denom)
@@ -192,21 +184,13 @@ mod tests {
 
     #[test]
     fn unitarity() {
-        let s = build(&[
-            (Action::Fold, 10.0),
-            (Action::Check, 20.0),
-            (Action::Call(10), 30.0),
-        ]);
+        let s = build(&[(Action::Fold, 10.0), (Action::Check, 20.0), (Action::Call(10), 30.0)]);
         assert!(close(sums(&s), 1.0));
     }
 
     #[test]
     fn epsilons() {
-        let s = build(&[
-            (Action::Fold, 0.0),
-            (Action::Check, 0.0),
-            (Action::Call(10), 100.0),
-        ]);
+        let s = build(&[(Action::Fold, 0.0), (Action::Check, 0.0), (Action::Call(10), 100.0)]);
         let p = s.policy();
         assert!(close(sums(&s), 1.0));
         assert!(p[&Edge::from(Action::Call(10))] > 0.99);
@@ -231,11 +215,7 @@ mod tests {
 
     #[test]
     fn density() {
-        let s = build(&[
-            (Action::Fold, 10.0),
-            (Action::Check, 30.0),
-            (Action::Call(10), 60.0),
-        ]);
+        let s = build(&[(Action::Fold, 10.0), (Action::Check, 30.0), (Action::Call(10), 60.0)]);
         let p = s.policy();
         for (e, v) in p.iter() {
             assert!(close(s.density(&NlheEdge::from(*e)), *v));
@@ -279,21 +259,13 @@ mod tests {
 
     #[test]
     fn support() {
-        let s = build(&[
-            (Action::Fold, 1.0),
-            (Action::Check, 1.0),
-            (Action::Call(10), 1.0),
-        ]);
+        let s = build(&[(Action::Fold, 1.0), (Action::Check, 1.0), (Action::Call(10), 1.0)]);
         assert_eq!(s.support().count(), 3);
     }
 
     #[test]
     fn positivity() {
-        let s = build(&[
-            (Action::Fold, 5.0),
-            (Action::Check, 15.0),
-            (Action::Call(10), 80.0),
-        ]);
+        let s = build(&[(Action::Fold, 5.0), (Action::Check, 15.0), (Action::Call(10), 80.0)]);
         for (_, &p) in s.policy().iter() {
             assert!(p > 0.0 && p <= 1.0);
         }

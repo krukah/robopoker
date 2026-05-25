@@ -69,11 +69,7 @@ use rand::Rng;
 pub struct PluribusSampling;
 
 impl SamplingScheme for PluribusSampling {
-    fn sample<T, E, G, I, P>(
-        profile: &P,
-        node: &Node<T, E, G, I>,
-        branches: Vec<Leaf<E, G>>,
-    ) -> Vec<Leaf<E, G>>
+    fn sample<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,
         E: CfrEdge,
@@ -97,9 +93,7 @@ impl SamplingScheme for PluribusSampling {
         }
         let pruned = branches
             .iter()
-            .filter(|(edge, game, _)| {
-                game.turn().is_terminal() || profile.cum_regret(info, edge) > hyper.threshold()
-            })
+            .filter(|(edge, game, _)| game.turn().is_terminal() || profile.cum_regret(info, edge) > hyper.threshold())
             .cloned()
             .collect::<Vec<_>>();
         if pruned.is_empty() { branches } else { pruned }

@@ -15,13 +15,7 @@ pub struct Play {
 }
 
 impl Play {
-    pub fn new(
-        hand: ID<Hand>,
-        seq: Epoch,
-        player: Option<ID<Member>>,
-        action: Action,
-        elapsed: Option<i32>,
-    ) -> Self {
+    pub fn new(hand: ID<Hand>, seq: Epoch, player: Option<ID<Member>>, action: Action, elapsed: Option<i32>) -> Self {
         Self {
             hand,
             seq,
@@ -95,10 +89,7 @@ mod schema {
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!(
-                    "CREATE INDEX IF NOT EXISTS idx_actions_player ON {} (player_id);",
-                    actions()
-                ))
+                leaked(format!("CREATE INDEX IF NOT EXISTS idx_actions_player ON {} (player_id);", actions()))
             })
         }
 

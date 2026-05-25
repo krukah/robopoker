@@ -21,10 +21,5 @@ pub trait DepthSampler<const D: usize>: CfrEncoder {
     /// the tree originally — the turns are ground truth, not
     /// reconstructed from edges (which is unsafe for games with
     /// chip-snapping or randomized chance).
-    fn payoffs(
-        &self,
-        prefix: &Prefix<Self::T, Self::E>,
-        game: &Self::G,
-        internal: Self::T,
-    ) -> Payoffs<D>;
+    fn payoffs(&self, prefix: &Prefix<Self::T, Self::E>, game: &Self::G, internal: Self::T) -> Payoffs<D>;
 }

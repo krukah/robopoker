@@ -118,10 +118,10 @@ where
     fn step(&mut self) {
         let world = Self::sample(&self.belief);
         self.encoder.with_world(world);
-        self.entry =
-            self.encoder
-                .inner()
-                .restrict(self.external, world, &self.belief, &self.recall.game());
+        self.entry = self
+            .encoder
+            .inner()
+            .restrict(self.external, world, &self.belief, &self.recall.game());
         let updates = self.batch();
         let n = updates.len();
         for ref update in updates {
@@ -177,11 +177,9 @@ where
         let regret = refined
             .keys()
             .flat_map(|e| {
-                (0..W).map(World::from).map(move |w| {
-                    self.profile()
-                        .cum_regret(&WorldInfo::new(w, base), e)
-                        .max(0.0)
-                })
+                (0..W)
+                    .map(World::from)
+                    .map(move |w| self.profile().cum_regret(&WorldInfo::new(w, base), e).max(0.0))
             })
             .sum();
         Harvested {

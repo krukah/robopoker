@@ -125,8 +125,8 @@ impl Client {
             .text()
             .await?;
         drop(permit);
-        let resp = serde_json::from_str::<Response>(&text)
-            .map_err(|e| anyhow::anyhow!("act decode: {e}\nbody: {text}"))?;
+        let resp =
+            serde_json::from_str::<Response>(&text).map_err(|e| anyhow::anyhow!("act decode: {e}\nbody: {text}"))?;
         self.token = resp.token.clone().or(self.token.take());
         Ok(resp)
     }

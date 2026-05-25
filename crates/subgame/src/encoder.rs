@@ -75,11 +75,7 @@ where
         tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
         (edge, game, parent): Leaf<Self::E, Self::G>,
     ) -> Self::I {
-        let mut path = tree
-            .at(parent)
-            .into_iter()
-            .map(|a| a.edge())
-            .collect::<Vec<_>>();
+        let mut path = tree.at(parent).into_iter().map(|a| a.edge()).collect::<Vec<_>>();
         path.reverse();
         path.push(edge);
         let inner_path = path.into_iter().filter_map(|e| match e {
@@ -100,16 +96,11 @@ where
         self.make_info(inner_past, game)
     }
 
-    fn branches(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Vec<Leaf<Self::E, Self::G>> {
+    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         let parent = node.index();
         let game = *node.game();
         let game = if game.at_frontier() {
-            let payoffs = self
-                .inner
-                .payoffs(&self.prefix, game.inner(), game.internal());
+            let payoffs = self.inner.payoffs(&self.prefix, game.inner(), game.internal());
             game.to_frontier(payoffs)
         } else {
             game

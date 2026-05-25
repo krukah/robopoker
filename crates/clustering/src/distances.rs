@@ -61,11 +61,7 @@ impl<const T: usize> Distances<T> {
     }
     /// Normalizes all distances to [0, 1] by dividing by the maximum.
     pub fn normalize(&mut self) {
-        let max = self
-            .values
-            .iter()
-            .copied()
-            .fold(f32::MIN_POSITIVE, f32::max);
+        let max = self.values.iter().copied().fold(f32::MIN_POSITIVE, f32::max);
         self.values.iter_mut().for_each(|v| *v /= max);
     }
 }

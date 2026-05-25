@@ -38,12 +38,7 @@ mod tests {
     fn random_policy(rng: &mut impl Rng) -> Vec<(Probability, Utility)> {
         let n = rng.random_range(2..=5);
         (0..n)
-            .map(|_| {
-                (
-                    rng.random_range(0.01..10.0),
-                    rng.random_range(-100.0..100.0),
-                )
-            })
+            .map(|_| (rng.random_range(0.01..10.0), rng.random_range(-100.0..100.0)))
             .collect()
     }
     #[test]
@@ -52,8 +47,7 @@ mod tests {
         for _ in 0..N {
             let ev = rng.random_range(-100.0..100.0);
             let n = rng.random_range(2..=5);
-            let policy: Vec<(Probability, Utility)> =
-                (0..n).map(|_| (rng.random_range(0.01..10.0), ev)).collect();
+            let policy: Vec<(Probability, Utility)> = (0..n).map(|_| (rng.random_range(0.01..10.0), ev)).collect();
             for i in 0..n {
                 assert!((action_correction(&policy, Some(i))).abs() < 1e-4);
             }
@@ -70,11 +64,7 @@ mod tests {
                 .enumerate()
                 .map(|(i, (w, _))| (w / total) * action_correction(&policy, Some(i)))
                 .sum();
-            assert!(
-                weighted_sum.abs() < 1e-3,
-                "weighted correction sum {} != 0",
-                weighted_sum
-            );
+            assert!(weighted_sum.abs() < 1e-3, "weighted correction sum {} != 0", weighted_sum);
         }
     }
     #[test]
@@ -143,9 +133,7 @@ mod tests {
         let mut rng = rand::rng();
         for _ in 0..N {
             let n = rng.random_range(2..=5);
-            let policy: Vec<(Probability, Utility)> = (0..n)
-                .map(|_| (0.0, rng.random_range(-100.0..100.0)))
-                .collect();
+            let policy: Vec<(Probability, Utility)> = (0..n).map(|_| (0.0, rng.random_range(-100.0..100.0))).collect();
             assert_eq!(strategy_ev(&policy), 0.0);
         }
     }

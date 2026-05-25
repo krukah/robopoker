@@ -23,6 +23,5 @@ pub use evaluate::{Outcome, Status, evaluate};
 pub use ops::Ops;
 pub use render::render;
 pub use schema::{
-    Case, CategoryDef, Direction, Expect, Family, HandDef, Historical, HistoryDef, Scenarios,
-    TestKind, load,
+    Case, CategoryDef, Direction, Expect, Family, HandDef, Historical, HistoryDef, Scenarios, TestKind, load,
 };

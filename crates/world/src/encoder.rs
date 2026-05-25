@@ -35,11 +35,7 @@ where
     N: CfrEncoder,
 {
     pub fn new(inner: &'blueprint N, prefix: Vec<Descent<N::T, N::E>>, world: World) -> Self {
-        Self {
-            inner,
-            prefix,
-            world,
-        }
+        Self { inner, prefix, world }
     }
 
     pub fn inner(&self) -> &N {
@@ -81,9 +77,7 @@ where
     ) -> Self::I {
         let ancestors = tree.at(parent).into_iter().collect::<Vec<_>>();
         debug_assert!(
-            ancestors
-                .windows(2)
-                .all(|w| w[0].node().index() > w[1].node().index()),
+            ancestors.windows(2).all(|w| w[0].node().index() > w[1].node().index()),
             "upward walk should visit strictly decreasing node indices"
         );
         let mut path = ancestors.into_iter().map(|a| a.edge()).collect::<Vec<_>>();
@@ -103,10 +97,7 @@ where
     /// Blocks chance and terminal nodes from expanding, UNLESS
     /// the game reports `is_frontier()` (depth-limited frontier that
     /// should expand into continuation-choice nodes).
-    fn branches(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Vec<Leaf<Self::E, Self::G>> {
+    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         let turn = node.game().turn();
         if turn.is_terminal() {
             vec![]

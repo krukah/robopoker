@@ -34,12 +34,7 @@ impl Schema for Street {
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| {
-            leaked(format!(
-                "CREATE INDEX IF NOT EXISTS idx_{0}_st ON {0} (street);",
-                street()
-            ))
-        })
+        SQL.get_or_init(|| leaked(format!("CREATE INDEX IF NOT EXISTS idx_{0}_st ON {0} (street);", street())))
     }
 
     fn copy() -> &'static str {
@@ -76,13 +71,7 @@ impl Derive for Street {
     fn inserts(&self) -> String {
         let s = *self as i16;
         let n = self.n_isomorphisms() as i32;
-        format!(
-            "INSERT INTO {} (street, nobs, nabs) VALUES ({}, {}, get_nabs({}::SMALLINT));",
-            street(),
-            s,
-            n,
-            s
-        )
+        format!("INSERT INTO {} (street, nobs, nabs) VALUES ({}, {}, get_nabs({}::SMALLINT));", street(), s, n, s)
     }
 }
 
@@ -167,12 +156,7 @@ impl Schema for Abstraction {
 
 impl Derive for Abstraction {
     fn exhaust() -> Vec<Self> {
-        Street::all()
-            .iter()
-            .rev()
-            .copied()
-            .flat_map(Abstraction::all)
-            .collect()
+        Street::all().iter().rev().copied().flat_map(Abstraction::all).collect()
     }
 
     fn inserts(&self) -> String {

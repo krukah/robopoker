@@ -49,10 +49,7 @@ pub async fn evaluate<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) -> Ou
 }
 
 fn merged_expect(catalog: &Catalog, case: &Case) -> Expect {
-    Expect::merged(
-        catalog.category_default(&case.category),
-        case.expect.as_ref(),
-    )
+    Expect::merged(catalog.category_default(&case.category), case.expect.as_ref())
 }
 
 fn fmt_pct(p: Option<f32>) -> String {
@@ -63,21 +60,11 @@ fn fmt_pct(p: Option<f32>) -> String {
 }
 
 fn edge_prob(strategy: &ApiStrategy, edge: Edge) -> Option<f32> {
-    let total: f32 = strategy
-        .accumulated
-        .values()
-        .copied()
-        .filter(|&v| v > 0.0)
-        .sum();
+    let total: f32 = strategy.accumulated.values().copied().filter(|&v| v > 0.0).sum();
     if total <= 0.0 {
         return None;
     }
-    let raw = strategy
-        .accumulated
-        .get(&edge)
-        .copied()
-        .unwrap_or(0.0)
-        .max(0.0);
+    let raw = strategy.accumulated.get(&edge).copied().unwrap_or(0.0).max(0.0);
     Some(raw / total)
 }
 
@@ -103,11 +90,7 @@ async fn evaluate_single<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) ->
     };
 
     let Some(hand_ref) = case.hand.as_deref() else {
-        return outcome(
-            Status::Error,
-            "single/exists kind requires `hand` field".into(),
-            vec![],
-        );
+        return outcome(Status::Error, "single/exists kind requires `hand` field".into(), vec![]);
     };
 
     let prob = match lookup_prob(ops, catalog, hand_ref, &case.history, &case.edge).await {
@@ -119,11 +102,7 @@ async fn evaluate_single<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) ->
     let prob = match prob {
         Some(p) => p,
         None => {
-            return outcome(
-                Status::Skip,
-                "no policy (state unvisited / empty blueprint)".into(),
-                observed,
-            );
+            return outcome(Status::Skip, "no policy (state unvisited / empty blueprint)".into(), observed);
         }
     };
 
@@ -134,20 +113,12 @@ async fn evaluate_single<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) ->
     if let Some(m) = max
         && prob > m
     {
-        return outcome(
-            Status::Fail,
-            format!("{} > {}", fmt_pct(Some(prob)), fmt_pct(Some(m))),
-            observed,
-        );
+        return outcome(Status::Fail, format!("{} > {}", fmt_pct(Some(prob)), fmt_pct(Some(m))), observed);
     }
     if let Some(m) = min
         && prob < m
     {
-        return outcome(
-            Status::Fail,
-            format!("{} < {}", fmt_pct(Some(prob)), fmt_pct(Some(m))),
-            observed,
-        );
+        return outcome(Status::Fail, format!("{} < {}", fmt_pct(Some(prob)), fmt_pct(Some(m))), observed);
     }
 
     let bound = match (max, min) {
@@ -156,11 +127,7 @@ async fn evaluate_single<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) ->
         (None, Some(mn)) => format!("≥{}", fmt_pct(Some(mn))),
         (None, None) => "no bound".to_string(),
     };
-    outcome(
-        Status::Pass,
-        format!("{} ({})", fmt_pct(Some(prob)), bound),
-        observed,
-    )
+    outcome(Status::Pass, format!("{} ({})", fmt_pct(Some(prob)), bound), observed)
 }
 
 async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) -> Outcome {
@@ -172,18 +139,10 @@ async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     };
 
     let Some(hands) = case.hands.as_ref() else {
-        return mk(
-            Status::Error,
-            "pair_diff requires `hands` (length 2)".into(),
-            vec![],
-        );
+        return mk(Status::Error, "pair_diff requires `hands` (length 2)".into(), vec![]);
     };
     if hands.len() != 2 {
-        return mk(
-            Status::Error,
-            format!("pair_diff requires exactly 2 hands, got {}", hands.len()),
-            vec![],
-        );
+        return mk(Status::Error, format!("pair_diff requires exactly 2 hands, got {}", hands.len()), vec![]);
     }
 
     let mut observed = Vec::with_capacity(2);
@@ -201,11 +160,7 @@ async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
         .map(|(l, _)| l.clone())
         .collect();
     if !missing.is_empty() {
-        return mk(
-            Status::Skip,
-            format!("missing data: {}", missing.join(", ")),
-            observed,
-        );
+        return mk(Status::Skip, format!("missing data: {}", missing.join(", ")), observed);
     }
 
     let a = observed[0].1.unwrap();
@@ -215,39 +170,22 @@ async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     let bound = match expect.max_abs_diff {
         Some(b) => b,
         None => {
-            return mk(
-                Status::Error,
-                "pair_diff missing max_abs_diff".into(),
-                observed,
-            );
+            return mk(Status::Error, "pair_diff missing max_abs_diff".into(), observed);
         }
     };
 
-    let obs_str = format!(
-        "{}={}  {}={}",
-        observed[0].0,
-        fmt_pct(observed[0].1),
-        observed[1].0,
-        fmt_pct(observed[1].1),
-    );
+    let obs_str =
+        format!("{}={}  {}={}", observed[0].0, fmt_pct(observed[0].1), observed[1].0, fmt_pct(observed[1].1),);
     if diff > bound {
         return mk(
             Status::Fail,
-            format!(
-                "|Δ|={} > {} ({obs_str})",
-                fmt_pct(Some(diff)),
-                fmt_pct(Some(bound))
-            ),
+            format!("|Δ|={} > {} ({obs_str})", fmt_pct(Some(diff)), fmt_pct(Some(bound))),
             observed,
         );
     }
     mk(
         Status::Pass,
-        format!(
-            "|Δ|={} ≤ {} ({obs_str})",
-            fmt_pct(Some(diff)),
-            fmt_pct(Some(bound))
-        ),
+        format!("|Δ|={} ≤ {} ({obs_str})", fmt_pct(Some(diff)), fmt_pct(Some(bound))),
         observed,
     )
 }
@@ -261,18 +199,10 @@ async fn evaluate_monotonic<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     };
 
     let Some(hands) = case.hands.as_ref() else {
-        return mk(
-            Status::Error,
-            "monotonic requires `hands` (length ≥2)".into(),
-            vec![],
-        );
+        return mk(Status::Error, "monotonic requires `hands` (length ≥2)".into(), vec![]);
     };
     if hands.len() < 2 {
-        return mk(
-            Status::Error,
-            format!("monotonic requires ≥2 hands, got {}", hands.len()),
-            vec![],
-        );
+        return mk(Status::Error, format!("monotonic requires ≥2 hands, got {}", hands.len()), vec![]);
     }
 
     let mut observed = Vec::with_capacity(hands.len());
@@ -290,11 +220,7 @@ async fn evaluate_monotonic<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
         .map(|(l, _)| l.clone())
         .collect();
     if !missing.is_empty() {
-        return mk(
-            Status::Skip,
-            format!("missing data: {}", missing.join(", ")),
-            observed,
-        );
+        return mk(Status::Skip, format!("missing data: {}", missing.join(", ")), observed);
     }
 
     let probs: Vec<f32> = observed.iter().map(|(_, p)| p.unwrap()).collect();
@@ -316,15 +242,7 @@ async fn evaluate_monotonic<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
         .collect::<Vec<_>>()
         .join(" → ");
     if !monotonic {
-        return mk(
-            Status::Fail,
-            format!("non-monotonic ({dir_label}): {obs_str}"),
-            observed,
-        );
+        return mk(Status::Fail, format!("non-monotonic ({dir_label}): {obs_str}"), observed);
     }
-    mk(
-        Status::Pass,
-        format!("monotonic {dir_label}: {obs_str}"),
-        observed,
-    )
+    mk(Status::Pass, format!("monotonic {dir_label}: {obs_str}"), observed)
 }

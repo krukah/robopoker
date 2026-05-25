@@ -17,9 +17,7 @@ use crate::*;
 ///
 /// All states in an information set must have the same available actions.
 /// CFR computes one strategy per info set.
-pub trait CfrInfo:
-    Clone + Copy + PartialEq + Eq + Ord + Send + Sync + std::hash::Hash + std::fmt::Debug
-{
+pub trait CfrInfo: Clone + Copy + PartialEq + Eq + Ord + Send + Sync + std::hash::Hash + std::fmt::Debug {
     /// Edge type for this game.
     type E: CfrEdge;
     /// Turn type for this game.

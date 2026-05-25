@@ -185,10 +185,7 @@ impl<const P: usize> GameN<P> {
     }
     /// The observation from a specific player's perspective.
     pub fn sweat_at(&self, position: usize) -> Observation {
-        Observation::from((
-            Hand::from(self.seats[position].cards()),
-            Hand::from(self.board()),
-        ))
+        Observation::from((Hand::from(self.seats[position].cards()), Hand::from(self.board())))
     }
     /// The dealer position as a turn.
     pub fn dealer(&self) -> Turn {
@@ -243,11 +240,7 @@ impl<const P: usize> GameN<P> {
     /// enabling graceful error handling instead of panicking.
     pub fn try_apply(&self, action: Action) -> anyhow::Result<Self> {
         if !self.is_allowed(&action) {
-            return Err(anyhow::anyhow!(
-                "illegal action {:?} in state {:?}",
-                action,
-                self.turn()
-            ));
+            return Err(anyhow::anyhow!("illegal action {:?} in state {:?}", action, self.turn()));
         }
         let mut child = *self;
         child.act(action);
@@ -354,9 +347,7 @@ impl<const P: usize> GameN<P> {
             .iter()
             .zip(self.seats.iter_mut())
             .enumerate()
-            .inspect(|(i, (x, s))| {
-                tracing::trace!("{} {} {:>7} {}", i, s.cards(), s.stack(), x.won())
-            })
+            .inspect(|(i, (x, s))| tracing::trace!("{} {} {:>7} {}", i, s.cards(), s.stack(), x.won()))
         {
             seat.win(settlement.pnl().reward());
         }
@@ -410,10 +401,7 @@ impl<const P: usize> GameN<P> {
                 self.fold();
                 self.next_player();
             }
-            Action::Call(chips)
-            | Action::Blind(chips)
-            | Action::Raise(chips)
-            | Action::Shove(chips) => {
+            Action::Call(chips) | Action::Blind(chips) | Action::Raise(chips) | Action::Shove(chips) => {
                 self.bet(chips);
                 self.next_player();
             }
@@ -500,13 +488,7 @@ impl<const P: usize> GameN<P> {
     /// All players have acted at least once this street.
     fn is_everyone_touched(&self) -> bool {
         let offset = if P == 2 { 1 } else { 2 };
-        self.ticker
-            > self.n()
-                + if self.street() == Street::Pref {
-                    offset
-                } else {
-                    0
-                }
+        self.ticker > self.n() + if self.street() == Street::Pref { offset } else { 0 }
     }
     /// All betting players are in for the effective stake.
     fn is_everyone_matched(&self) -> bool {
@@ -525,11 +507,7 @@ impl<const P: usize> GameN<P> {
     }
     /// Exactly one player remains (all others folded).
     fn is_everyone_folding(&self) -> bool {
-        self.seats
-            .iter()
-            .filter(|s| s.state() != State::Folding)
-            .count()
-            == 1
+        self.seats.iter().filter(|s| s.state() != State::Folding).count() == 1
     }
     /// True if folding is a legal option (facing a bet).
     pub fn may_fold(&self) -> bool {
@@ -537,9 +515,7 @@ impl<const P: usize> GameN<P> {
     }
     /// True if calling is legal (facing a bet we can cover).
     pub fn may_call(&self) -> bool {
-        matches!(self.turn(), Turn::Choice(_))
-            && self.may_fold()
-            && self.to_call() < self.to_shove()
+        matches!(self.turn(), Turn::Choice(_)) && self.may_fold() && self.to_call() < self.to_shove()
     }
     /// True if checking is legal (no bet to call).
     pub fn may_check(&self) -> bool {
@@ -623,11 +599,7 @@ impl<const P: usize> GameN<P> {
     }
     /// Returns check if allowed, otherwise fold.
     pub fn passive(&self) -> Action {
-        if self.may_check() {
-            Action::Check
-        } else {
-            Action::Fold
-        }
+        if self.may_check() { Action::Check } else { Action::Fold }
     }
     /// Deals the next street's cards from the deck.
     pub fn reveal(&self) -> Action {
@@ -657,10 +629,7 @@ impl<const P: usize> GameN<P> {
 
     fn settlement(&self, position: usize) -> Settlement {
         let seat = &self.seats[position];
-        let strength = Strength::from(Hand::add(
-            Hand::from(seat.cards()),
-            Hand::from(self.board()),
-        ));
+        let strength = Strength::from(Hand::add(Hand::from(seat.cards()), Hand::from(self.board())));
         Settlement::from((seat.spent(), seat.state(), strength))
     }
 }
@@ -696,9 +665,7 @@ impl<const P: usize> GameN<P> {
 
     fn actor_mut(&mut self) -> &mut Seat {
         let index = self.actor_idx();
-        self.seats
-            .get_mut(index)
-            .expect("index should be in bounds bc modulo")
+        self.seats.get_mut(index).expect("index should be in bounds bc modulo")
     }
 }
 
@@ -724,11 +691,7 @@ impl<const P: usize> GameN<P> {
     }
     /// Maximum stake among all players this street.
     fn max_stake(&self) -> Chips {
-        self.seats
-            .iter()
-            .map(|s| s.stake())
-            .max()
-            .expect("non-empty seats")
+        self.seats.iter().map(|s| s.stake()).max().expect("non-empty seats")
     }
     /// True if this is a preflop opening spot (no player actions yet).
     /// Used to interpret Odds(n,1) as nBB rather than nx pot.
@@ -828,15 +791,13 @@ impl<const P: usize> GameN<P> {
             Action::Call(_) => Translated::Snap(Edge::Call),
             Action::Blind(_) => Translated::Snap(Edge::Call),
             Action::Shove(_) => Translated::Snap(Edge::Shove),
-            Action::Raise(chips) => match Size::translate(
-                Raise::new(chips, self.pot(), self.street(), depth),
-                policy,
-                rng,
-            ) {
-                Translated::Snap(Size::BBs(n)) => Translated::Snap(Edge::Open(n)),
-                Translated::Snap(Size::SPR(n, d)) => Translated::Snap(Edge::Raise(Odds::new(n, d))),
-                Translated::Free(c) => Translated::Free(Action::Raise(c)),
-            },
+            Action::Raise(chips) => {
+                match Size::translate(Raise::new(chips, self.pot(), self.street(), depth), policy, rng) {
+                    Translated::Snap(Size::BBs(n)) => Translated::Snap(Edge::Open(n)),
+                    Translated::Snap(Size::SPR(n, d)) => Translated::Snap(Edge::Raise(Odds::new(n, d))),
+                    Translated::Free(c) => Translated::Free(Action::Raise(c)),
+                }
+            }
         }
     }
     /// Snaps a chip amount to the nearest edge in the grid.
@@ -888,13 +849,7 @@ impl<const P: usize> GameN<P> {
 impl<const P: usize> std::fmt::Display for GameN<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for seat in self.seats.iter() {
-            writeln!(
-                f,
-                "{:>3} {:>3} {:<6}",
-                seat.state(),
-                seat.cards(),
-                seat.stack()
-            )?;
+            writeln!(f, "{:>3} {:>3} {:<6}", seat.state(), seat.cards(), seat.stack())?;
         }
         writeln!(f, "Pot   {}", self.pot())?;
         writeln!(f, "Board {}", self.board())?;
@@ -1511,17 +1466,10 @@ mod tests {
         }
         // total pot is 2*STACK (STACK from each)
         // either winner gets it all or split pot
-        let rewards: Vec<_> = game
-            .settlements()
-            .iter()
-            .map(|s| s.pnl().reward())
-            .collect();
+        let rewards: Vec<_> = game.settlements().iter().map(|s| s.pnl().reward()).collect();
         let total: Chips = rewards.iter().sum();
         assert_eq!(total, 2 * STACK);
-        assert!(
-            (rewards.contains(&0) && rewards.contains(&(2 * STACK)))
-                || (rewards.iter().all(|&r| r == STACK))
-        );
+        assert!((rewards.contains(&0) && rewards.contains(&(2 * STACK))) || (rewards.iter().all(|&r| r == STACK)));
     }
 
     /// actor_idx wraps correctly with ticker
@@ -1757,10 +1705,7 @@ mod tests {
             assert!(game.must_deal());
             let cards = game.deck().deal(street);
             game = game.apply(Action::Draw(cards));
-            game = game
-                .apply(Action::Check)
-                .apply(Action::Check)
-                .apply(Action::Check);
+            game = game.apply(Action::Check).apply(Action::Check).apply(Action::Check);
         }
         assert_eq!(game.street(), Street::Rive);
         assert!(game.must_stop());
@@ -1863,18 +1808,9 @@ mod tests {
         use rand::rngs::SmallRng;
         let game = Game::root();
         let rng = &mut SmallRng::seed_from_u64(0);
-        assert_eq!(
-            game.translate(Action::Fold, 0, &Translation::Snap, rng),
-            Translated::Snap(Edge::Fold),
-        );
-        assert_eq!(
-            game.translate(Action::Check, 0, &Translation::Phargmax, rng),
-            Translated::Snap(Edge::Check),
-        );
-        assert_eq!(
-            game.translate(Action::Call(1), 0, &Translation::Harmonic, rng),
-            Translated::Snap(Edge::Call),
-        );
+        assert_eq!(game.translate(Action::Fold, 0, &Translation::Snap, rng), Translated::Snap(Edge::Fold),);
+        assert_eq!(game.translate(Action::Check, 0, &Translation::Phargmax, rng), Translated::Snap(Edge::Check),);
+        assert_eq!(game.translate(Action::Call(1), 0, &Translation::Harmonic, rng), Translated::Snap(Edge::Call),);
     }
 
     /// `Phargmax` on canonical raises produces the same edge as `Snap`
@@ -1888,10 +1824,7 @@ mod tests {
         for chips in [4, 6, 8, 10] {
             let snap = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
             let phargmax = game.translate(Action::Raise(chips), 0, &Translation::Phargmax, rng);
-            assert_eq!(
-                snap, phargmax,
-                "canonical Raise({chips}): Phargmax must match Snap",
-            );
+            assert_eq!(snap, phargmax, "canonical Raise({chips}): Phargmax must match Snap",);
         }
     }
 
@@ -1908,10 +1841,7 @@ mod tests {
         let result = game.translate(Action::Raise(7), 0, &Translation::Phargmax, rng);
         let lo = Translated::Snap(Edge::Open(3));
         let hi = Translated::Snap(Edge::Open(4));
-        assert!(
-            result == lo || result == hi,
-            "Phargmax(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}",
-        );
+        assert!(result == lo || result == hi, "Phargmax(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}",);
     }
 
     /// `Harmonic` on an off-tree raise: 100 trials, every result must be
@@ -1942,11 +1872,7 @@ mod tests {
         use rand::rngs::SmallRng;
         let game = Game::root();
         let rng = &mut SmallRng::seed_from_u64(0);
-        let translations = [
-            Translation::Snap,
-            Translation::Harmonic,
-            Translation::Phargmax,
-        ];
+        let translations = [Translation::Snap, Translation::Harmonic, Translation::Phargmax];
         let cases = [
             (Action::Fold, Edge::Fold),
             (Action::Check, Edge::Check),
@@ -1972,14 +1898,8 @@ mod tests {
         let game = Game::root();
         let rng = &mut SmallRng::seed_from_u64(0);
         // Below smallest: Raise(2) = 1 BB, smallest is BBs(2) = Open(2).
-        assert_eq!(
-            game.translate(Action::Raise(2), 0, &Translation::Snap, rng),
-            Translated::Snap(Edge::Open(2)),
-        );
+        assert_eq!(game.translate(Action::Raise(2), 0, &Translation::Snap, rng), Translated::Snap(Edge::Open(2)),);
         // Above largest: Raise(20) = 10 BB, largest is BBs(5) = Open(5).
-        assert_eq!(
-            game.translate(Action::Raise(20), 0, &Translation::Snap, rng),
-            Translated::Snap(Edge::Open(5)),
-        );
+        assert_eq!(game.translate(Action::Raise(20), 0, &Translation::Snap, rng), Translated::Snap(Edge::Open(5)),);
     }
 }

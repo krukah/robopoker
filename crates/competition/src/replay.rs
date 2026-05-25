@@ -87,17 +87,11 @@ impl Replayer {
     /// When `plays` contains [`Draw`](Action::Draw) actions, the board
     /// ordering is derived from those draws (preserving actual deal order).
     /// Falls back to [`Hand`] iteration order for older hands without draws.
-    pub fn new(
-        hand: &HandRecord,
-        participants: &[Participant],
-        plays: &[Play],
-    ) -> anyhow::Result<Self> {
+    pub fn new(hand: &HandRecord, participants: &[Participant], plays: &[Play]) -> anyhow::Result<Self> {
         let stacks = stacks(participants)?;
         let game = participants
             .iter()
-            .fold(Game::from_start(hand.dealer(), stacks), |g, p| {
-                g.deal(p.seat(), p.hole())
-            });
+            .fold(Game::from_start(hand.dealer(), stacks), |g, p| g.deal(p.seat(), p.hole()));
         let draws: Vec<Card> = plays
             .iter()
             .map(|p| p.action())
@@ -109,11 +103,7 @@ impl Replayer {
         } else {
             draws
         };
-        Ok(Self {
-            game,
-            board,
-            cursor: 0,
-        })
+        Ok(Self { game, board, cursor: 0 })
     }
     /// Current game state.
     pub fn game(&self) -> &Game {
@@ -140,11 +130,7 @@ impl Replayer {
     pub fn deal(&mut self) -> anyhow::Result<()> {
         while self.game.turn() == Turn::Chance {
             let n = self.game.street().next().n_revealed();
-            anyhow::ensure!(
-                self.cursor + n <= self.board.len(),
-                "not enough board cards at cursor {}",
-                self.cursor
-            );
+            anyhow::ensure!(self.cursor + n <= self.board.len(), "not enough board cards at cursor {}", self.cursor);
             let cards = self.board[self.cursor..self.cursor + n]
                 .iter()
                 .copied()
@@ -170,11 +156,7 @@ impl Replayer {
     pub fn deal_one(&mut self) -> anyhow::Result<()> {
         if self.game.turn() == Turn::Chance {
             let n = self.game.street().next().n_revealed();
-            anyhow::ensure!(
-                self.cursor + n <= self.board.len(),
-                "not enough board cards at cursor {}",
-                self.cursor
-            );
+            anyhow::ensure!(self.cursor + n <= self.board.len(), "not enough board cards at cursor {}", self.cursor);
             let cards = self.board[self.cursor..self.cursor + n]
                 .iter()
                 .copied()
@@ -208,12 +190,7 @@ pub fn replay(
         .filter(|p| !p.action().is_blind())
         .filter(|p| !p.action().is_chance())
         .try_fold(
-            Witness::initial_with(
-                Turn::Choice(seat),
-                reveals,
-                stacks(participants)?,
-                hand.dealer(),
-            ),
+            Witness::initial_with(Turn::Choice(seat), reveals, stacks(participants)?, hand.dealer()),
             |r, p| r.try_push(p.action()),
         )?;
     let actions = witness
@@ -233,9 +210,9 @@ pub fn replay(
         street: witness.head().street(),
         folded,
         showdown: witness.head().is_showdown(),
-        vpip: actions.iter().any(|(s, a)| {
-            *s == Street::Pref && matches!(a, Action::Call(_) | Action::Raise(_) | Action::Shove(_))
-        }),
+        vpip: actions
+            .iter()
+            .any(|(s, a)| *s == Street::Pref && matches!(a, Action::Call(_) | Action::Raise(_) | Action::Shove(_))),
         pfr: actions
             .iter()
             .any(|(s, a)| *s == Street::Pref && matches!(a, Action::Raise(_) | Action::Shove(_))),
@@ -257,11 +234,7 @@ pub fn stacks(participants: &[Participant]) -> anyhow::Result<[Chips; N]> {
 /// (low-to-high). Matches [`Replayer`]'s board ordering so [`Witness`]
 /// Draw actions stay consistent with the Replayer's deals.
 pub fn board_arrangement(hole: Hole, board: Board) -> Arrangement {
-    Arrangement::from(
-        Hand::from(hole)
-            .chain(Hand::from(board))
-            .collect::<Vec<Card>>(),
-    )
+    Arrangement::from(Hand::from(hole).chain(Hand::from(board)).collect::<Vec<Card>>())
 }
 /// Build an [`Arrangement`] from a hole and the [`Draw`](Action::Draw)
 /// actions in a play sequence, preserving the actual deal order.

@@ -64,9 +64,7 @@ impl Arrangement {
     }
     /// Converts to canonical form (normalized suits and order).
     pub fn normalize(&self) -> Self {
-        Self::from(Observation::from(Isomorphism::from(Observation::from(
-            *self,
-        ))))
+        Self::from(Observation::from(Isomorphism::from(Observation::from(*self))))
     }
 
     pub fn draws(&self) -> impl Iterator<Item = Action> + '_ {
@@ -98,17 +96,11 @@ impl Arrangement {
     }
     /// Community cards (flop + turn + river).
     pub fn public(&self) -> Vec<Card> {
-        self.vec()
-            .into_iter()
-            .skip(Street::Pref.n_observed())
-            .collect()
+        self.vec().into_iter().skip(Street::Pref.n_observed()).collect()
     }
     /// Hole cards (first two).
     pub fn pocket(&self) -> Vec<Card> {
-        self.vec()
-            .into_iter()
-            .take(Street::Pref.n_observed())
-            .collect()
+        self.vec().into_iter().take(Street::Pref.n_observed()).collect()
     }
     /// Remaining deck (cards not in arrangement).
     pub fn deck(&self) -> Deck {
@@ -205,12 +197,7 @@ impl rbp_core::Arbitrary for Arrangement {
 
 impl std::fmt::Display for Arrangement {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let cards = self
-            .vec()
-            .iter()
-            .map(|c| c.to_string())
-            .collect::<Vec<_>>()
-            .join(" ");
+        let cards = self.vec().iter().map(|c| c.to_string()).collect::<Vec<_>>().join(" ");
         write!(f, "{}", cards)
     }
 }
@@ -246,10 +233,7 @@ mod tests {
     #[test]
     fn normalize_sorts_idempotent() {
         let arr = Arrangement::random();
-        assert_eq!(
-            arr.normalize_sorts(),
-            arr.normalize_sorts().normalize_sorts()
-        );
+        assert_eq!(arr.normalize_sorts(), arr.normalize_sorts().normalize_sorts());
     }
 
     #[test]
@@ -261,10 +245,7 @@ mod tests {
     #[test]
     fn normalize_suits_idempotent() {
         let arr = Arrangement::random();
-        assert_eq!(
-            arr.normalize_suits(),
-            arr.normalize_suits().normalize_suits()
-        );
+        assert_eq!(arr.normalize_suits(), arr.normalize_suits().normalize_suits());
     }
 
     #[test]
@@ -297,19 +278,13 @@ mod tests {
         let arr = Arrangement::random();
         let permuted = arr.permute();
         assert_eq!(arr.isomorphism(), permuted.isomorphism()); // precondition
-        assert_eq!(
-            arr.normalize_suits().observation(),
-            permuted.normalize_suits().observation()
-        );
+        assert_eq!(arr.normalize_suits().observation(), permuted.normalize_suits().observation());
     }
 
     #[test]
     fn normalize_equals_composition() {
         let arr = Arrangement::random();
-        assert_eq!(
-            arr.normalize(),
-            arr.normalize_sorts().normalize_suits().normalize_sorts()
-        );
+        assert_eq!(arr.normalize(), arr.normalize_sorts().normalize_suits().normalize_sorts());
     }
     /// Arrangement from Observation is deterministic: same Observation
     /// always produces the same per-street card assignment.

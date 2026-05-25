@@ -14,13 +14,7 @@ impl CfrEncoder for LeducEncoder {
 
     fn seed(&self, game: &Self::G) -> Self::I {
         let acting = matches!(game.turn(), LeducTurn::Player(_));
-        leduc_info(
-            acting,
-            if acting { game.hole_rank(0) } else { Rank::J },
-            None,
-            Spot::Open,
-            None,
-        )
+        leduc_info(acting, if acting { game.hole_rank(0) } else { Rank::J }, None, Spot::Open, None)
     }
 
     fn resume<P>(&self, _past: P, game: &Self::G) -> Self::I
@@ -36,22 +30,13 @@ impl CfrEncoder for LeducEncoder {
         leduc_info(acting, game.hole_rank(actor), game.board_rank(), r1, r2)
     }
 
-    fn branches(
-        &self,
-        node: &Node<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Vec<Leaf<Self::E, Self::G>> {
+    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         match node.game().turn() {
             LeducTurn::Terminal => vec![],
             LeducTurn::Chance => node
                 .game()
                 .deals()
-                .map(|c| {
-                    (
-                        LeducEdge::Deal(c),
-                        node.game().apply(LeducEdge::Deal(c)),
-                        node.index(),
-                    )
-                })
+                .map(|c| (LeducEdge::Deal(c), node.game().apply(LeducEdge::Deal(c)), node.index()))
                 .collect(),
             _ => node.branches(),
         }

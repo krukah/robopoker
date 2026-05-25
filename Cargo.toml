@@ -129,6 +129,15 @@ inspect_for_each            = "allow"   # `.inspect().for_each()` chain
 suspicious_map              = "allow"   # `.map().count()` is the intended length
 unit_arg                    = "allow"
 format_in_format_args       = "allow"
+# Chain-style: prefer one-statement method chains over if/else, nested
+# blocks, or split closure expansions (CLAUDE.md house style).
+filter_map_bool_then         = "allow"  # `.filter_map(.. cond.then(.. v))`
+obfuscated_if_else           = "allow"  # `cond.then(.. v).unwrap_or(d)`
+unnecessary_lazy_evaluations = "allow"  # `unwrap_or_else(.. x)`, `or_else(.. Some(x))`
+# Visual-alignment idiom: `if false || a || b || ...` lines up `||` cols.
+nonminimal_bool              = "allow"
+# `let _ = effect();` discards are sometimes intentional for clarity.
+let_unit_value               = "allow"
 
 [profile.dev]
 panic     = "unwind"

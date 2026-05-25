@@ -40,18 +40,10 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn new(
-        variants: &str,
-        hands: usize,
-        continuous: bool,
-        max_inflight: usize,
-        default_sessions: usize,
-    ) -> Self {
+    pub fn new(variants: &str, hands: usize, continuous: bool, max_inflight: usize, default_sessions: usize) -> Self {
         let parsed = parse_list(variants);
         if parsed.is_empty() {
-            eprintln!(
-                "usage: slumbot --variants=a,b,c [--hands N] [--continuous] [--throttle N] [--sessions N]"
-            );
+            eprintln!("usage: slumbot --variants=a,b,c [--hands N] [--continuous] [--throttle N] [--sessions N]");
             eprintln!("       grammar: 8 hypercube cells + `fish`");
             eprintln!("         fish | base | depth | world | dirac |");
             eprintln!("         depth+world | depth+dirac | world+dirac | depth+world+dirac");
@@ -59,12 +51,8 @@ impl Runtime {
             eprintln!("        `base` is the sentinel name for the empty flag-set cell)");
             eprintln!("       per-variant session override: trailing `*N` on a token");
             eprintln!("         example: base*1,dirac*1,depth+dirac*4,depth+world*4");
-            eprintln!(
-                "       --sessions: default session count when no `*N` suffix is given (default 1)."
-            );
-            eprintln!(
-                "                   set to task vCPU count to saturate CPU during CFR think."
-            );
+            eprintln!("       --sessions: default session count when no `*N` suffix is given (default 1).");
+            eprintln!("                   set to task vCPU count to saturate CPU during CFR think.");
             std::process::exit(1);
         }
         let default = default_sessions.max(1);
@@ -74,11 +62,7 @@ impl Runtime {
             .collect();
         Self {
             variants,
-            mode: if continuous {
-                Mode::Continuous
-            } else {
-                Mode::Fixed(hands)
-            },
+            mode: if continuous { Mode::Continuous } else { Mode::Fixed(hands) },
             max_inflight,
         }
     }
@@ -107,8 +91,11 @@ impl Runtime {
                 let throttle = throttle.clone();
                 let mode = self.mode;
                 tokio::spawn(
-                    async move { execute(v, db, flagship, throttle, mode).await }
-                        .instrument(tracing::info_span!("variant", name = v.label(), session)),
+                    async move { execute(v, db, flagship, throttle, mode).await }.instrument(tracing::info_span!(
+                        "variant",
+                        name = v.label(),
+                        session
+                    )),
                 )
             })
             .collect();
@@ -121,12 +108,10 @@ impl Runtime {
 }
 
 async fn connect() -> std::sync::Arc<tokio_postgres::Client> {
-    let (client, connection) = tokio_postgres::connect(
-        &std::env::var("DB_URL").expect("DB_URL must be set"),
-        tokio_postgres::NoTls,
-    )
-    .await
-    .expect("database connection failed");
+    let (client, connection) =
+        tokio_postgres::connect(&std::env::var("DB_URL").expect("DB_URL must be set"), tokio_postgres::NoTls)
+            .await
+            .expect("database connection failed");
     tokio::spawn(async move {
         connection
             .await
@@ -158,12 +143,10 @@ async fn run_benchmark(
     let label = variant.label();
     tracing::info!(variant = label, ?mode, "benchmark starting");
     match mode {
-        Mode::Fixed(hands) => {
-            match Benchmark::run(variant, player, hands, recorder, throttle).await {
-                Ok(bench) => bench.report(),
-                Err(e) => tracing::error!(variant = label, error = %e, "benchmark failed"),
-            }
-        }
+        Mode::Fixed(hands) => match Benchmark::run(variant, player, hands, recorder, throttle).await {
+            Ok(bench) => bench.report(),
+            Err(e) => tracing::error!(variant = label, error = %e, "benchmark failed"),
+        },
         Mode::Continuous => {
             Benchmark::continuous(variant, player, recorder, throttle)
                 .await
@@ -182,13 +165,7 @@ fn parse_list(raw: &str) -> Vec<(Variant, Option<usize>)> {
     for token in raw.split(',').filter(|t| !t.is_empty()) {
         let (token, sessions) = parse_session_suffix(token.trim());
         match Variant::parse(token) {
-            Some(v)
-                if !out
-                    .iter()
-                    .any(|(existing, _)| existing.label() == v.label()) =>
-            {
-                out.push((v, sessions))
-            }
+            Some(v) if !out.iter().any(|(existing, _)| existing.label() == v.label()) => out.push((v, sessions)),
             Some(_) => {}
             None => {
                 eprintln!("unknown variant: {token}");

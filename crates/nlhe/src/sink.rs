@@ -33,12 +33,7 @@ fn upsert_sql() -> &'static str {
 }
 fn advance_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    SQL.get_or_init(|| {
-        leaked(format!(
-            "UPDATE {} SET value = value + 1 WHERE key = 'current'",
-            epoch()
-        ))
-    })
+    SQL.get_or_init(|| leaked(format!("UPDATE {} SET value = value + 1 WHERE key = 'current'", epoch())))
 }
 
 #[async_trait::async_trait]
@@ -65,9 +60,7 @@ impl Sink for Client {
     }
 
     async fn advance(&self) {
-        self.execute(advance_sql(), &[])
-            .await
-            .expect("epoch advance");
+        self.execute(advance_sql(), &[]).await.expect("epoch advance");
     }
 }
 

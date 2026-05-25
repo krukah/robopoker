@@ -22,18 +22,12 @@ pub trait CfrFlow: RefProf + CfrSampling {
     }
     /// Sampling normalization constant including smoothing pseudocount.
     fn weight_denom(&self, info: &Self::I) -> Probability {
-        info.choices()
-            .map(|ref e| self.weight(info, e))
-            .sum::<Probability>()
-            + self.smoothing()
+        info.choices().map(|ref e| self.weight(info, e)).sum::<Probability>() + self.smoothing()
     }
     /// Compute sampling distribution for all edges of an info (single pass).
     /// Returns exploration-adjusted probabilities for MCCFR sampling.
     fn sampling_distribution(&self, info: &Self::I) -> Policy<Self::E> {
-        let raw = info
-            .choices()
-            .map(|e| (e, self.weight(info, &e)))
-            .collect::<Vec<_>>();
+        let raw = info.choices().map(|e| (e, self.weight(info, &e))).collect::<Vec<_>>();
         let denom = raw.iter().map(|(_, w)| *w).sum::<Probability>() + self.smoothing();
         raw.into_iter()
             .map(|(e, w)| (e, w / self.temperature()))
@@ -50,18 +44,14 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// Calculate sampling probability for a single edge.
     /// Prefer `sampling_distribution` when multiple edges needed.
     fn sampling(&self, info: &Self::I, edge: &Self::E) -> Probability {
-        ((self.weight(info, edge) / self.temperature() + self.smoothing())
-            / self.weight_denom(info))
-        .max(self.curiosity())
+        ((self.weight(info, edge) / self.temperature() + self.smoothing()) / self.weight_denom(info))
+            .max(self.curiosity())
     }
 
     /// Fused regret + expected value computation for an information set.
     /// Computes all action values once per root via DFS, then derives both
     /// regret and EV without redundant tree traversal.
-    fn dfs(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> (Policy<Self::E>, Utility) {
+    fn dfs(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> (Policy<Self::E>, Utility) {
         let span = infoset.span();
         let rd = self.regret_denom(infoset.head().info());
         let mut regrets = HashMap::<Self::E, Utility>::new();
@@ -70,12 +60,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
             let reach = self.ancestor_reach(root);
             let actions = root
                 .edges()
-                .map(|(child, edge)| {
-                    (
-                        *edge,
-                        reach * self.recursed_value(root, &root.at(child), 1.0, 1.0),
-                    )
-                })
+                .map(|(child, edge)| (*edge, reach * self.recursed_value(root, &root.at(child), 1.0, 1.0)))
                 .collect::<Vec<_>>();
             let ev = actions
                 .iter()
@@ -96,15 +81,9 @@ pub trait CfrFlow: RefProf + CfrSampling {
     ///
     /// Iterates per-node over each node's actual outgoing edges, since
     /// sampling may have expanded different edges at different nodes.
-    fn regret_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
+    fn regret_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         let span = &infoset.span();
-        let expected = &span
-            .iter()
-            .map(|r| self.expected_value(r))
-            .collect::<Vec<_>>();
+        let expected = &span.iter().map(|r| self.expected_value(r)).collect::<Vec<_>>();
         span.iter()
             .zip(expected)
             .flat_map(|(root, &ev)| {
@@ -126,10 +105,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     ///
     /// Uses regret matching: pi(a) = max(regret(a), e) / sum max(regret, e).
     /// Actions with higher regret are chosen more frequently to minimize future regret.
-    fn policy_vector(
-        &self,
-        infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>,
-    ) -> Policy<Self::E> {
+    fn policy_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         self.iterated_distribution(&infoset.info())
     }
     /// Conditional on being in a given Infoset,
@@ -178,17 +154,16 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// Both products share the same path (root->tree_root) and filters
     /// (non-chance, non-walker), so we compute them in a single pass.
     fn ancestor_reach(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        let (cfactual, sampling) = root
-            .decisions()
-            .filter(|(t, _, _)| *t != self.walker())
-            .fold((1.0, 1.0), |(cf, sm), (_, ref info, ref edge)| {
+        let (cfactual, sampling) = root.decisions().filter(|(t, _, _)| *t != self.walker()).fold(
+            (1.0, 1.0),
+            |(cf, sm), (_, ref info, ref edge)| {
                 (
                     cf * (self.regret(info, edge) / self.regret_denom(info)),
-                    sm * ((self.weight(info, edge) / self.temperature() + self.smoothing())
-                        / self.weight_denom(info))
-                    .max(self.curiosity()),
+                    sm * ((self.weight(info, edge) / self.temperature() + self.smoothing()) / self.weight_denom(info))
+                        .max(self.curiosity()),
                 )
-            });
+            },
+        );
         cfactual / sampling
     }
 
@@ -218,13 +193,10 @@ pub trait CfrFlow: RefProf + CfrSampling {
                 self.recursed_value(
                     root,
                     child,
-                    relative_reach
-                        * regret_denom.map_or(1.0, |d| self.regret(node.info(), edge) / d),
+                    relative_reach * regret_denom.map_or(1.0, |d| self.regret(node.info(), edge) / d),
                     sampling_reach
                         * weight_denom.map_or(1.0, |d| {
-                            ((self.weight(node.info(), edge) / self.temperature()
-                                + self.smoothing())
-                                / d)
+                            ((self.weight(node.info(), edge) / self.temperature() + self.smoothing()) / d)
                                 .max(self.curiosity())
                         }),
                 )
@@ -253,8 +225,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
         leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
     ) -> Utility {
-        self.terminal_value(leaf, root.game().turn()) * self.relative_reach(root, leaf)
-            / self.sampling_reach(leaf)
+        self.terminal_value(leaf, root.game().turn()) * self.relative_reach(root, leaf) / self.sampling_reach(leaf)
     }
     /// Policy-weighted expected utility at this node.
     ///
@@ -276,11 +247,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// then what would be the expected Utility of this leaf?
     ///
     /// Uses DFS subtree traversal instead of collecting descendants.
-    fn cfactual_value(
-        &self,
-        root: &Node<Self::T, Self::E, Self::G, Self::I>,
-        edge: &Self::E,
-    ) -> Utility {
+    fn cfactual_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>, edge: &Self::E) -> Utility {
         debug_assert!(self.walker() == root.game().turn());
         root.step(edge)
             .map(|child| self.ancestor_reach(root) * self.recursed_value(root, &child, 1.0, 1.0))
@@ -291,22 +258,13 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// This is the sum of expected values over all nodes in the infoset span.
     /// Used for EV accumulation during training and frontier evaluation.
     fn infoset_value(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        infoset
-            .span()
-            .iter()
-            .map(|r| self.expected_value(r))
-            .sum::<Utility>()
+        infoset.span().iter().map(|r| self.expected_value(r)).sum::<Utility>()
     }
 
     /// Using our current strategy Profile, how much regret
     /// would we gain by following this Edge at this Node?
     /// Takes pre-computed expected value to avoid redundant computation.
-    fn gain(
-        &self,
-        root: &Node<Self::T, Self::E, Self::G, Self::I>,
-        edge: &Self::E,
-        baseline: Utility,
-    ) -> Utility {
+    fn gain(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>, edge: &Self::E, baseline: Utility) -> Utility {
         debug_assert!(self.walker() == root.game().turn());
         self.cfactual_value(root, edge) - baseline
     }
