@@ -12,8 +12,7 @@ categories   = ["authentication", "web-programming"]
 
 [features]
 default      = []
-database     = ["tokio-postgres", "const_format", "rbp-database"]
-server       = ["database", "actix-web", "serde_json"]
+server       = ["tokio-postgres", "const_format", "rbp-database", "actix-web", "serde_json"]
 
 [dependencies]
 rbp-core       = { path = "../util"                          }

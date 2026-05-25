@@ -27,7 +27,7 @@ impl From<Lookup> for Artifacts {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl Artifacts {
     pub async fn stream(self, client: &tokio_postgres::Client) {
         use rbp_database::Streamable;

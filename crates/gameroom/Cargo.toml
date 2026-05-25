@@ -12,7 +12,7 @@ categories     = ["game-development", "asynchronous"]
 
 [features]
 default        = []
-database       = ["rbp-database", "rbp-nlhe", "rbp-mccfr", "rbp-subgame", "rbp-depth", "rbp-world", "rbp-transport", "rbp-telemetry"]
+server       = ["rbp-database", "rbp-nlhe", "rbp-mccfr", "rbp-subgame", "rbp-depth", "rbp-world", "rbp-transport", "rbp-telemetry"]
 cli            = ["dialoguer"]
 
 [dependencies]
@@ -20,7 +20,7 @@ rbp-core         = { path = "../util"                                         }
 rbp-cards        = { path = "../cards"                                        }
 rbp-gameplay     = { path = "../gameplay"                                     }
 rbp-auth         = { path = "../auth"                                         }
-rbp-nlhe       = { path = "../nlhe",    optional = true, features = ["database"] }
+rbp-nlhe       = { path = "../nlhe",    optional = true, features = ["server"] }
 rbp-mccfr        = { path = "../mccfr",     optional = true                   }
 rbp-subgame      = { path = "../subgame",   optional = true                   }
 rbp-depth        = { path = "../depth",    optional = true                   }

@@ -29,7 +29,7 @@ impl Unique for Member {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod schema {
     use super::*;
     use rbp_database::*;

@@ -9,11 +9,6 @@ license         = "MIT"
 repository      = "https://github.com/krukah/robopoker"
 keywords        = ["poker", "mccfr", "gto", "solver", "holdem"]
 categories      = ["game-development", "algorithms", "mathematics"]
-
-[features]
-default         = []
-database        = ["rbp-auth/database", "rbp-gameroom/database"]
-server          = ["rbp-auth/server"]
 async           = ["rbp-mccfr/async"]
 shortdeck       = ["rbp-cards/shortdeck"]
 

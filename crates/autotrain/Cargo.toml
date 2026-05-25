@@ -16,11 +16,11 @@ default         = []
 [dependencies]
 rbp-core        = { path = "../util", features = ["server"]        }
 rbp-cards       = { path = "../cards"                              }
-rbp-clustering  = { path = "../clustering", features = ["database"]}
+rbp-clustering  = { path = "../clustering", features = ["server"]}
 rbp-database    = { path = "../database"                           }
 rbp-gameplay    = { path = "../gameplay"                           }
 rbp-mccfr       = { path = "../mccfr", features = ["async"]        }
-rbp-nlhe        = { path = "../nlhe", features = ["database"]      }
+rbp-nlhe        = { path = "../nlhe", features = ["server"]      }
 rbp-transport   = { path = "../transport"                          }
 rbp-telemetry   = { path = "../telemetry"                          }
 tokio-postgres  = "0.7"

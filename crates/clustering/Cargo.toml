@@ -12,7 +12,7 @@ categories     = ["algorithms", "mathematics"]
 
 [features]
 default        = []
-database       = ["rbp-database", "tokio-postgres", "const_format", "async-trait"]
+server       = ["rbp-database", "tokio-postgres", "const_format", "async-trait"]
 
 [dependencies]
 tracing       = { workspace = true }

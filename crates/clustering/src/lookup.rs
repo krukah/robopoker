@@ -71,7 +71,7 @@ impl Lookup {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl rbp_database::Schema for Lookup {
     fn name() -> &'static str {
         rbp_database::isomorphism()
@@ -144,7 +144,7 @@ impl rbp_database::Schema for Lookup {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl rbp_database::Streamable for Lookup {
     type Row = (i64, i16);
@@ -154,7 +154,7 @@ impl rbp_database::Streamable for Lookup {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl Lookup {
     pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
         let sql = format!("SELECT obs, abs FROM {}", rbp_database::isomorphism());

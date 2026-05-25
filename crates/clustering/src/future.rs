@@ -27,7 +27,7 @@ impl From<Future> for BTreeMap<Abstraction, Histogram> {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl rbp_database::Schema for Future {
     fn name() -> &'static str {
         rbp_database::transitions()
@@ -95,7 +95,7 @@ impl rbp_database::Schema for Future {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl rbp_database::Streamable for Future {
     type Row = (i16, i16, f32);

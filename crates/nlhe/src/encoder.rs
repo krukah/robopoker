@@ -187,7 +187,7 @@ impl<const W: usize> WorldRestrict<W> for NlheEncoder {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl rbp_database::Hydrate for NlheEncoder {
     /// Streams rows from the database one at a time, avoiding the peak

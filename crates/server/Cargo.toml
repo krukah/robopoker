@@ -18,7 +18,7 @@ rbp-cards      = { version = "1.0", path = "../cards"      }
 rbp-clustering = { version = "1.0", path = "../clustering" }
 rbp-database   = { version = "1.0", path = "../database"   }
 rbp-competition = { version = "1.0", path = "../competition" }
-rbp-gameroom   = { version = "1.0", path = "../gameroom", features = ["database"] }
+rbp-gameroom   = { version = "1.0", path = "../gameroom", features = ["server"] }
 rbp-gameplay   = { version = "1.0", path = "../gameplay"   }
 rbp-mccfr      = { version = "1.0", path = "../mccfr"      }
 rbp-nlhe     = { version = "1.0", path = "../nlhe"     }

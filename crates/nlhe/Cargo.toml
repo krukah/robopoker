@@ -12,8 +12,7 @@ categories     = ["game-development", "algorithms"]
 
 [features]
 default        = []
-database       = ["tokio-postgres", "const_format", "async-trait", "rbp-database", "futures"]
-server         = ["rbp-mccfr/server"]
+server         = ["tokio-postgres", "const_format", "async-trait", "rbp-database", "futures", "rbp-mccfr/server"]
 
 [dependencies]
 tracing         = { workspace = true }

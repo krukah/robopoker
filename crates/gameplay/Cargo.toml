@@ -10,10 +10,6 @@ repository     = "https://github.com/krukah/robopoker"
 keywords       = ["poker", "game-engine", "holdem"]
 categories     = ["game-development"]
 
-[features]
-default        = []
-client         = ["rbp-cards/client"]
-
 [dependencies]
 tracing       = { workspace = true }
 rbp-core       = { path = "../util"                      }

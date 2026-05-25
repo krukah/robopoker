@@ -21,9 +21,9 @@ mod event;
 mod player;
 pub mod players;
 pub mod records;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod repository;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod room;
 mod timer;
 
@@ -36,8 +36,8 @@ pub use players::*;
 // Selective re-exports from records to avoid Hand conflict with rbp_cards::Hand
 pub use records::Participant;
 pub use records::Play;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use repository::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use room::*;
 pub use timer::*;

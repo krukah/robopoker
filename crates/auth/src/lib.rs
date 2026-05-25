@@ -32,9 +32,9 @@ pub use lurker::*;
 pub use member::*;
 pub use session::*;
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod repository;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use repository::*;
 
 #[cfg(feature = "server")]

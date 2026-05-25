@@ -10,21 +10,13 @@ repository     = "https://github.com/krukah/robopoker"
 keywords       = ["poker", "benchmark", "slumbot"]
 categories     = ["game-development"]
 
-[features]
-# `database` is retained as a no-op feature so external invocations that still
-# pass `--features database` keep working. All dependencies are unconditional;
-# slumbot is useless without DB+blueprint access, so there's no minimal build
-# to preserve.
-default        = []
-database       = []
-
 [dependencies]
 rbp-core       = { path = "../util"                                         }
 rbp-cards      = { path = "../cards"                                        }
-rbp-auth       = { path = "../auth",     features = ["database"]            }
+rbp-auth       = { path = "../auth",     features = ["server"]            }
 rbp-gameplay   = { path = "../gameplay"                                     }
-rbp-gameroom   = { path = "../gameroom", features = ["database"]            }
-rbp-nlhe     = { path = "../nlhe",   features = ["database"]            }
+rbp-gameroom   = { path = "../gameroom", features = ["server"]            }
+rbp-nlhe     = { path = "../nlhe",   features = ["server"]            }
 rbp-telemetry  = { path = "../telemetry"                                    }
 tokio-postgres = { version = "0.7",      features = ["with-uuid-1"]         }
 tokio          = { version = "1",   features = ["rt", "sync", "time"]        }

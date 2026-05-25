@@ -154,7 +154,7 @@ impl IntoIterator for Metric {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl rbp_database::Schema for Metric {
     fn name() -> &'static str {
         rbp_database::metric()
@@ -215,7 +215,7 @@ impl rbp_database::Schema for Metric {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl rbp_database::Streamable for Metric {
     type Row = (i32, f32);
@@ -225,7 +225,7 @@ impl rbp_database::Streamable for Metric {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl Metric {
     pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
         let sql = format!("SELECT tri, dx FROM {}", rbp_database::metric());

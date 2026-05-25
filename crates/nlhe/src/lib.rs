@@ -43,18 +43,18 @@ mod flagship;
 mod game;
 mod geometry;
 mod info;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod lookup;
 mod memory;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod profile;
 mod public;
 mod record;
 mod secret;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod sink;
 mod solver;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod source;
 mod strategy;
 mod turn;
@@ -65,16 +65,16 @@ pub use flagship::*;
 pub use game::*;
 pub use geometry::*;
 pub use info::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use lookup::*;
 pub use memory::*;
 pub use public::*;
 pub use record::*;
 pub use secret::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use sink::*;
 pub use solver::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use source::*;
 pub use strategy::*;
 pub use turn::*;

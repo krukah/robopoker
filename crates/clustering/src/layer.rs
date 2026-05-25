@@ -189,7 +189,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 impl<const K: usize, const N: usize> Layer<K, N> {
     /// Internal clustering implementation for a specific K, N.
     pub async fn cluster(street: Street, client: &tokio_postgres::Client) -> Artifacts {

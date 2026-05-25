@@ -166,8 +166,8 @@ impl Street {
     }
 }
 
-#[cfg(feature = "client")]
 impl Street {
+    /// Grid dimensions used by the frontend abstraction view (rows, cols).
     pub const fn dimension(&self) -> (usize, usize) {
         match self {
             Self::Pref => (13, 13),

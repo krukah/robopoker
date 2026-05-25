@@ -27,56 +27,56 @@
 ///   `Casino`; every bot shares it.
 /// - **Slumbot one-container runner**: load once in
 ///   `rbp_slumbot::Runtime::run`; share across all spawned variant tasks.
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub async fn hydrate_blueprint(client: std::sync::Arc<tokio_postgres::Client>) -> &'static rbp_nlhe::Flagship {
     use rbp_database::Hydrate;
     Box::leak(Box::new(rbp_nlhe::Flagship::hydrate(client).await))
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod agent;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod blueprint;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod brain;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod depth;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod dirac;
 mod fish;
 #[cfg(feature = "cli")]
 mod human;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod mount;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod solved;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod variant;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod world;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 mod zoo;
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use agent::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use blueprint::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use brain::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use depth::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use dirac::*;
 pub use fish::*;
 #[cfg(feature = "cli")]
 pub use human::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use mount::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use solved::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use variant::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use world::*;
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 pub use zoo::*;

@@ -212,7 +212,7 @@ where
     }
 }
 
-#[cfg(feature = "database")]
+#[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl<R, W, S> rbp_database::Hydrate for Nlhe<R, W, S>
 where
