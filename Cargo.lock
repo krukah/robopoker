@@ -2926,21 +2926,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sinkhorn-bias"
-version = "0.1.0"
-dependencies = [
- "rand 0.9.2",
- "rbp-cards",
- "rbp-clustering",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-telemetry",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
 name = "siphasher"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

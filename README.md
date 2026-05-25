@@ -259,9 +259,6 @@ cargo run --bin litmus -- --scenarios bin/litmus/scenarios.json --out report.md
 
 # Benchmark a blueprint against the Slumbot API
 cargo run --bin slumbot -- --variants base,dirac,depth+world+dirac --hands 1000
-
-# Measure Sinkhorn's entropic-bias on the trained Turn metric (diagnostic)
-cargo run --bin sinkhorn-bias
 ```
 
 `trainer` modes: `--status`, `--fast`, `--slow`, `--cluster`, `--reset`, `--forget`.

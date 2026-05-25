@@ -37,7 +37,6 @@ members  = [
     "bin/convert",
     "bin/litmus",
     "bin/slumbot",
-    "bin/sinkhorn-bias",
 ]
 
 [workspace.package]
