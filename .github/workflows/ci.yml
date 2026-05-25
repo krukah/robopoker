@@ -18,6 +18,10 @@ env:
   CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_DEV_CODEGEN_UNITS: 256
   RUST_BACKTRACE: short
+  # mold linker — replaces ld on link-heavy workspaces. Roughly halves
+  # the link step on a workspace this size.
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -Clink-arg=-fuse-ld=mold
 
 jobs:
   format:
@@ -31,12 +35,16 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  lint:
-    name: Clippy
+  # Clippy and tests share the same compiled target/ directory — both
+  # need `--all-targets` worth of compilation, so doing them in one
+  # job cuts ~5 min vs the previous split-job setup.
+  lint-and-test:
+    name: Clippy & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
+      - run: sudo apt-get update && sudo apt-get install -y mold clang
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -44,7 +52,11 @@ jobs:
         with:
           shared-key: robopoker-ci
           cache-all-crates: true
-      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+      - uses: taiki-e/install-action@nextest
+      - name: Clippy
+        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+      - name: Test (unit)
+        run: cargo nextest run --workspace --lib
 
   compile:
     name: Compile (${{ matrix.features }})
@@ -59,26 +71,13 @@ jobs:
           - --all-features
     steps:
       - uses: actions/checkout@v5
+      - run: sudo apt-get update && sudo apt-get install -y mold clang
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: robopoker-ci-${{ matrix.features }}
           cache-all-crates: true
       - run: cargo check ${{ matrix.features }}
-
-  test:
-    name: Test (unit)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: robopoker-ci
-          cache-all-crates: true
-      - uses: taiki-e/install-action@nextest
-      - run: cargo nextest run --workspace --lib
 
   docs:
     name: Docs
