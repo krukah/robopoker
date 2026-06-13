@@ -58,7 +58,7 @@ impl From<u8> for Rank {
             10 => Rank::Queen,
             11 => Rank::King,
             12 => Rank::Ace,
-            _ => panic!("Invalid rank u8: {}", n),
+            _ => panic!("Invalid rank u8: {n}"),
         }
     }
 }
@@ -109,7 +109,7 @@ impl TryFrom<&str> for Rank {
             "Q" => Ok(Rank::Queen),
             "K" => Ok(Rank::King),
             "A" => Ok(Rank::Ace),
-            _ => Err(format!("invalid rank str: {}", s)),
+            _ => Err(format!("invalid rank str: {s}")),
         }
     }
 }

@@ -88,8 +88,8 @@ impl<const K: usize, const N: usize> Layer<K, N> {
         for (i, x) in self.kmeans.iter().enumerate() {
             for (j, y) in self.kmeans.iter().enumerate() {
                 if i > j {
-                    let a = &self.abstraction(i);
-                    let b = &self.abstraction(j);
+                    let ref a = self.abstraction(i);
+                    let ref b = self.abstraction(j);
                     let index = Pair::from((a, b));
                     let distance = self.metric.emd(x, y) + self.metric.emd(y, x);
                     let distance = distance / 2.;
@@ -105,7 +105,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
         tracing::info!(street = %self.street(), phase = crate::telemetry::phase::FUTURE, "kmeans phase begin");
         self.centroids()
             .iter()
-            .cloned()
+            .copied()
             .enumerate()
             .map(|(k, centroid)| (self.abstraction(k), centroid))
             .collect::<BTreeMap<Abstraction, Histogram>>()
@@ -153,9 +153,9 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
             return std::array::from_fn(|i| self.points()[i]);
         }
         // deterministic pseudo-random clustering
-        let hasher = &mut DefaultHasher::default();
+        let ref mut hasher = DefaultHasher::default();
         self.street().hash(hasher);
-        let rng = &mut SmallRng::seed_from_u64(hasher.finish());
+        let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
         // kmeans++ initialization
         let mut potentials = vec![1.; N];
         let mut histograms = Vec::with_capacity(K);

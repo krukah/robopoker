@@ -17,7 +17,7 @@ mod render;
 mod schema;
 
 pub use api::Litmus;
-pub use catalog::Catalog;
+pub use catalog::{Catalog, build_witness, parse_edge};
 pub use compose::resolve;
 pub use evaluate::{Outcome, Status, evaluate};
 pub use ops::Ops;

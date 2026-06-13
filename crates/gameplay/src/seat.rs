@@ -90,7 +90,7 @@ impl Seat {
 
 impl std::fmt::Display for Seat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{} {} {}", self.state, format!("${:>4}", self.stack), self.cards)
+        write!(f, "{} ${:>4} {}", self.state, self.stack, self.cards)
     }
 }
 

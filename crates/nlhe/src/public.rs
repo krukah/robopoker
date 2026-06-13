@@ -1,38 +1,31 @@
-//! NLHE public state: current-street history + available choices + pot geometry.
+//! NLHE public state: current-street history + available choices.
 use super::*;
 use rbp_gameplay::*;
 use rbp_mccfr::*;
 
-/// NLHE public state: subgame history, available actions, and pot geometry.
+/// NLHE public state: subgame history and available actions.
 ///
-/// Stores the current-street action sequence, the available choices at this
-/// decision point, and a discrete SPR bucket. Subgame and choices are encoded
-/// as [`Path`] for compact 64-bit representation.
+/// Stores the current-street action sequence and the available choices at
+/// this decision point. Both encoded as [`Path`] for compact 64-bit
+/// representation.
 ///
 /// # Design
 ///
 /// What's needed for info set indexing:
 /// - `subgame`: Current-street action history (resets on each Draw)
 /// - `choices`: Available actions at this decision point
-/// - `geometry`: SPR bucket — distinguishes "300% pot on 6bb pot" from
-///   "300% pot on 60bb pot" which the abstraction would otherwise collapse.
 ///
 /// Street information comes from [`NlheSecret`] which embeds street in its encoding.
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NlhePublic {
     subgame: Path,
     choices: Path,
-    geometry: Geometry,
 }
 
 impl NlhePublic {
-    /// Creates a new public state from subgame history, available choices, and SPR bucket.
-    pub fn new(subgame: Path, choices: Path, geometry: Geometry) -> Self {
-        Self {
-            subgame,
-            choices,
-            geometry,
-        }
+    /// Creates a new public state from subgame history and available choices.
+    pub fn new(subgame: Path, choices: Path) -> Self {
+        Self { subgame, choices }
     }
     /// Current-street historical edges as a Path.
     pub fn subgame(&self) -> Path {
@@ -41,10 +34,6 @@ impl NlhePublic {
     /// Aggression (trailing aggressive actions) for bet sizing grid selection.
     pub fn aggression(&self) -> usize {
         self.subgame.aggression()
-    }
-    /// Pot-geometry bucket at this decision point.
-    pub fn geometry(&self) -> Geometry {
-        self.geometry
     }
 }
 
@@ -70,7 +59,7 @@ mod tests {
             .into_iter()
             .collect::<Path>();
         let choices = Path::default();
-        let public = NlhePublic::new(subgame, choices, super::Geometry::default());
+        let public = NlhePublic::new(subgame, choices);
         assert_eq!(public.aggression(), 2);
     }
     #[test]
@@ -79,7 +68,7 @@ mod tests {
             .into_iter()
             .collect::<Path>();
         let choices = Path::default();
-        let public = NlhePublic::new(subgame, choices, super::Geometry::default());
+        let public = NlhePublic::new(subgame, choices);
         let history = public.subgame().into_iter().collect::<Vec<_>>();
         assert_eq!(history.len(), 2);
         assert_eq!(history[0], Edge::Check);
@@ -89,14 +78,14 @@ mod tests {
     fn choices_returns_stored_choices() {
         let subgame = Path::default();
         let choices = [Edge::Fold, Edge::Call, Edge::Shove].into_iter().collect::<Path>();
-        let public = NlhePublic::new(subgame, choices, super::Geometry::default());
+        let public = NlhePublic::new(subgame, choices);
         assert_eq!(public.choices().count(), 3);
     }
     #[test]
     fn path_returns_subgame() {
         let subgame = [Edge::Check, Edge::Check].into_iter().collect::<Path>();
         let choices = Path::default();
-        let public = NlhePublic::new(subgame, choices, super::Geometry::default());
+        let public = NlhePublic::new(subgame, choices);
         assert_eq!(public.subgame(), subgame);
     }
 }

@@ -141,7 +141,7 @@ impl Permutation {
 impl Arbitrary for Permutation {
     fn random() -> Self {
         use rand::prelude::IndexedRandom;
-        let rng = &mut rand::rng();
+        let ref mut rng = rand::rng();
         Self::exhaust().choose(rng).copied().unwrap()
     }
 }
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn permute_unique() {
-        let hand = &Hand::try_from("Ac Kd Qh Js").unwrap();
+        let ref hand = Hand::try_from("Ac Kd Qh Js").unwrap();
         let mut unique = std::collections::HashSet::new();
         let n = Permutation::exhaust()
             .into_iter()

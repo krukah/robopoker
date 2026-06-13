@@ -32,7 +32,9 @@ impl Hand {
     pub fn or(lhs: Self, rhs: Self) -> Self {
         lhs + rhs
     }
-    /// Union of two disjoint hands. Panics if hands overlap.
+    /// Union of two disjoint hands. Panics if hands overlap. Distinct
+    /// from `Add::add` (which is bitwise OR with no disjointness check).
+    #[allow(clippy::should_implement_trait)]
     pub fn add(lhs: Self, rhs: Self) -> Self {
         debug_assert!((lhs.0 & rhs.0) == 0);
         lhs + rhs
@@ -82,7 +84,7 @@ impl Hand {
     /// Returns the cards in random order.
     pub fn shuffle(&self) -> Vec<Card> {
         use rand::seq::SliceRandom;
-        let rng = &mut rand::rng();
+        let ref mut rng = rand::rng();
         let mut cards = Vec::<Card>::from(*self);
         cards.shuffle(rng);
         cards
@@ -130,14 +132,13 @@ impl Iterator for Hand {
     type Item = Card;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.size() {
-            0 => None,
-            _ => {
-                let card = self.0.trailing_zeros() as u8;
-                let card = Card::from(card);
-                self.remove(card);
-                Some(card)
-            }
+        if self.size() == 0 {
+            None
+        } else {
+            let card = self.0.trailing_zeros() as u8;
+            let card = Card::from(card);
+            self.remove(card);
+            Some(card)
         }
     }
 }
@@ -204,6 +205,8 @@ impl TryFrom<&str> for Hand {
 impl std::ops::Add<Self> for Hand {
     type Output = Self;
 
+    // Hand is a bitset; addition is set union, which is bitwise OR.
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
@@ -212,7 +215,7 @@ impl std::ops::Add<Self> for Hand {
 impl std::fmt::Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for card in Vec::<Card>::from(*self) {
-            write!(f, "{}", card)?;
+            write!(f, "{card}")?;
         }
         Ok(())
     }

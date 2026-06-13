@@ -7,8 +7,11 @@ use rbp_core::*;
 /// without a magic `opening: bool`.
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Grid {
-    /// BB-relative open sizes (preflop depth-0 under Pluribus).
+    /// BB-relative open sizes (preflop depth=0 under Pluribus).
     Opening(&'static [Chips]),
-    /// Pot-fraction raise sizes `(numer, denom)` for everything else.
-    Postflop(&'static [(Chips, Chips)]),
+    /// Indices into `RAISES` for pot-fraction raise sizes. Callers
+    /// resolve to `(numer, denom)` via `RAISES[i]` on each iteration.
+    /// This collapses the per-cell typed constants — everything
+    /// dispatches off the single `PLURIBUS_INDICES` source-of-truth.
+    Postflop(&'static [usize]),
 }

@@ -130,7 +130,7 @@ impl From<std::collections::BTreeMap<Pair, Energy>> for Metric {
         let mut metric = map
             .keys()
             .next()
-            .map(|p| p.street())
+            .map(super::pair::Pair::street)
             .map(Metric::new)
             .expect("map is empty");
         for (pair, distance) in map {
@@ -261,7 +261,7 @@ mod tests {
                 for j in (i + 1)..k {
                     let pair = Pair::new(Street::Flop, i, j);
                     let (ri, rj) = pair.indices();
-                    assert_eq!((i, j), (ri, rj), "roundtrip failed for ({}, {})", i, j);
+                    assert_eq!((i, j), (ri, rj), "roundtrip failed for ({i}, {j})");
                 }
             }
         }

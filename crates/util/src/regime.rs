@@ -27,7 +27,7 @@ pub fn regime() -> Regime {
 /// Panics if called twice with different values.
 pub fn init_regime(r: Regime) {
     if let Err(existing) = REGIME.set(r) {
-        assert_eq!(existing, r, "regime already set to {:?}, cannot change to {:?}", existing, r);
+        assert_eq!(existing, r, "regime already set to {existing:?}, cannot change to {r:?}");
     }
 }
 
@@ -62,34 +62,11 @@ impl std::fmt::Display for Regime {
 /// runtime check at trainer startup will not catch.
 pub fn config_string(r: Regime) -> String {
     use crate::*;
-    // SPR bucket boundaries — keep this constant in sync with
-    // `rbp_holdem::Geometry::BOUNDARIES`. The geometry feature is part of
-    // the infoset key, so changing the boundaries silently re-buckets
-    // existing rows; the fingerprint catches that at startup.
-    const GEOMETRY_BOUNDARIES: [f32; 4] = [1.5, 4.0, 10.0, 30.0];
     let common = format!(
-        "STACK={};B_BLIND={};S_BLIND={};MAX_RAISE_REPEATS={};OPENS={:?};GEOMETRY={:?}",
-        STACK, B_BLIND, S_BLIND, MAX_RAISE_REPEATS, OPENS, GEOMETRY_BOUNDARIES,
+        "STACK={STACK};B_BLIND={B_BLIND};S_BLIND={S_BLIND};MAX_RAISE_REPEATS={MAX_RAISE_REPEATS};OPENS={OPENS:?}",
     );
     match r {
-        Regime::Pluribus => format!(
-            "{common};\
-             SIZE_PREF_1={:?};SIZE_PREF_N={:?};\
-             SIZE_FLOP_0={:?};SIZE_FLOP_1={:?};SIZE_FLOP_N={:?};\
-             SIZE_TURN_0={:?};SIZE_TURN_1={:?};SIZE_TURN_N={:?};\
-             SIZE_RIVE_0={:?};SIZE_RIVE_1={:?};SIZE_RIVE_N={:?}",
-            SIZE_PREF_1,
-            SIZE_PREF_N,
-            SIZE_FLOP_0,
-            SIZE_FLOP_1,
-            SIZE_FLOP_N,
-            SIZE_TURN_0,
-            SIZE_TURN_1,
-            SIZE_TURN_N,
-            SIZE_RIVE_0,
-            SIZE_RIVE_1,
-            SIZE_RIVE_N,
-        ),
-        Regime::Slumbot => format!("{common};SLUMBOT_SIZES={:?}", SLUMBOT_SIZES),
+        Regime::Pluribus => format!("{common};PLURIBUS_INDICES={PLURIBUS_INDICES:?};RAISES={RAISES:?}"),
+        Regime::Slumbot => format!("{common};SLUMBOT_INDICES={SLUMBOT_INDICES:?};RAISES={RAISES:?}"),
     }
 }

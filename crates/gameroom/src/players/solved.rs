@@ -154,11 +154,11 @@ impl Solved {
     /// Diagnostic: log blueprint and subgame-refined policy side-by-side
     /// for a single postflop decision. Emitted at `trace!` — workspace
     /// default filter is `info,rbp=debug`, so this stays off in production
-    /// (log aggregator) until enabled with `RUST_LOG=rbp_gameroom=trace`.
+    /// until enabled with `RUST_LOG=rbp_gameroom=trace`.
     fn emit_verify(&self, tag: Tag, blueprint: &BTreeMap<Edge, Probability>, refined: &BTreeMap<Edge, Probability>) {
         let fmt = |m: &BTreeMap<Edge, Probability>| -> String {
             m.iter()
-                .map(|(e, p)| format!("{}={:.3}", e, p))
+                .map(|(e, p)| format!("{e}={p:.3}"))
                 .collect::<Vec<_>>()
                 .join(" ")
         };

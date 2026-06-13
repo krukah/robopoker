@@ -67,18 +67,24 @@ fn instantiate(family: &Family, assignments: &HashMap<&str, &serde_json::Value>)
         hand: family.hand.clone(),
         hands: family.hands.clone(),
         history: family.history.clone().unwrap_or_default(),
+        histories: None,
         expect: family.expect.clone(),
         desired: family.desired.clone(),
         diagnosis_if_violated: family.diagnosis_if_violated.clone(),
         historical: family.historical.clone(),
     };
 
-    // Promote hands_seq → hands (monotonic kind sets up here).
-    if let Some(seq) = &family.hands_seq {
-        case.hands = Some(seq.clone());
-        if case.kind == TestKind::Single {
-            case.kind = TestKind::Monotonic;
+    // At most one *_seq axis; promote whichever is set, infer Monotonic kind.
+    match (&family.hands_seq, &family.histories_seq) {
+        (Some(_), Some(_)) => {
+            anyhow::bail!("family `{}`: `hands_seq` and `histories_seq` are mutually exclusive", family.name_template)
         }
+        (Some(seq), None) => case.hands = Some(seq.clone()),
+        (None, Some(seq)) => case.histories = Some(seq.clone()),
+        (None, None) => {}
+    }
+    if (family.hands_seq.is_some() || family.histories_seq.is_some()) && case.kind == TestKind::Single {
+        case.kind = TestKind::Monotonic;
     }
 
     // Apply matrix substitutions.
@@ -86,7 +92,7 @@ fn instantiate(family: &Family, assignments: &HashMap<&str, &serde_json::Value>)
         match *key {
             "hand" => {
                 let s = as_str(value, "hand")?;
-                case.hand = Some(s.to_string());
+                case.hand = Some(s.clone());
             }
             "hand_pair" => {
                 let pair = as_pair(value, "hand_pair")?;
@@ -96,12 +102,10 @@ fn instantiate(family: &Family, assignments: &HashMap<&str, &serde_json::Value>)
                 }
             }
             "history" => {
-                let s = as_str(value, "history")?;
-                case.history = s.to_string();
+                case.history = as_str(value, "history")?;
             }
             "edge" => {
-                let s = as_str(value, "edge")?;
-                case.edge = s.to_string();
+                case.edge = as_str(value, "edge")?;
             }
             other => {
                 anyhow::bail!("unknown matrix key `{other}` in family `{}`", family.name_template);
@@ -116,8 +120,8 @@ fn instantiate(family: &Family, assignments: &HashMap<&str, &serde_json::Value>)
 
 fn as_str(v: &serde_json::Value, key: &str) -> anyhow::Result<String> {
     v.as_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| anyhow::anyhow!("matrix `{key}` value must be string, got {}", v))
+        .map(std::string::ToString::to_string)
+        .ok_or_else(|| anyhow::anyhow!("matrix `{key}` value must be string, got {v}"))
 }
 
 fn as_pair(v: &serde_json::Value, key: &str) -> anyhow::Result<Vec<String>> {
@@ -130,7 +134,7 @@ fn as_pair(v: &serde_json::Value, key: &str) -> anyhow::Result<Vec<String>> {
     arr.iter()
         .map(|e| {
             e.as_str()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .ok_or_else(|| anyhow::anyhow!("matrix `{key}` element must be string"))
         })
         .collect()

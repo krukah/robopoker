@@ -77,12 +77,12 @@ impl Sinkhorn<'_> {
     fn sinkhorn(&mut self) {
         #[allow(unused)]
         for t in 0..self.iterations() {
-            let next = &mut self.lhs();
-            let prev = &mut self.lhs;
+            let ref mut next = self.lhs();
+            let ref mut prev = self.lhs;
             let lhs_err = Self::delta(prev, next);
             std::mem::swap(prev, next);
-            let next = &mut self.rhs();
-            let prev = &mut self.rhs;
+            let ref mut next = self.rhs();
+            let ref mut prev = self.rhs;
             let rhs_err = Self::delta(prev, next);
             std::mem::swap(prev, next);
             if lhs_err + rhs_err < self.tolerance() {
@@ -121,7 +121,7 @@ impl Sinkhorn<'_> {
             - potential
                 .support()
                 .map(|y| potential.density(&y) - self.regularization(x, &y))
-                .map(|e| e.exp())
+                .map(f32::exp)
                 .map(|e| e.max(Energy::MIN_POSITIVE))
                 .sum::<Energy>()
                 .ln()
@@ -134,7 +134,7 @@ impl Sinkhorn<'_> {
     fn delta(prev: &Potential, next: &Potential) -> Energy {
         prev.support()
             .map(|x| next.density(&x).exp() - prev.density(&x).exp())
-            .map(|e| e.abs())
+            .map(f32::abs)
             .sum::<Energy>()
     }
     /// Entropic regularization strength. Lower = closer to exact EMD.
@@ -173,7 +173,7 @@ impl Sinkhorn<'_> {
     /// with the metric's street, since two metrics on different streets
     /// over the same histogram shape would yield different self-costs.
     fn self_cost(h: &Histogram, metric: &Metric) -> Energy {
-        let hasher = &mut std::collections::hash_map::DefaultHasher::new();
+        let ref mut hasher = std::collections::hash_map::DefaultHasher::new();
         h.hash(hasher);
         metric.street().hash(hasher);
         let key = hasher.finish();
@@ -265,7 +265,7 @@ mod tests {
     /// state must clear at the top so it sees a known-empty cache, even
     /// when cargo reuses a thread for sequential tests.
     fn clear_cache() {
-        SELF_COST_CACHE.with_borrow_mut(|c| c.clear());
+        SELF_COST_CACHE.with_borrow_mut(std::collections::HashMap::clear);
     }
 
     /// The whole point: `S_ε(μ, μ) = 0`. With the buggy raw OT the diagnostic
@@ -276,7 +276,7 @@ mod tests {
         let metric = flop_metric();
         let h = flop_hist(&[(0, 3), (5, 1), (12, 4), (24, 2)]);
         let d = Sinkhorn::divergence(&h, &h, &metric);
-        assert!(d.abs() < 1e-4, "expected self-divergence ≈ 0, got {}", d);
+        assert!(d.abs() < 1e-4, "expected self-divergence ≈ 0, got {d}");
     }
 
     /// `S_ε(μ, ν) = S_ε(ν, μ)`. Cross-Sinkhorn iteration order isn't
@@ -289,7 +289,7 @@ mod tests {
         let nu = flop_hist(&[(2, 2), (8, 5), (20, 1), (24, 3)]);
         let d12 = Sinkhorn::divergence(&mu, &nu, &metric);
         let d21 = Sinkhorn::divergence(&nu, &mu, &metric);
-        assert!((d12 - d21).abs() < 1e-3, "asymmetric: {} vs {}", d12, d21);
+        assert!((d12 - d21).abs() < 1e-3, "asymmetric: {d12} vs {d21}");
     }
 
     /// First call populates two cache entries (one per unique input);
@@ -302,10 +302,10 @@ mod tests {
         let mu = flop_hist(&[(0, 3), (5, 1)]);
         let nu = flop_hist(&[(2, 2), (8, 5)]);
         let _ = Sinkhorn::divergence(&mu, &nu, &metric);
-        let after_first = SELF_COST_CACHE.with_borrow(|c| c.len());
+        let after_first = SELF_COST_CACHE.with_borrow(std::collections::HashMap::len);
         assert_eq!(after_first, 2, "expected 2 self-cost entries");
         let _ = Sinkhorn::divergence(&mu, &nu, &metric);
-        let after_second = SELF_COST_CACHE.with_borrow(|c| c.len());
+        let after_second = SELF_COST_CACHE.with_borrow(std::collections::HashMap::len);
         assert_eq!(after_second, 2, "cache should not grow on repeat");
     }
 
@@ -321,7 +321,7 @@ mod tests {
         let h2 = flop_hist(&[(2, 1)]);
         let _ = Sinkhorn::divergence(&h0, &h1, &metric);
         let _ = Sinkhorn::divergence(&h1, &h2, &metric);
-        let size = SELF_COST_CACHE.with_borrow(|c| c.len());
+        let size = SELF_COST_CACHE.with_borrow(std::collections::HashMap::len);
         assert_eq!(size, 3, "expected 3 unique self-cost entries");
     }
 
@@ -337,6 +337,6 @@ mod tests {
         let warm = Sinkhorn::divergence(&mu, &nu, &metric);
         clear_cache();
         let cold = Sinkhorn::divergence(&mu, &nu, &metric);
-        assert!((warm - cold).abs() < 1e-6, "warm={} cold={}", warm, cold);
+        assert!((warm - cold).abs() < 1e-6, "warm={warm} cold={cold}");
     }
 }

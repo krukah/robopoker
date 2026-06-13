@@ -173,7 +173,7 @@ where
     }
 }
 
-impl<'blueprint, const W: usize, const L: usize, N, I, Y> Harvest for SubGameSolver<'blueprint, W, L, N, I, Y>
+impl<const W: usize, const L: usize, N, I, Y> Harvest for SubGameSolver<'_, W, L, N, I, Y>
 where
     N: WorldRestrict<W, I = I> + DepthSampler<L, Blueprint: CfrSolution<I = I>> + Sync,
     N::Blueprint: Sync,

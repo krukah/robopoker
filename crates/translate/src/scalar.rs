@@ -64,13 +64,13 @@ mod tests {
     impl Axis for T {}
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Scalar must be finite")]
     fn rejects_nan() {
         let _ = Scalar::<T>::new(f64::NAN);
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Scalar must be finite")]
     fn rejects_infinity() {
         let _ = Scalar::<T>::new(f64::INFINITY);
     }

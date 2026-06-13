@@ -12,5 +12,6 @@ categories   = ["algorithms", "game-development", "mathematics"]
 
 [dependencies]
 rand         = { workspace = true }
+
 [lints]
 workspace = true

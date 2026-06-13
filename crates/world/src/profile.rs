@@ -121,32 +121,28 @@ where
         self.local
             .get(info)
             .and_then(|m| m.get(edge))
-            .map(|e| e.weight)
-            .unwrap_or_else(|| self.global.cum_weight(&info.inner(), edge).max(EPSILON))
+            .map_or_else(|| self.global.cum_weight(&info.inner(), edge).max(EPSILON), |e| e.weight)
     }
 
     fn cum_regret(&self, info: &Self::I, edge: &Self::E) -> Utility {
         self.local
             .get(info)
             .and_then(|m| m.get(edge))
-            .map(|e| e.regret)
-            .unwrap_or_else(|| self.global.cum_regret(&info.inner(), edge).max(EPSILON))
+            .map_or_else(|| self.global.cum_regret(&info.inner(), edge).max(EPSILON), |e| e.regret)
     }
 
     fn cum_payoff(&self, info: &Self::I, edge: &Self::E) -> Utility {
         self.local
             .get(info)
             .and_then(|m| m.get(edge))
-            .map(|e| e.payoff)
-            .unwrap_or_else(|| self.global.cum_payoff(&info.inner(), edge))
+            .map_or_else(|| self.global.cum_payoff(&info.inner(), edge), |e| e.payoff)
     }
 
     fn cum_visits(&self, info: &Self::I, edge: &Self::E) -> u32 {
         self.local
             .get(info)
             .and_then(|m| m.get(edge))
-            .map(|e| e.visits)
-            .unwrap_or_else(|| self.global.cum_visits(&info.inner(), edge))
+            .map_or_else(|| self.global.cum_visits(&info.inner(), edge), |e| e.visits)
     }
 
     fn sum_regret(&self) -> Utility {

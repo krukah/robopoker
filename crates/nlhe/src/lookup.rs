@@ -18,7 +18,7 @@ fn policy_sql() -> &'static str {
     SQL.get_or_init(|| {
         rbp_database::leaked(format!(
             "SELECT edge, weight, visits, payoff FROM {} \
-         WHERE past = $1 AND present = $2 AND choices = $3 AND geometry = $4",
+         WHERE past = $1 AND present = $2 AND choices = $3",
             rbp_database::blueprint()
         ))
     })
@@ -38,22 +38,21 @@ pub async fn lookup(client: &tokio_postgres::Client, recall: &Witness) -> Option
         .query_one(abs_sql(), &[&i64::from(iso)])
         .await
         .map(|row| Abstraction::from(row.get::<_, i16>(0)))
-        .inspect_err(|e| tracing::warn!("obs_to_abs failed: {}", e))
+        .inspect_err(|e| tracing::warn!("obs_to_abs failed: {e}"))
         .ok()?;
     let info = NlheInfo::from((recall, abs));
     let sql = policy_sql();
-    let history = &i64::from(info.subgame());
-    let present = &i16::from(info.bucket());
-    let choices = &i64::from(info.choices());
-    let geometry = &(info.geometry().tag() as i16);
+    let ref history = i64::from(info.subgame());
+    let ref present = i16::from(info.bucket());
+    let ref choices = i64::from(info.choices());
     let rows = client
-        .query(sql, &[history, present, choices, geometry])
+        .query(sql, &[history, present, choices])
         .await
-        .inspect_err(|e| tracing::warn!("blueprint query failed: {}", e))
+        .inspect_err(|e| tracing::warn!("blueprint query failed: {e}"))
         .ok()?;
     match rows.len() {
         0 => {
-            tracing::debug!("blueprint miss: past={history} present={present} choices={choices} geometry={geometry}");
+            tracing::debug!("blueprint miss: past={history} present={present} choices={choices}");
             None
         }
         _ => Some(Strategy::from((

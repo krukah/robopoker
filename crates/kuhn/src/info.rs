@@ -54,7 +54,7 @@ impl CfrPublic for KuhnPublic {
 impl std::fmt::Display for KuhnPublic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for edge in self.subgame() {
-            write!(f, "{}", edge)?;
+            write!(f, "{edge}")?;
         }
         Ok(())
     }

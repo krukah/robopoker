@@ -77,6 +77,6 @@ where
     debug_assert!(!branches.is_empty());
     let n = branches.len();
     let mut choices = branches;
-    let rng = &mut profile.rng(node);
+    let ref mut rng = profile.rng(node);
     vec![choices.remove(rng.random_range(0..n))]
 }

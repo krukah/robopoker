@@ -6,7 +6,7 @@ use argon2::password_hash::SaltString;
 
 fn salt() -> SaltString {
     use rand::Rng;
-    let bytes = &mut [0u8; 16];
+    let ref mut bytes = [0u8; 16];
     rand::rng().fill(bytes);
     SaltString::encode_b64(bytes).expect("salt")
 }
@@ -21,6 +21,5 @@ pub fn verify(password: &str, hashword: &str) -> bool {
     PasswordHash::new(hashword)
         .ok()
         .as_ref()
-        .map(|hash| Argon2::default().verify_password(password.as_bytes(), hash).is_ok())
-        .unwrap_or(false)
+        .is_some_and(|hash| Argon2::default().verify_password(password.as_bytes(), hash).is_ok())
 }

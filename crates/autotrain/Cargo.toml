@@ -20,15 +20,16 @@ rbp-clustering  = { path = "../clustering", features = ["server"]}
 rbp-database    = { path = "../database"                           }
 rbp-gameplay    = { path = "../gameplay"                           }
 rbp-mccfr       = { path = "../mccfr", features = ["async"]        }
-rbp-nlhe        = { path = "../nlhe", features = ["server"]      }
+rbp-nlhe      = { path = "../nlhe", features = ["server"]    }
 rbp-transport   = { path = "../transport"                          }
 rbp-telemetry   = { path = "../telemetry"                          }
 tokio-postgres  = "0.7"
 async-trait     = "0.1"
 const_format    = "0.2"
 futures         = "0.3"
-tracing       = { workspace = true }
+tracing         = { workspace = true }
 num_cpus        = "1.16"
 rand            = { workspace = true }
+
 [lints]
 workspace = true

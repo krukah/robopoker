@@ -7,7 +7,7 @@ authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 description    = "Card representation, hand evaluation, and strategic abstraction primitives"
 license        = "MIT"
 repository     = "https://github.com/krukah/robopoker"
-keywords       = ["poker", "cards", "hand-evaluation", "holdem"]
+keywords       = ["poker", "cards", "hand-evaluation", "nlhe"]
 categories     = ["game-development", "algorithms"]
 
 [features]

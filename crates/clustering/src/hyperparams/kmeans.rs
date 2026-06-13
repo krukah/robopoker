@@ -19,7 +19,7 @@ impl KmeansHyperParams {
         flop_iterations: 32, // was 20
         turn_iterations: 32, // was 24
         // 0.0 disables early termination — pick a real value once drift
-        // values from a real run are visible in your metrics backend.
+        // values from a real run are visible in Grafana.
         drift_threshold: 0.0,
     };
 

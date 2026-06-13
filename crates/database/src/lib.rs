@@ -54,7 +54,7 @@ use tokio_postgres::Client;
 pub async fn db() -> Arc<Client> {
     tracing::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
-    let url = &std::env::var("DB_URL").expect("DB_URL must be set");
+    let ref url = std::env::var("DB_URL").expect("DB_URL must be set");
     let (client, connection) = tokio_postgres::connect(url, tls)
         .await
         .expect("database connection failed");
@@ -82,29 +82,27 @@ pub fn leaked(s: String) -> &'static str {
     Box::leak(s.into_boxed_str())
 }
 
-/// Shared table: name is always the literal default. Emits both a runtime
-/// accessor `$name()` and a compile-time constant `[<$name:upper>]` so the
-/// literal can be embedded in `const_format::concatcp!` for static SQL.
+/// Shared table: name is always the literal default.
 macro_rules! table {
     ($name:ident, $default:expr, $doc:expr) => {
-        paste::paste! {
-            #[doc = $doc]
-            pub const [<$name:upper>]: &str = $default;
-
-            #[doc = $doc]
-            pub fn $name() -> &'static str {
-                [<$name:upper>]
-            }
+        #[doc = $doc]
+        pub fn $name() -> &'static str {
+            static T: OnceLock<&str> = OnceLock::<&str>::new();
+            *T.get_or_init(|| $default)
         }
     };
 }
-/// Version-dependent table: name gets a suffix from the active abstraction version.
+/// Clustering-derived table: name gets the suffix of the version whose
+/// K-means output this version *uses*. When a new `Version` only changes
+/// the bet-sizing grid (e.g. V3 reuses V1's clustering), it should read
+/// the existing `_v1` clustering tables — not require fresh clustering
+/// under a `_v3` suffix. See [`rbp_core::Version::clustering_suffix`].
 macro_rules! versioned {
     ($name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
         pub fn $name() -> &'static str {
             static T: OnceLock<&str> = OnceLock::<&str>::new();
-            *T.get_or_init(|| leaked(format!("{}{}", $default, rbp_core::version().suffix())))
+            *T.get_or_init(|| leaked(format!("{}{}", $default, rbp_core::version().clustering_suffix())))
         }
     };
 }
@@ -156,6 +154,7 @@ regime!(
      (Edge, InfoId) where InfoId embeds abstraction IDs from the active \
      version, hence the version suffix in addition to regime."
 );
+
 regime!(epoch, "epoch", "Table for training epoch metadata and progress.");
 regime!(snapshot, "snapshot", "Table for training snapshot statistics (append-only).");
 regime!(

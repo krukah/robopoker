@@ -56,7 +56,7 @@ impl Aivat {
             won,
             stderr,
             reduction: if adj > 0.0 { raw / adj } else { 1.0 },
-            pvalue: if stderr > 0.0 { 2.0 * normal_cdf(-mean.abs() / stderr) } else { 1.0 },
+            pvalue: if stderr > 0.0 { 2.0 * erf(-mean.abs() / stderr) } else { 1.0 },
         }
     }
     /// Compute corrections at hero actions, villain actions, and chance nodes.
@@ -72,20 +72,20 @@ impl Aivat {
         let hero_hole = parts
             .iter()
             .find(|p| p.seat() == seat)
-            .map(|p| p.hole())
-            .ok_or_else(|| anyhow::anyhow!("seat {} not found", seat))?;
+            .map(rbp_gameroom::Participant::hole)
+            .ok_or_else(|| anyhow::anyhow!("seat {seat} not found"))?;
         let villain_hole = parts
             .iter()
             .find(|p| p.seat() == villain_seat)
-            .map(|p| p.hole())
-            .ok_or_else(|| anyhow::anyhow!("seat {} not found", villain_seat))?;
+            .map(rbp_gameroom::Participant::hole)
+            .ok_or_else(|| anyhow::anyhow!("seat {villain_seat} not found"))?;
         let hero = Turn::Choice(seat);
         let villain = Turn::Choice(villain_seat);
         let hero_arr = plays_arrangement(hero_hole, hand.board(), plays);
         let villain_arr = plays_arrangement(villain_hole, hand.board(), plays);
-        let mut hero_recall = Witness::try_arrange(hero, hero_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{}", e))?;
+        let mut hero_recall = Witness::try_arrange(hero, hero_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{e}"))?;
         let mut villain_recall =
-            Witness::try_arrange(villain, villain_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{}", e))?;
+            Witness::try_arrange(villain, villain_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{e}"))?;
         let hero_hand = rbp_cards::Hand::from(hero_hole);
         let villain_hand = rbp_cards::Hand::from(villain_hole);
         let mut hero_total = 0.0f32;
@@ -135,10 +135,10 @@ impl Aivat {
             }
             hero_recall = hero_recall
                 .try_push(play.action())
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
             villain_recall = villain_recall
                 .try_push(play.action())
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
             walker.apply(play.action())?;
         }
         Ok((hero_total, villain_total, chance_total))
@@ -183,14 +183,13 @@ impl Aivat {
         let info = NlheInfo::from((recall, Abstraction::default()));
         let past = i64::from(info.subgame());
         let choices = i64::from(info.choices());
-        let (avg, obs) = match self
+        let Some((avg, obs)) = self
             .0
             .eval_chance_correction(&isos, past, choices, observed_iso)
             .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?
-        {
-            Some(pair) => pair,
-            None => return Ok(None),
+            .map_err(|e| anyhow::anyhow!("{e}"))?
+        else {
+            return Ok(None);
         };
         let delta = chance_correction(avg, obs);
         Ok(Some(if hero_acts_next { delta } else { -delta }))
@@ -207,7 +206,7 @@ impl Aivat {
             .0
             .eval_abstraction(i64::from(iso))
             .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?
+            .map_err(|e| anyhow::anyhow!("{e}"))?
         {
             Some(a) => Abstraction::from(a),
             None => return Ok(None),
@@ -217,7 +216,7 @@ impl Aivat {
             .0
             .eval_policy(i64::from(info.subgame()), i16::from(info.bucket()), i64::from(info.choices()))
             .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         if rows.is_empty() {
             return Ok(None);
         }

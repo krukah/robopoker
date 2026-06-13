@@ -25,7 +25,7 @@ use rbp_nlhe::Flagship;
 /// [`Mount`](super::Mount) cascade so every emission site (metrics,
 /// tracing) can lift the same triple of axis labels (`depth`, `world`,
 /// `dirac`) onto Prometheus series alongside the composite `variant`
-/// label. Lets dashboards to group/filter by axis and compute corner-pair
+/// label. Lets Grafana group/filter by axis and compute corner-pair
 /// diffs (e.g. marginal value of depth-limiting averaged over the
 /// `world × dirac` plane) directly in PromQL.
 #[derive(Copy, Clone, Debug)]

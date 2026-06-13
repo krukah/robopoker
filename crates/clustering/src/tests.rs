@@ -25,6 +25,7 @@ impl TestLayer {
         8
     }
     /// Creates a new test layer with random Turn histograms.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let points = (0..N)
             .map(|_| Histogram::from(Observation::from(Street::Turn)))
@@ -46,11 +47,11 @@ impl TestLayer {
     /// Runs one Elkan iteration.
     pub fn step(&mut self) {
         let next = vec![Bounds::default(); N].try_into().expect("N");
-        let curr = &mut self.bounds;
-        let prev = &mut std::mem::replace(curr, next);
+        let ref mut curr = self.bounds;
+        let ref mut prev = std::mem::replace(curr, next);
         let (kmeans, _drifts) = Elkan::step_elkan(self, prev);
         self.kmeans = kmeans;
-        let curr = &mut self.bounds;
+        let ref mut curr = self.bounds;
         std::mem::swap(prev, curr);
         self.heal();
     }

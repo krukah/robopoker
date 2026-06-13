@@ -8,7 +8,7 @@
 //! | `Perfect` | Both hands | Training (CFR traversal) |
 //!
 //! During CFR training, we traverse the game tree knowing both players' cards
-//! (god's view), but strategies are indexed only by `HoldemInfo` (public edges +
+//! (god's view), but strategies are indexed only by `NlheInfo` (public edges +
 //! private bucket). `Perfect` stores the complete root state needed for reach
 //! probability computation and counterfactual value calculation.
 //!
@@ -78,10 +78,10 @@ impl Perfect {
         let hole = self.root.seats()[hero.position()].cards();
         let reveals = Arrangement::from(
             Hand::from(hole)
-                .chain(self.actions.iter().filter_map(|a| a.hand()).flatten())
+                .chain(self.actions.iter().filter_map(Action::hand).flatten())
                 .collect::<Vec<Card>>(),
         );
-        let actions = self.actions.iter().filter(|a| a.is_choice()).cloned().collect();
+        let actions = self.actions.iter().filter(|a| a.is_choice()).copied().collect();
         Witness::try_arrange(hero, reveals, actions).expect("valid erase")
     }
 }

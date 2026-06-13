@@ -17,8 +17,8 @@ pub struct Play {
 impl Play {
     pub fn new(hand: ID<Hand>, seq: Epoch, player: Option<ID<Member>>, action: Action, elapsed: Option<i32>) -> Self {
         Self {
-            hand,
             seq,
+            hand,
             player,
             action,
             elapsed,

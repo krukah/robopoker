@@ -38,7 +38,7 @@ impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
 impl Lookup {
     /// Looks up the abstraction for a hand isomorphism.
     pub fn lookup(&self, iso: &Isomorphism) -> Abstraction {
-        self.0.get(iso).cloned().expect("precomputed abstraction in lookup")
+        self.0.get(iso).copied().expect("precomputed abstraction in lookup")
     }
 
     /// Generates histograms for all isomorphisms at the previous street.

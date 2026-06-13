@@ -9,6 +9,7 @@ mod builder;
 mod decisions;
 mod encounter;
 mod harvest;
+#[allow(clippy::module_inception)]
 mod solver;
 
 pub use builder::*;

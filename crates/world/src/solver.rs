@@ -142,7 +142,7 @@ where
     }
 }
 
-impl<'blueprint, const W: usize, P, N, I, Y> Harvest for WorldSolver<'blueprint, W, P, N, I, Y>
+impl<const W: usize, P, N, I, Y> Harvest for WorldSolver<'_, W, P, N, I, Y>
 where
     P: CfrSolution<I = I> + Sync,
     N: WorldRestrict<W, T = P::T, E = P::E, G = P::G, I = I> + Sync,

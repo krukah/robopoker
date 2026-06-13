@@ -1,4 +1,7 @@
 use super::*;
+use rbp_cards::Hand;
+use rbp_cards::HandIterator;
+use rbp_cards::Hole;
 use rbp_cards::Observation;
 use rbp_core::*;
 use rbp_depth::*;
@@ -15,7 +18,7 @@ mccfr!(Nlhe, NlheEncoder, NlheTurn, NlheEdge, NlheGame, NlheInfo, 128);
 /// index `i` is the game BEFORE action `i`, so its turn is the turn that
 /// owns that edge. Trims to trailing choice edges, matching
 /// [`Recall::subgame`]'s definition of "current street." This is the
-/// only safe way to get turns for a holdem prefix: replaying edges
+/// only safe way to get turns for a nlhe prefix: replaying edges
 /// from `NlheGame::root()` would silently diverge at chip snapping or
 /// chance card draws.
 fn subgame_descents(recall: &Witness) -> Vec<Descent<NlheTurn, NlheEdge>> {
@@ -53,8 +56,8 @@ where
         game: &NlheGame,
         internal: NlheTurn,
     ) -> Payoffs<{ rbp_core::FRONTIER_LEAVES }> {
-        let encoder = &self.encoder;
-        let profile = &self.profile;
+        let ref encoder = self.encoder;
+        let ref profile = self.profile;
         let rollouts = FrontierHyperParams::get().rollouts();
         Payoffs::tabulate(|k, j| {
             (0..rollouts)
@@ -126,26 +129,26 @@ where
     }
     /// Common setup for safe solvers: external identity, belief partition, recall.
     fn setup(&self, recall: &Witness) -> (NlheTurn, Belief<NlheSecret, { rbp_core::N_WORLDS }>, CfrRecall<NlheGame>) {
-        let external = match recall.turn() {
-            Turn::Choice(0) => NlheTurn::from(1),
-            Turn::Choice(1) => NlheTurn::from(0),
-            _ => unreachable!("subgame solving requires two-player game"),
-        };
+        let external = opposing(recall.turn());
         let prior = self.opponent_range(recall);
         let partition = prior.partition();
         let path = subgame_descents(recall);
         let game = NlheGame::from(recall.head());
         (external, partition, CfrRecall::new(path, game))
     }
-    /// External reach for one complete-info history — the product of the
-    /// blueprint's averaged policy at every external decision node along
-    /// `case`'s action sequence. This is P(actions | hand) for the single
-    /// hand encoded by `case`.
-    fn external_reach(&self, case: Perfect, internal: NlheTurn) -> Probability {
+    /// Reach for one complete-info history along `subject`'s decision
+    /// nodes — the product of the blueprint's averaged policy at every
+    /// node where `subject` was to act. This is P(`subject`'s actions |
+    /// `subject`'s hand) for the single hand encoded by `case`.
+    ///
+    /// The original "opponent reach" specializes this with
+    /// `subject = external` (the non-`internal` player); the signalled
+    /// reach specializes it with `subject = hero`.
+    fn reach(&self, case: Perfect, subject: NlheTurn) -> Probability {
         self.encoder
             .replay(NlheGame::from(case.root()), case.history().into_iter().map(NlheEdge::from))
             .into_iter()
-            .filter(|(t, _, _)| t.is_opponent(&internal))
+            .filter(|(t, _, _)| *t == subject)
             .map(|(_, ref i, ref e)| self.profile.averaged_policy(i, e))
             .product()
     }
@@ -155,15 +158,15 @@ where
     /// projects to abstractions) and [`Self::opponent_observations`]
     /// (which normalizes and surfaces hole cards). Walks
     /// [`Witness::possibilities`] and computes external reach via
-    /// [`Self::external_reach`] along the observed action sequence. This
+    /// [`Self::reach`] along the observed action sequence. This
     /// is the unnormalized P(hand | actions) ∝ P(actions | hand) × 1
     /// from a uniform prior.
     fn opponent_reaches(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
-        let internal = NlheTurn::from(recall.turn());
+        let external = opposing(recall.turn());
         recall
             .possibilities()
             .into_iter()
-            .map(|(obs, case)| (obs, self.external_reach(case, internal)))
+            .map(|(obs, case)| (obs, self.reach(case, external)))
             .collect()
     }
     /// Computes the opponent's posterior range over abstraction buckets.
@@ -203,12 +206,58 @@ where
     /// frontend cares about (hole cards), not the granularity CFR
     /// solves at (abstraction buckets).
     pub fn opponent_observations(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
-        let raws = self.opponent_reaches(recall);
-        let total = raws.iter().map(|(_, r)| *r).sum::<Probability>();
-        match total {
-            0.0 => raws,
-            mass => raws.into_iter().map(|(obs, r)| (obs, r / mass)).collect(),
-        }
+        normalize(self.opponent_reaches(recall))
+    }
+
+    /// Hole-card-level normalized hero **signalled** range — what the
+    /// opponent's posterior over hero's hand could look like, given
+    /// hero's observed action history. Mirrors
+    /// [`Self::opponent_observations`] with roles swapped.
+    ///
+    /// Prior is uniform over `deck − board`; we don't condition on the
+    /// opponent's actual hole because we don't know it. ~2 cards' worth
+    /// of removal is ignored — acceptable at the 169-cell projection.
+    /// The stub opponent hand passed to [`Perfect`] is semantically
+    /// inert: hero's [`NlheInfo`] depends only on hero's hole + public
+    /// edges, and [`Self::reach`] filters to hero decision nodes.
+    pub fn signalled_observations(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
+        normalize(self.signalled_reaches(recall))
+    }
+
+    /// Unnormalized signalled-reach stream. Sibling of
+    /// [`Self::opponent_reaches`] with hero/opponent roles flipped.
+    fn signalled_reaches(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
+        let hero = NlheTurn::from(recall.turn());
+        let board: Hand = recall.arr().public().into_iter().collect();
+        HandIterator::from((2, board))
+            .map(|hole| {
+                let stub = HandIterator::from((2, Hand::add(hole, board)))
+                    .next()
+                    .expect("stub hole");
+                let arr = Arrangement::from(hole.chain(board).collect::<Vec<_>>());
+                let case = Perfect::from((&recall.replace(arr), Hole::from(stub)));
+                (Observation::from((hole, board)), self.reach(case, hero))
+            })
+            .collect()
+    }
+}
+
+/// In a 2-player game, the other seat. Panics for chance/terminal turns.
+fn opposing(turn: Turn) -> NlheTurn {
+    match turn {
+        Turn::Choice(0) => NlheTurn::from(1_usize),
+        Turn::Choice(1) => NlheTurn::from(0_usize),
+        _ => unreachable!("two-player game requires Choice turn"),
+    }
+}
+
+/// Normalize a `(observation, reach)` stream to sum to 1, leaving an
+/// all-zero stream untouched.
+fn normalize(raws: Vec<(Observation, Probability)>) -> Vec<(Observation, Probability)> {
+    let total = raws.iter().map(|(_, r)| *r).sum::<Probability>();
+    match total {
+        0.0 => raws,
+        mass => raws.into_iter().map(|(obs, r)| (obs, r / mass)).collect(),
     }
 }
 

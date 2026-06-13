@@ -67,20 +67,20 @@ impl Stage for Client {
 #[async_trait::async_trait]
 impl Stage for Arc<Client> {
     async fn stage(&self) {
-        self.as_ref().stage().await
+        self.as_ref().stage().await;
     }
 
     async fn merge(&self) {
-        self.as_ref().merge().await
+        self.as_ref().merge().await;
     }
 
     async fn stamp(&self, n: usize) {
-        self.as_ref().stamp(n).await
+        self.as_ref().stamp(n).await;
     }
 
     async fn snapshot(&self, epoch: i64, infos: i64, nodes: i64, exploit: Utility, elapsed: i64, stamped: i64) {
         self.as_ref()
             .snapshot(epoch, infos, nodes, exploit, elapsed, stamped)
-            .await
+            .await;
     }
 }

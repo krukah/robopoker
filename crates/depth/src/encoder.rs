@@ -77,7 +77,11 @@ where
         tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
         (edge, game, parent): Leaf<Self::E, Self::G>,
     ) -> Self::I {
-        let mut path = tree.at(parent).into_iter().map(|a| a.edge()).collect::<Vec<_>>();
+        let mut path = tree
+            .at(parent)
+            .into_iter()
+            .map(rbp_mccfr::Jump::edge)
+            .collect::<Vec<_>>();
         path.reverse();
         path.push(edge);
         self.wrap(Self::unwrap(path), &game)

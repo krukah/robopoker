@@ -53,7 +53,7 @@ async fn health(client: web::Data<Arc<Client>>) -> impl Responder {
     match client
         .execute("SELECT 1", &[])
         .await
-        .inspect_err(|e| tracing::error!("health check failed: {}", e))
+        .inspect_err(|e| tracing::error!("health check failed: {e}"))
     {
         Ok(_) => HttpResponse::Ok().body("ok"),
         Err(_) => HttpResponse::ServiceUnavailable().body("database unavailable"),
@@ -70,9 +70,8 @@ pub async fn run() -> Result<(), std::io::Error> {
         .map(|v| v.member())
         .collect();
     seedables.push(rbp_gameroom::slumbot_opponent());
-    use rbp_auth::AuthRepository as _;
     for member in &seedables {
-        client.seed(member)
+        rbp_auth::AuthRepository::seed(&client, member)
             .await
             .unwrap_or_else(|e| tracing::warn!("failed to seed {}: {}", member.username(), e));
         tracing::info!("seeded bot user {}", member.username());
@@ -152,6 +151,7 @@ pub async fn run() -> Result<(), std::io::Error> {
                     .route("/world", web::post().to(strategy::handlers::solve_world))
                     .route("/full", web::post().to(strategy::handlers::solve_full))
                     .route("/range", web::post().to(strategy::handlers::range))
+                    .route("/signalled", web::post().to(strategy::handlers::signalled))
                     .route("/grid-usage", web::get().to(strategy::handlers::grid_usage)),
             )
             .service(

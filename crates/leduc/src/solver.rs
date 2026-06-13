@@ -59,8 +59,8 @@ where
                 writeln!(
                     f,
                     "│ {:>22} │ {:>5} │ {:>+8.2} │ {:>8.2} │ {:>8.2} │ {:>8.2} │",
-                    format!("{}", info),
-                    format!("{}", edge),
+                    format!("{info}"),
+                    format!("{edge}"),
                     self.profile().cum_regret(info, edge),
                     self.profile().cum_weight(info, edge),
                     self.profile().instant_policy(info, edge),
@@ -125,13 +125,13 @@ mod tests {
     #[rustfmt::skip] leduc!(PrunableSampling, FlooredRegret,    LinearWeight,       0.080);
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: full convergence run"]
     fn converged_solution() {
         let solver = Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N16);
         let profile = solver.profile();
         println!("\n=== Opening Ranges ===");
         for (info, edges) in &solver.profile.encounters {
-            let s = format!("{}", info);
+            let s = format!("{info}");
             if s == "J|" || s == "Q|" || s == "K|" {
                 for edge in edges.keys() {
                     println!("  {} {:>5}  avg={:.3}", s, edge, profile.averaged_policy(info, edge));
@@ -143,8 +143,8 @@ mod tests {
             for edge in edges.keys() {
                 println!(
                     "{:>22} {:>5}  avg={:.3}  inst={:.3}",
-                    format!("{}", info),
-                    format!("{}", edge),
+                    format!("{info}"),
+                    format!("{edge}"),
                     profile.averaged_policy(info, edge),
                     profile.instant_policy(info, edge),
                 );
@@ -195,7 +195,7 @@ mod tests {
     /// Subgame with prefix replaying P0's check converges.
     #[test]
     fn subgame_after_check() {
-        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = LeducTurn::Player(0);
         let root = LeducGame::root();
         let entry = root.apply(LeducEdge::Check);
@@ -215,7 +215,7 @@ mod tests {
     /// Subgame with prefix replaying P0's raise converges.
     #[test]
     fn subgame_after_raise() {
-        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = LeducTurn::Player(0);
         let root = LeducGame::root();
         let entry = root.apply(LeducEdge::Raise);
@@ -252,7 +252,7 @@ mod tests {
     /// converge with the conditioned belief.
     #[test]
     fn subgame_with_reach_conditioned_posterior() {
-        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let internal = LeducTurn::Player(0);
         let external = LeducTurn::Player(1);
         let root = LeducGame::root();
@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn depth_limited_tree_has_front_nodes() {
         use rbp_depth::*;
-        let blueprint = &Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let encoder = DepthEncoder::<_, 4>::new(blueprint, vec![]);
         let profile: DepthView<'_, _, 4> = DepthView::new(DepthSampler::<4>::blueprint(blueprint));
         let root: DepthGame<_, 4> = DepthGame::new(LeducGame::root(), LeducTurn::Player(0), Some(0));

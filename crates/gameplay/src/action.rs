@@ -75,11 +75,11 @@ impl Action {
         match self {
             Action::Fold => "F".to_string(),
             Action::Check => "X".to_string(),
-            Action::Draw(h) => format!("{}", h),
-            Action::Call(n) => format!("C{}", n),
-            Action::Blind(n) => format!("B{}", n),
-            Action::Raise(n) => format!("R{}", n),
-            Action::Shove(n) => format!("S{}", n),
+            Action::Draw(h) => format!("{h}"),
+            Action::Call(n) => format!("C{n}"),
+            Action::Blind(n) => format!("B{n}"),
+            Action::Raise(n) => format!("R{n}"),
+            Action::Shove(n) => format!("S{n}"),
         }
     }
 
@@ -225,11 +225,11 @@ impl std::fmt::Display for Action {
         match self {
             Action::Fold => write!(f, "FOLD"),
             Action::Check => write!(f, "CHECK"),
-            Action::Draw(hand) => write!(f, "DEAL  {}", hand),
-            Action::Call(amount) => write!(f, "CALL  {}", amount),
-            Action::Blind(amount) => write!(f, "BLIND {}", amount),
-            Action::Raise(amount) => write!(f, "RAISE {}", amount),
-            Action::Shove(amount) => write!(f, "SHOVE {}", amount),
+            Action::Draw(hand) => write!(f, "DEAL  {hand}"),
+            Action::Call(amount) => write!(f, "CALL  {amount}"),
+            Action::Blind(amount) => write!(f, "BLIND {amount}"),
+            Action::Raise(amount) => write!(f, "RAISE {amount}"),
+            Action::Shove(amount) => write!(f, "SHOVE {amount}"),
         }
     }
 }

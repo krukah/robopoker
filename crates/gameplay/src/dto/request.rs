@@ -50,7 +50,7 @@ pub struct AbsHist {
     pub abs: Abstraction,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct GetPolicy {
     pub turn: Turn,
     pub seen: Observation,

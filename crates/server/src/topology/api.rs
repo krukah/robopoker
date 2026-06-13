@@ -53,7 +53,7 @@ impl TopologyAPI {
             .query_one(sql.as_str(), &[&idx])
             .await
             .map(|row| Abstraction::from(row.get::<_, i16>(0)))
-            .map_err(|e| anyhow::anyhow!("fetch abstraction: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch abstraction: {e}"))
     }
 
     pub async fn metric(&self, street: Street) -> anyhow::Result<Metric> {
@@ -64,7 +64,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&s])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch metric: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch metric: {e}"))?;
         let mut metric = Metric::new(street);
         for row in rows {
             let tri = row.get::<_, i32>(0);
@@ -85,7 +85,7 @@ impl TopologyAPI {
             .query_one(sql.as_str(), &[&abs])
             .await
             .map(|row| Probability::from(row.get::<_, f32>(0)))
-            .map_err(|e| anyhow::anyhow!("fetch abstraction equity: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch abstraction equity: {e}"))
     }
 
     pub async fn obs_equity(&self, obs: Observation) -> anyhow::Result<Probability> {
@@ -110,7 +110,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&iso])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch observation equity: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch observation equity: {e}"))?
             .get::<_, f32>(0))
     }
 }
@@ -132,7 +132,7 @@ impl TopologyAPI {
             .query_one(sql.as_str(), &[&tri])
             .await
             .map(|row| row.get::<_, Energy>(0))
-            .map_err(|e| anyhow::anyhow!("fetch distance: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch distance: {e}"))
     }
 
     pub async fn obs_distance(&self, obs1: Observation, obs2: Observation) -> anyhow::Result<Energy> {
@@ -164,7 +164,7 @@ impl TopologyAPI {
             .query_one(sql.as_str(), &[&abs])
             .await
             .map(|row| row.get::<_, i64>(0) as usize)
-            .map_err(|e| anyhow::anyhow!("fetch abstraction population: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch abstraction population: {e}"))
     }
 
     pub async fn obs_population(&self, obs: Observation) -> anyhow::Result<usize> {
@@ -184,7 +184,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&iso])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch observation population: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch observation population: {e}"))?
             .get::<_, i64>(0) as usize)
     }
 }
@@ -200,7 +200,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&abs_i])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch abstraction histogram: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch abstraction histogram: {e}"))?;
         Ok(rows
             .iter()
             .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
@@ -230,7 +230,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&idx])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch observation histogram: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch observation histogram: {e}"))?
             .iter()
             .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
             .map(|(next, dx)| (next, (dx * mass).round() as usize))
@@ -269,7 +269,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&iso, &n])
             .await
-            .map_err(|e| anyhow::anyhow!("explore with respect to observation: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("explore with respect to observation: {e}"))?;
         Ok(api_sample_from_row(row))
     }
 
@@ -302,7 +302,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&abs, &n])
             .await
-            .map_err(|e| anyhow::anyhow!("explore with respect to abstraction: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("explore with respect to abstraction: {e}"))?;
         Ok(api_sample_from_row(row))
     }
 }
@@ -328,7 +328,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&abs, &N_NEIGHBORS])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch nearby abstractions: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch nearby abstractions: {e}"))?
             .iter()
             .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
             .map(|(abs, distance)| (Abstraction::from(abs), distance))
@@ -357,7 +357,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&iso, &N_NEIGHBORS])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch nearby abstractions for observation: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch nearby abstractions for observation: {e}"))?
             .iter()
             .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
             .map(|(abs, distance)| (Abstraction::from(abs), distance))
@@ -394,7 +394,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&iso, &N_NEIGHBORS])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch similar observations: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch similar observations: {e}"))?
             .iter()
             .map(|row| row.get::<_, i64>(0))
             .map(Observation::from)
@@ -425,7 +425,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&abs, &N_NEIGHBORS])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch observations similar to abstraction: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch observations similar to abstraction: {e}"))?
             .iter()
             .map(|row| row.get::<_, i64>(0))
             .map(Observation::from)
@@ -458,7 +458,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&iso])
             .await
-            .map_err(|e| anyhow::anyhow!("replace observation: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("replace observation: {e}"))?;
         Ok(Observation::from(row.get::<_, i64>(0)))
     }
 }
@@ -467,7 +467,7 @@ impl TopologyAPI {
 impl TopologyAPI {
     pub async fn nbr_any_wrt_abs(&self, wrt: Abstraction) -> anyhow::Result<ApiSample> {
         use rand::prelude::IndexedRandom;
-        let rng = &mut rand::rng();
+        let ref mut rng = rand::rng();
         let abs = Abstraction::all(wrt.street())
             .into_iter()
             .filter(|&x| x != wrt)
@@ -520,7 +520,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&abs, &n, &wrt])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch neighbor abstraction: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch neighbor abstraction: {e}"))?;
         Ok(api_sample_from_row(row))
     }
 
@@ -554,7 +554,7 @@ impl TopologyAPI {
             .0
             .query_one(sql.as_str(), &[&iso, &n, &wrt])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch neighbor observation: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch neighbor observation: {e}"))?;
         Ok(api_sample_from_row(row))
     }
 }
@@ -599,7 +599,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&wrt, &s, &N_NEIGHBORS, &n])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch k-farthest neighbors: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch k-farthest neighbors: {e}"))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 
@@ -641,7 +641,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&wrt, &s, &N_NEIGHBORS, &n])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch k-nearest neighbors: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch k-nearest neighbors: {e}"))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 
@@ -680,7 +680,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&n, &wrt, &&isos, &N_NEIGHBORS])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch given neighbors: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch given neighbors: {e}"))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 }
@@ -733,7 +733,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&iso])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch river observation distribution: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch river observation distribution: {e}"))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 
@@ -768,7 +768,7 @@ impl TopologyAPI {
             .0
             .query(sql.as_str(), &[&distinct])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch observation distribution: {}", e))?
+            .map_err(|e| anyhow::anyhow!("fetch observation distribution: {e}"))?
             .into_iter()
             .map(|row| {
                 (
@@ -824,12 +824,12 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let abs = &i16::from(abs);
+        let ref abs = i16::from(abs);
         let rows = self
             .0
             .query(sql.as_str(), &[abs])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch river abstraction distribution: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch river abstraction distribution: {e}"))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 
@@ -859,12 +859,12 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let abs = &i16::from(abs);
+        let ref abs = i16::from(abs);
         let rows = self
             .0
             .query(sql.as_str(), &[abs])
             .await
-            .map_err(|e| anyhow::anyhow!("fetch abstraction distribution: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("fetch abstraction distribution: {e}"))?;
         Ok(rows.into_iter().map(api_sample_from_row).collect())
     }
 }

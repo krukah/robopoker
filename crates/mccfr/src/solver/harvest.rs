@@ -29,9 +29,9 @@ pub struct Harvested<E> {
 /// [`DepthEdge::Game`]: rbp_depth::DepthEdge::Game
 /// [`WorldInfo::new`]: rbp_world::WorldInfo::new
 pub trait Harvest {
-    /// Base infoset type (pre-wrapping). E.g. `HoldemInfo`.
+    /// Base infoset type (pre-wrapping). E.g. `NlheInfo`.
     type Base;
-    /// Base edge type (pre-wrapping). E.g. `HoldemEdge`.
+    /// Base edge type (pre-wrapping). E.g. `NlheEdge`.
     type Edge;
 
     fn harvest(&self, base: Self::Base) -> Harvested<Self::Edge>;

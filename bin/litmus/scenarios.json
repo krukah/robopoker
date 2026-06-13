@@ -34,6 +34,7 @@
     "QQ":   {"cards": "QcQs", "name": "Pocket Queens"},
     "JJ":   {"cards": "JcJs", "name": "Pocket Jacks"},
     "TT":   {"cards": "TcTs", "name": "Pocket Tens"},
+    "99":   {"cards": "9s9h", "name": "Pocket Nines — flops full house on 9c4s4hTs2c (9s/9h avoid the 9c on board)"},
     "AKs":  {"cards": "AcKc", "name": "AK suited"},
     "AKo":  {"cards": "AcKd", "name": "AK offsuit"},
     "AQs":  {"cards": "AcQc", "name": "AQ suited"},
@@ -49,7 +50,10 @@
     "75o":  {"cards": "7h5c", "name": "75 offsuit"},
     "62o":  {"cards": "6h2c", "name": "62 offsuit"},
     "63o":  {"cards": "6h3c", "name": "63 offsuit"},
-    "83o":  {"cards": "8h3c", "name": "83 offsuit"}
+    "83o":  {"cards": "8h3c", "name": "83 offsuit"},
+
+    "77":   {"cards": "7s7h", "name": "Pocket Sevens — flops set on K72r (7s/7h avoid the 7d on board)"},
+    "22":   {"cards": "2s2h", "name": "Pocket Deuces — flops set on K72r (2s/2h avoid the 2c on board)"}
   },
 
   "histories": {
@@ -65,7 +69,29 @@
         "turn": "P1",
         "_seen": "* ~ Kh 7d 2c",
         "past": ["RAISE 4", "CALL 3"],
-        "desc": "BB first to act, single-raised pot, dry rainbow K-7-2 board (suits Kh/7d/2c chosen to avoid common hand-encoding conflicts with AcKd)."
+        "expected_spr": "deep",
+        "desc": "BB first to act, single-raised pot, dry rainbow K-7-2 board. Default 100bb stacks → SPR ≈ 24 (Deep bucket)."
+      },
+      "bb_3bet_pot_K72r": {
+        "turn": "P1",
+        "_seen": "* ~ Kh 7d 2c",
+        "past": ["RAISE 4", "RAISE 12", "CALL 9"],
+        "expected_spr": "mid",
+        "desc": "BB first to act, 3-bet pot, K-7-2 rainbow. SB opens (+4 → stake 5), BB 3-bets (+12 → stake 14), SB calls (+9 → stake 14). Pot 28, eff 186 → SPR ≈ 6.6 (Mid). RAISE/CALL amounts are chip deltas, not absolute targets — see crates/gameplay/src/game.rs:416 (`bet` adds to stake)."
+      },
+      "bb_4bet_pot_K72r": {
+        "turn": "P1",
+        "_seen": "* ~ Kh 7d 2c",
+        "past": ["RAISE 4", "RAISE 12", "RAISE 36", "CALL 27"],
+        "expected_spr": "low",
+        "desc": "BB first to act, 4-bet pot, K-7-2 rainbow. SB +4 → 5; BB +12 → 14; SB +36 → 41; BB +27 → 41. Pot 82, eff 159 → SPR ≈ 1.9 (Low)."
+      },
+      "bb_5bet_pot_K72r": {
+        "turn": "P1",
+        "_seen": "* ~ Kh 7d 2c",
+        "past": ["RAISE 4", "RAISE 12", "RAISE 36", "RAISE 108", "CALL 81"],
+        "expected_spr": "committed",
+        "desc": "BB first to act, 5-bet pot, K-7-2 rainbow. SB +4; BB +12; SB +36; BB +108 → stake 122; SB +81 → 122. Pot 244, eff 78 → SPR ≈ 0.32 (Committed). Rare in real play but in-distribution for the SPR-keyed infoset."
       },
       "bb_first_raised_8c8d2s_paired": {
         "turn": "P1",
@@ -162,6 +188,9 @@
     },
     "structural_grid": {
       "description": "Each grid slot should appear at non-trivial frequency somewhere. A slot used at <2% everywhere is dead and should be retired in v3."
+    },
+    "structural_grid_v3": {
+      "description": "Grid v3 dropped the SPR axis from the InfoSet key; menus are now keyed only on (street, depth). This category is reserved for v3-specific structural checks; populate as new patterns emerge from v3 training data."
     }
   },
 
@@ -169,14 +198,14 @@
 
   "tests": [
     {
-      "name": "QQ overpair on K72r: never fold first-to-act",
+      "name": "QQ overpair on K72r: not pure-check first-to-act",
       "category": "flop_value",
       "hand": "QQ",
       "history": "flop.bb_first_raised_K72r",
-      "edge": "F",
-      "expect": {"acceptable_max": 0.05},
-      "desired": "QQ underpair on K-high flop (K beats Q) is awkward but should never fold first-to-act when there's no bet to fold to. Anti-pathology check: F% must be 0 if there's no current bet.",
-      "diagnosis_if_violated": "If QQ folds first-to-act on any flop, the strategy lookup is conflating no-bet states with facing-bet states. Lookup or schema bug."
+      "edge": "O",
+      "expect": {"acceptable_min": 0.20, "acceptable_max": 0.95},
+      "desired": "QQ on K-high single-raised pot first-to-act: K beats Q so this is awkward, but pure-check (>95%) leaves value on the table and pure-bet (>80%) is over-aggressive on a board where villain can have K-x. Want a real mix — bet across some size at >20% frequency. (Fold is not in the legal choice set when first-to-act with no bet facing; the prior version of this test queried `F` against a no-fold cell and trivially passed.)",
+      "diagnosis_if_violated": "Pure check with QQ on K72r means no value-bet line at all. Postflop abstraction may be collapsing QQ into a hand class that never c-bets dry boards."
     },
 
     {
@@ -290,16 +319,16 @@
       "desired": "Trash hand on AKQ rainbow with no equity should rarely bet."
     },
     {
-      "name_template": "{hand} Flop TPTK in raised pot: never fold first-to-act",
+      "name_template": "{hand} Flop TPTK in raised pot: not pure-check first-to-act",
       "category": "flop_value",
-      "edge": "F",
+      "edge": "O",
       "matrix": {
         "hand": ["AKo", "AKs"],
         "history": ["flop.bb_first_raised_K72r"]
       },
-      "expect": {"acceptable_max": 0.10},
-      "desired": "TPTK never folds when first to act on a dry flop (no bet to fold to; F frequency should be 0 if F is even available).",
-      "diagnosis_if_violated": "Folding TPTK first-to-act suggests the strategy is treating no-bet-yet states like facing-bet states. Lookup bug or strategy artifact."
+      "expect": {"acceptable_min": 0.30, "acceptable_max": 0.95},
+      "desired": "TPTK on a dry K-high flop first-to-act should bet a meaningful share of the time. Pure check (>95%) leaves value on the table; pure bet (<5% check) means no slowplay. Want a real mix. (Fold is not in the legal choice set when first-to-act with no bet facing; the prior version queried `F` against a no-fold cell and trivially passed.)",
+      "diagnosis_if_violated": "Pure check with TPTK on K72r means no c-bet line at all. Likely the postflop abstraction is averaging TPTK into a check-call cluster with weaker hands."
     },
     {
       "name_template": "Flop set in raised pot: not pure-check",
@@ -326,12 +355,12 @@
     {
       "name_template": "River full house facing big bet: never fold",
       "category": "river_value",
-      "hand": "JJ",
+      "hand": "99",
       "history": "river.bb_facing_big_bet_9c4s4hTs2c_paired",
       "edge": "F",
       "expect": {"acceptable_max": 0.05},
-      "desired": "Folding the second-nuts to a single bet is the cardinal river sin.",
-      "diagnosis_if_violated": "If full house folds: postflop abstraction is collapsing strong hands into the same cluster as bluff-catchers, losing all signal.",
+      "desired": "Hero has nines full of fours (9s9h on 9c4s4hTs2c). Folding a full house to a single bet is the cardinal river sin.",
+      "diagnosis_if_violated": "If a full house folds: postflop abstraction is collapsing strong hands into the same cluster as bluff-catchers, losing all signal.",
       "matrix": {}
     },
     {

@@ -27,6 +27,8 @@ pub async fn leave(casino: web::Data<Casino>, path: web::Path<uuid::Uuid>) -> im
         Err(e) => HttpResponse::NotFound().body(e.to_string()),
     }
 }
+// actix `web::Query<HashMap>` is an opaque extractor type; the hasher param would not propagate usefully.
+#[allow(clippy::implicit_hasher)]
 pub async fn enter(
     casino: web::Data<Casino>,
     tokens: web::Data<rbp_auth::Crypto>,
@@ -41,8 +43,7 @@ pub async fn enter(
         .and_then(|t| tokens.decode(t).ok())
         .filter(|c| !c.expired())
         .inspect(|c| tracing::debug!(user = %c.usr, room = %id, "authenticated user entering room"))
-        .map(std::mem::drop)
-        .unwrap_or_else(|| tracing::debug!(room = %id, "anonymous user entering room"));
+        .map_or_else(|| tracing::debug!(room = %id, "anonymous user entering room"), std::mem::drop);
     match actix_ws::handle(&req, body) {
         Ok((response, session, stream)) => match casino.bridge(id, session, stream).await {
             Ok(()) => response.map_into_left_body(),

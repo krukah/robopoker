@@ -67,8 +67,8 @@ where
                 writeln!(
                     f,
                     "{:<12} {:>5}  {:>+10.2}  {:>10.2}  {:>10.2}  {:>10.2}",
-                    format!("{}", info),
-                    format!("{}", edge),
+                    format!("{info}"),
+                    format!("{edge}"),
                     self.profile().cum_regret(info, edge),
                     self.profile().cum_weight(info, edge),
                     self.profile().instant_policy(info, edge),
@@ -188,14 +188,14 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: full convergence run"]
     #[rustfmt::skip]
     fn converged_solution() {
         let solver = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let profile = solver.profile();
         println!("\n=== Opening Ranges ===");
         for (info, edges) in &solver.profile.encounters {
-            let s = format!("{}", info);
+            let s = format!("{info}");
             if s == "J|" || s == "Q|" || s == "K|" {
                 for edge in edges.keys() {
                     println!("  {} {:>5}  avg={:.3}", s, edge, profile.averaged_policy(info, edge));
@@ -207,7 +207,7 @@ mod tests {
             for edge in edges.keys() {
                 println!(
                     "{:>12} {:>5}  avg={:.3}  inst={:.3}",
-                    format!("{}", info), format!("{}", edge),
+                    format!("{info}"), format!("{edge}"),
                     profile.averaged_policy(info, edge), profile.instant_policy(info, edge),
                 );
             }
@@ -332,7 +332,7 @@ mod tests {
     /// Subgame with prefix replaying P0's check preserves Nash properties.
     #[test]
     fn subgame_after_check() {
-        let blueprint = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = KuhnTurn::Player(0);
         let root = KuhnGame::root();
         let entry = root.apply(KuhnEdge::Check);
@@ -351,7 +351,7 @@ mod tests {
     /// Subgame with prefix replaying P0's bet preserves Nash properties.
     #[test]
     fn subgame_after_bet() {
-        let blueprint = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let external = KuhnTurn::Player(0);
         let root = KuhnGame::root();
         let entry = root.apply(KuhnEdge::Bet);
@@ -368,12 +368,12 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: convergence curve sweep"]
     fn subgame_convergence_curve() {
         let n_weak: usize = 1 << 8;
         let n_strong: usize = 1 << 16;
-        let weak = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(n_weak);
-        let strong = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref weak = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(n_weak);
+        let ref strong = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         eprintln!("\n=== blueprint exploitability ===");
         eprintln!("  weak   (2^8):  {:.6}", Solver::exploitability(weak));
         eprintln!("  strong (2^18): {:.6}", Solver::exploitability(strong));
@@ -387,7 +387,7 @@ mod tests {
             SubGameSolver::<_, 1, _, _, _>::new(weak, external, prior.partition::<2>(), CfrRecall::new(vec![], root));
         for i in 1..=n_strong {
             solver.step();
-            if i.count_ones() == 1 {
+            if i.is_power_of_two() {
                 eprintln!("{:>8} {:>12.6}", i, solver.profile().sum_regret());
             }
         }
@@ -405,7 +405,7 @@ mod tests {
                     eprintln!(
                         "{:>6} {:>10} {:>6} {:>10.4} {:>10.4}",
                         rank,
-                        format!("{:?}", node),
+                        format!("{node:?}"),
                         edge,
                         subpolicy(profile, rank, node, edge),
                         nash(rank, node, edge),
@@ -415,7 +415,7 @@ mod tests {
         }
         eprintln!("\n=== checks ===");
         let regret = profile.sum_regret();
-        eprintln!("  regret converged: {:.6} (< 0.001)", regret);
+        eprintln!("  regret converged: {regret:.6} (< 0.001)");
         assert!(regret < 0.001, "subgame regret {regret:.6} >= 0.001");
         assert!(subpolicy(profile, Rank::K, History::Bet, KuhnEdge::Call) > 0.90, "K|B call");
         assert!(subpolicy(profile, Rank::K, History::CheckBet, KuhnEdge::Call) > 0.90, "K|XB call");
@@ -445,7 +445,7 @@ mod tests {
     /// that facing a K-heavy range, J should fold at CheckBet.
     #[test]
     fn subgame_with_reach_conditioned_posterior() {
-        let blueprint = &Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
+        let ref blueprint = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let internal = KuhnTurn::Player(0);
         let external = KuhnTurn::Player(1);
         let root = KuhnGame::root();
@@ -463,8 +463,8 @@ mod tests {
             })
             .fold(Posterior::default(), |post, (s, r)| post.add(s, r));
         eprintln!("\n=== reach-conditioned posterior ===");
-        for (secret, reach) in prior.clone().into_iter() {
-            eprintln!("  {:?} → {:.4}", secret, reach);
+        for (secret, reach) in prior.clone() {
+            eprintln!("  {secret:?} → {reach:.4}");
         }
         let belief = prior.partition::<WORLDS>();
         eprintln!("\n=== belief partition ({WORLDS} worlds) ===");
@@ -487,7 +487,7 @@ mod tests {
                     eprintln!(
                         "  {} {:>10} {:>6} {:>8.4}",
                         rank,
-                        format!("{:?}", node),
+                        format!("{node:?}"),
                         edge,
                         subpolicy(&profile, rank, node, edge),
                     );

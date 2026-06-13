@@ -1,5 +1,6 @@
 //! Integration tests for depth-limited frontier evaluation.
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::*;
     use rbp_core::*;

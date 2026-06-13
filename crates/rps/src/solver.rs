@@ -67,8 +67,8 @@ where
                 writeln!(
                     f,
                     "│ {:>4} │ {:>4} │ {:>+8.2} │ {:>8.2} │ {:>8.2} │ {:>8.2} │",
-                    format!("{:?}", turn),
-                    format!("{:?}", edge),
+                    format!("{turn:?}"),
+                    format!("{edge:?}"),
                     self.profile().cum_regret(turn, edge),
                     self.profile().cum_weight(turn, edge),
                     self.profile().instant_policy(turn, edge),
@@ -161,9 +161,9 @@ mod tests {
             let r = solver.averaged(turn, RpsEdge::R);
             let p = solver.averaged(turn, RpsEdge::P);
             let s = solver.averaged(turn, RpsEdge::S);
-            assert!((r - 0.40).abs() < tolerance, "{:?} R: {:.4} ≠ 0.40", turn, r);
-            assert!((p - 0.40).abs() < tolerance, "{:?} P: {:.4} ≠ 0.40", turn, p);
-            assert!((s - 0.20).abs() < tolerance, "{:?} S: {:.4} ≠ 0.20", turn, s);
+            assert!((r - 0.40).abs() < tolerance, "{turn:?} R: {r:.4} ≠ 0.40");
+            assert!((p - 0.40).abs() < tolerance, "{turn:?} P: {p:.4} ≠ 0.40");
+            assert!((s - 0.20).abs() < tolerance, "{turn:?} S: {s:.4} ≠ 0.20");
         }
     }
 
@@ -254,8 +254,8 @@ mod tests {
     #[test]
     fn exploitability() {
         let e16 = Solver::exploitability(&Rps::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N16));
-        println!("N16={:.4}", e16);
-        assert!(e16 < 0.03, "2^16 iters: {:.4} >= 0.03", e16);
+        println!("N16={e16:.4}");
+        assert!(e16 < 0.03, "2^16 iters: {e16:.4} >= 0.03");
     }
     #[test]
     fn mcxploitability() {

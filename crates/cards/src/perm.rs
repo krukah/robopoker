@@ -59,10 +59,10 @@ impl Perm {
     fn decode(mut code: u8, n: u8) -> [u8; 5] {
         let mut pool = (1u8 << n) - 1;
         let mut order = [0u8; 5];
-        for i in 0..n as usize {
+        for (i, slot) in order.iter_mut().enumerate().take(n as usize) {
             let f = Self::factorial(n as usize - 1 - i);
             let bit = Self::nth_set_bit(pool, code / f);
-            order[i] = bit;
+            *slot = bit;
             pool ^= 1 << bit;
             code %= f;
         }

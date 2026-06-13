@@ -88,7 +88,7 @@ where
     }
 }
 
-impl<'blueprint, N, const D: usize> Harvest for DepthSolver<'blueprint, N, D>
+impl<N, const D: usize> Harvest for DepthSolver<'_, N, D>
 where
     N: DepthSampler<D> + Sync,
     N::Blueprint: CfrSampling + Sync,

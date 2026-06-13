@@ -95,8 +95,7 @@ impl Density for Strategy {
         let denom = self.accumulated.values().map(|&p| p.max(EPSILON)).sum::<Probability>();
         self.accumulated
             .get(edge.as_ref())
-            .map(|&p| p.max(EPSILON) / denom)
-            .unwrap_or(0.)
+            .map_or(0., |&p| p.max(EPSILON) / denom)
     }
 
     fn support(&self) -> impl Iterator<Item = Self::Support> {
@@ -106,7 +105,7 @@ impl Density for Strategy {
 
 impl From<(NlheInfo, Vec<Decision<NlheEdge>>)> for Strategy {
     fn from((info, decisions): (NlheInfo, Vec<Decision<NlheEdge>>)) -> Self {
-        let payoff = decisions.first().map(|d| d.payoff).unwrap_or(0.0);
+        let payoff = decisions.first().map_or(0.0, |d| d.payoff);
         let accumulated = info
             .choices()
             .into_iter()
@@ -146,8 +145,7 @@ impl From<(NlheInfo, Vec<Decision<NlheEdge>>)> for Strategy {
 
 impl From<ApiStrategy> for Strategy {
     fn from(api: ApiStrategy) -> Self {
-        let geometry = Geometry::from(api.geometry);
-        let info = NlheInfo::from((api.history, api.present, api.choices, geometry));
+        let info = NlheInfo::from((api.history, api.present, api.choices));
         Self {
             info,
             accumulated: api.accumulated,
@@ -217,7 +215,7 @@ mod tests {
     fn density() {
         let s = build(&[(Action::Fold, 10.0), (Action::Check, 30.0), (Action::Call(10), 60.0)]);
         let p = s.policy();
-        for (e, v) in p.iter() {
+        for (e, v) in &p {
             assert!(close(s.density(&NlheEdge::from(*e)), *v));
         }
     }
@@ -266,7 +264,7 @@ mod tests {
     #[test]
     fn positivity() {
         let s = build(&[(Action::Fold, 5.0), (Action::Check, 15.0), (Action::Call(10), 80.0)]);
-        for (_, &p) in s.policy().iter() {
+        for &p in s.policy().values() {
             assert!(p > 0.0 && p <= 1.0);
         }
     }

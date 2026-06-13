@@ -80,9 +80,8 @@ pub trait Brain: Send {
             iterations = tracing::field::Empty,
             regret_norm = tracing::field::Empty,
         );
-        let solved = match span.in_scope(|| self.solve(recall, info, timeout)) {
-            None => return self.policy(recall),
-            Some(s) => s,
+        let Some(solved) = span.in_scope(|| self.solve(recall, info, timeout)) else {
+            return self.policy(recall);
         };
         let visits = solved
             .visits()
@@ -94,7 +93,7 @@ pub trait Brain: Send {
         span.record("iterations", solved.iterations());
         span.record("regret_norm", relative);
         solved.emit_postflop(tag, game.street(), game.pot(), relative);
-        let policy = &self.policy(recall);
+        let ref policy = self.policy(recall);
         solved.extract(policy, tag, game.street())
     }
 }

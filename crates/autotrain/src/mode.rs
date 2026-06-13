@@ -28,6 +28,17 @@ impl Mode {
     }
 
     async fn reset(client: &tokio_postgres::Client) {
+        // Drop the blueprint table first so `ensure_all` recreates it with
+        // the canonical schema (UNIQUE constraint included). If a prior
+        // process left the table in a broken state — schema without the
+        // unique index, or duplicate rows that block index creation — the
+        // ensure step would otherwise panic. Reset is the "make it clean
+        // regardless of prior state" mode, so DROP > TRUNCATE is correct.
+        tracing::info!("Dropping blueprint table before ensure...");
+        client
+            .execute(&format!("DROP TABLE IF EXISTS {}", rbp_database::blueprint()), &[])
+            .await
+            .expect("drop blueprint");
         crate::ensure_all(client).await;
         tracing::info!("Truncating blueprint table...");
         client

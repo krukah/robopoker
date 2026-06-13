@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn bijective_str() {
         let abs = Abstraction::random();
-        let str = format!("{}", abs);
+        let str = format!("{abs}");
         assert_eq!(abs, Abstraction::try_from(str.as_str()).unwrap());
     }
     #[test]

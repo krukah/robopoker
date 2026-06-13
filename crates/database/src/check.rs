@@ -9,8 +9,7 @@ async fn count(client: &Client, table: &str) -> usize {
         .await
         .ok()
         .flatten()
-        .map(|r| r.get::<_, i64>(0) as usize)
-        .unwrap_or(0)
+        .map_or(0, |r| r.get::<_, i64>(0) as usize)
 }
 /// Check defines status queries for training orchestration.
 /// Consolidates existence/count checks used by Trainer and PreTraining.
@@ -36,13 +35,13 @@ pub trait Check: Send + Sync {
         out.push_str("\n┌────────────┬───────────────┐");
         out.push_str("\n│ Street     │ Clustered     │");
         out.push_str("\n├────────────┼───────────────┤");
-        for street in Street::all().iter().rev().cloned() {
+        for street in Street::all().iter().rev().copied() {
             let done = self.clustered(street).await;
             let mark = if done { "✓" } else { " " };
             out.push_str(&format!(
                 "\n│ {:?}{} │       {}       │",
                 street,
-                " ".repeat(10 - format!("{:?}", street).len()),
+                " ".repeat(10 - format!("{street:?}").len()),
                 mark
             ));
         }
@@ -64,14 +63,12 @@ pub trait Check: Send + Sync {
             out.push_str(&format!("\n│ Nodes      │ {:>17} │", commas(nodes as usize)));
             out.push_str(&format!(
                 "\n│ Exploit    │ {:>17} │",
-                exploit
-                    .map(|e| format!("{:.6}", e))
-                    .unwrap_or_else(|| "N/A".to_string())
+                exploit.map_or_else(|| "N/A".to_string(), |e| format!("{e:.6}"))
             ));
             out.push_str(&format!("\n│ Elapsed    │ {:>15}s │", commas(elapsed as usize)));
             out.push_str("\n└────────────┴───────────────────┘");
         }
-        tracing::info!("{}", out);
+        tracing::info!("{out}");
     }
 }
 
@@ -83,8 +80,7 @@ impl Check for Client {
             .await
             .ok()
             .flatten()
-            .map(|r| r.get::<_, i64>(0) as usize)
-            .unwrap_or(0)
+            .map_or(0, |r| r.get::<_, i64>(0) as usize)
     }
 
     async fn blueprint(&self) -> usize {

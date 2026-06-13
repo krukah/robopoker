@@ -16,6 +16,7 @@ default = []
 
 [dependencies]
 rbp-cards    = { path = "../cards" }
+rbp-core     = { path = "../util" }
 rbp-gameplay = { path = "../gameplay" }
 
 serde       = { version = "1", features = ["derive"] }

@@ -18,7 +18,7 @@ use std::ops::Not;
 ///
 /// # Key Operations
 ///
-/// - `HoldemInfo::from((&witness, abstraction))` for strategy lookup
+/// - `NlheInfo::from((&witness, abstraction))` for strategy lookup
 /// - `Perfect::from((&witness, hole))` for opponent modeling
 /// - `witness.histories()` → iterate all possible opponent hands
 ///
@@ -191,10 +191,19 @@ impl Witness {
     /// The `actions` parameter should NOT include blinds or draws —
     /// draws are auto-inserted by `sprout` based on the arrangement.
     pub fn try_arrange(pov: Turn, reveals: Arrangement, actions: Vec<Action>) -> anyhow::Result<Self> {
+        Self::try_arrange_with(pov, reveals, [STACK; N], actions)
+    }
+    /// [`try_arrange`](Self::try_arrange) with explicit starting stacks.
+    pub fn try_arrange_with(
+        pov: Turn,
+        reveals: Arrangement,
+        stacks: [Chips; N],
+        actions: Vec<Action>,
+    ) -> anyhow::Result<Self> {
         actions.into_iter().try_fold(
             Self {
                 pov,
-                stacks: [STACK; N],
+                stacks,
                 dealer: 0,
                 actions: Vec::new(),
                 reveals,
@@ -248,9 +257,12 @@ impl Witness {
     pub fn plays(&self) -> Vec<(Position, Action, Street)> {
         self.states()
             .windows(2)
-            .zip(self.actions().iter().cloned())
-            .filter(|&(_pair, action)| action.is_choice())
-            .map(|(pair, action)| (pair[0].turn().position(), action, pair[0].street()))
+            .zip(self.actions().iter().copied())
+            .filter_map(|(pair, action)| {
+                action
+                    .is_choice()
+                    .then(|| (pair[0].turn().position(), action, pair[0].street()))
+            })
             .collect()
     }
     /// Finds the last aggressor on the final betting street.
@@ -269,7 +281,7 @@ impl Witness {
             .states()
             .into_iter()
             .skip(1)
-            .zip(self.actions().iter().cloned())
+            .zip(self.actions().iter().copied())
             .map(|(game, action)| (action, game))
             .collect::<Vec<(Action, Game)>>()
             .into_iter()
@@ -307,7 +319,7 @@ impl Witness {
     pub fn decisions(&self, street: Street) -> Vec<Action> {
         let mut actions = Vec::new();
         let mut current = Street::Pref;
-        for action in self.actions().iter().cloned() {
+        for action in self.actions().iter().copied() {
             if action.is_chance() {
                 current = current.next();
             } else if current == street {
@@ -340,7 +352,7 @@ impl Witness {
             .iter()
             .skip(1)
             .filter(|s| **s <= street)
-            .cloned()
+            .copied()
             .flat_map(|s| self.revealed(s))
             .collect()
     }
@@ -366,7 +378,7 @@ impl Witness {
                 .actions()
                 .iter()
                 .filter(|a| a.is_chance())
-                .filter_map(|a| a.hand())
+                .filter_map(Action::hand)
                 .fold(Hand::empty(), Hand::add)
     }
 }
@@ -457,10 +469,23 @@ impl Witness {
     pub fn validate(self) -> anyhow::Result<Self> {
         let recall = self.sprout();
         if !recall.aligned() {
-            return Err(anyhow::anyhow!("recall is not aligned {}", self));
+            return Err(anyhow::anyhow!("recall is not aligned {self}"));
         }
         if !recall.can_play() {
-            return Err(anyhow::anyhow!("recall is not playable {}", self));
+            return Err(anyhow::anyhow!("recall is not playable {self}"));
+        }
+        Ok(recall)
+    }
+
+    /// Validates alignment for observation-only use (e.g. the opponent
+    /// range), without requiring it to be the POV's turn. See [`can_observe`].
+    pub fn validate_observation(self) -> anyhow::Result<Self> {
+        let recall = self.sprout();
+        if !recall.aligned() {
+            return Err(anyhow::anyhow!("recall is not aligned {self}"));
+        }
+        if !recall.can_observe() {
+            return Err(anyhow::anyhow!("recall observation is not street-consistent {self}"));
         }
         Ok(recall)
     }
@@ -497,6 +522,27 @@ impl Witness {
             && self.head().street() == self.seen().street() //    have we exhausted info from Obs?
     }
 
+    /// True if the observation has enough cards to back every choice node
+    /// in the action history. Independent of whose turn it is.
+    ///
+    /// The opponent range is a backward-looking function of past decisions
+    /// (see [`opponent_observations`]), so it is well-defined at any node
+    /// in the line where the observation covers the streets those
+    /// decisions happened on — not just hero-to-act nodes.
+    ///
+    /// Accepts two cases:
+    /// - `head.street == seen.street` — standard decision or mid-street state.
+    /// - `head.street == seen.street + 1` with `head.turn == Chance` — the
+    ///   in-between state right after a closing call/check where betting
+    ///   advanced the street but the next street's cards haven't been
+    ///   dealt yet. All observed actions are still on `seen.street`, so
+    ///   the abstraction lookups during replay are fully grounded.
+    pub fn can_observe(&self) -> bool {
+        let head = self.head();
+        let seen = self.seen().street();
+        head.street() == seen || (head.turn() == Turn::Chance && head.street() == seen.next())
+    }
+
     /// True if the action is legal in the current state.
     pub fn can_push(&self, action: &Action) -> bool {
         self.head().is_allowed(action)
@@ -530,20 +576,16 @@ impl std::fmt::Display for Witness {
             .reveals
             .pocket()
             .iter()
-            .map(|c| format!("{}", c))
+            .map(|c| format!("{c}"))
             .collect::<Vec<_>>()
             .join(" ");
         let board = self
             .board()
             .iter()
-            .map(|c| format!("{}", c))
+            .map(|c| format!("{c}"))
             .collect::<Vec<_>>()
             .join(" ");
-        let cards = if board.is_empty() {
-            hole.to_string()
-        } else {
-            format!("{} │ {}", hole, board)
-        };
+        let cards = if board.is_empty() { hole.clone() } else { format!("{hole} │ {board}") };
         writeln!(f, "┌{}┬{}┐", "─".repeat(L), "─".repeat(R))?;
         writeln!(f, "│ {:>2} │ {:<w$} │", self.turn().label(), cards, w = R - 2)?;
         writeln!(f, "├{}┼{}┤", "─".repeat(L), "─".repeat(R))?;
@@ -554,10 +596,11 @@ impl std::fmt::Display for Witness {
                 actions.is_empty().not().then_some((street, actions))
             })
             .try_for_each(|(street, actions)| {
-                let grid = actions
-                    .iter()
-                    .map(|a| format!("{:<w$}", a.symbol(), w = A))
-                    .collect::<String>();
+                let mut grid = String::new();
+                for a in &actions {
+                    use std::fmt::Write;
+                    write!(grid, "{:<w$}", a.symbol(), w = A)?;
+                }
                 writeln!(f, "│ {:>2} │ {:<w$} │", street.symbol(), grid, w = R - 2)
             })?;
         write!(f, "└{}┴{}┘", "─".repeat(L), "─".repeat(R))
@@ -597,7 +640,7 @@ mod tests {
     #[test]
     fn push_undo_inverse() {
         let r = Witness::initial(Turn::Choice(0));
-        let a = r.head().legal().first().cloned().expect("legal");
+        let a = r.head().legal().first().copied().expect("legal");
         assert_eq!(r.push(a).undo().subgame().length(), r.subgame().length());
     }
 
@@ -714,8 +757,8 @@ mod tests {
             .push(Action::Check);
         assert_eq!(r.decisions(Street::Pref).len(), 2);
         assert_eq!(r.decisions(Street::Flop).len(), 2);
-        assert!(r.decisions(Street::Pref).iter().all(|a| a.is_choice()));
-        assert!(r.decisions(Street::Flop).iter().all(|a| a.is_choice()));
+        assert!(r.decisions(Street::Pref).iter().all(Action::is_choice));
+        assert!(r.decisions(Street::Flop).iter().all(Action::is_choice));
     }
 
     /// walk through all streets: P0 first preflop, P1 first postflop
@@ -809,8 +852,8 @@ mod tests {
             r.subgame()
                 .into_iter()
                 .rev()
-                .take_while(|e| e.is_choice())
-                .filter(|e| e.is_aggro())
+                .take_while(Edge::is_choice)
+                .filter(Edge::is_aggro)
                 .count()
         );
     }
@@ -878,7 +921,7 @@ mod tests {
     fn sprout_draws_match_arrangement() {
         let arr = Arrangement::from(Street::Rive);
         let recall = Witness::try_arrange(Turn::Choice(0), arr, vec![Action::Call(1), Action::Check]).unwrap();
-        let draws: Vec<Hand> = recall.actions().iter().filter_map(|a| a.hand()).collect();
+        let draws: Vec<Hand> = recall.actions().iter().filter_map(Action::hand).collect();
         assert_eq!(draws.len(), 1);
         assert_eq!(draws[0], Hand::from(arr.revealed(Street::Flop)));
     }

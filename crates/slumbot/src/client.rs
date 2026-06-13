@@ -94,7 +94,7 @@ impl Client {
         let permit = self.acquire().await;
         let text = self
             .http
-            .post(format!("{}/new_hand", BASE))
+            .post(format!("{BASE}/new_hand"))
             .json(&NewHandRequest {
                 token: self.token.clone(),
             })
@@ -114,7 +114,7 @@ impl Client {
         let permit = self.acquire().await;
         let text = self
             .http
-            .post(format!("{}/act", BASE))
+            .post(format!("{BASE}/act"))
             .json(&ActRequest {
                 token: self.token.clone().ok_or(anyhow::anyhow!("no token"))?,
                 incr: incr.to_string(),

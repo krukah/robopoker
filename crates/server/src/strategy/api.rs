@@ -47,12 +47,12 @@ where
     result
 }
 
-fn api_strategy_from(strategy: Strategy) -> ApiStrategy {
+fn api_strategy_from(strategy: Strategy, recall: &Witness) -> ApiStrategy {
     ApiStrategy {
         history: strategy.info().subgame(),
         present: Abstraction::from(strategy.info().bucket()),
         choices: strategy.info().choices(),
-        geometry: strategy.info().geometry().tag(),
+        spr: recall.head().geometry().tag(),
         accumulated: strategy.accumulated().clone(),
         visits: strategy.visits().clone(),
         payoff: strategy.payoff(),
@@ -71,7 +71,7 @@ fn street_name(s: i16) -> &'static str {
 
 /// Runs the solver for `kind` synchronously and assembles the
 /// `ApiSolved` envelope. Pulled out so [`StrategyAPI::solve`] can run
-/// it in a blocking thread without straddling the `Holdem` borrow
+/// it in a blocking thread without straddling the `Nlhe` borrow
 /// across an `await`.
 fn run_solve(blueprint: &'static Flagship, recall: &Witness, kind: Kind) -> ApiSolved {
     let info = NlheInfo::from((recall, blueprint.encoder().abstraction(&recall.seen())));
@@ -86,7 +86,7 @@ fn run_solve(blueprint: &'static Flagship, recall: &Witness, kind: Kind) -> ApiS
         history: info.subgame(),
         present: Abstraction::from(info.bucket()),
         choices: info.choices(),
-        geometry: info.geometry().tag(),
+        spr: recall.head().geometry().tag(),
         accumulated: solved.policy().clone(),
         visits: solved.visits().clone(),
         payoff: 0.0,
@@ -119,7 +119,9 @@ impl StrategyAPI {
 
     pub async fn policy(&self, recall: Witness) -> anyhow::Result<Option<ApiStrategy>> {
         let recall = recall.validate()?;
-        Ok(rbp_nlhe::lookup(&self.client, &recall).await.map(api_strategy_from))
+        Ok(rbp_nlhe::lookup(&self.client, &recall)
+            .await
+            .map(|s| api_strategy_from(s, &recall)))
     }
 
     /// Runs a depth-limited subgame solve from the recall's current
@@ -159,17 +161,32 @@ impl StrategyAPI {
         .await)
     }
 
-    /// Computes the opponent's hole-card-level posterior range from the
-    /// in-memory blueprint. Returns an error if no in-memory blueprint
-    /// was attached via [`Self::with_blueprint`].
+    /// Opponent's hole-card-level posterior range from hero's POV.
     pub fn range(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
-        let recall = recall.validate()?;
+        self.posterior(recall, rbp_nlhe::Flagship::opponent_observations)
+    }
+
+    /// Hero's hole-card-level **signalled** range — the posterior an
+    /// opponent could form over hero's hand from hero's observed action
+    /// history. Same response shape as [`Self::range`] with hero/opponent
+    /// roles swapped in the underlying reach computation.
+    pub fn signalled(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
+        self.posterior(recall, rbp_nlhe::Flagship::signalled_observations)
+    }
+
+    /// Common shape for `/strategy/range` and `/strategy/signalled`:
+    /// validate the witness, require an in-memory blueprint, and project
+    /// the `(observation, probability)` stream into the API response.
+    fn posterior<F>(&self, recall: Witness, compute: F) -> anyhow::Result<ApiOpponentRange>
+    where
+        F: FnOnce(&'static rbp_nlhe::Flagship, &Witness) -> Vec<(rbp_cards::Observation, rbp_core::Probability)>,
+    {
+        let recall = recall.validate_observation()?;
         let blueprint = self
             .blueprint
-            .ok_or_else(|| anyhow::anyhow!("range endpoint requires in-memory blueprint"))?;
+            .ok_or_else(|| anyhow::anyhow!("posterior endpoint requires in-memory blueprint"))?;
         Ok(ApiOpponentRange {
-            entries: blueprint
-                .opponent_observations(&recall)
+            entries: compute(blueprint, &recall)
                 .into_iter()
                 .map(|(obs, weight)| ApiRangeEntry { obs, weight })
                 .collect(),
@@ -213,7 +230,7 @@ impl StrategyAPI {
             .client
             .query(sql, &[])
             .await
-            .map_err(|e| anyhow::anyhow!("aggregate grid usage: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("aggregate grid usage: {e}"))?;
         Ok(rows
             .into_iter()
             .map(|r| ApiGridUsage {

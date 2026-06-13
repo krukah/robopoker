@@ -53,12 +53,12 @@ pub trait Trainer: Send + Sync + Sized {
                 .inspect(|cp| {
                     metrics
                         .mccfr_nodes
-                        .add(cp.nodes().saturating_sub(last_nodes) as u64, &labels)
+                        .add(cp.nodes().saturating_sub(last_nodes) as u64, &labels);
                 })
                 .inspect(|cp| {
                     metrics
                         .mccfr_infos
-                        .add(cp.infos().saturating_sub(last_infos) as u64, &labels)
+                        .add(cp.infos().saturating_sub(last_infos) as u64, &labels);
                 })
                 .inspect(|cp| {
                     last_nodes = cp.nodes();

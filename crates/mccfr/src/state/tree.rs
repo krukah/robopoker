@@ -136,8 +136,8 @@ where
             let node = self.at(child);
             let head = node.info();
             let edge = self.graph.edge_weight(self.graph.find_edge(x, child).unwrap()).unwrap();
-            writeln!(f, "{}{}──{:?} → {:?}", prefix, stem, edge, head)?;
-            self.show(f, child, &format!("{}{}", prefix, gaps))?;
+            writeln!(f, "{prefix}{stem}──{edge:?} → {head:?}")?;
+            self.show(f, child, &format!("{prefix}{gaps}"))?;
         }
         Ok(())
     }

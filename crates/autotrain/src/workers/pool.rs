@@ -25,7 +25,7 @@ impl Pool {
     }
 
     pub async fn step(&self) {
-        futures::future::join_all(self.workers.iter().map(|w| w.step())).await;
+        futures::future::join_all(self.workers.iter().map(super::worker::Worker::step)).await;
     }
 
     pub fn checkpoint(&self) -> Option<Checkpoint> {
@@ -44,15 +44,15 @@ impl Pool {
 
 impl Progress for Pool {
     fn epoch(&self) -> usize {
-        self.workers.iter().map(|w| w.epoch()).sum()
+        self.workers.iter().map(super::worker::Worker::epoch).sum()
     }
 
     fn nodes(&self) -> usize {
-        self.workers.iter().map(|w| w.nodes()).sum()
+        self.workers.iter().map(super::worker::Worker::nodes).sum()
     }
 
     fn infos(&self) -> usize {
-        self.workers.iter().map(|w| w.infos()).sum()
+        self.workers.iter().map(super::worker::Worker::infos).sum()
     }
 
     fn elapsed(&self) -> std::time::Duration {

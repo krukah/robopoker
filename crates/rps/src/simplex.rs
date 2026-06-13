@@ -26,7 +26,7 @@ impl Simplex {
 impl From<&Policy<RpsEdge>> for Simplex {
     fn from(policy: &Policy<RpsEdge>) -> Self {
         let mut coords = [0.0; 3];
-        for &(edge, prob) in policy.iter() {
+        for &(edge, prob) in policy {
             match edge {
                 RpsEdge::R => coords[0] = prob,
                 RpsEdge::P => coords[1] = prob,
@@ -110,5 +110,5 @@ fn snapshots_json(snaps: &[Snapshot]) -> String {
         })
         .collect::<Vec<String>>()
         .join(",");
-    format!("[{}]", entries)
+    format!("[{entries}]")
 }

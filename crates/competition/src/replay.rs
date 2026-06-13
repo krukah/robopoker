@@ -94,7 +94,7 @@ impl Replayer {
             .fold(Game::from_start(hand.dealer(), stacks), |g, p| g.deal(p.seat(), p.hole()));
         let draws: Vec<Card> = plays
             .iter()
-            .map(|p| p.action())
+            .map(rbp_gameroom::Play::action)
             .filter_map(|a| a.hand())
             .flatten()
             .collect();
@@ -183,7 +183,7 @@ pub fn replay(
     let participant = participants
         .iter()
         .find(|p| p.seat() == seat)
-        .ok_or_else(|| anyhow::anyhow!("seat {} not found", seat))?;
+        .ok_or_else(|| anyhow::anyhow!("seat {seat} not found"))?;
     let reveals = plays_arrangement(participant.hole(), hand.board(), plays);
     let witness = plays
         .iter()
@@ -244,7 +244,7 @@ pub fn board_arrangement(hole: Hole, board: Board) -> Arrangement {
 pub fn plays_arrangement(hole: Hole, board: Board, plays: &[Play]) -> Arrangement {
     let draws: Vec<Card> = plays
         .iter()
-        .map(|p| p.action())
+        .map(rbp_gameroom::Play::action)
         .filter_map(|a| a.hand())
         .flatten()
         .collect();

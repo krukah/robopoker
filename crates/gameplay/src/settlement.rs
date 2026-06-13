@@ -47,9 +47,9 @@ impl std::fmt::Display for Settlement {
         let strength = self.strength();
         let pnl = self.pnl().reward();
         if pnl > 0 {
-            write!(f, "{:<5}{}", format!("+{}", pnl), strength)
+            write!(f, "{:<5}{}", format!("+{pnl}"), strength)
         } else {
-            write!(f, "     {}", strength)
+            write!(f, "     {strength}")
         }
     }
 }

@@ -65,7 +65,7 @@ pub const S_BLIND: Chips = 1;
 pub const MAX_RAISE_REPEATS: usize = 3;
 /// Maximum edges in a packed Path (12 nibbles × 5 bits = 60 bits ≤ 64 bits).
 /// Data-representation limit, not a solver depth knob — the subgame tree's
-/// effective depth is controlled by where `DepthGame::at_frontier` fires
+/// effective depth is controlled by where [`DepthGame::at_frontier`] fires
 /// (first chance node past origin), not by this constant.
 pub const MAX_PATH_EDGES: usize = 12;
 
@@ -101,42 +101,53 @@ const fn pick<const N: usize>(idx: [usize; N]) -> [(Chips, Chips); N] {
     }
     r
 }
-/// Preflop depth=1: 3-bet sizing (1x, 2x, 3x).
-pub const SIZE_PREF_1: [(Chips, Chips); 3] = pick([5, 8, 9]);
-/// Preflop depth=2+: 4-bet+ (1x, 3x).
-pub const SIZE_PREF_N: [(Chips, Chips); 2] = pick([5, 9]);
-/// Flop depth=0: probe bets (1/4, 1/2, 3/4, 1x, 2x). 75% added in v1
-/// to fill the 50%→100% gap — canonical modern HU 100bb sizing. Live
-/// grid-usage on the prior blueprint had 1:2=11.5% wgt and 1:1=6.6% wgt
-/// adjacent to the gap, both healthy, so 3/4 has room without
-/// cannibalizing either.
-pub const SIZE_FLOP_0: [(Chips, Chips); 5] = pick([0, 2, 4, 5, 8]);
-/// Flop depth=1: after first raise (1/2, 1x). 3:1 retired (avg 1.27% / w 1.00% in v1).
-pub const SIZE_FLOP_1: [(Chips, Chips); 2] = pick([2, 5]);
-/// Flop depth=2+: deep raise wars (1x, 3x).
-pub const SIZE_FLOP_N: [(Chips, Chips); 2] = pick([5, 9]);
-/// Turn depth=0: geometric setup (1/3, 1x, 2x, 3x).
-pub const SIZE_TURN_0: [(Chips, Chips); 4] = pick([1, 5, 8, 9]);
-/// Turn depth=1: value raises (1x, 2x, 3x).
-pub const SIZE_TURN_1: [(Chips, Chips); 3] = pick([5, 8, 9]);
-/// Turn depth=2+: deep raise wars (1x, 3x).
-pub const SIZE_TURN_N: [(Chips, Chips); 2] = pick([5, 9]);
-/// River depth=0: polar bet ladder (2x, 3x). Half-pot (0.15% / 0.15%) and pot
-/// (1.59% / 1.71%) retired in v1 — river collapses to polarized lines.
-pub const SIZE_RIVE_0: [(Chips, Chips); 2] = pick([8, 9]);
-/// River depth=1: raise sizes (1x, 2x, 3x).
-pub const SIZE_RIVE_1: [(Chips, Chips); 3] = pick([5, 8, 9]);
-/// River depth=2+: deep raise wars (1x, 3x).
-pub const SIZE_RIVE_N: [(Chips, Chips); 2] = pick([5, 9]);
 
-// ============================================================================
-// SLUMBOT BET SIZING (regime-specific)
-// Slumbot UI offers exactly: Min Bet, 1/2 Pot, Pot, All In (+ free-form).
-// Same grid at every street and depth. All pot-relative, no BB opens.
-// Min-raise and all-in are handled by Edge::Raise(min) and Edge::Shove.
-// ============================================================================
-/// Slumbot sizing: 1/2 pot, full pot. Uniform across all streets and depths.
-pub const SLUMBOT_SIZES: [(Chips, Chips); 2] = pick([2, 5]);
+/// Action grid for the Pluribus regime. Pluribus-faithful (Brown &
+/// Sandholm 2019) widths on first-bet rows, shrunk on subsequent raises.
+/// No SPR axis on the menu — pot-relative sizing already self-scales
+/// with stack depth (1× pot at SPR=1 *is* all-in), so the menu is keyed
+/// only on `(street, depth)`. All-in remains available at every node as
+/// `Edge::Shove`.
+///
+/// **Cells are indices into `RAISES`:**
+/// `0=1/4  1=1/3  2=1/2  3=2/3  4=3/4  5=1:1  6=5/4  7=3/2  8=2:1  9=3:1`
+///
+/// **Row layout:** `street * 3 + min(depth, 2)`, so depth ≥ 2 collapses
+/// to the "N" row:
+///
+/// | row | cell | row | cell | row | cell | row  | cell |
+/// |-----|------|-----|------|-----|------|------|------|
+/// | 0   | Pref/0 (opens) | 3 | Flop/0 | 6 | Turn/0 | 9  | Rive/0 |
+/// | 1   | Pref/1 (3-bet) | 4 | Flop/1 | 7 | Turn/1 | 10 | Rive/1 |
+/// | 2   | Pref/N (4-bet+)| 5 | Flop/N | 8 | Turn/N | 11 | Rive/N |
+///
+/// `(Pref, 0)` is empty here — preflop opens are BB-relative and use
+/// `OPENS` instead.
+///
+/// **Bit-packing budget:** max cell width is 5 (Flop/0:
+/// `[1/4, 1/2, 3/4, 1:1, 2:1]`). Max `choices` is 5 raises +
+/// Fold/Check/Call/Shove = 9 edges × 5 bits = 45 bits, under the
+/// 60-bit Path capacity.
+#[rustfmt::skip]
+pub const PLURIBUS_INDICES: [&[usize]; 12] = [
+    &[],              // (Pref, 0) opens — see OPENS
+    &[5, 8],          // (Pref, 1) 3-bet:   [1:1, 2:1]
+    &[5],             // (Pref, N) 4-bet+:  [1:1]
+    &[0, 2, 4, 5, 8], // (Flop, 0):         [1/4, 1/2, 3/4, 1:1, 2:1]
+    &[2, 5],          // (Flop, 1):         [1/2, 1:1]
+    &[5],             // (Flop, N):         [1:1]
+    &[1, 2, 5, 8],    // (Turn, 0):         [1/3, 1/2, 1:1, 2:1]
+    &[5, 8],          // (Turn, 1):         [1:1, 2:1]
+    &[5],             // (Turn, N):         [1:1]
+    &[1, 2, 5, 8],    // (Rive, 0):         [1/3, 1/2, 1:1, 2:1]
+    &[5, 8],          // (Rive, 1):         [1:1, 2:1]
+    &[5],             // (Rive, N):         [1:1]
+];
+
+// Slumbot regime: uniform grid (½ pot, full pot) at every street/depth.
+// UI also offers Min Bet and All In, handled by Edge::Raise (min coercion)
+// and Edge::Shove respectively.
+pub const SLUMBOT_INDICES: &[usize] = &[2, 5];
 
 // GAME PACING (milliseconds)
 /// Delay after hand start before dealing hole cards.
@@ -163,6 +174,9 @@ pub const MAX_IDLE_HANDS: usize = 3;
 // `KmeansHyperParams` (rbp-clustering); Sinkhorn knobs in
 // `SinkhornHyperParams`.
 // ============================================================================
+const _: () = assert!(KMEANS_FLOP_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
+const _: () = assert!(KMEANS_TURN_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
+const _: () = assert!(KMEANS_EQTY_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
 /// Maximum clusters per street. Bound by Abstraction's 8-bit index field
 /// (0..=255 = 256 distinct values).
 pub const KMEANS_MAX_CLUSTER_COUNT: usize = 256;
@@ -172,9 +186,6 @@ pub const KMEANS_FLOP_CLUSTER_COUNT: usize = 256;
 pub const KMEANS_TURN_CLUSTER_COUNT: usize = 256;
 /// Equity histogram resolution (0%, 1%, ..., 100%).
 pub const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
-const _: () = assert!(KMEANS_FLOP_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
-const _: () = assert!(KMEANS_TURN_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
-const _: () = assert!(KMEANS_EQTY_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
 
 // ============================================================================
 // MCCFR SOLVER CONFIGURATIONS
@@ -258,7 +269,7 @@ pub fn brb() {
     });
     std::thread::spawn(|| {
         loop {
-            let buffer = &mut String::new();
+            let ref mut buffer = String::new();
             if std::io::stdin().read_line(buffer).is_ok() && buffer.trim().eq_ignore_ascii_case("Q") {
                 tracing::warn!("graceful interrupt requested, finishing current batch...");
                 INTERRUPTED.store(true, std::sync::atomic::Ordering::Relaxed);

@@ -46,7 +46,7 @@ impl FastSession {
             .as_secs() as i64;
         self.client.stage().await;
         let copy = format!(
-            "COPY {t} (past, present, choices, geometry, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
+            "COPY {t} (past, present, choices, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
             t = rbp_database::staging()
         );
         let writer =
@@ -84,15 +84,14 @@ impl Trainer for FastSession {
     }
 
     async fn checkpoint(&self) -> Option<rbp_mccfr::Checkpoint> {
-        self.solver.profile().metrics().and_then(|m| m.checkpoint())
+        self.solver.profile().metrics().and_then(rbp_mccfr::Metrics::checkpoint)
     }
 
     async fn summary(&self) -> String {
         self.solver
             .profile()
             .metrics()
-            .map(Progress::summary)
-            .unwrap_or_else(|| "training stopped".to_string())
+            .map_or_else(|| "training stopped".to_string(), Progress::summary)
     }
 
     async fn flush(&mut self) {

@@ -37,12 +37,12 @@ impl std::fmt::Display for Event {
                     .head()
                     .legal()
                     .iter()
-                    .map(|a| a.to_string())
+                    .map(std::string::ToString::to_string)
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            Event::Action(action) => write!(f, "{}", action),
-            Event::Disconnect(pos) => write!(f, "P{}: disconnected", pos),
+            Event::Action(action) => write!(f, "{action}"),
+            Event::Disconnect(pos) => write!(f, "P{pos}: disconnected"),
         }
     }
 }

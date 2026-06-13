@@ -82,14 +82,14 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// Iterates per-node over each node's actual outgoing edges, since
     /// sampling may have expanded different edges at different nodes.
     fn regret_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
-        let span = &infoset.span();
+        let ref span = infoset.span();
         let expected = &span.iter().map(|r| self.expected_value(r)).collect::<Vec<_>>();
         span.iter()
             .zip(expected)
             .flat_map(|(root, &ev)| {
                 root.outgoing()
                     .into_iter()
-                    .cloned()
+                    .copied()
                     .map(move |edge| (edge, self.gain(root, &edge, ev)))
             })
             .inspect(|(_, r)| debug_assert!(!r.is_nan()))
@@ -276,7 +276,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
-        let hasher = &mut DefaultHasher::new();
+        let ref mut hasher = DefaultHasher::new();
         self.t().hash(hasher);
         node.info().hash(hasher);
         node.seed().hash(hasher);

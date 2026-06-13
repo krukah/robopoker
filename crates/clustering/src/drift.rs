@@ -23,12 +23,12 @@ impl<const K: usize> Drift<K> {
 
     /// Largest single-cluster centroid movement. Canonical convergence signal.
     pub fn max(&self) -> Energy {
-        self.0.iter().cloned().fold(0.0, Energy::max)
+        self.0.iter().copied().fold(0.0, Energy::max)
     }
 
     /// Smallest single-cluster centroid movement.
     pub fn min(&self) -> Energy {
-        self.0.iter().cloned().fold(Energy::INFINITY, Energy::min)
+        self.0.iter().copied().fold(Energy::INFINITY, Energy::min)
     }
 
     /// Average centroid movement across all K clusters.

@@ -12,7 +12,7 @@ categories     = ["game-development", "asynchronous"]
 
 [features]
 default        = []
-server       = ["rbp-database", "rbp-nlhe", "rbp-mccfr", "rbp-subgame", "rbp-depth", "rbp-world", "rbp-transport", "rbp-telemetry"]
+server         = ["rbp-database", "rbp-nlhe", "rbp-mccfr", "rbp-subgame", "rbp-depth", "rbp-world", "rbp-transport", "rbp-telemetry"]
 cli            = ["dialoguer"]
 
 [dependencies]

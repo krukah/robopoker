@@ -9,7 +9,7 @@
 //! This module serves as a bridge between `gameplay` (core poker) and `mccfr`
 //! (generic CFR). Type aliases (`NlheEdge`, `NlheTurn`, etc.) make explicit
 //! which gameplay types are being used for CFR, preparing for potential
-//! crate separation into `holdem`, `mccfr`, and `holdem-mccfr`.
+//! crate separation into `nlhe`, `mccfr`, and `nlhe-mccfr`.
 //!
 //! # Components
 //!
@@ -41,7 +41,6 @@ mod edge;
 mod encoder;
 mod flagship;
 mod game;
-mod geometry;
 mod info;
 #[cfg(feature = "server")]
 mod lookup;
@@ -63,7 +62,6 @@ pub use edge::*;
 pub use encoder::*;
 pub use flagship::*;
 pub use game::*;
-pub use geometry::*;
 pub use info::*;
 #[cfg(feature = "server")]
 pub use lookup::*;

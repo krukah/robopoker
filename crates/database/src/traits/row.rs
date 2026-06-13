@@ -43,15 +43,13 @@ impl Row for (i16, i16, f32) {
 }
 
 /// Row format for blueprint strategies.
-/// `(past, present, choices, geometry, edge, weight, regret, payoff, visits)`.
-/// Geometry is the SPR bucket on the infoset key (see `Geometry` in
-/// `crates/holdem/src/geometry.rs`).
+/// `(past, present, choices, edge, weight, regret, payoff, visits)`.
 #[rustfmt::skip]
 #[async_trait::async_trait]
-impl Row for (i64, i16, i64, i16, i64, f32, f32, f32, i32) {
+impl Row for (i64, i16, i64, i64, f32, f32, f32, i32) {
     async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
         writer
-            .write(&[&self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6, &self.7, &self.8])
+            .write(&[&self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6, &self.7])
             .await
             .expect("write");
     }

@@ -56,12 +56,10 @@ impl Room {
     #[tracing::instrument(skip_all, fields(room = %self.id))]
     pub async fn run(mut self, engine: Engine<Seating>, start: tokio::sync::oneshot::Receiver<()>) {
         tracing::debug!("waiting for player");
-        match tokio::time::timeout(std::time::Duration::from_millis(PACE_ROOM_STARTUP), start).await {
-            Ok(Ok(())) => {}
-            _ => {
-                tracing::warn!("startup timeout, no player connected");
-                return;
-            }
+        if let Ok(Ok(())) = tokio::time::timeout(std::time::Duration::from_millis(PACE_ROOM_STARTUP), start).await {
+        } else {
+            tracing::warn!("startup timeout, no player connected");
+            return;
         }
         tracing::debug!("starting game loop");
         let mut dealing = engine.start().await;
@@ -82,8 +80,8 @@ impl Room {
                 break;
             }
             tokio::select! {
-                _ = tokio::time::sleep(showdown.timing().results) => {},
-                _ = showdown.skip().notified() => {},
+                () = tokio::time::sleep(showdown.timing().results) => {},
+                () = showdown.skip().notified() => {},
             }
             if self.should_stop(&showdown) {
                 showdown.end_session(showdown.final_stacks(), Reason::Left);

@@ -1,4 +1,4 @@
-//! Holdem axis markers for typed action translation.
+//! Nlhe axis markers for typed action translation.
 //!
 //! Two axes mediate translation between concrete chip amounts and the
 //! abstract `Size` lattice:

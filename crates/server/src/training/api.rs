@@ -37,7 +37,7 @@ impl TrainingAPI {
                 exploit: r.get(2),
                 stamped: r.get(3),
             })
-            .map_err(|e| anyhow::anyhow!("fetch status: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch status: {e}"))
     }
 
     pub async fn snapshots(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<ApiSnapshot>> {
@@ -66,7 +66,7 @@ impl TrainingAPI {
                     })
                     .collect()
             })
-            .map_err(|e| anyhow::anyhow!("fetch snapshots: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch snapshots: {e}"))
     }
 }
 // aggregate stats
@@ -111,7 +111,7 @@ impl TrainingAPI {
                 max_visits: r.get(11),
                 min_visits: r.get(12),
             })
-            .map_err(|e| anyhow::anyhow!("fetch blueprint stats: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch blueprint stats: {e}"))
     }
 
     pub async fn street_stats(&self) -> anyhow::Result<Vec<ApiStreetStats>> {
@@ -156,7 +156,7 @@ impl TrainingAPI {
                     })
                     .collect()
             })
-            .map_err(|e| anyhow::anyhow!("fetch street stats: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch street stats: {e}"))
     }
 }
 // cold + hot infosets
@@ -187,7 +187,7 @@ impl TrainingAPI {
                     })
                     .collect()
             })
-            .map_err(|e| anyhow::anyhow!("fetch cold infosets: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch cold infosets: {e}"))
     }
 
     pub async fn hot(&self, limit: i64) -> anyhow::Result<Vec<ApiHotInfoset>> {
@@ -216,7 +216,7 @@ impl TrainingAPI {
                     })
                     .collect()
             })
-            .map_err(|e| anyhow::anyhow!("fetch hot infosets: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch hot infosets: {e}"))
     }
 }
 // convergence + saturation
@@ -248,7 +248,7 @@ impl TrainingAPI {
                     })
                     .collect()
             })
-            .map_err(|e| anyhow::anyhow!("fetch convergence: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch convergence: {e}"))
     }
 
     pub async fn saturation(&self) -> anyhow::Result<ApiSaturation> {
@@ -281,6 +281,6 @@ impl TrainingAPI {
                     regret_pct: regret / precision * 100.,
                 }
             })
-            .map_err(|e| anyhow::anyhow!("fetch saturation: {}", e))
+            .map_err(|e| anyhow::anyhow!("fetch saturation: {e}"))
     }
 }

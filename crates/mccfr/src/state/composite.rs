@@ -4,7 +4,7 @@
 //! `Composite<X, Y>` exposes that product with a blanket [`CfrInfo`] impl so game
 //! crates don't have to hand-roll the `public() -> X` / `secret() -> Y` delegation.
 //!
-//! Games that need custom info identity (e.g. holdem uses this for NLHE info sets
+//! Games that need custom info identity (e.g. nlhe uses this for NLHE info sets
 //! via a thin newtype) still compose the same way.
 
 use crate::*;

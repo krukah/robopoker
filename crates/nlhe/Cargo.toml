@@ -7,7 +7,7 @@ authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 description    = "No-Limit Hold'em MCCFR solver with Pluribus-inspired abstraction"
 license        = "MIT"
 repository     = "https://github.com/krukah/robopoker"
-keywords       = ["poker", "holdem", "mccfr", "pluribus"]
+keywords       = ["poker", "nlhe", "mccfr", "pluribus"]
 categories     = ["game-development", "algorithms"]
 
 [features]

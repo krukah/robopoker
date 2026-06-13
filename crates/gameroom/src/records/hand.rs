@@ -17,8 +17,8 @@ impl Hand {
         Self {
             id,
             room,
-            board,
             pot,
+            board,
             dealer,
         }
     }

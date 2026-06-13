@@ -49,7 +49,7 @@ impl From<Vec<Rank>> for Kickers {
 impl std::fmt::Display for Kickers {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for rank in Vec::<Rank>::from(*self) {
-            write!(f, "{} ", rank)?;
+            write!(f, "{rank} ")?;
         }
         Ok(())
     }

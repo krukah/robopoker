@@ -82,7 +82,7 @@ impl GameplayAPI {
         let aivat = Aivat::new(self.0.clone());
         let mut recaps = Vec::with_capacity(bundles.len());
         let mut results = Vec::with_capacity(bundles.len());
-        for (h, p, a) in bundles.iter() {
+        for (h, p, a) in &bundles {
             if let Some(s) = seat_of(p, uid)
                 && let Ok(recap) = replay(h, p, a, s)
                 && let Ok(result) = aivat.evaluate(h, p, a, s, &recap).await
@@ -99,7 +99,7 @@ impl GameplayAPI {
         let (hand, parts, plays) = self.0.eval_bundle(ID::<HandRecord>::from(id)).await?;
         let board = Vec::<Card>::from(rbp_cards::Hand::from(hand.board()))
             .iter()
-            .map(|c| format!("{}", c))
+            .map(|c| format!("{c}"))
             .collect::<Vec<_>>()
             .join(" ");
         let obs = Observation::from((Hand::from(parts[0].hole()), Hand::from(hand.board())));
@@ -139,5 +139,8 @@ impl GameplayAPI {
 }
 
 fn seat_of(parts: &[Participant], uid: ID<Member>) -> Option<Position> {
-    parts.iter().find(|p| p.user() == Some(uid)).map(|p| p.seat())
+    parts
+        .iter()
+        .find(|p| p.user() == Some(uid))
+        .map(rbp_gameroom::Participant::seat)
 }

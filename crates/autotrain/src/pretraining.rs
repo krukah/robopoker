@@ -25,7 +25,7 @@ impl PreTraining {
     /// Always runs finalize to ensure derived tables exist.
     pub async fn run(client: &Arc<Client>) {
         let streets = Self::pending(client).await;
-        for street in streets.iter().cloned() {
+        for street in streets.iter().copied() {
             tracing::info!(%street, "beginning clustering");
             Self::cluster(street, client).await.stream(client).await;
         }
@@ -52,7 +52,7 @@ impl PreTraining {
     /// Collect unclustered streets in reverse order (river first).
     async fn pending(client: &Arc<Client>) -> Vec<Street> {
         let mut pending = Vec::new();
-        for street in Street::all().iter().rev().cloned() {
+        for street in Street::all().iter().rev().copied() {
             if client.clustered(street).await {
                 tracing::info!(%street, "skipping clustering");
             } else {
@@ -95,8 +95,7 @@ impl PreTraining {
         if client
             .query(&format!("SELECT 1 FROM {} LIMIT 1 ", D::name()), &[])
             .await
-            .map(|rows| rows.is_empty())
-            .unwrap_or(true)
+            .map_or(true, |rows| rows.is_empty())
         {
             tracing::info!(table = D::name(), "deriving table");
             client.batch_execute(&D::derives()).await.expect("derives");

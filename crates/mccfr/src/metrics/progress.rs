@@ -34,7 +34,7 @@ pub trait Progress {
             format!("batch {}", self.epoch()),
             format!("nodes {}", self.nodes()),
             format!("infos {}", self.infos()),
-            format!("I/sec {:.1}", rates),
+            format!("I/sec {rates:.1}"),
         )
     }
 

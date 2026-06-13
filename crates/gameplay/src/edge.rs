@@ -98,7 +98,7 @@ impl From<Odds> for Edge {
 
 impl Edge {
     /// Returns available raise/open edges for a given street and depth.
-    /// Derives from Size::raises() which dispatches on the active profile.
+    /// Derives from Size::raises() which dispatches on the active regime.
     pub fn raises(street: Street, depth: usize) -> Vec<Self> {
         Size::raises(street, depth)
             .iter()
@@ -221,7 +221,7 @@ impl TryFrom<&str> for Edge {
                 let d = d.parse::<Chips>()?;
                 Ok(Edge::Raise(Odds::new(n, d)))
             }
-            _ => Err(anyhow::anyhow!("invalid edge format: {}", s)),
+            _ => Err(anyhow::anyhow!("invalid edge format: {s}")),
         }
     }
 }
@@ -234,7 +234,7 @@ impl std::fmt::Display for Edge {
             Edge::Call => write!(f, "*"),
             Edge::Check => write!(f, "O"),
             Edge::Shove => write!(f, "!"),
-            Edge::Open(n) => write!(f, "{}bb", n),
+            Edge::Open(n) => write!(f, "{n}bb"),
             Edge::Raise(odds) => write!(f, "{}:{}", odds.numer(), odds.denom()),
         }
     }
@@ -287,7 +287,7 @@ mod tests {
         let opens = OPENS.iter().map(|&n| Edge::Open(n));
         let raises = RAISES.iter().map(|&(n, d)| Edge::Raise(Odds::new(n, d)));
         for edge in edges.into_iter().chain(opens).chain(raises) {
-            assert_eq!(edge, Edge::from(u8::from(edge)), "u8 roundtrip failed for {:?}", edge);
+            assert_eq!(edge, Edge::from(u8::from(edge)), "u8 roundtrip failed for {edge:?}");
         }
     }
     #[test]
@@ -296,7 +296,7 @@ mod tests {
         let opens = OPENS.iter().map(|&n| Edge::Open(n));
         let raises = RAISES.iter().map(|&(n, d)| Edge::Raise(Odds::new(n, d)));
         for edge in edges.into_iter().chain(opens).chain(raises) {
-            assert_eq!(edge, Edge::from(u64::from(edge)), "u64 roundtrip failed for {:?}", edge);
+            assert_eq!(edge, Edge::from(u64::from(edge)), "u64 roundtrip failed for {edge:?}");
         }
     }
     #[test]
@@ -318,7 +318,7 @@ mod tests {
         for edge in edges {
             let s = edge.to_string();
             let parsed = Edge::try_from(s.as_str()).unwrap();
-            assert_eq!(edge, parsed, "string roundtrip failed for {:?}", edge);
+            assert_eq!(edge, parsed, "string roundtrip failed for {edge:?}");
         }
     }
     #[test]

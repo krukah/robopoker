@@ -180,8 +180,7 @@ impl Worker {
         let present = self.encode(game).await;
         let subgame = Path::default();
         let choices = game.choices(0);
-        let geometry = Geometry::from_game(game);
-        NlheInfo::from((subgame, present, choices, geometry))
+        NlheInfo::from((subgame, present, choices))
     }
 
     async fn info(
@@ -191,16 +190,15 @@ impl Worker {
     ) -> NlheInfo {
         let (edge, ref game, head) = leaf;
         let subgame = std::iter::once(edge)
-            .chain(tree.at(head).map(|a| a.edge()))
-            .take_while(|e| e.is_choice())
+            .chain(tree.at(head).map(rbp_mccfr::Jump::edge))
+            .take_while(rbp_nlhe::NlheEdge::is_choice)
             .map(Edge::from)
             .collect::<Path>()
             .rev()
             .collect::<Path>();
         let present = self.encode(game.as_ref()).await;
         let choices = game.as_ref().choices(subgame.aggression());
-        let geometry = Geometry::from_game(game.as_ref());
-        NlheInfo::from((subgame, present, choices, geometry))
+        NlheInfo::from((subgame, present, choices))
     }
 
     fn branches(&self, node: &Node<NlheTurn, NlheEdge, NlheGame, NlheInfo>) -> Vec<Leaf<NlheEdge, NlheGame>> {
@@ -264,7 +262,7 @@ impl Worker {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::Hash;
         use std::hash::Hasher;
-        let hasher = &mut DefaultHasher::new();
+        let ref mut hasher = DefaultHasher::new();
         AsyncProfile::iteration(self).hash(hasher);
         node.info().hash(hasher);
         node.seed().hash(hasher);
@@ -276,7 +274,7 @@ impl Worker {
 impl Worker {
     pub async fn tree(&self) -> Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo> {
         let mut todo = Vec::new();
-        let root = &Game::root();
+        let ref root = Game::root();
         // Workers create one tree per batch; id only has to differ from
         // concurrent trees at the same epoch. Since each worker runs
         // independently and the epoch is already in the RNG hash, 0 is fine.
@@ -313,9 +311,9 @@ impl Worker {
 // update calculations
 impl Worker {
     async fn updates(&self, cfr: Decisions<NlheEdge, NlheInfo>) -> Vec<Record> {
-        let info = &cfr.info;
-        let regret_vector = &cfr.regret;
-        let policy_vector = &cfr.policy;
+        let ref info = cfr.info;
+        let ref regret_vector = cfr.regret;
+        let ref policy_vector = cfr.policy;
         let infoset_payoff = cfr.payoff;
         let epoch = self.epoch();
         let memory = self.client.memory(*info).await;

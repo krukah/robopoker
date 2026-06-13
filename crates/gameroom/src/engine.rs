@@ -36,8 +36,8 @@ impl EngineCore {
     async fn interruptible(&self, duration: std::time::Duration) {
         tokio::select! {
             biased;
-            _ = self.skip.notified() => {},
-            _ = tokio::time::sleep(duration) => {},
+            () = self.skip.notified() => {},
+            () = tokio::time::sleep(duration) => {},
         }
     }
 
@@ -56,7 +56,7 @@ impl EngineCore {
             .into_iter()
             .chain(self.live.dealt())
             .collect::<Vec<_>>();
-        self.live.actions().iter().filter(|a| a.is_choice()).cloned().fold(
+        self.live.actions().iter().filter(|a| a.is_choice()).copied().fold(
             Witness::initial_with(
                 Turn::Choice(pos),
                 Arrangement::from(cards),
@@ -330,15 +330,15 @@ impl Engine<Showdown> {
     /// Executes showdown reveal sequence.
     pub async fn showdown(&mut self) {
         if !self.core.live.game().is_showdown() {
-            for &p in self.core.showoffs.clone().iter() {
+            for &p in &self.core.showoffs.clone() {
                 self.reveal(p, true);
             }
             self.core.push_snapshots();
             if self.core.disconnected.is_empty() {
                 tokio::select! {
                     biased;
-                    _ = self.core.skip.notified() => {},
-                    _ = tokio::time::sleep(self.core.timing.results) => {},
+                    () = self.core.skip.notified() => {},
+                    () = tokio::time::sleep(self.core.timing.results) => {},
                 }
             }
             return;
@@ -350,8 +350,8 @@ impl Engine<Showdown> {
         loop {
             tokio::select! {
                 biased;
-                _ = tokio::time::sleep_until(deadline) => break,
-                _ = self.core.skip.notified() => break,
+                () = tokio::time::sleep_until(deadline) => break,
+                () = self.core.skip.notified() => break,
                 msg = self.core.rx.recv() => {
                     if let Some((pos, _)) = msg
                         && !showed.contains(&pos) && order.contains(&pos) {
@@ -388,22 +388,19 @@ impl Engine<Showdown> {
 
     /// Advance to next hand or finish.
     pub async fn conclude(mut self) -> Result<Engine<Dealing>, Engine<Finished>> {
-        match self.core.live.game().continuation() {
-            Some(next) => {
-                self.core.live.start(self.core.live.epoch() + 1, next);
-                self.core.commence().await;
-                Ok(Engine {
-                    core: self.core,
-                    phase: PhantomData,
-                })
-            }
-            None => {
-                tracing::info!("game over - a player is busted");
-                Err(Engine {
-                    core: self.core,
-                    phase: PhantomData,
-                })
-            }
+        if let Some(next) = self.core.live.game().continuation() {
+            self.core.live.start(self.core.live.epoch() + 1, next);
+            self.core.commence().await;
+            Ok(Engine {
+                core: self.core,
+                phase: PhantomData,
+            })
+        } else {
+            tracing::info!("game over - a player is busted");
+            Err(Engine {
+                core: self.core,
+                phase: PhantomData,
+            })
         }
     }
 

@@ -35,7 +35,7 @@ impl FromRequest for Auth {
             .headers()
             .get("Authorization")
             .and_then(|h| h.to_str().ok())
-            .map(|s| s.to_owned());
+            .map(std::borrow::ToOwned::to_owned);
         Box::pin(async move {
             let header =
                 auth_header.ok_or_else(|| actix_web::error::ErrorUnauthorized("missing authorization header"))?;
@@ -75,7 +75,7 @@ impl MaybeAuth {
     }
 
     pub fn user(&self) -> Option<ID<Member>> {
-        self.0.as_ref().map(|c| c.user())
+        self.0.as_ref().map(super::claims::Claims::user)
     }
 }
 

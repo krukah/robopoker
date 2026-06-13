@@ -19,9 +19,9 @@ impl Player for Human {
 
     async fn notify(&mut self, event: &Event) {
         match event {
-            Event::Decision(recall) => println!("{}", recall),
-            Event::Action(action) => println!("{}", action),
-            Event::Disconnect(pos) => println!("P{}: disconnected", pos),
+            Event::Decision(recall) => println!("{recall}"),
+            Event::Action(action) => println!("{action}"),
+            Event::Disconnect(pos) => println!("P{pos}: disconnected"),
         }
     }
 }
@@ -29,7 +29,7 @@ impl Player for Human {
 impl Human {
     fn selection(labels: &[&str], game: &Game) -> usize {
         Select::new()
-            .with_prompt(format!("{}", game))
+            .with_prompt(format!("{game}"))
             .report(false)
             .items(labels)
             .default(0)
@@ -48,16 +48,16 @@ impl Human {
         let min = game.to_raise();
         let max = game.to_shove();
         let bet = Input::new()
-            .with_prompt(format!("Raise [{}-{}]", min, max))
+            .with_prompt(format!("Raise [{min}-{max}]"))
             .validate_with(|i: &String| -> Result<(), String> {
                 let input = i
                     .parse::<Chips>()
                     .map_err(|_| String::from("Enter a positive integer"))?;
                 if input < min {
-                    return Err(format!("Minimum raise is {}", min));
+                    return Err(format!("Minimum raise is {min}"));
                 }
                 if input > max {
-                    return Err(format!("Maximum raise is {}", max));
+                    return Err(format!("Maximum raise is {max}"));
                 }
                 Ok(())
             })

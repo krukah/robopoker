@@ -29,7 +29,7 @@ impl<'sesh> Session<'sesh> {
         let hero = pov(resp.client_pos);
         let hole = parse_hole(&resp.hole_cards)?;
         let board = parse_board(&resp.board)?;
-        let witness = Witness::from((hero, arrangement(hole, &board)));
+        let witness = Witness::initial_with(hero, arrangement(hole, &board), [SLUMBOT_STACK; N], 0);
         let history = String::new();
         let mut session = Self {
             client,
@@ -40,10 +40,7 @@ impl<'sesh> Session<'sesh> {
             hole,
             board,
         };
-        let seat = match hero {
-            Turn::Choice(p) => p,
-            _ => unreachable!(),
-        };
+        let Turn::Choice(seat) = hero else { unreachable!() };
         let pos = if seat == 0 { "SB" } else { "BB" };
         tracing::info!(
             hero = pos,
@@ -51,7 +48,7 @@ impl<'sesh> Session<'sesh> {
             board = %session
                 .board
                 .iter()
-                .map(|c| c.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(" "),
             raw = %resp.action,
@@ -130,7 +127,7 @@ impl<'sesh> Session<'sesh> {
                         bb = to_bb(w),
                         board = %self.board
                             .iter()
-                            .map(|c| c.to_string())
+                            .map(std::string::ToString::to_string)
                             .collect::<Vec<_>>()
                             .join(" "),
                         "hand result",
@@ -157,9 +154,10 @@ impl<'sesh> Session<'sesh> {
     fn refresh(&mut self, raw: &[String]) -> anyhow::Result<()> {
         let fresh = parse_board(raw)?;
         if fresh.len() > self.board.len() {
-            self.witness = Witness::try_arrange(
+            self.witness = Witness::try_arrange_with(
                 self.hero,
                 arrangement(self.hole, &fresh),
+                [SLUMBOT_STACK; N],
                 self.witness
                     .actions()
                     .iter()

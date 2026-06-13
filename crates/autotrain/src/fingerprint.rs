@@ -95,7 +95,7 @@ impl Fingerprint {
             .await
             .expect("truncate fingerprint");
         client
-            .execute(&format!("INSERT INTO {} (config) VALUES ($1);", rbp_database::fingerprint(),), &[&config])
+            .execute(&format!("INSERT INTO {} (config) VALUES ($1);", rbp_database::fingerprint()), &[&config])
             .await
             .expect("insert fingerprint");
     }

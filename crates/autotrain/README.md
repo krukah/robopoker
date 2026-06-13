@@ -282,7 +282,7 @@ The clustering phase processes streets in **reverse order** (River -> Turn -> Fl
              |                                    |
              v                                    v
     +-----------------+                  +-----------------+
-    |   Holdem    |                  |      Pool       |
+    |   Nlhe    |                  |      Pool       |
     |   (in-memory)   |                  |  (distributed)  |
     +--------+--------+                  +--------+--------+
              |                                    |
@@ -327,7 +327,7 @@ The clustering phase processes streets in **reverse order** (River -> Turn -> Fl
 |         (fast.rs)              |         (slow.rs)              |
 +--------------------------------+--------------------------------+
 |                                |                                |
-|  Holdem                    |  Pool<Worker<Postgres>>        |
+|  Nlhe                    |  Pool<Worker<Postgres>>        |
 |      |                         |      |                         |
 |      v                         |      v                         |
 |  +--------------+              |  +--------------+              |

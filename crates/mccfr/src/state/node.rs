@@ -179,7 +179,7 @@ where
 /// iterator's direction (leaf-to-root) is encoded in the type: consumers
 /// that want a root-to-leaf [`Descent`] sequence must collect + reverse,
 /// not silently flip pairs in place.
-impl<'tree, T, E, G, I> Iterator for Node<'tree, T, E, G, I>
+impl<T, E, G, I> Iterator for Node<'_, T, E, G, I>
 where
     T: CfrTurn,
     E: CfrEdge,
@@ -198,7 +198,7 @@ where
 /// Debug + Display implementations, which will
 /// treat a Node just as a combination of its
 /// associated Info + its location in the tree
-impl<'tree, T, E, G, I> std::fmt::Debug for Node<'tree, T, E, G, I>
+impl<T, E, G, I> std::fmt::Debug for Node<'_, T, E, G, I>
 where
     T: CfrTurn,
     E: CfrEdge,
@@ -214,7 +214,7 @@ where
 /// Nodes being compared to one another belong
 /// to the same tree/graph. such that, we only
 /// care about comparing indices.
-impl<'tree, T, E, G, I> PartialEq for Node<'tree, T, E, G, I>
+impl<T, E, G, I> PartialEq for Node<'_, T, E, G, I>
 where
     T: CfrTurn,
     E: CfrEdge,
@@ -225,7 +225,7 @@ where
         self.index() == other.index()
     }
 }
-impl<'tree, T, E, G, I> Eq for Node<'tree, T, E, G, I>
+impl<T, E, G, I> Eq for Node<'_, T, E, G, I>
 where
     T: CfrTurn,
     E: CfrEdge,

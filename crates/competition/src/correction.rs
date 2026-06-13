@@ -12,8 +12,7 @@ pub fn strategy_ev(policy: &[(Probability, Utility)]) -> Utility {
 /// EV of the specific action taken. Falls back to strategy_ev if action not found.
 pub fn observed_ev(policy: &[(Probability, Utility)], idx: Option<usize>) -> Utility {
     idx.and_then(|i| policy.get(i))
-        .map(|(_, v)| *v)
-        .unwrap_or_else(|| strategy_ev(policy))
+        .map_or_else(|| strategy_ev(policy), |(_, v)| *v)
 }
 
 /// Action-node correction: removes variance from which action was chosen.
@@ -64,7 +63,7 @@ mod tests {
                 .enumerate()
                 .map(|(i, (w, _))| (w / total) * action_correction(&policy, Some(i)))
                 .sum();
-            assert!(weighted_sum.abs() < 1e-3, "weighted correction sum {} != 0", weighted_sum);
+            assert!(weighted_sum.abs() < 1e-3, "weighted correction sum {weighted_sum} != 0");
         }
     }
     #[test]

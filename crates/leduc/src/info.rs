@@ -70,10 +70,10 @@ impl CfrPublic for LeducPublic {
 impl std::fmt::Display for LeducPublic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(board) = self.board {
-            write!(f, "{:?}|", board)?;
+            write!(f, "{board:?}|")?;
         }
         for edge in self.subgame() {
-            write!(f, "{}", edge)?;
+            write!(f, "{edge}")?;
         }
         Ok(())
     }

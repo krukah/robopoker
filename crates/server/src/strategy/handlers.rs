@@ -7,7 +7,7 @@ use rbp_gameplay::*;
 pub async fn policy(api: web::Data<StrategyAPI>, req: web::Json<GetPolicy>) -> impl Responder {
     let started = std::time::Instant::now();
     match Witness::try_build(req.turn, req.seen, req.past.clone()) {
-        Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {}", e)),
+        Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {e}")),
         Ok(recall) => api
             .policy(recall)
             .await
@@ -40,7 +40,7 @@ where
     Fut: std::future::Future<Output = anyhow::Result<ApiSolved>>,
 {
     match Witness::try_build(req.turn, req.seen, req.past.clone()) {
-        Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {}", e)),
+        Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {e}")),
         Ok(recall) => dispatch(recall).await.map_or_else(
             |e| HttpResponse::InternalServerError().body(e.to_string()),
             |solved| HttpResponse::Ok().json(solved),
@@ -49,9 +49,20 @@ where
 }
 
 pub async fn range(api: web::Data<StrategyAPI>, req: web::Json<GetPolicy>) -> impl Responder {
+    posterior(req, |r| api.range(r))
+}
+
+pub async fn signalled(api: web::Data<StrategyAPI>, req: web::Json<GetPolicy>) -> impl Responder {
+    posterior(req, |r| api.signalled(r))
+}
+
+fn posterior<F>(req: web::Json<GetPolicy>, compute: F) -> HttpResponse
+where
+    F: FnOnce(Witness) -> anyhow::Result<ApiOpponentRange>,
+{
     match Witness::try_build(req.turn, req.seen, req.past.clone()) {
-        Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {}", e)),
-        Ok(recall) => api.range(recall).map_or_else(
+        Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {e}")),
+        Ok(recall) => compute(recall).map_or_else(
             |e| HttpResponse::InternalServerError().body(e.to_string()),
             |range| HttpResponse::Ok().json(range),
         ),

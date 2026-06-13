@@ -63,20 +63,18 @@ impl From<Raise> for Size {
                 bbs.iter()
                     .copied()
                     .min_by_key(|n| (target as i64 - *n as i64).abs())
-                    .map(Size::BBs)
-                    .unwrap_or(Size::BBs(2))
+                    .map_or(Size::BBs(2), Size::BBs)
             }
-            Some(Grid::Postflop(prs)) => {
+            Some(Grid::Postflop(idx)) => {
                 let target = raise.chips() as Utility / raise.pot() as Utility;
-                prs.iter()
-                    .copied()
+                idx.iter()
+                    .map(|&i| RAISES[i])
                     .min_by(|(an, ad), (bn, bd)| {
                         let a = *an as Probability / *ad as Probability;
                         let b = *bn as Probability / *bd as Probability;
                         (target - a).abs().partial_cmp(&(target - b).abs()).unwrap()
                     })
-                    .map(|(n, d)| Size::SPR(n, d))
-                    .unwrap_or(Size::SPR(1, 1))
+                    .map_or(Size::SPR(1, 1), |(n, d)| Size::SPR(n, d))
             }
         }
     }

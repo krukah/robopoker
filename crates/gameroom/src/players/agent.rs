@@ -54,12 +54,11 @@ where
         let action = WeightedIndex::new(&weights)
             .ok()
             .map(|d| edges[d.sample(&mut rand::rng())])
-            .map(|edge| game.actionize(edge))
-            .unwrap_or_else(|| game.legal().choose(&mut rand::rng()).copied().unwrap());
+            .map_or_else(|| game.legal().choose(&mut rand::rng()).copied().unwrap(), |edge| game.actionize(edge));
         let policy = edges
             .iter()
             .zip(&weights)
-            .map(|(e, p)| format!("{}={:.3}", e, p))
+            .map(|(e, p)| format!("{e}={p:.3}"))
             .collect::<Vec<_>>()
             .join(" ");
         let entropy = weights.iter().filter(|p| **p > 0.0).map(|p| -p * p.ln()).sum::<f32>();

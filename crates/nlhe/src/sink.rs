@@ -19,9 +19,9 @@ fn upsert_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
     SQL.get_or_init(|| {
         leaked(format!(
-            "INSERT INTO {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) \
-         VALUES         ($1,   $2,      $3,       $4,       $5,   $6,     $7,     $8,     $9) \
-         ON CONFLICT (past, present, choices, geometry, edge) \
+            "INSERT INTO {} (past, present, choices, edge, weight, regret, payoff, visits) \
+         VALUES         ($1,   $2,      $3,       $4,   $5,     $6,     $7,     $8) \
+         ON CONFLICT (past, present, choices, edge) \
          DO UPDATE SET \
              weight = EXCLUDED.weight, \
              regret = EXCLUDED.regret, \
@@ -46,7 +46,6 @@ impl Sink for Client {
                     &i64::from(record.info.subgame()),
                     &i16::from(record.info.bucket()),
                     &i64::from(record.info.choices()),
-                    &(record.info.geometry().tag() as i16),
                     &(u64::from(record.edge) as i64),
                     &record.weight,
                     &record.regret,
@@ -67,10 +66,10 @@ impl Sink for Client {
 #[async_trait::async_trait]
 impl Sink for Arc<Client> {
     async fn submit(&self, records: Vec<Record>) {
-        self.as_ref().submit(records).await
+        self.as_ref().submit(records).await;
     }
 
     async fn advance(&self) {
-        self.as_ref().advance().await
+        self.as_ref().advance().await;
     }
 }

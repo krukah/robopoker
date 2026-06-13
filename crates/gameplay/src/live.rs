@@ -174,7 +174,7 @@ impl LiveGame {
             .into_iter()
             .chain(self.dealt())
             .collect();
-        Some(self.actions.iter().filter(|a| a.is_choice()).cloned().fold(
+        Some(self.actions.iter().filter(|a| a.is_choice()).copied().fold(
             Witness::initial_with(
                 Turn::Choice(seat),
                 Arrangement::from(cards),

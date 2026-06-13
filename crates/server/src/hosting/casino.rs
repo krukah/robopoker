@@ -77,7 +77,7 @@ impl Casino {
             .remove(&id)
             .map(|h| {
                 if let Some(b) = h.bridge {
-                    b.abort()
+                    b.abort();
                 }
             })
             .ok_or_else(|| anyhow::anyhow!("room not found"))
@@ -107,7 +107,7 @@ impl Casino {
         session
             .text(ServerMessage::welcome(&id.to_string(), 0).to_json())
             .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         start.map(|s| s.send(()));
         tracing::debug!(bridge = %id, "connected");
         let task = actix_web::rt::spawn(async move {

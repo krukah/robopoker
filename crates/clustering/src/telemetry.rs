@@ -34,7 +34,7 @@ impl ClusterTelemetry {
     pub(crate) fn new(street: Street) -> Self {
         Self {
             handles: rbp_telemetry::metrics::get(),
-            labels: [KeyValue::new("street", format!("{}", street))],
+            labels: [KeyValue::new("street", format!("{street}"))],
         }
     }
 

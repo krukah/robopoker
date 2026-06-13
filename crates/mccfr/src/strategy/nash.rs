@@ -29,7 +29,7 @@ pub trait CfrNash: RefProf {
     /// A Nash equilibrium has exploitability of 0. Lower values indicate
     /// strategies closer to equilibrium.
     fn exploitability(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        let partition = &tree.partition();
+        let ref partition = tree.partition();
         (0..Self::T::players())
             .map(Self::T::from)
             .map(|i| self.optimal_response_payoff(partition, i))

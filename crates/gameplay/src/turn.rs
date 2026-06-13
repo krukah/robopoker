@@ -78,7 +78,7 @@ impl TryFrom<&str> for Turn {
 impl std::fmt::Display for Turn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Choice(c) => write!(f, "P{}", c),
+            Self::Choice(c) => write!(f, "P{c}"),
             Self::Terminal => write!(f, "-"),
             Self::Chance => write!(f, "?"),
         }
@@ -159,9 +159,9 @@ impl std::fmt::Display for PositionName {
             Self::SB => write!(f, "SB"),
             Self::BB => write!(f, "BB"),
             Self::UTG(0) => write!(f, "UTG"),
-            Self::UTG(n) => write!(f, "UTG+{}", n),
+            Self::UTG(n) => write!(f, "UTG+{n}"),
             Self::MP(0) => write!(f, "MP"),
-            Self::MP(n) => write!(f, "MP+{}", n),
+            Self::MP(n) => write!(f, "MP+{n}"),
             Self::HJ => write!(f, "HJ"),
             Self::CO => write!(f, "CO"),
         }

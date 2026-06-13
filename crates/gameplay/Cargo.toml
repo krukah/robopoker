@@ -7,7 +7,7 @@ authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
 description    = "Poker game engine with state management, action handling, and settlement"
 license        = "MIT"
 repository     = "https://github.com/krukah/robopoker"
-keywords       = ["poker", "game-engine", "holdem"]
+keywords       = ["poker", "game-engine", "nlhe"]
 categories     = ["game-development"]
 
 [dependencies]

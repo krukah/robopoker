@@ -61,8 +61,7 @@ impl<const W: usize> WorldRestrict<W> for KuhnEncoder {
             .map(|c| observed.with_card(actor, c))
             .map(|root| (root, root.hole_rank(actor)))
             .find(|(_, secret)| belief.remember(secret, world))
-            .map(|(root, _)| root)
-            .unwrap_or(*observed)
+            .map_or(*observed, |(root, _)| root)
     }
 }
 
@@ -79,7 +78,7 @@ impl KuhnEncoder {
         Card::ALL
             .into_iter()
             .filter(|&c| c != game.hole_card(1 - actor))
-            .map(|c| c.rank())
+            .map(super::card::Card::rank)
             .fold(Posterior::default(), |post, rank| post.add(rank, 1.0))
     }
 }

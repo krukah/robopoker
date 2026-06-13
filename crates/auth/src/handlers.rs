@@ -84,7 +84,7 @@ pub async fn login(
 
 pub async fn logout(db: web::Data<Arc<Client>>, auth: Auth) -> impl Responder {
     match db.revoke(auth.claims().session()).await {
-        Ok(_) => HttpResponse::Ok().json(serde_json::json!({"status": "logged_out"})),
+        Ok(()) => HttpResponse::Ok().json(serde_json::json!({"status": "logged_out"})),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }

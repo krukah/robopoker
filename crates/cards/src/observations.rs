@@ -84,6 +84,7 @@ impl ObservationIterator {
         pocket
     }
 
+    #[allow(clippy::unnecessary_wraps)] // symmetric with `outer` for use in `Iterator::next`
     fn inner(&mut self, public: Hand) -> Option<Observation> {
         Some(Observation::from((self.pocket, public)))
     }
@@ -105,7 +106,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_pref() {
         let street = Street::Pref;
         let iter = ObservationIterator::from(street);
@@ -113,7 +114,7 @@ mod tests {
         assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_flop() {
         let street = Street::Flop;
         let iter = ObservationIterator::from(street);
@@ -121,7 +122,7 @@ mod tests {
         assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_turn() {
         let street = Street::Turn;
         let iter = ObservationIterator::from(street);
@@ -129,7 +130,7 @@ mod tests {
         assert_eq!(iter.combinations(), iter.count());
     }
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_rive() {
         let street = Street::Rive;
         let iter = ObservationIterator::from(street);

@@ -32,6 +32,6 @@ impl Ensure for std::sync::Arc<Client> {
     where
         S: Schema + Send,
     {
-        self.as_ref().ensure::<S>().await
+        self.as_ref().ensure::<S>().await;
     }
 }

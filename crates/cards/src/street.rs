@@ -85,6 +85,15 @@ impl Street {
             Self::Rive => 7,
         }
     }
+    /// Number of community board cards visible at this street.
+    pub const fn n_board(&self) -> usize {
+        match self {
+            Self::Pref => 0,
+            Self::Flop => 3,
+            Self::Turn => 4,
+            Self::Rive => 5,
+        }
+    }
     /// Cards revealed when transitioning to this street.
     pub const fn n_revealed(&self) -> usize {
         match self {
@@ -185,7 +194,7 @@ impl From<isize> for Street {
             1 => Self::Flop,
             2 => Self::Turn,
             3 => Self::Rive,
-            x => panic!("no other u8s {}", x),
+            x => panic!("no other u8s {x}"),
         }
     }
 }
@@ -197,7 +206,7 @@ impl From<usize> for Street {
             5 => Self::Flop,
             6 => Self::Turn,
             7 => Self::Rive,
-            x => panic!("no other usizes {}", x),
+            x => panic!("no other usizes {x}"),
         }
     }
 }
@@ -209,9 +218,6 @@ impl From<i64> for Street {
             (0u64..8u64)
                 .map(|i| obs >> (i * 8))
                 .take_while(|bits| *bits > 0)
-                .map(|bits| bits as u8)
-                .map(|bits| bits - 1)
-                .map(|bits| 1u64 << bits)
                 .count(),
         )
     }

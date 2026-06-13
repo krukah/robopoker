@@ -94,7 +94,7 @@ impl SamplingScheme for PluribusSampling {
         let pruned = branches
             .iter()
             .filter(|(edge, game, _)| game.turn().is_terminal() || profile.cum_regret(info, edge) > hyper.threshold())
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
         if pruned.is_empty() { branches } else { pruned }
     }

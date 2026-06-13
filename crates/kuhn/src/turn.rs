@@ -39,7 +39,7 @@ impl std::fmt::Display for KuhnTurn {
         match self {
             Self::Chance => write!(f, "CH"),
             Self::Terminal => write!(f, "$$"),
-            Self::Player(n) => write!(f, "P{}", n),
+            Self::Player(n) => write!(f, "P{n}"),
         }
     }
 }

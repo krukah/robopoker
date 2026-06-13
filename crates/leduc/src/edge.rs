@@ -27,7 +27,7 @@ impl LeducEdge {
 impl std::fmt::Display for LeducEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Deal(c) => write!(f, "D{}", c),
+            Self::Deal(c) => write!(f, "D{c}"),
             Self::Fold => write!(f, "F"),
             Self::Check => write!(f, "X"),
             Self::Call => write!(f, "C"),

@@ -38,7 +38,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_pref() {
         let pref = Street::Pref;
         let iter = IsomorphismIterator::from(pref);
@@ -46,7 +46,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_flop() {
         let flop = Street::Flop;
         let iter = IsomorphismIterator::from(flop);
@@ -54,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_turn() {
         let turn = Street::Turn;
         let iter = IsomorphismIterator::from(turn);
@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "slow: exhaustive iteration"]
     fn n_rive() {
         let rive = Street::Rive;
         let iter = IsomorphismIterator::from(rive);

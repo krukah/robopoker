@@ -63,7 +63,7 @@ impl<const P: usize> GameN<P> {
             board: Board::empty(),
             seats: std::array::from_fn(|i| Seat::from((deck.hole(), stacks[i]))),
             dealer,
-            ticker: if P == 2 { 0 } else { 1 },
+            ticker: usize::from(P != 2),
         }
     }
     /// Creates the canonical starting state for MCCFR traversal.
@@ -92,7 +92,7 @@ impl<const P: usize> GameN<P> {
     ///
     /// Used for setting up counterfactual game states during analysis.
     pub fn wipe(mut self, hole: Hole) -> Self {
-        for seat in self.seats.iter_mut() {
+        for seat in &mut self.seats {
             seat.reset_cards(hole);
         }
         self
@@ -363,7 +363,7 @@ impl<const P: usize> GameN<P> {
         debug_assert!(self.pot() == 0);
         debug_assert!(self.street() == Street::Pref);
         let mut deck = Deck::new();
-        for seat in self.seats.iter_mut() {
+        for seat in &mut self.seats {
             seat.reset_state(State::Betting);
             seat.reset_cards(deck.hole());
             seat.reset_stake();
@@ -377,7 +377,7 @@ impl<const P: usize> GameN<P> {
         debug_assert!(self.street() == Street::Pref);
         self.dealer += 1;
         self.dealer %= self.n();
-        self.ticker = if P == 2 { 0 } else { 1 };
+        self.ticker = usize::from(P != 2);
     }
 }
 
@@ -440,7 +440,7 @@ impl<const P: usize> GameN<P> {
 impl<const P: usize> GameN<P> {
     /// Resets per-street stakes when a new street begins.
     fn next_street(&mut self) {
-        for seat in self.seats.iter_mut() {
+        for seat in &mut self.seats {
             seat.reset_stake();
         }
     }
@@ -558,7 +558,7 @@ impl<const P: usize> GameN<P> {
             .seats
             .iter()
             .filter(|s| s.state() != State::Folding)
-            .map(|s| s.stake())
+            .map(Seat::stake)
             .fold((0, 0), |(most, next), stake| {
                 if stake > most {
                     (stake, most)
@@ -611,7 +611,7 @@ impl<const P: usize> GameN<P> {
 impl<const P: usize> GameN<P> {
     /// Computes final chip distributions at a terminal node.
     pub fn settlements(&self) -> Vec<Settlement> {
-        debug_assert!(self.must_stop(), "non terminal game state:\n{}", self);
+        debug_assert!(self.must_stop(), "non terminal game state:\n{self}");
         Showdown::from(self.ledger()).settle()
     }
     /// Returns true if this is a showdown (multiple players remain).
@@ -643,7 +643,7 @@ impl<const P: usize> GameN<P> {
     /// Returns the remaining deck (all cards not in play).
     pub fn deck(&self) -> Deck {
         let mut removed = Hand::from(self.board);
-        for seat in self.seats.iter() {
+        for seat in &self.seats {
             removed = Hand::or(removed, Hand::from(seat.cards()));
         }
         Deck::from(removed.complement())
@@ -673,14 +673,14 @@ impl<const P: usize> GameN<P> {
 impl<const P: usize> GameN<P> {
     /// Total chips in play (pot + all stacks).
     pub fn total(&self) -> Chips {
-        self.pot() + self.seats().iter().map(|s| s.stack()).sum::<Chips>()
+        self.pot() + self.seats().iter().map(Seat::stack).sum::<Chips>()
     }
     /// Effective stack (minimum stack for heads-up).
     ///
     /// In N-way pots this would be the second-largest stack;
     /// for heads-up it's simply the smaller of the two.
     pub fn effective(&self) -> Chips {
-        self.seats.iter().map(|s| s.stack()).min().unwrap_or(0)
+        self.seats.iter().map(Seat::stack).min().unwrap_or(0)
     }
     /// Stack-to-pot ratio (effective stack / pot).
     pub fn spr(&self) -> f32 {
@@ -691,7 +691,7 @@ impl<const P: usize> GameN<P> {
     }
     /// Maximum stake among all players this street.
     fn max_stake(&self) -> Chips {
-        self.seats.iter().map(|s| s.stake()).max().expect("non-empty seats")
+        self.seats.iter().map(Seat::stake).max().expect("non-empty seats")
     }
     /// True if this is a preflop opening spot (no player actions yet).
     /// Used to interpret Odds(n,1) as nBB rather than nx pot.
@@ -727,8 +727,9 @@ impl<const P: usize> GameN<P> {
             .flat_map(|action| self.unfold(depth, action))
             .collect()
     }
-    /// Expands an action into edges using street-specific bet grids.
-    /// Non-raise actions map 1:1; raises expand to all grid sizes.
+    /// Expands an action into edges using the street/depth bet grid.
+    /// Non-raise actions map 1:1; raises expand to all grid sizes
+    /// available at this `(street, depth)` cell.
     fn unfold(&self, depth: usize, action: Action) -> Vec<Edge> {
         match action {
             Action::Raise(_) => Edge::raises(self.street(), depth),
@@ -792,6 +793,14 @@ impl<const P: usize> GameN<P> {
             Action::Blind(_) => Translated::Snap(Edge::Call),
             Action::Shove(_) => Translated::Snap(Edge::Shove),
             Action::Raise(chips) => {
+                // depth > MAX_RAISE_REPEATS carries an empty abstract raise
+                // grid — the only legal aggressive action there is
+                // Edge::Shove. Mirror snap_to_edge's `.unwrap_or(Edge::Shove)`
+                // semantic instead of asking Size::translate to invent a
+                // Size that doesn't exist.
+                if Edge::raises(self.street(), depth).is_empty() {
+                    return Translated::Snap(Edge::Shove);
+                }
                 match Size::translate(Raise::new(chips, self.pot(), self.street(), depth), policy, rng) {
                     Translated::Snap(Size::BBs(n)) => Translated::Snap(Edge::Open(n)),
                     Translated::Snap(Size::SPR(n, d)) => Translated::Snap(Edge::Raise(Odds::new(n, d))),
@@ -802,8 +811,7 @@ impl<const P: usize> GameN<P> {
     }
     /// Snaps a chip amount to the nearest edge in the grid.
     fn snap_to_edge(&self, chips: Chips, depth: usize) -> Edge {
-        let edges = Edge::raises(self.street(), depth);
-        edges
+        Edge::raises(self.street(), depth)
             .into_iter()
             .min_by_key(|e| (e.into_chips(self.pot()) as i32 - chips as i32).abs())
             .unwrap_or(Edge::Shove)
@@ -848,7 +856,7 @@ impl<const P: usize> GameN<P> {
 
 impl<const P: usize> std::fmt::Display for GameN<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for seat in self.seats.iter() {
+        for seat in &self.seats {
             writeln!(f, "{:>3} {:>3} {:<6}", seat.state(), seat.cards(), seat.stack())?;
         }
         writeln!(f, "Pot   {}", self.pot())?;
@@ -1572,7 +1580,7 @@ mod tests {
     fn six_player_fold_to_terminal() {
         let mut game = Game6::root();
         for i in 0..5 {
-            assert!(!game.must_stop(), "terminal too early at fold {}", i);
+            assert!(!game.must_stop(), "terminal too early at fold {i}");
             game = game.apply(Action::Fold);
         }
         assert!(game.must_stop());
@@ -1793,7 +1801,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0);
+        let ref mut rng = SmallRng::seed_from_u64(0);
         for chips in [4, 6, 8, 10, 16] {
             let edgify = game.edgify(Action::Raise(chips), 0);
             let translate = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
@@ -1807,7 +1815,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0);
+        let ref mut rng = SmallRng::seed_from_u64(0);
         assert_eq!(game.translate(Action::Fold, 0, &Translation::Snap, rng), Translated::Snap(Edge::Fold),);
         assert_eq!(game.translate(Action::Check, 0, &Translation::Phargmax, rng), Translated::Snap(Edge::Check),);
         assert_eq!(game.translate(Action::Call(1), 0, &Translation::Harmonic, rng), Translated::Snap(Edge::Call),);
@@ -1820,11 +1828,11 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0);
+        let ref mut rng = SmallRng::seed_from_u64(0);
         for chips in [4, 6, 8, 10] {
             let snap = game.translate(Action::Raise(chips), 0, &Translation::Snap, rng);
             let phargmax = game.translate(Action::Raise(chips), 0, &Translation::Phargmax, rng);
-            assert_eq!(snap, phargmax, "canonical Raise({chips}): Phargmax must match Snap",);
+            assert_eq!(snap, phargmax, "canonical Raise({chips}): Phargmax must match Snap");
         }
     }
 
@@ -1837,11 +1845,11 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0);
+        let ref mut rng = SmallRng::seed_from_u64(0);
         let result = game.translate(Action::Raise(7), 0, &Translation::Phargmax, rng);
         let lo = Translated::Snap(Edge::Open(3));
         let hi = Translated::Snap(Edge::Open(4));
-        assert!(result == lo || result == hi, "Phargmax(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}",);
+        assert!(result == lo || result == hi, "Phargmax(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}");
     }
 
     /// `Harmonic` on an off-tree raise: 100 trials, every result must be
@@ -1852,7 +1860,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0xCAFEF00D);
+        let ref mut rng = SmallRng::seed_from_u64(0xCAFEF00D);
         let lo = Translated::Snap(Edge::Open(3));
         let hi = Translated::Snap(Edge::Open(4));
         for trial in 0..100 {
@@ -1871,7 +1879,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0);
+        let ref mut rng = SmallRng::seed_from_u64(0);
         let translations = [Translation::Snap, Translation::Harmonic, Translation::Phargmax];
         let cases = [
             (Action::Fold, Edge::Fold),
@@ -1896,7 +1904,7 @@ mod tests {
         use rand::SeedableRng;
         use rand::rngs::SmallRng;
         let game = Game::root();
-        let rng = &mut SmallRng::seed_from_u64(0);
+        let ref mut rng = SmallRng::seed_from_u64(0);
         // Below smallest: Raise(2) = 1 BB, smallest is BBs(2) = Open(2).
         assert_eq!(game.translate(Action::Raise(2), 0, &Translation::Snap, rng), Translated::Snap(Edge::Open(2)),);
         // Above largest: Raise(20) = 10 BB, largest is BBs(5) = Open(5).

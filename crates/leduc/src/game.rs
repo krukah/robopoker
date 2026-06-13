@@ -142,7 +142,7 @@ impl LeducGame {
     }
 
     pub fn board_rank(&self) -> Option<Rank> {
-        self.board().map(|c| c.rank())
+        self.board().map(super::card::Card::rank)
     }
 
     pub fn hole_rank(&self, actor: usize) -> Rank {

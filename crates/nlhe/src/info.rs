@@ -65,11 +65,6 @@ impl NlheInfo {
     pub fn bucket(&self) -> NlheSecret {
         self.0.secret()
     }
-    /// Pot-geometry bucket at this decision point. Discrete SPR axis on
-    /// the infoset key — see [`Geometry`].
-    pub fn geometry(&self) -> Geometry {
-        self.0.public().geometry()
-    }
 }
 
 impl std::fmt::Display for NlheInfo {
@@ -123,22 +118,21 @@ where
         let head = recall.head();
         let subgame = recall.subgame();
         let choices = head.choices(subgame.aggression());
-        let geometry = Geometry::from_game(&head);
-        Self::from((subgame, secret, choices, geometry))
+        Self::from((subgame, secret, choices))
     }
 }
 
-impl From<(Path, Abstraction, Path, Geometry)> for NlheInfo {
-    fn from((subgame, secret, choices, geometry): (Path, Abstraction, Path, Geometry)) -> Self {
+impl From<(Path, Abstraction, Path)> for NlheInfo {
+    fn from((subgame, secret, choices): (Path, Abstraction, Path)) -> Self {
         let subgame = subgame
             .into_iter()
             .rev()
-            .take_while(|e| e.is_choice())
+            .take_while(rbp_gameplay::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
             .collect::<Path>();
-        let public = NlhePublic::new(subgame, choices, geometry);
+        let public = NlhePublic::new(subgame, choices);
         let secret = NlheSecret::from(secret);
         Self::new(public, secret)
     }
@@ -151,8 +145,8 @@ impl From<(&NlheEncoder, &NlheTree, NlheLeaf)> for NlheInfo {
     fn from((encoder, tree, leaf): (&NlheEncoder, &NlheTree, NlheLeaf)) -> Self {
         let (edge, ref game, head) = leaf;
         let subgame = std::iter::once(edge)
-            .chain(tree.at(head).map(|a| a.edge()))
-            .take_while(|e| e.is_choice())
+            .chain(tree.at(head).map(rbp_mccfr::Jump::edge))
+            .take_while(super::edge::NlheEdge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -160,8 +154,7 @@ impl From<(&NlheEncoder, &NlheTree, NlheLeaf)> for NlheInfo {
             .collect::<Path>();
         let choices = game.as_ref().choices(subgame.aggression());
         let secret = NlheSecret::from(encoder.abstraction(&game.sweat()));
-        let geometry = Geometry::from_game(game.as_ref());
-        let public = NlhePublic::new(subgame, choices, geometry);
+        let public = NlhePublic::new(subgame, choices);
         Self::new(public, secret)
     }
 }
@@ -182,16 +175,16 @@ impl Arbitrary for NlheInfo {
                         .choose(&mut rand::rng())
                         .map(|&e| {
                             game = game.apply(game.snap(game.actionize(e)));
-                            depth = if e.is_chance().not() { depth + e.is_aggro() as usize } else { 0 };
+                            depth = e.is_chance().not().then(|| depth + e.is_aggro() as usize).unwrap_or(0);
                             e
                         })
                 })?
             })
-            .filter(|e| e.is_choice())
+            .filter(rbp_gameplay::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .take_while(|e| e.is_choice())
+            .take_while(rbp_gameplay::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -199,8 +192,7 @@ impl Arbitrary for NlheInfo {
             let choices = game.choices(subgame.aggression());
             if choices.length() > 0 {
                 let secret = NlheSecret::from(Abstraction::from(street));
-                let geometry = Geometry::from_game(&game);
-                return Self::new(NlhePublic::new(subgame, choices, geometry), secret);
+                return Self::new(NlhePublic::new(subgame, choices), secret);
             }
         }
     }
@@ -230,10 +222,7 @@ mod tests {
                 let edge = NlheEdge::from(game.edgify(action, depth));
                 assert!(
                     learned.contains(&edge),
-                    "Raise({}) -> {:?} not in trained edges for flop depth={}",
-                    amount,
-                    edge,
-                    depth
+                    "Raise({amount}) -> {edge:?} not in trained edges for flop depth={depth}"
                 );
             }
         }
@@ -260,13 +249,7 @@ mod tests {
         for amount in game.to_raise()..game.to_shove() {
             let action = Action::Raise(amount);
             let edge = NlheEdge::from(game.edgify(action, depth));
-            assert!(
-                trained.contains(&edge),
-                "Raise({}) -> {:?} not in trained edges for turn depth={}",
-                amount,
-                edge,
-                depth
-            );
+            assert!(trained.contains(&edge), "Raise({amount}) -> {edge:?} not in trained edges for turn depth={depth}");
         }
     }
 
@@ -305,13 +288,11 @@ mod tests {
             Path::from(i64::from(info.subgame())),
             Abstraction::from(i16::from(info.bucket())),
             Path::from(i64::from(info.choices())),
-            info.geometry(),
         ));
         assert_eq!(info.subgame(), deserialized.subgame());
         assert_eq!(info.street(), deserialized.street());
         assert_eq!(info.bucket(), deserialized.bucket());
         assert_eq!(info.choices(), deserialized.choices());
-        assert_eq!(info.geometry(), deserialized.geometry());
     }
 
     #[test]
@@ -322,7 +303,7 @@ mod tests {
             let e1 = NlheEdge::from(game.edgify(a1, depth));
             let a2 = game.actionize(Edge::from(e1));
             let e2 = NlheEdge::from(game.edgify(a2, depth));
-            assert_eq!(e1, e2, "Roundtrip failed: {:?} -> {:?} -> {:?} -> {:?}", a1, e1, a2, e2);
+            assert_eq!(e1, e2, "Roundtrip failed: {a1:?} -> {e1:?} -> {a2:?} -> {e2:?}");
         }
     }
 
@@ -338,7 +319,7 @@ mod tests {
         for amount in game.to_raise()..game.to_shove() {
             let raise = Action::Raise(amount);
             let edge = NlheEdge::from(game.edgify(raise, depth));
-            assert!(trained.contains(&edge), "amount={} edge={:?}", amount, edge);
+            assert!(trained.contains(&edge), "amount={amount} edge={edge:?}");
         }
     }
 
@@ -351,12 +332,12 @@ mod tests {
             .push(Action::Raise(9))
             .push(Action::Call(6));
         let abs = Abstraction::random();
-        let info = NlheInfo::from((recall.subgame(), abs, recall.choices(), Geometry::from_game(&recall.head())));
+        let info = NlheInfo::from((recall.subgame(), abs, recall.choices()));
         let current = recall
             .subgame()
             .into_iter()
             .rev()
-            .take_while(|e| e.is_choice())
+            .take_while(rbp_gameplay::Edge::is_choice)
             .collect::<Path>()
             .rev()
             .collect::<Path>();
@@ -374,6 +355,6 @@ mod tests {
         let live_choices = recall.head().choices(recall.subgame().aggression());
         let abs = Abstraction::from(Street::Flop);
         let info = NlheInfo::from((&recall, abs));
-        assert_eq!(info.choices(), live_choices, "info should reflect live recall state",);
+        assert_eq!(info.choices(), live_choices, "info should reflect live recall state");
     }
 }

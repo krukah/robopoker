@@ -13,7 +13,7 @@ impl Player for Fish {
     }
 
     async fn decide(&mut self, recall: &Witness) -> Action {
-        let rng = &mut rand::rng();
+        let ref mut rng = rand::rng();
         recall
             .head()
             .legal()

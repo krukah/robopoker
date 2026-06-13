@@ -155,7 +155,7 @@ impl EvaluationRepository for Arc<Client> {
             "SELECT hand_id, seq, player_id, encoded, elapsed_ms FROM {} WHERE hand_id = ANY($1) ORDER BY hand_id, seq",
             rbp_database::actions()
         ));
-        let uuids: Vec<uuid::Uuid> = hands.iter().map(|h| h.inner()).collect();
+        let uuids: Vec<uuid::Uuid> = hands.iter().map(rbp_core::ID::inner).collect();
         let hrows = self.query(sql_h.as_str(), &[&uuids]).await?;
         let prows = self.query(sql_p.as_str(), &[&uuids]).await?;
         let arows = self.query(sql_a.as_str(), &[&uuids]).await?;

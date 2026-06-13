@@ -144,14 +144,7 @@ impl From<HandSeq> for Hand {
 
 impl std::fmt::Display for HandSeq {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.cards()
-                .map(|c| format!("{}", c))
-                .collect::<Vec<String>>()
-                .join(" ")
-        )
+        write!(f, "{}", self.cards().map(|c| format!("{c}")).collect::<Vec<String>>().join(" "))
     }
 }
 

@@ -99,11 +99,8 @@ async fn evaluate_single<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case) ->
     };
 
     let observed = vec![(hand_ref.to_string(), prob)];
-    let prob = match prob {
-        Some(p) => p,
-        None => {
-            return outcome(Status::Skip, "no policy (state unvisited / empty blueprint)".into(), observed);
-        }
+    let Some(prob) = prob else {
+        return outcome(Status::Skip, "no policy (state unvisited / empty blueprint)".into(), observed);
     };
 
     let expect = merged_expect(catalog, case);
@@ -167,15 +164,11 @@ async fn evaluate_pair_diff<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
     let b = observed[1].1.unwrap();
     let diff = (a - b).abs();
     let expect = merged_expect(catalog, case);
-    let bound = match expect.max_abs_diff {
-        Some(b) => b,
-        None => {
-            return mk(Status::Error, "pair_diff missing max_abs_diff".into(), observed);
-        }
+    let Some(bound) = expect.max_abs_diff else {
+        return mk(Status::Error, "pair_diff missing max_abs_diff".into(), observed);
     };
 
-    let obs_str =
-        format!("{}={}  {}={}", observed[0].0, fmt_pct(observed[0].1), observed[1].0, fmt_pct(observed[1].1),);
+    let obs_str = format!("{}={}  {}={}", observed[0].0, fmt_pct(observed[0].1), observed[1].0, fmt_pct(observed[1].1));
     if diff > bound {
         return mk(
             Status::Fail,
@@ -198,20 +191,33 @@ async fn evaluate_monotonic<O: Ops>(ops: &O, catalog: &Catalog<'_>, case: &Case)
         observed,
     };
 
-    let Some(hands) = case.hands.as_ref() else {
-        return mk(Status::Error, "monotonic requires `hands` (length ≥2)".into(), vec![]);
+    // Either N hands at one history, or one hand across N histories.
+    // Tuple shape: (display_label, hand_ref, history_ref).
+    let points: Vec<(String, String, String)> = match (&case.hands, &case.histories, &case.hand) {
+        (Some(hs), None, _) if hs.len() >= 2 => hs
+            .iter()
+            .map(|h| (h.clone(), h.clone(), case.history.clone()))
+            .collect(),
+        (None, Some(hs), Some(hand)) if hs.len() >= 2 => hs
+            .iter()
+            .map(|h| (h.rsplit('.').next().unwrap_or(h).into(), hand.clone(), h.clone()))
+            .collect(),
+        _ => {
+            return mk(
+                Status::Error,
+                "monotonic needs `hands[≥2]` with `history`, or `hand` with `histories[≥2]`".into(),
+                vec![],
+            );
+        }
     };
-    if hands.len() < 2 {
-        return mk(Status::Error, format!("monotonic requires ≥2 hands, got {}", hands.len()), vec![]);
-    }
 
-    let mut observed = Vec::with_capacity(hands.len());
-    for h in hands {
-        let prob = match lookup_prob(ops, catalog, h, &case.history, &case.edge).await {
+    let mut observed = Vec::with_capacity(points.len());
+    for (label, hand_ref, history_ref) in &points {
+        let prob = match lookup_prob(ops, catalog, hand_ref, history_ref, &case.edge).await {
             Ok(p) => p,
             Err(e) => return mk(Status::Error, format!("{e}"), observed.clone()),
         };
-        observed.push((h.clone(), prob));
+        observed.push((label.clone(), prob));
     }
 
     let missing: Vec<String> = observed

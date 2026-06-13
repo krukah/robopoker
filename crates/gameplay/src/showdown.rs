@@ -56,9 +56,9 @@ impl Showdown {
             .iter()
             .filter(|p| p.strength() < &self.best)
             .filter(|p| p.pnl().status() != State::Folding)
-            .map(|p| p.strength())
+            .map(Settlement::strength)
             .max()
-            .cloned()
+            .copied()
     }
 
     fn remaining(&mut self) -> Option<Chips> {
@@ -93,7 +93,7 @@ impl Showdown {
         let n = winners.len();
         let share = chips / n as Chips;
         let bonus = chips % n as Chips;
-        for winner in winners.iter_mut() {
+        for winner in &mut winners {
             winner.add(share);
         }
         for winner in winners.iter_mut().take(bonus as usize) {

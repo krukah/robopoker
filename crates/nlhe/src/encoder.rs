@@ -39,8 +39,7 @@ impl NlheEncoder {
         let subgame = Path::default();
         let present = self.abstraction(&game.sweat());
         let choices = game.as_ref().choices(0);
-        let geometry = Geometry::from_game(game.as_ref());
-        NlheInfo::from((subgame, present, choices, geometry))
+        NlheInfo::from((subgame, present, choices))
     }
 }
 
@@ -65,8 +64,7 @@ impl rbp_mccfr::CfrEncoder for NlheEncoder {
         let subgame = past.into_iter().map(Edge::from).collect::<Path>();
         let present = self.abstraction(&game.sweat());
         let choices = game.as_ref().choices(subgame.aggression());
-        let geometry = Geometry::from_game(game.as_ref());
-        NlheInfo::from((subgame, present, choices, geometry))
+        NlheInfo::from((subgame, present, choices))
     }
 }
 
@@ -145,8 +143,7 @@ impl NlheEncoder {
                 Some((e, *acc))
             })
             .find(|&(_, acc)| threshold < acc)
-            .map(|(e, _)| e)
-            .unwrap_or(biased.last().expect("non-empty distribution").0)
+            .map_or(biased.last().expect("non-empty distribution").0, |(e, _)| e)
     }
 }
 impl<const W: usize> WorldRestrict<W> for NlheEncoder {
@@ -175,15 +172,17 @@ impl<const W: usize> WorldRestrict<W> for NlheEncoder {
             .map(|(game, obs)| (game, self.abstraction(&obs)))
             .map(|(game, abs)| (game, NlheSecret::from(abs)))
             .find(|(_, secret)| belief.remember(secret, world))
-            .map(|(game, _)| game)
-            .unwrap_or_else(|| {
-                tracing::warn!(
-                    world = world.index(),
-                    max_rejections = MAX_REJECTIONS,
-                    "rejection sampling exhausted; falling back to unconstrained hole",
-                );
-                NlheGame::from(baseline.deal(position, Deck::from(available).hole()))
-            })
+            .map_or_else(
+                || {
+                    tracing::warn!(
+                        world = world.index(),
+                        max_rejections = MAX_REJECTIONS,
+                        "rejection sampling exhausted; falling back to unconstrained hole",
+                    );
+                    NlheGame::from(baseline.deal(position, Deck::from(available).hole()))
+                },
+                |(game, _)| game,
+            )
     }
 }
 
@@ -208,10 +207,10 @@ impl rbp_database::Hydrate for NlheEncoder {
             lookup.insert(obs, abs);
             count += 1;
             if count.is_multiple_of(10_000_000) {
-                tracing::info!("{:<32}{:<32}", format!("{:>16} isomorphisms", count), "from database");
+                tracing::info!("{:<32}{:<32}", format!("{count:>16} isomorphisms"), "from database");
             }
         }
-        tracing::info!("{:<32}{:<32}", format!("{:>16} isomorphisms", count), "from database");
+        tracing::info!("{:<32}{:<32}", format!("{count:>16} isomorphisms"), "from database");
         Self(lookup)
     }
 }

@@ -32,14 +32,14 @@ impl Path {
     pub fn aggression(&self) -> usize {
         self.into_iter()
             .rev()
-            .take_while(|e| e.is_choice())
-            .filter(|e| e.is_aggro())
+            .take_while(Edge::is_choice)
+            .filter(Edge::is_aggro)
             .count()
     }
     /// Street derived from counting Draw edges.
     /// 0 draws = Pref, 1 = Flop, 2 = Turn, 3+ = River.
     pub fn street(&self) -> rbp_cards::Street {
-        match self.into_iter().filter(|e| e.is_chance()).count() {
+        match self.into_iter().filter(Edge::is_chance).count() {
             0 => rbp_cards::Street::Pref,
             1 => rbp_cards::Street::Flop,
             2 => rbp_cards::Street::Turn,
@@ -143,9 +143,7 @@ impl Iterator for Path {
 
     fn next(&mut self) -> Option<Self::Item> {
         let x = (self.0 & 0x1F) as u8;
-        if self.0 == 0 {
-            None
-        } else if x == 0 {
+        if self.0 == 0 || x == 0 {
             None
         } else {
             self.0 >>= 5;
@@ -158,9 +156,7 @@ impl DoubleEndedIterator for Path {
     fn next_back(&mut self) -> Option<Self::Item> {
         let shift = ((63u32.saturating_sub(self.0.leading_zeros())) / 5) * 5;
         let bloop = (self.0 >> shift) & 0x1F;
-        if self.0 == 0 {
-            None
-        } else if bloop == 0 {
+        if self.0 == 0 || bloop == 0 {
             None
         } else {
             self.0 &= !(0x1F << shift);

@@ -47,7 +47,7 @@ impl Equity {
                 cdf_y += y.density(&abstraction);
                 cdf_x - cdf_y
             })
-            .map(|delta| delta.abs())
+            .map(f32::abs)
             .sum::<Energy>()
             / Abstraction::size() as Energy
     }

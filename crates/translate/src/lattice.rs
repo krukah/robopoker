@@ -60,7 +60,7 @@ where
     {
         let mut pairs = iter.into_iter().collect::<Vec<_>>();
         assert!(!pairs.is_empty(), "Lattice must be non-empty");
-        assert!(pairs.iter().all(|(s, _)| s.is_finite()), "Lattice scalars must be finite",);
+        assert!(pairs.iter().all(|(s, _)| s.is_finite()), "Lattice scalars must be finite");
         pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).expect("finite scalar keys"));
         assert!(
             pairs.windows(2).all(|w| w[0].0 < w[1].0),
@@ -93,6 +93,12 @@ where
     /// Anchor count. Always `>= 1`.
     pub fn len(&self) -> usize {
         self.pairs.len()
+    }
+
+    /// True iff the lattice has no anchors. Always `false` in practice
+    /// (constructor guarantees `len >= 1`), exposed to satisfy clippy.
+    pub fn is_empty(&self) -> bool {
+        self.pairs.is_empty()
     }
 
     /// Iterator over scalars in ascending order.
@@ -166,9 +172,7 @@ where
         R: Rng + ?Sized,
     {
         let bracket = self.bracket(observed);
-        if bracket.is_clamped() {
-            bracket.lo()
-        } else if rng.random::<f64>() < self.pharmonic(bracket, observed) {
+        if bracket.is_clamped() || rng.random::<f64>() < self.pharmonic(bracket, observed) {
             bracket.lo()
         } else {
             bracket.hi()
@@ -177,9 +181,7 @@ where
 
     pub fn phargmax(&self, observed: Scalar<A>) -> Anchor {
         let bracket = self.bracket(observed);
-        if bracket.is_clamped() {
-            bracket.lo()
-        } else if self.pharmonic(bracket, observed) >= 0.5 {
+        if bracket.is_clamped() || self.pharmonic(bracket, observed) >= 0.5 {
             bracket.lo()
         } else {
             bracket.hi()

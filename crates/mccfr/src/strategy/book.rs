@@ -102,8 +102,7 @@ where
         self.encounters_ref()
             .get(info)
             .and_then(|memory| memory.get(edge))
-            .map(|e| e.regret)
-            .unwrap_or_else(|| edge.default_regret())
+            .map_or_else(|| edge.default_regret(), |e| e.regret)
     }
 
     fn cum_payoff(&self, info: &Self::I, edge: &Self::E) -> Utility {

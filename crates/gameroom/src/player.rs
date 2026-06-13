@@ -63,6 +63,6 @@ impl<P: Player + ?Sized> Player for Box<P> {
     }
 
     async fn notify(&mut self, event: &Event) {
-        (**self).notify(event).await
+        (**self).notify(event).await;
     }
 }

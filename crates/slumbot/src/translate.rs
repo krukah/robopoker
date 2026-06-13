@@ -2,15 +2,23 @@ use rbp_cards::*;
 use rbp_core::*;
 use rbp_gameplay::*;
 
-/// Slumbot uses 50/100 blinds with 20000 stacks.
+/// Slumbot uses 50/100 blinds with 20000 stacks (200 BB deep).
 const BBLIND: i64 = 100;
 const SBLIND: i64 = 50;
 const STACKS: i64 = 20000;
+/// Our chip stack when playing Slumbot. Hardcoded to 400 (200 BB at
+/// `B_BLIND=2`) to match Slumbot's 200-BB game. The blueprint is trained at
+/// `STACK=200` (100 BB); this override only affects the chip math during a
+/// Slumbot session so our parser correctly interprets Slumbot's BB-relative
+/// bets and `SCALE` lines our `B_BLIND` up with theirs (`B_BLIND * SCALE ==
+/// BBLIND`). Strategy lookup degrades gracefully via the pot-relative bet
+/// abstraction.
+pub const SLUMBOT_STACK: Chips = 400;
 /// Integer multiplier from our chip scale to Slumbot's.
-const SCALE: i64 = STACKS / (STACK as i64);
+const SCALE: i64 = STACKS / (SLUMBOT_STACK as i64);
 
 pub fn parse_card(s: &str) -> anyhow::Result<Card> {
-    Card::try_from(s).map_err(|e| anyhow::anyhow!("bad card '{}': {}", s, e))
+    Card::try_from(s).map_err(|e| anyhow::anyhow!("bad card '{s}': {e}"))
 }
 
 pub fn parse_hole(cards: &[String]) -> anyhow::Result<(Card, Card)> {
@@ -83,8 +91,8 @@ impl ParseState {
         while !rest.is_empty() {
             match rest.as_bytes()[0] {
                 b'b' => {
-                    let n = rest[1..].chars().take_while(|c| c.is_ascii_digit()).count();
-                    if let Ok(total) = rest[1..1 + n].parse::<i64>() {
+                    let n = rest[1..].chars().take_while(char::is_ascii_digit).count();
+                    if let Ok(total) = rest[1..=n].parse::<i64>() {
                         self.bet(total);
                     }
                     rest = &rest[1 + n..];
@@ -124,9 +132,9 @@ impl ParseState {
                 Ok((Action::Call(game.to_call()), 1))
             }
             b'b' => {
-                let n = token[1..].chars().take_while(|c| c.is_ascii_digit()).count();
+                let n = token[1..].chars().take_while(char::is_ascii_digit).count();
                 anyhow::ensure!(n > 0, "b without amount");
-                let total = token[1..1 + n].parse::<i64>()?;
+                let total = token[1..=n].parse::<i64>()?;
                 let fraction = self.fraction(total);
                 self.bet(total);
                 Ok((fraction_to_action(fraction, game), 1 + n))
@@ -161,7 +169,7 @@ pub fn parse_actions(raw: &str, old: &str, game: &Game) -> anyhow::Result<Vec<Ac
         state = state.apply(*actions.last().unwrap());
         rest = &rest[consumed..];
     }
-    Ok(actions.into_iter().filter(|a| a.is_choice()).collect())
+    Ok(actions.into_iter().filter(rbp_gameplay::Action::is_choice).collect())
 }
 
 /// Convert a pot-fraction raise into an Action in our chip scale.
@@ -198,7 +206,7 @@ pub(crate) fn encode_action(action: Action, game: &Game) -> String {
             if sremaining <= scall {
                 "c".into()
             } else if sminraise >= smax {
-                format!("b{}", smax)
+                format!("b{smax}")
             } else {
                 let stotal = sstake + scall + (fraction * sbase as f64).round() as i64;
                 format!("b{}", stotal.clamp(sminraise, smax))

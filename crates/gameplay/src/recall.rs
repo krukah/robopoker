@@ -80,7 +80,7 @@ pub trait Recall {
     /// player that consumes off-tree actions).
     fn history(&self) -> Vec<Edge> {
         let translation = rbp_core::translation();
-        let rng = &mut rand::rng();
+        let ref mut rng = rand::rng();
         self.states()
             .into_iter()
             .zip(self.actions().iter())
@@ -104,7 +104,7 @@ pub trait Recall {
         self.history()
             .into_iter()
             .rev()
-            .take_while(|e| e.is_choice())
+            .take_while(Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -170,6 +170,6 @@ mod tests {
                 Some(edge)
             })
             .collect::<Vec<_>>();
-        assert_eq!(translated, manual_edgify_walk, "default Snap must reproduce the historical edgify path",);
+        assert_eq!(translated, manual_edgify_walk, "default Snap must reproduce the historical edgify path");
     }
 }

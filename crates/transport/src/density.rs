@@ -37,7 +37,7 @@ where
     type Support = T;
 
     fn density(&self, x: &Self::Support) -> Probability {
-        self.get(x).cloned().unwrap_or(0.)
+        self.get(x).copied().unwrap_or(0.)
     }
 
     fn support(&self) -> impl Iterator<Item = Self::Support> {
@@ -45,6 +45,8 @@ where
     }
 }
 
+// Density impl is consumed via concrete HashMap construction; generic hasher param would propagate noise.
+#[allow(clippy::implicit_hasher)]
 impl<T> Density for HashMap<T, Probability>
 where
     T: Eq + Hash + Support,
@@ -52,7 +54,7 @@ where
     type Support = T;
 
     fn density(&self, x: &Self::Support) -> Probability {
-        self.get(x).cloned().unwrap_or(0.)
+        self.get(x).copied().unwrap_or(0.)
     }
 
     fn support(&self) -> impl Iterator<Item = Self::Support> {

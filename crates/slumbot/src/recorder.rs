@@ -1,3 +1,4 @@
+use crate::translate::SLUMBOT_STACK;
 use rbp_auth::*;
 use rbp_core::*;
 use rbp_gameplay::*;
@@ -18,7 +19,7 @@ pub struct Recorder {
 impl Recorder {
     pub async fn new(db: Arc<tokio_postgres::Client>, hero: ID<Member>) -> Self {
         let room = ID::<records::Room>::default();
-        db.execute("INSERT INTO rooms (id, stakes) VALUES ($1, $2)", &[&room.inner(), &{ STACK }])
+        db.execute("INSERT INTO rooms (id, stakes) VALUES ($1, $2)", &[&room.inner(), &{ SLUMBOT_STACK }])
             .await
             .expect("failed to create room");
         Self {

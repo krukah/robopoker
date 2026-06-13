@@ -60,7 +60,7 @@ impl SamplingScheme for PrunableSampling {
         let pruned = branches
             .iter()
             .filter(|(edge, _, _)| profile.cum_regret(info, edge) > threshold)
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
         if pruned.is_empty() { branches } else { pruned }
     }

@@ -46,6 +46,10 @@ impl Arrangement {
     pub fn len(&self) -> usize {
         self.0.iter().filter_map(|&c| c).count()
     }
+    /// True iff no cards have been dealt.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     /// Card at a specific index.
     pub fn get(&self, index: usize) -> Option<Card> {
         self.0.get(index).and_then(|&c| c)
@@ -197,8 +201,8 @@ impl rbp_core::Arbitrary for Arrangement {
 
 impl std::fmt::Display for Arrangement {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let cards = self.vec().iter().map(|c| c.to_string()).collect::<Vec<_>>().join(" ");
-        write!(f, "{}", cards)
+        let cards = self.vec().iter().map(ToString::to_string).collect::<Vec<_>>().join(" ");
+        write!(f, "{cards}")
     }
 }
 

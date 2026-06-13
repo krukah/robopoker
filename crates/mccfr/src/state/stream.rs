@@ -49,7 +49,7 @@ where
     /// no chance anchors at all, the result is the full sequence.
     fn current_street(self) -> Vec<E> {
         let walk: Vec<_> = self.into_iter().collect();
-        let start = walk.iter().rposition(|d| d.0.is_chance()).map(|i| i + 1).unwrap_or(0);
+        let start = walk.iter().rposition(|d| d.0.is_chance()).map_or(0, |i| i + 1);
         walk[start..].iter().map(|d| d.1).collect()
     }
 }

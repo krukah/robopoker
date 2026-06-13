@@ -80,7 +80,7 @@ where
             ancestors.windows(2).all(|w| w[0].node().index() > w[1].node().index()),
             "upward walk should visit strictly decreasing node indices"
         );
-        let mut path = ancestors.into_iter().map(|a| a.edge()).collect::<Vec<_>>();
+        let mut path = ancestors.into_iter().map(rbp_mccfr::Jump::edge).collect::<Vec<_>>();
         path.reverse();
         path.push(edge);
         let full = self.prefix_edges().chain(path);
@@ -99,9 +99,7 @@ where
     /// should expand into continuation-choice nodes).
     fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         let turn = node.game().turn();
-        if turn.is_terminal() {
-            vec![]
-        } else if turn.is_chance() && !node.game().is_frontier() {
+        if turn.is_terminal() || (turn.is_chance() && !node.game().is_frontier()) {
             vec![]
         } else {
             node.branches()

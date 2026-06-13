@@ -18,11 +18,8 @@ pub fn render(
     out.push_str(&format!("# Blueprint litmus — {ts}Z\n\n"));
     out.push_str(&format!("**API**: `{api_label}`\n\n"));
     if let Some(s) = status {
-        let exp = s
-            .exploit
-            .map(|v| format!("{v:.1}"))
-            .unwrap_or_else(|| "n/a".to_string());
-        out.push_str(&format!("**Blueprint**: epoch={}  infosets={}  sum_regret={exp}\n\n", s.epoch, s.infosets,));
+        let exp = s.exploit.map_or_else(|| "n/a".to_string(), |v| format!("{v:.1}"));
+        out.push_str(&format!("**Blueprint**: epoch={}  infosets={}  sum_regret={exp}\n\n", s.epoch, s.infosets));
     }
 
     let mut pass = 0usize;

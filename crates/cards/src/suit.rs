@@ -73,7 +73,7 @@ impl TryFrom<&str> for Suit {
             "d" | "♦" => Ok(Suit::D),
             "h" | "♥" => Ok(Suit::H),
             "s" | "♠" => Ok(Suit::S),
-            _ => Err(format!("invalid suit str: {}", s)),
+            _ => Err(format!("invalid suit str: {s}")),
         }
     }
 }

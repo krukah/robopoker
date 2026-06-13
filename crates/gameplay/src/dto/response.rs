@@ -25,11 +25,7 @@ pub struct ApiStrategy {
     pub history: Path,
     pub present: Abstraction,
     pub choices: Path,
-    /// SPR-bucket tag (see `rbp_holdem::Geometry::tag()`). Carried on the
-    /// wire as a single byte so the holdem crate's `HoldemInfo::from` can
-    /// reconstruct the infoset key without re-replaying the path.
-    #[serde(default)]
-    pub geometry: u8,
+    pub spr: u8,
     pub accumulated: BTreeMap<Edge, f32>,
     pub visits: BTreeMap<Edge, u32>,
     pub payoff: f32,

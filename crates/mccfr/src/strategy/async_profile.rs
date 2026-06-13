@@ -108,7 +108,7 @@ pub trait AsyncProfile: Send + Sync {
         }
         let chance = node.game().turn() == Self::T::chance();
         let walker = node.game().turn() == self.traverser();
-        let policy = if !chance { Some(self.policy(node.info()).await) } else { None };
+        let policy = if chance { None } else { Some(self.policy(node.info()).await) };
         let sample = if !chance && !walker { Some(self.sample(node.info()).await) } else { None };
         let mut total = 0.0;
         for (child, edge) in node.edges() {

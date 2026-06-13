@@ -16,7 +16,7 @@
 //!
 //! Each session owns its own `Player`, `Recorder` (own Room row), and
 //! `slumbot::Client` (own auth token). Sessions of the same variant emit
-//! metrics with identical labels (`variant`, `regime`, `task_id`)
+//! metrics with identical labels (`variant`, `regime`, `aws_ecs_task_id`)
 //! so OTLP aggregates them — the variant's bb/100 panel stays correct
 //! across session counts. The point of multi-session is filling
 //! otherwise-idle CPU cores during a single Player's CFR-solve wait:

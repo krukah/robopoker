@@ -18,8 +18,8 @@ where
     inner: &'blueprint P,
 }
 
-impl<'blueprint, P, const D: usize> Copy for DepthView<'blueprint, P, D> where P: RefProf {}
-impl<'blueprint, P, const D: usize> Clone for DepthView<'blueprint, P, D>
+impl<P, const D: usize> Copy for DepthView<'_, P, D> where P: RefProf {}
+impl<P, const D: usize> Clone for DepthView<'_, P, D>
 where
     P: RefProf,
 {

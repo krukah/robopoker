@@ -34,7 +34,7 @@ pub trait CfrEncoder {
     /// every expansion, catching silent drift early.
     ///
     /// Defaults to `false` because the check must be explicitly opted into —
-    /// encoders that legitimately diverge between the two paths (e.g. holdem's
+    /// encoders that legitimately diverge between the two paths (e.g. nlhe's
     /// chip-snapping `apply` fixup) would trip the assertion.
     const CHECK_RECALL: bool = false;
 

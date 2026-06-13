@@ -5,7 +5,7 @@
 //! between the cube and the rest of the system.
 //!
 //! Pure data lives here in [`rbp_core`] so the WASM client can use it
-//! without dragging in the database/holdem feature graph. Gameroom-side
+//! without dragging in the database/nlhe feature graph. Gameroom-side
 //! extensions (`into_player`, `member`, telemetry keys) live in
 //! `rbp_gameroom::players::variant` and read this type.
 //!

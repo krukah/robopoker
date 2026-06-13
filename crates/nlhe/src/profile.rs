@@ -22,7 +22,6 @@ impl rbp_database::Schema for NlheProfile {
             tokio_postgres::types::Type::INT8,   // past (subgame path)
             tokio_postgres::types::Type::INT2,   // present (abstraction bucket)
             tokio_postgres::types::Type::INT8,   // choices (available edges)
-            tokio_postgres::types::Type::INT2,   // geometry (SPR bucket)
             tokio_postgres::types::Type::INT8,   // edge (action taken)
             tokio_postgres::types::Type::FLOAT4, // weight
             tokio_postgres::types::Type::FLOAT4, // regret
@@ -35,7 +34,7 @@ impl rbp_database::Schema for NlheProfile {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
             rbp_database::leaked(format!(
-                "COPY {} (past, present, choices, geometry, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
+                "COPY {} (past, present, choices, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
                 rbp_database::blueprint()
             ))
         })
@@ -50,12 +49,11 @@ impl rbp_database::Schema for NlheProfile {
                 past       BIGINT,
                 present    SMALLINT,
                 choices    BIGINT,
-                geometry   SMALLINT,
                 weight     REAL,
                 regret     REAL,
                 payoff     REAL,
                 visits     INT DEFAULT 0,
-                UNIQUE     (past, present, choices, geometry, edge)
+                UNIQUE     (past, present, choices, edge)
             );",
                 rbp_database::blueprint()
             ))
@@ -67,8 +65,8 @@ impl rbp_database::Schema for NlheProfile {
         let t = rbp_database::blueprint();
         SQL.get_or_init(|| {
             rbp_database::leaked(format!(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_{t}_upsert  ON {t} (present, past, choices, geometry, edge);
-             CREATE        INDEX IF NOT EXISTS idx_{t}_bucket  ON {t} (present, past, choices, geometry);
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_{t}_upsert  ON {t} (present, past, choices, edge);
+             CREATE        INDEX IF NOT EXISTS idx_{t}_bucket  ON {t} (present, past, choices);
              CREATE        INDEX IF NOT EXISTS idx_{t}_present ON {t} (present);
              CREATE        INDEX IF NOT EXISTS idx_{t}_edge    ON {t} (edge);
              CREATE        INDEX IF NOT EXISTS idx_{t}_past    ON {t} (past);"
@@ -107,7 +105,7 @@ impl rbp_database::Hydrate for NlheProfile {
             .map(|r| r.get::<_, i64>(0) as usize)
             .expect("to have already created epoch metadata");
         let blueprint_sql = format!(
-            "SELECT past, present, choices, geometry, edge, weight, regret, payoff, visits FROM {}",
+            "SELECT past, present, choices, edge, weight, regret, payoff, visits FROM {}",
             rbp_database::blueprint()
         );
         let mut encounters = HashMap::new();
@@ -119,13 +117,12 @@ impl rbp_database::Hydrate for NlheProfile {
             let subgame = rbp_gameplay::Path::from(row.get::<_, i64>(0) as u64);
             let present = rbp_gameplay::Abstraction::from(row.get::<_, i16>(1));
             let choices = rbp_gameplay::Path::from(row.get::<_, i64>(2) as u64);
-            let geometry = Geometry::from(row.get::<_, i16>(3) as u8);
-            let edge = NlheEdge::from(row.get::<_, i64>(4) as u64);
-            let weight = row.get::<_, f32>(5);
-            let regret = row.get::<_, f32>(6);
-            let payoff = row.get::<_, f32>(7);
-            let visits = row.get::<_, i32>(8) as u32;
-            let bucket = NlheInfo::from((subgame, present, choices, geometry));
+            let edge = NlheEdge::from(row.get::<_, i64>(3) as u64);
+            let weight = row.get::<_, f32>(4);
+            let regret = row.get::<_, f32>(5);
+            let payoff = row.get::<_, f32>(6);
+            let visits = row.get::<_, i32>(7) as u32;
+            let bucket = NlheInfo::from((subgame, present, choices));
             encounters
                 .entry(bucket)
                 .or_insert_with(HashMap::default)
@@ -133,7 +130,7 @@ impl rbp_database::Hydrate for NlheProfile {
                 .or_insert(Encounter::new(weight, regret, payoff, visits));
         }
         tracing::info!("{:<32}{:<32}", format!("{} infos", encounters.len()), "from database");
-        tracing::info!("{:<32}{:<32}", format!("{} iters", epochs), "from database");
+        tracing::info!("{:<32}{:<32}", format!("{epochs} iters"), "from database");
         Self {
             epochs,
             encounters,
@@ -144,18 +141,16 @@ impl rbp_database::Hydrate for NlheProfile {
 
 #[cfg(feature = "server")]
 impl NlheProfile {
-    pub fn rows(&self) -> impl Iterator<Item = (i64, i16, i64, i16, i64, f32, f32, f32, i32)> + '_ {
+    pub fn rows(&self) -> impl Iterator<Item = (i64, i16, i64, i64, f32, f32, f32, i32)> + '_ {
         self.encounters.iter().flat_map(|(info, edges)| {
             let present = i16::from(info.bucket());
             let subgame = i64::from(info.subgame());
             let choices = i64::from(info.choices());
-            let geometry = info.geometry().tag() as i16;
             edges.iter().map(move |(edge, encounter)| {
                 (
                     subgame,
                     present,
                     choices,
-                    geometry,
                     u64::from(*edge) as i64,
                     encounter.weight,
                     encounter.regret,

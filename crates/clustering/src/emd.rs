@@ -72,8 +72,8 @@ mod tests {
     #[test]
     fn is_equity_emd_symmetric() {
         let metric = Metric::default();
-        let h1 = &Histogram::from(Observation::from(Street::Turn));
-        let h2 = &Histogram::from(Observation::from(Street::Turn));
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
         assert!(d12 == d21);
@@ -81,8 +81,8 @@ mod tests {
     #[test]
     fn is_equity_emd_positive() {
         let metric = Metric::default();
-        let h1 = &Histogram::from(Observation::from(Street::Turn));
-        let h2 = &Histogram::from(Observation::from(Street::Turn));
+        let ref h1 = Histogram::from(Observation::from(Street::Turn));
+        let ref h2 = Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
         assert!(d12 > 0.);
@@ -108,17 +108,17 @@ mod tests {
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d23 = Sinkhorn::from((&h2, &h3, &metric)).minimize().cost();
         let d13 = Sinkhorn::from((&h1, &h3, &metric)).minimize().cost();
-        assert!(d12 + d23 >= d13, "{} + {} > {}", d12, d23, d13);
-        assert!(d12 + d13 >= d23, "{} + {} > {}", d12, d13, d23);
-        assert!(d23 + d13 >= d12, "{} + {} > {}", d23, d13, d12);
+        assert!(d12 + d23 >= d13, "{d12} + {d23} > {d13}");
+        assert!(d12 + d13 >= d23, "{d12} + {d13} > {d23}");
+        assert!(d23 + d13 >= d12, "{d23} + {d13} > {d12}");
     }
     #[test]
     fn is_sinkhorn_emd_positive() {
         let EMD(metric, h1, h2, _) = EMD::random();
         let d12 = Sinkhorn::from((&h1, &h2, &metric)).minimize().cost();
         let d21 = Sinkhorn::from((&h2, &h1, &metric)).minimize().cost();
-        assert!(d12 > 0., "{}", d12);
-        assert!(d21 > 0., "{}", d21);
+        assert!(d12 > 0., "{d12}");
+        assert!(d21 > 0., "{d21}");
     }
     #[test]
     fn is_sinkhorn_emd_zero() {
@@ -126,8 +126,8 @@ mod tests {
         let EMD(metric, h1, h2, _) = EMD::random();
         let d11 = Sinkhorn::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Sinkhorn::from((&h2, &h2, &metric)).minimize().cost();
-        assert!(d11 <= TOLERANCE, "consider decreasing temp or tolerance\n{d11} {TOLERANCE}",);
-        assert!(d22 <= TOLERANCE, "consider decreasing temp or tolerance\n{d22} {TOLERANCE}",);
+        assert!(d11 <= TOLERANCE, "consider decreasing temp or tolerance\n{d11} {TOLERANCE}");
+        assert!(d22 <= TOLERANCE, "consider decreasing temp or tolerance\n{d22} {TOLERANCE}");
     }
 
     /// heuristic implementation should be
@@ -143,9 +143,9 @@ mod tests {
         let d12 = Heuristic::from((&h1, &h2, &metric)).minimize().cost();
         let d23 = Heuristic::from((&h2, &h3, &metric)).minimize().cost();
         let d13 = Heuristic::from((&h1, &h3, &metric)).minimize().cost();
-        assert!(d12 + d23 >= d13 / TOLERANCE, "{} + {} > {}", d12, d23, d13);
-        assert!(d12 + d13 >= d23 / TOLERANCE, "{} + {} > {}", d12, d13, d23);
-        assert!(d23 + d13 >= d12 / TOLERANCE, "{} + {} > {}", d23, d13, d12);
+        assert!(d12 + d23 >= d13 / TOLERANCE, "{d12} + {d23} > {d13}");
+        assert!(d12 + d13 >= d23 / TOLERANCE, "{d12} + {d13} > {d23}");
+        assert!(d23 + d13 >= d12 / TOLERANCE, "{d23} + {d13} > {d12}");
     }
     #[test]
     fn is_heuristic_emd_positive() {

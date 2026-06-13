@@ -17,6 +17,7 @@ rbp-mccfr     = { path = "../mccfr", default-features = false }
 rbp-depth     = { path = "../depth" }
 rbp-hyperparams = { workspace = true }
 rbp-world     = { path = "../world" }
-rand          = { workspace = true }
+rand          = "0.9"
+
 [lints]
 workspace = true

@@ -28,8 +28,7 @@ impl Memory {
         self.data()
             .iter()
             .find(|(e, _, _, _, _)| e == edge)
-            .map(|(_, w, _, _, _)| *w)
-            .unwrap_or_else(|| edge.policy().0)
+            .map_or_else(|| edge.policy().0, |(_, w, _, _, _)| *w)
     }
     /// Lookup regret for edge, defaulting to Edge::regret().1 if not found.
     /// This preserves the fold bias from Edge::regret().
@@ -37,8 +36,7 @@ impl Memory {
         self.data()
             .iter()
             .find(|(e, _, _, _, _)| e == edge)
-            .map(|(_, _, r, _, _)| *r)
-            .unwrap_or_else(|| edge.regret().1)
+            .map_or_else(|| edge.regret().1, |(_, _, r, _, _)| *r)
     }
     /// Lookup EV for edge, defaulting to 0.0 if not found.
     pub fn payoff(&self, edge: &Edge) -> Utility {

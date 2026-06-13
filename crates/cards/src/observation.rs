@@ -31,7 +31,7 @@ impl Observation {
     ///
     /// Each child represents dealing the appropriate number of new cards
     /// (3 for flop, 1 for turn/river) from the remaining deck.
-    pub fn children<'a>(&'a self) -> impl Iterator<Item = Self> + 'a {
+    pub fn children(&self) -> impl Iterator<Item = Self> + '_ {
         let n = self.street().next().n_revealed();
         HandIterator::from((n, Hand::from(*self)))
             .map(|reveal| Hand::add(self.public, reveal))
@@ -83,7 +83,7 @@ impl Observation {
         }
         let used = Hand::add(Hand::from(*self), villain);
         let candidates: Vec<Card> = used.complement().collect();
-        let rng = &mut rand::rng();
+        let ref mut rng = rand::rng();
         let total: Probability = (0..trials)
             .map(|_| {
                 let runout: Hand = candidates.choose_multiple(rng, need).copied().collect();
@@ -237,8 +237,8 @@ impl TryFrom<&str> for Observation {
             return Err("duplicate cards between pocket and board".to_string());
         }
         match (pocket.size(), public.size()) {
-            (2, 0) | (2, 3) | (2, 4) | (2, 5) => Ok(Self::from((pocket, public))),
-            _ => Err(format!("invalid card counts: {} {}", pocket, public)),
+            (2, 0 | 3 | 4 | 5) => Ok(Self::from((pocket, public))),
+            _ => Err(format!("invalid card counts: {pocket} {public}")),
         }
     }
 }
