@@ -14,10 +14,9 @@ categories   = ["game-development", "development-tools::debugging"]
 tracing       = { workspace = true }
 tracing-subscriber                = { version = "0.3", features = ["env-filter", "fmt", "json", "registry", "tracing-log"] }
 tracing-log                       = "0.2"
-tracing-opentelemetry             = "0.28"
-opentelemetry                     = { version = "0.27", features = ["metrics", "trace", "logs"] }
-opentelemetry_sdk                 = { version = "0.27", features = ["rt-tokio", "metrics", "trace", "logs", "spec_unstable_metrics_views"] }
-opentelemetry-otlp                = { version = "0.27", features = ["grpc-tonic", "metrics", "trace", "logs"] }
+opentelemetry                     = { version = "0.27", features = ["metrics", "logs"] }
+opentelemetry_sdk                 = { version = "0.27", features = ["rt-tokio", "metrics", "logs", "spec_unstable_metrics_views"] }
+opentelemetry-otlp                = { version = "0.27", features = ["grpc-tonic", "metrics", "logs"] }
 opentelemetry-semantic-conventions = "0.27"
 tokio                             = { version = "1",   features = ["rt"] }
 
