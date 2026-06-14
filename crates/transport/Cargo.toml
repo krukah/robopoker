@@ -1,6 +1,6 @@
 [package]
 name         = "rbp-transport"
-version      = "1.0.0"
+version      = "1.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -11,7 +11,7 @@ keywords     = ["optimal-transport", "sinkhorn", "emd", "wasserstein"]
 categories   = ["algorithms", "mathematics"]
 
 [dependencies]
-rbp-core = { path = "../util" }
+rbp-core = { workspace = true }
 
 [lints]
 workspace = true

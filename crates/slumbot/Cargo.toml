@@ -1,30 +1,30 @@
 [package]
-name           = "rbp-slumbot"
-version        = "1.0.0"
-edition        = "2024"
-rust-version   = "1.90"
-authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description    = "Slumbot API benchmark client for MCCFR strategy evaluation"
-license        = "MIT"
-repository     = "https://github.com/krukah/robopoker"
-keywords       = ["poker", "benchmark", "slumbot"]
-categories     = ["game-development"]
+name         = "rbp-slumbot"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Slumbot API benchmark client for MCCFR strategy evaluation"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "benchmark", "slumbot"]
+categories   = ["game-development"]
 
 [dependencies]
-rbp-core       = { path = "../util"                                         }
-rbp-cards      = { path = "../cards"                                        }
-rbp-auth       = { path = "../auth",     features = ["server"]            }
-rbp-gameplay   = { path = "../gameplay"                                     }
-rbp-gameroom   = { path = "../gameroom", features = ["server"]            }
-rbp-nlhe     = { path = "../nlhe",   features = ["server"]            }
-rbp-telemetry  = { path = "../telemetry"                                    }
-tokio-postgres = { version = "0.7",      features = ["with-uuid-1"]         }
-tokio          = { version = "1",   features = ["rt", "sync", "time"]        }
+rbp-core       = { workspace = true }
+rbp-cards      = { workspace = true }
+rbp-auth       = { workspace = true, features = ["server"] }
+rbp-gameplay   = { workspace = true }
+rbp-gameroom   = { workspace = true, features = ["server"] }
+rbp-nlhe       = { workspace = true, features = ["server"] }
+rbp-telemetry  = { workspace = true }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
+tokio          = { version = "1", features = ["rt", "sync", "time"] }
 anyhow         = "1"
-tracing       = { workspace = true }
-serde          = { version = "1",    features = ["derive"]                  }
+tracing        = { workspace = true }
+serde          = { version = "1", features = ["derive"] }
 serde_json     = "1"
-reqwest        = { version = "0.12", features = ["json"]                   }
+reqwest        = { version = "0.12", features = ["json"] }
 
 [lints]
 workspace = true

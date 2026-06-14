@@ -1,24 +1,24 @@
 [package]
-name           = "rbp-competition"
-version        = "1.0.0"
-edition        = "2024"
-rust-version   = "1.90"
-authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description    = "Hand history analysis with AIVAT variance reduction"
-license        = "MIT"
-repository     = "https://github.com/krukah/robopoker"
-keywords       = ["poker", "evaluation", "aivat", "variance"]
-categories     = ["game-development", "mathematics"]
+name         = "rbp-competition"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Hand history analysis with AIVAT variance reduction"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "evaluation", "aivat", "variance"]
+categories   = ["game-development", "mathematics"]
 
 [dependencies]
-rbp-core       = { version = "1.0", path = "../util"       }
-rbp-cards      = { version = "1.0", path = "../cards"      }
-rbp-gameplay   = { version = "1.0", path = "../gameplay"   }
-rbp-gameroom   = { version = "1.0", path = "../gameroom", features = ["server"] }
-rbp-database   = { version = "1.0", path = "../database"   }
-rbp-auth       = { version = "1.0", path = "../auth"       }
-rbp-nlhe     = { version = "1.0", path = "../nlhe"     }
-rbp-mccfr      = { version = "1.0", path = "../mccfr"      }
+rbp-core       = { workspace = true }
+rbp-cards      = { workspace = true }
+rbp-gameplay   = { workspace = true }
+rbp-gameroom   = { workspace = true, features = ["server"] }
+rbp-database   = { workspace = true }
+rbp-auth       = { workspace = true }
+rbp-nlhe       = { workspace = true }
+rbp-mccfr      = { workspace = true }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 const_format   = "0.2"
 serde          = { version = "1.0", features = ["derive"] }
@@ -26,7 +26,7 @@ uuid           = "1"
 anyhow         = "1"
 
 [dev-dependencies]
-rand           = { workspace = true }
+rand = { workspace = true }
 
 [lints]
 workspace = true

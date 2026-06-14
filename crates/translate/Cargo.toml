@@ -1,6 +1,6 @@
 [package]
 name         = "rbp-translate"
-version      = "1.0.0"
+version      = "1.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -11,7 +11,7 @@ keywords     = ["action-translation", "pseudo-harmonic", "abstraction", "cfr", "
 categories   = ["algorithms", "game-development", "mathematics"]
 
 [dependencies]
-rand         = { workspace = true }
+rand = { workspace = true }
 
 [lints]
 workspace = true

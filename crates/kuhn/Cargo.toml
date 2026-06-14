@@ -1,22 +1,22 @@
 [package]
-name          = "rbp-kuhn"
-version       = "1.0.0"
-edition       = "2024"
-rust-version  = "1.90"
-authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description   = "Kuhn poker solver for MCCFR framework validation"
-license       = "MIT"
-repository    = "https://github.com/krukah/robopoker"
-keywords      = ["kuhn", "cfr", "game-theory", "poker", "solver"]
-categories    = ["algorithms", "mathematics", "game-development"]
+name         = "rbp-kuhn"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Kuhn poker solver for MCCFR framework validation"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["kuhn", "cfr", "game-theory", "poker", "solver"]
+categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
-rbp-core      = { path = "../util" }
-rbp-mccfr     = { path = "../mccfr" }
-rbp-subgame   = { path = "../subgame" }
-rbp-depth     = { path = "../depth" }
-rbp-world     = { path = "../world" }
-rbp-transport = { path = "../transport" }
+rbp-core      = { workspace = true }
+rbp-mccfr     = { workspace = true }
+rbp-subgame   = { workspace = true }
+rbp-depth     = { workspace = true }
+rbp-world     = { workspace = true }
+rbp-transport = { workspace = true }
 paste         = "1.0"
 rand          = { workspace = true }
 

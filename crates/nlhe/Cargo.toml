@@ -1,30 +1,30 @@
 [package]
-name           = "rbp-nlhe"
-version        = "1.0.0"
-edition        = "2024"
-rust-version   = "1.90"
-authors        = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description    = "No-Limit Hold'em MCCFR solver with Pluribus-inspired abstraction"
-license        = "MIT"
-repository     = "https://github.com/krukah/robopoker"
-keywords       = ["poker", "nlhe", "mccfr", "pluribus"]
-categories     = ["game-development", "algorithms"]
+name         = "rbp-nlhe"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "No-Limit Hold'em MCCFR solver with Pluribus-inspired abstraction"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "nlhe", "mccfr", "pluribus"]
+categories   = ["game-development", "algorithms"]
 
 [features]
-default        = []
-server         = ["tokio-postgres", "const_format", "async-trait", "rbp-database", "futures", "rbp-mccfr/server"]
+default = []
+server  = ["tokio-postgres", "const_format", "async-trait", "rbp-database", "futures", "rbp-mccfr/server"]
 
 [dependencies]
-tracing         = { workspace = true }
-rbp-core        = { path = "../util" }
-rbp-cards       = { path = "../cards" }
-rbp-gameplay    = { path = "../gameplay" }
-rbp-transport   = { path = "../transport" }
-rbp-mccfr       = { path = "../mccfr", default-features = false }
-rbp-subgame     = { path = "../subgame" }
-rbp-depth       = { path = "../depth" }
-rbp-world       = { path = "../world" }
-rbp-database    = { path = "../database", optional = true }
+tracing        = { workspace = true }
+rbp-core       = { workspace = true }
+rbp-cards      = { workspace = true }
+rbp-gameplay   = { workspace = true }
+rbp-transport  = { workspace = true }
+rbp-mccfr      = { version = "1.1", path = "../mccfr", default-features = false }
+rbp-subgame    = { workspace = true }
+rbp-depth      = { workspace = true }
+rbp-world      = { workspace = true }
+rbp-database   = { workspace = true, optional = true }
 paste          = "1.0"
 rand           = { workspace = true }
 anyhow         = "1.0"

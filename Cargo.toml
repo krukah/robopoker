@@ -1,46 +1,46 @@
 [workspace]
 resolver = "2"
-members  = [
-    # Core crates
-    "crates/util",
-    "crates/transport",
-    "crates/cards",
-    "crates/mccfr",
-    "crates/gameplay",
-    "crates/clustering",
-    "crates/translate",
-    "crates/world",
-    "crates/depth",
-    "crates/subgame",
-    "crates/nlhe",
-    "crates/leduc",
-    "crates/kuhn",
-    "crates/rps",
-    # Infrastructure crates
-    "crates/database",
-    "crates/auth",
-    "crates/telemetry",
-    "crates/hyperparams",
-    # Application crates
-    "crates/gameroom",
-    "crates/server",
-    "crates/autotrain",
-    "crates/competition",
-    "crates/slumbot",
-    # Validation
-    "crates/litmus",
-    # Facade crate
-    "crates/rbp",
-    # Binary crates
-    "bin/backend",
-    "bin/trainer",
-    "bin/convert",
-    "bin/litmus",
-    "bin/slumbot",
+members = [
+  # Core crates
+  "crates/util",
+  "crates/transport",
+  "crates/cards",
+  "crates/mccfr",
+  "crates/gameplay",
+  "crates/clustering",
+  "crates/translate",
+  "crates/world",
+  "crates/depth",
+  "crates/subgame",
+  "crates/nlhe",
+  "crates/leduc",
+  "crates/kuhn",
+  "crates/rps",
+  # Infrastructure crates
+  "crates/database",
+  "crates/auth",
+  "crates/telemetry",
+  "crates/hyperparams",
+  # Application crates
+  "crates/gameroom",
+  "crates/server",
+  "crates/autotrain",
+  "crates/competition",
+  "crates/slumbot",
+  # Validation
+  "crates/litmus",
+  # Facade crate
+  "crates/rbp",
+  # Binary crates
+  "bin/backend",
+  "bin/trainer",
+  "bin/convert",
+  "bin/litmus",
+  "bin/slumbot",
 ]
 
 [workspace.package]
-version      = "1.0.0"
+version      = "1.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -51,51 +51,51 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-rbp-core        = { version = "1.0", path = "crates/util"        }
-rbp-transport   = { version = "1.0", path = "crates/transport"   }
-rbp-cards       = { version = "1.0", path = "crates/cards"       }
-rbp-mccfr       = { version = "1.0", path = "crates/mccfr"       }
-rbp-gameplay    = { version = "1.0", path = "crates/gameplay"    }
-rbp-clustering  = { version = "1.0", path = "crates/clustering"  }
-rbp-translate   = { version = "1.0", path = "crates/translate"   }
-rbp-world       = { version = "1.0", path = "crates/world"       }
-rbp-depth       = { version = "1.0", path = "crates/depth"       }
-rbp-subgame     = { version = "1.0", path = "crates/subgame"     }
-rbp-nlhe        = { version = "1.0", path = "crates/nlhe"        }
-rbp-leduc       = { version = "1.0", path = "crates/leduc"       }
-rbp-kuhn        = { version = "1.0", path = "crates/kuhn"        }
-rbp-rps         = { version = "1.0", path = "crates/rps"         }
-rbp-competition = { version = "1.0", path = "crates/competition" }
-rbp-slumbot     = { version = "1.0", path = "crates/slumbot"     }
-rbp-litmus      = { version = "1.0", path = "crates/litmus"      }
-rbp-database    = { version = "1.0", path = "crates/database"    }
-rbp-auth        = { version = "1.0", path = "crates/auth"        }
-rbp-telemetry   = { version = "1.0", path = "crates/telemetry"   }
-rbp-hyperparams = { version = "1.0", path = "crates/hyperparams" }
-rbp-gameroom    = { version = "1.0", path = "crates/gameroom"    }
-rbp-server      = { version = "1.0", path = "crates/server"      }
-rbp-autotrain   = { version = "1.0", path = "crates/autotrain"   }
+rbp-core        = { version = "1.1", path = "crates/util" }
+rbp-transport   = { version = "1.1", path = "crates/transport" }
+rbp-cards       = { version = "1.1", path = "crates/cards" }
+rbp-mccfr       = { version = "1.1", path = "crates/mccfr" }
+rbp-gameplay    = { version = "1.1", path = "crates/gameplay" }
+rbp-clustering  = { version = "1.1", path = "crates/clustering" }
+rbp-translate   = { version = "1.1", path = "crates/translate" }
+rbp-world       = { version = "1.1", path = "crates/world" }
+rbp-depth       = { version = "1.1", path = "crates/depth" }
+rbp-subgame     = { version = "1.1", path = "crates/subgame" }
+rbp-nlhe        = { version = "1.1", path = "crates/nlhe" }
+rbp-leduc       = { version = "1.1", path = "crates/leduc" }
+rbp-kuhn        = { version = "1.1", path = "crates/kuhn" }
+rbp-rps         = { version = "1.1", path = "crates/rps" }
+rbp-competition = { version = "1.1", path = "crates/competition" }
+rbp-slumbot     = { version = "1.1", path = "crates/slumbot" }
+rbp-litmus      = { version = "1.1", path = "crates/litmus" }
+rbp-database    = { version = "1.1", path = "crates/database" }
+rbp-auth        = { version = "1.1", path = "crates/auth" }
+rbp-telemetry   = { version = "1.1", path = "crates/telemetry" }
+rbp-hyperparams = { version = "1.1", path = "crates/hyperparams" }
+rbp-gameroom    = { version = "1.1", path = "crates/gameroom" }
+rbp-server      = { version = "1.1", path = "crates/server" }
+rbp-autotrain   = { version = "1.1", path = "crates/autotrain" }
 
 # External dependencies
-tokio           = { version = "1", features = ["full"] }
-tokio-postgres  = { version = "0.7", features = ["with-uuid-1"] }
-async-trait     = "0.1"
-futures         = "0.3"
-anyhow          = "1"
-log             = "0.4"
-serde           = { version = "1.0", features = ["derive"] }
-serde_json      = "1"
-const_format    = "0.2"
-uuid            = { version = "1", features = ["v7", "serde"] }
-rand            = { version = "0.9.1", features = ["small_rng"] }
-tracing         = "0.1"
-rayon           = "1"
-petgraph        = "0.6"
-byteorder       = "1.5"
-actix-web       = "4"
-actix-cors      = "0.7"
-actix-ws        = "0.3"
-clap            = { version = "4", features = ["derive"] }
+tokio          = { version = "1", features = ["full"] }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
+async-trait    = "0.1"
+futures        = "0.3"
+anyhow         = "1"
+log            = "0.4"
+serde          = { version = "1.0", features = ["derive"] }
+serde_json     = "1"
+const_format   = "0.2"
+uuid           = { version = "1", features = ["v7", "serde"] }
+rand           = { version = "0.9.1", features = ["small_rng"] }
+tracing        = "0.1"
+rayon          = "1"
+petgraph       = "0.6"
+byteorder      = "1.5"
+actix-web      = "4"
+actix-cors     = "0.7"
+actix-ws       = "0.3"
+clap           = { version = "4", features = ["derive"] }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(tarpaulin_include)"] }
@@ -112,32 +112,32 @@ zero_prefixed_literal       = "allow"
 inconsistent_digit_grouping = "allow"
 unusual_byte_groupings      = "allow"
 # Generic-heavy framework patterns
-type_complexity             = "allow"
-too_many_arguments          = "allow"
-module_inception            = "allow"
+type_complexity    = "allow"
+too_many_arguments = "allow"
+module_inception   = "allow"
 # Intentional patterns
-toplevel_ref_arg            = "allow"   # `let ref x = ...` is fine
-if_same_then_else           = "allow"   # parallel-branch clarity
-suspicious_arithmetic_impl  = "allow"   # Hand uses bitset `|` as addition
-should_implement_trait      = "allow"   # method-name clashes with stdlib traits
-needless_range_loop         = "allow"   # indexing-paired arrays
-len_without_is_empty        = "allow"   # `len` exists where `is_empty` doesn't fit
-new_without_default         = "allow"   # `new` may take non-trivial args
-ptr_arg                     = "allow"   # `&Vec<T>` chosen for clarity in spots
-option_map_unit_fn          = "allow"   # `.map(side-effect-closure)` pattern
-inspect_for_each            = "allow"   # `.inspect().for_each()` chain
-suspicious_map              = "allow"   # `.map().count()` is the intended length
-unit_arg                    = "allow"
-format_in_format_args       = "allow"
+toplevel_ref_arg           = "allow" # `let ref x = ...` is fine
+if_same_then_else          = "allow" # parallel-branch clarity
+suspicious_arithmetic_impl = "allow" # Hand uses bitset `|` as addition
+should_implement_trait     = "allow" # method-name clashes with stdlib traits
+needless_range_loop        = "allow" # indexing-paired arrays
+len_without_is_empty       = "allow" # `len` exists where `is_empty` doesn't fit
+new_without_default        = "allow" # `new` may take non-trivial args
+ptr_arg                    = "allow" # `&Vec<T>` chosen for clarity in spots
+option_map_unit_fn         = "allow" # `.map(side-effect-closure)` pattern
+inspect_for_each           = "allow" # `.inspect().for_each()` chain
+suspicious_map             = "allow" # `.map().count()` is the intended length
+unit_arg                   = "allow"
+format_in_format_args      = "allow"
 # Chain-style: prefer one-statement method chains over if/else, nested
 # blocks, or split closure expansions (CLAUDE.md house style).
-filter_map_bool_then         = "allow"  # `.filter_map(.. cond.then(.. v))`
-obfuscated_if_else           = "allow"  # `cond.then(.. v).unwrap_or(d)`
-unnecessary_lazy_evaluations = "allow"  # `unwrap_or_else(.. x)`, `or_else(.. Some(x))`
+filter_map_bool_then         = "allow" # `.filter_map(.. cond.then(.. v))`
+obfuscated_if_else           = "allow" # `cond.then(.. v).unwrap_or(d)`
+unnecessary_lazy_evaluations = "allow" # `unwrap_or_else(.. x)`, `or_else(.. Some(x))`
 # Visual-alignment idiom: `if false || a || b || ...` lines up `||` cols.
-nonminimal_bool              = "allow"
+nonminimal_bool = "allow"
 # `let _ = effect();` discards are sometimes intentional for clarity.
-let_unit_value               = "allow"
+let_unit_value = "allow"
 
 [profile.dev]
 panic     = "unwind"

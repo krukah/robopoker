@@ -1,0 +1,13 @@
+# TOML formatting rules for the workspace (Cargo.toml grid alignment).
+# Run `taplo fmt` to apply, `taplo fmt --check` to verify.
+include = ["**/Cargo.toml", "taplo.toml"]
+exclude = ["target/**"]
+
+[formatting]
+align_entries         = true
+align_comments        = true
+reorder_keys          = false
+reorder_arrays        = false
+array_auto_collapse   = true
+compact_inline_tables = false
+column_width          = 120

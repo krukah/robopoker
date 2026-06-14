@@ -1,5 +1,6 @@
 [package]
 name         = "trainer"
+publish      = false
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.90"
@@ -8,8 +9,8 @@ description  = "MCCFR training pipeline binary"
 license      = "MIT"
 
 [[bin]]
-name         = "trainer"
-path         = "src/main.rs"
+name = "trainer"
+path = "src/main.rs"
 
 [dependencies]
 rbp-autotrain      = { path = "../../crates/autotrain" }

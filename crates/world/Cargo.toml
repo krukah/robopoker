@@ -1,20 +1,20 @@
 [package]
-name          = "rbp-world"
-version       = "1.0.0"
-edition       = "2024"
-rust-version  = "1.90"
-authors       = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description   = "Safe subgame solving with world-partitioned belief for CFR framework"
-license       = "MIT"
-repository    = "https://github.com/krukah/robopoker"
-keywords      = ["subgame", "cfr", "game-theory", "pluribus"]
-categories    = ["algorithms", "mathematics", "game-development"]
+name         = "rbp-world"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Safe subgame solving with world-partitioned belief for CFR framework"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["subgame", "cfr", "game-theory", "pluribus"]
+categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
 tracing       = { workspace = true }
-rbp-core      = { path = "../util" }
-rbp-transport = { path = "../transport" }
-rbp-mccfr     = { path = "../mccfr", default-features = false }
+rbp-core      = { workspace = true }
+rbp-transport = { workspace = true }
+rbp-mccfr     = { version = "1.1", path = "../mccfr", default-features = false }
 rand          = "0.9"
 
 [lints]

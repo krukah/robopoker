@@ -1,5 +1,6 @@
 [package]
 name         = "convert"
+publish      = false
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.90"
@@ -8,8 +9,8 @@ description  = "Interactive CLI for poker analysis"
 license      = "MIT"
 
 [[bin]]
-name         = "convert"
-path         = "src/main.rs"
+name = "convert"
+path = "src/main.rs"
 
 [dependencies]
 rbp-core      = { path = "../../crates/util", features = ["server"] }

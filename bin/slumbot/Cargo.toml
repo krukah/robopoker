@@ -1,5 +1,6 @@
 [package]
 name         = "slumbot"
+publish      = false
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.90"
@@ -8,8 +9,8 @@ description  = "Slumbot benchmark binary"
 license      = "MIT"
 
 [[bin]]
-name         = "slumbot"
-path         = "src/main.rs"
+name = "slumbot"
+path = "src/main.rs"
 
 [features]
 # `database` is a no-op alias kept so external invocations that still pass

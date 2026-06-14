@@ -1,15 +1,22 @@
 [package]
-name = "rbp-hyperparams"
-version.workspace = true
-edition.workspace = true
+name         = "rbp-hyperparams"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Proc-macro deriving process-global singleton accessors for hyperparameter structs"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "macro", "solver", "config"]
+categories   = ["game-development", "development-tools"]
 
 [lib]
 proc-macro = true
 
 [dependencies]
 proc-macro2 = "1"
-quote = "1"
-syn = { version = "2", features = ["full"] }
+quote       = "1"
+syn         = { version = "2", features = ["full"] }
 
 [lints]
 workspace = true

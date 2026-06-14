@@ -1,35 +1,35 @@
 [package]
-name            = "rbp-autotrain"
-version         = "1.0.0"
-edition         = "2024"
-rust-version    = "1.90"
-authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description     = "Automated MCCFR training pipeline orchestration"
-license         = "MIT"
-repository      = "https://github.com/krukah/robopoker"
-keywords        = ["training", "mccfr", "automation", "pipeline"]
-categories      = ["algorithms", "command-line-utilities"]
+name         = "rbp-autotrain"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Automated MCCFR training pipeline orchestration"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["training", "mccfr", "automation", "pipeline"]
+categories   = ["algorithms", "command-line-utilities"]
 
 [features]
-default         = []
+default = []
 
 [dependencies]
-rbp-core        = { path = "../util", features = ["server"]        }
-rbp-cards       = { path = "../cards"                              }
-rbp-clustering  = { path = "../clustering", features = ["server"]}
-rbp-database    = { path = "../database"                           }
-rbp-gameplay    = { path = "../gameplay"                           }
-rbp-mccfr       = { path = "../mccfr", features = ["async"]        }
-rbp-nlhe      = { path = "../nlhe", features = ["server"]    }
-rbp-transport   = { path = "../transport"                          }
-rbp-telemetry   = { path = "../telemetry"                          }
-tokio-postgres  = "0.7"
-async-trait     = "0.1"
-const_format    = "0.2"
-futures         = "0.3"
-tracing         = { workspace = true }
-num_cpus        = "1.16"
-rand            = { workspace = true }
+rbp-core       = { workspace = true, features = ["server"] }
+rbp-cards      = { workspace = true }
+rbp-clustering = { workspace = true, features = ["server"] }
+rbp-database   = { workspace = true }
+rbp-gameplay   = { workspace = true }
+rbp-mccfr      = { workspace = true, features = ["async"] }
+rbp-nlhe       = { workspace = true, features = ["server"] }
+rbp-transport  = { workspace = true }
+rbp-telemetry  = { workspace = true }
+tokio-postgres = "0.7"
+async-trait    = "0.1"
+const_format   = "0.2"
+futures        = "0.3"
+tracing        = { workspace = true }
+num_cpus       = "1.16"
+rand           = { workspace = true }
 
 [lints]
 workspace = true

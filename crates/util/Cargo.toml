@@ -1,6 +1,6 @@
 [package]
 name         = "rbp-core"
-version      = "1.0.0"
+version      = "1.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -17,13 +17,13 @@ client  = ["uuid/js"]
 cli     = ["clap"]
 
 [dependencies]
-rbp-translate = { path = "../translate" }
-rand    = { workspace = true }
-uuid    = { version = "1", features = ["v5", "v7", "serde"] }
-serde   = { version = "1.0", features = ["derive"] }
-clap    = { optional = true, workspace = true }
-tracing = { optional = true, workspace = true }
-tokio   = { optional = true, version = "1.0", features = ["signal", "rt"] }
+rbp-translate = { workspace = true }
+rand          = { workspace = true }
+uuid          = { version = "1", features = ["v5", "v7", "serde"] }
+serde         = { version = "1.0", features = ["derive"] }
+clap          = { optional = true, workspace = true }
+tracing       = { optional = true, workspace = true }
+tokio         = { optional = true, version = "1.0", features = ["signal", "rt"] }
 
 [lints]
 workspace = true

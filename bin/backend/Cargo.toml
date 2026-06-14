@@ -1,5 +1,6 @@
 [package]
 name         = "backend"
+publish      = false
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.90"
@@ -8,8 +9,8 @@ description  = "Unified backend server binary"
 license      = "MIT"
 
 [[bin]]
-name         = "backend"
-path         = "src/main.rs"
+name = "backend"
+path = "src/main.rs"
 
 [dependencies]
 rbp-server         = { path = "../../crates/server" }

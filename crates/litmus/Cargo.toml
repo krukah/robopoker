@@ -1,11 +1,14 @@
 [package]
-name            = "rbp-litmus"
-version         = "1.0.0"
-edition         = "2024"
-rust-version    = "1.90"
-authors         = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-license         = "MIT"
-description     = "Strategic litmus tests for blueprint validation. Composable, type-safe scenario catalog with a typed Ops trait that the server (or any backend) implements."
+name         = "rbp-litmus"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+description  = "Strategic litmus tests for blueprint validation. Composable, type-safe scenario catalog with a typed Ops trait that the server (or any backend) implements."
+keywords     = ["poker", "testing", "validation", "nlhe"]
+categories   = ["game-development", "development-tools"]
 
 [lib]
 name = "rbp_litmus"
@@ -15,9 +18,9 @@ path = "src/lib.rs"
 default = []
 
 [dependencies]
-rbp-cards    = { path = "../cards" }
-rbp-core     = { path = "../util" }
-rbp-gameplay = { path = "../gameplay" }
+rbp-cards    = { workspace = true }
+rbp-core     = { workspace = true }
+rbp-gameplay = { workspace = true }
 
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
