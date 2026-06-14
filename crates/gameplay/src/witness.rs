@@ -186,7 +186,7 @@ impl Witness {
     /// with the correct per-street card assignment is available. The
     /// arrangement determines which cards [`revealed`](Self::revealed)
     /// attributes to each street and which [`Draw`](Action::Draw) actions
-    /// [`sprout`] inserts at street boundaries.
+    /// `sprout` inserts at street boundaries.
     ///
     /// The `actions` parameter should NOT include blinds or draws —
     /// draws are auto-inserted by `sprout` based on the arrangement.
@@ -478,7 +478,7 @@ impl Witness {
     }
 
     /// Validates alignment for observation-only use (e.g. the opponent
-    /// range), without requiring it to be the POV's turn. See [`can_observe`].
+    /// range), without requiring it to be the POV's turn. See `can_observe`.
     pub fn validate_observation(self) -> anyhow::Result<Self> {
         let recall = self.sprout();
         if !recall.aligned() {
@@ -526,7 +526,7 @@ impl Witness {
     /// in the action history. Independent of whose turn it is.
     ///
     /// The opponent range is a backward-looking function of past decisions
-    /// (see [`opponent_observations`]), so it is well-defined at any node
+    /// (see `opponent_observations`), so it is well-defined at any node
     /// in the line where the observation covers the streets those
     /// decisions happened on — not just hero-to-act nodes.
     ///

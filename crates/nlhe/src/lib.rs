@@ -18,8 +18,8 @@
 //! - [`NlheGame`] — Game state (type alias for `Game`)
 //! - [`NlheSecret`] — Private state (type alias for `Abstraction`)
 //! - [`NlhePublic`] — Public state: street + current-street edges
-//! - [`Info`] — Information set: public + private state
-//! - [`NlheEncoder`] — Maps game states to [`Info`] using clustering
+//! - `Info` — Information set: public + private state
+//! - [`NlheEncoder`] — Maps game states to `Info` using clustering
 //! - [`NlheProfile`] — Stores accumulated regrets and strategies
 //! - [`Nlhe`] — Generic solver combining encoder and profile
 //! - [`Flagship`] — Pluribus-configured solver (top-level alias)
@@ -27,14 +27,14 @@
 //! # Abstraction
 //!
 //! The key challenge in poker CFR is the enormous state space. This module
-//! uses strategic abstraction via the [`Isomorphism`] to [`Abstraction`] mapping:
+//! uses strategic abstraction via the `Isomorphism` to `Abstraction` mapping:
 //! - Suit-isomorphic hands collapse equivalent situations
 //! - K-means clustering groups similar equity distributions
 //!
 //! # Action Space
 //!
 //! Betting amounts are discretized into a street-dependent grid of pot-fraction
-//! raise sizes (see [`Info::raises`]). This keeps the action space tractable
+//! raise sizes (see `Info::raises`). This keeps the action space tractable
 //! while preserving strategically important bet sizes.
 
 mod edge;

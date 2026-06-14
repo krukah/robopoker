@@ -6,9 +6,9 @@
 //! ## Modules
 //!
 //! - [`replay`] — Reconstruct `Game` states from database records
-//! - [`metrics`] — Aggregate statistics and derived poker metrics
-//! - [`aivat`] — AIVAT variance reduction estimator
-//! - [`repository`] — Bulk database queries for evaluation
+//! - `metrics` — Aggregate statistics and derived poker metrics
+//! - `aivat` — AIVAT variance reduction estimator
+//! - `repository` — Bulk database queries for evaluation
 mod aivat;
 mod correction;
 mod metrics;

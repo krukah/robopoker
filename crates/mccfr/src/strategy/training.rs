@@ -6,7 +6,7 @@ use rbp_core::*;
 /// This trait provides the minimal state needed for MCCFR iteration:
 /// which player is currently traversing, how to advance epochs, and
 /// sampling hyperparameters. The actual CFR math lives in
-/// [`Counterfactual`], which is blanket-implemented for `Profile + CfrSampling`.
+/// `Counterfactual`, which is blanket-implemented for `Profile + CfrSampling`.
 pub trait CfrSampling: CfrRule {
     /// who's turn is it?
     fn walker(&self) -> Self::T;

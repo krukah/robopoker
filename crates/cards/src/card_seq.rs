@@ -8,7 +8,7 @@ use super::hand::Hand;
 /// index permutation.
 ///
 /// Implements [`Iterator`], [`ExactSizeIterator`],
-/// [`DoubleEndedIterator`], and [`FusedIterator`].
+/// [`DoubleEndedIterator`], and `FusedIterator`.
 ///
 /// [`Perm::arrange`]: super::perm::Perm::arrange
 /// [`HandSeq::cards`]: super::hand_seq::HandSeq::cards

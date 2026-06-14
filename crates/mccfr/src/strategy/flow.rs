@@ -7,7 +7,7 @@ impl<T> CfrFlow for T where T: RefProf + CfrSampling {}
 
 /// Counterfactual regret minimization math.
 ///
-/// Blanket-implemented for all types implementing both [`Profile`] (read access
+/// Blanket-implemented for all types implementing both `Profile` (read access
 /// to accumulated regrets/weights) and [`CfrSampling`] (walker identity and sampling
 /// parameters). Provides regret matching, reach probabilities, expected values,
 /// and regret/policy vector computation.

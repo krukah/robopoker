@@ -17,7 +17,7 @@ use rbp_mccfr::*;
 /// The descents provide action-with-anchor-turn context for
 /// [`CfrEncoder::resume`] and any downstream consumer that wants a
 /// [`Descent`] stream. The game provides the actual state for
-/// [`Restricted::restrict`]. These must describe the same position — the
+/// `Restricted::restrict`. These must describe the same position — the
 /// game is the result of applying the descents' edges from root.
 pub struct CfrRecall<G>
 where

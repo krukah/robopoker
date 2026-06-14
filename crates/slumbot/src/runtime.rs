@@ -2,9 +2,9 @@
 //!
 //! A single process hydrates the blueprint and database once, then spawns
 //! per-variant tokio tasks for each requested
-//! [`Variant`](crate::variant::Variant). The session count for each
+//! `Variant`. The session count for each
 //! variant comes from a trailing `*N` on its token (see
-//! [`variant`](crate::variant) grammar) and falls back to the global
+//! `variant` grammar) and falls back to the global
 //! `--sessions N` flag (default `1`) when absent — so fast DB-lookup
 //! variants like `blueprint` can stay at 1 while CFR-thinking variants
 //! saturate vCPUs. All sessions across all variants share:

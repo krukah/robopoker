@@ -3,7 +3,7 @@
 use rbp_core::*;
 
 /// Axis-typed raise grid. The variant tag is the axis discriminant —
-/// callers dispatch on it to choose the right [`crate::Lattice`] axis
+/// callers dispatch on it to choose the right `Lattice` axis
 /// without a magic `opening: bool`.
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Grid {

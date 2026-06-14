@@ -158,7 +158,7 @@ where
     /// projects to abstractions) and [`Self::opponent_observations`]
     /// (which normalizes and surfaces hole cards). Walks
     /// [`Witness::possibilities`] and computes external reach via
-    /// [`Self::reach`] along the observed action sequence. This
+    /// `Self::reach` along the observed action sequence. This
     /// is the unnormalized P(hand | actions) ∝ P(actions | hand) × 1
     /// from a uniform prior.
     fn opponent_reaches(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
@@ -178,7 +178,7 @@ where
     ///    (excludes internal pocket and dealt board cards), each with
     ///    implicit weight 1.
     ///
-    /// 2. **Likelihood** — For each external hand, [`Witness::histories`]
+    /// 2. **Likelihood** — For each external hand, `Witness::histories`
     ///    builds a complete-info [`Perfect`] history, and
     ///    [`Solver::external_reach`] computes the product of external's
     ///    blueprint action probabilities at every external decision node
@@ -219,7 +219,7 @@ where
     /// of removal is ignored — acceptable at the 169-cell projection.
     /// The stub opponent hand passed to [`Perfect`] is semantically
     /// inert: hero's [`NlheInfo`] depends only on hero's hole + public
-    /// edges, and [`Self::reach`] filters to hero decision nodes.
+    /// edges, and `Self::reach` filters to hero decision nodes.
     pub fn signalled_observations(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
         normalize(self.signalled_reaches(recall))
     }

@@ -14,7 +14,7 @@ use tokio_postgres::Client;
 /// Applies corrections at three node types:
 ///   1. Hero action nodes:    correction = Σ_a [σ(a) * v(a)] - v(observed_a)
 ///   2. Villain action nodes: negated hero-perspective correction (zero-sum)
-///   3. Chance nodes:         E[baseline] - observed baseline (turn + river only)
+///   3. Chance nodes:         `E[baseline]` - observed baseline (turn + river only)
 pub struct Aivat(Arc<Client>);
 
 impl Aivat {
@@ -146,7 +146,7 @@ impl Aivat {
     /// Chance-node correction using SQL CTE for batch computation.
     ///
     /// Enumerates all possible deals, maps each to an abstraction bucket via
-    /// isomorphism, then computes E[baseline] - observed_baseline in one query.
+    /// isomorphism, then computes `E[baseline]` - observed_baseline in one query.
     /// Skipped for preflop→flop (C(48,3) = 17,296 deals is too large).
     async fn chance_node_correction(
         &self,

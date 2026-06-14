@@ -5,6 +5,6 @@
 /// - The resulting game state after applying that action
 /// - The parent's node index for creating the graph edge
 ///
-/// Used by [`CfrEncoder::info`] to compute information sets for new nodes
-/// and by [`Tree::grow`] to materialize the branch as a tree node.
+/// Used by `CfrEncoder::info` to compute information sets for new nodes
+/// and by `Tree::grow` to materialize the branch as a tree node.
 pub type Leaf<E, G> = (E, G, petgraph::graph::NodeIndex);

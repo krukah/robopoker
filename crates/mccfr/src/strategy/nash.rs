@@ -9,7 +9,7 @@ impl<T> CfrNash for T where T: RefProf {}
 ///
 /// Provides the averaged (historical weighted) strategy distribution
 /// used for Nash equilibrium approximation, frontier evaluation, and
-/// best-response analysis. Blanket-implemented for all [`Profile`] types.
+/// best-response analysis. Blanket-implemented for all `Profile` types.
 pub trait CfrNash: RefProf {
     /// Calculate historical average for a single edge.
     fn averaged_policy(&self, info: &Self::I, edge: &Self::E) -> Probability {
@@ -82,7 +82,7 @@ pub trait CfrNash: RefProf {
     ///
     /// **Recursive descent** through tree children, weighting by opponent's
     /// averaged strategy at each external node. Handles terminal, frontier,
-    /// and chance nodes. Contrast with upward iteration in [`CfrNash::averaged`].
+    /// and chance nodes. Contrast with upward iteration in `CfrNash::averaged`.
     fn external_payoff(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Utility {
         self.subgamed_payoff(node, hero, None)
     }

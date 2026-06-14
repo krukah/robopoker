@@ -65,7 +65,7 @@ pub const S_BLIND: Chips = 1;
 pub const MAX_RAISE_REPEATS: usize = 3;
 /// Maximum edges in a packed Path (12 nibbles × 5 bits = 60 bits ≤ 64 bits).
 /// Data-representation limit, not a solver depth knob — the subgame tree's
-/// effective depth is controlled by where [`DepthGame::at_frontier`] fires
+/// effective depth is controlled by where `DepthGame::at_frontier` fires
 /// (first chance node past origin), not by this constant.
 pub const MAX_PATH_EDGES: usize = 12;
 

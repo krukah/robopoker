@@ -98,7 +98,7 @@ impl<const N: usize> Bins<N> {
         self.pdf().iter().map(|(x, y)| x * y).sum()
     }
     /// Returns (equity, probability) pairs for visualization.
-    /// The equity abstraction is converted to its [0,1] value.
+    /// The equity abstraction is converted to its `[0,1]` value.
     pub fn pdf(&self) -> Vec<(Probability, Probability)> {
         debug_assert!(matches!(self.street(), Street::Rive));
         debug_assert!(matches!(self.peek().street(), Street::Rive));

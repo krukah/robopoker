@@ -18,7 +18,7 @@ use rbp_transport::*;
 /// # Kontorovich-Rubinstein Dual
 ///
 /// The ground distance `|x - y|` between equity values makes the coupling
-/// constraint equivalent to doubly-stochastic marginals on [0,1] × [0,1].
+/// constraint equivalent to doubly-stochastic marginals on `[0,1]` × `[0,1]`.
 pub struct Equity;
 
 impl Measure for Equity {
@@ -32,7 +32,7 @@ impl Measure for Equity {
 
 /// Distance metrics for equity histograms.
 ///
-/// These exploit the 1D structure of [0,1]-valued distributions to provide
+/// These exploit the 1D structure of `[0,1]`-valued distributions to provide
 /// efficient alternatives to general optimal transport.
 #[allow(dead_code)]
 impl Equity {

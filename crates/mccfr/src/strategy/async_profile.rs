@@ -30,21 +30,21 @@ use rbp_transport::Density;
 /// # Key Methods
 ///
 /// Distribution calculations (single info, batch-optimized):
-/// - [`policy`] — Current iteration strategy via regret matching
-/// - [`sample`] — Exploration-adjusted sampling distribution
-/// - [`advice`] — Historical average strategy (Nash approximation)
+/// - `policy` — Current iteration strategy via regret matching
+/// - `sample` — Exploration-adjusted sampling distribution
+/// - `advice` — Historical average strategy (Nash approximation)
 ///
 /// DFS-based reach and value calculations:
-/// - [`ancestor_reach`] — Fused cfactual/sampling reach in one pass
-/// - [`recursed_value`] — Recursive DFS accumulating reach during descent
-/// - [`dfs`] — Fused regret + EV computation for an information set
+/// - `ancestor_reach` — Fused cfactual/sampling reach in one pass
+/// - `recursed_value` — Recursive DFS accumulating reach during descent
+/// - `dfs` — Fused regret + EV computation for an information set
 ///
 /// Derived calculations:
-/// - [`expected_value`] — Policy-weighted expected utility
-/// - [`cfactual_value`] — Counterfactual action value
-/// - [`regret_vector`] — Regret gains for all actions
-/// - [`policy_vector`] — Policy distribution over actions
-/// - [`infoset_value`] — Expected value of an information set
+/// - `expected_value` — Policy-weighted expected utility
+/// - `cfactual_value` — Counterfactual action value
+/// - `regret_vector` — Regret gains for all actions
+/// - `policy_vector` — Policy distribution over actions
+/// - `infoset_value` — Expected value of an information set
 #[async_trait::async_trait]
 pub trait AsyncProfile: Send + Sync {
     type T: CfrTurn + Send + Sync;

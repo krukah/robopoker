@@ -1,7 +1,7 @@
 //! Subgame-policy extraction from a CFR profile, keyed on the *base* edge
 //! type — the wrapper crates ([`rbp_depth`], [`rbp_world`],
 //! [`rbp_subgame`]) implement this on their solver types so callers
-//! never have to know about [`DepthEdge::Game`] unwrapping or per-world
+//! never have to know about `DepthEdge::Game` unwrapping or per-world
 //! info iteration.
 use std::collections::BTreeMap;
 
@@ -21,13 +21,13 @@ pub struct Harvested<E> {
 
 /// Extract refined policy + visit counts at a base infoset, keyed on the
 /// base edge type. Each solver implementation handles its own
-/// info-wrapping ([`DepthInfo::Game`], [`WorldInfo::new`]) and
-/// edge-unwrapping ([`DepthEdge::Game`]) — the caller passes the
+/// info-wrapping (`DepthInfo::Game`, `WorldInfo::new`) and
+/// edge-unwrapping (`DepthEdge::Game`) — the caller passes the
 /// pre-wrap info and gets back maps over the base edge.
 ///
-/// [`DepthInfo::Game`]: rbp_depth::DepthInfo::Game
-/// [`DepthEdge::Game`]: rbp_depth::DepthEdge::Game
-/// [`WorldInfo::new`]: rbp_world::WorldInfo::new
+/// `DepthInfo::Game`: rbp_depth::DepthInfo::Game
+/// `DepthEdge::Game`: rbp_depth::DepthEdge::Game
+/// `WorldInfo::new`: rbp_world::WorldInfo::new
 pub trait Harvest {
     /// Base infoset type (pre-wrapping). E.g. `NlheInfo`.
     type Base;

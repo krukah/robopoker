@@ -4,7 +4,7 @@ use petgraph::graph::NodeIndex;
 /// A sampled game tree for CFR traversal.
 ///
 /// Built dynamically by the [`Solver`] during training using the
-/// [`CfrEncoder`] for state encoding and [`Profile`] for action sampling.
+/// [`CfrEncoder`] for state encoding and `Profile` for action sampling.
 /// Each vertex stores a `(Game, Info)` tuple; edges are labeled with actions.
 ///
 /// # Structure

@@ -5,7 +5,7 @@ use rbp_core::*;
 /// Represents raise sizes as `numerator/denominator` of the pot. For example,
 /// `Odds::new(1, 2)` means a half-pot bet, `Odds::new(2, 1)` means a 2x pot overbet.
 ///
-/// See [`Size`] for the full sizing abstraction that handles both pot-relative
+/// See `Size` for the full sizing abstraction that handles both pot-relative
 /// and BB-relative interpretations.
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Odds(Chips, Chips);

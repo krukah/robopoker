@@ -126,7 +126,7 @@ impl StrategyAPI {
 
     /// Runs a depth-limited subgame solve from the recall's current
     /// decision and returns the refined policy as an [`ApiSolved`]
-    /// envelope. Expensive (seconds-scale); memoized via [`cache_or`]
+    /// envelope. Expensive (seconds-scale); memoized via `cache_or`
     /// keyed by `(Witness, Kind::Depth)`.
     pub async fn solve_depth(&self, recall: Witness) -> anyhow::Result<ApiSolved> {
         self.solve(recall, Kind::Depth).await

@@ -21,7 +21,7 @@ use std::sync::OnceLock;
 ///
 /// For Flop/Turn histograms, EMD is computed via Sinkhorn algorithm using
 /// this metric as the ground distance. River histograms use total variation
-/// distance since equity abstractions have a natural ordering on [0,1].
+/// distance since equity abstractions have a natural ordering on `[0,1]`.
 #[derive(Clone, Copy)]
 pub enum Metric {
     Pref(DistPref),

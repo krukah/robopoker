@@ -5,7 +5,7 @@
 //! [`Depth<B>`] / [`World<B>`] add subgame solver layers; [`Dirac<B>`]
 //! sharpens the inner brain's distribution to a Dirac delta. Stack
 //! them in canonical order (`Dirac<World<Depth<Blueprint>>>`) and
-//! wrap with [`Agent<B>`] to get a [`Player`]. [`zoo`] is the single
+//! wrap with [`Agent<B>`] to get a `Player`. [`zoo`] is the single
 //! runtime → comptime binding both slumbot and the hosting server use.
 //!
 //! Every helper that operates on a typed value lives as a method on that

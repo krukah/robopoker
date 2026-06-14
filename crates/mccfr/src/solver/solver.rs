@@ -304,7 +304,7 @@ pub trait Solver: Send + Sync {
 
     /// generate the update vectors at a given [InfoSet]. specifically,
     /// calculate the regret and policy for each action, along with
-    /// the associated [Info] and expected value.
+    /// the associated `Info` and expected value.
     /// uses fused regret_and_value to avoid redundant tree traversal.
     fn update_vector(&self, ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Decisions<Self::E, Self::I> {
         let policy = self.profile().policy_vector(infoset);

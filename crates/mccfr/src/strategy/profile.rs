@@ -6,7 +6,7 @@ use rbp_transport::Density;
 ///
 /// Provides the required methods for reading accumulated regrets, weights,
 /// expected values, and visits. All methods take `&self` for read-only queries.
-/// Decoupled from [`Storage`] (the write layer) so that read-only consumers
+/// Decoupled from `Storage` (the write layer) so that read-only consumers
 /// need not carry mutable access. Extends [`CfrRule`] for the shared
 /// associated types.
 pub trait RefProf: CfrRule {

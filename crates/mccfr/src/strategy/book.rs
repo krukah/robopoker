@@ -6,7 +6,7 @@ use std::collections::HashMap;
 ///
 /// Games that store encounters as `HashMap<I, HashMap<E, Encounter>>` with a
 /// `usize` epoch counter can implement this single trait to receive blanket
-/// impls for [`CfrRule`], [`Storage`], [`Profile`], and [`CfrSampling`].
+/// impls for [`CfrRule`], `Storage`, `Profile`, and [`CfrSampling`].
 ///
 /// Edge-specific warmstart defaults are wired through [`CfrEdge::default_policy`]
 /// and [`CfrEdge::default_regret`], allowing games like NLHE to bias initial

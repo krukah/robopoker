@@ -771,7 +771,7 @@ impl<const P: usize> GameN<P> {
     ///
     /// Non-raise actions always map to canonical [`Edge`]s. Raise
     /// actions delegate to [`Size::translate`], which dispatches axis
-    /// internally via [`Size::raises_grid`].
+    /// internally via `Size::raises_grid`.
     ///
     /// [`Self::edgify`] is the [`Translation::Snap`] shorthand and
     /// remains untouched; this method is purely additive.

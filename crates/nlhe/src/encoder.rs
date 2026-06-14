@@ -18,7 +18,7 @@ type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
 ///
 /// # Database Loading
 ///
-/// With the `database` feature, implements [`Hydrate`] to load the
+/// With the `database` feature, implements `Hydrate` to load the
 /// isomorphism→abstraction mapping from PostgreSQL.
 #[derive(Default)]
 pub struct NlheEncoder(BTreeMap<Isomorphism, Abstraction>);
