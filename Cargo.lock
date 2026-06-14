@@ -310,6 +310,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
+name = "arena"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "bouncer",
+ "const_format",
+ "croupier",
+ "fulcrum",
+ "holdem",
+ "kicker",
+ "ledger",
+ "parlor",
+ "rand 0.9.2",
+ "regret",
+ "serde",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
 name = "argon2"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -352,6 +372,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "atlas"
+version = "1.1.0"
+dependencies = [
+ "fulcrum",
+ "monge",
+ "rand 0.9.2",
+ "regret",
+ "tracing",
 ]
 
 [[package]]
@@ -417,7 +448,7 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
- "rbp-server",
+ "portal",
  "tokio",
  "tracing-subscriber",
 ]
@@ -456,6 +487,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "bouncer"
+version = "1.1.0"
+dependencies = [
+ "actix-web",
+ "argon2",
+ "const_format",
+ "fulcrum",
+ "jsonwebtoken",
+ "ledger",
+ "rand 0.9.2",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio-postgres",
+ "uuid",
 ]
 
 [[package]]
@@ -504,6 +553,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "113b4343b5f6617e7ad401ced8de3cc8b012e73a594347c307b90db3e9271289"
 dependencies = [
  "bytes",
+]
+
+[[package]]
+name = "calque"
+version = "1.1.0"
+dependencies = [
+ "rand 0.9.2",
 ]
 
 [[package]]
@@ -618,10 +674,10 @@ dependencies = [
 name = "convert"
 version = "0.1.0"
 dependencies = [
- "rbp-core",
- "rbp-server",
- "rbp-telemetry",
+ "fulcrum",
+ "portal",
  "tokio",
+ "vitals",
 ]
 
 [[package]]
@@ -712,6 +768,23 @@ name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
+
+[[package]]
+name = "croupier"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "calque",
+ "fulcrum",
+ "kicker",
+ "petgraph",
+ "rand 0.9.2",
+ "serde",
+ "serde_json",
+ "solus",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "crypto-common"
@@ -812,6 +885,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "endgame"
+version = "1.1.0"
+dependencies = [
+ "atlas",
+ "fulcrum",
+ "horizon",
+ "rand 0.9.2",
+ "regret",
+ "solus",
+ "tracing",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -889,12 +975,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
+name = "forge"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "const_format",
+ "croupier",
+ "fulcrum",
+ "futures",
+ "holdem",
+ "kicker",
+ "ledger",
+ "lloyd",
+ "monge",
+ "num_cpus",
+ "rand 0.9.2",
+ "regret",
+ "tokio-postgres",
+ "tracing",
+ "vitals",
+]
+
+[[package]]
 name = "form_urlencoded"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fulcrum"
+version = "1.1.0"
+dependencies = [
+ "calque",
+ "clap",
+ "rand 0.9.2",
+ "serde",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -1118,6 +1239,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest",
+]
+
+[[package]]
+name = "holdem"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "atlas",
+ "const_format",
+ "croupier",
+ "endgame",
+ "fulcrum",
+ "futures",
+ "horizon",
+ "kicker",
+ "ledger",
+ "monge",
+ "paste",
+ "rand 0.9.2",
+ "regret",
+ "tokio-postgres",
+ "tracing",
+]
+
+[[package]]
+name = "horizon"
+version = "1.1.0"
+dependencies = [
+ "fulcrum",
+ "monge",
+ "petgraph",
+ "regret",
+ "solus",
+ "tracing",
 ]
 
 [[package]]
@@ -1490,6 +1646,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "kicker"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "fulcrum",
+ "rand 0.9.2",
+ "serde",
+]
+
+[[package]]
+name = "kuhn"
+version = "1.1.0"
+dependencies = [
+ "atlas",
+ "endgame",
+ "fulcrum",
+ "horizon",
+ "monge",
+ "paste",
+ "rand 0.9.2",
+ "regret",
+]
+
+[[package]]
 name = "language-tags"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1506,6 +1686,36 @@ name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
+
+[[package]]
+name = "ledger"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "const_format",
+ "croupier",
+ "fulcrum",
+ "futures",
+ "kicker",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "vitals",
+]
+
+[[package]]
+name = "leduc"
+version = "1.1.0"
+dependencies = [
+ "atlas",
+ "endgame",
+ "fulcrum",
+ "horizon",
+ "monge",
+ "paste",
+ "rand 0.9.2",
+ "regret",
+]
 
 [[package]]
 name = "libc"
@@ -1537,16 +1747,48 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "litmus"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "croupier",
+ "fulcrum",
+ "kicker",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "litmus-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "rbp-core",
- "rbp-database",
- "rbp-litmus",
- "rbp-server",
+ "fulcrum",
+ "ledger",
+ "litmus",
+ "portal",
  "tokio",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "lloyd"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "const_format",
+ "croupier",
+ "fulcrum",
+ "kicker",
+ "ledger",
+ "monge",
+ "rand 0.9.2",
+ "rayon",
+ "tokio-postgres",
+ "tracing",
+ "vitals",
 ]
 
 [[package]]
@@ -1638,6 +1880,13 @@ dependencies = [
  "log",
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "monge"
+version = "1.1.0"
+dependencies = [
+ "fulcrum",
 ]
 
 [[package]]
@@ -1879,6 +2128,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "parlor"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "atlas",
+ "bouncer",
+ "const_format",
+ "croupier",
+ "dialoguer",
+ "endgame",
+ "fulcrum",
+ "holdem",
+ "horizon",
+ "kicker",
+ "ledger",
+ "monge",
+ "rand 0.9.2",
+ "regret",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "uuid",
+ "vitals",
+]
+
+[[package]]
 name = "password-hash"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1977,6 +2254,41 @@ name = "pkg-config"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
+
+[[package]]
+name = "portal"
+version = "1.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "actix-ws",
+ "anyhow",
+ "arena",
+ "async-trait",
+ "bouncer",
+ "clap",
+ "const_format",
+ "croupier",
+ "forge",
+ "fulcrum",
+ "futures",
+ "holdem",
+ "kicker",
+ "ledger",
+ "litmus",
+ "lloyd",
+ "monge",
+ "parlor",
+ "rand 0.9.2",
+ "regret",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "uuid",
+ "vitals",
+]
 
 [[package]]
 name = "postgres-protocol"
@@ -2169,420 +2481,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rbp"
-version = "1.1.0"
-dependencies = [
- "rbp-auth",
- "rbp-autotrain",
- "rbp-cards",
- "rbp-clustering",
- "rbp-competition",
- "rbp-core",
- "rbp-database",
- "rbp-depth",
- "rbp-gameplay",
- "rbp-gameroom",
- "rbp-kuhn",
- "rbp-leduc",
- "rbp-litmus",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-rps",
- "rbp-server",
- "rbp-slumbot",
- "rbp-subgame",
- "rbp-telemetry",
- "rbp-translate",
- "rbp-transport",
- "rbp-world",
-]
-
-[[package]]
-name = "rbp-auth"
-version = "1.1.0"
-dependencies = [
- "actix-web",
- "argon2",
- "const_format",
- "jsonwebtoken",
- "rand 0.9.2",
- "rbp-core",
- "rbp-database",
- "serde",
- "serde_json",
- "sha2",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "rbp-autotrain"
-version = "1.1.0"
-dependencies = [
- "async-trait",
- "const_format",
- "futures",
- "num_cpus",
- "rand 0.9.2",
- "rbp-cards",
- "rbp-clustering",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-telemetry",
- "rbp-transport",
- "tokio-postgres",
- "tracing",
-]
-
-[[package]]
-name = "rbp-cards"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "rand 0.9.2",
- "rbp-core",
- "serde",
-]
-
-[[package]]
-name = "rbp-clustering"
-version = "1.1.0"
-dependencies = [
- "async-trait",
- "const_format",
- "rand 0.9.2",
- "rayon",
- "rbp-cards",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-telemetry",
- "rbp-transport",
- "tokio-postgres",
- "tracing",
-]
-
-[[package]]
-name = "rbp-competition"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "const_format",
- "rand 0.9.2",
- "rbp-auth",
- "rbp-cards",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-gameroom",
- "rbp-mccfr",
- "rbp-nlhe",
- "serde",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "rbp-core"
-version = "1.1.0"
-dependencies = [
- "clap",
- "rand 0.9.2",
- "rbp-translate",
- "serde",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "rbp-database"
-version = "1.1.0"
-dependencies = [
- "async-trait",
- "const_format",
- "futures",
- "rbp-cards",
- "rbp-core",
- "rbp-gameplay",
- "rbp-telemetry",
- "tokio",
- "tokio-postgres",
- "tracing",
-]
-
-[[package]]
-name = "rbp-depth"
-version = "1.1.0"
-dependencies = [
- "petgraph",
- "rbp-core",
- "rbp-hyperparams",
- "rbp-mccfr",
- "rbp-transport",
- "tracing",
-]
-
-[[package]]
-name = "rbp-gameplay"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "petgraph",
- "rand 0.9.2",
- "rbp-cards",
- "rbp-core",
- "rbp-hyperparams",
- "rbp-translate",
- "serde",
- "serde_json",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "rbp-gameroom"
-version = "1.1.0"
-dependencies = [
- "async-trait",
- "const_format",
- "dialoguer",
- "rand 0.9.2",
- "rbp-auth",
- "rbp-cards",
- "rbp-core",
- "rbp-database",
- "rbp-depth",
- "rbp-gameplay",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-subgame",
- "rbp-telemetry",
- "rbp-transport",
- "rbp-world",
- "serde",
- "serde_json",
- "tokio",
- "tokio-postgres",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "rbp-hyperparams"
-version = "1.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rbp-kuhn"
-version = "1.1.0"
-dependencies = [
- "paste",
- "rand 0.9.2",
- "rbp-core",
- "rbp-depth",
- "rbp-mccfr",
- "rbp-subgame",
- "rbp-transport",
- "rbp-world",
-]
-
-[[package]]
-name = "rbp-leduc"
-version = "1.1.0"
-dependencies = [
- "paste",
- "rand 0.9.2",
- "rbp-core",
- "rbp-depth",
- "rbp-mccfr",
- "rbp-subgame",
- "rbp-transport",
- "rbp-world",
-]
-
-[[package]]
-name = "rbp-litmus"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "rbp-cards",
- "rbp-core",
- "rbp-gameplay",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "rbp-mccfr"
-version = "1.1.0"
-dependencies = [
- "async-trait",
- "futures",
- "paste",
- "petgraph",
- "rand 0.9.2",
- "rayon",
- "rbp-core",
- "rbp-gameplay",
- "rbp-hyperparams",
- "rbp-transport",
-]
-
-[[package]]
-name = "rbp-nlhe"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "const_format",
- "futures",
- "paste",
- "rand 0.9.2",
- "rbp-cards",
- "rbp-core",
- "rbp-database",
- "rbp-depth",
- "rbp-gameplay",
- "rbp-mccfr",
- "rbp-subgame",
- "rbp-transport",
- "rbp-world",
- "tokio-postgres",
- "tracing",
-]
-
-[[package]]
-name = "rbp-rps"
-version = "1.1.0"
-dependencies = [
- "paste",
- "rand 0.9.2",
- "rbp-core",
- "rbp-depth",
- "rbp-mccfr",
- "rbp-subgame",
- "rbp-transport",
- "rbp-world",
-]
-
-[[package]]
-name = "rbp-server"
-version = "1.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "actix-ws",
- "anyhow",
- "async-trait",
- "clap",
- "const_format",
- "futures",
- "rand 0.9.2",
- "rbp-auth",
- "rbp-autotrain",
- "rbp-cards",
- "rbp-clustering",
- "rbp-competition",
- "rbp-core",
- "rbp-database",
- "rbp-gameplay",
- "rbp-gameroom",
- "rbp-litmus",
- "rbp-mccfr",
- "rbp-nlhe",
- "rbp-telemetry",
- "rbp-transport",
- "serde",
- "serde_json",
- "tokio",
- "tokio-postgres",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "rbp-slumbot"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "rbp-auth",
- "rbp-cards",
- "rbp-core",
- "rbp-gameplay",
- "rbp-gameroom",
- "rbp-nlhe",
- "rbp-telemetry",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tokio-postgres",
- "tracing",
-]
-
-[[package]]
-name = "rbp-subgame"
-version = "1.1.0"
-dependencies = [
- "rand 0.9.2",
- "rbp-core",
- "rbp-depth",
- "rbp-hyperparams",
- "rbp-mccfr",
- "rbp-world",
- "tracing",
-]
-
-[[package]]
-name = "rbp-telemetry"
-version = "1.1.0"
-dependencies = [
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
- "tokio",
- "tracing",
- "tracing-log",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "rbp-translate"
-version = "1.1.0"
-dependencies = [
- "rand 0.9.2",
-]
-
-[[package]]
-name = "rbp-transport"
-version = "1.1.0"
-dependencies = [
- "rbp-core",
-]
-
-[[package]]
-name = "rbp-world"
-version = "1.1.0"
-dependencies = [
- "rand 0.9.2",
- "rbp-core",
- "rbp-mccfr",
- "rbp-transport",
- "tracing",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2625,6 +2523,22 @@ name = "regex-syntax"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a96887878f22d7bad8a3b6dc5b7440e0ada9a245242924394987b21cf2210a4c"
+
+[[package]]
+name = "regret"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "croupier",
+ "fulcrum",
+ "futures",
+ "monge",
+ "paste",
+ "petgraph",
+ "rand 0.9.2",
+ "rayon",
+ "solus",
+]
 
 [[package]]
 name = "reqwest"
@@ -2678,6 +2592,49 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "robopoker"
+version = "1.1.0"
+dependencies = [
+ "arena",
+ "atlas",
+ "bouncer",
+ "calque",
+ "croupier",
+ "endgame",
+ "forge",
+ "fulcrum",
+ "holdem",
+ "horizon",
+ "kicker",
+ "kuhn",
+ "ledger",
+ "leduc",
+ "litmus",
+ "lloyd",
+ "monge",
+ "parlor",
+ "portal",
+ "regret",
+ "roshambo",
+ "spar",
+ "vitals",
+]
+
+[[package]]
+name = "roshambo"
+version = "1.1.0"
+dependencies = [
+ "atlas",
+ "endgame",
+ "fulcrum",
+ "horizon",
+ "monge",
+ "paste",
+ "rand 0.9.2",
+ "regret",
 ]
 
 [[package]]
@@ -2940,7 +2897,7 @@ name = "slumbot"
 version = "0.1.0"
 dependencies = [
  "clap",
- "rbp-slumbot",
+ "spar",
  "tokio",
  "tracing-subscriber",
 ]
@@ -2969,6 +2926,35 @@ checksum = "86f4aa3ad99f2088c990dfa82d367e19cb29268ed67c574d10d0a4bfe71f07e0"
 dependencies = [
  "libc",
  "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "solus"
+version = "1.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "spar"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "bouncer",
+ "croupier",
+ "fulcrum",
+ "holdem",
+ "kicker",
+ "parlor",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "vitals",
 ]
 
 [[package]]
@@ -3443,7 +3429,7 @@ name = "trainer"
 version = "0.1.0"
 dependencies = [
  "clap",
- "rbp-autotrain",
+ "forge",
  "tokio",
  "tracing-subscriber",
 ]
@@ -3565,6 +3551,20 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vitals"
+version = "1.1.0"
+dependencies = [
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
+ "tokio",
+ "tracing",
+ "tracing-log",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "want"

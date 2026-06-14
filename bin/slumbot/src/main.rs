@@ -1,7 +1,7 @@
 //! Slumbot Benchmark Binary
 //!
 //! Spawns concurrent benchmarks against the Slumbot API from a single
-//! process. See `rbp_slumbot::Runtime` for the config surface.
+//! process. See `spar::Runtime` for the config surface.
 //!
 //! Variants: --variants a,b,c [--hands N] [--continuous] [--throttle N] [--sessions N]
 //! Per-variant session override: append `*N` to any variant token to set its
@@ -29,7 +29,7 @@ struct Cli {
 async fn main() {
     tracing_subscriber::fmt::init();
     let cli = Cli::parse();
-    rbp_slumbot::Runtime::new(&cli.variants, cli.hands, cli.continuous, cli.throttle, cli.sessions)
+    spar::Runtime::new(&cli.variants, cli.hands, cli.continuous, cli.throttle, cli.sessions)
         .run()
         .await;
 }

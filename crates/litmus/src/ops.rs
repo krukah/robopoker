@@ -1,11 +1,11 @@
 //! `Ops` trait — the I/O surface litmus needs from a backend.
 //!
-//! Defined here so `rbp-litmus` doesn't need to depend on `rbp-server`
+//! Defined here so `litmus` doesn't need to depend on `portal`
 //! (which would cycle: server's HTTP handlers want to use `Litmus`).
 //! The server crate provides a concrete impl wrapping its existing
 //! `StrategyAPI` and `TrainingAPI`.
 
-use rbp_gameplay::{ApiGridUsage, ApiStatus, ApiStrategy, Witness};
+use croupier::{ApiGridUsage, ApiStatus, ApiStrategy, Witness};
 
 #[async_trait::async_trait]
 pub trait Ops: Send + Sync {

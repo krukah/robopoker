@@ -1,0 +1,31 @@
+[package]
+name         = "spar"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Slumbot API benchmark client for MCCFR strategy evaluation"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "benchmark", "slumbot"]
+categories   = ["game-development"]
+
+[dependencies]
+fulcrum        = { workspace = true }
+kicker         = { workspace = true }
+bouncer        = { workspace = true, features = ["server"] }
+croupier       = { workspace = true }
+parlor         = { workspace = true, features = ["server"] }
+holdem         = { workspace = true, features = ["server"] }
+vitals         = { workspace = true }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
+tokio          = { version = "1", features = ["rt", "sync", "time"] }
+anyhow         = "1"
+tracing        = { workspace = true }
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+reqwest        = { version = "0.12", features = ["json"] }
+
+[lints]
+workspace = true

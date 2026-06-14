@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/github/license/krukah/robopoker)](LICENSE)
 [![build](https://github.com/krukah/robopoker/actions/workflows/ci.yml/badge.svg)](https://github.com/krukah/robopoker/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/rbp.svg)](https://crates.io/crates/rbp)
+[![crates.io](https://img.shields.io/crates/v/rbp.svg)](https://crates.io/crates/robopoker)
 [![docs.rs](https://img.shields.io/docsrs/rbp)](https://docs.rs/rbp)
 
 A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em. Seeking functional parity to Pluribus¹.
@@ -55,57 +55,57 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 | Crate                                   | Description                                                         |
 | --------------------------------------- | ------------------------------------------------------------------- |
-| [`rbp`](crates/rbp)                     | Facade re-exporting all public crates                               |
-| [`rbp-core`](crates/util)               | Type aliases, constants, regime/version metadata, shared traits     |
-| [`rbp-cards`](crates/cards)             | Card primitives, hand evaluation, equity                            |
-| [`rbp-transport`](crates/transport)     | Optimal transport (Sinkhorn, EMD) over arbitrary measures           |
-| [`rbp-mccfr`](crates/mccfr)             | Game-agnostic CFR framework                                         |
-| [`rbp-gameplay`](crates/gameplay)       | Poker game engine: state, edges, settlement, witness/perfect recall |
-| [`rbp-clustering`](crates/clustering)   | Hierarchical k-means abstraction with Elkan acceleration            |
-| [`rbp-hyperparams`](crates/hyperparams) | Proc-macro deriving a `OnceLock`-backed global config pattern       |
+| [`rbp`](crates/robopoker)                     | Facade re-exporting all public crates                               |
+| [`fulcrum`](crates/fulcrum)               | Type aliases, constants, regime/version metadata, shared traits     |
+| [`kicker`](crates/kicker)             | Card primitives, hand evaluation, equity                            |
+| [`monge`](crates/monge)     | Optimal transport (Sinkhorn, EMD) over arbitrary measures           |
+| [`regret`](crates/regret)             | Game-agnostic CFR framework                                         |
+| [`croupier`](crates/croupier)       | Poker game engine: state, edges, settlement, witness/perfect recall |
+| [`lloyd`](crates/lloyd)   | Hierarchical k-means abstraction with Elkan acceleration            |
+| [`solus`](crates/solus) | Proc-macro deriving a `OnceLock`-backed global config pattern       |
 
 ### Search & abstraction
 
 | Crate                               | Description                                               |
 | ----------------------------------- | --------------------------------------------------------- |
-| [`rbp-translate`](crates/translate) | Generic action translation over finite lattices           |
-| [`rbp-world`](crates/world)         | World-partitioned belief layer for safe subgame solving   |
-| [`rbp-depth`](crates/depth)         | Depth-limited solving with biased continuation strategies |
-| [`rbp-subgame`](crates/subgame)     | Safe + depth-limited subgame composition                  |
+| [`calque`](crates/calque) | Generic action translation over finite lattices           |
+| [`atlas`](crates/atlas)         | World-partitioned belief layer for safe subgame solving   |
+| [`horizon`](crates/horizon)         | Depth-limited solving with biased continuation strategies |
+| [`endgame`](crates/endgame)     | Safe + depth-limited subgame composition                  |
 
 ### Games
 
 | Crate                       | Description                                      |
 | --------------------------- | ------------------------------------------------ |
-| [`rbp-nlhe`](crates/nlhe)   | No-Limit Hold'em solver and abstraction          |
-| [`rbp-leduc`](crates/leduc) | Leduc Hold'em — MCCFR framework validation       |
-| [`rbp-kuhn`](crates/kuhn)   | Kuhn poker — MCCFR framework validation          |
-| [`rbp-rps`](crates/rps)     | Rock-Paper-Scissors — MCCFR framework validation |
+| [`holdem`](crates/holdem)   | No-Limit Hold'em solver and abstraction          |
+| [`leduc`](crates/leduc) | Leduc Hold'em — MCCFR framework validation       |
+| [`kuhn`](crates/kuhn)   | Kuhn poker — MCCFR framework validation          |
+| [`roshambo`](crates/roshambo)     | Rock-Paper-Scissors — MCCFR framework validation |
 
 ### Infrastructure
 
 | Crate                               | Description                                                       |
 | ----------------------------------- | ----------------------------------------------------------------- |
-| [`rbp-database`](crates/database)   | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits    |
-| [`rbp-auth`](crates/auth)           | JWT + Argon2 authentication, session management                   |
-| [`rbp-telemetry`](crates/telemetry) | OpenTelemetry init and a centrally-registered metric handle table |
+| [`ledger`](crates/ledger)   | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits    |
+| [`bouncer`](crates/bouncer)           | JWT + Argon2 authentication, session management                   |
+| [`vitals`](crates/vitals) | OpenTelemetry init and a centrally-registered metric handle table |
 
 ### Applications
 
 | Crate                                   | Description                                                            |
 | --------------------------------------- | ---------------------------------------------------------------------- |
-| [`rbp-gameroom`](crates/gameroom)       | Async game coordinator with pluggable players and hand-history records |
-| [`rbp-server`](crates/server)           | Unified HTTP/WebSocket backend (analysis API + game hosting)           |
-| [`rbp-autotrain`](crates/autotrain)     | Training pipeline orchestration with distributed workers               |
-| [`rbp-slumbot`](crates/slumbot)         | Slumbot API benchmark client for blueprint evaluation                  |
-| [`rbp-competition`](crates/competition) | Hand-history analysis with AIVAT variance reduction                    |
-| [`rbp-litmus`](crates/litmus)           | Strategic litmus tests for blueprint validation                        |
+| [`parlor`](crates/parlor)       | Async game coordinator with pluggable players and hand-history records |
+| [`portal`](crates/portal)           | Unified HTTP/WebSocket backend (analysis API + game hosting)           |
+| [`forge`](crates/forge)     | Training pipeline orchestration with distributed workers               |
+| [`spar`](crates/spar)         | Slumbot API benchmark client for blueprint evaluation                  |
+| [`arena`](crates/arena) | Hand-history analysis with AIVAT variance reduction                    |
+| [`litmus`](crates/litmus)           | Strategic litmus tests for blueprint validation                        |
 
 ## Architecture
 
 ### Core layer
 
-**`rbp-cards`** — Card representation and hand evaluation:
+**`kicker`** — Card representation and hand evaluation:
 
 - Bijective `u8` / `u16` / `u32` / `u64` representations for efficient bit-twiddling
 - Nanosecond-scale hand strength evaluation
@@ -113,13 +113,13 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 - Exhaustive iteration over cards, hands, decks, and observations
 - Short-deck (36-card) variant support
 
-**`rbp-transport`** — Optimal transport:
+**`monge`** — Optimal transport:
 
 - Sinkhorn iteration for near-linear Wasserstein approximation⁵
 - Greenkhorn / greedy variants for sparse distributions
 - Generic `Density` / `Support` traits over arbitrary metric spaces
 
-**`rbp-mccfr`** — Game-agnostic CFR framework:
+**`regret`** — Game-agnostic CFR framework:
 
 - State primitives: `CfrTurn`, `CfrEdge`, `CfrGame`, `CfrInfo`, `CfrPublic`, `CfrSecret`, plus the concrete `Tree<T, E, G, I>`
 - Strategy layer: `CfrEncoder` (state → infoset), `RefProf` (read profile), `MutProf` (write storage), `InfoSet`, `Posterior`
@@ -129,13 +129,13 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Search & abstraction layer
 
-**`rbp-translate`** — Action translation:
+**`calque`** — Action translation:
 
 - Generic `Lattice` over a totally-ordered axis
 - Pseudo-harmonic translation between abstract and concrete actions⁷,⁸
 - Composable scalar and bracket primitives
 
-**`rbp-world` + `rbp-depth` + `rbp-subgame`** — Real-time search:
+**`atlas` + `horizon` + `endgame`** — Real-time search:
 
 - `WorldProfile` partitions belief into discrete worlds for safe re-solving¹²
 - `DepthEdge<E, D>` augments base edges with `D` continuation choices at the frontier
@@ -143,21 +143,21 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Domain layer
 
-**`rbp-gameplay`** — Complete poker game engine:
+**`croupier`** — Complete poker game engine:
 
 - Full No-Limit Texas Hold'em rules
 - Side-pot, all-in, and tie handling
 - Bet-sizing abstraction via `Size::SPR(n, d)` and `Size::BBs(n)`
 - `Witness` (one player's view) vs `Perfect` (god's view) recall types
 
-**`rbp-clustering`** — Hand abstraction via clustering:
+**`lloyd`** — Hand abstraction via clustering:
 
 - Hierarchical k-means with Elkan triangle-inequality acceleration
 - Earth Mover's Distance over child-street distributions
 - Isomorphic exhaustion of 3.1T situations⁴
 - PostgreSQL binary persistence
 
-**`rbp-nlhe`** — Concrete NLHE solver:
+**`holdem`** — Concrete NLHE solver:
 
 - `Nlhe<R, W, S>` parameterised over regret, weight, and sampling schemes
 - `NlheEncoder` for state → infoset mapping
@@ -166,26 +166,26 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Infrastructure layer
 
-**`rbp-database`** — PostgreSQL persistence:
+**`ledger`** — PostgreSQL persistence:
 
 - Binary format serialization for efficient storage
 - `Schema`, `Row`, `Streamable` traits with `COPY IN` for bulk inserts
 - `(Regime × Version)` table-naming macros (`table!`, `versioned!`, `regime!`)
 - Regime fingerprint check guards against silent constant drift
 
-**`rbp-gameroom`** — Async game coordination:
+**`parlor`** — Async game coordination:
 
 - Room-based session management with `Engine` / `Actor` / `Channel` model
 - Pluggable player implementations: `agent`, `blueprint`, `brain`, `depth`, `dirac`, `fish`, `human`, `mount`, `solved`, `variant`, `world`, `zoo`
 - Hand-history recording and replay
 
-**`rbp-server`** — Unified backend:
+**`portal`** — Unified backend:
 
 - Analysis API for querying training results, strategies, and topology
 - Game hosting with WebSocket support
 - Authentication integration
 
-**`rbp-autotrain`** — Training orchestration:
+**`forge`** — Training orchestration:
 
 - `Fast` (single-machine in-memory) and `Slow` (distributed workers) modes
 - Pre-training: cluster generation + persistence
@@ -214,7 +214,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650" align="left"/>
 
-The `rbp-telemetry` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/telemetry/src/metrics.rs` and it's visible immediately.
+The `vitals` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/vitals/src/metrics.rs` and it's visible immediately.
 
 <br clear="all"/>
 
@@ -265,25 +265,25 @@ cargo run --bin slumbot -- --variants base,dirac,depth+world+dirac --hands 1000
 
 ## Built on this stack
 
-A closed-source analysis frontend consumes the public APIs in this repo — `rbp-server`'s WebSocket and HTTP endpoints, the `rbp-clustering` abstraction tables, the blueprint format from `rbp-nlhe`. The crates here are sufficient to build a similar product.
+A closed-source analysis frontend consumes the public APIs in this repo — `portal`'s WebSocket and HTTP endpoints, the `lloyd` abstraction tables, the blueprint format from `holdem`. The crates here are sufficient to build a similar product.
 
 ### Live gameplay
 
 <img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/>
 
-*Showdown view — the abstraction cube picks the opponent's `depth × world × dirac` configuration. Backed by `rbp-server`'s WebSocket hosting API.*
+*Showdown view — the abstraction cube picks the opponent's `depth × world × dirac` configuration. Backed by `portal`'s WebSocket hosting API.*
 
 ### Per-decision strategy
 
 <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="700"/>
 
-*Strategy lookup at flop bucket `F:95` — action distribution, visit count, EV, and subgame history. Reads `rbp-server`'s `/api/strategy`.*
+*Strategy lookup at flop bucket `F:95` — action distribution, visit count, EV, and subgame history. Reads `portal`'s `/api/strategy`.*
 
 ### Opponent range grid
 
 <img src="assets/images/frontend-range.png" alt="Opponent range grid" width="350"/>
 
-*169-cell preflop range grid; cell intensity = opponent's posterior given observed action. Validated by [`rbp-litmus`](crates/litmus).*
+*169-cell preflop range grid; cell intensity = opponent's posterior given observed action. Validated by [`litmus`](crates/litmus).*
 
 ## References
 

@@ -27,19 +27,19 @@ struct Cli {
 }
 
 impl Cli {
-    fn mode(&self) -> rbp_autotrain::Mode {
+    fn mode(&self) -> forge::Mode {
         if self.fast {
-            rbp_autotrain::Mode::Fast
+            forge::Mode::Fast
         } else if self.slow {
-            rbp_autotrain::Mode::Slow
+            forge::Mode::Slow
         } else if self.cluster {
-            rbp_autotrain::Mode::Cluster
+            forge::Mode::Cluster
         } else if self.reset {
-            rbp_autotrain::Mode::Reset
+            forge::Mode::Reset
         } else if self.forget {
-            rbp_autotrain::Mode::Forget
+            forge::Mode::Forget
         } else if self.status {
-            rbp_autotrain::Mode::Status
+            forge::Mode::Status
         } else {
             unreachable!("clap group requires exactly one mode flag")
         }

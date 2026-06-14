@@ -1,0 +1,33 @@
+[package]
+name         = "arena"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Hand history analysis with AIVAT variance reduction"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "evaluation", "aivat", "variance"]
+categories   = ["game-development", "mathematics"]
+
+[dependencies]
+fulcrum        = { workspace = true }
+kicker         = { workspace = true }
+croupier       = { workspace = true }
+parlor         = { workspace = true, features = ["server"] }
+ledger         = { workspace = true }
+bouncer        = { workspace = true }
+holdem         = { workspace = true }
+regret         = { workspace = true }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
+const_format   = "0.2"
+serde          = { version = "1.0", features = ["derive"] }
+uuid           = "1"
+anyhow         = "1"
+
+[dev-dependencies]
+rand = { workspace = true }
+
+[lints]
+workspace = true

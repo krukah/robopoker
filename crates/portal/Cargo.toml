@@ -1,0 +1,49 @@
+[package]
+name         = "portal"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Unified backend combining analysis API and game hosting"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["server", "api", "poker", "backend", "websocket"]
+categories   = ["web-programming::http-server", "game-development"]
+
+[dependencies]
+# Internal crates
+fulcrum  = { workspace = true }
+bouncer  = { workspace = true, features = ["server"] }
+kicker   = { workspace = true }
+lloyd    = { workspace = true }
+ledger   = { workspace = true }
+arena    = { workspace = true }
+parlor   = { workspace = true, features = ["server"] }
+croupier = { workspace = true }
+regret   = { workspace = true }
+holdem   = { workspace = true }
+forge    = { workspace = true }
+monge    = { workspace = true }
+vitals   = { workspace = true }
+litmus   = { workspace = true }
+
+# External dependencies
+tokio-postgres = "0.7"
+tokio          = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros"] }
+actix-web      = "4"
+actix-cors     = "0.7"
+actix-ws       = "0.3"
+async-trait    = "0.1"
+uuid           = "1"
+futures        = "0.3"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+tracing        = { workspace = true }
+anyhow         = "1"
+rand           = { workspace = true }
+clap           = { version = "4", features = ["derive"] }
+const_format   = "0.2"
+
+[lints]
+workspace = true

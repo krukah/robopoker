@@ -1,5 +1,5 @@
 [package]
-name         = "rbp-litmus"
+name         = "litmus"
 publish      = false
 version      = "1.1.0"
 edition      = "2024"
@@ -12,16 +12,16 @@ keywords     = ["poker", "testing", "validation", "nlhe"]
 categories   = ["game-development", "development-tools"]
 
 [lib]
-name = "rbp_litmus"
+name = "litmus"
 path = "src/lib.rs"
 
 [features]
 default = []
 
 [dependencies]
-rbp-cards    = { workspace = true }
-rbp-core     = { workspace = true }
-rbp-gameplay = { workspace = true }
+kicker   = { workspace = true }
+fulcrum  = { workspace = true }
+croupier = { workspace = true }
 
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"

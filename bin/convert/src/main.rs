@@ -6,8 +6,8 @@
 
 #[tokio::main]
 async fn main() {
-    let _telemetry = rbp_telemetry::init();
-    rbp_core::kys();
-    rbp_core::brb();
-    rbp_server::CLI::run().await;
+    let _telemetry = vitals::init();
+    fulcrum::kys();
+    fulcrum::brb();
+    portal::CLI::run().await;
 }

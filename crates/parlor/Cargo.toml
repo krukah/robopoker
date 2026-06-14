@@ -1,0 +1,44 @@
+[package]
+name         = "parlor"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Async game coordinator for live poker sessions"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "async", "gameroom", "multiplayer"]
+categories   = ["game-development", "asynchronous"]
+
+[features]
+default = []
+server  = ["ledger", "holdem", "regret", "endgame", "horizon", "atlas", "monge", "vitals"]
+cli     = ["dialoguer"]
+
+[dependencies]
+fulcrum        = { workspace = true }
+kicker         = { workspace = true }
+croupier       = { workspace = true }
+bouncer        = { workspace = true }
+holdem         = { workspace = true, optional = true, features = ["server"] }
+regret         = { workspace = true, optional = true }
+endgame        = { workspace = true, optional = true }
+horizon        = { workspace = true, optional = true }
+atlas          = { workspace = true, optional = true }
+monge          = { workspace = true, optional = true }
+ledger         = { workspace = true, optional = true }
+vitals         = { workspace = true, optional = true }
+tokio          = { version = "1", features = ["sync", "time", "rt", "macros"] }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
+async-trait    = "0.1"
+const_format   = "0.2"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+tracing        = { workspace = true }
+uuid           = "1"
+rand           = { workspace = true }
+dialoguer      = { version = "0.11", optional = true }
+
+[lints]
+workspace = true

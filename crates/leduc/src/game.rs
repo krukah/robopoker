@@ -1,6 +1,6 @@
 use super::*;
-use rbp_core::*;
-use rbp_mccfr::*;
+use fulcrum::*;
+use regret::*;
 
 /// Position within a betting round.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

@@ -6,5 +6,5 @@
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    rbp_server::run().await.unwrap();
+    portal::run().await.unwrap();
 }

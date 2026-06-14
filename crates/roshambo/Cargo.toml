@@ -1,0 +1,29 @@
+[package]
+name         = "roshambo"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Rock-Paper-Scissors solver for MCCFR framework validation"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["rps", "cfr", "game-theory", "solver"]
+categories   = ["algorithms", "mathematics", "game-development"]
+
+[[bin]]
+name = "rps"
+path = "src/main.rs"
+
+[dependencies]
+fulcrum = { workspace = true }
+regret  = { workspace = true }
+endgame = { workspace = true }
+horizon = { workspace = true }
+atlas   = { workspace = true }
+monge   = { workspace = true }
+paste   = "1.0"
+rand    = { workspace = true }
+
+[lints]
+workspace = true

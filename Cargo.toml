@@ -2,35 +2,35 @@
 resolver = "2"
 members = [
   # Core crates
-  "crates/util",
-  "crates/transport",
-  "crates/cards",
-  "crates/mccfr",
-  "crates/gameplay",
-  "crates/clustering",
-  "crates/translate",
-  "crates/world",
-  "crates/depth",
-  "crates/subgame",
-  "crates/nlhe",
+  "crates/fulcrum",
+  "crates/monge",
+  "crates/kicker",
+  "crates/regret",
+  "crates/croupier",
+  "crates/lloyd",
+  "crates/calque",
+  "crates/atlas",
+  "crates/horizon",
+  "crates/endgame",
+  "crates/holdem",
   "crates/leduc",
   "crates/kuhn",
-  "crates/rps",
+  "crates/roshambo",
   # Infrastructure crates
-  "crates/database",
-  "crates/auth",
-  "crates/telemetry",
-  "crates/hyperparams",
+  "crates/ledger",
+  "crates/bouncer",
+  "crates/vitals",
+  "crates/solus",
   # Application crates
-  "crates/gameroom",
-  "crates/server",
-  "crates/autotrain",
-  "crates/competition",
-  "crates/slumbot",
+  "crates/parlor",
+  "crates/portal",
+  "crates/forge",
+  "crates/arena",
+  "crates/spar",
   # Validation
   "crates/litmus",
   # Facade crate
-  "crates/rbp",
+  "crates/robopoker",
   # Binary crates
   "bin/backend",
   "bin/trainer",
@@ -51,30 +51,30 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-rbp-core        = { version = "1.1", path = "crates/util" }
-rbp-transport   = { version = "1.1", path = "crates/transport" }
-rbp-cards       = { version = "1.1", path = "crates/cards" }
-rbp-mccfr       = { version = "1.1", path = "crates/mccfr" }
-rbp-gameplay    = { version = "1.1", path = "crates/gameplay" }
-rbp-clustering  = { version = "1.1", path = "crates/clustering" }
-rbp-translate   = { version = "1.1", path = "crates/translate" }
-rbp-world       = { version = "1.1", path = "crates/world" }
-rbp-depth       = { version = "1.1", path = "crates/depth" }
-rbp-subgame     = { version = "1.1", path = "crates/subgame" }
-rbp-nlhe        = { version = "1.1", path = "crates/nlhe" }
-rbp-leduc       = { version = "1.1", path = "crates/leduc" }
-rbp-kuhn        = { version = "1.1", path = "crates/kuhn" }
-rbp-rps         = { version = "1.1", path = "crates/rps" }
-rbp-competition = { version = "1.1", path = "crates/competition" }
-rbp-slumbot     = { version = "1.1", path = "crates/slumbot" }
-rbp-litmus      = { version = "1.1", path = "crates/litmus" }
-rbp-database    = { version = "1.1", path = "crates/database" }
-rbp-auth        = { version = "1.1", path = "crates/auth" }
-rbp-telemetry   = { version = "1.1", path = "crates/telemetry" }
-rbp-hyperparams = { version = "1.1", path = "crates/hyperparams" }
-rbp-gameroom    = { version = "1.1", path = "crates/gameroom" }
-rbp-server      = { version = "1.1", path = "crates/server" }
-rbp-autotrain   = { version = "1.1", path = "crates/autotrain" }
+fulcrum  = { version = "1.1", path = "crates/fulcrum" }
+monge    = { version = "1.1", path = "crates/monge" }
+kicker   = { version = "1.1", path = "crates/kicker" }
+regret   = { version = "1.1", path = "crates/regret" }
+croupier = { version = "1.1", path = "crates/croupier" }
+lloyd    = { version = "1.1", path = "crates/lloyd" }
+calque   = { version = "1.1", path = "crates/calque" }
+atlas    = { version = "1.1", path = "crates/atlas" }
+horizon  = { version = "1.1", path = "crates/horizon" }
+endgame  = { version = "1.1", path = "crates/endgame" }
+holdem   = { version = "1.1", path = "crates/holdem" }
+leduc    = { version = "1.1", path = "crates/leduc" }
+kuhn     = { version = "1.1", path = "crates/kuhn" }
+roshambo = { version = "1.1", path = "crates/roshambo" }
+arena    = { version = "1.1", path = "crates/arena" }
+spar     = { version = "1.1", path = "crates/spar" }
+litmus   = { version = "1.1", path = "crates/litmus" }
+ledger   = { version = "1.1", path = "crates/ledger" }
+bouncer  = { version = "1.1", path = "crates/bouncer" }
+vitals   = { version = "1.1", path = "crates/vitals" }
+solus    = { version = "1.1", path = "crates/solus" }
+parlor   = { version = "1.1", path = "crates/parlor" }
+portal   = { version = "1.1", path = "crates/portal" }
+forge    = { version = "1.1", path = "crates/forge" }
 
 # External dependencies
 tokio          = { version = "1", features = ["full"] }

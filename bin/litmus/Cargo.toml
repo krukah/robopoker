@@ -1,11 +1,11 @@
 [package]
-name         = "litmus"
+name         = "litmus-cli"
 publish      = false
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "CLI wrapper around rbp-litmus. Loads scenarios, runs the catalog, writes a markdown report."
+description  = "CLI wrapper around litmus. Loads scenarios, runs the catalog, writes a markdown report."
 license      = "MIT"
 
 [[bin]]
@@ -13,10 +13,10 @@ name = "litmus"
 path = "src/main.rs"
 
 [dependencies]
-rbp-litmus   = { path = "../../crates/litmus" }
-rbp-server   = { path = "../../crates/server" }
-rbp-database = { path = "../../crates/database" }
-rbp-core     = { path = "../../crates/util" }
+litmus  = { path = "../../crates/litmus" }
+portal  = { path = "../../crates/portal" }
+ledger  = { path = "../../crates/ledger" }
+fulcrum = { path = "../../crates/fulcrum" }
 
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 clap               = { version = "4", features = ["derive"] }

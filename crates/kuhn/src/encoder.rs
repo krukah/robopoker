@@ -1,6 +1,6 @@
 use super::*;
-use rbp_mccfr::*;
-use rbp_world::*;
+use atlas::*;
+use regret::*;
 
 #[derive(Default)]
 pub struct KuhnEncoder;

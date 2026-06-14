@@ -1,0 +1,23 @@
+[package]
+name         = "horizon"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Depth-limited solving with biased continuation strategies"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["depth-limited", "cfr", "game-theory", "frontier"]
+categories   = ["algorithms", "mathematics", "game-development"]
+
+[dependencies]
+tracing  = { workspace = true }
+fulcrum  = { workspace = true }
+monge    = { workspace = true }
+regret   = { version = "1.1", path = "../regret", default-features = false }
+solus    = { workspace = true }
+petgraph = { workspace = true }
+
+[lints]
+workspace = true

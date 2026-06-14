@@ -1,5 +1,5 @@
 [package]
-name         = "rbp-leduc"
+name         = "leduc"
 publish      = false
 version      = "1.1.0"
 edition      = "2024"
@@ -12,14 +12,14 @@ keywords     = ["leduc", "cfr", "game-theory", "poker", "solver"]
 categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
-rbp-core      = { workspace = true }
-rbp-mccfr     = { workspace = true }
-rbp-subgame   = { workspace = true }
-rbp-depth     = { workspace = true }
-rbp-world     = { workspace = true }
-rbp-transport = { workspace = true }
-paste         = "1.0"
-rand          = { workspace = true }
+fulcrum = { workspace = true }
+regret  = { workspace = true }
+endgame = { workspace = true }
+horizon = { workspace = true }
+atlas   = { workspace = true }
+monge   = { workspace = true }
+paste   = "1.0"
+rand    = { workspace = true }
 
 [lints]
 workspace = true

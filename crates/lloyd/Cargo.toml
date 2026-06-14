@@ -1,0 +1,33 @@
+[package]
+name         = "lloyd"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Hierarchical k-means clustering with Earth Mover's Distance for poker hand abstraction"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["clustering", "kmeans", "abstraction", "emd"]
+categories   = ["algorithms", "mathematics"]
+
+[features]
+default = []
+server  = ["ledger", "tokio-postgres", "const_format", "async-trait"]
+
+[dependencies]
+tracing        = { workspace = true }
+fulcrum        = { workspace = true }
+kicker         = { workspace = true }
+croupier       = { workspace = true }
+monge          = { workspace = true }
+vitals         = { workspace = true }
+ledger         = { workspace = true, optional = true }
+tokio-postgres = { version = "0.7", optional = true }
+const_format   = { version = "0.2", optional = true }
+async-trait    = { version = "0.1", optional = true }
+rayon          = "1.10"
+rand           = { workspace = true }
+
+[lints]
+workspace = true

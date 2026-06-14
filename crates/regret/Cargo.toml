@@ -1,0 +1,31 @@
+[package]
+name         = "regret"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Game-agnostic Monte Carlo Counterfactual Regret Minimization framework"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["mccfr", "cfr", "game-theory", "nash-equilibrium", "solver"]
+categories   = ["algorithms", "mathematics", "game-development"]
+
+[features]
+default = ["server"]
+server  = ["fulcrum/server", "rayon"]
+async   = ["async-trait", "futures"]
+
+[dependencies]
+fulcrum     = { workspace = true }
+croupier    = { workspace = true }
+monge       = { workspace = true }
+solus       = { workspace = true }
+rand        = { workspace = true }
+petgraph    = { workspace = true }
+paste       = "1.0"
+rayon       = { optional = true, version = "1.10" }
+async-trait = { optional = true, version = "0.1" }
+futures     = { optional = true, version = "0.3" }
+
+[lints]
+workspace = true

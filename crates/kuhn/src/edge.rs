@@ -1,6 +1,6 @@
 use super::*;
-use rbp_mccfr::*;
-use rbp_transport::Support;
+use monge::Support;
+use regret::*;
 
 /// Actions in Kuhn poker.
 ///

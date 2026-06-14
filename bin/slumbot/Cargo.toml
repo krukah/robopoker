@@ -19,7 +19,7 @@ default  = []
 database = []
 
 [dependencies]
-rbp-slumbot        = { path = "../../crates/slumbot" }
+spar               = { path = "../../crates/spar" }
 clap               = { workspace = true }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

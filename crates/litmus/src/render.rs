@@ -3,7 +3,7 @@
 
 use crate::evaluate::{Outcome, Status};
 use crate::schema::{CategoryDef, Scenarios};
-use rbp_gameplay::{ApiGridUsage, ApiStatus};
+use croupier::{ApiGridUsage, ApiStatus};
 use std::collections::BTreeMap;
 
 pub fn render(

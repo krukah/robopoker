@@ -1,6 +1,6 @@
 use super::*;
-use rbp_mccfr::*;
-use rbp_transport::Support;
+use monge::Support;
+use regret::*;
 
 /// Betting history visible to a player at their decision point.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]

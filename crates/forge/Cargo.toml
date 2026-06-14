@@ -1,0 +1,36 @@
+[package]
+name         = "forge"
+publish      = false
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Automated MCCFR training pipeline orchestration"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["training", "mccfr", "automation", "pipeline"]
+categories   = ["algorithms", "command-line-utilities"]
+
+[features]
+default = []
+
+[dependencies]
+fulcrum        = { workspace = true, features = ["server"] }
+kicker         = { workspace = true }
+lloyd          = { workspace = true, features = ["server"] }
+ledger         = { workspace = true }
+croupier       = { workspace = true }
+regret         = { workspace = true, features = ["async"] }
+holdem         = { workspace = true, features = ["server"] }
+monge          = { workspace = true }
+vitals         = { workspace = true }
+tokio-postgres = "0.7"
+async-trait    = "0.1"
+const_format   = "0.2"
+futures        = "0.3"
+tracing        = { workspace = true }
+num_cpus       = "1.16"
+rand           = { workspace = true }
+
+[lints]
+workspace = true

@@ -13,7 +13,7 @@ name = "trainer"
 path = "src/main.rs"
 
 [dependencies]
-rbp-autotrain      = { path = "../../crates/autotrain" }
+forge              = { path = "../../crates/forge" }
 clap               = { version = "4", features = ["derive"] }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

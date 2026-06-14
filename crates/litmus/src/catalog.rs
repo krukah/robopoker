@@ -7,8 +7,8 @@
 //! not silently as a SKIP later.
 
 use crate::schema::*;
-use rbp_cards::*;
-use rbp_gameplay::*;
+use croupier::*;
+use kicker::*;
 
 pub struct Catalog<'a> {
     scenarios: &'a Scenarios,

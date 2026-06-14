@@ -1,6 +1,6 @@
 use super::*;
-use rbp_core::*;
-use rbp_mccfr::*;
+use fulcrum::*;
+use regret::*;
 
 /// Game tree node: which phase of the hand are we in?
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

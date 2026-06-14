@@ -13,7 +13,7 @@ name = "backend"
 path = "src/main.rs"
 
 [dependencies]
-rbp-server         = { path = "../../crates/server" }
+portal             = { path = "../../crates/portal" }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
