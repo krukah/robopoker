@@ -1,4 +1,4 @@
-use croupier::*;
+use cowboys::*;
 use holdem::*;
 use ledger::*;
 use parlor::Solved;
@@ -179,7 +179,7 @@ impl StrategyAPI {
     /// the `(observation, probability)` stream into the API response.
     fn posterior<F>(&self, recall: Witness, compute: F) -> anyhow::Result<ApiOpponentRange>
     where
-        F: FnOnce(&'static holdem::Flagship, &Witness) -> Vec<(kicker::Observation, fulcrum::Probability)>,
+        F: FnOnce(&'static holdem::Flagship, &Witness) -> Vec<(kicker::Observation, pokerkit::Probability)>,
     {
         let recall = recall.validate_observation()?;
         let blueprint = self

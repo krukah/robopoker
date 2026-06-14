@@ -1,6 +1,6 @@
 //! Read-only view adapter for leaf-augmented games.
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 
 /// Read-only lens that strips leaf wrapping for blueprint lookups.

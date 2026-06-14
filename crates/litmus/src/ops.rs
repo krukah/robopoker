@@ -5,7 +5,7 @@
 //! The server crate provides a concrete impl wrapping its existing
 //! `StrategyAPI` and `TrainingAPI`.
 
-use croupier::{ApiGridUsage, ApiStatus, ApiStrategy, Witness};
+use cowboys::{ApiGridUsage, ApiStatus, ApiStrategy, Witness};
 
 #[async_trait::async_trait]
 pub trait Ops: Send + Sync {

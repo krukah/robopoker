@@ -1,13 +1,13 @@
 use super::*;
 use atlas::*;
-use croupier::*;
+use cowboys::*;
 use endgame::*;
-use fulcrum::*;
 use horizon::*;
 use kicker::Hand;
 use kicker::HandIterator;
 use kicker::Hole;
 use kicker::Observation;
+use pokerkit::*;
 use regret::*;
 
 mccfr!(Nlhe, NlheEncoder, NlheTurn, NlheEdge, NlheGame, NlheInfo, 128);
@@ -38,7 +38,7 @@ fn subgame_descents(recall: &Witness) -> Vec<Descent<NlheTurn, NlheEdge>> {
         .collect()
 }
 
-impl<R, W, S> DepthSampler<{ fulcrum::FRONTIER_LEAVES }> for Nlhe<R, W, S>
+impl<R, W, S> DepthSampler<{ pokerkit::FRONTIER_LEAVES }> for Nlhe<R, W, S>
 where
     R: RegretSchedule,
     W: WeightSchedule,
@@ -55,7 +55,7 @@ where
         prefix: &Prefix<NlheTurn, NlheEdge>,
         game: &NlheGame,
         internal: NlheTurn,
-    ) -> Payoffs<{ fulcrum::FRONTIER_LEAVES }> {
+    ) -> Payoffs<{ pokerkit::FRONTIER_LEAVES }> {
         let ref encoder = self.encoder;
         let ref profile = self.profile;
         let rollouts = FrontierHyperParams::get().rollouts();
@@ -96,7 +96,7 @@ where
     /// No opponent range partitioning or world sampling — solves the
     /// depth-limited tree from `recall.head()` using biased continuation
     /// rollouts at the leaves.
-    pub fn adapt_leaf(&self, recall: &Witness) -> DepthSolver<'_, Self, { fulcrum::FRONTIER_LEAVES }> {
+    pub fn adapt_leaf(&self, recall: &Witness) -> DepthSolver<'_, Self, { pokerkit::FRONTIER_LEAVES }> {
         let internal = NlheTurn::from(recall.turn());
         let entry = NlheGame::from(recall.head());
         let prefix = subgame_descents(recall);
@@ -110,7 +110,7 @@ where
     pub fn adapt_safe(
         &self,
         recall: &Witness,
-    ) -> WorldSolver<'_, { fulcrum::N_WORLDS }, NlheProfile, NlheEncoder, NlheInfo, NlheSecret> {
+    ) -> WorldSolver<'_, { pokerkit::N_WORLDS }, NlheProfile, NlheEncoder, NlheInfo, NlheSecret> {
         let (external, partition, recall) = self.setup(recall);
         WorldSolver::new(&self.encoder, &self.profile, external, partition, recall)
     }
@@ -123,12 +123,12 @@ where
     pub fn adapt_full(
         &self,
         recall: &Witness,
-    ) -> SubGameSolver<'_, { fulcrum::N_WORLDS }, { fulcrum::FRONTIER_LEAVES }, Self, NlheInfo, NlheSecret> {
+    ) -> SubGameSolver<'_, { pokerkit::N_WORLDS }, { pokerkit::FRONTIER_LEAVES }, Self, NlheInfo, NlheSecret> {
         let (external, partition, recall) = self.setup(recall);
         SubGameSolver::new(self, external, partition, recall)
     }
     /// Common setup for safe solvers: external identity, belief partition, recall.
-    fn setup(&self, recall: &Witness) -> (NlheTurn, Belief<NlheSecret, { fulcrum::N_WORLDS }>, CfrRecall<NlheGame>) {
+    fn setup(&self, recall: &Witness) -> (NlheTurn, Belief<NlheSecret, { pokerkit::N_WORLDS }>, CfrRecall<NlheGame>) {
         let external = opposing(recall.turn());
         let prior = self.opponent_range(recall);
         let partition = prior.partition();

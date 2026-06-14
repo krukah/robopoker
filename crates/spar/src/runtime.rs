@@ -12,7 +12,7 @@
 //! - `Arc<tokio_postgres::Client>` for hand/action inserts
 //! - `&'static Flagship` for any subgame variant (any cell with `depth` or `world`)
 //! - [`Throttle`] capping aggregate in-flight HTTP requests
-//! - SIGTERM / `TRAIN_DURATION` interrupt signal via [`fulcrum::brb`]
+//! - SIGTERM / `TRAIN_DURATION` interrupt signal via [`pokerkit::brb`]
 //!
 //! Each session owns its own `Player`, `Recorder` (own Room row), and
 //! `slumbot::Client` (own auth token). Sessions of the same variant emit
@@ -26,8 +26,8 @@ use crate::benchmark::*;
 use crate::client::*;
 use crate::mode::*;
 use crate::recorder::*;
-use fulcrum::Variant;
 use parlor::VariantExt;
+use pokerkit::Variant;
 use tracing::Instrument;
 
 /// Parsed runtime configuration. `Runtime::from_args()` produces this by

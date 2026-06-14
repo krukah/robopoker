@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 
 /// Barycentric coordinates on a 2-simplex (equilateral triangle).

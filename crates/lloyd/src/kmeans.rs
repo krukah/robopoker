@@ -10,7 +10,7 @@ use crate::Elkan;
 use crate::Layer;
 use crate::Step;
 use crate::prior::Prior;
-use fulcrum::Energy;
+use pokerkit::Energy;
 use std::time::Instant;
 
 /// Streams Elkan iterations as `Step<K>` values. Created by

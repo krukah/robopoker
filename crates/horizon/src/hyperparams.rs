@@ -1,6 +1,6 @@
 //! Hyperparameters for depth-limited frontier evaluation.
 
-use fulcrum::Probability;
+use pokerkit::Probability;
 use solus::HyperParams;
 
 /// Depth-limited frontier evaluation parameters.

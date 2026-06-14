@@ -4,7 +4,7 @@
 //!
 //! This crate is the typed core: schema definitions, named-ref resolution,
 //! family-matrix expansion, per-kind evaluation, and markdown rendering.
-//! It depends only on `kicker` / `croupier` for types; the I/O
+//! It depends only on `kicker` / `cowboys` for types; the I/O
 //! surface is the [`Ops`] trait, implemented by the server crate (or any
 //! other backend) so this crate stays cycle-free.
 

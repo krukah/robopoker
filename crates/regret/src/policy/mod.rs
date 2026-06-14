@@ -12,7 +12,7 @@ pub use exponential::*;
 pub use linear::*;
 pub use quadratic::*;
 
-use fulcrum::*;
+use pokerkit::*;
 
 /// Trait for strategy weighting schemes in CFR.
 pub trait WeightSchedule {

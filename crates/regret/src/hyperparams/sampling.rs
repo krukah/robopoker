@@ -1,4 +1,4 @@
-use fulcrum::*;
+use pokerkit::*;
 use solus::HyperParams;
 
 /// Average-strategy sampling parameters.

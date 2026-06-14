@@ -2,7 +2,7 @@
 use std::collections::BTreeMap;
 
 use crate::*;
-use fulcrum::Probability;
+use pokerkit::Probability;
 use regret::*;
 
 pub struct DepthSolver<'blueprint, N, const D: usize>

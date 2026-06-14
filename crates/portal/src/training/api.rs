@@ -1,4 +1,4 @@
-use croupier::*;
+use cowboys::*;
 use ledger::*;
 use std::sync::Arc;
 use std::sync::OnceLock;

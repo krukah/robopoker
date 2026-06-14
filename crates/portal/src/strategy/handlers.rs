@@ -2,7 +2,7 @@ use super::StrategyAPI;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
-use croupier::*;
+use cowboys::*;
 
 pub async fn policy(api: web::Data<StrategyAPI>, req: web::Json<GetPolicy>) -> impl Responder {
     let started = std::time::Instant::now();

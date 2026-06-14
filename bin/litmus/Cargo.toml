@@ -13,10 +13,10 @@ name = "litmus"
 path = "src/main.rs"
 
 [dependencies]
-litmus  = { path = "../../crates/litmus" }
-portal  = { path = "../../crates/portal" }
-ledger  = { path = "../../crates/ledger" }
-fulcrum = { path = "../../crates/fulcrum" }
+litmus   = { path = "../../crates/litmus" }
+portal   = { path = "../../crates/portal" }
+ledger   = { path = "../../crates/ledger" }
+pokerkit = { path = "../../crates/pokerkit" }
 
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 clap               = { version = "4", features = ["derive"] }

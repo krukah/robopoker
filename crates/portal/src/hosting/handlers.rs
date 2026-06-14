@@ -4,9 +4,9 @@ use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
 use bouncer;
-use fulcrum::ID;
-use fulcrum::Variant;
 use parlor::Room;
+use pokerkit::ID;
+use pokerkit::Variant;
 
 pub async fn start(casino: web::Data<Casino>, body: web::Json<Variant>) -> impl Responder {
     let variant = body.into_inner();

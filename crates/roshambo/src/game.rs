@@ -1,5 +1,5 @@
 use super::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 
 /// Game state for Rock-Paper-Scissors, encoded as a node index.

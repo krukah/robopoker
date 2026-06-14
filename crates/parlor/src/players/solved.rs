@@ -4,14 +4,14 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
-use croupier::Edge;
+use cowboys::Edge;
 use endgame::SubgameHyperParams;
-use fulcrum::Chips;
-use fulcrum::Probability;
-use fulcrum::Utility;
 use holdem::NlheEdge;
 use holdem::NlheInfo;
 use kicker::Street;
+use pokerkit::Chips;
+use pokerkit::Probability;
+use pokerkit::Utility;
 use regret::Harvest;
 use regret::Solver;
 use vitals::KeyValue;
@@ -147,7 +147,7 @@ impl Solved {
                 (e, w * sg + (1.0 - w) * bp)
             })
             .collect::<Vec<_>>();
-        let total = raw.iter().map(|(_, p)| p).sum::<Probability>().max(fulcrum::EPSILON);
+        let total = raw.iter().map(|(_, p)| p).sum::<Probability>().max(pokerkit::EPSILON);
         raw.into_iter().map(|(e, p)| (e, p / total)).collect()
     }
 

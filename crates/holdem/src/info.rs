@@ -1,7 +1,7 @@
 use super::*;
-use croupier::*;
-use fulcrum::Arbitrary;
+use cowboys::*;
 use kicker::*;
+use pokerkit::Arbitrary;
 use regret::*;
 
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
@@ -127,7 +127,7 @@ impl From<(Path, Abstraction, Path)> for NlheInfo {
         let subgame = subgame
             .into_iter()
             .rev()
-            .take_while(croupier::Edge::is_choice)
+            .take_while(cowboys::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -180,11 +180,11 @@ impl Arbitrary for NlheInfo {
                         })
                 })?
             })
-            .filter(croupier::Edge::is_choice)
+            .filter(cowboys::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .take_while(croupier::Edge::is_choice)
+            .take_while(cowboys::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -337,7 +337,7 @@ mod tests {
             .subgame()
             .into_iter()
             .rev()
-            .take_while(croupier::Edge::is_choice)
+            .take_while(cowboys::Edge::is_choice)
             .collect::<Path>()
             .rev()
             .collect::<Path>();

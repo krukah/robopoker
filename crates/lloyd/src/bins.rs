@@ -1,6 +1,6 @@
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
+use pokerkit::*;
 use std::ops::AddAssign;
 
 /// Street-specific histogram sizes derived from clustering parameters.

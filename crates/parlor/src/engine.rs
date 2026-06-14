@@ -1,6 +1,6 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
+use pokerkit::*;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::sync::Arc;

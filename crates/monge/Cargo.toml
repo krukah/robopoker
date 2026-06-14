@@ -11,7 +11,7 @@ keywords     = ["optimal-transport", "sinkhorn", "emd", "wasserstein"]
 categories   = ["algorithms", "mathematics"]
 
 [dependencies]
-fulcrum = { workspace = true }
+pokerkit = { workspace = true }
 
 [lints]
 workspace = true

@@ -1,6 +1,6 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
+use pokerkit::*;
 
 /// Record represents a single update to the blueprint profile.
 /// Contains the final computed values after discounting and accumulation.

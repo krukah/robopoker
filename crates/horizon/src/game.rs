@@ -11,7 +11,7 @@
 //!       DepthPhase::External(payoffs, k, j) — external picked j, resolved
 //! ```
 use crate::*;
-use fulcrum::Utility;
+use pokerkit::Utility;
 use regret::*;
 
 #[derive(Debug, Clone, Copy)]

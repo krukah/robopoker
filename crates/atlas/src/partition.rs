@@ -6,7 +6,7 @@
 //! secrets, world K-1 the lowest.
 use crate::Belief;
 use crate::World;
-use fulcrum::Probability;
+use pokerkit::Probability;
 use regret::CfrSecret;
 use regret::Posterior;
 use std::collections::BTreeMap;

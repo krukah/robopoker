@@ -13,8 +13,8 @@ use std::collections::BTreeMap;
 
 use crate::SubGameEncoder;
 use atlas::*;
-use fulcrum::Probability;
 use horizon::*;
+use pokerkit::Probability;
 use regret::*;
 
 /// Solver for safe subgame solving with optional depth-limited frontiers.

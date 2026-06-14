@@ -1,9 +1,9 @@
 use super::*;
 use atlas::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use horizon::*;
 use kicker::*;
+use pokerkit::*;
 use regret::*;
 use std::collections::BTreeMap;
 

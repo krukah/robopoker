@@ -1,6 +1,6 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
+use pokerkit::*;
 
 /// Memory represents all accumulated values for a single info.
 /// Fetched in a single query via SQL join over edges.

@@ -281,7 +281,7 @@ mod tests {
         rank: Rank,
         node: History,
         edge: KuhnEdge,
-    ) -> fulcrum::Probability {
+    ) -> pokerkit::Probability {
         let info = view(rank, node);
         (0..WORLDS)
             .map(|w| {
@@ -290,8 +290,8 @@ mod tests {
                 let fe = horizon::DepthEdge::<_, 1>::Game(edge);
                 CfrNash::averaged_policy(profile, &wi, &fe)
             })
-            .sum::<fulcrum::Probability>()
-            / WORLDS as fulcrum::Probability
+            .sum::<pokerkit::Probability>()
+            / WORLDS as pokerkit::Probability
     }
 
     #[rustfmt::skip]

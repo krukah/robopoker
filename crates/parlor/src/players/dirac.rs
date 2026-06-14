@@ -11,9 +11,9 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use croupier::*;
-use fulcrum::Probability;
+use cowboys::*;
 use holdem::*;
+use pokerkit::Probability;
 
 use super::Brain;
 use super::Mount;

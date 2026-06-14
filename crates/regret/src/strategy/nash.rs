@@ -1,6 +1,6 @@
 use crate::*;
-use fulcrum::*;
 use monge::Density;
+use pokerkit::*;
 use std::collections::HashMap;
 
 impl<T> CfrNash for T where T: RefProf {}

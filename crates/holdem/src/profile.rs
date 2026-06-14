@@ -112,9 +112,9 @@ impl ledger::Hydrate for NlheProfile {
             .await
             .expect("to have already created blueprint")
         {
-            let subgame = croupier::Path::from(row.get::<_, i64>(0) as u64);
-            let present = croupier::Abstraction::from(row.get::<_, i16>(1));
-            let choices = croupier::Path::from(row.get::<_, i64>(2) as u64);
+            let subgame = cowboys::Path::from(row.get::<_, i64>(0) as u64);
+            let present = cowboys::Abstraction::from(row.get::<_, i16>(1));
+            let choices = cowboys::Path::from(row.get::<_, i64>(2) as u64);
             let edge = NlheEdge::from(row.get::<_, i64>(3) as u64);
             let weight = row.get::<_, f32>(4);
             let regret = row.get::<_, f32>(5);

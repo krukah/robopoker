@@ -1,7 +1,7 @@
-use croupier::Action;
-use croupier::Recall;
-use croupier::ServerMessage;
-use croupier::Witness;
+use cowboys::Action;
+use cowboys::Recall;
+use cowboys::ServerMessage;
+use cowboys::Witness;
 use parlor::Player;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

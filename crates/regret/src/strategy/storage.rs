@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 
 /// Raw write access layer for CFR strategy data.
 ///

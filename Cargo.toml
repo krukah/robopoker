@@ -2,13 +2,13 @@
 resolver = "2"
 members = [
   # Core crates
-  "crates/fulcrum",
+  "crates/pokerkit",
   "crates/monge",
   "crates/kicker",
   "crates/regret",
-  "crates/croupier",
+  "crates/cowboys",
   "crates/lloyd",
-  "crates/calque",
+  "crates/dragoman",
   "crates/atlas",
   "crates/horizon",
   "crates/endgame",
@@ -51,13 +51,13 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-fulcrum  = { version = "1.1", path = "crates/fulcrum" }
+pokerkit = { version = "1.1", path = "crates/pokerkit" }
 monge    = { version = "1.1", path = "crates/monge" }
 kicker   = { version = "1.1", path = "crates/kicker" }
 regret   = { version = "1.1", path = "crates/regret" }
-croupier = { version = "1.1", path = "crates/croupier" }
+cowboys  = { version = "1.1", path = "crates/cowboys" }
 lloyd    = { version = "1.1", path = "crates/lloyd" }
-calque   = { version = "1.1", path = "crates/calque" }
+dragoman = { version = "1.1", path = "crates/dragoman" }
 atlas    = { version = "1.1", path = "crates/atlas" }
 horizon  = { version = "1.1", path = "crates/horizon" }
 endgame  = { version = "1.1", path = "crates/endgame" }

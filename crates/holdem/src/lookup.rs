@@ -3,9 +3,9 @@
 //! Shared query logic for resolving a player's recall into a trained
 //! strategy. Used by both the analysis API and CPU player implementations.
 use super::*;
-use croupier::*;
-use fulcrum::Probability;
+use cowboys::*;
 use kicker::Isomorphism;
+use pokerkit::Probability;
 use regret::*;
 use std::sync::OnceLock;
 

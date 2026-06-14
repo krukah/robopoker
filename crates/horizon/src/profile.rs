@@ -1,6 +1,6 @@
 //! Local mutable profile for depth-limited (leaf) solving.
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 use std::collections::HashMap;
 

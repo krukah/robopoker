@@ -1,7 +1,7 @@
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
 use parlor::records::{Hand as HandRecord, Participant, Play};
+use pokerkit::*;
 
 /// Per-hand result from replaying a stored hand.
 #[derive(Debug, Clone)]

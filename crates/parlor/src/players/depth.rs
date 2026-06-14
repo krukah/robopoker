@@ -5,7 +5,7 @@
 //! intentionally don't compile.
 use std::time::Duration;
 
-use croupier::*;
+use cowboys::*;
 use holdem::*;
 
 use super::Blueprint;

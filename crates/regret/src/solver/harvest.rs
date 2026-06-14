@@ -5,8 +5,8 @@
 //! info iteration.
 use std::collections::BTreeMap;
 
-use fulcrum::Probability;
-use fulcrum::Utility;
+use pokerkit::Probability;
+use pokerkit::Utility;
 
 /// Refined per-edge policy, visit counts, and total positive regret at the
 /// harvested infoset. `regret` is `Σ_a max(0, R(I, a))` summed over choice

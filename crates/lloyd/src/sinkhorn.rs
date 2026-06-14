@@ -1,7 +1,7 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use monge::*;
+use pokerkit::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};

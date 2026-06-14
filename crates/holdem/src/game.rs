@@ -1,8 +1,8 @@
 //! NLHE game type: poker game state.
 use super::*;
-use croupier::*;
-use fulcrum::Utility;
+use cowboys::*;
 use kicker::*;
+use pokerkit::Utility;
 use regret::*;
 
 /// NLHE game state for CFR traversal.

@@ -13,7 +13,7 @@ categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
 tracing  = { workspace = true }
-fulcrum  = { workspace = true }
+pokerkit = { workspace = true }
 monge    = { workspace = true }
 regret   = { version = "1.1", path = "../regret", default-features = false }
 solus    = { workspace = true }

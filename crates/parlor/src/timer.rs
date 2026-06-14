@@ -1,4 +1,4 @@
-use fulcrum::*;
+use pokerkit::*;
 use std::time::Duration;
 
 /// Configuration for game pacing and timeouts.

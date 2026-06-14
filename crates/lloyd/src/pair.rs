@@ -1,4 +1,4 @@
-use croupier::*;
+use cowboys::*;
 use kicker::*;
 
 /// Compact identifier for an unordered pair of abstractions.

@@ -114,7 +114,7 @@ pub trait Solver: Send + Sync {
     {
         for _ in 0..trees / Self::batch_size() {
             self.step();
-            if fulcrum::interrupted() {
+            if pokerkit::interrupted() {
                 break;
             }
         }
@@ -176,7 +176,7 @@ pub trait Solver: Send + Sync {
         for edge in info.choices() {
             let n = self.profile().cum_visits(info, &edge);
             let ev = self.storage().mut_payoff(info, &edge);
-            *ev += (cfr.payoff - *ev) / (n + 1) as fulcrum::Utility;
+            *ev += (cfr.payoff - *ev) / (n + 1) as pokerkit::Utility;
         }
     }
 
@@ -200,7 +200,7 @@ pub trait Solver: Send + Sync {
         root: Self::G,
         hero: Self::T,
         path: impl IntoIterator<Item = Self::E>,
-    ) -> fulcrum::Probability {
+    ) -> pokerkit::Probability {
         self.encoder()
             .replay(root, path)
             .into_iter()
@@ -324,7 +324,7 @@ pub trait Solver: Send + Sync {
     }
 
     /// Compute exploitability by building full tree and delegating to Profile.
-    fn exploitability(&self) -> fulcrum::Utility {
+    fn exploitability(&self) -> pokerkit::Utility {
         self.profile().exploitability(
             TreeBuilder::<_, _, _, _, _, _, VanillaSampling>::new(
                 self.encoder(),
@@ -345,7 +345,7 @@ pub trait Solver: Send + Sync {
     /// Returns an upper bound on true exploitability because per-deal
     /// best response is less constrained than per-info-set best response
     /// (Jensen's inequality).
-    fn mxploitability(&self, n: usize) -> fulcrum::Utility {
-        (0..n).map(|_| self.exploitability()).sum::<fulcrum::Utility>() / n as fulcrum::Utility
+    fn mxploitability(&self, n: usize) -> pokerkit::Utility {
+        (0..n).map(|_| self.exploitability()).sum::<pokerkit::Utility>() / n as pokerkit::Utility
     }
 }

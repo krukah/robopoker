@@ -12,12 +12,12 @@ categories   = ["algorithms", "mathematics", "game-development"]
 
 [features]
 default = ["server"]
-server  = ["fulcrum/server", "rayon"]
+server  = ["pokerkit/server", "rayon"]
 async   = ["async-trait", "futures"]
 
 [dependencies]
-fulcrum     = { workspace = true }
-croupier    = { workspace = true }
+pokerkit    = { workspace = true }
+cowboys     = { workspace = true }
 monge       = { workspace = true }
 solus       = { workspace = true }
 rand        = { workspace = true }

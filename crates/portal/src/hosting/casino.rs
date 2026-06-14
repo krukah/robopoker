@@ -1,10 +1,10 @@
 use super::*;
 use bouncer::Lurker;
-use croupier::ServerMessage;
-use fulcrum::ID;
-use fulcrum::Variant;
+use cowboys::ServerMessage;
 use parlor::VariantExt;
 use parlor::*;
+use pokerkit::ID;
+use pokerkit::Variant;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;

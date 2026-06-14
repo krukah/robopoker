@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::ID;
-use fulcrum::Unique;
+use pokerkit::ID;
+use pokerkit::Unique;
 
 /// User represents authentication state: anonymous or authenticated.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

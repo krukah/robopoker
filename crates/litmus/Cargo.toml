@@ -20,8 +20,8 @@ default = []
 
 [dependencies]
 kicker   = { workspace = true }
-fulcrum  = { workspace = true }
-croupier = { workspace = true }
+pokerkit = { workspace = true }
+cowboys  = { workspace = true }
 
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"

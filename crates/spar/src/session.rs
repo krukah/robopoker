@@ -2,9 +2,9 @@ use crate::client::*;
 use crate::recorder::*;
 use crate::result::*;
 use crate::translate::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
+use pokerkit::*;
 
 /// Hand-scoped state for a single Slumbot session.
 pub struct Session<'sesh> {

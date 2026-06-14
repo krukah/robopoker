@@ -1,6 +1,6 @@
 //! L×L payoff matrix for the frontier normal-form game.
 use crate::Continuation;
-use fulcrum::Utility;
+use pokerkit::Utility;
 
 /// L×L payoff matrix indexed by continuation strategy pairs.
 #[derive(Debug, Clone, Copy)]

@@ -11,13 +11,13 @@
 //! shape carries the semantics.
 use std::collections::BTreeMap;
 
-use croupier::Action;
-use croupier::Edge;
-use croupier::Game;
-use croupier::Recall;
-use croupier::Witness;
-use fulcrum::Probability;
+use cowboys::Action;
+use cowboys::Edge;
+use cowboys::Game;
+use cowboys::Recall;
+use cowboys::Witness;
 use holdem::Flagship;
+use pokerkit::Probability;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
 

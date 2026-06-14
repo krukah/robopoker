@@ -3,7 +3,7 @@
 //! twice.
 //!
 //! Stored as `u8` since cluster IDs are bounded by
-//! [`KMEANS_MAX_CLUSTER_COUNT`](fulcrum::KMEANS_MAX_CLUSTER_COUNT) =
+//! [`KMEANS_MAX_CLUSTER_COUNT`](pokerkit::KMEANS_MAX_CLUSTER_COUNT) =
 //! 255. Const-assertions on the per-street K constants enforce this
 //! at compile time, so the `j as u8` cast in `tally` cannot truncate.
 

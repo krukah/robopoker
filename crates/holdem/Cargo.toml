@@ -17,9 +17,9 @@ server  = ["tokio-postgres", "const_format", "async-trait", "ledger", "futures",
 
 [dependencies]
 tracing        = { workspace = true }
-fulcrum        = { workspace = true }
+pokerkit       = { workspace = true }
 kicker         = { workspace = true }
-croupier       = { workspace = true }
+cowboys        = { workspace = true }
 monge          = { workspace = true }
 regret         = { version = "1.1", path = "../regret", default-features = false }
 endgame        = { workspace = true }

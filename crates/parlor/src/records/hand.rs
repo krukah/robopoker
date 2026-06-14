@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::*;
 use kicker::*;
+use pokerkit::*;
 
 /// Persistent hand record for a completed poker hand.
 #[derive(Debug, Clone)]

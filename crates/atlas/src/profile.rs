@@ -12,7 +12,7 @@
 //! trees), NOT from policy perturbation. This is the safe subgame
 //! solving approach from Brown & Sandholm 2017.
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 use std::collections::HashMap;
 
@@ -167,15 +167,15 @@ where
         Self::T::from(self.t % Self::T::players())
     }
 
-    fn temperature(&self) -> fulcrum::Entropy {
+    fn temperature(&self) -> pokerkit::Entropy {
         self.global.temperature()
     }
 
-    fn smoothing(&self) -> fulcrum::Energy {
+    fn smoothing(&self) -> pokerkit::Energy {
         self.global.smoothing()
     }
 
-    fn curiosity(&self) -> fulcrum::Probability {
+    fn curiosity(&self) -> pokerkit::Probability {
         self.global.curiosity()
     }
 }

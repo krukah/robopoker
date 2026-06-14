@@ -7,7 +7,7 @@
 #[tokio::main]
 async fn main() {
     let _telemetry = vitals::init();
-    fulcrum::kys();
-    fulcrum::brb();
+    pokerkit::kys();
+    pokerkit::brb();
     portal::CLI::run().await;
 }

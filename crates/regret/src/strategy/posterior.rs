@@ -17,8 +17,8 @@
 //! The likelihood P(actions | private) is the product of blueprint action
 //! probabilities along the observed history.
 use crate::CfrSecret;
-use fulcrum::Probability;
 use monge::Density;
+use pokerkit::Probability;
 use std::collections::BTreeMap;
 
 /// Unnormalized probability distribution over private information.

@@ -10,7 +10,7 @@
 //! match dimension. The grid below aligns each axis token at its
 //! position in the bottom row's `Dirac<World<Depth<Blueprint>>>` —
 //! reading column-by-column tells you which axis is active.
-use fulcrum::Config;
+use pokerkit::Config;
 use vitals::KeyValue;
 
 use super::Agent;

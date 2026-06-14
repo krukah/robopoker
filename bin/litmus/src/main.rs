@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let api_label = format!("rbp-{} {}", fulcrum::regime(), fulcrum::version());
+    let api_label = format!("rbp-{} {}", pokerkit::regime(), pokerkit::version());
     let status = litmus.status().await.ok();
     let grid_usage = litmus.grid_usage().await.ok();
     let report = litmus::render(&api_label, status.as_ref(), &scenarios, &outcomes, grid_usage.as_deref());

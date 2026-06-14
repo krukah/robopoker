@@ -1,6 +1,6 @@
 use super::Client;
-use fulcrum::ID;
 use parlor::Room;
+use pokerkit::ID;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::Notify;

@@ -96,13 +96,13 @@ macro_rules! table {
 /// K-means output this version *uses*. When a new `Version` only changes
 /// the bet-sizing grid (e.g. V3 reuses V1's clustering), it should read
 /// the existing `_v1` clustering tables — not require fresh clustering
-/// under a `_v3` suffix. See [`fulcrum::Version::clustering_suffix`].
+/// under a `_v3` suffix. See [`pokerkit::Version::clustering_suffix`].
 macro_rules! versioned {
     ($name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
         pub fn $name() -> &'static str {
             static T: OnceLock<&str> = OnceLock::<&str>::new();
-            *T.get_or_init(|| leaked(format!("{}{}", $default, fulcrum::version().clustering_suffix())))
+            *T.get_or_init(|| leaked(format!("{}{}", $default, pokerkit::version().clustering_suffix())))
         }
     };
 }
@@ -120,7 +120,7 @@ macro_rules! regime {
         pub fn $name() -> &'static str {
             static T: OnceLock<&str> = OnceLock::<&str>::new();
             *T.get_or_init(|| {
-                leaked(format!("{}{}{}", $default, fulcrum::regime().suffix(), fulcrum::version().suffix(),))
+                leaked(format!("{}{}{}", $default, pokerkit::regime().suffix(), pokerkit::version().suffix(),))
             })
         }
     };

@@ -3,7 +3,7 @@
 //! Implements Schema/Derive traits directly on types from other crates.
 //! This is possible because Schema/Derive are local to this crate.
 use super::*;
-use croupier::*;
+use cowboys::*;
 use kicker::*;
 use std::sync::OnceLock;
 

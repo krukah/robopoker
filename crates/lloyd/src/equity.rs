@@ -1,7 +1,7 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use monge::*;
+use pokerkit::*;
 
 /// Distance metric for river equity distributions.
 ///

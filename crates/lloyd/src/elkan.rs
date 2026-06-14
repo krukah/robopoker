@@ -1,5 +1,5 @@
 use super::*;
-use fulcrum::Energy;
+use pokerkit::Energy;
 use rayon::prelude::*;
 
 /// Triangle-inequality accelerated k-means clustering.

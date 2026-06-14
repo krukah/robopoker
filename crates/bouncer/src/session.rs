@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::ID;
-use fulcrum::Unique;
+use pokerkit::ID;
+use pokerkit::Unique;
 
 /// Persisted session for token management.
 #[derive(Debug, Clone)]

@@ -2,10 +2,10 @@
 //!
 //! Requires the `database` feature.
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
 use ledger::*;
+use pokerkit::*;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio_postgres::Client;

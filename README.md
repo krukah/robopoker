@@ -56,11 +56,11 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 | Crate                                   | Description                                                         |
 | --------------------------------------- | ------------------------------------------------------------------- |
 | [`rbp`](crates/robopoker)                     | Facade re-exporting all public crates                               |
-| [`fulcrum`](crates/fulcrum)               | Type aliases, constants, regime/version metadata, shared traits     |
+| [`pokerkit`](crates/pokerkit)               | Type aliases, constants, regime/version metadata, shared traits     |
 | [`kicker`](crates/kicker)             | Card primitives, hand evaluation, equity                            |
 | [`monge`](crates/monge)     | Optimal transport (Sinkhorn, EMD) over arbitrary measures           |
 | [`regret`](crates/regret)             | Game-agnostic CFR framework                                         |
-| [`croupier`](crates/croupier)       | Poker game engine: state, edges, settlement, witness/perfect recall |
+| [`cowboys`](crates/cowboys)       | Poker game engine: state, edges, settlement, witness/perfect recall |
 | [`lloyd`](crates/lloyd)   | Hierarchical k-means abstraction with Elkan acceleration            |
 | [`solus`](crates/solus) | Proc-macro deriving a `OnceLock`-backed global config pattern       |
 
@@ -68,7 +68,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 | Crate                               | Description                                               |
 | ----------------------------------- | --------------------------------------------------------- |
-| [`calque`](crates/calque) | Generic action translation over finite lattices           |
+| [`dragoman`](crates/dragoman) | Generic action translation over finite lattices           |
 | [`atlas`](crates/atlas)         | World-partitioned belief layer for safe subgame solving   |
 | [`horizon`](crates/horizon)         | Depth-limited solving with biased continuation strategies |
 | [`endgame`](crates/endgame)     | Safe + depth-limited subgame composition                  |
@@ -129,7 +129,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Search & abstraction layer
 
-**`calque`** — Action translation:
+**`dragoman`** — Action translation:
 
 - Generic `Lattice` over a totally-ordered axis
 - Pseudo-harmonic translation between abstract and concrete actions⁷,⁸
@@ -143,7 +143,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Domain layer
 
-**`croupier`** — Complete poker game engine:
+**`cowboys`** — Complete poker game engine:
 
 - Full No-Limit Texas Hold'em rules
 - Side-pot, all-in, and tie handling

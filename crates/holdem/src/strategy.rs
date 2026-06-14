@@ -1,7 +1,7 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use monge::*;
+use pokerkit::*;
 use regret::*;
 use std::collections::BTreeMap;
 
@@ -158,7 +158,7 @@ impl From<ApiStrategy> for Strategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fulcrum::Arbitrary;
+    use pokerkit::Arbitrary;
 
     fn build(data: &[(Action, Probability)]) -> Strategy {
         let accumulated = data.iter().map(|(a, p)| (Edge::from(*a), *p)).collect();

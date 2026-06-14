@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 
 /// Core training state: walker identity and sampling parameters.
 ///

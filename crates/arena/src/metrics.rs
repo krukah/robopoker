@@ -1,6 +1,6 @@
 use super::*;
-use croupier::Action;
-use fulcrum::*;
+use cowboys::Action;
+use pokerkit::*;
 
 /// Build a summary from a sequence of hand recaps.
 pub fn summarize(recaps: &[Recap]) -> Summary {

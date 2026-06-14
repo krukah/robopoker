@@ -15,7 +15,7 @@ pub struct FastSession {
     client: Arc<Client>,
     solver: Flagship,
     flushed: Mutex<Instant>,
-    exploit: Mutex<fulcrum::Utility>,
+    exploit: Mutex<pokerkit::Utility>,
     started: Instant,
 }
 
@@ -109,7 +109,7 @@ impl Trainer for FastSession {
         tracing::info!("periodic flush starting...");
         let labels = [
             vitals::KeyValue::new("session_type", self.session_type()),
-            vitals::KeyValue::new("regime", format!("{}", fulcrum::regime())),
+            vitals::KeyValue::new("regime", format!("{}", pokerkit::regime())),
         ];
         let m = vitals::metrics::get();
         m.mccfr_sum_regret.record(e as f64, &labels);

@@ -31,13 +31,13 @@ pub trait Trainer: Send + Sync + Sized {
     async fn train(mut self) {
         tracing::info!(
             session_type = self.session_type(),
-            regime = %fulcrum::regime(),
+            regime = %pokerkit::regime(),
             "training blueprint"
         );
         tracing::info!("press 'Q + ↵' to stop gracefully");
         let labels = [
             vitals::KeyValue::new("session_type", self.session_type()),
-            vitals::KeyValue::new("regime", format!("{}", fulcrum::regime())),
+            vitals::KeyValue::new("regime", format!("{}", pokerkit::regime())),
         ];
         let metrics = vitals::metrics::get();
         let mut last_nodes = 0usize;
@@ -66,7 +66,7 @@ pub trait Trainer: Send + Sync + Sized {
                 });
             let flush_span = tracing::info_span!("mccfr.flush", session_type = self.session_type(), epoch,);
             self.flush().instrument(flush_span).await;
-            if fulcrum::interrupted() {
+            if pokerkit::interrupted() {
                 tracing::info!("{}", self.summary().await);
                 break;
             }

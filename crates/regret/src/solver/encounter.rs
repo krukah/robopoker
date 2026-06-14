@@ -1,5 +1,5 @@
 use crate::CfrEdge;
-use fulcrum::*;
+use pokerkit::*;
 
 /// First-class representation of accumulated CFR data for an info-action pair.
 ///

@@ -16,13 +16,13 @@ async     = ["regret/async"]
 shortdeck = ["kicker/shortdeck"]
 
 [dependencies]
-fulcrum  = { workspace = true }
+pokerkit = { workspace = true }
 monge    = { workspace = true }
 kicker   = { workspace = true }
 regret   = { workspace = true }
-croupier = { workspace = true }
+cowboys  = { workspace = true }
 lloyd    = { workspace = true }
-calque   = { workspace = true }
+dragoman = { workspace = true }
 atlas    = { workspace = true }
 horizon  = { workspace = true }
 endgame  = { workspace = true }

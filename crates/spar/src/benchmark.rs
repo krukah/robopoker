@@ -2,9 +2,9 @@ use crate::client::*;
 use crate::recorder::*;
 use crate::result::*;
 use crate::session::*;
-use croupier::Turn;
-use fulcrum::Variant;
+use cowboys::Turn;
 use parlor::VariantExt;
+use pokerkit::Variant;
 use tracing::Instrument;
 use vitals::KeyValue;
 
@@ -28,7 +28,7 @@ impl Benchmark {
         let mut bench = Self { results: Vec::new() };
         let mut client = Client::new().with_throttle(throttle.clone());
         for i in 0..hands {
-            if fulcrum::interrupted() {
+            if pokerkit::interrupted() {
                 tracing::info!(
                     variant = label,
                     played = bench.results.len(),
@@ -79,7 +79,7 @@ impl Benchmark {
         let mut client = Client::new().with_throttle(throttle.clone());
         let mut errors = 0u32;
         loop {
-            if fulcrum::interrupted() {
+            if pokerkit::interrupted() {
                 tracing::info!(variant = label, hands = bench.results.len(), "slumbot interrupted");
                 break;
             }
@@ -176,7 +176,7 @@ impl Benchmark {
 /// Standard slumbot metric label set: cube coordinate (4 keys) + regime.
 fn labels(variant: Variant) -> [KeyValue; 5] {
     let [v, p, d, w] = variant.keys();
-    [v, p, d, w, KeyValue::new("regime", fulcrum::regime().to_string())]
+    [v, p, d, w, KeyValue::new("regime", pokerkit::regime().to_string())]
 }
 
 fn record_hand(variant: Variant, result: &HandResult) {

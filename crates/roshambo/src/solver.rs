@@ -122,7 +122,7 @@ where
 mod tests {
     use super::*;
     use endgame::*;
-    use fulcrum::*;
+    use pokerkit::*;
 
     const N14: usize = 1 << 14;
     const N16: usize = 1 << 16;

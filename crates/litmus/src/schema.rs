@@ -6,7 +6,7 @@
 //!
 //! See `scripts/litmus/README.md` for the human-facing schema documentation.
 
-use fulcrum::Chips;
+use pokerkit::Chips;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

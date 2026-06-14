@@ -1,8 +1,8 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
 use monge::*;
+use pokerkit::*;
 use std::sync::OnceLock;
 
 /// Distance metric between abstractions for a specific street.

@@ -1,6 +1,6 @@
-//! Gameroom-side extensions to [`fulcrum::Variant`].
+//! Gameroom-side extensions to [`pokerkit::Variant`].
 //!
-//! The pure data shape of `Variant` lives in `fulcrum` so the WASM
+//! The pure data shape of `Variant` lives in `pokerkit` so the WASM
 //! client can use it. This module adds the methods that need
 //! gameroom-only types: constructing a [`Player`] via [`zoo`], building
 //! a [`Member`] / [`User`] for the room sit-down, and emitting OTLP
@@ -12,15 +12,15 @@ use super::Tag;
 use super::zoo;
 use bouncer::Member;
 use bouncer::User;
-use fulcrum::Config;
-use fulcrum::ID;
-use fulcrum::Variant;
-use fulcrum::slumbot_opponent_username;
-use fulcrum::slumbot_opponent_uuid;
+use pokerkit::Config;
+use pokerkit::ID;
+use pokerkit::Variant;
+use pokerkit::slumbot_opponent_username;
+use pokerkit::slumbot_opponent_uuid;
 use vitals::KeyValue;
 
 /// Gameroom-only methods on [`Variant`]. Implemented as an extension
-/// trait because the type lives in `fulcrum` (which the WASM client
+/// trait because the type lives in `pokerkit` (which the WASM client
 /// reads) and these methods need types from `bouncer`, `holdem`,
 /// `vitals` that the client must not pull in.
 pub trait VariantExt {

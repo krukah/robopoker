@@ -1,5 +1,5 @@
 use super::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 
 /// Position within a betting round.

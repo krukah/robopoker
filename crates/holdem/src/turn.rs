@@ -1,5 +1,5 @@
 //! NLHE turn type: player indicator.
-use croupier::Turn;
+use cowboys::Turn;
 use monge::Support;
 use regret::*;
 
@@ -31,7 +31,7 @@ impl CfrTurn for NlheTurn {
     }
 
     fn players() -> usize {
-        fulcrum::N
+        pokerkit::N
     }
 }
 

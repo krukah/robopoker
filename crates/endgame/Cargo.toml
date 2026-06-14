@@ -12,13 +12,13 @@ keywords     = ["subgame", "cfr", "game-theory", "pluribus"]
 categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
-tracing = { workspace = true }
-fulcrum = { workspace = true }
-regret  = { version = "1.1", path = "../regret", default-features = false }
-horizon = { workspace = true }
-solus   = { workspace = true }
-atlas   = { workspace = true }
-rand    = "0.9"
+tracing  = { workspace = true }
+pokerkit = { workspace = true }
+regret   = { version = "1.1", path = "../regret", default-features = false }
+horizon  = { workspace = true }
+solus    = { workspace = true }
+atlas    = { workspace = true }
+rand     = "0.9"
 
 [lints]
 workspace = true

@@ -1,8 +1,8 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
 use monge::*;
+use pokerkit::*;
 
 /// Street-specific potential type aliases.
 pub type PhiPref = Phi<N_PREF>;

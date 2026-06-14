@@ -1,5 +1,5 @@
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
+use pokerkit::*;
 
 /// How a decision was produced.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

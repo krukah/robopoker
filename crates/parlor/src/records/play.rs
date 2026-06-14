@@ -1,7 +1,7 @@
 use super::*;
 use bouncer::Member;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
+use pokerkit::*;
 
 /// Individual action in a hand.
 /// Composite key: (hand_id, seq)

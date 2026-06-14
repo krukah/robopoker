@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::*;
 use kicker::*;
+use pokerkit::*;
 
 /// Triangular array sizes: K*(K-1)/2 for each street's cluster count.
 /// These give the number of unique unordered pairs of abstractions.

@@ -13,10 +13,10 @@ name = "convert"
 path = "src/main.rs"
 
 [dependencies]
-fulcrum = { path = "../../crates/fulcrum", features = ["server"] }
-portal  = { path = "../../crates/portal" }
-vitals  = { path = "../../crates/vitals" }
-tokio   = { version = "1", features = ["rt-multi-thread", "macros"] }
+pokerkit = { path = "../../crates/pokerkit", features = ["server"] }
+portal   = { path = "../../crates/portal" }
+vitals   = { path = "../../crates/vitals" }
+tokio    = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 [lints]
 workspace = true

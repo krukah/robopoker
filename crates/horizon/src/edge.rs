@@ -1,7 +1,7 @@
 //! Edge type for depth-limited frontier-augmented games.
 use crate::*;
-use fulcrum::*;
 use monge::Support;
+use pokerkit::*;
 use regret::*;
 
 /// Edge type that extends the base game edges with continuation choices.

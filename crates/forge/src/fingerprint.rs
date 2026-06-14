@@ -1,7 +1,7 @@
 //! Regime fingerprint — single-row sanity check guarding against silent
 //! drift in regime-affecting constants between training runs.
 //!
-//! Trainer startup compares [`fulcrum::config_string`] for the active
+//! Trainer startup compares [`pokerkit::config_string`] for the active
 //! regime against the value stored in `fingerprint_<regime>_<version>`.
 //! Mismatch panics with a diff so the operator knows what changed; first
 //! run records the live fingerprint. `--mode reset` clears it.
@@ -56,8 +56,8 @@ impl Fingerprint {
     /// Verify the live fingerprint against the stored one. First run records
     /// it; mismatch panics with a diff naming the changed constants.
     pub async fn check(client: &Arc<Client>) {
-        let regime = fulcrum::regime();
-        let live = fulcrum::config_string(regime);
+        let regime = pokerkit::regime();
+        let live = pokerkit::config_string(regime);
         match Self::read(client).await {
             None => {
                 tracing::info!(%regime, "regime fingerprint absent — recording first run");
@@ -74,7 +74,7 @@ impl Fingerprint {
                  - bump `Version` and regenerate, OR\n  \
                  - run `trainer --regime {regime} --version {version} --mode reset` to \
                  wipe the blueprint and re-fingerprint.",
-                version = fulcrum::version(),
+                version = pokerkit::version(),
                 table = ledger::blueprint(),
                 diff = diff_lines(&stored, &live),
             ),

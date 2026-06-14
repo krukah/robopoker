@@ -1,5 +1,5 @@
 use crate::*;
-use croupier::*;
+use cowboys::*;
 use rand::seq::IndexedRandom;
 
 /// Example CPU player that chooses randomly from legal actions.

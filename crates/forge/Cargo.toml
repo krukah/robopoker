@@ -15,11 +15,11 @@ categories   = ["algorithms", "command-line-utilities"]
 default = []
 
 [dependencies]
-fulcrum        = { workspace = true, features = ["server"] }
+pokerkit       = { workspace = true, features = ["server"] }
 kicker         = { workspace = true }
 lloyd          = { workspace = true, features = ["server"] }
 ledger         = { workspace = true }
-croupier       = { workspace = true }
+cowboys        = { workspace = true }
 regret         = { workspace = true, features = ["async"] }
 holdem         = { workspace = true, features = ["server"] }
 monge          = { workspace = true }

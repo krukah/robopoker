@@ -2,7 +2,7 @@ use super::TopologyAPI;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
-use croupier::*;
+use cowboys::*;
 use kicker::*;
 
 pub async fn replace_obs(api: web::Data<TopologyAPI>, req: web::Json<ReplaceObs>) -> impl Responder {

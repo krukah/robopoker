@@ -1,7 +1,7 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
+use pokerkit::*;
 use std::ops::AddAssign;
 
 /// Sentinel value indicating an abstraction is not in the support.

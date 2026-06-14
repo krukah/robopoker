@@ -1,6 +1,6 @@
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
+use pokerkit::*;
 
 /// Slumbot uses 50/100 blinds with 20000 stacks (200 BB deep).
 const BBLIND: i64 = 100;
@@ -169,7 +169,7 @@ pub fn parse_actions(raw: &str, old: &str, game: &Game) -> anyhow::Result<Vec<Ac
         state = state.apply(*actions.last().unwrap());
         rest = &rest[consumed..];
     }
-    Ok(actions.into_iter().filter(croupier::Action::is_choice).collect())
+    Ok(actions.into_iter().filter(cowboys::Action::is_choice).collect())
 }
 
 /// Convert a pot-fraction raise into an Action in our chip scale.

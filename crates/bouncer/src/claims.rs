@@ -1,5 +1,5 @@
 use super::*;
-use fulcrum::ID;
+use pokerkit::ID;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Claims {

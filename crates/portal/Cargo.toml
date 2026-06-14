@@ -13,14 +13,14 @@ categories   = ["web-programming::http-server", "game-development"]
 
 [dependencies]
 # Internal crates
-fulcrum  = { workspace = true }
+pokerkit = { workspace = true }
 bouncer  = { workspace = true, features = ["server"] }
 kicker   = { workspace = true }
 lloyd    = { workspace = true }
 ledger   = { workspace = true }
 arena    = { workspace = true }
 parlor   = { workspace = true, features = ["server"] }
-croupier = { workspace = true }
+cowboys  = { workspace = true }
 regret   = { workspace = true }
 holdem   = { workspace = true }
 forge    = { workspace = true }

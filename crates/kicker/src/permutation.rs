@@ -1,7 +1,7 @@
 use super::hand::Hand;
 use super::observation::Observation;
 use super::suit::Suit;
-use fulcrum::Arbitrary;
+use pokerkit::Arbitrary;
 
 /// A suit relabeling from the symmetric group S₄.
 ///
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn permute_identity() {
-        use fulcrum::Arbitrary;
+        use pokerkit::Arbitrary;
         let permutation = Permutation::identity();
         let hand = Hand::random();
         assert!(permutation.image(&hand) == hand);

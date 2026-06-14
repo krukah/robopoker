@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 
 /// A single action-weight pair from a trained strategy.
 ///

@@ -1,7 +1,7 @@
 use super::card::Card;
 use super::rank::Rank;
 use super::suit::Suit;
-use fulcrum::Arbitrary;
+use pokerkit::Arbitrary;
 
 /// An unordered set of cards represented as a 64-bit bitmask.
 ///

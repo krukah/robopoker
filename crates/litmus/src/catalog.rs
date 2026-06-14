@@ -7,7 +7,7 @@
 //! not silently as a SKIP later.
 
 use crate::schema::*;
-use croupier::*;
+use cowboys::*;
 use kicker::*;
 
 pub struct Catalog<'a> {

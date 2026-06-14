@@ -1,7 +1,7 @@
 use super::*;
 use bouncer::Member;
-use fulcrum::*;
 use kicker::Hole;
+use pokerkit::*;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Visibility {

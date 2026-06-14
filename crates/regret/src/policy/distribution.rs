@@ -13,4 +13,4 @@
 ///
 /// Lookup is O(n) but n is small, and the Vec representation enables
 /// efficient iteration which dominates CFR computation.
-pub type Policy<E> = Vec<(E, fulcrum::Probability)>;
+pub type Policy<E> = Vec<(E, pokerkit::Probability)>;

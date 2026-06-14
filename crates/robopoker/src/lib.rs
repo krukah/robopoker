@@ -40,11 +40,10 @@
 pub use arena as competition;
 pub use atlas as world;
 pub use bouncer as auth;
-pub use calque as translate;
-pub use croupier as gameplay;
+pub use cowboys as gameplay;
+pub use dragoman as translate;
 pub use endgame as subgame;
 pub use forge as autotrain;
-pub use fulcrum as core;
 pub use holdem as nlhe;
 pub use horizon as depth;
 pub use kicker as cards;
@@ -55,6 +54,7 @@ pub use litmus;
 pub use lloyd as clustering;
 pub use monge as transport;
 pub use parlor as gameroom;
+pub use pokerkit as core;
 pub use portal as server;
 pub use regret as mccfr;
 pub use roshambo as rps;
@@ -62,4 +62,4 @@ pub use spar as slumbot;
 pub use vitals as telemetry;
 
 // Re-export commonly used types at the root
-pub use fulcrum::*;
+pub use pokerkit::*;

@@ -1,10 +1,10 @@
 //! NLHE edge type: discretized betting actions.
-use croupier::Action;
-use croupier::Edge;
-use croupier::Odds;
-use fulcrum::Probability;
-use fulcrum::Utility;
+use cowboys::Action;
+use cowboys::Edge;
+use cowboys::Odds;
 use monge::Support;
+use pokerkit::Probability;
+use pokerkit::Utility;
 use regret::*;
 
 /// NLHE edge type for CFR tree traversal.

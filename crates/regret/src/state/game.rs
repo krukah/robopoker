@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::Utility;
+use pokerkit::Utility;
 
 /// The memoryless game state for CFR traversal.
 ///

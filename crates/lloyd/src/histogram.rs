@@ -1,8 +1,8 @@
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
 use monge::*;
+use pokerkit::*;
 
 /// A distribution over abstraction buckets for a specific street.
 ///

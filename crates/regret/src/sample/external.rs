@@ -1,8 +1,8 @@
 //! External sampling strategy for MCCFR.
 
 use super::*;
-use fulcrum::EPSILON;
 use monge::Density;
+use pokerkit::EPSILON;
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
 

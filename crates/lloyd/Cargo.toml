@@ -17,9 +17,9 @@ server  = ["ledger", "tokio-postgres", "const_format", "async-trait"]
 
 [dependencies]
 tracing        = { workspace = true }
-fulcrum        = { workspace = true }
+pokerkit       = { workspace = true }
 kicker         = { workspace = true }
-croupier       = { workspace = true }
+cowboys        = { workspace = true }
 monge          = { workspace = true }
 vitals         = { workspace = true }
 ledger         = { workspace = true, optional = true }

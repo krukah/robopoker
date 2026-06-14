@@ -1,6 +1,6 @@
 use super::observation::Observation;
 use super::permutation::Permutation;
-use fulcrum::Arbitrary;
+use pokerkit::Arbitrary;
 
 /// A canonical representative of a suit-isomorphic observation class.
 ///

@@ -1,9 +1,9 @@
 use arena::*;
 use bouncer::Member;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
 use parlor::records::{Hand as HandRecord, Participant, Visibility};
+use pokerkit::*;
 use std::sync::Arc;
 use tokio_postgres::Client;
 
@@ -15,10 +15,10 @@ impl GameplayAPI {
     }
 
     fn bot_uuids() -> Vec<uuid::Uuid> {
-        fulcrum::Variant::all()
+        pokerkit::Variant::all()
             .iter()
             .map(|v| v.uuid())
-            .chain(std::iter::once(fulcrum::slumbot_opponent_uuid()))
+            .chain(std::iter::once(pokerkit::slumbot_opponent_uuid()))
             .collect()
     }
 

@@ -1,4 +1,4 @@
-use fulcrum::*;
+use pokerkit::*;
 
 /// Sinkhorn entropic optimal transport parameters.
 ///

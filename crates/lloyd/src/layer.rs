@@ -4,9 +4,9 @@
 //! to abstract buckets using the k-means algorithm with Elkan acceleration.
 
 use super::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use kicker::*;
+use pokerkit::*;
 use std::collections::BTreeMap;
 
 /// A clustering layer that maps poker hand isomorphisms to abstract buckets.

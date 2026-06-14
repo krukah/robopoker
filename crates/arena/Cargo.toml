@@ -12,9 +12,9 @@ keywords     = ["poker", "evaluation", "aivat", "variance"]
 categories   = ["game-development", "mathematics"]
 
 [dependencies]
-fulcrum        = { workspace = true }
+pokerkit       = { workspace = true }
 kicker         = { workspace = true }
-croupier       = { workspace = true }
+cowboys        = { workspace = true }
 parlor         = { workspace = true, features = ["server"] }
 ledger         = { workspace = true }
 bouncer        = { workspace = true }

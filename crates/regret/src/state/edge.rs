@@ -25,11 +25,11 @@ pub trait CfrEdge:
     + std::fmt::Debug
 {
     /// Default initial policy weight for CFR warmstart (0.0 = uniform).
-    fn default_policy(&self) -> fulcrum::Probability {
+    fn default_policy(&self) -> pokerkit::Probability {
         0.0
     }
     /// Default initial regret for CFR warmstart (0.0 = no bias).
-    fn default_regret(&self) -> fulcrum::Utility {
+    fn default_regret(&self) -> pokerkit::Utility {
         0.0
     }
 }

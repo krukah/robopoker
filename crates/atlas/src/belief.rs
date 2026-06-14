@@ -4,8 +4,8 @@
 //! K-world weight distribution (for the subgame gadget). Produced by
 //! [`Partition::partition`] and consumed by [`SubGameEncoder`] and [`SubProfile`].
 use crate::World;
-use fulcrum::Probability;
 use monge::Density;
+use pokerkit::Probability;
 use regret::CfrSecret;
 use std::collections::BTreeMap;
 

@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::Energy;
 use kicker::*;
+use pokerkit::Energy;
 
 /// Test fixture for Elkan algorithm verification.
 ///

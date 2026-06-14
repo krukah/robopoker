@@ -1,5 +1,5 @@
 use super::support::Support;
-use fulcrum::Probability;
+use pokerkit::Probability;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::hash::Hash;

@@ -7,7 +7,7 @@
 use crate::catalog::{Catalog, build_witness, parse_edge};
 use crate::ops::Ops;
 use crate::schema::{Case, Direction, Expect, TestKind};
-use croupier::{ApiStrategy, Edge};
+use cowboys::{ApiStrategy, Edge};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]

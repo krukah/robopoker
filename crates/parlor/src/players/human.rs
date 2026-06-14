@@ -1,8 +1,8 @@
 use crate::*;
-use croupier::*;
+use cowboys::*;
 use dialoguer::Input;
 use dialoguer::Select;
-use fulcrum::Chips;
+use pokerkit::Chips;
 
 #[derive(Debug, Default)]
 pub struct Human;

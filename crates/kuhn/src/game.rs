@@ -1,5 +1,5 @@
 use super::*;
-use fulcrum::*;
+use pokerkit::*;
 use regret::*;
 
 /// Game tree node: which phase of the hand are we in?

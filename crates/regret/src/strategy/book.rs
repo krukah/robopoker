@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::*;
+use pokerkit::*;
 use std::collections::HashMap;
 
 /// Accessor trait for HashMap-based CFR storage.

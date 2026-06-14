@@ -10,7 +10,7 @@
 //! type so callers can ask `.frozen(threshold)` for early termination
 //! and iterate over per-cluster movement without index gymnastics.
 
-use fulcrum::Energy;
+use pokerkit::Energy;
 
 /// Per-cluster centroid movement after one Elkan iteration.
 #[derive(Clone, Debug)]

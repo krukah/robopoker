@@ -1,4 +1,4 @@
-use fulcrum::*;
+use pokerkit::*;
 
 /// Blueprint's weighted average EV: sum of sigma(a) * v(a).
 pub fn strategy_ev(policy: &[(Probability, Utility)]) -> Utility {

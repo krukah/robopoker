@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::Arbitrary;
-use fulcrum::Probability;
+use pokerkit::Arbitrary;
+use pokerkit::Probability;
 use std::cmp::Ordering;
 
 /// A player's view of the game: hole cards plus visible board.

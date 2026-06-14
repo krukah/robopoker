@@ -65,7 +65,7 @@ pub async fn run() -> Result<(), std::io::Error> {
     let client = ledger::db().await;
     ensure_all(&client).await;
     use parlor::VariantExt;
-    let mut seedables: Vec<bouncer::Member> = fulcrum::Variant::all()
+    let mut seedables: Vec<bouncer::Member> = pokerkit::Variant::all()
         .iter()
         .map(|v| v.member())
         .collect();

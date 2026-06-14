@@ -1,9 +1,9 @@
 use crate::translate::SLUMBOT_STACK;
 use bouncer::*;
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use parlor::slumbot_opponent_id;
 use parlor::*;
+use pokerkit::*;
 use std::sync::Arc;
 
 pub struct Recorder {

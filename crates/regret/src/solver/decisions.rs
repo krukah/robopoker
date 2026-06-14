@@ -1,5 +1,5 @@
 use crate::*;
-use fulcrum::Utility;
+use pokerkit::Utility;
 
 /// The minimal update unit for CFR profile learning.
 ///

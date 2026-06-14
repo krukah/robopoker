@@ -1,6 +1,6 @@
 use super::*;
-use fulcrum::*;
 use monge::*;
+use pokerkit::*;
 use std::collections::BTreeMap;
 
 /// Test fixture for EMD property verification.

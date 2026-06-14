@@ -3,7 +3,7 @@
 //! Provides commands for type conversions and database queries.
 use crate::*;
 use clap::Parser;
-use croupier::*;
+use cowboys::*;
 use kicker::*;
 use std::io::Write;
 

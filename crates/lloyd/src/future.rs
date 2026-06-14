@@ -1,5 +1,5 @@
 use crate::*;
-use croupier::*;
+use cowboys::*;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 

@@ -1,5 +1,5 @@
 //! NLHE private state: hand abstraction bucket.
-use croupier::Abstraction;
+use cowboys::Abstraction;
 use kicker::Street;
 use monge::Support;
 use regret::*;

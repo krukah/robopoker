@@ -1,5 +1,5 @@
-use fulcrum::ID;
-use fulcrum::Unique;
+use pokerkit::ID;
+use pokerkit::Unique;
 
 /// Anonymous session tracking for unauthenticated visitors.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]

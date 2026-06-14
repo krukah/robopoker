@@ -12,7 +12,7 @@ pub use floored::*;
 pub use linear::*;
 pub use summed::*;
 
-use fulcrum::*;
+use pokerkit::*;
 
 /// Trait for regret update strategies in CFR variants.
 pub trait RegretSchedule {

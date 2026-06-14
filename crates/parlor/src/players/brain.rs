@@ -12,12 +12,12 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use croupier::*;
+use cowboys::*;
 use endgame::SubgameHyperParams;
-use fulcrum::Probability;
-use fulcrum::Utility;
 use holdem::*;
 use kicker::Street;
+use pokerkit::Probability;
+use pokerkit::Utility;
 use regret::RefProf;
 use regret::Solver;
 

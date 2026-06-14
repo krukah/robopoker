@@ -1,7 +1,7 @@
-use fulcrum::Arbitrary;
-use fulcrum::KMEANS_EQTY_CLUSTER_COUNT;
-use fulcrum::KMEANS_FLOP_CLUSTER_COUNT;
-use fulcrum::KMEANS_TURN_CLUSTER_COUNT;
+use pokerkit::Arbitrary;
+use pokerkit::KMEANS_EQTY_CLUSTER_COUNT;
+use pokerkit::KMEANS_FLOP_CLUSTER_COUNT;
+use pokerkit::KMEANS_TURN_CLUSTER_COUNT;
 
 /// The four betting rounds in Texas Hold'em.
 ///

@@ -1,6 +1,6 @@
 use crate::*;
-use fulcrum::*;
 use monge::Density;
+use pokerkit::*;
 
 /// Async variant of [`CfrSolution`] for database-backed or parallel training.
 ///

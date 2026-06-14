@@ -15,9 +15,9 @@ categories   = ["database"]
 default = []
 
 [dependencies]
-fulcrum        = { workspace = true }
+pokerkit       = { workspace = true }
 kicker         = { workspace = true }
-croupier       = { workspace = true }
+cowboys        = { workspace = true }
 vitals         = { workspace = true }
 tokio-postgres = "0.7"
 async-trait    = "0.1"

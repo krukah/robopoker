@@ -1,5 +1,5 @@
-use fulcrum::ID;
-use fulcrum::Unique;
+use pokerkit::ID;
+use pokerkit::Unique;
 
 /// Authenticated user with verified identity.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

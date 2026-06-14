@@ -1,8 +1,8 @@
-use croupier::*;
-use fulcrum::*;
+use cowboys::*;
 use holdem::*;
 use kicker::*;
 use monge::Density;
+use pokerkit::*;
 use regret::*;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
