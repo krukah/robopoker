@@ -2435,7 +2435,6 @@ dependencies = [
  "rbp-core",
  "rbp-gameplay",
  "rbp-hyperparams",
- "rbp-telemetry",
  "rbp-transport",
 ]
 

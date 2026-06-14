@@ -255,14 +255,11 @@ pub trait Solver: Send + Sync {
     fn record_tree(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let n = tree.n();
         self.inc_nodes(n);
-        #[cfg(feature = "server")]
-        rbp_telemetry::metrics::get().mccfr_tree_size.record(n as u64, &[]);
         tree
     }
 
     /// Partitions a tree by infoset, applies the walker filter, and
-    /// records infoset-level telemetry (`infosets_per_tree` per tree,
-    /// `infoset_size` per infoset, increments infoset counter).
+    /// increments the infoset counter.
     fn record_infosets(
         &self,
         tree: Tree<Self::T, Self::E, Self::G, Self::I>,
@@ -273,16 +270,6 @@ pub trait Solver: Send + Sync {
             .into_values()
             .filter(|infoset| infoset.head().game().turn() == walker)
             .collect();
-        #[cfg(feature = "server")]
-        {
-            let tel = rbp_telemetry::metrics::get();
-            tel.mccfr_infosets_per_tree.record(infosets.len() as u64, &[]);
-            infosets.iter().for_each(|infoset| {
-                tel.mccfr_infoset_size.record(infoset.size() as u64, &[]);
-                self.inc_infos(1);
-            });
-        }
-        #[cfg(not(feature = "server"))]
         infosets.iter().for_each(|_| self.inc_infos(1));
         infosets
     }

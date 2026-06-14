@@ -12,14 +12,13 @@ categories   = ["algorithms", "mathematics", "game-development"]
 
 [features]
 default = ["server"]
-server  = ["rbp-core/server", "rayon", "rbp-telemetry"]
+server  = ["rbp-core/server", "rayon"]
 async   = ["async-trait", "futures"]
 
 [dependencies]
 rbp-core        = { workspace = true }
 rbp-gameplay    = { workspace = true }
 rbp-transport   = { workspace = true }
-rbp-telemetry   = { workspace = true, optional = true }
 rbp-hyperparams = { workspace = true }
 rand            = { workspace = true }
 petgraph        = { workspace = true }
