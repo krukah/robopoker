@@ -11,7 +11,7 @@
 //!
 //! - `Arc<tokio_postgres::Client>` for hand/action inserts
 //! - `&'static Flagship` for any subgame variant (any cell with `depth` or `world`)
-//! - [`Throttle`](crate::Throttle) capping aggregate in-flight HTTP requests
+//! - [`Throttle`] capping aggregate in-flight HTTP requests
 //! - SIGTERM / `TRAIN_DURATION` interrupt signal via [`rbp_core::brb`]
 //!
 //! Each session owns its own `Player`, `Recorder` (own Room row), and

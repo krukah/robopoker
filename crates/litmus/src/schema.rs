@@ -188,9 +188,9 @@ pub struct Family {
     pub historical: Option<Historical>,
 
     /// Cartesian product expanded over these axes. Known keys:
-    /// - `hand`: Vec<String>
-    /// - `history`: Vec<String>
-    /// - `edge`: Vec<String>
+    /// - `hand`: `Vec<String>`
+    /// - `history`: `Vec<String>`
+    /// - `edge`: `Vec<String>`
     /// - `hand_pair`: Vec<[String; 2]>
     #[serde(default)]
     pub matrix: HashMap<String, Vec<serde_json::Value>>,

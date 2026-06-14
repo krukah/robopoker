@@ -20,7 +20,7 @@ use std::time::Instant;
 /// breaks, or panics.
 ///
 /// Built fluently:
-/// ```ignore
+/// ```text
 /// let ref mut iter = layer.kmeans()
 ///     .with_bound(layer.t())          // bound the stream
 ///     .with_threshold(1e-5);          // early-terminate at convergence

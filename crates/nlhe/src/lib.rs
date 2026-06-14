@@ -22,7 +22,7 @@
 //! - [`NlheEncoder`] — Maps game states to [`Info`] using clustering
 //! - [`NlheProfile`] — Stores accumulated regrets and strategies
 //! - [`Nlhe`] — Generic solver combining encoder and profile
-//! - [`Flagship`](crate::Flagship) — Pluribus-configured solver (top-level alias)
+//! - [`Flagship`] — Pluribus-configured solver (top-level alias)
 //!
 //! # Abstraction
 //!

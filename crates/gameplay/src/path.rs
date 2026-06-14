@@ -73,7 +73,7 @@ impl Arbitrary for Path {
     }
 }
 
-/// Vec<Edge> isomorphism
+/// `Vec<Edge>` isomorphism
 /// we (un)pack the byte representation of the edges in a Path(u64) sequence
 impl From<Path> for Vec<Edge> {
     fn from(path: Path) -> Self {

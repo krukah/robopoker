@@ -21,7 +21,7 @@ impl From<u16> for Kickers {
     }
 }
 
-/// Vec<Rank> isomorphism
+/// `Vec<Rank>` isomorphism
 ///
 /// [2c, Ts, Jc, Js, Jd, Jh]
 /// xxxxxxxxxxxx 000001100000001

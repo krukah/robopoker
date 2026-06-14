@@ -34,6 +34,11 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
+      - name: Taplo (Cargo.toml formatting)
+        run: taplo fmt --check
 
   # Clippy and tests share the same compiled target/ directory — both
   # need `--all-targets` worth of compilation, so doing them in one

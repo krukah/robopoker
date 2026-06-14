@@ -193,7 +193,7 @@ impl From<Card> for Hand {
 }
 
 /// str isomorphism
-/// this follows from Vec<Card> isomorphism
+/// this follows from `Vec<Card>` isomorphism
 impl TryFrom<&str> for Hand {
     type Error = String;
 
