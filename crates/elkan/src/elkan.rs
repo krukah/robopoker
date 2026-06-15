@@ -1,5 +1,5 @@
 use super::*;
-use pokerkit::Energy;
+use crate::Energy;
 use rayon::prelude::*;
 
 /// Triangle-inequality accelerated k-means clustering.
@@ -203,64 +203,5 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// Convenience wrapper around `rms_with(self.bounds())`.
     fn rms(&self) -> Energy {
         self.rms_with(self.boundings())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Elkan;
-    use super::TestLayer;
-
-    #[test]
-    #[ignore = "flaky: stochastic kmeans"]
-    /// This test is kinda fuzzy. There's no guarantee that we achieve strict monotonicity.
-    /// Techincally, we don't even guarantee that the RMS will not increase. This is because
-    /// there is some probability that a cluster will end up empty, after which we will replace it
-    /// with a random point (see Self::heal()), after which this new random point may introduce a larger error.
-    /// I don't know, haven't done any paper pencil proofing. But this fuzziness is fine for me. Really the important
-    /// thing is that the algorithm is equivalent to the naive KMeans algorithm.
-    fn elkan_rms_decreases() {
-        let mut km = TestLayer::new();
-        let mut rms = vec![km.rms()];
-        for _ in 0..km.t() {
-            km.step();
-            rms.push(km.rms());
-        }
-        for window in rms.windows(2) {
-            assert!(window[0] >= window[1], "RMS increasing: {} -> {}", window[0], window[1]);
-        }
-    }
-
-    #[test]
-    #[ignore = "flaky: stochastic kmeans"]
-    /// This test is kinda fuzzy. There's no guarantee that this must converge within
-    /// Self::t() iterations. And the scale of this distance/energy values are unitless,
-    /// so the arbitrary 1/100 threshold is meaningless. But it seems to pass most times so whatever.
-    fn elkan_rms_converges() {
-        let mut km = TestLayer::new();
-        for _ in 0..km.t() {
-            km.step();
-        }
-        let r1 = km.rms();
-        km.step();
-        let r2 = km.rms();
-        assert!((r1 - r2).abs() <= 0.01, "RMS is unlikely large: {r1} -> {r2}");
-    }
-
-    #[test]
-    #[ignore = "slow: full naive comparison"]
-    /// Test that Elkan's algorithm is equivalent to the naive implementation.
-    /// The optimization is not an approximation, so we can assert that the
-    /// state machine of the algorithm is identical to the naive implementation at every iteration.
-    fn elkan_naive_equivalence() {
-        let km = TestLayer::new();
-        let mut elkan = km.clone();
-        let mut naive = km.clone();
-        for _ in 0..km.t() {
-            elkan.step();
-            naive.naive();
-            assert_eq!(elkan.rms(), naive.rms());
-            assert_eq!(elkan.centroids(), naive.centroids());
-        }
     }
 }

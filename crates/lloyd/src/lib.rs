@@ -28,14 +28,10 @@
 //!
 //! - [`Artifacts`] — Serialization of clustering results to PostgreSQL
 //! - [`Distances`] — Precomputed distance matrices for online lookup
-mod absorb;
 mod abstraction;
 mod artifacts;
 mod bins;
-mod bounds;
 mod distances;
-mod drift;
-mod elkan;
 mod emd;
 mod equity;
 mod future;
@@ -49,20 +45,17 @@ mod metric;
 mod pair;
 mod phi;
 mod potential;
-mod prior;
 mod sinkhorn;
-mod step;
 mod telemetry;
 mod tests;
 
-pub use absorb::*;
+// Generic Elkan k-means engine (Energy excluded — pokerkit::Energy is the same f32).
+pub use elkan::{Absorb, Bounds, Drift, Elkan, Prior, Step};
+
 pub use abstraction::*;
 pub use artifacts::*;
 pub use bins::*;
-pub use bounds::*;
 pub use distances::*;
-pub use drift::*;
-pub use elkan::*;
 pub use emd::*;
 pub use equity::*;
 pub use future::*;
@@ -77,5 +70,4 @@ pub use pair::*;
 pub use phi::*;
 pub use potential::*;
 pub use sinkhorn::*;
-pub use step::*;
 pub use tests::*;

@@ -10,14 +10,14 @@
 //! type so callers can ask `.frozen(threshold)` for early termination
 //! and iterate over per-cluster movement without index gymnastics.
 
-use pokerkit::Energy;
+use crate::Energy;
 
 /// Per-cluster centroid movement after one Elkan iteration.
 #[derive(Clone, Debug)]
 pub struct Drift<const K: usize>([Energy; K]);
 
 impl<const K: usize> Drift<K> {
-    pub(crate) fn from_array(drifts: [Energy; K]) -> Self {
+    pub fn from_array(drifts: [Energy; K]) -> Self {
         Self(drifts)
     }
 

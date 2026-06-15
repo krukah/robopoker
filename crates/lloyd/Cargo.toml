@@ -21,6 +21,7 @@ pokerkit       = { workspace = true }
 kicker         = { workspace = true }
 cowboys        = { workspace = true }
 monge          = { workspace = true }
+elkan          = { workspace = true }
 vitals         = { workspace = true }
 ledger         = { workspace = true, optional = true }
 tokio-postgres = { version = "0.7", optional = true }

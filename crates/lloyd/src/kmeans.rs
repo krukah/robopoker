@@ -9,7 +9,7 @@ use crate::Bounds;
 use crate::Elkan;
 use crate::Layer;
 use crate::Step;
-use crate::prior::Prior;
+use elkan::Prior;
 use pokerkit::Energy;
 use std::time::Instant;
 

@@ -282,3 +282,13 @@ impl std::fmt::Display for Histogram {
         Ok(())
     }
 }
+
+impl elkan::Absorb for Histogram {
+    fn absorb(self, other: &Self) -> Self {
+        self.absorb(other)
+    }
+
+    fn identity(&self) -> Self {
+        Self::empty(self.street())
+    }
+}

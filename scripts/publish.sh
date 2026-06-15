@@ -22,14 +22,17 @@ command -v jq >/dev/null   || { echo "error: jq not found"   >&2; exit 1; }
 command -v tsort >/dev/null || { echo "error: tsort not found" >&2; exit 1; }
 
 order() {
-  cargo metadata --format-version 1 --no-deps \
-    | jq -r '
+  local meta; meta=$(cargo metadata --format-version 1 --no-deps)
+  # dependency edges among publishable crates -> topological order (deps first)
+  local edges; edges=$(echo "$meta" | jq -r '
         [.packages[] | select(.publish == null) | .name] as $pub
         | .packages[] | select(.publish == null) as $p
         | ($p.dependencies[].name | select(. as $d | $pub | index($d))) as $dep
         | "\($dep) \($p.name)"
-      ' \
-    | tsort
+      ')
+  # every publishable crate (so isolated ones with no edges aren't dropped by tsort)
+  local all; all=$(echo "$meta" | jq -r '.packages[] | select(.publish == null) | .name')
+  { echo "$edges" | tsort; echo "$all"; } | awk 'NF && !seen[$0]++'
 }
 
 CRATES=$(order)

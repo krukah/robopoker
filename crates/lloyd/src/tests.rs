@@ -110,3 +110,53 @@ impl Elkan<K, N> for TestLayer {
             .sqrt()
     }
 }
+
+#[cfg(test)]
+mod verify {
+    use super::TestLayer;
+    use elkan::Elkan;
+
+    #[test]
+    #[ignore = "flaky: stochastic kmeans"]
+    /// RMS should be non-increasing across Elkan iterations (modulo empty-cluster heal).
+    fn elkan_rms_decreases() {
+        let mut km = TestLayer::new();
+        let mut rms = vec![km.rms()];
+        for _ in 0..km.t() {
+            km.step();
+            rms.push(km.rms());
+        }
+        for window in rms.windows(2) {
+            assert!(window[0] >= window[1], "RMS increasing: {} -> {}", window[0], window[1]);
+        }
+    }
+
+    #[test]
+    #[ignore = "flaky: stochastic kmeans"]
+    /// RMS should be roughly converged after t() iterations.
+    fn elkan_rms_converges() {
+        let mut km = TestLayer::new();
+        for _ in 0..km.t() {
+            km.step();
+        }
+        let r1 = km.rms();
+        km.step();
+        let r2 = km.rms();
+        assert!((r1 - r2).abs() <= 0.01, "RMS is unlikely large: {r1} -> {r2}");
+    }
+
+    #[test]
+    #[ignore = "slow: full naive comparison"]
+    /// Elkan must be bit-identical to naive k-means at every iteration.
+    fn elkan_naive_equivalence() {
+        let km = TestLayer::new();
+        let mut elkan = km.clone();
+        let mut naive = km.clone();
+        for _ in 0..km.t() {
+            elkan.step();
+            naive.naive();
+            assert_eq!(elkan.rms(), naive.rms());
+            assert_eq!(elkan.centroids(), naive.centroids());
+        }
+    }
+}

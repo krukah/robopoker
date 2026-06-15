@@ -19,13 +19,3 @@ pub trait Absorb {
     /// Combines this point with another, producing a merged result.
     fn absorb(self, other: &Self) -> Self;
 }
-
-impl Absorb for crate::Histogram {
-    fn absorb(self, other: &Self) -> Self {
-        self.absorb(other)
-    }
-
-    fn identity(&self) -> Self {
-        Self::empty(self.street())
-    }
-}

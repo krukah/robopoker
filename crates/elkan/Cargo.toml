@@ -1,0 +1,17 @@
+[package]
+name         = "elkan"
+version      = "1.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Triangle-inequality accelerated (Elkan 2003) k-means, generic over point type and distance"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["kmeans", "clustering", "elkan", "unsupervised"]
+categories   = ["algorithms", "mathematics"]
+
+[dependencies]
+rayon = { workspace = true }
+
+[lints]
+workspace = true
