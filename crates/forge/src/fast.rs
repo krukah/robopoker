@@ -1,9 +1,9 @@
 //! Fast in-memory training session
 use crate::*;
-use holdem::Flagship;
-use holdem::NlheProfile;
 use ledger::*;
 use mccfr::*;
+use nlhe::Flagship;
+use nlhe::NlheProfile;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;

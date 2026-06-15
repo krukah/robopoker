@@ -12,10 +12,10 @@
 //! type — picker bodies inside their own structs, telemetry on
 //! [`Solved`]. The only free function in this module is the boundary
 //! one: [`hydrate_blueprint`], which stitches the DB to the in-memory
-//! [`Flagship`](holdem::Flagship) and is the single externally-visible
+//! [`Flagship`](nlhe::Flagship) and is the single externally-visible
 //! entry point.
 
-/// Hydrate a single [`Flagship`](holdem::Flagship) blueprint from the
+/// Hydrate a single [`Flagship`](nlhe::Flagship) blueprint from the
 /// database and leak it as a `'static` reference. Wrap with the
 /// composition you want via [`Mount::mount`] (or call [`zoo`]).
 ///
@@ -28,9 +28,9 @@
 /// - **Slumbot one-container runner**: load once in
 ///   `spar::Runtime::run`; share across all spawned variant tasks.
 #[cfg(feature = "server")]
-pub async fn hydrate_blueprint(client: std::sync::Arc<tokio_postgres::Client>) -> &'static holdem::Flagship {
+pub async fn hydrate_blueprint(client: std::sync::Arc<tokio_postgres::Client>) -> &'static nlhe::Flagship {
     use ledger::Hydrate;
-    Box::leak(Box::new(holdem::Flagship::hydrate(client).await))
+    Box::leak(Box::new(nlhe::Flagship::hydrate(client).await))
 }
 
 #[cfg(feature = "server")]

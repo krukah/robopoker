@@ -22,7 +22,7 @@ arena    = { workspace = true }
 parlor   = { workspace = true, features = ["server"] }
 kicker   = { workspace = true }
 mccfr    = { workspace = true }
-holdem   = { workspace = true }
+nlhe     = { workspace = true }
 forge    = { workspace = true }
 monge    = { workspace = true }
 vitals   = { workspace = true }

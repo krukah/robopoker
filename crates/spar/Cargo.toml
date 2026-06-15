@@ -17,7 +17,7 @@ deuce          = { workspace = true }
 bouncer        = { workspace = true, features = ["server"] }
 kicker         = { workspace = true }
 parlor         = { workspace = true, features = ["server"] }
-holdem         = { workspace = true, features = ["server"] }
+nlhe           = { workspace = true, features = ["server"] }
 vitals         = { workspace = true }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 tokio          = { version = "1", features = ["rt", "sync", "time"] }

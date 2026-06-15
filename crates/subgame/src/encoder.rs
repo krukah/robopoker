@@ -3,9 +3,9 @@
 //! Merges the responsibilities of [`WorldEncoder`] and [`DepthEncoder`]:
 //! tags all info sets with the current world AND detects frontier chance
 //! nodes to inject continuation-choice branches.
-use atlas::*;
 use horizon::*;
 use mccfr::*;
+use worldview::*;
 
 /// Combined encoder for safe subgame solving + depth-limited frontiers.
 ///

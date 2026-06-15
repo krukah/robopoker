@@ -1,7 +1,7 @@
 use super::*;
 use deuce::*;
-use holdem::*;
 use kicker::*;
+use nlhe::*;
 use parlor::records::{Hand as HandRecord, Participant, Play};
 use pokerkit::*;
 use std::sync::Arc;

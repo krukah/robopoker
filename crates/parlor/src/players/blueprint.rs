@@ -2,7 +2,7 @@
 //! decision; no subgame solver. Wrap with [`Sample`](super::Sample) or
 //! [`Dirac`](super::Dirac) to get the `blueprint` / `zerotemp`
 //! production presets.
-use holdem::Flagship;
+use nlhe::Flagship;
 
 use super::Brain;
 use super::Mount;

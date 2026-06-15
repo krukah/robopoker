@@ -317,10 +317,10 @@ dependencies = [
  "bouncer",
  "const_format",
  "deuce",
- "holdem",
  "kicker",
  "ledger",
  "mccfr",
+ "nlhe",
  "parlor",
  "pokerkit",
  "rand 0.9.2",
@@ -372,17 +372,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "atlas"
-version = "1.1.0"
-dependencies = [
- "mccfr",
- "monge",
- "pokerkit",
- "rand 0.9.2",
- "tracing",
 ]
 
 [[package]]
@@ -878,18 +867,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "endgame"
-version = "1.1.0"
-dependencies = [
- "atlas",
- "horizon",
- "mccfr",
- "pokerkit",
- "rand 0.9.2",
- "tracing",
-]
-
-[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -974,12 +951,12 @@ dependencies = [
  "const_format",
  "deuce",
  "futures",
- "holdem",
  "kicker",
  "ledger",
  "lloyd",
  "mccfr",
  "monge",
+ "nlhe",
  "num_cpus",
  "pokerkit",
  "rand 0.9.2",
@@ -1218,29 +1195,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest",
-]
-
-[[package]]
-name = "holdem"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "atlas",
- "const_format",
- "deuce",
- "endgame",
- "futures",
- "horizon",
- "kicker",
- "ledger",
- "mccfr",
- "monge",
- "paste",
- "pokerkit",
- "rand 0.9.2",
- "tokio-postgres",
- "tracing",
 ]
 
 [[package]]
@@ -1642,14 +1596,14 @@ dependencies = [
 name = "kuhn"
 version = "1.1.0"
 dependencies = [
- "atlas",
- "endgame",
  "horizon",
  "mccfr",
  "monge",
  "paste",
  "pokerkit",
  "rand 0.9.2",
+ "subgame",
+ "worldview",
 ]
 
 [[package]]
@@ -1690,14 +1644,14 @@ dependencies = [
 name = "leduc"
 version = "1.1.0"
 dependencies = [
- "atlas",
- "endgame",
  "horizon",
  "mccfr",
  "monge",
  "paste",
  "pokerkit",
  "rand 0.9.2",
+ "subgame",
+ "worldview",
 ]
 
 [[package]]
@@ -1903,6 +1857,29 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nlhe"
+version = "1.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "const_format",
+ "deuce",
+ "futures",
+ "horizon",
+ "kicker",
+ "ledger",
+ "mccfr",
+ "monge",
+ "paste",
+ "pokerkit",
+ "rand 0.9.2",
+ "subgame",
+ "tokio-postgres",
+ "tracing",
+ "worldview",
 ]
 
 [[package]]
@@ -2131,27 +2108,27 @@ name = "parlor"
 version = "1.1.0"
 dependencies = [
  "async-trait",
- "atlas",
  "bouncer",
  "const_format",
  "deuce",
  "dialoguer",
- "endgame",
- "holdem",
  "horizon",
  "kicker",
  "ledger",
  "mccfr",
  "monge",
+ "nlhe",
  "pokerkit",
  "rand 0.9.2",
  "serde",
  "serde_json",
+ "subgame",
  "tokio",
  "tokio-postgres",
  "tracing",
  "uuid",
  "vitals",
+ "worldview",
 ]
 
 [[package]]
@@ -2282,13 +2259,13 @@ dependencies = [
  "deuce",
  "forge",
  "futures",
- "holdem",
  "kicker",
  "ledger",
  "litmus",
  "lloyd",
  "mccfr",
  "monge",
+ "nlhe",
  "parlor",
  "pokerkit",
  "rand 0.9.2",
@@ -2594,12 +2571,9 @@ name = "robopoker"
 version = "1.1.0"
 dependencies = [
  "arena",
- "atlas",
  "bouncer",
  "deuce",
- "endgame",
  "forge",
- "holdem",
  "horizon",
  "kicker",
  "kuhn",
@@ -2609,26 +2583,29 @@ dependencies = [
  "lloyd",
  "mccfr",
  "monge",
+ "nlhe",
  "parlor",
  "pokerkit",
  "portal",
  "roshambo",
  "spar",
+ "subgame",
  "vitals",
+ "worldview",
 ]
 
 [[package]]
 name = "roshambo"
 version = "1.1.0"
 dependencies = [
- "atlas",
- "endgame",
  "horizon",
  "mccfr",
  "monge",
  "paste",
  "pokerkit",
  "rand 0.9.2",
+ "subgame",
+ "worldview",
 ]
 
 [[package]]
@@ -2929,8 +2906,8 @@ dependencies = [
  "anyhow",
  "bouncer",
  "deuce",
- "holdem",
  "kicker",
+ "nlhe",
  "parlor",
  "pokerkit",
  "reqwest",
@@ -2964,6 +2941,18 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "subgame"
+version = "1.1.0"
+dependencies = [
+ "horizon",
+ "mccfr",
+ "pokerkit",
+ "rand 0.9.2",
+ "tracing",
+ "worldview",
+]
 
 [[package]]
 name = "subtle"
@@ -4039,6 +4028,17 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "worldview"
+version = "1.1.0"
+dependencies = [
+ "mccfr",
+ "monge",
+ "pokerkit",
+ "rand 0.9.2",
+ "tracing",
 ]
 
 [[package]]

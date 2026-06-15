@@ -1,6 +1,6 @@
 //! Subgame-policy extraction from a CFR profile, keyed on the *base* edge
-//! type — the wrapper crates ([`horizon`], [`atlas`],
-//! [`endgame`]) implement this on their solver types so callers
+//! type — the wrapper crates ([`horizon`], [`worldview`],
+//! [`subgame`]) implement this on their solver types so callers
 //! never have to know about `DepthEdge::Game` unwrapping or per-world
 //! info iteration.
 use std::collections::BTreeMap;
@@ -27,7 +27,7 @@ pub struct Harvested<E> {
 ///
 /// `DepthInfo::Game`: horizon::DepthInfo::Game
 /// `DepthEdge::Game`: horizon::DepthEdge::Game
-/// `WorldInfo::new`: atlas::WorldInfo::new
+/// `WorldInfo::new`: worldview::WorldInfo::new
 pub trait Harvest {
     /// Base infoset type (pre-wrapping). E.g. `NlheInfo`.
     type Base;

@@ -12,10 +12,10 @@
 use std::collections::BTreeMap;
 
 use crate::SubGameEncoder;
-use atlas::*;
 use horizon::*;
 use mccfr::*;
 use pokerkit::Probability;
+use worldview::*;
 
 /// Solver for safe subgame solving with optional depth-limited frontiers.
 ///

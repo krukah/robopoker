@@ -6,7 +6,7 @@
 //! takes the same `(Tag, &'static Flagship)` pair. Cascading via the
 //! inner type's own [`Mount`] impl means [`zoo`](super::zoo) constructs
 //! an arbitrarily-deep stack with one call.
-use holdem::Flagship;
+use nlhe::Flagship;
 
 use super::Tag;
 

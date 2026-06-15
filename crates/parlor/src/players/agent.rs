@@ -11,12 +11,12 @@
 //! shape carries the semantics.
 use std::collections::BTreeMap;
 
-use holdem::Flagship;
 use kicker::Action;
 use kicker::Edge;
 use kicker::Game;
 use kicker::Recall;
 use kicker::Witness;
+use nlhe::Flagship;
 use pokerkit::Probability;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;

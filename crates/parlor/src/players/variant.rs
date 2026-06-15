@@ -21,7 +21,7 @@ use vitals::KeyValue;
 
 /// Gameroom-only methods on [`Variant`]. Implemented as an extension
 /// trait because the type lives in `pokerkit` (which the WASM client
-/// reads) and these methods need types from `bouncer`, `holdem`,
+/// reads) and these methods need types from `bouncer`, `nlhe`,
 /// `vitals` that the client must not pull in.
 pub trait VariantExt {
     fn tag(self) -> Option<Tag>;
@@ -30,7 +30,7 @@ pub trait VariantExt {
     fn member(self) -> Member;
     fn user(self) -> User;
     fn keys(self) -> [KeyValue; 4];
-    fn into_player(self, flagship: Option<&'static holdem::Flagship>) -> Box<dyn Player>;
+    fn into_player(self, flagship: Option<&'static nlhe::Flagship>) -> Box<dyn Player>;
 }
 
 impl VariantExt for Variant {
@@ -70,7 +70,7 @@ impl VariantExt for Variant {
     }
     /// Build the concrete `Player` for this variant. Consumes `self` —
     /// each Variant materializes exactly one player.
-    fn into_player(self, flagship: Option<&'static holdem::Flagship>) -> Box<dyn Player> {
+    fn into_player(self, flagship: Option<&'static nlhe::Flagship>) -> Box<dyn Player> {
         match self.tag() {
             None => Box::new(Fish),
             Some(tag) => zoo(tag, flagship.expect("bot variant requires flagship")),

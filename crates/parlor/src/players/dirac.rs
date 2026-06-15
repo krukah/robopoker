@@ -11,8 +11,8 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use holdem::*;
 use kicker::*;
+use nlhe::*;
 use pokerkit::Probability;
 
 use super::Brain;
@@ -60,10 +60,10 @@ where
     /// Override the default postflop pipeline: take the inner's full
     /// distribution and collapse to a Dirac delta on its mode. When
     /// `Agent::decide` samples from this it deterministically returns
-    /// the mode action. Shares [`holdem::argmax`] with
-    /// [`holdem::Strategy::argmax`] so the analysis-side dirac
+    /// the mode action. Shares [`nlhe::argmax`] with
+    /// [`nlhe::Strategy::argmax`] so the analysis-side dirac
     /// post-process and this gameplay brain agree.
     fn distrib(&self, recall: &Witness) -> BTreeMap<Edge, Probability> {
-        holdem::argmax(&self.inner.distrib(recall))
+        nlhe::argmax(&self.inner.distrib(recall))
     }
 }

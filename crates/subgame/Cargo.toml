@@ -1,23 +1,22 @@
 [package]
-name         = "endgame"
-publish      = false
+name         = "subgame"
 version      = "1.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "Safe + depth-limited subgame solving (composes atlas and horizon)"
+description  = "Safe + depth-limited subgame solving (composes worldview and horizon)"
 license      = "MIT"
 repository   = "https://github.com/krukah/robopoker"
 keywords     = ["subgame", "cfr", "game-theory", "pluribus"]
 categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
-tracing  = { workspace = true }
-pokerkit = { workspace = true }
-mccfr    = { version = "1.1", path = "../mccfr", default-features = false }
-horizon  = { workspace = true }
-atlas    = { workspace = true }
-rand     = "0.9"
+tracing   = { workspace = true }
+pokerkit  = { workspace = true }
+mccfr     = { version = "1.1", path = "../mccfr", default-features = false }
+horizon   = { workspace = true }
+worldview = { workspace = true }
+rand      = "0.9"
 
 [lints]
 workspace = true

@@ -13,7 +13,7 @@ categories   = ["game-development", "asynchronous"]
 
 [features]
 default = []
-server  = ["ledger", "holdem", "mccfr", "endgame", "horizon", "atlas", "monge", "vitals"]
+server  = ["ledger", "nlhe", "mccfr", "subgame", "horizon", "worldview", "monge", "vitals"]
 cli     = ["dialoguer"]
 
 [dependencies]
@@ -21,11 +21,11 @@ pokerkit       = { workspace = true }
 deuce          = { workspace = true }
 kicker         = { workspace = true }
 bouncer        = { workspace = true }
-holdem         = { workspace = true, optional = true, features = ["server"] }
+nlhe           = { workspace = true, optional = true, features = ["server"] }
 mccfr          = { workspace = true, optional = true }
-endgame        = { workspace = true, optional = true }
+subgame        = { workspace = true, optional = true }
 horizon        = { workspace = true, optional = true }
-atlas          = { workspace = true, optional = true }
+worldview      = { workspace = true, optional = true }
 monge          = { workspace = true, optional = true }
 ledger         = { workspace = true, optional = true }
 vitals         = { workspace = true, optional = true }

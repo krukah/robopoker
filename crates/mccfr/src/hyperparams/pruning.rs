@@ -44,7 +44,7 @@ impl Default for PruningHyperParams {
             explore: 0.05,
             // Warm-up epochs before pruning activates. One epoch = one
             // CFR step = `batch_size` trees (128 for NLHE Nlhe, see
-            // `mccfr!()` invocation in `crates/holdem/src/solver.rs`).
+            // `mccfr!()` invocation in `crates/nlhe/src/solver.rs`).
             // 16384 epochs × 128 trees = ~2.1M trees. On an r6i.8xlarge
             // at ~300k infosets/sec this completes in roughly 5 minutes
             // — pruning is effectively active for the entire run.

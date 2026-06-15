@@ -1,7 +1,7 @@
-use holdem::*;
 use kicker::*;
 use ledger::*;
 use mccfr::Solver;
+use nlhe::*;
 use parlor::Solved;
 use std::collections::HashMap;
 use std::future::Future;
@@ -101,7 +101,7 @@ fn run_solve(blueprint: &'static Flagship, recall: &Witness, kind: Kind) -> ApiS
 
 pub struct StrategyAPI {
     client: Arc<Client>,
-    blueprint: Option<&'static holdem::Flagship>,
+    blueprint: Option<&'static nlhe::Flagship>,
 }
 
 impl StrategyAPI {
@@ -112,14 +112,14 @@ impl StrategyAPI {
         }
     }
 
-    pub fn with_blueprint(mut self, blueprint: Option<&'static holdem::Flagship>) -> Self {
+    pub fn with_blueprint(mut self, blueprint: Option<&'static nlhe::Flagship>) -> Self {
         self.blueprint = blueprint;
         self
     }
 
     pub async fn policy(&self, recall: Witness) -> anyhow::Result<Option<ApiStrategy>> {
         let recall = recall.validate()?;
-        Ok(holdem::lookup(&self.client, &recall)
+        Ok(nlhe::lookup(&self.client, &recall)
             .await
             .map(|s| api_strategy_from(s, &recall)))
     }
@@ -163,7 +163,7 @@ impl StrategyAPI {
 
     /// Opponent's hole-card-level posterior range from hero's POV.
     pub fn range(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
-        self.posterior(recall, holdem::Flagship::opponent_observations)
+        self.posterior(recall, nlhe::Flagship::opponent_observations)
     }
 
     /// Hero's hole-card-level **signalled** range — the posterior an
@@ -171,7 +171,7 @@ impl StrategyAPI {
     /// history. Same response shape as [`Self::range`] with hero/opponent
     /// roles swapped in the underlying reach computation.
     pub fn signalled(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
-        self.posterior(recall, holdem::Flagship::signalled_observations)
+        self.posterior(recall, nlhe::Flagship::signalled_observations)
     }
 
     /// Common shape for `/strategy/range` and `/strategy/signalled`:
@@ -179,7 +179,7 @@ impl StrategyAPI {
     /// the `(observation, probability)` stream into the API response.
     fn posterior<F>(&self, recall: Witness, compute: F) -> anyhow::Result<ApiOpponentRange>
     where
-        F: FnOnce(&'static holdem::Flagship, &Witness) -> Vec<(deuce::Observation, pokerkit::Probability)>,
+        F: FnOnce(&'static nlhe::Flagship, &Witness) -> Vec<(deuce::Observation, pokerkit::Probability)>,
     {
         let recall = recall.validate_observation()?;
         let blueprint = self

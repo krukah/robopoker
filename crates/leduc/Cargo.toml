@@ -12,14 +12,14 @@ keywords     = ["leduc", "cfr", "game-theory", "poker", "solver"]
 categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
-pokerkit = { workspace = true }
-mccfr    = { workspace = true }
-endgame  = { workspace = true }
-horizon  = { workspace = true }
-atlas    = { workspace = true }
-monge    = { workspace = true }
-paste    = "1.0"
-rand     = { workspace = true }
+pokerkit  = { workspace = true }
+mccfr     = { workspace = true }
+subgame   = { workspace = true }
+horizon   = { workspace = true }
+worldview = { workspace = true }
+monge     = { workspace = true }
+paste     = "1.0"
+rand      = { workspace = true }
 
 [lints]
 workspace = true

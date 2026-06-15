@@ -1,5 +1,5 @@
 [package]
-name         = "holdem"
+name         = "nlhe"
 publish      = false
 version      = "1.1.0"
 edition      = "2024"
@@ -22,9 +22,9 @@ deuce          = { workspace = true }
 kicker         = { workspace = true }
 monge          = { workspace = true }
 mccfr          = { version = "1.1", path = "../mccfr", default-features = false }
-endgame        = { workspace = true }
+subgame        = { workspace = true }
 horizon        = { workspace = true }
-atlas          = { workspace = true }
+worldview      = { workspace = true }
 ledger         = { workspace = true, optional = true }
 paste          = "1.0"
 rand           = { workspace = true }

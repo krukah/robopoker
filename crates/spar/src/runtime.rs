@@ -124,7 +124,7 @@ async fn connect() -> std::sync::Arc<tokio_postgres::Client> {
 async fn execute(
     variant: Variant,
     db: std::sync::Arc<tokio_postgres::Client>,
-    flagship: Option<&'static holdem::Flagship>,
+    flagship: Option<&'static nlhe::Flagship>,
     throttle: Throttle,
     mode: Mode,
 ) {

@@ -44,7 +44,7 @@ async fn ensure_all(client: &Client) {
     client.ensure::<parlor::records::Hand>().await;
     client.ensure::<parlor::Participant>().await;
     client.ensure::<parlor::Play>().await;
-    client.ensure::<holdem::NlheProfile>().await;
+    client.ensure::<nlhe::NlheProfile>().await;
     client.ensure::<forge::EpochMeta>().await;
     client.ensure::<forge::Snapshot>().await;
 }
@@ -76,7 +76,7 @@ pub async fn run() -> Result<(), std::io::Error> {
             .unwrap_or_else(|e| tracing::warn!("failed to seed {}: {}", member.username(), e));
         tracing::info!("seeded bot user {}", member.username());
     }
-    let blueprint: Option<&'static holdem::Flagship> = if std::env::var("SKIP_BLUEPRINT").ok().as_deref() == Some("1") {
+    let blueprint: Option<&'static nlhe::Flagship> = if std::env::var("SKIP_BLUEPRINT").ok().as_deref() == Some("1") {
         tracing::warn!("SKIP_BLUEPRINT=1: skipping blueprint hydration (only Fish opponents will work)");
         None
     } else {

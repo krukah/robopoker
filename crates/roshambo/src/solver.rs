@@ -1,7 +1,7 @@
 use crate::*;
-use atlas::*;
 use horizon::*;
 use mccfr::*;
+use worldview::*;
 
 mccfr!(
     Rps,        //
@@ -121,8 +121,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use endgame::*;
     use pokerkit::*;
+    use subgame::*;
 
     const N14: usize = 1 << 14;
     const N16: usize = 1 << 16;

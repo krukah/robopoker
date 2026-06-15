@@ -69,15 +69,15 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 | Crate                               | Description                                               |
 | ----------------------------------- | --------------------------------------------------------- |
 | [`dragoman`](crates/dragoman) | Generic action translation over finite lattices           |
-| [`atlas`](crates/atlas)         | World-partitioned belief layer for safe subgame solving   |
+| [`worldview`](crates/worldview)         | World-partitioned belief layer for safe subgame solving   |
 | [`horizon`](crates/horizon)         | Depth-limited solving with biased continuation strategies |
-| [`endgame`](crates/endgame)     | Safe + depth-limited subgame composition                  |
+| [`subgame`](crates/subgame)     | Safe + depth-limited subgame composition                  |
 
 ### Games
 
 | Crate                       | Description                                      |
 | --------------------------- | ------------------------------------------------ |
-| [`holdem`](crates/holdem)   | No-Limit Hold'em solver and abstraction          |
+| [`nlhe`](crates/nlhe)   | No-Limit Hold'em solver and abstraction          |
 | [`leduc`](crates/leduc) | Leduc Hold'em — MCCFR framework validation       |
 | [`kuhn`](crates/kuhn)   | Kuhn poker — MCCFR framework validation          |
 | [`roshambo`](crates/roshambo)     | Rock-Paper-Scissors — MCCFR framework validation |
@@ -135,7 +135,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 - Pseudo-harmonic translation between abstract and concrete actions⁷,⁸
 - Composable scalar and bracket primitives
 
-**`atlas` + `horizon` + `endgame`** — Real-time search:
+**`worldview` + `horizon` + `subgame`** — Real-time search:
 
 - `WorldProfile` partitions belief into discrete worlds for safe re-solving¹²
 - `DepthEdge<E, D>` augments base edges with `D` continuation choices at the frontier
@@ -157,7 +157,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 - Isomorphic exhaustion of 3.1T situations⁴
 - PostgreSQL binary persistence
 
-**`holdem`** — Concrete NLHE solver:
+**`nlhe`** — Concrete NLHE solver:
 
 - `Nlhe<R, W, S>` parameterised over regret, weight, and sampling schemes
 - `NlheEncoder` for state → infoset mapping
@@ -265,7 +265,7 @@ cargo run --bin slumbot -- --variants base,dirac,depth+world+dirac --hands 1000
 
 ## Built on this stack
 
-A closed-source analysis frontend consumes the public APIs in this repo — `portal`'s WebSocket and HTTP endpoints, the `lloyd` abstraction tables, the blueprint format from `holdem`. The crates here are sufficient to build a similar product.
+A closed-source analysis frontend consumes the public APIs in this repo — `portal`'s WebSocket and HTTP endpoints, the `lloyd` abstraction tables, the blueprint format from `nlhe`. The crates here are sufficient to build a similar product.
 
 ### Live gameplay
 

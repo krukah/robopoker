@@ -18,7 +18,7 @@ kicker         = { workspace = true }
 parlor         = { workspace = true, features = ["server"] }
 ledger         = { workspace = true }
 bouncer        = { workspace = true }
-holdem         = { workspace = true }
+nlhe           = { workspace = true }
 mccfr          = { workspace = true }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 const_format   = "0.2"

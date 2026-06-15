@@ -11,11 +11,11 @@
 //!
 //! # Composability
 //!
-//! This crate is orthogonal to `atlas` (safe subgame solving):
+//! This crate is orthogonal to `worldview` (safe subgame solving):
 //!
 //! | Crate | Concern | Acts on |
 //! |-------|---------|---------|
-//! | `atlas` | Root safety (opponent range partitioning) | Info sets |
+//! | `worldview` | Root safety (opponent range partitioning) | Info sets |
 //! | `horizon` | Leaf evaluation (continuation strategies) | Game states |
 //!
 //! They compose via wrapper types:

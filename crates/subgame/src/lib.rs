@@ -1,6 +1,6 @@
 //! Combined safe subgame solving + depth-limited frontiers.
 //!
-//! This crate is a thin composition layer over [`atlas`] (safe subgame
+//! This crate is a thin composition layer over [`worldview`] (safe subgame
 //! solving) and [`horizon`] (depth-limited leaf evaluation). It provides
 //! the combined solver that uses both techniques simultaneously.
 //!
@@ -17,8 +17,8 @@
 //! - [`SubGameEncoder`] — Tags info sets with world AND detects frontier chance nodes
 //! - [`SubGameSolver`] — Combined solver using both safety and depth-limiting
 //!
-//! Types from `atlas` and `horizon` are re-exported for convenience so
-//! that downstream callers only need `use endgame::*`.
+//! Types from `worldview` and `horizon` are re-exported for convenience so
+//! that downstream callers only need `use subgame::*`.
 //!
 //! # References
 //!

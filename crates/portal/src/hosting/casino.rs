@@ -23,7 +23,7 @@ type Rx = Arc<Mutex<UnboundedReceiver<String>>>;
 /// without the heavy in-memory blueprint hydration step.
 pub struct Casino {
     db: Arc<Client>,
-    blueprint: Option<&'static holdem::Flagship>,
+    blueprint: Option<&'static nlhe::Flagship>,
     rooms: RwLock<HashMap<ID<Room>, RoomHandle>>,
 }
 
@@ -36,7 +36,7 @@ impl Casino {
         }
     }
 
-    pub fn with_blueprint(mut self, blueprint: Option<&'static holdem::Flagship>) -> Self {
+    pub fn with_blueprint(mut self, blueprint: Option<&'static nlhe::Flagship>) -> Self {
         self.blueprint = blueprint;
         self
     }

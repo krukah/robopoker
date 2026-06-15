@@ -13,13 +13,13 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use deuce::Street;
-use endgame::SubgameHyperParams;
-use holdem::*;
 use kicker::*;
 use mccfr::RefProf;
 use mccfr::Solver;
+use nlhe::*;
 use pokerkit::Probability;
 use pokerkit::Utility;
+use subgame::SubgameHyperParams;
 
 use super::Solved;
 use super::Tag;

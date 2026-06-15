@@ -207,7 +207,7 @@ pub const EPSILON: Probability = Probability::MIN_POSITIVE;
 // SUBGAME SOLVING — STRUCTURAL CONSTANTS
 // `N_WORLDS` and `FRONTIER_LEAVES` are const-generic depths in the world /
 // depth solvers; they can't be runtime config. Tuning knobs live in
-// `SubgameHyperParams` (endgame) and `FrontierHyperParams` (horizon).
+// `SubgameHyperParams` (subgame) and `FrontierHyperParams` (horizon).
 // ============================================================================
 /// Alternative opponent hand partitions in the subgame (safe subgame solving).
 /// Each world represents a partition of the opponent's range conditioned on

@@ -1,8 +1,8 @@
 use deuce::*;
-use holdem::*;
 use kicker::*;
 use mccfr::*;
 use monge::Density;
+use nlhe::*;
 use pokerkit::*;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
@@ -191,7 +191,7 @@ impl Worker {
         let (edge, ref game, head) = leaf;
         let subgame = std::iter::once(edge)
             .chain(tree.at(head).map(mccfr::Jump::edge))
-            .take_while(holdem::NlheEdge::is_choice)
+            .take_while(nlhe::NlheEdge::is_choice)
             .map(Edge::from)
             .collect::<Path>()
             .rev()

@@ -5,15 +5,15 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 
 use deuce::Street;
-use endgame::SubgameHyperParams;
-use holdem::NlheEdge;
-use holdem::NlheInfo;
 use kicker::Edge;
 use mccfr::Harvest;
 use mccfr::Solver;
+use nlhe::NlheEdge;
+use nlhe::NlheInfo;
 use pokerkit::Chips;
 use pokerkit::Probability;
 use pokerkit::Utility;
+use subgame::SubgameHyperParams;
 use vitals::KeyValue;
 
 use super::Tag;

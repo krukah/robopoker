@@ -1,8 +1,8 @@
 //! Training mode selection from command line arguments.
 use crate::*;
-use holdem::NlheProfile;
 use ledger::Check;
 use ledger::Schema;
+use nlhe::NlheProfile;
 
 /// Training mode parsed from command line arguments
 pub enum Mode {

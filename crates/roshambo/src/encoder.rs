@@ -1,6 +1,6 @@
 use super::*;
-use atlas::*;
 use mccfr::*;
+use worldview::*;
 
 #[derive(Default)]
 pub struct RpsEncoder;

@@ -37,12 +37,9 @@
 //! - [`litmus`] — Strategic litmus tests for blueprint validation
 
 pub use arena as competition;
-pub use atlas as world;
 pub use bouncer as auth;
 pub use deuce as cards;
-pub use endgame as subgame;
 pub use forge as autotrain;
-pub use holdem as nlhe;
 pub use horizon as depth;
 pub use kicker as gameplay;
 pub use kuhn;
@@ -52,12 +49,15 @@ pub use litmus;
 pub use lloyd as clustering;
 pub use mccfr;
 pub use monge as transport;
+pub use nlhe;
 pub use parlor as gameroom;
 pub use pokerkit as core;
 pub use portal as server;
 pub use roshambo as rps;
 pub use spar as slumbot;
+pub use subgame;
 pub use vitals as telemetry;
+pub use worldview as world;
 
 // Re-export commonly used types at the root
 pub use pokerkit::*;

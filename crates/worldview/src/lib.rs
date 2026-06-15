@@ -3,7 +3,7 @@
 //! Implements the safe subgame solving technique from Brown & Sandholm 2017
 //! using world sampling and per-world regret separation. This crate holds
 //! only the "World" layer — see `horizon` for leaf (depth-limited)
-//! evaluation and `endgame` for the combined solver.
+//! evaluation and `subgame` for the combined solver.
 //!
 //! # Overview
 //!

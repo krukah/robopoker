@@ -1,7 +1,7 @@
 use crate::*;
-use atlas::*;
 use horizon::*;
 use mccfr::*;
+use worldview::*;
 
 mccfr!(
     Kuhn,        //
@@ -136,7 +136,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use endgame::*;
+    use subgame::*;
 
     const N18: usize = 1 << 18;
 

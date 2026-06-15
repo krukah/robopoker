@@ -19,7 +19,7 @@ use super::Depth;
 use super::Dirac;
 use super::World;
 use crate::Player;
-use holdem::Flagship;
+use nlhe::Flagship;
 
 /// A bot's display identity + cube coordinate. Threaded through the
 /// [`Mount`](super::Mount) cascade so every emission site (metrics,
