@@ -10,7 +10,7 @@
 //!     DepthPhase::Internal(payoffs, k)     — internal picked k
 //!       DepthPhase::External(payoffs, k, j) — external picked j, resolved
 //! ```
-use crate::*;
+use super::*;
 use mccfr::*;
 use pokerkit::Utility;
 

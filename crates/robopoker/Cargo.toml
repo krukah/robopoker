@@ -16,28 +16,26 @@ async     = ["mccfr/async"]
 shortdeck = ["deuce/shortdeck"]
 
 [dependencies]
-pokerkit  = { workspace = true }
-monge     = { workspace = true }
-deuce     = { workspace = true }
-mccfr     = { workspace = true }
-kicker    = { workspace = true }
-lloyd     = { workspace = true }
-worldview = { workspace = true }
-horizon   = { workspace = true }
-subgame   = { workspace = true }
-nlhe      = { workspace = true }
-leduc     = { workspace = true }
-kuhn      = { workspace = true }
-roshambo  = { workspace = true }
-ledger    = { workspace = true }
-bouncer   = { workspace = true }
-vitals    = { workspace = true }
-parlor    = { workspace = true }
-portal    = { workspace = true }
-forge     = { workspace = true }
-arena     = { workspace = true }
-spar      = { workspace = true }
-litmus    = { workspace = true }
+pokerkit = { workspace = true }
+monge    = { workspace = true }
+deuce    = { workspace = true }
+mccfr    = { workspace = true }
+kicker   = { workspace = true }
+lloyd    = { workspace = true }
+subgame  = { workspace = true }
+nlhe     = { workspace = true }
+leduc    = { workspace = true }
+kuhn     = { workspace = true }
+roshambo = { workspace = true }
+ledger   = { workspace = true }
+bouncer  = { workspace = true }
+vitals   = { workspace = true }
+parlor   = { workspace = true }
+portal   = { workspace = true }
+forge    = { workspace = true }
+arena    = { workspace = true }
+spar     = { workspace = true }
+litmus   = { workspace = true }
 
 [lints]
 workspace = true

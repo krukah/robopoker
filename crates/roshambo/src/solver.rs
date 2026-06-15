@@ -1,7 +1,6 @@
 use crate::*;
-use horizon::*;
 use mccfr::*;
-use worldview::*;
+use subgame::*;
 
 mccfr!(
     Rps,        //
@@ -122,7 +121,6 @@ where
 mod tests {
     use super::*;
     use pokerkit::*;
-    use subgame::*;
 
     const N14: usize = 1 << 14;
     const N16: usize = 1 << 16;
@@ -142,15 +140,15 @@ mod tests {
     }
     const WORLDS: usize = 2;
 
-    impl<P> RpsEquilibrium for WorldProfile<'_, horizon::DepthView<'_, P, 1>>
+    impl<P> RpsEquilibrium for WorldProfile<'_, subgame::DepthView<'_, P, 1>>
     where
         P: RefProf<T = RpsTurn, E = RpsEdge, I = RpsTurn>,
     {
         fn averaged(&self, turn: RpsTurn, edge: RpsEdge) -> Probability {
             (0..WORLDS)
                 .map(World::from)
-                .map(|w| WorldInfo::new(w, horizon::DepthInfo::<_, 1>::Game(turn)))
-                .map(|i| CfrNash::averaged_policy(self, &i, &horizon::DepthEdge::<_, 1>::Game(edge)))
+                .map(|w| WorldInfo::new(w, subgame::DepthInfo::<_, 1>::Game(turn)))
+                .map(|i| CfrNash::averaged_policy(self, &i, &subgame::DepthEdge::<_, 1>::Game(edge)))
                 .sum::<Probability>()
                 / WORLDS as Probability
         }

@@ -4,8 +4,8 @@
 //! probability mass, and returns each segment's weight alongside the
 //! secret-to-world classification. World 0 contains the highest-reach
 //! secrets, world K-1 the lowest.
-use crate::Belief;
-use crate::World;
+use super::Belief;
+use super::World;
 use mccfr::CfrSecret;
 use mccfr::Posterior;
 use pokerkit::Probability;

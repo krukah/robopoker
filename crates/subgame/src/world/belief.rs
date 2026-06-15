@@ -3,7 +3,7 @@
 //! Combines the secret → world mapping (for rejection sampling) with the
 //! K-world weight distribution (for the subgame gadget). Produced by
 //! [`Partition::partition`] and consumed by [`SubGameEncoder`] and [`SubProfile`].
-use crate::World;
+use super::World;
 use mccfr::CfrSecret;
 use monge::Density;
 use pokerkit::Probability;

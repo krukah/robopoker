@@ -9,8 +9,6 @@ members = [
   "crates/kicker",
   "crates/elkan",
   "crates/lloyd",
-  "crates/worldview",
-  "crates/horizon",
   "crates/subgame",
   "crates/nlhe",
   "crates/leduc",
@@ -50,29 +48,27 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-pokerkit  = { version = "1.1", path = "crates/pokerkit" }
-monge     = { version = "1.1", path = "crates/monge" }
-deuce     = { version = "1.1", path = "crates/deuce" }
-mccfr     = { version = "1.1", path = "crates/mccfr" }
-kicker    = { version = "1.1", path = "crates/kicker" }
-elkan     = { version = "1.1", path = "crates/elkan" }
-lloyd     = { version = "1.1", path = "crates/lloyd" }
-worldview = { version = "1.1", path = "crates/worldview" }
-horizon   = { version = "1.1", path = "crates/horizon" }
-subgame   = { version = "1.1", path = "crates/subgame" }
-nlhe      = { version = "1.1", path = "crates/nlhe" }
-leduc     = { version = "1.1", path = "crates/leduc" }
-kuhn      = { version = "1.1", path = "crates/kuhn" }
-roshambo  = { version = "1.1", path = "crates/roshambo" }
-arena     = { version = "1.1", path = "crates/arena" }
-spar      = { version = "1.1", path = "crates/spar" }
-litmus    = { version = "1.1", path = "crates/litmus" }
-ledger    = { version = "1.1", path = "crates/ledger" }
-bouncer   = { version = "1.1", path = "crates/bouncer" }
-vitals    = { version = "1.1", path = "crates/vitals" }
-parlor    = { version = "1.1", path = "crates/parlor" }
-portal    = { version = "1.1", path = "crates/portal" }
-forge     = { version = "1.1", path = "crates/forge" }
+pokerkit = { version = "1.1", path = "crates/pokerkit" }
+monge    = { version = "1.1", path = "crates/monge" }
+deuce    = { version = "1.1", path = "crates/deuce" }
+mccfr    = { version = "1.1", path = "crates/mccfr" }
+kicker   = { version = "1.1", path = "crates/kicker" }
+elkan    = { version = "1.1", path = "crates/elkan" }
+lloyd    = { version = "1.1", path = "crates/lloyd" }
+subgame  = { version = "1.1", path = "crates/subgame" }
+nlhe     = { version = "1.1", path = "crates/nlhe" }
+leduc    = { version = "1.1", path = "crates/leduc" }
+kuhn     = { version = "1.1", path = "crates/kuhn" }
+roshambo = { version = "1.1", path = "crates/roshambo" }
+arena    = { version = "1.1", path = "crates/arena" }
+spar     = { version = "1.1", path = "crates/spar" }
+litmus   = { version = "1.1", path = "crates/litmus" }
+ledger   = { version = "1.1", path = "crates/ledger" }
+bouncer  = { version = "1.1", path = "crates/bouncer" }
+vitals   = { version = "1.1", path = "crates/vitals" }
+parlor   = { version = "1.1", path = "crates/parlor" }
+portal   = { version = "1.1", path = "crates/portal" }
+forge    = { version = "1.1", path = "crates/forge" }
 
 # External dependencies
 tokio          = { version = "1", features = ["full"] }

@@ -25,9 +25,9 @@ pub struct Harvested<E> {
 /// edge-unwrapping (`DepthEdge::Game`) — the caller passes the
 /// pre-wrap info and gets back maps over the base edge.
 ///
-/// `DepthInfo::Game`: horizon::DepthInfo::Game
-/// `DepthEdge::Game`: horizon::DepthEdge::Game
-/// `WorldInfo::new`: worldview::WorldInfo::new
+/// `DepthInfo::Game`: subgame::DepthInfo::Game
+/// `DepthEdge::Game`: subgame::DepthEdge::Game
+/// `WorldInfo::new`: subgame::WorldInfo::new
 pub trait Harvest {
     /// Base infoset type (pre-wrapping). E.g. `NlheInfo`.
     type Base;

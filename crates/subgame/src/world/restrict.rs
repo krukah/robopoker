@@ -4,9 +4,9 @@
 //! to the observed state except with the external player's private
 //! information resampled to belong to a target world. The framework
 //! never sees rejection sampling or game-specific dealing logic.
-use crate::Belief;
-use crate::Secret;
-use crate::World;
+use super::Belief;
+use super::Secret;
+use super::World;
 use mccfr::CfrEncoder;
 
 /// Restricts a game state so that the external player's secret belongs

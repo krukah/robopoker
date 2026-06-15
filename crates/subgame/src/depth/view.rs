@@ -1,5 +1,5 @@
 //! Read-only view adapter for leaf-augmented games.
-use crate::*;
+use super::*;
 use mccfr::*;
 use pokerkit::*;
 

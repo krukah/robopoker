@@ -3,12 +3,10 @@ use deuce::Hand;
 use deuce::HandIterator;
 use deuce::Hole;
 use deuce::Observation;
-use horizon::*;
 use kicker::*;
 use mccfr::*;
 use pokerkit::*;
 use subgame::*;
-use worldview::*;
 
 mccfr!(Nlhe, NlheEncoder, NlheTurn, NlheEdge, NlheGame, NlheInfo, 128);
 

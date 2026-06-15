@@ -1,7 +1,6 @@
 use crate::*;
-use horizon::*;
 use mccfr::*;
-use worldview::*;
+use subgame::*;
 
 mccfr!(
     Kuhn,        //
@@ -136,7 +135,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use subgame::*;
 
     const N18: usize = 1 << 18;
 
@@ -277,7 +275,7 @@ mod tests {
     const WORLDS: usize = 2;
 
     fn subpolicy(
-        profile: &WorldProfile<'_, horizon::DepthView<'_, KuhnProfile, 1>>,
+        profile: &WorldProfile<'_, subgame::DepthView<'_, KuhnProfile, 1>>,
         rank: Rank,
         node: History,
         edge: KuhnEdge,
@@ -285,9 +283,9 @@ mod tests {
         let info = view(rank, node);
         (0..WORLDS)
             .map(|w| {
-                let fi = horizon::DepthInfo::<_, 1>::Game(info);
+                let fi = subgame::DepthInfo::<_, 1>::Game(info);
                 let wi = WorldInfo::new(World::from(w), fi);
-                let fe = horizon::DepthEdge::<_, 1>::Game(edge);
+                let fe = subgame::DepthEdge::<_, 1>::Game(edge);
                 CfrNash::averaged_policy(profile, &wi, &fe)
             })
             .sum::<pokerkit::Probability>()
@@ -295,7 +293,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn subgame_nash(profile: &WorldProfile<'_, horizon::DepthView<'_, KuhnProfile, 1>>) {
+    fn subgame_nash(profile: &WorldProfile<'_, subgame::DepthView<'_, KuhnProfile, 1>>) {
         assert!(subpolicy(profile, Rank::K, History::Bet,      KuhnEdge::Call)  > 0.90,  "K|B  should call");
         assert!(subpolicy(profile, Rank::K, History::CheckBet, KuhnEdge::Call)  > 0.90,  "K|XB should call");
     }

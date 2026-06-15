@@ -11,7 +11,7 @@
 //! mechanism (different worlds = different card deals = different game
 //! trees), NOT from policy perturbation. This is the safe subgame
 //! solving approach from Brown & Sandholm 2017.
-use crate::*;
+use super::*;
 use mccfr::*;
 use pokerkit::*;
 use std::collections::HashMap;

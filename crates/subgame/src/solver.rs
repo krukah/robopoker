@@ -12,15 +12,15 @@
 use std::collections::BTreeMap;
 
 use crate::SubGameEncoder;
-use horizon::*;
+use crate::depth::*;
+use crate::world::*;
 use mccfr::*;
 use pokerkit::Probability;
-use worldview::*;
 
 /// Solver for safe subgame solving with optional depth-limited frontiers.
 ///
 /// Combines safety (worlds) and depth-limiting (frontiers) — use [`WorldSolver`]
-/// for safety-only, or [`horizon::DepthSolver`] for depth-limiting only.
+/// for safety-only, or [`crate::depth::DepthSolver`] for depth-limiting only.
 pub struct SubGameSolver<'blueprint, const W: usize, const L: usize, N, I, Y>
 where
     N: DepthSampler<L, Blueprint: CfrSolution<I = I>>,

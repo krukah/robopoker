@@ -3,7 +3,7 @@
 //! Wraps an inner encoder and tags all info sets with the current world.
 //! The prefix history is passed to the inner encoder's `resume()` method
 //! for correct reach probability computation.
-use crate::*;
+use super::*;
 use mccfr::*;
 
 /// CfrEncoder that tags inner info sets with a world index.

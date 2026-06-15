@@ -1,5 +1,5 @@
 //! Local mutable profile for depth-limited (leaf) solving.
-use crate::*;
+use super::*;
 use mccfr::*;
 use pokerkit::*;
 use std::collections::HashMap;

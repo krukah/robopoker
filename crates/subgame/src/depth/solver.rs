@@ -1,7 +1,7 @@
 //! Depth-limited solver (no world safety).
 use std::collections::BTreeMap;
 
-use crate::*;
+use super::*;
 use mccfr::*;
 use pokerkit::Probability;
 

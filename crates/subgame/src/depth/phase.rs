@@ -1,5 +1,5 @@
 //! Depth-limiting phase: base game play or progression through the frontier game.
-use crate::*;
+use super::*;
 
 /// Depth-limiting phase machine.
 ///

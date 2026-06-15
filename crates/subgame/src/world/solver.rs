@@ -4,11 +4,11 @@
 //! and per-world regret separation, without any frontier/depth-limiting
 //! machinery. The tree expands fully to terminal nodes.
 //!
-//! Use [`crate::SubGameSolver`] if you also want depth-limited frontier
-//! evaluation, or [`horizon::DepthSolver`] for depth-limiting alone.
+//! Use [`super::SubGameSolver`] if you also want depth-limited frontier
+//! evaluation, or [`subgame::DepthSolver`] for depth-limiting alone.
 use std::collections::BTreeMap;
 
-use crate::*;
+use super::*;
 use mccfr::*;
 use pokerkit::Probability;
 

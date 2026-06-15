@@ -1,6 +1,6 @@
 //! Hyperparameters for safe + depth-limited subgame solving.
 
-use horizon::FrontierHyperParams;
+use crate::depth::FrontierHyperParams;
 
 /// Subgame solving parameters.
 ///

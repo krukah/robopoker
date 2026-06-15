@@ -16,14 +16,12 @@ name = "rps"
 path = "src/main.rs"
 
 [dependencies]
-pokerkit  = { workspace = true }
-mccfr     = { workspace = true }
-subgame   = { workspace = true }
-horizon   = { workspace = true }
-worldview = { workspace = true }
-monge     = { workspace = true }
-paste     = "1.0"
-rand      = { workspace = true }
+pokerkit = { workspace = true }
+mccfr    = { workspace = true }
+subgame  = { workspace = true }
+monge    = { workspace = true }
+paste    = "1.0"
+rand     = { workspace = true }
 
 [lints]
 workspace = true

@@ -13,8 +13,6 @@
 //! ### Domain Logic
 //! - [`gameplay`] — Poker game engine
 //! - [`clustering`] — K-means abstraction
-//! - [`world`] — World-partitioned belief for safe subgame solving
-//! - [`depth`] — Depth-limited solving with biased continuation strategies
 //! - [`subgame`] — Safe + depth-limited subgame solving
 //! - [`nlhe`] — No-Limit Hold'em solver
 //! - [`leduc`] — Leduc poker MCCFR validation
@@ -40,7 +38,6 @@ pub use arena as competition;
 pub use bouncer as auth;
 pub use deuce as cards;
 pub use forge as autotrain;
-pub use horizon as depth;
 pub use kicker as gameplay;
 pub use kuhn;
 pub use ledger as database;
@@ -57,7 +54,6 @@ pub use roshambo as rps;
 pub use spar as slumbot;
 pub use subgame;
 pub use vitals as telemetry;
-pub use worldview as world;
 
 // Re-export commonly used types at the root
 pub use pokerkit::*;

@@ -1,6 +1,6 @@
 use super::*;
 use mccfr::*;
-use worldview::*;
+use subgame::*;
 
 #[derive(Default)]
 pub struct RpsEncoder;

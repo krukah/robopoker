@@ -1,5 +1,5 @@
 //! Edge type for depth-limited frontier-augmented games.
-use crate::*;
+use super::*;
 use mccfr::*;
 use monge::Support;
 use pokerkit::*;

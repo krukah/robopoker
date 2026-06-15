@@ -1,7 +1,6 @@
 use crate::*;
-use horizon::*;
 use mccfr::*;
-use worldview::*;
+use subgame::*;
 
 mccfr!(Leduc, LeducEncoder, LeducTurn, LeducEdge, LeducGame, LeducInfo, 1);
 
@@ -99,7 +98,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use subgame::*;
 
     const N16: usize = 1 << 16;
     const N18: usize = 1 << 18;
@@ -294,7 +292,7 @@ mod tests {
 
     #[test]
     fn depth_limited_tree_has_front_nodes() {
-        use horizon::*;
+        use subgame::*;
         let ref blueprint = Leduc::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N18);
         let encoder = DepthEncoder::<_, 4>::new(blueprint, vec![]);
         let profile: DepthView<'_, _, 4> = DepthView::new(DepthSampler::<4>::blueprint(blueprint));

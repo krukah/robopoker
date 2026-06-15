@@ -1,11 +1,10 @@
 use super::*;
 use deuce::*;
-use horizon::*;
 use kicker::*;
 use mccfr::*;
 use pokerkit::*;
 use std::collections::BTreeMap;
-use worldview::*;
+use subgame::*;
 
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
 

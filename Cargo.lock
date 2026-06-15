@@ -1198,17 +1198,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "horizon"
-version = "1.1.0"
-dependencies = [
- "mccfr",
- "monge",
- "petgraph",
- "pokerkit",
- "tracing",
-]
-
-[[package]]
 name = "http"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1596,14 +1585,12 @@ dependencies = [
 name = "kuhn"
 version = "1.1.0"
 dependencies = [
- "horizon",
  "mccfr",
  "monge",
  "paste",
  "pokerkit",
  "rand 0.9.2",
  "subgame",
- "worldview",
 ]
 
 [[package]]
@@ -1644,14 +1631,12 @@ dependencies = [
 name = "leduc"
 version = "1.1.0"
 dependencies = [
- "horizon",
  "mccfr",
  "monge",
  "paste",
  "pokerkit",
  "rand 0.9.2",
  "subgame",
- "worldview",
 ]
 
 [[package]]
@@ -1868,7 +1853,6 @@ dependencies = [
  "const_format",
  "deuce",
  "futures",
- "horizon",
  "kicker",
  "ledger",
  "mccfr",
@@ -1879,7 +1863,6 @@ dependencies = [
  "subgame",
  "tokio-postgres",
  "tracing",
- "worldview",
 ]
 
 [[package]]
@@ -2112,7 +2095,6 @@ dependencies = [
  "const_format",
  "deuce",
  "dialoguer",
- "horizon",
  "kicker",
  "ledger",
  "mccfr",
@@ -2128,7 +2110,6 @@ dependencies = [
  "tracing",
  "uuid",
  "vitals",
- "worldview",
 ]
 
 [[package]]
@@ -2574,7 +2555,6 @@ dependencies = [
  "bouncer",
  "deuce",
  "forge",
- "horizon",
  "kicker",
  "kuhn",
  "ledger",
@@ -2591,21 +2571,18 @@ dependencies = [
  "spar",
  "subgame",
  "vitals",
- "worldview",
 ]
 
 [[package]]
 name = "roshambo"
 version = "1.1.0"
 dependencies = [
- "horizon",
  "mccfr",
  "monge",
  "paste",
  "pokerkit",
  "rand 0.9.2",
  "subgame",
- "worldview",
 ]
 
 [[package]]
@@ -2946,12 +2923,12 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 name = "subgame"
 version = "1.1.0"
 dependencies = [
- "horizon",
  "mccfr",
+ "monge",
+ "petgraph",
  "pokerkit",
  "rand 0.9.2",
  "tracing",
- "worldview",
 ]
 
 [[package]]
@@ -4028,17 +4005,6 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
-]
-
-[[package]]
-name = "worldview"
-version = "1.1.0"
-dependencies = [
- "mccfr",
- "monge",
- "pokerkit",
- "rand 0.9.2",
- "tracing",
 ]
 
 [[package]]

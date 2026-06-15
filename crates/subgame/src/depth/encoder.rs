@@ -3,7 +3,7 @@
 //! Wraps a source that implements [`DepthSampler`] (providing both game
 //! encoding and blueprint profile access) and intercepts tree building
 //! at frontier chance nodes to inject continuation-choice branches.
-use crate::*;
+use super::*;
 use mccfr::*;
 
 /// CfrEncoder that augments the source with frontier expansion.
