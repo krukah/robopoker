@@ -16,7 +16,6 @@ tracing  = { workspace = true }
 pokerkit = { workspace = true }
 monge    = { workspace = true }
 mccfr    = { version = "1.1", path = "../mccfr", default-features = false }
-solus    = { workspace = true }
 petgraph = { workspace = true }
 
 [lints]

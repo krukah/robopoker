@@ -1,11 +1,10 @@
 use pokerkit::*;
-use solus::HyperParams;
 
 /// Average-strategy sampling parameters.
 ///
 /// Biased sampling from cumulative policy:
 /// `σ'(a) = max(ε, (τ·σ(a) + β) / (Σσ + β))`
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SamplingHyperParams {
     temperature: Entropy,
     smoothing: Energy,
@@ -49,3 +48,5 @@ impl Default for SamplingHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(SamplingHyperParams);

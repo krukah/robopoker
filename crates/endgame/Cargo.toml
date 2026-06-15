@@ -16,7 +16,6 @@ tracing  = { workspace = true }
 pokerkit = { workspace = true }
 mccfr    = { version = "1.1", path = "../mccfr", default-features = false }
 horizon  = { workspace = true }
-solus    = { workspace = true }
 atlas    = { workspace = true }
 rand     = "0.9"
 

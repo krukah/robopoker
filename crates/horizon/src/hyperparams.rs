@@ -1,7 +1,6 @@
 //! Hyperparameters for depth-limited frontier evaluation.
 
 use pokerkit::Probability;
-use solus::HyperParams;
 
 /// Depth-limited frontier evaluation parameters.
 ///
@@ -9,7 +8,7 @@ use solus::HyperParams;
 /// of biased continuation strategies (the count is the const generic
 /// `FRONTIER_LEAVES`, not part of these tunables). The solver learns
 /// the minimax mix over the resulting payoff matrix.
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FrontierHyperParams {
     bias: Probability,
     rollouts: usize,
@@ -42,3 +41,5 @@ impl Default for FrontierHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(FrontierHyperParams);

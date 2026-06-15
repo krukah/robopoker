@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 
 mod id;
+mod macros;
 mod metrics;
 mod regime;
 mod translate;

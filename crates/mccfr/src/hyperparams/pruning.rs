@@ -1,8 +1,7 @@
 use pokerkit::*;
-use solus::HyperParams;
 
 /// Probabilistic pruning parameters (see PluribusSampling).
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PruningHyperParams {
     threshold: Utility,
     explore: Probability,
@@ -53,3 +52,5 @@ impl Default for PruningHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(PruningHyperParams);

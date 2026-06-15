@@ -1,11 +1,9 @@
-use solus::HyperParams;
-
 /// Warmstart parameters for seeding subgame-local CFR profiles from a
 /// blueprint profile.
 ///
 /// Read by [`crate::RefProf::warmstart`] when synthesizing
 /// iteration-count-agnostic prior weights.
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WarmstartHyperParams {
     prior_strength: u64,
 }
@@ -33,3 +31,5 @@ impl Default for WarmstartHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(WarmstartHyperParams);

@@ -1,13 +1,12 @@
 //! Hyperparameters for safe + depth-limited subgame solving.
 
 use horizon::FrontierHyperParams;
-use solus::HyperParams;
 
 /// Subgame solving parameters.
 ///
 /// Controls per-decision real-time refinement of the blueprint strategy.
 /// Composes [`FrontierHyperParams`] for the depth-limited leaf evaluation.
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SubgameHyperParams {
     timeout_ms: u64,
     visit_threshold: u32,
@@ -53,3 +52,5 @@ impl Default for SubgameHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(SubgameHyperParams);

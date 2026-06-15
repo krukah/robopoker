@@ -20,7 +20,6 @@ members = [
   "crates/ledger",
   "crates/bouncer",
   "crates/vitals",
-  "crates/solus",
   # Application crates
   "crates/parlor",
   "crates/portal",
@@ -71,7 +70,6 @@ litmus   = { version = "1.1", path = "crates/litmus" }
 ledger   = { version = "1.1", path = "crates/ledger" }
 bouncer  = { version = "1.1", path = "crates/bouncer" }
 vitals   = { version = "1.1", path = "crates/vitals" }
-solus    = { version = "1.1", path = "crates/solus" }
 parlor   = { version = "1.1", path = "crates/parlor" }
 portal   = { version = "1.1", path = "crates/portal" }
 forge    = { version = "1.1", path = "crates/forge" }

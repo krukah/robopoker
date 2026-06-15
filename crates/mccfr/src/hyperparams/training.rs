@@ -1,9 +1,8 @@
 use pokerkit::*;
-use solus::HyperParams;
 use std::time::Duration;
 
 /// Training infrastructure parameters.
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TrainingHyperParams {
     log_interval: Duration,
     flush_interval: Duration,
@@ -60,3 +59,5 @@ impl Default for TrainingHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(TrainingHyperParams);

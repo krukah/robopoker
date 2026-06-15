@@ -1,11 +1,10 @@
 use pokerkit::*;
-use solus::HyperParams;
 
 /// Initial regret seed weights (warmstart bias).
 ///
 /// Weights, not probabilities — only ratios matter. Read by
 /// [`crate::Edge::regret`] when seeding CFR warmstart.
-#[derive(HyperParams, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BiasHyperParams {
     folds: Utility,
     raise: Utility,
@@ -69,3 +68,5 @@ impl Default for BiasHyperParams {
         }
     }
 }
+
+pokerkit::hyperparams!(BiasHyperParams);

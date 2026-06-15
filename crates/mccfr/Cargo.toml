@@ -19,7 +19,6 @@ async   = ["async-trait", "futures"]
 pokerkit    = { workspace = true }
 kicker      = { workspace = true }
 monge       = { workspace = true }
-solus       = { workspace = true }
 rand        = { workspace = true }
 petgraph    = { workspace = true }
 paste       = "1.0"

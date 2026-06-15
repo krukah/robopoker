@@ -14,7 +14,6 @@ categories   = ["game-development"]
 tracing    = { workspace = true }
 pokerkit   = { workspace = true }
 deuce      = { workspace = true }
-solus      = { workspace = true }
 rand       = { workspace = true }
 serde      = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
