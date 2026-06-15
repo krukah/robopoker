@@ -4,7 +4,7 @@
 //! algorithm body stays readable. All recorders share a single
 //! `{street}` label set built once at construction.
 
-use kicker::Street;
+use deuce::Street;
 use std::time::Duration;
 use std::time::Instant;
 use vitals::KeyValue;

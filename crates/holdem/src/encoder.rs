@@ -1,6 +1,6 @@
 use super::*;
 use atlas::*;
-use cowboys::*;
+use deuce::*;
 use horizon::*;
 use kicker::*;
 use mccfr::*;

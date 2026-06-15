@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use deuce::*;
 use holdem::*;
 use kicker::*;
 use parlor::records::{Hand as HandRecord, Participant, Play};
@@ -86,8 +86,8 @@ impl Aivat {
         let mut hero_recall = Witness::try_arrange(hero, hero_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{e}"))?;
         let mut villain_recall =
             Witness::try_arrange(villain, villain_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{e}"))?;
-        let hero_hand = kicker::Hand::from(hero_hole);
-        let villain_hand = kicker::Hand::from(villain_hole);
+        let hero_hand = deuce::Hand::from(hero_hole);
+        let villain_hand = deuce::Hand::from(villain_hole);
         let mut hero_total = 0.0f32;
         let mut villain_total = 0.0f32;
         let mut chance_total = 0.0f32;
@@ -153,15 +153,15 @@ impl Aivat {
         hero_recall: &Witness,
         villain_recall: &Witness,
         game: &Game,
-        hero_hand: kicker::Hand,
-        villain_hand: kicker::Hand,
-        observed: kicker::Hand,
+        hero_hand: deuce::Hand,
+        villain_hand: deuce::Hand,
+        observed: deuce::Hand,
         seat: Position,
     ) -> anyhow::Result<Option<Utility>> {
-        let board = kicker::Hand::from(game.board());
-        let mask = kicker::Hand::add(kicker::Hand::add(hero_hand, villain_hand), board);
+        let board = deuce::Hand::from(game.board());
+        let mask = deuce::Hand::add(deuce::Hand::add(hero_hand, villain_hand), board);
         let n = game.street().next().n_revealed();
-        let deals: Vec<kicker::Hand> = HandIterator::from((n, mask)).collect();
+        let deals: Vec<deuce::Hand> = HandIterator::from((n, mask)).collect();
         if deals.is_empty() {
             return Ok(None);
         }
@@ -175,11 +175,10 @@ impl Aivat {
         let pocket = *recall.seen().pocket();
         let isos: Vec<i64> = deals
             .iter()
-            .map(|d| Observation::from((pocket, kicker::Hand::add(board, *d))))
+            .map(|d| Observation::from((pocket, deuce::Hand::add(board, *d))))
             .map(|o| i64::from(Isomorphism::from(o)))
             .collect();
-        let observed_iso =
-            i64::from(Isomorphism::from(Observation::from((pocket, kicker::Hand::add(board, observed)))));
+        let observed_iso = i64::from(Isomorphism::from(Observation::from((pocket, deuce::Hand::add(board, observed)))));
         let info = NlheInfo::from((recall, Abstraction::default()));
         let past = i64::from(info.subgame());
         let choices = i64::from(info.choices());

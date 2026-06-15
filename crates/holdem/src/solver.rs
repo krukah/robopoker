@@ -1,12 +1,12 @@
 use super::*;
 use atlas::*;
-use cowboys::*;
+use deuce::Hand;
+use deuce::HandIterator;
+use deuce::Hole;
+use deuce::Observation;
 use endgame::*;
 use horizon::*;
-use kicker::Hand;
-use kicker::HandIterator;
-use kicker::Hole;
-use kicker::Observation;
+use kicker::*;
 use mccfr::*;
 use pokerkit::*;
 

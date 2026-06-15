@@ -2,7 +2,7 @@ use super::GameplayAPI;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
-use cowboys::*;
+use kicker::*;
 
 pub async fn summary(api: web::Data<GameplayAPI>, req: web::Json<GetSummary>) -> impl Responder {
     match api

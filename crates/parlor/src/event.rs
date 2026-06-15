@@ -1,4 +1,4 @@
-use cowboys::*;
+use kicker::*;
 use pokerkit::*;
 
 /// How a decision was produced.

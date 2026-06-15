@@ -3,9 +3,9 @@ use crate::records::Participant;
 use crate::records::Play;
 use crate::records::Room as RoomMarker;
 use bouncer::Member;
-use cowboys::*;
-use kicker::Board;
-use kicker::Hole;
+use deuce::Board;
+use deuce::Hole;
+use kicker::*;
 use pokerkit::*;
 
 /// Complete context for a hand in progress.

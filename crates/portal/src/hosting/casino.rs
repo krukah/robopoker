@@ -1,6 +1,6 @@
 use super::*;
 use bouncer::Lurker;
-use cowboys::ServerMessage;
+use kicker::ServerMessage;
 use parlor::VariantExt;
 use parlor::*;
 use pokerkit::ID;

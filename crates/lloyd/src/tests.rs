@@ -1,5 +1,5 @@
 use super::*;
-use kicker::*;
+use deuce::*;
 use pokerkit::Energy;
 
 /// Test fixture for Elkan algorithm verification.

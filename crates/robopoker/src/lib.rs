@@ -13,7 +13,6 @@
 //! ### Domain Logic
 //! - [`gameplay`] — Poker game engine
 //! - [`clustering`] — K-means abstraction
-//! - [`translate`] — Action translation over finite lattices
 //! - [`world`] — World-partitioned belief for safe subgame solving
 //! - [`depth`] — Depth-limited solving with biased continuation strategies
 //! - [`subgame`] — Safe + depth-limited subgame solving
@@ -40,13 +39,12 @@
 pub use arena as competition;
 pub use atlas as world;
 pub use bouncer as auth;
-pub use cowboys as gameplay;
-pub use dragoman as translate;
+pub use deuce as cards;
 pub use endgame as subgame;
 pub use forge as autotrain;
 pub use holdem as nlhe;
 pub use horizon as depth;
-pub use kicker as cards;
+pub use kicker as gameplay;
 pub use kuhn;
 pub use ledger as database;
 pub use leduc;

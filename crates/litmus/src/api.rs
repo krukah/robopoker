@@ -5,7 +5,7 @@
 
 use crate::ops::Ops;
 use crate::{Catalog, Outcome, Scenarios, compose, evaluate, render};
-use cowboys::{ApiGridUsage, ApiStatus};
+use kicker::{ApiGridUsage, ApiStatus};
 
 pub struct Litmus<O: Ops> {
     ops: O,

@@ -5,8 +5,8 @@
 //! intentionally don't compile.
 use std::time::Duration;
 
-use cowboys::*;
 use holdem::*;
+use kicker::*;
 
 use super::Blueprint;
 use super::Brain;

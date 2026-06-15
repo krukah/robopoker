@@ -1,5 +1,5 @@
 use super::event::*;
-use cowboys::*;
+use kicker::*;
 use std::time::Duration;
 
 /// Trait for entities that make poker decisions.

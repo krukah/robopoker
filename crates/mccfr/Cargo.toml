@@ -17,7 +17,7 @@ async   = ["async-trait", "futures"]
 
 [dependencies]
 pokerkit    = { workspace = true }
-cowboys     = { workspace = true }
+kicker      = { workspace = true }
 monge       = { workspace = true }
 solus       = { workspace = true }
 rand        = { workspace = true }

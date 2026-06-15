@@ -13,8 +13,8 @@ categories   = ["game-development", "mathematics"]
 
 [dependencies]
 pokerkit       = { workspace = true }
+deuce          = { workspace = true }
 kicker         = { workspace = true }
-cowboys        = { workspace = true }
 parlor         = { workspace = true, features = ["server"] }
 ledger         = { workspace = true }
 bouncer        = { workspace = true }

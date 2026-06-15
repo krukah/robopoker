@@ -4,12 +4,11 @@ members = [
   # Core crates
   "crates/pokerkit",
   "crates/monge",
-  "crates/kicker",
+  "crates/deuce",
   "crates/mccfr",
-  "crates/cowboys",
+  "crates/kicker",
   "crates/elkan",
   "crates/lloyd",
-  "crates/dragoman",
   "crates/atlas",
   "crates/horizon",
   "crates/endgame",
@@ -54,12 +53,11 @@ categories   = ["game-development", "algorithms", "mathematics"]
 # Internal crates
 pokerkit = { version = "1.1", path = "crates/pokerkit" }
 monge    = { version = "1.1", path = "crates/monge" }
-kicker   = { version = "1.1", path = "crates/kicker" }
+deuce    = { version = "1.1", path = "crates/deuce" }
 mccfr    = { version = "1.1", path = "crates/mccfr" }
-cowboys  = { version = "1.1", path = "crates/cowboys" }
+kicker   = { version = "1.1", path = "crates/kicker" }
 elkan    = { version = "1.1", path = "crates/elkan" }
 lloyd    = { version = "1.1", path = "crates/lloyd" }
-dragoman = { version = "1.1", path = "crates/dragoman" }
 atlas    = { version = "1.1", path = "crates/atlas" }
 horizon  = { version = "1.1", path = "crates/horizon" }
 endgame  = { version = "1.1", path = "crates/endgame" }

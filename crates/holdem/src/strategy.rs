@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use kicker::*;
 use mccfr::*;
 use monge::*;
 use pokerkit::*;

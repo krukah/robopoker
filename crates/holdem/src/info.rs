@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use mccfr::*;
 use pokerkit::Arbitrary;
@@ -127,7 +127,7 @@ impl From<(Path, Abstraction, Path)> for NlheInfo {
         let subgame = subgame
             .into_iter()
             .rev()
-            .take_while(cowboys::Edge::is_choice)
+            .take_while(kicker::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -180,11 +180,11 @@ impl Arbitrary for NlheInfo {
                         })
                 })?
             })
-            .filter(cowboys::Edge::is_choice)
+            .filter(kicker::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .take_while(cowboys::Edge::is_choice)
+            .take_while(kicker::Edge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
@@ -337,7 +337,7 @@ mod tests {
             .subgame()
             .into_iter()
             .rev()
-            .take_while(cowboys::Edge::is_choice)
+            .take_while(kicker::Edge::is_choice)
             .collect::<Path>()
             .rev()
             .collect::<Path>();

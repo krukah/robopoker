@@ -2,7 +2,7 @@ use super::TrainingAPI;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use actix_web::web;
-use cowboys::*;
+use kicker::*;
 
 pub async fn status(api: web::Data<TrainingAPI>) -> impl Responder {
     match api.status().await {

@@ -11,12 +11,12 @@
 //! shape carries the semantics.
 use std::collections::BTreeMap;
 
-use cowboys::Action;
-use cowboys::Edge;
-use cowboys::Game;
-use cowboys::Recall;
-use cowboys::Witness;
 use holdem::Flagship;
+use kicker::Action;
+use kicker::Edge;
+use kicker::Game;
+use kicker::Recall;
+use kicker::Witness;
 use pokerkit::Probability;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;

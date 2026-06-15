@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use kicker::*;
 use pokerkit::*;
 use std::collections::HashSet;
 use std::marker::PhantomData;

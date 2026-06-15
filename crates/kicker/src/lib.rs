@@ -1,75 +1,85 @@
-//! Card representation, hand evaluation, and strategic abstraction primitives.
+//! Poker game engine with state management, action handling, and settlement.
 //!
-//! This module provides the foundational types for representing poker hands and
-//! computing their relative strength. All representations are optimized for
-//! bijective encoding and fast bitwise operations.
+//! This module implements the rules and mechanics of No-Limit Texas Hold'em,
+//! tracking game state across betting rounds and resolving showdowns.
 //!
-//! ## Core Types
+//! ## State Representation
 //!
-//! - [`Card`] — A single card as a `(Rank, Suit)` tuple encoded in one byte
-//! - [`Hand`] — An unordered set of cards as a 64-bit bitmask
-//! - [`Hole`] — A player's two private cards
-//! - [`Board`] — The community cards (flop, turn, river)
-//! - [`Deck`] — A shuffled collection for dealing
+//! - [`Game`] — The memoryless present: stacks, pot, board, and active players
+//! - [`Witness`] — The remembered past: complete action history for a hand
+//! - [`Path`] — Compressed action sequence for tree traversal
 //!
-//! ## Evaluation
+//! ## Actions
 //!
-//! - [`Evaluator`] — Lookup-table hand evaluator, arguably the fastest around
-//! - [`Strength`] — Evaluated hand ranking with kicker resolution
-//! - [`Ranking`] — Hand category (high card through straight flush)
+//! - [`Action`] — A player decision: fold, check, call, or raise
+//! - [`Edge`] — A game tree transition with the acting player
+//! - [`Odds`] — Pot odds abstraction for bet sizing (1/3, 1/2, 2/3, pot, all-in)
 //!
-//! ## Abstraction
+//! ## Resolution
 //!
-//! - [`Observation`] — A strategically-equivalent game state (hole + board + street)
-//! - [`Isomorphism`] — Canonical representative under suit permutation
-//! - [`Permutation`] — Suit relabeling for equivalence class reduction
+//! - [`Showdown`] — Final hand comparison when multiple players remain
+//! - [`Settlement`] — Pot distribution with side-pot handling
+//! - [`PnL`] — Profit and loss accounting per player
 //!
-//! ## Street Progression
+//! ## Supporting Types
 //!
-//! [`Street`] encodes the four betting rounds: preflop → flop → turn → river.
-//! Each street determines board visibility and abstraction granularity.
-mod board;
-mod card;
-mod card_seq;
-mod deck;
-mod evaluator;
-mod hand;
-mod hand_seq;
-mod hands;
-mod hole;
-mod isomorphism;
-mod isomorphisms;
-mod kicks;
-mod observation;
-mod observation_seq;
-mod observations;
-mod perm;
-mod permutation;
-mod rank;
-mod ranking;
-mod street;
-mod strength;
-mod suit;
+//! - [`Seat`] — Player position and stack at the table
+//! - [`Turn`] — Whose action it is and what options they have
+//! - [`Arrangement`] — Positional configuration for heads-up or multiway
+//! - [`Abstraction`] — Abstract bucket assignment for strategic equivalence
+//!
+//! ## Information Levels
+//!
+//! - [`Witness`] — Witness information: hero's cards only (concrete)
+//! - [`Perfect`] — Complete information: both players' cards (concrete)
+mod abstraction;
+mod action;
+mod arrangement;
+mod axis;
+mod bias;
+pub mod dto;
+mod edge;
+mod game;
+mod geometry;
+mod grid;
+mod live;
+mod message;
+mod odds;
+mod path;
+mod perfect;
+mod pnl;
+mod raise;
+mod recall;
+mod seat;
+mod settlement;
+mod showdown;
+mod size;
+mod snapshot;
+mod turn;
+mod witness;
 
-pub use board::*;
-pub use card::*;
-pub use card_seq::*;
-pub use deck::*;
-pub use evaluator::*;
-pub use hand::*;
-pub use hand_seq::*;
-pub use hands::*;
-pub use hole::*;
-pub use isomorphism::*;
-pub use isomorphisms::*;
-pub use kicks::*;
-pub use observation::*;
-pub use observation_seq::*;
-pub use observations::*;
-pub use perm::*;
-pub use permutation::*;
-pub use rank::*;
-pub use ranking::*;
-pub use street::*;
-pub use strength::*;
-pub use suit::*;
+pub use abstraction::*;
+pub use action::*;
+pub use arrangement::*;
+pub use axis::*;
+pub use bias::*;
+pub use dto::*;
+pub use edge::*;
+pub use game::*;
+pub use geometry::*;
+pub use grid::*;
+pub use live::*;
+pub use message::*;
+pub use odds::*;
+pub use path::*;
+pub use perfect::*;
+pub use pnl::*;
+pub use raise::*;
+pub use recall::*;
+pub use seat::*;
+pub use settlement::*;
+pub use showdown::*;
+pub use size::*;
+pub use snapshot::*;
+pub use turn::*;
+pub use witness::*;

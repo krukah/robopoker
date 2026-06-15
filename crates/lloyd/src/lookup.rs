@@ -1,5 +1,5 @@
 use crate::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use rayon::prelude::*;
 use std::collections::BTreeMap;

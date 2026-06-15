@@ -13,9 +13,9 @@ categories   = ["game-development"]
 
 [dependencies]
 pokerkit       = { workspace = true }
-kicker         = { workspace = true }
+deuce          = { workspace = true }
 bouncer        = { workspace = true, features = ["server"] }
-cowboys        = { workspace = true }
+kicker         = { workspace = true }
 parlor         = { workspace = true, features = ["server"] }
 holdem         = { workspace = true, features = ["server"] }
 vitals         = { workspace = true }

@@ -1,4 +1,4 @@
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use parlor::records::{Hand as HandRecord, Participant, Play};
 use pokerkit::*;

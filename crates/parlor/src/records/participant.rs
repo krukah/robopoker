@@ -1,6 +1,6 @@
 use super::*;
 use bouncer::Member;
-use kicker::Hole;
+use deuce::Hole;
 use pokerkit::*;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

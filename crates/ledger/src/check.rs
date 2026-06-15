@@ -1,5 +1,5 @@
 use super::*;
-use kicker::*;
+use deuce::*;
 use std::sync::Arc;
 use tokio_postgres::Client;
 

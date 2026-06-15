@@ -2,7 +2,7 @@ use crate::client::*;
 use crate::recorder::*;
 use crate::result::*;
 use crate::translate::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use pokerkit::*;
 

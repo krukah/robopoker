@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use kicker::*;
 use pokerkit::*;
 
 /// Memory represents all accumulated values for a single info.

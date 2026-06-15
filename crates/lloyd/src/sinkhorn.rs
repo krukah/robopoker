@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use kicker::*;
 use monge::*;
 use pokerkit::*;
 use std::cell::RefCell;
@@ -232,7 +232,7 @@ impl<'a> From<(&'a Histogram, &'a Histogram, &'a Metric)> for Sinkhorn<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kicker::Street;
+    use deuce::Street;
 
     /// Build a Flop histogram from `(abstraction_index, count)` pairs. The
     /// support sits on Flop abstractions, so `Metric::emd` on this kind of

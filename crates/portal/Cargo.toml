@@ -15,12 +15,12 @@ categories   = ["web-programming::http-server", "game-development"]
 # Internal crates
 pokerkit = { workspace = true }
 bouncer  = { workspace = true, features = ["server"] }
-kicker   = { workspace = true }
+deuce    = { workspace = true }
 lloyd    = { workspace = true }
 ledger   = { workspace = true }
 arena    = { workspace = true }
 parlor   = { workspace = true, features = ["server"] }
-cowboys  = { workspace = true }
+kicker   = { workspace = true }
 mccfr    = { workspace = true }
 holdem   = { workspace = true }
 forge    = { workspace = true }

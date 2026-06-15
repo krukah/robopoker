@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use pokerkit::*;
 use std::ops::AddAssign;

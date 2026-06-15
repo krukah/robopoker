@@ -1,5 +1,5 @@
 //! NLHE turn type: player indicator.
-use cowboys::Turn;
+use kicker::Turn;
 use mccfr::*;
 use monge::Support;
 

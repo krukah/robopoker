@@ -1,4 +1,4 @@
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use ledger::*;
 use lloyd::*;

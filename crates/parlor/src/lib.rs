@@ -33,7 +33,7 @@ pub use engine::*;
 pub use event::*;
 pub use player::*;
 pub use players::*;
-// Selective re-exports from records to avoid Hand conflict with kicker::Hand
+// Selective re-exports from records to avoid Hand conflict with deuce::Hand
 pub use records::Participant;
 pub use records::Play;
 #[cfg(feature = "server")]

@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::*;
+use kicker::*;
 use pokerkit::*;
 
 /// Record represents a single update to the blueprint profile.

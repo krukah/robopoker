@@ -2,7 +2,7 @@
 //!
 //! Requires the `database` feature.
 use super::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use ledger::*;
 use pokerkit::*;

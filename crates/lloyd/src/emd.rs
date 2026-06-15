@@ -62,7 +62,7 @@ impl Arbitrary for EMD {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kicker::*;
+    use deuce::*;
 
     /// equity implementation should be
     /// 1. symmetric

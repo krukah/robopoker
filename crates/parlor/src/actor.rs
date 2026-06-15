@@ -2,8 +2,8 @@ use super::*;
 use tokio::sync::mpsc::*;
 
 enum Outcome {
-    Decided(cowboys::Action),
-    Restart(cowboys::Witness),
+    Decided(kicker::Action),
+    Restart(kicker::Witness),
 }
 
 /// Wrapper that runs a Player in its own async task.
@@ -66,7 +66,7 @@ impl Actor {
         }
     }
 
-    async fn act(&mut self, initial: &cowboys::Witness) {
+    async fn act(&mut self, initial: &kicker::Witness) {
         tracing::debug!("calling decide");
         let pace = self.player.pace();
         let mut recall = initial.clone();

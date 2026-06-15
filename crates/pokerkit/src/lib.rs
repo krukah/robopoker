@@ -7,6 +7,7 @@
 mod id;
 mod metrics;
 mod regime;
+mod translate;
 mod translation;
 mod variant;
 mod version;
@@ -14,6 +15,7 @@ mod version;
 pub use id::*;
 pub use metrics::*;
 pub use regime::*;
+pub use translate::*;
 pub use translation::*;
 pub use variant::*;
 pub use version::*;

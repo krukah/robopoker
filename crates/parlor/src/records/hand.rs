@@ -1,5 +1,5 @@
 use super::*;
-use kicker::*;
+use deuce::*;
 use pokerkit::*;
 
 /// Persistent hand record for a completed poker hand.

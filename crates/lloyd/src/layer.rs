@@ -4,7 +4,7 @@
 //! to abstract buckets using the k-means algorithm with Elkan acceleration.
 
 use super::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use pokerkit::*;
 use std::collections::BTreeMap;

@@ -1,5 +1,5 @@
 //! Clustering-specific wrapper for Abstraction with Support trait.
-use cowboys::Abstraction;
+use kicker::Abstraction;
 use monge::Support;
 
 /// Newtype wrapper for Abstraction that implements Support.

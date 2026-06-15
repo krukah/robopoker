@@ -2,7 +2,7 @@
 
 use crate::strategy::StrategyAPI;
 use crate::training::TrainingAPI;
-use cowboys::{ApiGridUsage, ApiStatus, ApiStrategy, Witness};
+use kicker::{ApiGridUsage, ApiStatus, ApiStrategy, Witness};
 
 pub struct Backend {
     strategy: StrategyAPI,

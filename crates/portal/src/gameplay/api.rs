@@ -1,6 +1,6 @@
 use arena::*;
 use bouncer::Member;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use parlor::records::{Hand as HandRecord, Participant, Visibility};
 use pokerkit::*;
@@ -97,7 +97,7 @@ impl GameplayAPI {
 
     pub async fn hand_recap(&self, id: uuid::Uuid) -> anyhow::Result<ApiRecap> {
         let (hand, parts, plays) = self.0.eval_bundle(ID::<HandRecord>::from(id)).await?;
-        let board = Vec::<Card>::from(kicker::Hand::from(hand.board()))
+        let board = Vec::<Card>::from(deuce::Hand::from(hand.board()))
             .iter()
             .map(|c| format!("{c}"))
             .collect::<Vec<_>>()

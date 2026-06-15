@@ -1,4 +1,4 @@
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use pokerkit::*;
 
@@ -169,7 +169,7 @@ pub fn parse_actions(raw: &str, old: &str, game: &Game) -> anyhow::Result<Vec<Ac
         state = state.apply(*actions.last().unwrap());
         rest = &rest[consumed..];
     }
-    Ok(actions.into_iter().filter(cowboys::Action::is_choice).collect())
+    Ok(actions.into_iter().filter(kicker::Action::is_choice).collect())
 }
 
 /// Convert a pot-fraction raise into an Action in our chip scale.

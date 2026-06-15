@@ -1,7 +1,7 @@
 //! NLHE edge type: discretized betting actions.
-use cowboys::Action;
-use cowboys::Edge;
-use cowboys::Odds;
+use kicker::Action;
+use kicker::Edge;
+use kicker::Odds;
 use mccfr::*;
 use monge::Support;
 use pokerkit::Probability;

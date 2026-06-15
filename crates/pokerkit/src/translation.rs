@@ -18,7 +18,7 @@
 //! produce identical training output. Only inference (against external
 //! opponents who play arbitrary chip amounts) sees the difference.
 
-use dragoman::*;
+use crate::translate::*;
 use rand::Rng;
 
 /// Action-translation policy. Each variant names a canonical algorithm;

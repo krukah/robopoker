@@ -57,10 +57,10 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 | --------------------------------------- | ------------------------------------------------------------------- |
 | [`rbp`](crates/robopoker)                     | Facade re-exporting all public crates                               |
 | [`pokerkit`](crates/pokerkit)               | Type aliases, constants, regime/version metadata, shared traits     |
-| [`kicker`](crates/kicker)             | Card primitives, hand evaluation, equity                            |
+| [`deuce`](crates/deuce)             | Card primitives, hand evaluation, equity                            |
 | [`monge`](crates/monge)     | Optimal transport (Sinkhorn, EMD) over arbitrary measures           |
 | [`regret`](crates/regret)             | Game-agnostic CFR framework                                         |
-| [`cowboys`](crates/cowboys)       | Poker game engine: state, edges, settlement, witness/perfect recall |
+| [`kicker`](crates/kicker)       | Poker game engine: state, edges, settlement, witness/perfect recall |
 | [`lloyd`](crates/lloyd)   | Hierarchical k-means abstraction with Elkan acceleration            |
 | [`solus`](crates/solus) | Proc-macro deriving a `OnceLock`-backed global config pattern       |
 
@@ -105,7 +105,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Core layer
 
-**`kicker`** — Card representation and hand evaluation:
+**`deuce`** — Card representation and hand evaluation:
 
 - Bijective `u8` / `u16` / `u32` / `u64` representations for efficient bit-twiddling
 - Nanosecond-scale hand strength evaluation
@@ -143,7 +143,7 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ### Domain layer
 
-**`cowboys`** — Complete poker game engine:
+**`kicker`** — Complete poker game engine:
 
 - Full No-Limit Texas Hold'em rules
 - Side-pot, all-in, and tie handling

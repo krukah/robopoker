@@ -2,7 +2,7 @@ use crate::client::*;
 use crate::recorder::*;
 use crate::result::*;
 use crate::session::*;
-use cowboys::Turn;
+use kicker::Turn;
 use parlor::VariantExt;
 use pokerkit::Variant;
 use tracing::Instrument;

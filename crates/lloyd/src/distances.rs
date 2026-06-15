@@ -1,5 +1,5 @@
 use super::*;
-use kicker::*;
+use deuce::*;
 use pokerkit::*;
 
 /// Triangular array sizes: K*(K-1)/2 for each street's cluster count.

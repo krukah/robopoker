@@ -1,4 +1,4 @@
-use kicker::Street;
+use deuce::Street;
 use pokerkit::*;
 
 /// K-means clustering parameters.

@@ -1,7 +1,7 @@
-use cowboys::Action;
-use cowboys::Recall;
-use cowboys::ServerMessage;
-use cowboys::Witness;
+use kicker::Action;
+use kicker::Recall;
+use kicker::ServerMessage;
+use kicker::Witness;
 use parlor::Player;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

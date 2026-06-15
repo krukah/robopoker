@@ -18,8 +18,8 @@ server  = ["tokio-postgres", "const_format", "async-trait", "ledger", "futures",
 [dependencies]
 tracing        = { workspace = true }
 pokerkit       = { workspace = true }
+deuce          = { workspace = true }
 kicker         = { workspace = true }
-cowboys        = { workspace = true }
 monge          = { workspace = true }
 mccfr          = { version = "1.1", path = "../mccfr", default-features = false }
 endgame        = { workspace = true }

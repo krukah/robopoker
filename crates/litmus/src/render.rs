@@ -3,7 +3,7 @@
 
 use crate::evaluate::{Outcome, Status};
 use crate::schema::{CategoryDef, Scenarios};
-use cowboys::{ApiGridUsage, ApiStatus};
+use kicker::{ApiGridUsage, ApiStatus};
 use std::collections::BTreeMap;
 
 pub fn render(

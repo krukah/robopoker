@@ -1,5 +1,5 @@
 use super::*;
-use cowboys::Action;
+use kicker::Action;
 use pokerkit::*;
 
 /// Build a summary from a sequence of hand recaps.

@@ -1,6 +1,6 @@
 use bouncer::Member;
-use cowboys::Action;
-use kicker::*;
+use deuce::*;
+use kicker::Action;
 use ledger::*;
 use parlor::records::{Hand as HandRecord, Participant, Play, Visibility};
 use pokerkit::*;
@@ -446,7 +446,7 @@ fn hand_from(row: &tokio_postgres::Row) -> HandRecord {
     HandRecord::new(
         ID::from(row.get::<_, uuid::Uuid>(0)),
         ID::from(row.get::<_, uuid::Uuid>(1)),
-        Board::from(kicker::Hand::from(row.get::<_, i64>(2) as u64)),
+        Board::from(deuce::Hand::from(row.get::<_, i64>(2) as u64)),
         row.get::<_, Chips>(3),
         row.get::<_, i16>(4) as Position,
     )
@@ -457,7 +457,7 @@ fn participant_from(row: &tokio_postgres::Row) -> Participant {
         ID::from(row.get::<_, uuid::Uuid>(0)),
         row.get::<_, Option<uuid::Uuid>>(1).map(ID::from),
         row.get::<_, i16>(2) as Position,
-        Hole::from(kicker::Hand::from(row.get::<_, i64>(3) as u64)),
+        Hole::from(deuce::Hand::from(row.get::<_, i64>(3) as u64)),
         row.get::<_, Chips>(4),
         Visibility::from(row.get::<_, i16>(5)),
         row.get::<_, Chips>(6),

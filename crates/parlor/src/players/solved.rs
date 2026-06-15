@@ -4,11 +4,11 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
-use cowboys::Edge;
+use deuce::Street;
 use endgame::SubgameHyperParams;
 use holdem::NlheEdge;
 use holdem::NlheInfo;
-use kicker::Street;
+use kicker::Edge;
 use mccfr::Harvest;
 use mccfr::Solver;
 use pokerkit::Chips;

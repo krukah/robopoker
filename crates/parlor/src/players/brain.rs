@@ -12,10 +12,10 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use cowboys::*;
+use deuce::Street;
 use endgame::SubgameHyperParams;
 use holdem::*;
-use kicker::Street;
+use kicker::*;
 use mccfr::RefProf;
 use mccfr::Solver;
 use pokerkit::Probability;

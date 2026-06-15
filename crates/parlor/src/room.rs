@@ -1,8 +1,8 @@
 use super::*;
 use bouncer::Member;
 use bouncer::User;
-use cowboys::Reason;
-use cowboys::Turn;
+use kicker::Reason;
+use kicker::Turn;
 use ledger::*;
 use pokerkit::*;
 use std::sync::Arc;

@@ -4,9 +4,9 @@ use crate::records::Play;
 use crate::records::Visibility;
 use crate::room::Room;
 use bouncer::*;
-use cowboys::Action;
-use kicker::Board;
-use kicker::Hole;
+use deuce::Board;
+use deuce::Hole;
+use kicker::Action;
 use ledger::*;
 use pokerkit::*;
 use std::sync::Arc;
@@ -42,7 +42,7 @@ impl HistoryRepository for Arc<Client> {
         let sql = SQL.get_or_init(|| {
             format!("INSERT INTO {} (id, room_id, board, pot, dealer) VALUES ($1, $2, $3, $4, $5)", hands())
         });
-        let board: kicker::Hand = hand.board().into();
+        let board: deuce::Hand = hand.board().into();
         self.execute(
             sql.as_str(),
             &[
@@ -63,7 +63,7 @@ impl HistoryRepository for Arc<Client> {
             "INSERT INTO {} (hand_id, user_id, seat, hole, stack, visibility, pnl) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             players()
         ));
-        let hole: kicker::Hand = player.hole().into();
+        let hole: deuce::Hand = player.hole().into();
         let user_id: Option<uuid::Uuid> = player.user().map(|id| id.inner());
         self.execute(
             sql.as_str(),
@@ -135,7 +135,7 @@ impl HistoryRepository for Arc<Client> {
                 Hand::new(
                     ID::from(row.get::<_, uuid::Uuid>(0)),
                     ID::from(row.get::<_, uuid::Uuid>(1)),
-                    Board::from(kicker::Hand::from(row.get::<_, i64>(2) as u64)),
+                    Board::from(deuce::Hand::from(row.get::<_, i64>(2) as u64)),
                     row.get::<_, Chips>(3),
                     row.get::<_, i16>(4) as Position,
                 )
@@ -159,7 +159,7 @@ impl HistoryRepository for Arc<Client> {
                         ID::from(row.get::<_, uuid::Uuid>(0)),
                         user_id.map(ID::from),
                         row.get::<_, i16>(2) as Position,
-                        Hole::from(kicker::Hand::from(row.get::<_, i64>(3) as u64)),
+                        Hole::from(deuce::Hand::from(row.get::<_, i64>(3) as u64)),
                         row.get::<_, Chips>(4),
                         Visibility::from(row.get::<_, i16>(5)),
                         row.get::<_, Chips>(6),
@@ -203,6 +203,6 @@ impl HistoryRepository for Arc<Client> {
         });
         self.query_opt(sql.as_str(), &[&hand.inner(), &(seat as i16), &viewer.inner()])
             .await
-            .map(|opt| opt.map(|row| Hole::from(kicker::Hand::from(row.get::<_, i64>(0) as u64))))
+            .map(|opt| opt.map(|row| Hole::from(deuce::Hand::from(row.get::<_, i64>(0) as u64))))
     }
 }

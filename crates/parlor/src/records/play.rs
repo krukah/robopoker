@@ -1,6 +1,6 @@
 use super::*;
 use bouncer::Member;
-use cowboys::*;
+use kicker::*;
 use pokerkit::*;
 
 /// Individual action in a hand.

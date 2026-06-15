@@ -1,6 +1,6 @@
 //! NLHE game type: poker game state.
 use super::*;
-use cowboys::*;
+use deuce::*;
 use kicker::*;
 use mccfr::*;
 use pokerkit::Utility;

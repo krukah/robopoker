@@ -1,6 +1,6 @@
 use crate::translate::SLUMBOT_STACK;
 use bouncer::*;
-use cowboys::*;
+use kicker::*;
 use parlor::slumbot_opponent_id;
 use parlor::*;
 use pokerkit::*;
@@ -47,7 +47,7 @@ impl Recorder {
         self.context.set_pnl(seat, pnl);
     }
 
-    pub async fn flush(&self, witness: &Witness, board: kicker::Board, pot: Chips) {
+    pub async fn flush(&self, witness: &Witness, board: deuce::Board, pot: Chips) {
         let hand = self.context.to_hand(self.room, board, pot);
         let hero = self.hero;
         let villain = self.villain;

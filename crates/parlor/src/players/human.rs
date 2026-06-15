@@ -1,7 +1,7 @@
 use crate::*;
-use cowboys::*;
 use dialoguer::Input;
 use dialoguer::Select;
+use kicker::*;
 use pokerkit::Chips;
 
 #[derive(Debug, Default)]
