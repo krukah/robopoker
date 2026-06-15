@@ -4,7 +4,7 @@
 //! The prefix history is passed to the inner encoder's `resume()` method
 //! for correct reach probability computation.
 use crate::*;
-use regret::*;
+use mccfr::*;
 
 /// CfrEncoder that tags inner info sets with a world index.
 ///
@@ -80,7 +80,7 @@ where
             ancestors.windows(2).all(|w| w[0].node().index() > w[1].node().index()),
             "upward walk should visit strictly decreasing node indices"
         );
-        let mut path = ancestors.into_iter().map(regret::Jump::edge).collect::<Vec<_>>();
+        let mut path = ancestors.into_iter().map(mccfr::Jump::edge).collect::<Vec<_>>();
         path.reverse();
         path.push(edge);
         let full = self.prefix_edges().chain(path);

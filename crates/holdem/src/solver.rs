@@ -7,8 +7,8 @@ use kicker::Hand;
 use kicker::HandIterator;
 use kicker::Hole;
 use kicker::Observation;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 
 mccfr!(Nlhe, NlheEncoder, NlheTurn, NlheEdge, NlheGame, NlheInfo, 128);
 

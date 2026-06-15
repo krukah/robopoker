@@ -1,6 +1,6 @@
 use super::*;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 
 /// Game tree node: which phase of the hand are we in?
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

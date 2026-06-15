@@ -1,7 +1,7 @@
 use crate::*;
 use atlas::*;
 use horizon::*;
-use regret::*;
+use mccfr::*;
 
 mccfr!(Leduc, LeducEncoder, LeducTurn, LeducEdge, LeducGame, LeducInfo, 1);
 

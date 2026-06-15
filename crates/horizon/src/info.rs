@@ -1,6 +1,6 @@
 //! Information set for frontier-augmented games.
 use crate::*;
-use regret::*;
+use mccfr::*;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DepthInfo<I, const D: usize>

@@ -9,11 +9,11 @@ use endgame::SubgameHyperParams;
 use holdem::NlheEdge;
 use holdem::NlheInfo;
 use kicker::Street;
+use mccfr::Harvest;
+use mccfr::Solver;
 use pokerkit::Chips;
 use pokerkit::Probability;
 use pokerkit::Utility;
-use regret::Harvest;
-use regret::Solver;
 use vitals::KeyValue;
 
 use super::Tag;

@@ -13,7 +13,7 @@ categories   = ["algorithms", "mathematics", "game-development"]
 
 [dependencies]
 pokerkit = { workspace = true }
-regret   = { workspace = true }
+mccfr    = { workspace = true }
 endgame  = { workspace = true }
 horizon  = { workspace = true }
 atlas    = { workspace = true }

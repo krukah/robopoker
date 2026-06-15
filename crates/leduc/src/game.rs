@@ -1,6 +1,6 @@
 use super::*;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 
 /// Position within a betting round.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

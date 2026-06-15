@@ -7,10 +7,10 @@
 //! trajectory than the original, and the divergence can silently change
 //! turn classes (e.g. a snapped all-in landing the game in terminal
 //! earlier). Deterministic games (Kuhn, Leduc, RPS, test toys) can feed
-//! in descents via the [`descents_from`](regret::descents_from)
+//! in descents via the [`descents_from`](mccfr::descents_from)
 //! helper; games that aren't guaranteed-deterministic must supply their
 //! own turn-faithful descents.
-use regret::*;
+use mccfr::*;
 
 /// The observed game state and action history at the subgame entry point.
 ///

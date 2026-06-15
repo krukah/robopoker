@@ -1,5 +1,5 @@
 use super::*;
-use regret::*;
+use mccfr::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;

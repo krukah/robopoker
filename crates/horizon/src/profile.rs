@@ -1,7 +1,7 @@
 //! Local mutable profile for depth-limited (leaf) solving.
 use crate::*;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 use std::collections::HashMap;
 
 pub struct DepthProfile<'blueprint, P, const D: usize>

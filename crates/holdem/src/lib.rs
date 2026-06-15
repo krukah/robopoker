@@ -80,11 +80,11 @@ pub use turn::*;
 /// Flagship NLHE solver configuration.
 ///
 /// Matches the Pluribus (Brown & Sandholm, Science 2019) algorithm configuration:
-/// - [`regret::LinearRegret`] — Linear CFR, i.e. DCFR(1, 1, 1), the variant Pluribus actually used
-/// - [`regret::LinearWeight`] — Linear weighting of the average strategy
-/// - [`regret::PluribusSampling`] — Probabilistic pruning with warm-up period
+/// - [`mccfr::LinearRegret`] — Linear CFR, i.e. DCFR(1, 1, 1), the variant Pluribus actually used
+/// - [`mccfr::LinearWeight`] — Linear weighting of the average strategy
+/// - [`mccfr::PluribusSampling`] — Probabilistic pruning with warm-up period
 pub type Flagship = Nlhe<
-    regret::LinearRegret,     //
-    regret::LinearWeight,     //
-    regret::PluribusSampling, //
+    mccfr::LinearRegret,     //
+    mccfr::LinearWeight,     //
+    mccfr::PluribusSampling, //
 >;

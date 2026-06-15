@@ -2,8 +2,8 @@
 use std::collections::BTreeMap;
 
 use crate::*;
+use mccfr::*;
 use pokerkit::Probability;
-use regret::*;
 
 pub struct DepthSolver<'blueprint, N, const D: usize>
 where

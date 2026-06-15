@@ -2,10 +2,10 @@
 use cowboys::Action;
 use cowboys::Edge;
 use cowboys::Odds;
+use mccfr::*;
 use monge::Support;
 use pokerkit::Probability;
 use pokerkit::Utility;
-use regret::*;
 
 /// NLHE edge type for CFR tree traversal.
 ///

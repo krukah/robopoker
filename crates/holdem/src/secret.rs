@@ -1,8 +1,8 @@
 //! NLHE private state: hand abstraction bucket.
 use cowboys::Abstraction;
 use kicker::Street;
+use mccfr::*;
 use monge::Support;
-use regret::*;
 
 /// NLHE private information: the player's hand abstraction bucket.
 ///

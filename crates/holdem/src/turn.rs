@@ -1,7 +1,7 @@
 //! NLHE turn type: player indicator.
 use cowboys::Turn;
+use mccfr::*;
 use monge::Support;
-use regret::*;
 
 /// NLHE turn indicator for CFR traversal.
 ///

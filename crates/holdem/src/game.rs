@@ -2,8 +2,8 @@
 use super::*;
 use cowboys::*;
 use kicker::*;
+use mccfr::*;
 use pokerkit::Utility;
-use regret::*;
 
 /// NLHE game state for CFR traversal.
 ///

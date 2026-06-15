@@ -4,7 +4,7 @@
 //! encoding and blueprint profile access) and intercepts tree building
 //! at frontier chance nodes to inject continuation-choice branches.
 use crate::*;
-use regret::*;
+use mccfr::*;
 
 /// CfrEncoder that augments the source with frontier expansion.
 ///
@@ -77,7 +77,7 @@ where
         tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
         (edge, game, parent): Leaf<Self::E, Self::G>,
     ) -> Self::I {
-        let mut path = tree.at(parent).into_iter().map(regret::Jump::edge).collect::<Vec<_>>();
+        let mut path = tree.at(parent).into_iter().map(mccfr::Jump::edge).collect::<Vec<_>>();
         path.reverse();
         path.push(edge);
         self.wrap(Self::unwrap(path), &game)

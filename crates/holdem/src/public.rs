@@ -1,7 +1,7 @@
 //! NLHE public state: current-street history + available choices.
 use super::*;
 use cowboys::*;
-use regret::*;
+use mccfr::*;
 
 /// NLHE public state: subgame history and available actions.
 ///

@@ -3,9 +3,9 @@
 #[allow(clippy::module_inception)]
 mod tests {
     use crate::*;
+    use mccfr::*;
     use monge::Support;
     use pokerkit::*;
-    use regret::*;
 
     const D: usize = 4;
 

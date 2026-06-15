@@ -21,7 +21,7 @@ ledger   = { workspace = true }
 arena    = { workspace = true }
 parlor   = { workspace = true, features = ["server"] }
 cowboys  = { workspace = true }
-regret   = { workspace = true }
+mccfr    = { workspace = true }
 holdem   = { workspace = true }
 forge    = { workspace = true }
 monge    = { workspace = true }

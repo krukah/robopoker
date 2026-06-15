@@ -1,4 +1,4 @@
-use regret::*;
+use mccfr::*;
 use roshambo::simplex;
 use roshambo::*;
 

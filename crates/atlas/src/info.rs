@@ -4,7 +4,7 @@
 //! accumulates separate regrets and weights during subgame CFR. All methods
 //! delegate to the inner info set — the world tag only affects identity.
 use crate::*;
-use regret::*;
+use mccfr::*;
 
 /// Information set tagged with its world for per-world regret separation.
 ///

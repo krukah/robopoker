@@ -1,8 +1,8 @@
 use cowboys::*;
 use holdem::*;
 use ledger::*;
+use mccfr::Solver;
 use parlor::Solved;
-use regret::Solver;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;

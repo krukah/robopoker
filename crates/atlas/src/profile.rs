@@ -12,8 +12,8 @@
 //! trees), NOT from policy perturbation. This is the safe subgame
 //! solving approach from Brown & Sandholm 2017.
 use crate::*;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 use std::collections::HashMap;
 
 /// Profile wrapper for safe subgame solving.

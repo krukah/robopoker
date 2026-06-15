@@ -5,7 +5,7 @@ members = [
   "crates/pokerkit",
   "crates/monge",
   "crates/kicker",
-  "crates/regret",
+  "crates/mccfr",
   "crates/cowboys",
   "crates/lloyd",
   "crates/dragoman",
@@ -54,7 +54,7 @@ categories   = ["game-development", "algorithms", "mathematics"]
 pokerkit = { version = "1.1", path = "crates/pokerkit" }
 monge    = { version = "1.1", path = "crates/monge" }
 kicker   = { version = "1.1", path = "crates/kicker" }
-regret   = { version = "1.1", path = "crates/regret" }
+mccfr    = { version = "1.1", path = "crates/mccfr" }
 cowboys  = { version = "1.1", path = "crates/cowboys" }
 lloyd    = { version = "1.1", path = "crates/lloyd" }
 dragoman = { version = "1.1", path = "crates/dragoman" }

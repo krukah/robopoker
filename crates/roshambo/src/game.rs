@@ -1,6 +1,6 @@
 use super::*;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 
 /// Game state for Rock-Paper-Scissors, encoded as a node index.
 ///

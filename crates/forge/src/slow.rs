@@ -42,7 +42,7 @@ impl Trainer for SlowSession {
         self.pool.epoch()
     }
 
-    async fn checkpoint(&self) -> Option<regret::Checkpoint> {
+    async fn checkpoint(&self) -> Option<mccfr::Checkpoint> {
         self.pool.checkpoint()
     }
 

@@ -1,6 +1,6 @@
 //! Trait for computing biased continuation payoffs at frontier nodes.
 use crate::*;
-use regret::*;
+use mccfr::*;
 
 /// Trait for computing frontier payoff matrices.
 ///

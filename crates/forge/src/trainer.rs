@@ -1,5 +1,5 @@
 //! Session trait - unified training abstraction
-use regret::Checkpoint;
+use mccfr::Checkpoint;
 use std::sync::Arc;
 use tokio_postgres::Client;
 use tracing::Instrument;

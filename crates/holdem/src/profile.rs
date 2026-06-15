@@ -5,7 +5,7 @@
 #[cfg(feature = "server")]
 use super::*;
 #[cfg(feature = "server")]
-use regret::*;
+use mccfr::*;
 #[cfg(feature = "server")]
 use std::collections::HashMap;
 #[cfg(feature = "server")]

@@ -1,8 +1,8 @@
 use super::*;
 use cowboys::*;
+use mccfr::*;
 use monge::*;
 use pokerkit::*;
-use regret::*;
 use std::collections::BTreeMap;
 
 /// A trained strategy for a specific information set.

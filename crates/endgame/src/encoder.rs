@@ -5,7 +5,7 @@
 //! nodes to inject continuation-choice branches.
 use atlas::*;
 use horizon::*;
-use regret::*;
+use mccfr::*;
 
 /// Combined encoder for safe subgame solving + depth-limited frontiers.
 ///
@@ -75,7 +75,7 @@ where
         tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
         (edge, game, parent): Leaf<Self::E, Self::G>,
     ) -> Self::I {
-        let mut path = tree.at(parent).into_iter().map(regret::Jump::edge).collect::<Vec<_>>();
+        let mut path = tree.at(parent).into_iter().map(mccfr::Jump::edge).collect::<Vec<_>>();
         path.reverse();
         path.push(edge);
         let inner_path = path.into_iter().filter_map(|e| match e {

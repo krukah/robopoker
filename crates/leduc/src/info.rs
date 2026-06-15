@@ -1,6 +1,6 @@
 use super::*;
+use mccfr::*;
 use monge::Support;
-use regret::*;
 
 /// Public component of a Leduc information set.
 ///

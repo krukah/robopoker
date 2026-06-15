@@ -1,5 +1,5 @@
+use mccfr::*;
 use monge::Support;
-use regret::*;
 
 /// Player, chance, or terminal indicator for Leduc Hold'em.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

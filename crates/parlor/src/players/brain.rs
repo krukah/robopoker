@@ -16,10 +16,10 @@ use cowboys::*;
 use endgame::SubgameHyperParams;
 use holdem::*;
 use kicker::Street;
+use mccfr::RefProf;
+use mccfr::Solver;
 use pokerkit::Probability;
 use pokerkit::Utility;
-use regret::RefProf;
-use regret::Solver;
 
 use super::Solved;
 use super::Tag;

@@ -1,6 +1,6 @@
 use super::*;
+use mccfr::*;
 use monge::Support;
-use regret::*;
 
 /// Player or terminal indicator for RPS.
 ///

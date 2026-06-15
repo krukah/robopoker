@@ -12,14 +12,14 @@ keywords     = ["poker", "mccfr", "gto", "solver", "holdem"]
 categories   = ["game-development", "algorithms", "mathematics"]
 
 [features]
-async     = ["regret/async"]
+async     = ["mccfr/async"]
 shortdeck = ["kicker/shortdeck"]
 
 [dependencies]
 pokerkit = { workspace = true }
 monge    = { workspace = true }
 kicker   = { workspace = true }
-regret   = { workspace = true }
+mccfr    = { workspace = true }
 cowboys  = { workspace = true }
 lloyd    = { workspace = true }
 dragoman = { workspace = true }

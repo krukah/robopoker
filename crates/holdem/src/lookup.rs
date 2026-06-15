@@ -5,8 +5,8 @@
 use super::*;
 use cowboys::*;
 use kicker::Isomorphism;
+use mccfr::*;
 use pokerkit::Probability;
-use regret::*;
 use std::sync::OnceLock;
 
 fn abs_sql() -> &'static str {

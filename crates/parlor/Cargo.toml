@@ -13,7 +13,7 @@ categories   = ["game-development", "asynchronous"]
 
 [features]
 default = []
-server  = ["ledger", "holdem", "regret", "endgame", "horizon", "atlas", "monge", "vitals"]
+server  = ["ledger", "holdem", "mccfr", "endgame", "horizon", "atlas", "monge", "vitals"]
 cli     = ["dialoguer"]
 
 [dependencies]
@@ -22,7 +22,7 @@ kicker         = { workspace = true }
 cowboys        = { workspace = true }
 bouncer        = { workspace = true }
 holdem         = { workspace = true, optional = true, features = ["server"] }
-regret         = { workspace = true, optional = true }
+mccfr          = { workspace = true, optional = true }
 endgame        = { workspace = true, optional = true }
 horizon        = { workspace = true, optional = true }
 atlas          = { workspace = true, optional = true }

@@ -9,8 +9,8 @@
 use std::collections::BTreeMap;
 
 use crate::*;
+use mccfr::*;
 use pokerkit::Probability;
-use regret::*;
 
 /// Safe subgame solver without depth limiting.
 ///

@@ -14,8 +14,8 @@ use std::collections::BTreeMap;
 use crate::SubGameEncoder;
 use atlas::*;
 use horizon::*;
+use mccfr::*;
 use pokerkit::Probability;
-use regret::*;
 
 /// Solver for safe subgame solving with optional depth-limited frontiers.
 ///
@@ -166,7 +166,7 @@ where
             n,
             self.profile.sum_regret(),
         );
-        self.profile().metrics().inspect(|m: &&regret::Metrics| m.inc_epoch());
+        self.profile().metrics().inspect(|m: &&mccfr::Metrics| m.inc_epoch());
         self.advance();
     }
 }

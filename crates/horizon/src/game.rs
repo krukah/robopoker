@@ -11,8 +11,8 @@
 //!       DepthPhase::External(payoffs, k, j) — external picked j, resolved
 //! ```
 use crate::*;
+use mccfr::*;
 use pokerkit::Utility;
-use regret::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DepthGame<G, const D: usize>

@@ -3,7 +3,7 @@ use crate::*;
 use holdem::Flagship;
 use holdem::NlheProfile;
 use ledger::*;
-use regret::*;
+use mccfr::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
@@ -83,8 +83,8 @@ impl Trainer for FastSession {
         self.solver.profile().t()
     }
 
-    async fn checkpoint(&self) -> Option<regret::Checkpoint> {
-        self.solver.profile().metrics().and_then(regret::Metrics::checkpoint)
+    async fn checkpoint(&self) -> Option<mccfr::Checkpoint> {
+        self.solver.profile().metrics().and_then(mccfr::Metrics::checkpoint)
     }
 
     async fn summary(&self) -> String {

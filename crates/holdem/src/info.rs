@@ -1,8 +1,8 @@
 use super::*;
 use cowboys::*;
 use kicker::*;
+use mccfr::*;
 use pokerkit::Arbitrary;
-use regret::*;
 
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
 type NlheLeaf = Leaf<NlheEdge, NlheGame>;
@@ -145,7 +145,7 @@ impl From<(&NlheEncoder, &NlheTree, NlheLeaf)> for NlheInfo {
     fn from((encoder, tree, leaf): (&NlheEncoder, &NlheTree, NlheLeaf)) -> Self {
         let (edge, ref game, head) = leaf;
         let subgame = std::iter::once(edge)
-            .chain(tree.at(head).map(regret::Jump::edge))
+            .chain(tree.at(head).map(mccfr::Jump::edge))
             .take_while(super::edge::NlheEdge::is_choice)
             .collect::<Vec<_>>()
             .into_iter()

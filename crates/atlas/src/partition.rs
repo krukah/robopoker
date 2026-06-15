@@ -6,9 +6,9 @@
 //! secrets, world K-1 the lowest.
 use crate::Belief;
 use crate::World;
+use mccfr::CfrSecret;
+use mccfr::Posterior;
 use pokerkit::Probability;
-use regret::CfrSecret;
-use regret::Posterior;
 use std::collections::BTreeMap;
 
 /// Discretizes a posterior distribution into K quantile-weighted worlds.

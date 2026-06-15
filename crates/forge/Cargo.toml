@@ -20,7 +20,7 @@ kicker         = { workspace = true }
 lloyd          = { workspace = true, features = ["server"] }
 ledger         = { workspace = true }
 cowboys        = { workspace = true }
-regret         = { workspace = true, features = ["async"] }
+mccfr          = { workspace = true, features = ["async"] }
 holdem         = { workspace = true, features = ["server"] }
 monge          = { workspace = true }
 vitals         = { workspace = true }

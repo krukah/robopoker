@@ -7,7 +7,7 @@
 use crate::Belief;
 use crate::Secret;
 use crate::World;
-use regret::CfrEncoder;
+use mccfr::CfrEncoder;
 
 /// Restricts a game state so that the external player's secret belongs
 /// to a target world.

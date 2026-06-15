@@ -3,8 +3,8 @@ use atlas::*;
 use cowboys::*;
 use horizon::*;
 use kicker::*;
+use mccfr::*;
 use pokerkit::*;
-use regret::*;
 use std::collections::BTreeMap;
 
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
@@ -43,7 +43,7 @@ impl NlheEncoder {
     }
 }
 
-impl regret::CfrEncoder for NlheEncoder {
+impl mccfr::CfrEncoder for NlheEncoder {
     type T = NlheTurn;
     type E = NlheEdge;
     type G = NlheGame;

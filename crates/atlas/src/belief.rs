@@ -4,16 +4,16 @@
 //! K-world weight distribution (for the subgame gadget). Produced by
 //! [`Partition::partition`] and consumed by [`SubGameEncoder`] and [`SubProfile`].
 use crate::World;
+use mccfr::CfrSecret;
 use monge::Density;
 use pokerkit::Probability;
-use regret::CfrSecret;
 use std::collections::BTreeMap;
 
 /// Maps each opponent secret to its assigned world and tracks per-world weights.
 ///
 /// This is a discretization of the posterior: each secret belongs to exactly
 /// one quantile bucket (world), and each world carries its share of total
-/// probability mass. Contrast with [`regret::Posterior<Y>`] which maps secrets to
+/// probability mass. Contrast with [`mccfr::Posterior<Y>`] which maps secrets to
 /// continuous reach probabilities.
 #[derive(Debug, Clone)]
 pub struct Belief<Y, const W: usize>
