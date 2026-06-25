@@ -17,7 +17,7 @@ use std::sync::Arc;
 // TODO: Import from rbp-core or define locally
 const SUBGAME_ITERATIONS: usize = 100;
 const CFR_TREE_COUNT_NLHE: usize = 1;
-const CFR_BATCH_SIZE_NLHE: usize = 1000;
+const CFR_BATCH_SIZE_NLHE: usize = 10_000;
 const CFR_BATCH_TREES_PER_THREAD: usize = 8;
 const DLS_ROLLOUTS_PER_LEAF: usize = 8;
 const DLS_MAX_ROLLOUT_ACTIONS: usize = 128;

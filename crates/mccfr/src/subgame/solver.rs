@@ -8,6 +8,7 @@ use rbp_core::Probability;
 use rbp_core::SUBGAME_ALTS;
 use rbp_core::Utility;
 use std::marker::PhantomData;
+use std::time::Instant;
 
 /// Solver for safe subgame solving.
 ///
@@ -139,13 +140,19 @@ where
     fn step(&mut self) {
         for walker in [P::T::from(0), P::T::from(1)] {
             self.profile.set_walker(SubTurn::Natural(walker));
-            for ref update in self.batch() {
+            let updates = self.batch();
+            let apply_started = Instant::now();
+            for ref update in updates {
                 self.update_regret(update);
                 self.update_weight(update);
                 self.update_evalue(update);
                 self.update_counts(update);
             }
-            self.profile().metrics().inspect(|m| m.inc_epoch());
+            let apply_elapsed = apply_started.elapsed();
+            self.profile().metrics().inspect(|m| {
+                m.add_profile_apply(apply_elapsed);
+                m.inc_epoch();
+            });
             self.advance();
         }
     }

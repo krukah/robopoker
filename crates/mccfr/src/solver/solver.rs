@@ -1,4 +1,5 @@
 use crate::*;
+use std::time::Instant;
 
 /// One parallel task’s worth of counterfactual updates (internal to [`Solver::batch`]).
 pub struct BatchChunk<E, I>
@@ -136,13 +137,19 @@ pub trait Solver: Send + Sync {
 
     /// Run one training iteration: batch, update regrets/weight/evalue/count, advance epoch.
     fn step(&mut self) {
-        for ref update in self.batch() {
+        let updates = self.batch();
+        let apply_started = Instant::now();
+        for ref update in updates {
             self.update_regret(update);
             self.update_weight(update);
             self.update_evalue(update);
             self.update_counts(update);
         }
-        self.profile().metrics().inspect(|m| m.inc_epoch());
+        let apply_elapsed = apply_started.elapsed();
+        self.profile().metrics().inspect(|m| {
+            m.add_profile_apply(apply_elapsed);
+            m.inc_epoch();
+        });
         self.advance();
     }
 
@@ -285,7 +292,12 @@ pub trait Solver: Send + Sync {
             .map(|chunk_idx| {
                 let start = chunk_idx * chunk_size;
                 let trees = (batch_size - start).min(chunk_size);
-                self.batch_chunk(trees)
+                let (chunk, cpu_dur) =
+                    crate::thread_cpu::measure(|| self.batch_chunk(trees));
+                self.profile()
+                    .metrics()
+                    .inspect(|m| m.add_batch_task_cpu(cpu_dur));
+                chunk
             })
             .reduce(BatchChunk::default, |mut acc, mut chunk| {
                 acc.nodes += chunk.nodes;
@@ -301,7 +313,10 @@ pub trait Solver: Send + Sync {
     #[cfg(not(feature = "server"))]
     fn batch(&self) -> Vec<Counterfactual<Self::E, Self::I>> {
         let batch_size = Self::batch_size();
-        let chunk = self.batch_chunk(batch_size);
+        let (chunk, cpu_dur) = crate::thread_cpu::measure(|| self.batch_chunk(batch_size));
+        self.profile()
+            .metrics()
+            .inspect(|m| m.add_batch_task_cpu(cpu_dur));
         self.inc_nodes(chunk.nodes);
         self.inc_infos(chunk.infos);
         chunk.updates

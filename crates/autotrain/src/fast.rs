@@ -12,14 +12,29 @@ use tokio_postgres::binary_copy::BinaryCopyInWriter;
 pub struct FastSession {
     client: Arc<Client>,
     solver: Flagship,
+    /// Epoch count loaded from DB at session start (`Stage::stamp` adds a delta, not an absolute).
+    epoch_at_start: usize,
 }
 
 impl FastSession {
+    #[allow(unreachable_code)]
     pub async fn new(client: Arc<Client>) -> Self {
         PreTraining::run(&client).await;
+        let hydrate_started = std::time::Instant::now();
+        let solver = Flagship::hydrate(client.clone()).await;
+        let hydrate_elapsed = hydrate_started.elapsed();
+        log::info!(
+            "hydrate (load into memory) took {:.3}s ({} ms)",
+            hydrate_elapsed.as_secs_f64(),
+            hydrate_elapsed.as_millis()
+        );
+        log::warn!("terminating after hydrate (load-timing run)");
+        std::process::exit(0);
+        let epoch_at_start = solver.profile().epochs();
         Self {
-            solver: Flagship::hydrate(client.clone()).await,
+            solver,
             client,
+            epoch_at_start,
         }
     }
 }
@@ -48,6 +63,7 @@ impl Trainer for FastSession {
     async fn sync(self) {
         let client = self.client;
         let epochs = self.solver.profile.epochs();
+        let delta = epochs.saturating_sub(self.epoch_at_start);
         let profile = self.solver.profile;
         client.stage().await;
         let copy = format!(
@@ -64,7 +80,11 @@ impl Trainer for FastSession {
         }
         writer.finish().await.expect("finish stream");
         client.merge().await;
-        client.stamp(epochs).await;
-        log::info!("profile sync complete (epoch {})", epochs);
+        client.stamp(delta).await;
+        log::info!(
+            "profile sync complete (epoch {}, +{} this session)",
+            epochs,
+            delta
+        );
     }
 }

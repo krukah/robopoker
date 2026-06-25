@@ -15,9 +15,13 @@ default       = []
 server        = ["rbp-core/server", "rayon"]
 
 [dependencies]
+log           = "0.4"
 rbp-core      = { version = "1.0", path = "../util"      }
 rbp-transport = { version = "1.0", path = "../transport" }
 rand          = { version = "0.9.1", features = ["small_rng"] }
 petgraph      = "0.7"
 paste         = "1.0"
 rayon         = { optional = true, version = "1.10" }
+
+[target.'cfg(unix)'.dependencies]
+libc          = "0.2"

@@ -150,7 +150,7 @@ pub const B_BLIND: Chips = 2;
 /// Small blind amount.
 pub const S_BLIND: Chips = 1;
 /// Maximum re-raises per betting round (limits tree width).
-pub const MAX_RAISE_REPEATS: usize = 3;
+pub const MAX_RAISE_REPEATS: usize = 4;
 /// Maximum tree depth for real-time subgame solving.
 pub const MAX_DEPTH_SUBGAME: usize = 16;
 /// Maximum tree depth for full game abstraction.
