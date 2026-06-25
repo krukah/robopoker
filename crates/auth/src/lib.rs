@@ -17,12 +17,12 @@
 //! - [`password`] — Argon2 hashing and verification
 mod claims;
 mod crypto;
+mod dto;
 mod identity;
 mod lurker;
 mod member;
 pub mod password;
 mod session;
-mod dto;
 
 pub use claims::*;
 pub use crypto::*;

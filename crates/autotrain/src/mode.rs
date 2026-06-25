@@ -1,8 +1,8 @@
 //! Training mode selection from command line arguments.
 use crate::*;
 use rbp_database::Check;
-use rbp_nlhe::NlheProfile;
 use rbp_database::Schema;
+use rbp_nlhe::NlheProfile;
 
 /// Training mode parsed from command line arguments
 pub enum Mode {

@@ -1,10 +1,11 @@
 //! Zero-temperature player that always takes the most likely action.
-use rbp_gameplay::*;
 use crate::*;
+use rand::prelude::*;
+use rbp_gameplay::*;
 use rbp_mccfr::*;
 use rbp_nlhe::*;
 use rbp_transport::Density;
-use rand::prelude::*;
+use std::time::Duration;
 
 /// Compute player using subgame solving with deterministic action selection.
 ///
@@ -29,12 +30,24 @@ impl ZeroTempPlayer {
             .support()
             .filter_map(|e| match e {
                 SubEdge::Inner(e) => Some(e),
-                SubEdge::World(_) => None,
+                SubEdge::World(_) | SubEdge::Continuation(_) => None,
             })
             .max_by(|a, b| {
                 policy
                     .density(&SubEdge::Inner(*a))
                     .partial_cmp(&policy.density(&SubEdge::Inner(*b)))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|edge| game.actionize(Edge::from(edge)))
+            .unwrap_or_else(|| game.legal().choose(&mut rand::rng()).copied().unwrap())
+    }
+    fn argmax_blueprint(game: &Game, policy: Policy<NlheEdge>) -> Action {
+        policy
+            .support()
+            .max_by(|a, b| {
+                policy
+                    .density(a)
+                    .partial_cmp(&policy.density(b))
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|edge| game.actionize(Edge::from(edge)))
@@ -48,10 +61,36 @@ impl Player for ZeroTempPlayer {
     async fn decide(&mut self, recall: &Partial) -> Action {
         let game = recall.head();
         let observation = recall.seen();
-        let abstraction = self.0.encoder().abstraction(&observation);
-        let info = SubInfo::Info(NlheInfo::from((recall, abstraction)));
-        let solver = self.0.subgame(recall);
-        let policy = solver.solve().profile().averaged_distribution(&info);
-        Self::argmax(&game, policy)
+        let Some(abstraction) = self.0.encoder().try_abstraction(&observation) else {
+            return game.legal().choose(&mut rand::rng()).copied().unwrap();
+        };
+        let offtree = has_offtree_actions(recall);
+        if offtree {
+            log::debug!("off-tree action sequence detected; DLS will use canonicalized edges");
+        }
+        if !should_use_depth_limited_search(recall) {
+            let info = NlheInfo::from((recall.subgame(), abstraction, recall.choices()));
+            return Self::argmax_blueprint(&game, self.0.profile.averaged_distribution(&info));
+        }
+        eprintln!(
+            "[DLS] ZeroTempPlayer using depth-limited search: street={}, offtree={}",
+            game.street(),
+            offtree
+        );
+        let blueprint = self.0;
+        let recall_for_solve = recall.clone();
+        let info = SubInfo::Info(NlheInfo::from((&recall_for_solve, abstraction)));
+        let solve = tokio::task::spawn_blocking(move || {
+            let solver = blueprint.depth_limited_subgame(&recall_for_solve);
+            solver.solve().profile().averaged_distribution(&info)
+        });
+        let timeout = Duration::from_millis(DlsOptions::default().max_solve_ms);
+        match tokio::time::timeout(timeout, solve).await {
+            Ok(Ok(policy)) => Self::argmax(&game, policy),
+            _ => {
+                let info = NlheInfo::from((recall.subgame(), abstraction, recall.choices()));
+                Self::argmax_blueprint(&game, self.0.profile.averaged_distribution(&info))
+            }
+        }
     }
 }

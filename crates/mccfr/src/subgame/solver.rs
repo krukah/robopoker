@@ -7,6 +7,8 @@ use crate::*;
 use rbp_core::Probability;
 use rbp_core::SUBGAME_ALTS;
 use rbp_core::Utility;
+use std::marker::PhantomData;
+use std::time::Instant;
 
 /// Solver for safe subgame solving.
 ///
@@ -19,10 +21,11 @@ use rbp_core::Utility;
 /// - `P`: Blueprint profile type
 /// - `N`: Inner encoder type
 /// - `I`: Number of subgame iterations
-pub struct SubSolver<'blueprint, P, N, const I: usize>
+pub struct SubSolver<'blueprint, P, N, S = ExternalSampling, const I: usize = 100>
 where
     P: Profile,
     N: Encoder<T = P::T, E = P::E, G = P::G, I = P::I>,
+    S: SamplingScheme,
 {
     /// Encoder for the subgame-augmented game.
     encoder: SubEncoder<'blueprint, N>,
@@ -30,11 +33,13 @@ where
     profile: SubProfile<'blueprint, P>,
     /// Root of the subgame being solved (starts at game root with prefix).
     subroot: SubGame<P::G>,
+    sampling: PhantomData<S>,
 }
-impl<'blueprint, P, N, const I: usize> SubSolver<'blueprint, P, N, I>
+impl<'blueprint, P, N, S, const I: usize> SubSolver<'blueprint, P, N, S, I>
 where
     P: Profile,
     N: Encoder<T = P::T, E = P::E, G = P::G, I = P::I>,
+    S: SamplingScheme,
 {
     /// Creates a new subgame solver.
     ///
@@ -60,6 +65,27 @@ where
             subroot: SubGame::new(villain, prefix.len()),
             encoder: SubEncoder::new(encoder, prefix),
             profile: SubProfile::new(profile, worlds),
+            sampling: PhantomData,
+        }
+    }
+    /// Creates a depth-limited subgame solver.
+    ///
+    /// Current-street chance nodes are converted into continuation-choice
+    /// frontiers and then evaluated from the frozen blueprint profile.
+    pub fn depth_limited(
+        encoder: &'blueprint N,
+        profile: &'blueprint P,
+        villain: P::T,
+        prefix: Vec<P::E>,
+        worlds: ManyWorlds<SUBGAME_ALTS>,
+        root: P::G,
+        evaluator: Option<std::sync::Arc<dyn FrontierEvaluator<P> + 'blueprint>>,
+    ) -> Self {
+        Self {
+            subroot: SubGame::from_root(root, villain, prefix.len()),
+            encoder: SubEncoder::depth_limited(encoder, prefix),
+            profile: SubProfile::with_frontier_evaluator(profile, worlds, evaluator),
+            sampling: PhantomData,
         }
     }
     /// Returns the solved profile (for extracting strategies).
@@ -67,10 +93,11 @@ where
         self.profile
     }
 }
-impl<'blueprint, P, N, const I: usize> Solver for SubSolver<'blueprint, P, N, I>
+impl<'blueprint, P, N, S, const I: usize> Solver for SubSolver<'blueprint, P, N, S, I>
 where
     P: Profile + Sync,
     N: Encoder<T = P::T, E = P::E, G = P::G, I = P::I> + Sync,
+    S: SamplingScheme + Send + Sync,
 {
     type T = SubTurn<P::T>;
     type E = SubEdge<P::E>;
@@ -78,7 +105,7 @@ where
     type Y = SubSecret<<P::I as CfrInfo>::Y>;
     type I = SubInfo<P::I, P::E>;
     type G = SubGame<P::G>;
-    type S = ExternalSampling;
+    type S = S;
     type R = LinearRegret;
     type W = LinearWeight;
     type P = SubProfile<'blueprint, P>;
@@ -109,6 +136,25 @@ where
     }
     fn mut_counts(&mut self, info: &Self::I, edge: &Self::E) -> &mut u32 {
         self.profile.mut_counts(info, edge)
+    }
+    fn step(&mut self) {
+        for walker in [P::T::from(0), P::T::from(1)] {
+            self.profile.set_walker(SubTurn::Natural(walker));
+            let updates = self.batch();
+            let apply_started = Instant::now();
+            for ref update in updates {
+                self.update_regret(update);
+                self.update_weight(update);
+                self.update_evalue(update);
+                self.update_counts(update);
+            }
+            let apply_elapsed = apply_started.elapsed();
+            self.profile().metrics().inspect(|m| {
+                m.add_profile_apply(apply_elapsed);
+                m.inc_epoch();
+            });
+            self.advance();
+        }
     }
     /// Override root to return the subgame at root.
     fn root(&self) -> Self::G {

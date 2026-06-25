@@ -16,6 +16,8 @@ where
     Root,
     /// Inner game info set.
     Info(I),
+    /// Depth-limited frontier where a continuation strategy is selected.
+    Frontier(I),
     /// Prefix phase: forced edge from history replay.
     Prefix(I, E),
 }
@@ -32,26 +34,30 @@ where
     fn public(&self) -> Self::X {
         match self {
             Self::Root => SubPublic::Root,
-            Self::Info(i) | Self::Prefix(i, _) => SubPublic::Inner(i.public()),
+            Self::Info(i) | Self::Frontier(i) | Self::Prefix(i, _) => SubPublic::Inner(i.public()),
         }
     }
     fn secret(&self) -> Self::Y {
         match self {
             Self::Root => SubSecret::Root,
-            Self::Info(i) | Self::Prefix(i, _) => SubSecret::Inner(i.secret()),
+            Self::Info(i) | Self::Frontier(i) | Self::Prefix(i, _) => SubSecret::Inner(i.secret()),
         }
     }
     fn choices(&self) -> Vec<Self::E> {
         match self {
             Self::Root => (0..rbp_core::SUBGAME_ALTS).map(SubEdge::World).collect(),
             Self::Info(i) => i.choices().into_iter().map(SubEdge::Inner).collect(),
+            Self::Frontier(_) => Continuation::ALL
+                .into_iter()
+                .map(SubEdge::Continuation)
+                .collect(),
             Self::Prefix(_, e) => vec![SubEdge::Inner(*e)],
         }
     }
     fn history(&self) -> Vec<Self::E> {
         match self {
             Self::Root => vec![],
-            Self::Info(i) | Self::Prefix(i, _) => {
+            Self::Info(i) | Self::Frontier(i) | Self::Prefix(i, _) => {
                 i.history().into_iter().map(SubEdge::Inner).collect()
             }
         }

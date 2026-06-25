@@ -24,4 +24,16 @@ pub trait CfrEdge:
     + std::hash::Hash // can be ignored
     + std::fmt::Debug
 {
+    /// True for fold-like player actions.
+    fn is_fold(&self) -> bool {
+        false
+    }
+    /// True for call-like player actions.
+    fn is_call(&self) -> bool {
+        false
+    }
+    /// True for aggressive player actions (bets, raises, shoves).
+    fn is_raise(&self) -> bool {
+        false
+    }
 }

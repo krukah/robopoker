@@ -26,7 +26,6 @@ pub enum Edge {
     Shove,
 }
 
-
 impl Edge {
     /// True if this is an all-in bet.
     pub fn is_shove(&self) -> bool {
@@ -390,4 +389,3 @@ impl Arbitrary for Edge {
         }
     }
 }
-

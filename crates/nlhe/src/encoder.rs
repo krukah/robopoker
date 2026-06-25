@@ -26,10 +26,12 @@ impl NlheEncoder {
     /// Internally converts to canonical isomorphism for lookup.
     /// Panics if the isomorphism is not in the lookup table.
     pub fn abstraction(&self, obs: &Observation) -> Abstraction {
-        self.0
-            .get(&Isomorphism::from(*obs))
-            .copied()
+        self.try_abstraction(obs)
             .expect("isomorphism not found in abstraction lookup")
+    }
+    /// Fallible abstraction lookup for real-time play.
+    pub fn try_abstraction(&self, obs: &Observation) -> Option<Abstraction> {
+        self.0.get(&Isomorphism::from(*obs)).copied()
     }
     /// Creates an info set for the root game state.
     pub fn root(&self, game: &NlheGame) -> NlheInfo {

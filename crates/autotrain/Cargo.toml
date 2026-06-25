@@ -20,8 +20,8 @@ rbp-clustering  = { version = "1.0", path = "../clustering", features = ["databa
 rbp-database    = { version = "1.0", path = "../database"                    }
 rbp-gameplay    = { version = "1.0", path = "../gameplay"                    }
 rbp-transport   = { version = "1.0", path = "../transport"                   }
-rbp-mccfr       = { version = "1.0", path = "../mccfr"                       }
-rbp-nlhe        = { version = "1.0", path = "../nlhe", features = ["database"] }
+rbp-mccfr       = { version = "1.0", path = "../mccfr", features = ["server"] }
+rbp-nlhe        = { version = "1.0", path = "../nlhe", features = ["database", "server"] }
 tokio-postgres  = "0.7"
 async-trait     = "0.1"
 const_format    = "0.2"

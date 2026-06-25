@@ -60,7 +60,6 @@ impl From<usize> for Turn {
     }
 }
 
-
 impl TryFrom<&str> for Turn {
     type Error = anyhow::Error;
     fn try_from(s: &str) -> Result<Self, Self::Error> {

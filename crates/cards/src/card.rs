@@ -126,8 +126,8 @@ impl Card {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::deck::Deck;
+    use super::*;
 
     #[test]
     fn bijective_rank_suit() {

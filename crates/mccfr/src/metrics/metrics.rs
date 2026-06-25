@@ -1,8 +1,10 @@
 use crate::Progress;
 use std::cell::Cell;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 use std::time::Instant;
 
 thread_local! { static LOCAL_EPOCH: Cell<usize> = const { Cell::new(0) }; }
@@ -15,6 +17,11 @@ pub struct Metrics {
     epoch: AtomicUsize,
     nodes: AtomicUsize,
     infos: AtomicUsize,
+    /// Nanoseconds spent applying batch updates to the profile since the last checkpoint log.
+    profile_apply_interval_ns: AtomicU64,
+    /// Sum of per-Rayon-task CPU time (`clock_gettime` thread CPU clock on Unix)
+    /// spent inside `Solver::batch` parallel chunks since last checkpoint.
+    batch_task_cpu_interval_ns: AtomicU64,
     start: Instant,
     prior: Mutex<(Instant, usize)>,
 }
@@ -32,9 +39,25 @@ impl Metrics {
             epoch: AtomicUsize::new(epoch),
             nodes: AtomicUsize::new(0),
             infos: AtomicUsize::new(0),
+            profile_apply_interval_ns: AtomicU64::new(0),
+            batch_task_cpu_interval_ns: AtomicU64::new(0),
             start: now,
             prior: Mutex::new((now, 0)),
         }
+    }
+    /// Accumulate time spent applying one batch's counterfactual updates to the profile.
+    pub fn add_profile_apply(&self, elapsed: Duration) {
+        self.profile_apply_interval_ns.fetch_add(
+            elapsed.as_nanos().min(u128::from(u64::MAX)) as u64,
+            Ordering::Relaxed,
+        );
+    }
+    /// Add consumed CPU time for one parallel chunk (`batch_chunk` body).
+    pub fn add_batch_task_cpu(&self, elapsed: Duration) {
+        self.batch_task_cpu_interval_ns.fetch_add(
+            elapsed.as_nanos().min(u128::from(u64::MAX)) as u64,
+            Ordering::Relaxed,
+        );
     }
     /// Increments the thread-local epoch counter.
     /// Call once per training iteration.
@@ -64,13 +87,27 @@ impl Metrics {
             let secs = prior.0.elapsed().as_secs().max(1) as f64;
             let curr = self.infos();
             let rate = (curr - prior.1) as f64 / secs;
+            let apply_ns = self
+                .profile_apply_interval_ns
+                .swap(0, Ordering::Relaxed);
+            let batch_cpu_ns = self
+                .batch_task_cpu_interval_ns
+                .swap(0, Ordering::Relaxed);
             *prior = (Instant::now(), curr);
             Some(format!(
-                "{:<20}{:<20}{:<20}{:<20}",
+                "{:<18}{:<18}{:<18}{:<14}{:<18}{:<22}",
                 format!("epoch {}", self.epoch()),
                 format!("nodes {}", self.nodes()),
                 format!("infos {}", curr),
                 format!("I/sec {:.1}", rate),
+                format!(
+                    "profile_apply {:.3}s",
+                    apply_ns as f64 / 1e9
+                ),
+                format!(
+                    "Σbatch_cpu {:.3}s",
+                    batch_cpu_ns as f64 / 1e9
+                ),
             ))
         } else {
             None

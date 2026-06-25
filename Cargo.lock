@@ -1751,6 +1751,8 @@ dependencies = [
 name = "rbp-mccfr"
 version = "1.0.0"
 dependencies = [
+ "libc",
+ "log",
  "paste",
  "petgraph 0.7.1",
  "rand",

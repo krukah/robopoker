@@ -13,6 +13,7 @@
 //! - `sample` — Sampling schemes
 //! - `subgame` — Safe subgame solving
 //! - `metrics` — Training observability
+//! - `thread_cpu` — Per-thread CPU time sampling for parallel batches (Unix)
 //! - `rps` — Rock-Paper-Scissors reference implementation
 
 mod metrics;
@@ -24,6 +25,7 @@ mod solver;
 mod state;
 mod strategy;
 mod subgame;
+mod thread_cpu;
 
 pub use metrics::*;
 pub use policy::*;

@@ -1,6 +1,6 @@
 use super::*;
-use rbp_core::Chips;
 use rbp_cards::*;
+use rbp_core::Chips;
 
 /// A player's final result including hand strength.
 ///

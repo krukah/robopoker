@@ -88,7 +88,8 @@ pub async fn run() -> Result<(), std::io::Error> {
                     .route("/exp-wrt-obs", web::post().to(analysis::handlers::exp_wrt_obs))
                     .route("/hst-wrt-abs", web::post().to(analysis::handlers::hst_wrt_abs))
                     .route("/hst-wrt-obs", web::post().to(analysis::handlers::hst_wrt_obs))
-                    .route("/blueprint", web::post().to(analysis::handlers::blueprint)),
+                    .route("/blueprint", web::post().to(analysis::handlers::blueprint))
+                    .route("/realtime", web::post().to(analysis::handlers::realtime)),
             )
     })
     .workers(6)

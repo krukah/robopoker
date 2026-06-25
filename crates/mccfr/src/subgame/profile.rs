@@ -12,6 +12,23 @@ use rbp_core::Probability;
 use rbp_core::SUBGAME_ALTS;
 use rbp_core::Utility;
 use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::sync::Mutex;
+
+/// Computes terminal-equivalent values for depth-limited frontier leaves.
+pub trait FrontierEvaluator<P>: Send + Sync
+where
+    P: Profile,
+{
+    fn evaluate(
+        &self,
+        blueprint: &P,
+        info: &P::I,
+        game: &P::G,
+        payoff_turn: P::T,
+        continuation: Continuation,
+    ) -> Option<Utility>;
+}
 
 /// Profile wrapper for safe subgame solving.
 ///
@@ -32,8 +49,14 @@ where
     global: &'blueprint P,
     /// K-world distribution for opponent range buckets.
     worlds: ManyWorlds<SUBGAME_ALTS>,
+    /// Optional rollout/value evaluator for depth-limited pseudo-terminals.
+    frontier: Option<Arc<dyn FrontierEvaluator<P> + 'blueprint>>,
+    /// Per-solve cache. It is intentionally local to avoid stale cross-hand EVs.
+    frontier_cache: Mutex<BTreeMap<(P::I, Continuation), Utility>>,
     /// Current iteration within subgame solving.
     iterations: usize,
+    /// Player being updated on this CFR iteration.
+    walker: SubTurn<P::T>,
 }
 
 impl<'blueprint, P> SubProfile<'blueprint, P>
@@ -47,7 +70,30 @@ where
             global: blueprint,
             iterations: 0,
             worlds,
+            frontier: None,
+            frontier_cache: Mutex::new(BTreeMap::new()),
+            walker: SubTurn::from(0),
         }
+    }
+    /// Creates a subgame profile with a frontier evaluator.
+    pub fn with_frontier_evaluator(
+        blueprint: &'blueprint P,
+        worlds: ManyWorlds<SUBGAME_ALTS>,
+        frontier: Option<Arc<dyn FrontierEvaluator<P> + 'blueprint>>,
+    ) -> Self {
+        Self {
+            local: BTreeMap::new(),
+            global: blueprint,
+            iterations: 0,
+            worlds,
+            frontier,
+            frontier_cache: Mutex::new(BTreeMap::new()),
+            walker: SubTurn::from(0),
+        }
+    }
+    /// Sets the traverser for the current CFR iteration.
+    pub fn set_walker(&mut self, walker: SubTurn<P::T>) {
+        self.walker = walker;
     }
     /// Returns the blueprint profile.
     pub fn blueprint(&self) -> &P {
@@ -115,7 +161,7 @@ where
         self.iterations += 1;
     }
     fn walker(&self) -> Self::T {
-        Self::T::from(self.iterations % 2)
+        self.walker
     }
     fn epochs(&self) -> usize {
         self.iterations
@@ -129,6 +175,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 1.0,
             (SubInfo::Root, SubEdge::World(i)) => self.worlds.weight(*i),
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.weight)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -147,6 +199,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 0.0,
             (SubInfo::Root, SubEdge::World(_)) => 0.0,
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.regret)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -165,6 +223,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 0.0,
             (SubInfo::Root, SubEdge::World(_)) => 0.0,
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.evalue)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -183,6 +247,12 @@ where
         match (info, edge) {
             (SubInfo::Prefix(_, _), SubEdge::Inner(_)) => 0,
             (SubInfo::Root, SubEdge::World(_)) => 0,
+            (SubInfo::Frontier(_), SubEdge::Continuation(_)) => self
+                .local
+                .get(info)
+                .and_then(|m| m.get(edge))
+                .map(|e| e.counts)
+                .unwrap_or_default(),
             (SubInfo::Info(i), SubEdge::Inner(e)) => self
                 .local
                 .get(info)
@@ -200,5 +270,96 @@ where
     }
     fn curiosity(&self) -> rbp_core::Probability {
         self.global.curiosity()
+    }
+    fn relative_value(
+        &self,
+        root: &Node<Self::T, Self::E, Self::G, Self::I>,
+        leaf: &Node<Self::T, Self::E, Self::G, Self::I>,
+    ) -> Utility {
+        if let Some(continuation) = leaf.game().continuation() {
+            if let SubInfo::Frontier(info) = leaf.info() {
+                let payoff_turn = match root.game().turn() {
+                    SubTurn::Natural(turn) | SubTurn::Adverse(turn) => turn,
+                };
+                return self.frontier_continuation_evalue(
+                    info,
+                    &leaf.game().inner(),
+                    payoff_turn,
+                    continuation,
+                ) * self.relative_reach(root, leaf)
+                    / self.sampling_reach(leaf);
+            }
+        }
+        (if leaf.game().turn() == Self::T::terminal() {
+            leaf.game().payoff(root.game().turn())
+        } else {
+            self.frontier_evalue(leaf.info())
+        }) * self.relative_reach(root, leaf)
+            / self.sampling_reach(leaf)
+    }
+}
+
+impl<P> SubProfile<'_, P>
+where
+    P: Profile,
+{
+    fn frontier_continuation_evalue(
+        &self,
+        info: &P::I,
+        game: &P::G,
+        payoff_turn: P::T,
+        continuation: Continuation,
+    ) -> Utility {
+        let key = (*info, continuation);
+        if let Some(value) = self
+            .frontier_cache
+            .lock()
+            .expect("frontier cache")
+            .get(&key)
+            .copied()
+        {
+            return value;
+        }
+        let value = self
+            .frontier
+            .as_ref()
+            .and_then(|evaluator| {
+                evaluator.evaluate(self.global, info, game, payoff_turn, continuation)
+            })
+            // Rollout can fail when the runtime observation is outside the
+            // blueprint abstraction. In that case, preserve liveness by using
+            // the blueprint frontier EV rather than blocking action selection.
+            .unwrap_or_else(|| self.continuation_evalue(info, continuation));
+        self.frontier_cache
+            .lock()
+            .expect("frontier cache")
+            .insert(key, value);
+        value
+    }
+
+    fn continuation_evalue(&self, info: &P::I, continuation: Continuation) -> Utility {
+        let choices = info.choices();
+        let denom = choices
+            .iter()
+            .map(|edge| {
+                self.global.cum_weight(info, edge).max(rbp_core::POLICY_MIN)
+                    * continuation.multiplier(edge)
+            })
+            .sum::<Probability>();
+        if denom <= 0.0 {
+            return self.global.frontier_evalue(info);
+        }
+        choices
+            .into_iter()
+            .map(|edge| {
+                let weight = self
+                    .global
+                    .cum_weight(info, &edge)
+                    .max(rbp_core::POLICY_MIN)
+                    * continuation.multiplier(&edge);
+                weight * self.global.cum_evalue(info, &edge)
+            })
+            .sum::<Utility>()
+            / denom
     }
 }

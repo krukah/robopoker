@@ -1,11 +1,12 @@
 //! Subgame-solving player that refines blueprint at decision time.
-use rbp_gameplay::*;
 use crate::*;
+use rand::distr::weighted::WeightedIndex;
+use rand::prelude::*;
+use rbp_gameplay::*;
 use rbp_mccfr::*;
 use rbp_nlhe::*;
 use rbp_transport::Density;
-use rand::distr::weighted::WeightedIndex;
-use rand::prelude::*;
+use std::time::Duration;
 
 /// Compute player using real-time subgame solving.
 ///
@@ -31,12 +32,24 @@ impl RealTimePlayer {
             .support()
             .filter_map(|e| match e {
                 SubEdge::Inner(e) => Some(e),
-                SubEdge::World(_) => None,
+                SubEdge::World(_) | SubEdge::Continuation(_) => None,
             })
             .collect::<Vec<_>>();
         let weights = edges
             .iter()
             .map(|e| policy.density(&SubEdge::Inner(*e)))
+            .collect::<Vec<_>>();
+        WeightedIndex::new(&weights)
+            .ok()
+            .map(|dist| edges[dist.sample(&mut rand::rng())])
+            .map(|edge| game.actionize(Edge::from(edge)))
+            .unwrap_or_else(|| game.legal().choose(&mut rand::rng()).copied().unwrap())
+    }
+    fn sample_blueprint(game: &Game, policy: Policy<NlheEdge>) -> Action {
+        let edges = policy.support().collect::<Vec<_>>();
+        let weights = edges
+            .iter()
+            .map(|edge| policy.density(edge))
             .collect::<Vec<_>>();
         WeightedIndex::new(&weights)
             .ok()
@@ -52,10 +65,36 @@ impl Player for RealTimePlayer {
     async fn decide(&mut self, recall: &Partial) -> Action {
         let game = recall.head();
         let observation = recall.seen();
-        let abstraction = self.0.encoder().abstraction(&observation);
-        let info = SubInfo::Info(NlheInfo::from((recall, abstraction)));
-        let solver = self.0.subgame(recall);
-        let policy = solver.solve().profile().averaged_distribution(&info);
-        Self::sample(&game, policy)
+        let Some(abstraction) = self.0.encoder().try_abstraction(&observation) else {
+            return game.legal().choose(&mut rand::rng()).copied().unwrap();
+        };
+        let offtree = has_offtree_actions(recall);
+        if offtree {
+            log::debug!("off-tree action sequence detected; DLS will use canonicalized edges");
+        }
+        if !should_use_depth_limited_search(recall) {
+            let info = NlheInfo::from((recall.subgame(), abstraction, recall.choices()));
+            return Self::sample_blueprint(&game, self.0.profile.averaged_distribution(&info));
+        }
+        eprintln!(
+            "[DLS] RealTimePlayer using depth-limited search: street={}, offtree={}",
+            game.street(),
+            offtree
+        );
+        let blueprint = self.0;
+        let recall_for_solve = recall.clone();
+        let info = SubInfo::Info(NlheInfo::from((&recall_for_solve, abstraction)));
+        let solve = tokio::task::spawn_blocking(move || {
+            let solver = blueprint.depth_limited_subgame(&recall_for_solve);
+            solver.solve().profile().averaged_distribution(&info)
+        });
+        let timeout = Duration::from_millis(DlsOptions::default().max_solve_ms);
+        match tokio::time::timeout(timeout, solve).await {
+            Ok(Ok(policy)) => Self::sample(&game, policy),
+            _ => {
+                let info = NlheInfo::from((recall.subgame(), abstraction, recall.choices()));
+                Self::sample_blueprint(&game, self.0.profile.averaged_distribution(&info))
+            }
+        }
     }
 }

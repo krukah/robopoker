@@ -154,42 +154,52 @@ pub trait Profile: Sized {
     /// Compute policy distribution for all edges of an info (single pass).
     /// Returns full distribution using regret-matching.
     fn iterated_distribution(&self, info: &Self::I) -> Policy<Self::E> {
-        let denom = info
-            .choices()
-            .iter()
-            .map(|e| self.cum_regret(info, e))
-            .inspect(|r| debug_assert!(!r.is_nan()))
-            .inspect(|r| debug_assert!(!r.is_infinite()))
-            .map(|r| r.max(POLICY_MIN))
-            .sum::<Utility>();
-        info.choices()
-            .into_iter()
-            .map(|e| (e, self.cum_regret(info, &e)))
-            .map(|(e, r)| (e, r.max(POLICY_MIN)))
-            .map(|(e, r)| (e, r / denom))
-            .collect()
+        let choices = info.choices();
+        let mut denom = 0.0;
+        let mut policy = Vec::with_capacity(choices.len());
+
+        for edge in choices {
+            let regret = self.cum_regret(info, &edge);
+            debug_assert!(!regret.is_nan());
+            debug_assert!(!regret.is_infinite());
+
+            let probability = regret.max(POLICY_MIN);
+            denom += probability;
+            policy.push((edge, probability));
+        }
+
+        for (_, probability) in policy.iter_mut() {
+            *probability /= denom;
+        }
+
+        policy
     }
     /// Compute sampling distribution for all edges of an info (single pass).
     /// Returns exploration-adjusted probabilities for MCCFR sampling.
     fn sampling_distribution(&self, info: &Self::I) -> Policy<Self::E> {
-        let denom = info
-            .choices()
-            .iter()
-            .map(|e| self.cum_weight(info, e))
-            .inspect(|r| debug_assert!(!r.is_nan()))
-            .inspect(|r| debug_assert!(!r.is_infinite()))
-            .map(|r| r.max(POLICY_MIN))
-            .sum::<Probability>()
-            + self.smoothing();
-        info.choices()
-            .into_iter()
-            .map(|e| (e, self.cum_weight(info, &e)))
-            .map(|(e, p)| (e, p.max(POLICY_MIN)))
-            .map(|(e, p)| (e, p / self.temperature()))
-            .map(|(e, p)| (e, p + self.smoothing()))
-            .map(|(e, p)| (e, p / denom))
-            .map(|(e, p)| (e, p.max(self.curiosity())))
-            .collect()
+        let temperature = self.temperature();
+        let smoothing = self.smoothing();
+        let curiosity = self.curiosity();
+        let choices = info.choices();
+        let mut denom = smoothing;
+        let mut policy = Vec::with_capacity(choices.len());
+
+        for edge in choices {
+            let weight = self.cum_weight(info, &edge);
+            debug_assert!(!weight.is_nan());
+            debug_assert!(!weight.is_infinite());
+
+            let probability = weight.max(POLICY_MIN);
+            denom += probability;
+            policy.push((edge, probability));
+        }
+
+        for (_, probability) in policy.iter_mut() {
+            *probability = ((*probability / temperature) + smoothing) / denom;
+            *probability = probability.max(curiosity);
+        }
+
+        policy
     }
     /// Compute advice distribution for all edges of an info (single pass).
     /// Returns historical weighted average strategy (Nash approximation).

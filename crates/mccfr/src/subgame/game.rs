@@ -38,8 +38,15 @@ where
     /// - `villain`: The player who selects alternatives (non-traverser)
     /// - `length`: Number of edges in the prefix history
     pub fn new(villain: G::T, length: usize) -> Self {
+        Self::from_root(G::root(), villain, length)
+    }
+    /// Creates a subgame from an explicit public-round root.
+    ///
+    /// Pluribus-style real-time search starts at the beginning of the current
+    /// betting round, not necessarily at the beginning of the hand.
+    pub fn from_root(root: G, villain: G::T, length: usize) -> Self {
         Self {
-            inner: G::root(),
+            inner: root,
             villain,
             phase: if length > 0 {
                 SubPhase::Prefix(0, length)
@@ -56,16 +63,45 @@ where
     pub fn phase(&self) -> SubPhase {
         self.phase
     }
+    /// True when normal play has reached a chance/street boundary.
+    pub fn is_real_chance(&self) -> bool {
+        matches!(self.phase, SubPhase::Real(_)) && self.inner.turn().is_chance()
+    }
     /// Returns the selected world index, if in Real phase.
     pub fn world(&self) -> Option<usize> {
         match self.phase {
-            SubPhase::Real(w) => Some(w),
+            SubPhase::Real(w) | SubPhase::Frontier(w) | SubPhase::Terminal(w, _) => Some(w),
             _ => None,
+        }
+    }
+    /// Returns the selected continuation policy for pseudo-terminal leaves.
+    pub fn continuation(&self) -> Option<Continuation> {
+        match self.phase {
+            SubPhase::Terminal(_, continuation) => Some(continuation),
+            _ => None,
+        }
+    }
+    /// Marks a real-game state as a depth-limited frontier.
+    pub fn frontier(&self) -> Self {
+        match self.phase {
+            SubPhase::Real(w) => Self {
+                inner: self.inner,
+                villain: self.villain,
+                phase: SubPhase::Frontier(w),
+            },
+            _ => *self,
         }
     }
     /// Returns available alternative indices as edges.
     pub fn alternative_edges(&self) -> Vec<SubEdge<G::E>> {
         (0..SUBGAME_ALTS).map(SubEdge::World).collect()
+    }
+    /// Returns available continuation strategy choices.
+    pub fn continuation_edges(&self) -> Vec<SubEdge<G::E>> {
+        Continuation::ALL
+            .into_iter()
+            .map(SubEdge::Continuation)
+            .collect()
     }
 }
 
@@ -89,6 +125,8 @@ where
             SubPhase::Prefix(..) => SubTurn::Natural(self.inner.turn()),
             SubPhase::Meta => SubTurn::Adverse(self.villain),
             SubPhase::Real(_) => SubTurn::Natural(self.inner.turn()),
+            SubPhase::Frontier(_) => SubTurn::Natural(self.villain),
+            SubPhase::Terminal(_, _) => SubTurn::Natural(G::T::terminal()),
         }
     }
     /// Applies an action to transition to the next state.
@@ -113,6 +151,11 @@ where
                 villain: self.villain,
                 phase: SubPhase::Real(w),
             },
+            (SubPhase::Frontier(w), SubEdge::Continuation(continuation)) => Self {
+                inner: self.inner,
+                villain: self.villain,
+                phase: SubPhase::Terminal(w, continuation),
+            },
             _ => panic!("invalid edge for current phase"),
         }
     }
@@ -120,6 +163,9 @@ where
     ///
     /// Subgame phase nodes are never terminal; delegates to inner game.
     fn payoff(&self, turn: Self::T) -> Utility {
+        if self.continuation().is_some() {
+            return 0.0;
+        }
         match turn {
             SubTurn::Natural(t) => self.inner.payoff(t),
             SubTurn::Adverse(_) => panic!("subgame phase has no payoff"),

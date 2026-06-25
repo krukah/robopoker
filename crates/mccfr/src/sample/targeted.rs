@@ -1,9 +1,9 @@
 //! Targeted sampling strategy.
 
 use super::*;
-use rbp_transport::Density;
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
+use rbp_transport::Density;
 
 /// Targeted sampling strategy.
 ///

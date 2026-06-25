@@ -86,13 +86,11 @@ impl rbp_database::Schema for Future {
 impl rbp_database::Streamable for Future {
     type Row = (i16, i16, f32);
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
-        self.0
-            .into_iter()
-            .flat_map(|(abs, hist)| {
-                let prev = i16::from(abs);
-                hist.distribution()
-                    .into_iter()
-                    .map(move |(abs, dx)| (prev, i16::from(abs), dx))
-            })
+        self.0.into_iter().flat_map(|(abs, hist)| {
+            let prev = i16::from(abs);
+            hist.distribution()
+                .into_iter()
+                .map(move |(abs, dx)| (prev, i16::from(abs), dx))
+        })
     }
 }

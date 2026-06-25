@@ -1,5 +1,5 @@
-use rbp_core::Chips;
 use rbp_cards::*;
+use rbp_core::Chips;
 
 /// A player's state at the table.
 ///

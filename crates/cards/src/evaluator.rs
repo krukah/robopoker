@@ -168,8 +168,8 @@ impl Evaluator {
 #[cfg(test)]
 #[cfg(not(feature = "shortdeck"))]
 mod tests {
-    use super::*;
     use super::super::hand::Hand;
+    use super::*;
 
     #[rustfmt::skip]
     #[test]
@@ -348,8 +348,8 @@ mod tests {
 #[cfg(test)]
 #[cfg(feature = "shortdeck")]
 mod tests_shortdeck {
-    use super::*;
     use super::super::hand::Hand;
+    use super::*;
     #[test]
     fn shortdeck_wheel_straight() {
         let eval = Evaluator::from(Hand::try_from("6s 7h 8d 9c As").unwrap());

@@ -264,7 +264,7 @@ mod tests {
                     type Blueprint = RPS<$R, $W, $S, N14>;
                     let ref blueprint = Blueprint::default().solve();
                     equilibrium(
-                        &SubSolver::<_, _, $N>::new(
+                        &SubSolver::<_, _, ExternalSampling, $N>::new(
                             blueprint,
                             blueprint,
                             RpsTurn::P2,

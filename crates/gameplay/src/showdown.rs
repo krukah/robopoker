@@ -1,6 +1,6 @@
-use rbp_core::Chips;
-use rbp_cards::*;
 use crate::*;
+use rbp_cards::*;
+use rbp_core::Chips;
 
 /// Computes chip distributions at showdown.
 ///
