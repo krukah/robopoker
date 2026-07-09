@@ -1823,9 +1823,6 @@ dependencies = [
 [[package]]
 name = "monge"
 version = "1.1.0"
-dependencies = [
- "pokerkit",
-]
 
 [[package]]
 name = "native-tls"
@@ -2551,24 +2548,14 @@ dependencies = [
 name = "robopoker"
 version = "1.1.0"
 dependencies = [
- "arena",
- "bouncer",
  "deuce",
- "forge",
+ "elkan",
  "kicker",
- "kuhn",
  "ledger",
- "leduc",
- "litmus",
- "lloyd",
  "mccfr",
  "monge",
  "nlhe",
- "parlor",
  "pokerkit",
- "portal",
- "roshambo",
- "spar",
  "subgame",
  "vitals",
 ]

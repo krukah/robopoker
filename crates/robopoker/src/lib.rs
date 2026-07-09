@@ -1,57 +1,35 @@
 //! Poker solver toolkit for game-theoretically optimal strategies.
 //!
-//! This facade crate re-exports all public rbp crates for convenient access.
+//! This facade re-exports the published `robopoker` library crates under
+//! convenient names. The private application and service crates (live-game
+//! coordination, HTTP server, training orchestration, benchmarking) are not
+//! re-exported here — depend on them directly from the workspace if you need
+//! them.
 //!
 //! ## Crate Organization
 //!
-//! ### Core Types
-//! - [`core`] — Type aliases, constants, DTOs, and shared traits
+//! ### Core
+//! - [`core`] — Type aliases, constants, action translation, shared traits
+//! - [`cards`] — Card primitives, hand evaluation, abstraction primitives
 //! - [`transport`] — Optimal transport (Sinkhorn, EMD)
-//! - [`cards`] — Card primitives and hand evaluation
-//! - [`mccfr`] — Game-agnostic CFR framework
-//!
-//! ### Domain Logic
+//! - [`clustering`] — Generic triangle-inequality-accelerated k-means
 //! - [`gameplay`] — Poker game engine
-//! - [`clustering`] — K-means abstraction
+//! - [`mccfr`] — Game-agnostic MCCFR framework
 //! - [`subgame`] — Safe + depth-limited subgame solving
 //! - [`nlhe`] — No-Limit Hold'em solver
-//! - [`leduc`] — Leduc poker MCCFR validation
-//! - [`kuhn`] — Kuhn poker MCCFR validation
-//! - [`rps`] — Rock-Paper-Scissors solver
 //!
 //! ### Infrastructure
-//! - [`database`] — Database pipeline
-//! - [`auth`] — Authentication
+//! - [`database`] — PostgreSQL persistence
 //! - [`telemetry`] — OpenTelemetry init and metric registry
-//!
-//! ### Application
-//! - [`gameroom`] — Async game coordinator with player implementations and records
-//! - [`server`] — Unified backend with analysis API and WebSocket hosting
-//! - [`autotrain`] — Training orchestration with distributed workers
-//! - [`competition`] — Hand history analysis with AIVAT variance reduction
-//! - [`slumbot`] — Slumbot benchmark client
-//!
-//! ### Validation
-//! - [`litmus`] — Strategic litmus tests for blueprint validation
 
-pub use arena as competition;
-pub use bouncer as auth;
 pub use deuce as cards;
-pub use forge as autotrain;
+pub use elkan as clustering;
 pub use kicker as gameplay;
-pub use kuhn;
 pub use ledger as database;
-pub use leduc;
-pub use litmus;
-pub use lloyd as clustering;
 pub use mccfr;
 pub use monge as transport;
 pub use nlhe;
-pub use parlor as gameroom;
 pub use pokerkit as core;
-pub use portal as server;
-pub use roshambo as rps;
-pub use spar as slumbot;
 pub use subgame;
 pub use vitals as telemetry;
 

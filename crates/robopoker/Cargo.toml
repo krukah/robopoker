@@ -1,11 +1,10 @@
 [package]
 name         = "robopoker"
-publish      = false
 version      = "1.1.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
-description  = "GTO poker toolkit: MCCFR solver, hand evaluation, strategic abstraction, and training pipeline"
+description  = "GTO poker toolkit: MCCFR solver, nanosecond hand evaluation, optimal transport, and safe + depth-limited subgame solving"
 license      = "MIT"
 repository   = "https://github.com/krukah/robopoker"
 keywords     = ["poker", "mccfr", "gto", "solver", "nlhe"]
@@ -15,27 +14,21 @@ categories   = ["game-development", "algorithms", "mathematics"]
 async     = ["mccfr/async"]
 shortdeck = ["deuce/shortdeck"]
 
+# The facade re-exports only the published (library) crates. Private
+# application/service crates (parlor, portal, forge, arena, spar, litmus)
+# and internal helpers (lloyd, bouncer, kuhn, leduc, roshambo) are
+# deliberately excluded so this crate can publish to crates.io.
 [dependencies]
 pokerkit = { workspace = true }
-monge    = { workspace = true }
 deuce    = { workspace = true }
-mccfr    = { workspace = true }
+monge    = { workspace = true }
+elkan    = { workspace = true }
 kicker   = { workspace = true }
-lloyd    = { workspace = true }
+mccfr    = { workspace = true }
 subgame  = { workspace = true }
 nlhe     = { workspace = true }
-leduc    = { workspace = true }
-kuhn     = { workspace = true }
-roshambo = { workspace = true }
 ledger   = { workspace = true }
-bouncer  = { workspace = true }
 vitals   = { workspace = true }
-parlor   = { workspace = true }
-portal   = { workspace = true }
-forge    = { workspace = true }
-arena    = { workspace = true }
-spar     = { workspace = true }
-litmus   = { workspace = true }
 
 [lints]
 workspace = true
