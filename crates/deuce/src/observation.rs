@@ -12,7 +12,8 @@ use std::cmp::Ordering;
 /// # Operations
 ///
 /// - [`Observation::children`] — Iterate over all possible next-street continuations
-/// - [`Observation::equity`] — Compute showdown win rate against random hands
+/// - [`Observation::simulate`] — Compute showdown win rate against random hands
+/// - [`Observation::equity`] — Compute showdown win rate against exhaustive opponent hands
 /// - [`Observation::street`] — Infer the current street from card counts
 ///
 /// # Serialization

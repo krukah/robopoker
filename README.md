@@ -236,6 +236,30 @@ Each colored series is a different combination of real-time-search techniques la
 
 CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on the 3.76 K-hand `depth+world+dirac` task), so the ordering within the `*+dirac` cluster isn't yet statistically separated. The three reference tasks — `base`, `dirac`, and `fish` — have run an order of magnitude longer (480 K hands each), so their estimates are tight (± 5.7).
 
+## Feature flags
+
+| Feature     | Description                                          |
+| ----------- | ---------------------------------------------------- |
+| `database`  | PostgreSQL integration                               |
+| `server`    | Server dependencies (Actix, Tokio, Rayon, telemetry) |
+| `async`     | Async MCCFR sampling/regret variants                 |
+| `shortdeck` | 36-card short-deck variant                           |
+
+## System requirements
+
+| Street  | Abstraction Size | Metric Size |
+| ------- | ---------------- | ----------- |
+| Preflop | 4 KB             | 301 KB      |
+| Flop    | 32 MB            | 175 KB      |
+| Turn    | 347 MB           | 175 KB      |
+| River   | 3.02 GB          | -           |
+
+**Recommended:**
+
+- Training: 16 vCPU, 120 GB RAM
+- Database: PostgreSQL 14+ with 8 vCPU, 64 GB RAM
+- Analysis: 1 vCPU, 4 GB RAM
+
 ## References
 
 1. (2019). Superhuman AI for multiplayer poker. [(Science)](https://science.sciencemag.org/content/early/2019/07/10/science.aay2400)

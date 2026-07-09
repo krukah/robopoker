@@ -23,17 +23,16 @@ pub async fn register(
         Ok(true) => return HttpResponse::Conflict().body("username or email already exists"),
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     }
-    let hashword = match password::hash(&req.password) {
+    let ref hashword = match password::hash(&req.password) {
         Ok(h) => h,
         Err(e) => return HttpResponse::InternalServerError().body(e.to_string()),
     };
-    let member = Member::new(ID::default(), req.username.clone(), req.email.clone());
-    if let Err(e) = db.create(&member, &hashword).await {
+    let ref member = Member::new(ID::default(), req.username.clone(), req.email.clone());
+    if let Err(e) = db.create(member, hashword).await {
         return HttpResponse::InternalServerError().body(e.to_string());
     }
-    let token_hash = Crypto::hash(&format!("{}", member.id()));
-    let session = Session::new(ID::default(), member.id(), token_hash);
-    if let Err(e) = db.signin(&session).await {
+    let ref session = Session::new(ID::default(), member.id(), Crypto::hash(&format!("{}", member.id())));
+    if let Err(e) = db.signin(session).await {
         return HttpResponse::InternalServerError().body(e.to_string());
     }
     let claims = Claims::new(member.id(), session.id(), member.username().to_string());
