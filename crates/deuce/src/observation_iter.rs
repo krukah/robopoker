@@ -1,5 +1,5 @@
 use super::hand::Hand;
-use super::hands::HandIterator;
+use super::hand_iter::HandIterator;
 use super::observation::Observation;
 use super::street::Street;
 

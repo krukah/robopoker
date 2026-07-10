@@ -5,23 +5,23 @@ use super::hand::Hand;
 /// A compact encoding of card ordering within a [`Hand`].
 ///
 /// Since `Hand` is an unordered bitset, deal-time card ordering is lost.
-/// `Perm` records that ordering as a [Lehmer code](https://en.wikipedia.org/wiki/Lehmer_code)
+/// `Lehmer` records that ordering as a [Lehmer code](https://en.wikipedia.org/wiki/Lehmer_code)
 /// packed into a single byte. This suffices for up to 5 cards (5! = 120 < 256).
 ///
 /// # Trait relationships
 ///
-/// - [`FromIterator<Card>`] — collect an ordered card sequence into a `Perm`
+/// - [`FromIterator<Card>`] — collect an ordered card sequence into a `Lehmer`
 /// - [`From<u8>`] / [`Into<u8>`] — serialize the Lehmer code
-/// - [`Perm::arrange`] returns a [`CardSeq`] iterator
+/// - [`Lehmer::arrange`] returns a [`CardSeq`] iterator
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Perm(u8);
+pub struct Lehmer(u8);
 
-impl Perm {
+impl Lehmer {
     /// The identity permutation (canonical ascending order).
     pub fn identity() -> Self {
         Self(0)
     }
-    /// Constructs a `Perm` from an ordered slice of cards.
+    /// Constructs a `Lehmer` from an ordered slice of cards.
     ///
     /// The Lehmer code is computed by comparing `Card` u8 encodings
     /// directly — no sorting or intermediate allocation needed, since
@@ -78,7 +78,7 @@ impl Perm {
     }
 }
 
-impl FromIterator<Card> for Perm {
+impl FromIterator<Card> for Lehmer {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = Card>,
@@ -94,18 +94,18 @@ impl FromIterator<Card> for Perm {
     }
 }
 
-impl From<u8> for Perm {
+impl From<u8> for Lehmer {
     fn from(code: u8) -> Self {
         Self(code)
     }
 }
-impl From<Perm> for u8 {
-    fn from(perm: Perm) -> Self {
+impl From<Lehmer> for u8 {
+    fn from(perm: Lehmer) -> Self {
         perm.0
     }
 }
 
-impl std::fmt::Display for Perm {
+impl std::fmt::Display for Lehmer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "σ{}", self.0)
     }
@@ -118,37 +118,37 @@ mod tests {
     #[test]
     fn identity_sorted() {
         let cards = Card::parse("2c 3d 4h").unwrap();
-        assert_eq!(Perm::of(&cards), Perm::identity());
+        assert_eq!(Lehmer::of(&cards), Lehmer::identity());
     }
     #[test]
     fn identity_arrange() {
         let cards = Card::parse("2c 5d Th").unwrap();
         let hand = Hand::from(cards.clone());
-        assert_eq!(Perm::identity().arrange(hand).collect::<Vec<_>>(), cards);
+        assert_eq!(Lehmer::identity().arrange(hand).collect::<Vec<_>>(), cards);
     }
     #[test]
     fn round_trip_hole() {
         let cards = Card::parse("Kd 7h").unwrap();
         let hand = Hand::from(cards.clone());
-        assert_eq!(Perm::of(&cards).arrange(hand).collect::<Vec<_>>(), cards);
+        assert_eq!(Lehmer::of(&cards).arrange(hand).collect::<Vec<_>>(), cards);
     }
     #[test]
     fn round_trip_board() {
         let cards = Card::parse("Qs 2c Ah Td 5s").unwrap();
         let hand = Hand::from(cards.clone());
-        assert_eq!(Perm::of(&cards).arrange(hand).collect::<Vec<_>>(), cards);
+        assert_eq!(Lehmer::of(&cards).arrange(hand).collect::<Vec<_>>(), cards);
     }
     #[test]
     fn reverse_two() {
         let fwd = Card::parse("7h Kd").unwrap();
         let rev = Card::parse("Kd 7h").unwrap();
-        assert_eq!(u8::from(Perm::of(&fwd)), 0);
-        assert_eq!(u8::from(Perm::of(&rev)), 1);
+        assert_eq!(u8::from(Lehmer::of(&fwd)), 0);
+        assert_eq!(u8::from(Lehmer::of(&rev)), 1);
     }
     #[test]
     fn reverse_max() {
         let cards = Card::parse("As Qs Th 5d 2c").unwrap();
-        assert_eq!(u8::from(Perm::of(&cards)), 119);
+        assert_eq!(u8::from(Lehmer::of(&cards)), 119);
     }
     /// all n! codes produce distinct arrangements that round-trip, for every valid size
     #[test]
@@ -162,12 +162,12 @@ mod tests {
             Hand::try_from("2c 5d Th Qs As").unwrap(),
         ];
         for (n, hand) in hands.iter().enumerate() {
-            let f = Perm::factorial(n);
+            let f = Lehmer::factorial(n);
             let mut seen = std::collections::HashSet::new();
             for code in 0..f {
-                let arranged = Perm::from(code).arrange(*hand).collect::<Vec<_>>();
+                let arranged = Lehmer::from(code).arrange(*hand).collect::<Vec<_>>();
                 seen.insert(arranged.clone());
-                assert_eq!(u8::from(Perm::of(&arranged)), code);
+                assert_eq!(u8::from(Lehmer::of(&arranged)), code);
             }
             assert_eq!(seen.len(), f as usize);
         }
@@ -186,8 +186,8 @@ mod tests {
         for (n, hand) in hands.iter().enumerate() {
             let sorted = Vec::<Card>::from(*hand);
             let reversed = sorted.iter().rev().copied().collect::<Vec<_>>();
-            assert_eq!(u8::from(Perm::of(&sorted)), 0);
-            assert_eq!(u8::from(Perm::of(&reversed)), Perm::factorial(n) - 1);
+            assert_eq!(u8::from(Lehmer::of(&sorted)), 0);
+            assert_eq!(u8::from(Lehmer::of(&reversed)), Lehmer::factorial(n) - 1);
         }
     }
     /// identity always reproduces Hand's canonical iteration order
@@ -201,7 +201,7 @@ mod tests {
         ];
         for hand in hands {
             let canonical = Vec::<Card>::from(hand);
-            let arranged = Perm::identity().arrange(hand).collect::<Vec<_>>();
+            let arranged = Lehmer::identity().arrange(hand).collect::<Vec<_>>();
             assert_eq!(arranged, canonical);
         }
     }
@@ -210,23 +210,23 @@ mod tests {
     fn arrange_preserves_hand() {
         let hand = Hand::try_from("3c 7d Jh Ks").unwrap();
         for code in 0..24u8 {
-            let arranged = Perm::from(code).arrange(hand);
+            let arranged = Lehmer::from(code).arrange(hand);
             assert_eq!(arranged.collect::<Hand>(), hand);
         }
     }
     /// trivial sizes: empty and singleton always produce identity
     #[test]
     fn degenerate_sizes() {
-        assert_eq!(Perm::of(&[]), Perm::identity());
+        assert_eq!(Lehmer::of(&[]), Lehmer::identity());
         let card = Card::try_from("Ah").unwrap();
-        assert_eq!(Perm::of(&[card]), Perm::identity());
-        assert_eq!(Perm::from(0).arrange(Hand::from(card)).collect::<Vec<_>>(), vec![card]);
+        assert_eq!(Lehmer::of(&[card]), Lehmer::identity());
+        assert_eq!(Lehmer::from(0).arrange(Hand::from(card)).collect::<Vec<_>>(), vec![card]);
     }
-    /// FromIterator<Card> agrees with Perm::of
+    /// FromIterator<Card> agrees with Lehmer::of
     #[test]
     fn from_iterator() {
         let cards = Card::parse("Qs 2c Ah Td 5s").unwrap();
-        let collected = cards.iter().copied().collect::<Perm>();
-        assert_eq!(collected, Perm::of(&cards));
+        let collected = cards.iter().copied().collect::<Lehmer>();
+        assert_eq!(collected, Lehmer::of(&cards));
     }
 }

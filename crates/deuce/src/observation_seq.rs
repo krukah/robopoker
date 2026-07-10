@@ -12,7 +12,7 @@ use super::*;
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct ObservationSeq {
     observation: Observation,
-    perm: Perm,
+    perm: Lehmer,
 }
 
 impl ObservationSeq {
@@ -21,7 +21,7 @@ impl ObservationSeq {
         HandSeq::from((*self.observation.public(), self.perm))
     }
     /// The board permutation (deal order of community cards).
-    pub fn perm(&self) -> Perm {
+    pub fn perm(&self) -> Lehmer {
         self.perm
     }
 }
@@ -39,7 +39,7 @@ impl From<Observation> for ObservationSeq {
     fn from(observation: Observation) -> Self {
         Self {
             observation,
-            perm: Perm::identity(),
+            perm: Lehmer::identity(),
         }
     }
 }
@@ -52,8 +52,8 @@ impl From<ObservationSeq> for Observation {
 }
 
 /// Construct from an explicit `(Observation, Perm)` pair.
-impl From<(Observation, Perm)> for ObservationSeq {
-    fn from((observation, perm): (Observation, Perm)) -> Self {
+impl From<(Observation, Lehmer)> for ObservationSeq {
+    fn from((observation, perm): (Observation, Lehmer)) -> Self {
         Self { observation, perm }
     }
 }
@@ -65,7 +65,7 @@ impl From<(Hole, &[Card])> for ObservationSeq {
     fn from((hole, board): (Hole, &[Card])) -> Self {
         Self {
             observation: Observation::from((Hand::from(hole), board.iter().copied().collect::<Hand>())),
-            perm: Perm::of(board),
+            perm: Lehmer::of(board),
         }
     }
 }
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn round_trip_observation() {
         let obs = Observation::try_from("AcKs~QhJhTd").unwrap();
-        let perm = Perm::from(3u8);
+        let perm = Lehmer::from(3u8);
         let seq = ObservationSeq::from((obs, perm));
         assert_eq!(Observation::from(seq), obs);
         assert_eq!(seq.perm(), perm);
@@ -122,6 +122,6 @@ mod tests {
         let obs = Observation::try_from("AcKs").unwrap();
         let seq = ObservationSeq::from(obs);
         assert_eq!(seq.board().size(), 0);
-        assert_eq!(seq.perm(), Perm::identity());
+        assert_eq!(seq.perm(), Lehmer::identity());
     }
 }

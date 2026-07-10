@@ -69,13 +69,13 @@ impl FromIterator<CardSeq> for Hand {
 
 #[cfg(test)]
 mod tests {
-    use super::super::perm::Perm;
+    use super::super::lehmer::Lehmer;
     use super::*;
 
     #[test]
     fn exact_size() {
         let hand = Hand::try_from("2c 5d Th Qs As").unwrap();
-        let mut seq = Perm::from(42).arrange(hand);
+        let mut seq = Lehmer::from(42).arrange(hand);
         assert_eq!(seq.len(), 5);
         seq.next();
         assert_eq!(seq.len(), 4);
@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn double_ended() {
         let hand = Hand::try_from("2c 5d Th Qs As").unwrap();
-        let perm = Perm::from(77);
+        let perm = Lehmer::from(77);
         let forward = perm.arrange(hand).collect::<Vec<_>>();
         let backward = perm.arrange(hand).rev().collect::<Vec<_>>();
         assert_eq!(forward.into_iter().rev().collect::<Vec<_>>(), backward);
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn fused() {
         let hand = Hand::try_from("7h Kd").unwrap();
-        let mut seq = Perm::from(1).arrange(hand);
+        let mut seq = Lehmer::from(1).arrange(hand);
         seq.next();
         seq.next();
         assert_eq!(seq.next(), None);
@@ -103,12 +103,12 @@ mod tests {
     #[test]
     fn collect_into_hand() {
         let hand = Hand::try_from("2c 5d Th Qs As").unwrap();
-        let seq = Perm::from(42).arrange(hand);
+        let seq = Lehmer::from(42).arrange(hand);
         assert_eq!(seq.collect::<Hand>(), hand);
     }
     #[test]
     fn empty_seq() {
-        let seq = Perm::identity().arrange(Hand::empty());
+        let seq = Lehmer::identity().arrange(Hand::empty());
         assert_eq!(seq.len(), 0);
         assert_eq!(seq.collect::<Vec<_>>(), vec![]);
     }

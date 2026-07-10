@@ -1,5 +1,5 @@
 use super::isomorphism::Isomorphism;
-use super::observations::ObservationIterator;
+use super::observation_iter::ObservationIterator;
 use super::street::Street;
 
 /// Iterator over canonical isomorphisms for a street.

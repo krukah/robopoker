@@ -2,7 +2,7 @@ use super::card::Card;
 use super::card_seq::CardSeq;
 use super::hand::Hand;
 use super::hand_seq::HandSeq;
-use super::perm::Perm;
+use super::lehmer::Lehmer;
 use super::street::Street;
 
 /// The community cards visible to all players.
@@ -38,7 +38,7 @@ impl Board {
         self.0.cards()
     }
     /// The board's deal-order permutation.
-    pub fn perm(&self) -> Perm {
+    pub fn perm(&self) -> Lehmer {
         self.0.perm()
     }
 }
@@ -71,7 +71,7 @@ mod tests {
     fn empty_board() {
         let board = Board::empty();
         assert_eq!(board.cards().count(), 0);
-        assert_eq!(board.perm(), Perm::identity());
+        assert_eq!(board.perm(), Lehmer::identity());
     }
     #[test]
     fn deal_preserves_order() {

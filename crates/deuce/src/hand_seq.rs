@@ -1,7 +1,7 @@
 use super::card::Card;
 use super::card_seq::CardSeq;
 use super::hand::Hand;
-use super::perm::Perm;
+use super::lehmer::Lehmer;
 
 /// An ordered hand: a [`Hand`] (the set) paired with a [`Perm`] (the deal order).
 ///
@@ -18,7 +18,7 @@ use super::perm::Perm;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HandSeq {
     hand: Hand,
-    perm: Perm,
+    perm: Lehmer,
 }
 
 impl HandSeq {
@@ -26,7 +26,7 @@ impl HandSeq {
     pub fn empty() -> Self {
         Self {
             hand: Hand::empty(),
-            perm: Perm::identity(),
+            perm: Lehmer::identity(),
         }
     }
     /// The unordered card set.
@@ -34,7 +34,7 @@ impl HandSeq {
         &self.hand
     }
     /// The deal-order permutation.
-    pub fn perm(&self) -> Perm {
+    pub fn perm(&self) -> Lehmer {
         self.perm
     }
     /// Number of cards.
@@ -58,7 +58,7 @@ impl HandSeq {
             n += 1;
         }
         self.hand = Hand::add(self.hand, hand);
-        self.perm = Perm::of(&buf[..n as usize]);
+        self.perm = Lehmer::of(&buf[..n as usize]);
     }
     /// Appends cards in the given deal order.
     pub fn deal(&mut self, cards: &[Card]) {
@@ -73,12 +73,12 @@ impl HandSeq {
             n += 1;
         }
         self.hand = Hand::add(self.hand, cards.iter().copied().collect());
-        self.perm = Perm::of(&buf[..n as usize]);
+        self.perm = Lehmer::of(&buf[..n as usize]);
     }
     /// Resets to empty.
     pub fn clear(&mut self) {
         self.hand = Hand::empty();
-        self.perm = Perm::identity();
+        self.perm = Lehmer::identity();
     }
 }
 
@@ -113,7 +113,7 @@ impl FromIterator<Card> for HandSeq {
         debug_assert!(n <= 5);
         Self {
             hand: buf[..n as usize].iter().copied().collect(),
-            perm: Perm::of(&buf[..n as usize]),
+            perm: Lehmer::of(&buf[..n as usize]),
         }
     }
 }
@@ -123,14 +123,14 @@ impl From<Hand> for HandSeq {
     fn from(hand: Hand) -> Self {
         Self {
             hand,
-            perm: Perm::identity(),
+            perm: Lehmer::identity(),
         }
     }
 }
 
 /// Construct from an explicit `(Hand, Perm)` pair.
-impl From<(Hand, Perm)> for HandSeq {
-    fn from((hand, perm): (Hand, Perm)) -> Self {
+impl From<(Hand, Lehmer)> for HandSeq {
+    fn from((hand, perm): (Hand, Lehmer)) -> Self {
         Self { hand, perm }
     }
 }
@@ -205,7 +205,7 @@ mod tests {
         let mut seq = Card::parse("Qh 5d Td").unwrap().into_iter().collect::<HandSeq>();
         seq.clear();
         assert_eq!(seq.size(), 0);
-        assert_eq!(seq.perm(), Perm::identity());
+        assert_eq!(seq.perm(), Lehmer::identity());
     }
     #[test]
     fn ref_into_iter() {
