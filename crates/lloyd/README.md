@@ -11,7 +11,7 @@ flowchart LR
   Hist --> KM["k-means<br/><i>elkan</i>"]
   KM --> EMD["EMD metric<br/><i>monge · Sinkhorn</i>"]
   EMD --> Abs["Abstraction<br/>buckets"]
-  Abs --> DB[("ledger<br/>Postgres")]
+  Abs --> DB[("daybook<br/>Postgres")]
   KM -.->|previous street as prior| Hist
 ```
 

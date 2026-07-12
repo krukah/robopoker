@@ -13,11 +13,11 @@ categories   = ["authentication", "web-programming"]
 
 [features]
 default = []
-server  = ["tokio-postgres", "const_format", "ledger", "actix-web", "serde_json"]
+server  = ["tokio-postgres", "const_format", "daybook", "actix-web", "serde_json"]
 
 [dependencies]
 pokerkit       = { workspace = true }
-ledger         = { workspace = true, optional = true }
+daybook         = { workspace = true, optional = true }
 jsonwebtoken   = "9"
 argon2         = { version = "0.5", features = ["rand"] }
 sha2           = "0.10"

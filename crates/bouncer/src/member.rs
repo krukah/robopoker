@@ -32,7 +32,7 @@ impl Unique for Member {
 #[cfg(feature = "server")]
 mod schema {
     use super::*;
-    use ledger::*;
+    use daybook::*;
     use std::sync::OnceLock;
 
     /// Schema implementation for Member (users table).

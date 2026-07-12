@@ -49,7 +49,7 @@ impl Unique for Hand {
 #[cfg(feature = "server")]
 mod schema {
     use super::*;
-    use ledger::*;
+    use daybook::*;
     use std::sync::OnceLock;
 
     impl Schema for Hand {

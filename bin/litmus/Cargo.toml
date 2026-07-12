@@ -15,7 +15,7 @@ path = "src/main.rs"
 [dependencies]
 litmus   = { path = "../../crates/litmus" }
 portal   = { path = "../../crates/portal" }
-ledger   = { path = "../../crates/ledger" }
+daybook   = { path = "../../crates/daybook" }
 pokerkit = { path = "../../crates/pokerkit" }
 
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }

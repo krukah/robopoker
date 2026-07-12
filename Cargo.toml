@@ -15,7 +15,7 @@ members = [
   "crates/kuhn",
   "crates/roshambo",
   # Infrastructure crates
-  "crates/ledger",
+  "crates/daybook",
   "crates/bouncer",
   "crates/vitals",
   # Application crates
@@ -63,7 +63,7 @@ roshambo = { version = "1.1", path = "crates/roshambo" }
 arena    = { version = "1.1", path = "crates/arena" }
 spar     = { version = "1.1", path = "crates/spar" }
 litmus   = { version = "1.1", path = "crates/litmus" }
-ledger   = { version = "1.1", path = "crates/ledger" }
+daybook   = { version = "1.1", path = "crates/daybook" }
 bouncer  = { version = "1.1", path = "crates/bouncer" }
 vitals   = { version = "1.1", path = "crates/vitals" }
 parlor   = { version = "1.1", path = "crates/parlor" }

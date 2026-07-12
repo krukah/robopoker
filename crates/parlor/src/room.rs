@@ -3,7 +3,7 @@ use bouncer::Member;
 use bouncer::User;
 use kicker::Reason;
 use kicker::Turn;
-use ledger::*;
+use daybook::*;
 use pokerkit::*;
 use std::sync::Arc;
 use std::sync::OnceLock;

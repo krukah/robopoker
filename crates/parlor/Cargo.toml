@@ -13,7 +13,7 @@ categories   = ["game-development", "asynchronous"]
 
 [features]
 default = []
-server  = ["ledger", "nlhe", "mccfr", "subgame", "monge", "vitals"]
+server  = ["daybook", "nlhe", "mccfr", "subgame", "monge", "vitals"]
 cli     = ["dialoguer"]
 
 [dependencies]
@@ -25,7 +25,7 @@ nlhe           = { workspace = true, optional = true, features = ["server"] }
 mccfr          = { workspace = true, optional = true }
 subgame        = { workspace = true, optional = true }
 monge          = { workspace = true, optional = true }
-ledger         = { workspace = true, optional = true }
+daybook         = { workspace = true, optional = true }
 vitals         = { workspace = true, optional = true }
 tokio          = { version = "1", features = ["sync", "time", "rt", "macros"] }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }

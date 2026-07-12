@@ -9,7 +9,7 @@ flowchart LR
   P -->|/room/*| R["parlor<br/>live games"]
   P -->|/api/*| A["strategy · topology<br/>training APIs"]
   R --> N["nlhe · subgame"]
-  A --> L[("ledger<br/>Postgres")]
+  A --> L[("daybook<br/>Postgres")]
   B --> L
 ```
 

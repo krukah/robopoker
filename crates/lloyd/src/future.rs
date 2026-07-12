@@ -28,9 +28,9 @@ impl From<Future> for BTreeMap<Abstraction, Histogram> {
 }
 
 #[cfg(feature = "server")]
-impl ledger::Schema for Future {
+impl daybook::Schema for Future {
     fn name() -> &'static str {
-        ledger::transitions()
+        daybook::transitions()
     }
 
     fn columns() -> &'static [tokio_postgres::types::Type] {
@@ -44,22 +44,22 @@ impl ledger::Schema for Future {
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 prev SMALLINT NOT NULL,
                 next SMALLINT NOT NULL,
                 dx   REAL     NOT NULL
             );",
-                ledger::transitions()
+                daybook::transitions()
             ))
         })
     }
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::transitions();
+        let t = daybook::transitions();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_{t}_prev ON {t} (prev);
              CREATE INDEX IF NOT EXISTS idx_{t}_next ON {t} (next);
              CREATE INDEX IF NOT EXISTS idx_{t}_dx ON {t} (dx);
@@ -73,19 +73,19 @@ impl ledger::Schema for Future {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("COPY {} (prev, next, dx) FROM STDIN BINARY", ledger::transitions())))
+        SQL.get_or_init(|| daybook::leaked(format!("COPY {} (prev, next, dx) FROM STDIN BINARY", daybook::transitions())))
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("TRUNCATE TABLE {};", ledger::transitions())))
+        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::transitions())))
     }
 
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::transitions();
+        let t = daybook::transitions();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"
             ))
@@ -95,7 +95,7 @@ impl ledger::Schema for Future {
 
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
-impl ledger::Streamable for Future {
+impl daybook::Streamable for Future {
     type Row = (i16, i16, f32);
 
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {

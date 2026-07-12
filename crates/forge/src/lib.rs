@@ -36,7 +36,7 @@ pub use workers::*;
 
 /// Ensures all training-related tables exist.
 pub async fn ensure_all(client: &tokio_postgres::Client) {
-    use ledger::Ensure;
+    use daybook::Ensure;
     client.ensure::<nlhe::NlheProfile>().await;
     client.ensure::<crate::EpochMeta>().await;
     client.ensure::<crate::Snapshot>().await;

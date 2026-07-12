@@ -18,7 +18,7 @@ default = []
 pokerkit       = { workspace = true, features = ["server"] }
 deuce          = { workspace = true }
 lloyd          = { workspace = true, features = ["server"] }
-ledger         = { workspace = true }
+daybook         = { workspace = true }
 kicker         = { workspace = true }
 mccfr          = { workspace = true, features = ["async"] }
 nlhe           = { workspace = true, features = ["server"] }

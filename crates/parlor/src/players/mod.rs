@@ -29,7 +29,7 @@
 ///   `spar::Runtime::run`; share across all spawned variant tasks.
 #[cfg(feature = "server")]
 pub async fn hydrate_blueprint(client: std::sync::Arc<tokio_postgres::Client>) -> &'static nlhe::Flagship {
-    use ledger::Hydrate;
+    use daybook::Hydrate;
     Box::leak(Box::new(nlhe::Flagship::hydrate(client).await))
 }
 

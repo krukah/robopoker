@@ -37,7 +37,7 @@ use tokio_postgres::Client;
 
 /// Ensures all tables exist. Single point of truth for schema creation.
 async fn ensure_all(client: &Client) {
-    use ledger::Ensure;
+    use daybook::Ensure;
     client.ensure::<bouncer::Member>().await;
     client.ensure::<bouncer::Session>().await;
     client.ensure::<parlor::Room>().await;
@@ -62,7 +62,7 @@ async fn health(client: web::Data<Arc<Client>>) -> impl Responder {
 
 #[rustfmt::skip]
 pub async fn run() -> Result<(), std::io::Error> {
-    let client = ledger::db().await;
+    let client = daybook::db().await;
     ensure_all(&client).await;
     use parlor::VariantExt;
     let mut seedables: Vec<bouncer::Member> = pokerkit::Variant::all()
@@ -81,7 +81,7 @@ pub async fn run() -> Result<(), std::io::Error> {
         None
     } else {
         tracing::info!("loading blueprint into memory");
-        Some(Box::leak(Box::new(ledger::Hydrate::hydrate(client.clone()).await)))
+        Some(Box::leak(Box::new(daybook::Hydrate::hydrate(client.clone()).await)))
     };
     let topology = web::Data::new(topology::TopologyAPI::new(client.clone()));
     let strategy = web::Data::new(strategy::StrategyAPI::new(client.clone()).with_blueprint(blueprint));

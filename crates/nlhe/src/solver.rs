@@ -261,7 +261,7 @@ fn normalize(raws: Vec<(Observation, Probability)>) -> Vec<(Observation, Probabi
 
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
-impl<R, W, S> ledger::Hydrate for Nlhe<R, W, S>
+impl<R, W, S> daybook::Hydrate for Nlhe<R, W, S>
 where
     R: RegretSchedule,
     W: WeightSchedule,

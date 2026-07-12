@@ -4,16 +4,16 @@ use std::sync::OnceLock;
 /// Newtype wrapper for epoch counter (enables Schema implementation).
 pub struct EpochMeta;
 
-impl ledger::Schema for EpochMeta {
+impl daybook::Schema for EpochMeta {
     fn name() -> &'static str {
-        ledger::epoch()
+        daybook::epoch()
     }
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::epoch();
+        let t = daybook::epoch();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {t} (
                 key   TEXT PRIMARY KEY,
                 value BIGINT NOT NULL
@@ -35,7 +35,7 @@ impl ledger::Schema for EpochMeta {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("UPDATE {} SET value = 0 WHERE key = 'current'", ledger::epoch())))
+        SQL.get_or_init(|| daybook::leaked(format!("UPDATE {} SET value = 0 WHERE key = 'current'", daybook::epoch())))
     }
 
     fn freeze() -> &'static str {

@@ -1,7 +1,7 @@
 //! Training mode selection from command line arguments.
 use crate::*;
-use ledger::Check;
-use ledger::Schema;
+use daybook::Check;
+use daybook::Schema;
 use nlhe::NlheProfile;
 
 /// Training mode parsed from command line arguments
@@ -16,7 +16,7 @@ pub enum Mode {
 
 impl Mode {
     pub async fn run(self) {
-        let client = ledger::db().await;
+        let client = daybook::db().await;
         match self {
             Self::Fast => FastSession::new(client).await.train().await,
             Self::Slow => SlowSession::new(client).await.train().await,
@@ -36,7 +36,7 @@ impl Mode {
         // regardless of prior state" mode, so DROP > TRUNCATE is correct.
         tracing::info!("Dropping blueprint table before ensure...");
         client
-            .execute(&format!("DROP TABLE IF EXISTS {}", ledger::blueprint()), &[])
+            .execute(&format!("DROP TABLE IF EXISTS {}", daybook::blueprint()), &[])
             .await
             .expect("drop blueprint");
         crate::ensure_all(client).await;
@@ -68,10 +68,10 @@ impl Mode {
         client
             .batch_execute(&format!(
                 "TRUNCATE TABLE {}, {}, {} CASCADE; TRUNCATE TABLE {} CASCADE;",
-                ledger::actions(),
-                ledger::players(),
-                ledger::hands(),
-                ledger::rooms(),
+                daybook::actions(),
+                daybook::players(),
+                daybook::hands(),
+                daybook::rooms(),
             ))
             .await
             .expect("truncate hand histories");

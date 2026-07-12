@@ -12,7 +12,7 @@ categories   = ["game-development", "algorithms"]
 
 [features]
 default = []
-server  = ["tokio-postgres", "const_format", "async-trait", "ledger", "futures", "mccfr/server"]
+server  = ["tokio-postgres", "const_format", "async-trait", "daybook", "futures", "mccfr/server"]
 
 [dependencies]
 tracing        = { workspace = true }
@@ -22,7 +22,7 @@ kicker         = { workspace = true }
 monge          = { workspace = true }
 mccfr          = { version = "1.1", path = "../mccfr", default-features = false }
 subgame        = { workspace = true }
-ledger         = { workspace = true, optional = true }
+daybook         = { workspace = true, optional = true }
 paste          = "1.0"
 rand           = { workspace = true }
 anyhow         = "1.0"

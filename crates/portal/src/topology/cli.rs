@@ -18,7 +18,7 @@ impl From<TopologyAPI> for CLI {
 impl CLI {
     pub async fn run() -> () {
         tracing::info!("entering topology");
-        let cli = Self(TopologyAPI::from(ledger::db().await));
+        let cli = Self(TopologyAPI::from(daybook::db().await));
         loop {
             print!("> ");
             let ref mut input = String::new();

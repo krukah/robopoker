@@ -316,9 +316,9 @@ dependencies = [
  "anyhow",
  "bouncer",
  "const_format",
+ "daybook",
  "deuce",
  "kicker",
- "ledger",
  "mccfr",
  "nlhe",
  "parlor",
@@ -485,8 +485,8 @@ dependencies = [
  "actix-web",
  "argon2",
  "const_format",
+ "daybook",
  "jsonwebtoken",
- "ledger",
  "pokerkit",
  "rand 0.9.2",
  "serde",
@@ -762,6 +762,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "daybook"
+version = "1.1.0"
+dependencies = [
+ "async-trait",
+ "const_format",
+ "deuce",
+ "futures",
+ "kicker",
+ "pokerkit",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "vitals",
+]
+
+[[package]]
 name = "deranged"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -949,10 +965,10 @@ version = "1.1.0"
 dependencies = [
  "async-trait",
  "const_format",
+ "daybook",
  "deuce",
  "futures",
  "kicker",
- "ledger",
  "lloyd",
  "mccfr",
  "monge",
@@ -1612,22 +1628,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
-name = "ledger"
-version = "1.1.0"
-dependencies = [
- "async-trait",
- "const_format",
- "deuce",
- "futures",
- "kicker",
- "pokerkit",
- "tokio",
- "tokio-postgres",
- "tracing",
- "vitals",
-]
-
-[[package]]
 name = "leduc"
 version = "1.1.0"
 dependencies = [
@@ -1687,7 +1687,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "ledger",
+ "daybook",
  "litmus",
  "pokerkit",
  "portal",
@@ -1701,10 +1701,10 @@ version = "1.1.0"
 dependencies = [
  "async-trait",
  "const_format",
+ "daybook",
  "deuce",
  "elkan",
  "kicker",
- "ledger",
  "monge",
  "pokerkit",
  "rand 0.9.2",
@@ -1848,10 +1848,10 @@ dependencies = [
  "anyhow",
  "async-trait",
  "const_format",
+ "daybook",
  "deuce",
  "futures",
  "kicker",
- "ledger",
  "mccfr",
  "monge",
  "paste",
@@ -2090,10 +2090,10 @@ dependencies = [
  "async-trait",
  "bouncer",
  "const_format",
+ "daybook",
  "deuce",
  "dialoguer",
  "kicker",
- "ledger",
  "mccfr",
  "monge",
  "nlhe",
@@ -2234,11 +2234,11 @@ dependencies = [
  "bouncer",
  "clap",
  "const_format",
+ "daybook",
  "deuce",
  "forge",
  "futures",
  "kicker",
- "ledger",
  "litmus",
  "lloyd",
  "mccfr",
@@ -2548,10 +2548,10 @@ dependencies = [
 name = "robopoker"
 version = "1.1.0"
 dependencies = [
+ "daybook",
  "deuce",
  "elkan",
  "kicker",
- "ledger",
  "mccfr",
  "monge",
  "nlhe",

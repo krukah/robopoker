@@ -1,4 +1,4 @@
-# ledger
+# daybook
 
 PostgreSQL pipeline with `Schema`, `Row`, `Streamable` traits for bulk I/O.
 
@@ -35,7 +35,7 @@ Common pitfalls:
 
 ## Database Table Versioning
 
-The `(Version × Regime)` Cartesian product is the "training universe". Tables fall into three classes based on what they depend on. Pick the right macro in `crates/ledger/src/lib.rs`:
+The `(Version × Regime)` Cartesian product is the "training universe". Tables fall into three classes based on what they depend on. Pick the right macro in `crates/daybook/src/lib.rs`:
 
 | Class                               | Macro        | Suffix                | Tables                                                          |
 | ----------------------------------- | ------------ | --------------------- | --------------------------------------------------------------- |

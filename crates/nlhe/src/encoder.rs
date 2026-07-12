@@ -187,13 +187,13 @@ impl<const W: usize> WorldRestrict<W> for NlheEncoder {
 
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
-impl ledger::Hydrate for NlheEncoder {
+impl daybook::Hydrate for NlheEncoder {
     /// Streams rows from the database one at a time, avoiding the peak
     /// memory spike of buffering all 138M rows as `Vec<Row>`.
     async fn hydrate(client: std::sync::Arc<tokio_postgres::Client>) -> Self {
         use futures::StreamExt;
         tracing::info!("{:<32}{:<32}", "loading isomorphism", "from database");
-        let sql = format!("SELECT obs, abs FROM {}", ledger::isomorphism());
+        let sql = format!("SELECT obs, abs FROM {}", daybook::isomorphism());
         let params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![];
         let stream = client.query_raw(&sql, params).await.expect("isomorphism query");
         futures::pin_mut!(stream);

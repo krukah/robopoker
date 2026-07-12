@@ -30,7 +30,7 @@ impl From<Lookup> for Artifacts {
 #[cfg(feature = "server")]
 impl Artifacts {
     pub async fn stream(self, client: &tokio_postgres::Client) {
-        use ledger::Streamable;
+        use daybook::Streamable;
         self.lookup.stream(client).await;
         self.metric.stream(client).await;
         self.future.stream(client).await;

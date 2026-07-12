@@ -1,6 +1,6 @@
 //! Fast in-memory training session
 use crate::*;
-use ledger::*;
+use daybook::*;
 use mccfr::*;
 use nlhe::Flagship;
 use nlhe::NlheProfile;
@@ -47,7 +47,7 @@ impl FastSession {
         self.client.stage().await;
         let copy = format!(
             "COPY {t} (past, present, choices, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
-            t = ledger::staging()
+            t = daybook::staging()
         );
         let writer =
             BinaryCopyInWriter::new(self.client.copy_in(&copy).await.expect("copy_in"), NlheProfile::columns());

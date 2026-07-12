@@ -11,15 +11,15 @@ use std::sync::OnceLock;
 
 fn abs_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-    SQL.get_or_init(|| ledger::leaked(format!("SELECT abs FROM {} WHERE obs = $1", ledger::isomorphism())))
+    SQL.get_or_init(|| daybook::leaked(format!("SELECT abs FROM {} WHERE obs = $1", daybook::isomorphism())))
 }
 fn policy_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
     SQL.get_or_init(|| {
-        ledger::leaked(format!(
+        daybook::leaked(format!(
             "SELECT edge, weight, visits, payoff FROM {} \
          WHERE past = $1 AND present = $2 AND choices = $3",
-            ledger::blueprint()
+            daybook::blueprint()
         ))
     })
 }

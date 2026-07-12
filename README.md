@@ -64,7 +64,7 @@ graph TD
   subgame["subgame<br/><i>safe + depth-limited solving</i>"]
   elkan["elkan<br/><i>generic Elkan k-means</i>"]
   vitals["vitals<br/><i>telemetry</i>"]
-  ledger["ledger<br/><i>postgres persistence</i>"]
+  daybook["daybook<br/><i>postgres persistence</i>"]
   nlhe["nlhe<br/><i>NLHE solver</i>"]
 
   deuce --> pokerkit
@@ -76,16 +76,16 @@ graph TD
   subgame --> pokerkit
   subgame --> mccfr
   subgame --> monge
-  ledger --> pokerkit
-  ledger --> deuce
-  ledger --> kicker
-  ledger --> vitals
+  daybook --> pokerkit
+  daybook --> deuce
+  daybook --> kicker
+  daybook --> vitals
   nlhe --> kicker
   nlhe --> mccfr
   nlhe --> subgame
-  nlhe -.->|"server feature"| ledger
+  nlhe -.->|"server feature"| daybook
 
-  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,ledger,nlhe pub
+  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe pub
 ```
 
 Adding the internal crates — hand abstraction (`lloyd`), validation games (`kuhn` / `leduc` / `roshambo`), authentication (`bouncer`), and the applications and tooling layer. `pokerkit` is omitted from the arrows (almost everything depends on it) and the `robopoker` facade is omitted (it re-exports the published crates).
@@ -102,17 +102,17 @@ graph TD
   mccfr --> monge
   subgame --> mccfr
   subgame --> monge
-  ledger --> deuce
-  ledger --> kicker
-  ledger --> vitals
+  daybook --> deuce
+  daybook --> kicker
+  daybook --> vitals
   nlhe --> kicker
   nlhe --> mccfr
   nlhe --> subgame
-  nlhe --> ledger
+  nlhe --> daybook
 
   %% internal: auth
   bouncer["bouncer · auth"]
-  bouncer --> ledger
+  bouncer --> daybook
 
   %% internal: abstraction
   lloyd["lloyd · hand abstraction"]
@@ -120,7 +120,7 @@ graph TD
   lloyd --> monge
   lloyd --> elkan
   lloyd --> vitals
-  lloyd --> ledger
+  lloyd --> daybook
 
   %% internal: validation games
   kuhn --> subgame
@@ -136,7 +136,7 @@ graph TD
   litmus["litmus · validation harness"]
   forge --> lloyd
   forge --> nlhe
-  forge --> ledger
+  forge --> daybook
   parlor --> nlhe
   parlor --> subgame
   parlor --> bouncer
@@ -149,7 +149,7 @@ graph TD
   portal --> litmus
   litmus --> kicker
 
-  class deuce,monge,kicker,mccfr,subgame,elkan,pokerkit,vitals,ledger,nlhe pub
+  class deuce,monge,kicker,mccfr,subgame,elkan,pokerkit,vitals,daybook,nlhe pub
   class bouncer,lloyd,kuhn,leduc,roshambo,forge,parlor,portal,arena,spar,litmus int
 ```
 
@@ -182,7 +182,7 @@ graph TD
 
 | Crate                       |     | Description                                                       |
 | --------------------------- | --- | ----------------------------------------------------------------- |
-| [`ledger`](crates/ledger)   | 🟢  | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits    |
+| [`daybook`](crates/daybook)   | 🟢  | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits    |
 | [`vitals`](crates/vitals)   | 🟢  | OpenTelemetry init and a centrally-registered metric handle table |
 | [`bouncer`](crates/bouncer) | ⚪  | JWT + Argon2 authentication, session management                   |
 
@@ -214,14 +214,14 @@ flowchart LR
   subgraph S3["3 · search"]
     F["subgame<br/>depth-limited re-solve"]
   end
-  C --> DB[("ledger<br/>PostgreSQL")]
+  C --> DB[("daybook<br/>PostgreSQL")]
   DB --> D
   D -->|checkpoint| DB
   DB -.->|blueprint prior| F
   F -.->|concrete action| G["portal · parlor"]
 ```
 
-**1. Hierarchical abstraction** (per street: river → turn → flop → preflop). `deuce` exhaustively iterates the isomorphic⁴ hand space (3.1T situations) with nanosecond hand evaluation over bijective `u8` / `u16` / `u32` / `u64` card encodings. `lloyd` groups strategically similar hands with hierarchical k-means — k-means++² seeding, `elkan` triangle-inequality acceleration — measuring distance as the Earth Mover's Distance between child-street distributions, computed by `monge`'s Sinkhorn / Greenkhorn iteration⁵ over generic `Density` / `Support` measures. Abstractions and metrics persist to PostgreSQL through `ledger` (`Schema` / `Row` / `Streamable` with `COPY IN`, plus `(Regime × Version)` table-naming macros and a fingerprint check against silent constant drift).
+**1. Hierarchical abstraction** (per street: river → turn → flop → preflop). `deuce` exhaustively iterates the isomorphic⁴ hand space (3.1T situations) with nanosecond hand evaluation over bijective `u8` / `u16` / `u32` / `u64` card encodings. `lloyd` groups strategically similar hands with hierarchical k-means — k-means++² seeding, `elkan` triangle-inequality acceleration — measuring distance as the Earth Mover's Distance between child-street distributions, computed by `monge`'s Sinkhorn / Greenkhorn iteration⁵ over generic `Density` / `Support` measures. Abstractions and metrics persist to PostgreSQL through `daybook` (`Schema` / `Row` / `Streamable` with `COPY IN`, plus `(Regime × Version)` table-naming macros and a fingerprint check against silent constant drift).
 
 **2. MCCFR training³.** `mccfr` samples game trajectories through `kicker`'s No-Limit Hold'em engine — full side-pot / all-in / tie settlement, `Size::SPR(n, d)` / `Size::BBs(n)` bet-sizing, and `Witness` (one player's view) vs `Perfect` (god's view) recall. Its `CfrEncoder` → `Solver` → `Tree` machinery is game-agnostic; `nlhe` (`Nlhe<R, W, S>`, its `NlheEncoder`, and the production `Flagship` config) plugs in concrete schemes: external sampling, discounted / linear regret weighting⁶, and regret-based pruning⁹,¹¹. `forge` orchestrates this in `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing the blueprint to the database.
 

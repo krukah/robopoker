@@ -12,27 +12,27 @@ use tokio_postgres::Client;
 /// Zero-sized type for the fingerprint table schema.
 pub struct Fingerprint;
 
-impl ledger::Schema for Fingerprint {
+impl daybook::Schema for Fingerprint {
     fn name() -> &'static str {
-        ledger::fingerprint()
+        daybook::fingerprint()
     }
 
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                     config TEXT PRIMARY KEY,
                     set_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 );",
-                ledger::fingerprint(),
+                daybook::fingerprint(),
             ))
         })
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("TRUNCATE TABLE {};", ledger::fingerprint())))
+        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::fingerprint())))
     }
 
     fn indices() -> &'static str {
@@ -75,7 +75,7 @@ impl Fingerprint {
                  - run `trainer --regime {regime} --version {version} --mode reset` to \
                  wipe the blueprint and re-fingerprint.",
                 version = pokerkit::version(),
-                table = ledger::blueprint(),
+                table = daybook::blueprint(),
                 diff = diff_lines(&stored, &live),
             ),
         }
@@ -83,7 +83,7 @@ impl Fingerprint {
 
     async fn read(client: &Client) -> Option<String> {
         client
-            .query_opt(&format!("SELECT config FROM {} LIMIT 1", ledger::fingerprint()), &[])
+            .query_opt(&format!("SELECT config FROM {} LIMIT 1", daybook::fingerprint()), &[])
             .await
             .expect("query fingerprint")
             .map(|row| row.get::<_, String>(0))
@@ -91,11 +91,11 @@ impl Fingerprint {
 
     async fn write(client: &Client, config: &str) {
         client
-            .batch_execute(<Self as ledger::Schema>::truncates())
+            .batch_execute(<Self as daybook::Schema>::truncates())
             .await
             .expect("truncate fingerprint");
         client
-            .execute(&format!("INSERT INTO {} (config) VALUES ($1);", ledger::fingerprint()), &[&config])
+            .execute(&format!("INSERT INTO {} (config) VALUES ($1);", daybook::fingerprint()), &[&config])
             .await
             .expect("insert fingerprint");
     }

@@ -25,7 +25,7 @@
 pub use deuce as cards;
 pub use elkan as clustering;
 pub use kicker as gameplay;
-pub use ledger as database;
+pub use daybook as database;
 pub use mccfr;
 pub use monge as transport;
 pub use nlhe;

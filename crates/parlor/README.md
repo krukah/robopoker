@@ -46,4 +46,4 @@ sequenceDiagram
 - **`Player`** — the async, transport-agnostic decision trait. `players::` supplies `Human` (CLI), `Fish` (random), and a compositional bot `Zoo` where `Agent<Brain>` layers `Blueprint`, `Depth`, `World`, and `Dirac` over an in-memory CFR blueprint (`nlhe::Flagship`).
 - **`Event`** — the actor-engine protocol: `Decision(Witness)`, `Action`, `Disconnect`.
 
-Built on sibling crates `kicker` (rules/state), `nlhe`/`mccfr`/`subgame` (strategy), `deuce`/`pokerkit` (cards & types), `bouncer` (identity), and `ledger` (persistence).
+Built on sibling crates `kicker` (rules/state), `nlhe`/`mccfr`/`subgame` (strategy), `deuce`/`pokerkit` (cards & types), `bouncer` (identity), and `daybook` (persistence).

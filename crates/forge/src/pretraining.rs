@@ -7,7 +7,7 @@
 //! 4. Preflop: 1:1 isomorphism enumeration (computed from scratch)
 use deuce::*;
 use kicker::*;
-use ledger::*;
+use daybook::*;
 use lloyd::*;
 use std::sync::Arc;
 use tokio_postgres::Client;

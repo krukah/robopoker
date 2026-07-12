@@ -155,9 +155,9 @@ impl IntoIterator for Metric {
 }
 
 #[cfg(feature = "server")]
-impl ledger::Schema for Metric {
+impl daybook::Schema for Metric {
     fn name() -> &'static str {
-        ledger::metric()
+        daybook::metric()
     }
 
     fn columns() -> &'static [tokio_postgres::types::Type] {
@@ -170,22 +170,22 @@ impl ledger::Schema for Metric {
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 tri    INT  NOT NULL,
                 dx     REAL NOT NULL,
                 street SMALLINT
             );",
-                ledger::metric()
+                daybook::metric()
             ))
         })
     }
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::metric();
+        let t = daybook::metric();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE INDEX IF NOT EXISTS idx_{t}_tri ON {t} (tri);
              CREATE INDEX IF NOT EXISTS idx_{t}_street ON {t} (street);
              CREATE INDEX IF NOT EXISTS idx_{t}_dx ON {t} (dx);"
@@ -195,19 +195,19 @@ impl ledger::Schema for Metric {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("COPY {} (tri, dx) FROM STDIN BINARY", ledger::metric())))
+        SQL.get_or_init(|| daybook::leaked(format!("COPY {} (tri, dx) FROM STDIN BINARY", daybook::metric())))
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("TRUNCATE TABLE {};", ledger::metric())))
+        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::metric())))
     }
 
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::metric();
+        let t = daybook::metric();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"
             ))
@@ -217,7 +217,7 @@ impl ledger::Schema for Metric {
 
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
-impl ledger::Streamable for Metric {
+impl daybook::Streamable for Metric {
     type Row = (i32, f32);
 
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
@@ -228,7 +228,7 @@ impl ledger::Streamable for Metric {
 #[cfg(feature = "server")]
 impl Metric {
     pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
-        let sql = format!("SELECT tri, dx FROM {}", ledger::metric());
+        let sql = format!("SELECT tri, dx FROM {}", daybook::metric());
         let mut keys = std::collections::HashSet::new();
         for ref x in Abstraction::all(street) {
             for ref y in Abstraction::all(street) {

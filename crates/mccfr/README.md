@@ -50,7 +50,7 @@ flowchart LR
   Walk --> Acc["accumulate<br/>cum_regret · cum_weight"]
   Acc --> Inc["increment epoch"]
   Inc -->|next batch| Build
-  Acc -.->|periodic| CP[("checkpoint<br/>blueprint → ledger")]
+  Acc -.->|periodic| CP[("checkpoint<br/>blueprint → daybook")]
 ```
 
 - **`CfrTree`** — Base trait bundling the four associated types (Turn, Edge, Game, Info)

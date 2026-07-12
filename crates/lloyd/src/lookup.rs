@@ -72,9 +72,9 @@ impl Lookup {
 }
 
 #[cfg(feature = "server")]
-impl ledger::Schema for Lookup {
+impl daybook::Schema for Lookup {
     fn name() -> &'static str {
-        ledger::isomorphism()
+        daybook::isomorphism()
     }
 
     fn columns() -> &'static [tokio_postgres::types::Type] {
@@ -87,23 +87,23 @@ impl ledger::Schema for Lookup {
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 obs      BIGINT   NOT NULL,
                 abs      SMALLINT NOT NULL,
                 equity   REAL,
                 position INT DEFAULT 0
             );",
-                ledger::isomorphism()
+                daybook::isomorphism()
             ))
         })
     }
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::isomorphism();
+        let t = daybook::isomorphism();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "WITH numbered AS (
                 SELECT obs, (ROW_NUMBER() OVER (PARTITION BY abs ORDER BY obs) - 1)::INTEGER AS pos
                 FROM {t}
@@ -122,19 +122,19 @@ impl ledger::Schema for Lookup {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("COPY {} (obs, abs) FROM STDIN BINARY", ledger::isomorphism())))
+        SQL.get_or_init(|| daybook::leaked(format!("COPY {} (obs, abs) FROM STDIN BINARY", daybook::isomorphism())))
     }
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("TRUNCATE TABLE {};", ledger::isomorphism())))
+        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::isomorphism())))
     }
 
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::isomorphism();
+        let t = daybook::isomorphism();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"
             ))
@@ -144,7 +144,7 @@ impl ledger::Schema for Lookup {
 
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
-impl ledger::Streamable for Lookup {
+impl daybook::Streamable for Lookup {
     type Row = (i64, i16);
 
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
@@ -155,7 +155,7 @@ impl ledger::Streamable for Lookup {
 #[cfg(feature = "server")]
 impl Lookup {
     pub async fn from_street(client: &tokio_postgres::Client, street: Street) -> Self {
-        let sql = format!("SELECT obs, abs FROM {}", ledger::isomorphism());
+        let sql = format!("SELECT obs, abs FROM {}", daybook::isomorphism());
         client
             .query(&sql, &[])
             .await

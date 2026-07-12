@@ -12,9 +12,9 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 #[cfg(feature = "server")]
-impl ledger::Schema for NlheProfile {
+impl daybook::Schema for NlheProfile {
     fn name() -> &'static str {
-        ledger::blueprint()
+        daybook::blueprint()
     }
 
     fn columns() -> &'static [tokio_postgres::types::Type] {
@@ -33,9 +33,9 @@ impl ledger::Schema for NlheProfile {
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "COPY {} (past, present, choices, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
-                ledger::blueprint()
+                daybook::blueprint()
             ))
         })
     }
@@ -43,7 +43,7 @@ impl ledger::Schema for NlheProfile {
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 edge       BIGINT,
                 past       BIGINT,
@@ -55,16 +55,16 @@ impl ledger::Schema for NlheProfile {
                 visits     INT DEFAULT 0,
                 UNIQUE     (past, present, choices, edge)
             );",
-                ledger::blueprint()
+                daybook::blueprint()
             ))
         })
     }
 
     fn indices() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::blueprint();
+        let t = daybook::blueprint();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_{t}_upsert  ON {t} (present, past, choices, edge);
              CREATE        INDEX IF NOT EXISTS idx_{t}_bucket  ON {t} (present, past, choices);
              CREATE        INDEX IF NOT EXISTS idx_{t}_present ON {t} (present);
@@ -76,14 +76,14 @@ impl ledger::Schema for NlheProfile {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| ledger::leaked(format!("TRUNCATE TABLE {};", ledger::blueprint())))
+        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::blueprint())))
     }
 
     fn freeze() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        let t = ledger::blueprint();
+        let t = daybook::blueprint();
         SQL.get_or_init(|| {
-            ledger::leaked(format!(
+            daybook::leaked(format!(
                 "ALTER TABLE {t} SET (fillfactor = 100);
              ALTER TABLE {t} SET (autovacuum_enabled = false);"
             ))
@@ -93,10 +93,10 @@ impl ledger::Schema for NlheProfile {
 
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
-impl ledger::Hydrate for NlheProfile {
+impl daybook::Hydrate for NlheProfile {
     async fn hydrate(client: std::sync::Arc<tokio_postgres::Client>) -> Self {
         tracing::info!("{:<32}{:<32}", "loading blueprint", "from database");
-        let epoch_sql = format!("SELECT value FROM {} WHERE key = 'current'", ledger::epoch());
+        let epoch_sql = format!("SELECT value FROM {} WHERE key = 'current'", daybook::epoch());
         let epochs = client
             .query_opt(&epoch_sql, &[])
             .await
@@ -105,7 +105,7 @@ impl ledger::Hydrate for NlheProfile {
             .map(|r| r.get::<_, i64>(0) as usize)
             .expect("to have already created epoch metadata");
         let blueprint_sql =
-            format!("SELECT past, present, choices, edge, weight, regret, payoff, visits FROM {}", ledger::blueprint());
+            format!("SELECT past, present, choices, edge, weight, regret, payoff, visits FROM {}", daybook::blueprint());
         let mut encounters = HashMap::new();
         for row in client
             .query(&blueprint_sql, &[])

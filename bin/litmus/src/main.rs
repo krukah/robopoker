@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let scenarios = litmus::load(&cli.scenarios)?;
-    let client = ledger::db().await;
+    let client = daybook::db().await;
     let backend =
         portal::litmus::Backend::new(portal::StrategyAPI::new(client.clone()), portal::TrainingAPI::new(client));
     let litmus = litmus::Litmus::new(backend);

@@ -49,7 +49,7 @@ impl Play {
 #[cfg(feature = "server")]
 mod schema {
     use super::*;
-    use ledger::*;
+    use daybook::*;
     use std::sync::OnceLock;
 
     impl Schema for Play {

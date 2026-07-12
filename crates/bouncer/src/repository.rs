@@ -1,5 +1,5 @@
 use super::*;
-use ledger::*;
+use daybook::*;
 use pokerkit::ID;
 use pokerkit::Unique;
 use std::sync::Arc;

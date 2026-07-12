@@ -1,7 +1,7 @@
 use bouncer::Member;
 use deuce::*;
 use kicker::Action;
-use ledger::*;
+use daybook::*;
 use parlor::records::{Hand as HandRecord, Participant, Play, Visibility};
 use pokerkit::*;
 use std::sync::Arc;
@@ -142,15 +142,15 @@ impl EvaluationRepository for Arc<Client> {
         static SQL_P: OnceLock<String> = OnceLock::<String>::new();
         static SQL_A: OnceLock<String> = OnceLock::<String>::new();
         let sql_h = SQL_H.get_or_init(|| {
-            format!("SELECT id, room_id, board, pot, dealer FROM {} WHERE id = ANY($1) ORDER BY id", ledger::hands())
+            format!("SELECT id, room_id, board, pot, dealer FROM {} WHERE id = ANY($1) ORDER BY id", daybook::hands())
         });
         let sql_p = SQL_P.get_or_init(|| format!(
             "SELECT hand_id, user_id, seat, hole, stack, visibility, pnl FROM {} WHERE hand_id = ANY($1) ORDER BY hand_id, seat",
-            ledger::players()
+            daybook::players()
         ));
         let sql_a = SQL_A.get_or_init(|| format!(
             "SELECT hand_id, seq, player_id, encoded, elapsed_ms FROM {} WHERE hand_id = ANY($1) ORDER BY hand_id, seq",
-            ledger::actions()
+            daybook::actions()
         ));
         let uuids: Vec<uuid::Uuid> = hands.iter().map(pokerkit::ID::inner).collect();
         let hrows = self.query(sql_h.as_str(), &[&uuids]).await?;
