@@ -2,9 +2,9 @@
 //!
 //! Requires the `database` feature.
 use super::*;
+use daybook::*;
 use deuce::*;
 use kicker::*;
-use daybook::*;
 use pokerkit::*;
 use std::sync::Arc;
 use std::sync::OnceLock;

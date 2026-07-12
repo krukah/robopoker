@@ -1,6 +1,6 @@
+use daybook::*;
 use deuce::*;
 use kicker::*;
-use daybook::*;
 use lloyd::*;
 use monge::*;
 use pokerkit::*;

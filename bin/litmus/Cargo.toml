@@ -11,6 +11,7 @@ license      = "MIT"
 [[bin]]
 name = "litmus"
 path = "src/main.rs"
+doc = false
 
 [dependencies]
 litmus   = { path = "../../crates/litmus" }

@@ -5,9 +5,9 @@
 //! 2. Turn: k-means on river distributions (hydrates river data)
 //! 3. Flop: k-means on turn distributions (hydrates turn data)
 //! 4. Preflop: 1:1 isomorphism enumeration (computed from scratch)
+use daybook::*;
 use deuce::*;
 use kicker::*;
-use daybook::*;
 use lloyd::*;
 use std::sync::Arc;
 use tokio_postgres::Client;

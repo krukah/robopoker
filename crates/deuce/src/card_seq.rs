@@ -3,14 +3,14 @@ use super::hand::Hand;
 
 /// Zero-allocation iterator yielding cards in permuted order.
 ///
-/// Produced by [`Perm::arrange`] or [`HandSeq::cards`]. Holds a
+/// Produced by [`Lehmer::arrange`] or [`HandSeq::cards`]. Holds a
 /// stack-allocated snapshot of the canonical cards and the decoded
 /// index permutation.
 ///
 /// Implements [`Iterator`], [`ExactSizeIterator`],
 /// [`DoubleEndedIterator`], and `FusedIterator`.
 ///
-/// [`Perm::arrange`]: super::perm::Perm::arrange
+/// [`Lehmer::arrange`]: crate::Lehmer::arrange
 /// [`HandSeq::cards`]: super::hand_seq::HandSeq::cards
 #[derive(Debug, Clone, Copy)]
 pub struct CardSeq {

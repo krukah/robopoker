@@ -22,10 +22,10 @@
 //! - [`database`] — PostgreSQL persistence
 //! - [`telemetry`] — OpenTelemetry init and metric registry
 
+pub use daybook as database;
 pub use deuce as cards;
 pub use elkan as clustering;
 pub use kicker as gameplay;
-pub use daybook as database;
 pub use mccfr;
 pub use monge as transport;
 pub use nlhe;

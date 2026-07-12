@@ -1,5 +1,5 @@
-use kicker::*;
 use daybook::*;
+use kicker::*;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio_postgres::Client;

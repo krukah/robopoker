@@ -104,8 +104,10 @@ impl daybook::Hydrate for NlheProfile {
             .flatten()
             .map(|r| r.get::<_, i64>(0) as usize)
             .expect("to have already created epoch metadata");
-        let blueprint_sql =
-            format!("SELECT past, present, choices, edge, weight, regret, payoff, visits FROM {}", daybook::blueprint());
+        let blueprint_sql = format!(
+            "SELECT past, present, choices, edge, weight, regret, payoff, visits FROM {}",
+            daybook::blueprint()
+        );
         let mut encounters = HashMap::new();
         for row in client
             .query(&blueprint_sql, &[])

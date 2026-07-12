@@ -1,5 +1,5 @@
-use kicker::*;
 use daybook::*;
+use kicker::*;
 use mccfr::Solver;
 use nlhe::*;
 use parlor::Solved;

@@ -3,7 +3,7 @@ use super::card_seq::CardSeq;
 use super::hand::Hand;
 use super::lehmer::Lehmer;
 
-/// An ordered hand: a [`Hand`] (the set) paired with a [`Perm`] (the deal order).
+/// An ordered hand: a [`Hand`] (the set) paired with a [`Lehmer`] (the deal order).
 ///
 /// `Hand` is an unordered bitmask — it forgets insertion order. `HandSeq`
 /// preserves that ordering so cards can be reconstructed in the sequence
@@ -128,7 +128,7 @@ impl From<Hand> for HandSeq {
     }
 }
 
-/// Construct from an explicit `(Hand, Perm)` pair.
+/// Construct from an explicit `(Hand, Lehmer)` pair.
 impl From<(Hand, Lehmer)> for HandSeq {
     fn from((hand, perm): (Hand, Lehmer)) -> Self {
         Self { hand, perm }
