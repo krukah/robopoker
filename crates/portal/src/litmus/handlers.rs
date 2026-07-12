@@ -17,7 +17,7 @@ pub async fn run(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>
 }
 
 pub async fn report(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>) -> impl Responder {
-    let api_label = format!("rbp-{} {}", pokerkit::regime(), pokerkit::version());
+    let api_label = format!("robopoker-{} {}", pokerkit::regime(), pokerkit::version());
     match api.report(&req, &api_label).await {
         Ok(md) => HttpResponse::Ok().content_type("text/markdown; charset=utf-8").body(md),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),

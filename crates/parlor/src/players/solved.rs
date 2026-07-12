@@ -153,7 +153,7 @@ impl Solved {
 
     /// Diagnostic: log blueprint and subgame-refined policy side-by-side
     /// for a single postflop decision. Emitted at `trace!` — workspace
-    /// default filter is `info,rbp=debug`, so this stays off in production
+    /// default filter is `info,robopoker=debug`, so this stays off in production
     /// until enabled with `RUST_LOG=parlor=trace`.
     fn emit_verify(&self, tag: Tag, blueprint: &BTreeMap<Edge, Probability>, refined: &BTreeMap<Edge, Probability>) {
         let fmt = |m: &BTreeMap<Edge, Probability>| -> String {

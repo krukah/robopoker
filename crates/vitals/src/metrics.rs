@@ -65,7 +65,7 @@ pub struct Handles {
 }
 
 pub fn get() -> &'static Handles {
-    HANDLES.get_or_init(|| build(&global::meter("rbp")))
+    HANDLES.get_or_init(|| build(&global::meter("robopoker")))
 }
 
 pub(crate) fn install(meter: &Meter) {
@@ -75,34 +75,34 @@ pub(crate) fn install(meter: &Meter) {
 fn build(meter: &Meter) -> Handles {
     Handles {
         mccfr_steps: meter
-            .u64_counter("rbp.mccfr.steps")
+            .u64_counter("robopoker.mccfr.steps")
             .with_description("MCCFR training steps completed (cumulative). Use rate() for steps/sec.")
             .build(),
         mccfr_nodes: meter
-            .u64_counter("rbp.mccfr.nodes")
+            .u64_counter("robopoker.mccfr.nodes")
             .with_description("Game tree nodes explored (cumulative). Use rate() for nodes/sec.")
             .build(),
         mccfr_infos: meter
-            .u64_counter("rbp.mccfr.infos")
+            .u64_counter("robopoker.mccfr.infos")
             .with_description("Information sets visited (cumulative). Use rate() for infos/sec.")
             .build(),
         mccfr_sum_regret: meter
-            .f64_gauge("rbp.mccfr.sum_regret")
+            .f64_gauge("robopoker.mccfr.sum_regret")
             .with_description("Sum of accumulated regret (convergence signal, lower is better)")
             .build(),
         mccfr_flush_duration_ms: meter
-            .f64_histogram("rbp.mccfr.flush_duration_ms")
+            .f64_histogram("robopoker.mccfr.flush_duration_ms")
             .with_description("Wall time of a periodic training-to-DB snapshot")
             .build(),
         mccfr_tree_size: meter
-            .u64_histogram("rbp.mccfr.tree_size")
+            .u64_histogram("robopoker.mccfr.tree_size")
             .with_description(
                 "Number of nodes in each sampled training tree. One \
                  observation per tree per batch.",
             )
             .build(),
         mccfr_infoset_size: meter
-            .u64_histogram("rbp.mccfr.infoset_size")
+            .u64_histogram("robopoker.mccfr.infoset_size")
             .with_description(
                 "Number of nodes per infoset within a sampled tree (post \
                  walker filter). One observation per infoset per batch — \
@@ -111,43 +111,43 @@ fn build(meter: &Meter) -> Handles {
             )
             .build(),
         mccfr_infosets_per_tree: meter
-            .u64_histogram("rbp.mccfr.infosets_per_tree")
+            .u64_histogram("robopoker.mccfr.infosets_per_tree")
             .with_description(
                 "Distinct infosets per sampled tree (post walker filter). \
                  One observation per tree per batch.",
             )
             .build(),
         kmeans_drift_max: meter
-            .f64_gauge("rbp.kmeans.drift_max")
+            .f64_gauge("robopoker.kmeans.drift_max")
             .with_description(
                 "Largest centroid movement during the last Elkan iteration. \
                  Approaches zero at convergence; spikes mean a cluster reseeded.",
             )
             .build(),
         kmeans_iteration_ms: meter
-            .f64_histogram("rbp.kmeans.iteration_ms")
+            .f64_histogram("robopoker.kmeans.iteration_ms")
             .with_description("Wall time of a single Elkan iteration (labeled by street)")
             .build(),
         kmeans_phase_ms: meter
-            .f64_histogram("rbp.kmeans.phase_ms")
+            .f64_histogram("robopoker.kmeans.phase_ms")
             .with_description(
                 "Wall time per clustering phase. Phases: hydrate, init, bound, \
                  iterate, lookup, metric, future.",
             )
             .build(),
         kmeans_cluster_size: meter
-            .u64_histogram("rbp.kmeans.cluster_size")
+            .u64_histogram("robopoker.kmeans.cluster_size")
             .with_description(
                 "Points-per-cluster at convergence (one record per cluster). \
                  Distribution skew flags imbalanced abstractions.",
             )
             .build(),
         kmeans_iterations: meter
-            .u64_counter("rbp.kmeans.iterations")
+            .u64_counter("robopoker.kmeans.iterations")
             .with_description("K-means iterations completed (cumulative). Use rate() for iters/sec.")
             .build(),
         kmeans_early_terminated: meter
-            .u64_counter("rbp.kmeans.early_terminated")
+            .u64_counter("robopoker.kmeans.early_terminated")
             .with_description(
                 "Clustering runs that hit KmeansHyperParams::drift_threshold before \
                  exhausting Street::t() iterations. Increment per street that triggered \
@@ -155,7 +155,7 @@ fn build(meter: &Meter) -> Handles {
             )
             .build(),
         kmeans_reassignment: meter
-            .f64_gauge("rbp.kmeans.reassignment")
+            .f64_gauge("robopoker.kmeans.reassignment")
             .with_description(
                 "Fraction of points whose assigned cluster changed since the \
                  previous iteration. 0.0 = fully stable, 1.0 = every point moved. \
@@ -163,7 +163,7 @@ fn build(meter: &Meter) -> Handles {
             )
             .build(),
         kmeans_drift_dist: meter
-            .f64_histogram("rbp.kmeans.drift_dist")
+            .f64_histogram("robopoker.kmeans.drift_dist")
             .with_description(
                 "Distribution of per-cluster drift values within one iteration \
                  (K=128/144 records per iter). Heatmap exposes which clusters \
@@ -172,54 +172,54 @@ fn build(meter: &Meter) -> Handles {
             )
             .build(),
         subgame_decisions: meter
-            .u64_counter("rbp.subgame.decisions")
+            .u64_counter("robopoker.subgame.decisions")
             .with_description("Subgame decisions taken")
             .build(),
         subgame_decision_ms: meter
-            .f64_histogram("rbp.subgame.decision_ms")
+            .f64_histogram("robopoker.subgame.decision_ms")
             .with_description("Wall time per subgame decision")
             .build(),
         subgame_iterations: meter
-            .u64_histogram("rbp.subgame.iterations")
+            .u64_histogram("robopoker.subgame.iterations")
             .with_description("Solver iterations per subgame decision")
             .build(),
         subgame_relative_regret: meter
-            .f64_histogram("rbp.subgame.relative_regret")
+            .f64_histogram("robopoker.subgame.relative_regret")
             .with_description("regret/pot at subgame decision time")
             .build(),
         subgame_policy_deviation: meter
-            .f64_histogram("rbp.subgame.policy_deviation")
+            .f64_histogram("robopoker.subgame.policy_deviation")
             .with_description(
                 "L1 distance between refined and blueprint policies per decision. \
                  Zero = subgame agreed with blueprint; 2 = fully disjoint.",
             )
             .build(),
         http_requests: meter
-            .u64_counter("rbp.http.requests")
+            .u64_counter("robopoker.http.requests")
             .with_description("HTTP requests served")
             .build(),
         http_duration_ms: meter
-            .f64_histogram("rbp.http.duration_ms")
+            .f64_histogram("robopoker.http.duration_ms")
             .with_description("HTTP request duration")
             .build(),
         db_queries: meter
-            .u64_counter("rbp.db.queries")
+            .u64_counter("robopoker.db.queries")
             .with_description("Database queries executed")
             .build(),
         db_query_ms: meter
-            .f64_histogram("rbp.db.query_ms")
+            .f64_histogram("robopoker.db.query_ms")
             .with_description("Database query duration")
             .build(),
         slumbot_hands: meter
-            .u64_counter("rbp.slumbot.hands")
+            .u64_counter("robopoker.slumbot.hands")
             .with_description("Slumbot hands played")
             .build(),
         slumbot_hand_bb: meter
-            .f64_histogram("rbp.slumbot.hand_bb")
+            .f64_histogram("robopoker.slumbot.hand_bb")
             .with_description("Winnings per hand in big blinds (signed; use _bucket for distribution, not _sum)")
             .build(),
         slumbot_hand_bb_won: meter
-            .f64_counter("rbp.slumbot.hand_bb_won")
+            .f64_counter("robopoker.slumbot.hand_bb_won")
             .with_description(
                 "Cumulative big blinds won (positive side only). Paired with \
                  hand_bb_lost, the signed sum is `won - lost`; unlike a histogram's \
@@ -227,14 +227,14 @@ fn build(meter: &Meter) -> Handles {
             )
             .build(),
         slumbot_hand_bb_lost: meter
-            .f64_counter("rbp.slumbot.hand_bb_lost")
+            .f64_counter("robopoker.slumbot.hand_bb_lost")
             .with_description(
                 "Cumulative big blinds lost (absolute value of negative hand results). \
                  See hand_bb_won for mean-bb/100 computation.",
             )
             .build(),
         slumbot_errors: meter
-            .u64_counter("rbp.slumbot.errors")
+            .u64_counter("robopoker.slumbot.errors")
             .with_description("Slumbot session failures")
             .build(),
     }
