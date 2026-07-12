@@ -1,4 +1,24 @@
-# Clustering Complexity Analysis
+# lloyd
+
+Hierarchical k-means clustering with Earth Mover's Distance for poker hand abstraction
+(river → turn → flop → preflop).
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Obs["isomorphic<br/>observations (deuce)"] --> Hist["equity<br/>histograms"]
+  Hist --> KM["k-means<br/><i>elkan</i>"]
+  KM --> EMD["EMD metric<br/><i>monge · Sinkhorn</i>"]
+  EMD --> Abs["Abstraction<br/>buckets"]
+  Abs --> DB[("ledger<br/>Postgres")]
+  KM -.->|previous street as prior| Hist
+```
+
+Each coarser street clusters over distributions of the *next* street's buckets — hence
+the prior edge above.
+
+## Clustering complexity analysis
 
 Computational cost model for the k-means clustering pipeline.
 
