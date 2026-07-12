@@ -201,6 +201,26 @@ graph TD
 
 The pipeline runs in three stages — static abstraction, blueprint training, then real-time search — with the crate names and key types shown inline.
 
+```mermaid
+flowchart LR
+  subgraph S1["1 · abstraction"]
+    direction LR
+    A["deuce<br/>isomorphic hands"] --> B["lloyd<br/>hierarchical k-means"]
+    B --> C["monge<br/>EMD · Sinkhorn"]
+  end
+  subgraph S2["2 · training"]
+    D["mccfr + nlhe<br/>blueprint (Flagship)"]
+  end
+  subgraph S3["3 · search"]
+    F["subgame<br/>depth-limited re-solve"]
+  end
+  C --> DB[("ledger<br/>PostgreSQL")]
+  DB --> D
+  D -->|checkpoint| DB
+  DB -.->|blueprint prior| F
+  F -.->|concrete action| G["portal · parlor"]
+```
+
 **1. Hierarchical abstraction** (per street: river → turn → flop → preflop). `deuce` exhaustively iterates the isomorphic⁴ hand space (3.1T situations) with nanosecond hand evaluation over bijective `u8` / `u16` / `u32` / `u64` card encodings. `lloyd` groups strategically similar hands with hierarchical k-means — k-means++² seeding, `elkan` triangle-inequality acceleration — measuring distance as the Earth Mover's Distance between child-street distributions, computed by `monge`'s Sinkhorn / Greenkhorn iteration⁵ over generic `Density` / `Support` measures. Abstractions and metrics persist to PostgreSQL through `ledger` (`Schema` / `Row` / `Streamable` with `COPY IN`, plus `(Regime × Version)` table-naming macros and a fingerprint check against silent constant drift).
 
 **2. MCCFR training³.** `mccfr` samples game trajectories through `kicker`'s No-Limit Hold'em engine — full side-pot / all-in / tie settlement, `Size::SPR(n, d)` / `Size::BBs(n)` bet-sizing, and `Witness` (one player's view) vs `Perfect` (god's view) recall. Its `CfrEncoder` → `Solver` → `Tree` machinery is game-agnostic; `nlhe` (`Nlhe<R, W, S>`, its `NlheEncoder`, and the production `Flagship` config) plugs in concrete schemes: external sampling, discounted / linear regret weighting⁶, and regret-based pruning⁹,¹¹. `forge` orchestrates this in `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing the blueprint to the database.
