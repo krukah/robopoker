@@ -119,49 +119,12 @@ The dominant cost comes from **Sinkhorn EMD calculations** in the inner loop of 
 
 ## Elkan K-Means Phases
 
-```
-                        ELKAN ITERATION BREAKDOWN
-                        (elkan.rs:step_elkan)
-
-    ┌─────────────────────────────────────────────────────────────────┐
-    │  PHASE 1: Pairwise Centroid Distances                           │
-    │  ────────────────────────────────────                           │
-    │                                                                 │
-    │     for c1 in 0..K {                                            │
-    │         for c2 in c1..K {                                       │
-    │             EMD(centroid[c1], centroid[c2])                     │
-    │         }                                                       │
-    │     }                                                           │
-    │                                                                 │
-    │     F_pairwise = K² × C_emd = K² × K²I(4 + C_density)           │
-    │                = K⁴ × I × (4 + C_density)                       │
-    │                                                                 │
-    ├─────────────────────────────────────────────────────────────────┤
-    │  PHASE 2: Point-Centroid Bounds (Triangle Inequality Pruned)    │
-    │  ───────────────────────────────────────────────────────────    │
-    │                                                                 │
-    │     for point in 0..N {                                         │
-    │         if upper_bound[point] > s[assigned[point]] {            │
-    │             // not pruned, compute distances                    │
-    │             for c in 0..K {                                     │
-    │                 if lower_bound[point][c] < upper_bound[point] { │
-    │                     EMD(point, centroid[c])                     │
-    │                 }                                               │
-    │             }                                                   │
-    │         }                                                       │
-    │     }                                                           │
-    │                                                                 │
-    │     F_bounds = N × K × P × C_emd                                │
-    │              = N × K × P × K²I(4 + C_density)                   │
-    │              = N × P × K³ × I × (4 + C_density)                 │
-    │                                                                 │
-    ├─────────────────────────────────────────────────────────────────┤
-    │  PHASE 3: Centroid Updates (negligible)                         │
-    │  ──────────────────────────────────────                         │
-    │                                                                 │
-    │     F_update = N × S × 2 ≈ 2NS << F_bounds                      │
-    │                                                                 │
-    └─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+  P1["PHASE 1 · pairwise centroid distances<br/>K² EMD comparisons<br/>F_pairwise = K⁴·I·(4 + C_density)"]
+  P2["PHASE 2 · point-centroid bounds (triangle-inequality pruned)<br/>skip points where upper_bound ≤ s(assigned); else EMD vs candidate centroids<br/>F_bounds = N·P·K³·I·(4 + C_density)"]
+  P3["PHASE 3 · centroid updates<br/>F_update = 2NS ≪ F_bounds (negligible)"]
+  P1 --> P2 --> P3
 ```
 
 ---
@@ -276,29 +239,14 @@ River uses `Equity::variation` (simple CDF difference) — no Sinkhorn, no optim
 
 ## Optimization Impact Summary
 
-```
-                    HISTOGRAM OPTIMIZATION IMPACT
+Histogram optimization drops the per-EMD factor `(4 + C_density)` from **11 → 5** (theoretical 2.2× speedup):
 
-    ┌───────────────────────────────────────────────────────────────┐
-    │                                                               │
-    │   (4 + C_density)  :  11  →  5                                │
-    │                       ──     ─                                │
-    │                      old    new                               │
-    │                                                               │
-    │   Theoretical speedup:  11/5 = 2.2×                           │
-    │                                                               │
-    └───────────────────────────────────────────────────────────────┘
-
-    ┌─────────────┬──────────────┬──────────────┬──────────┐
-    │   Layer     │   Old FLOPs  │   New FLOPs  │ Speedup  │
-    ├─────────────┼──────────────┼──────────────┼──────────┤
-    │   Turn      │   6.7 PFLOP  │   3.0 PFLOP  │   2.2×   │
-    │   Flop      │   3.2 PFLOP  │   1.5 PFLOP  │   2.1×   │
-    │   Preflop   │   negligible │              │   N/A    │
-    ├─────────────┼──────────────┼──────────────┼──────────┤
-    │   Total     │   9.9 PFLOP  │   4.5 PFLOP  │   2.2×   │
-    └─────────────┴──────────────┴──────────────┴──────────┘
-```
+| Layer       | Old FLOPs    | New FLOPs    | Speedup |
+| ----------- | ------------ | ------------ | ------- |
+| Turn        | 6.7 PFLOP    | 3.0 PFLOP    | 2.2×    |
+| Flop        | 3.2 PFLOP    | 1.5 PFLOP    | 2.1×    |
+| Preflop     | negligible   | —            | N/A     |
+| **Total**   | **9.9 PFLOP**| **4.5 PFLOP**| **2.2×**|
 
 ---
 
@@ -306,73 +254,39 @@ River uses `Equity::variation` (simple CDF difference) — no Sinkhorn, no optim
 
 ### Memory Layout
 
-```
-                        MEMORY IMPROVEMENTS
+|                | `BTreeMap<Abstraction, usize>`      | `Bins<N>` (stack-allocated array) |
+| -------------- | ----------------------------------- | --------------------------------- |
+| Size           | 48 B base + ~40 B/entry             | fixed `1 + 8 + 8N` B              |
+| Heap           | scattered allocations               | zero                              |
+| Locality       | poor                                | contiguous, cache-friendly        |
+| Access         | pointer chasing                     | predictable                       |
 
-    ┌─────────────────────────────────────────────────────────────┐
-    │  BTreeMap<Abstraction, usize>                               │
-    │  ─────────────────────────────                              │
-    │                                                             │
-    │     • 48 bytes base overhead                                │
-    │     • ~40 bytes per entry (nodes, pointers, balance)        │
-    │     • Scattered heap allocations                            │
-    │     • Poor cache locality                                   │
-    │     • Allocation overhead per histogram                     │
-    │                                                             │
-    ├─────────────────────────────────────────────────────────────┤
-    │  Bins<N> (stack-allocated array)                            │
-    │  ───────────────────────────────                            │
-    │                                                             │
-    │     • Fixed size: 1 + 8 + 8N bytes                          │
-    │     • Zero heap allocations                                 │
-    │     • Contiguous memory layout                              │
-    │     • Cache-friendly iteration                              │
-    │     • Predictable access patterns                           │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-
-    Layer storage: Box<[Histogram; N]> is now fully contiguous
-
-    Turn Layer memory:  1.7M × 1.2KB ≈ 2.0 GB (contiguous)
-    Flop Layer memory:  1.3M × 1.0KB ≈ 1.3 GB (contiguous)
-```
+`Layer` storage `Box<[Histogram; N]>` is fully contiguous — Turn ≈ 1.7M × 1.2 KB ≈ **2.0 GB**, Flop ≈ 1.3M × 1.0 KB ≈ **1.3 GB**.
 
 ### Cache Effects
 
-```
-    ┌─────────────────────────────────────────────────────────────┐
-    │  Density iteration (support scan):                          │
-    │                                                             │
-    │     BTreeMap: pointer chasing through tree nodes            │
-    │               ~3-5 cache misses per lookup                  │
-    │                                                             │
-    │     Bins<N>:  sequential array scan                         │
-    │               prefetcher-friendly, ~0.1 cache misses/lookup │
-    │                                                             │
-    │  Estimated cache speedup: 2-4× on iteration-heavy code      │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-```
+Density iteration (support scan):
+
+| Structure  | Behavior                                              |
+| ---------- | ----------------------------------------------------- |
+| `BTreeMap` | pointer chasing through tree nodes, ~3-5 misses/lookup |
+| `Bins<N>`  | sequential array scan, prefetcher-friendly, ~0.1 misses/lookup |
+
+Estimated cache speedup: **2-4×** on iteration-heavy code.
 
 ---
 
 ## Remaining Bottlenecks
 
+```mermaid
+pie showData title Cost breakdown (post-optimization)
+  "Sinkhorn exp/ln" : 60
+  "Density lookups" : 30
+  "Elkan bookkeeping" : 8
+  "Centroid updates" : 2
 ```
-                        COST BREAKDOWN (POST-OPTIMIZATION)
 
-    ┌─────────────────────────────────────────────────────────────┐
-    │                                                             │
-    │   Sinkhorn exp/ln operations     ████████████████  60%      │
-    │   Density lookups (optimized)    ████████          30%      │
-    │   Elkan bookkeeping              ██                 8%      │
-    │   Centroid updates               ░                  2%      │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-
-    Primary bottleneck: Transcendental functions (exp, ln) in Sinkhorn
-    Secondary: Sheer scale of N × K distance calculations
-```
+Primary bottleneck: transcendental functions (`exp`, `ln`) in Sinkhorn; secondary: the sheer scale of N × K distance calculations.
 
 ---
 
