@@ -1,7 +1,7 @@
 //! HTTP request metrics middleware.
 //!
-//! Instruments every request with `robopoker.http.requests` (counter) and
-//! `robopoker.http.duration_ms` (histogram), labeled by `method`, `route`,
+//! Instruments every request with `rbp.http.requests` (counter) and
+//! `rbp.http.duration_ms` (histogram), labeled by `method`, `route`,
 //! and `status`. Uses the matched route pattern (e.g., `/topology/hst-wrt-abs`)
 //! rather than the raw path to keep label cardinality bounded.
 use actix_web::Error;
@@ -14,7 +14,7 @@ use futures::future::Ready;
 use futures::future::ready;
 use std::time::Instant;
 
-/// Wrap-this type for `App::wrap(Metrics)` — emits `robopoker.http.*` per request.
+/// Wrap-this type for `App::wrap(Metrics)` — emits `rbp.http.*` per request.
 pub struct Metrics;
 
 impl<S, B> Transform<S, ServiceRequest> for Metrics

@@ -1,7 +1,7 @@
 //! Instrumentation wrapper for SQL operations.
 //!
-//! Every `measure("name", future).await` bumps the `robopoker.db.queries` counter
-//! and records the duration in `robopoker.db.query_ms` with the query name as a
+//! Every `measure("name", future).await` bumps the `rbp.db.queries` counter
+//! and records the duration in `rbp.db.query_ms` with the query name as a
 //! label. Keep `name` a compile-time `&'static str` — cardinality stays
 //! bounded to the set of trait-method names.
 //!
@@ -20,7 +20,7 @@ use vitals::KeyValue;
 /// intentional — we want wall-clock time for the DB interaction from the
 /// caller's perspective.
 ///
-/// Emits both the `robopoker.db.*` metric pair *and* a `db.query` tracing span
+/// Emits both the `rbp.db.*` metric pair *and* a `db.query` tracing span
 /// so trace waterfalls show nested DB calls under the caller's span.
 pub async fn measure<F, T>(name: &'static str, f: F) -> T
 where
