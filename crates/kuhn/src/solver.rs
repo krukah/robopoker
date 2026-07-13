@@ -156,6 +156,23 @@ mod tests {
         kuhn_info(true, rank, node)
     }
 
+    /// Regression guard for #53: `sampling_distribution` must be a true
+    /// probability distribution (Σ ≈ 1), so `sampling_reach` uses the same
+    /// probability `WeightedIndex` draws from. Before the fix the per-edge
+    /// smoothing pseudocount and the curiosity floor left it summing to Z > 1.
+    #[test]
+    fn sampling_distribution_is_normalized() {
+        let solver = Kuhn::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(1 << 12);
+        let p = solver.profile();
+        for rank in [Rank::J, Rank::Q, Rank::K] {
+            for node in [History::Open, History::Bet, History::Check, History::CheckBet] {
+                let info = view(rank, node);
+                let sum = p.sampling_distribution(&info).iter().map(|(_, q)| *q).sum::<f32>();
+                assert!((sum - 1.0).abs() < 1e-4, "sampling_distribution({rank:?}, {node:?}) sums to {sum:.5}, not 1");
+            }
+        }
+    }
+
     #[test]
     #[rustfmt::skip]
     fn nash_equilibrium() {
