@@ -17,7 +17,7 @@ impl std::fmt::Display for Hole {
 
 impl From<Hand> for Hole {
     fn from(hand: Hand) -> Self {
-        debug_assert!(hand.size() == 2);
+        debug_assert_eq!(hand.size(), 2);
         Self(hand)
     }
 }
@@ -45,7 +45,7 @@ impl From<(Card, Card)> for Hole {
     fn from(cards: (Card, Card)) -> Self {
         let a = u64::from(cards.0);
         let b = u64::from(cards.1);
-        debug_assert!(a != b);
+        debug_assert_ne!(a, b);
         Self(Hand::from(a | b))
     }
 }

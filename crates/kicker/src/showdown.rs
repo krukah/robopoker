@@ -140,8 +140,8 @@ mod tests {
             Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 0);
-        assert!(settlement[1].pnl().reward() == 200);
+        assert_eq!(settlement[0].pnl().reward(), 0);
+        assert_eq!(settlement[1].pnl().reward(), 200);
     }
 
     #[test]
@@ -153,10 +153,10 @@ mod tests {
             Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 0);
-        assert!(settlement[1].pnl().reward() == 325);
-        assert!(settlement[2].pnl().reward() == 0);
-        assert!(settlement[3].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 0);
+        assert_eq!(settlement[1].pnl().reward(), 325);
+        assert_eq!(settlement[2].pnl().reward(), 0);
+        assert_eq!(settlement[3].pnl().reward(), 0);
     }
 
     #[test]
@@ -167,9 +167,9 @@ mod tests {
             Settlement::from((100, State::Betting, one_pair())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 150);
-        assert!(settlement[1].pnl().reward() == 150);
-        assert!(settlement[2].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 150);
+        assert_eq!(settlement[1].pnl().reward(), 150);
+        assert_eq!(settlement[2].pnl().reward(), 0);
     }
 
     #[test]
@@ -182,11 +182,11 @@ mod tests {
             Settlement::from((050, State::Folding, the_nuts())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 700);
-        assert!(settlement[1].pnl().reward() == 0);
-        assert!(settlement[2].pnl().reward() == 0);
-        assert!(settlement[3].pnl().reward() == 0);
-        assert!(settlement[4].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 700);
+        assert_eq!(settlement[1].pnl().reward(), 0);
+        assert_eq!(settlement[2].pnl().reward(), 0);
+        assert_eq!(settlement[3].pnl().reward(), 0);
+        assert_eq!(settlement[4].pnl().reward(), 0);
     }
 
     #[test]
@@ -198,10 +198,10 @@ mod tests {
             Settlement::from((050, State::Shoving, ace_high())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 500);
-        assert!(settlement[1].pnl().reward() == 100);
-        assert!(settlement[2].pnl().reward() == 150);
-        assert!(settlement[3].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 500);
+        assert_eq!(settlement[1].pnl().reward(), 100);
+        assert_eq!(settlement[2].pnl().reward(), 150);
+        assert_eq!(settlement[3].pnl().reward(), 0);
     }
 
     #[test]
@@ -213,10 +213,10 @@ mod tests {
             Settlement::from((150, State::Betting, ace_high())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 200);
-        assert!(settlement[1].pnl().reward() == 150);
-        assert!(settlement[2].pnl().reward() == 100);
-        assert!(settlement[3].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 200);
+        assert_eq!(settlement[1].pnl().reward(), 150);
+        assert_eq!(settlement[2].pnl().reward(), 100);
+        assert_eq!(settlement[3].pnl().reward(), 0);
     }
 
     #[test]
@@ -227,9 +227,9 @@ mod tests {
             Settlement::from((100, State::Betting, ace_high())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 150);
-        assert!(settlement[1].pnl().reward() == 100);
-        assert!(settlement[2].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 150);
+        assert_eq!(settlement[1].pnl().reward(), 100);
+        assert_eq!(settlement[2].pnl().reward(), 0);
     }
 
     #[test]
@@ -240,9 +240,9 @@ mod tests {
             Settlement::from((100, State::Betting, two_pair())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 150);
-        assert!(settlement[1].pnl().reward() == 50);
-        assert!(settlement[2].pnl().reward() == 50);
+        assert_eq!(settlement[0].pnl().reward(), 150);
+        assert_eq!(settlement[1].pnl().reward(), 50);
+        assert_eq!(settlement[2].pnl().reward(), 50);
     }
 
     #[test]
@@ -254,9 +254,9 @@ mod tests {
             Settlement::from((025, State::Folding, the_nuts())),
         ])
         .settle();
-        assert!(settlement[0].pnl().reward() == 0);
-        assert!(settlement[1].pnl().reward() == 250);
-        assert!(settlement[2].pnl().reward() == 0);
-        assert!(settlement[3].pnl().reward() == 0);
+        assert_eq!(settlement[0].pnl().reward(), 0);
+        assert_eq!(settlement[1].pnl().reward(), 250);
+        assert_eq!(settlement[2].pnl().reward(), 0);
+        assert_eq!(settlement[3].pnl().reward(), 0);
     }
 }

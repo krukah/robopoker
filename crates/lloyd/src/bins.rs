@@ -73,7 +73,7 @@ impl<const N: usize> Bins<N> {
     }
     /// Merges another bin array into this one.
     pub fn merge<const M: usize>(&mut self, other: &Bins<M>) {
-        debug_assert!(N == M);
+        debug_assert_eq!(N, M);
         self.weight += other.weight;
         self.counts
             .iter_mut()

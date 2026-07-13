@@ -11,12 +11,12 @@ license      = "MIT"
 [[bin]]
 name = "litmus"
 path = "src/main.rs"
-doc = false
+doc  = false
 
 [dependencies]
 litmus   = { path = "../../crates/litmus" }
 portal   = { path = "../../crates/portal" }
-daybook   = { path = "../../crates/daybook" }
+daybook  = { path = "../../crates/daybook" }
 pokerkit = { path = "../../crates/pokerkit" }
 
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -27,7 +27,7 @@ kicker   = { workspace = true }
 mccfr    = { workspace = true }
 subgame  = { workspace = true }
 nlhe     = { workspace = true }
-daybook   = { workspace = true }
+daybook  = { workspace = true }
 vitals   = { workspace = true }
 
 [lints]

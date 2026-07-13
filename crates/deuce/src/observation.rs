@@ -43,7 +43,7 @@ impl Observation {
     /// Only valid on the river. Enumerates all possible opponent hole cards
     /// and computes the fraction that we beat (excluding ties).
     pub fn equity(&self) -> Probability {
-        debug_assert!(self.street() == Street::Rive);
+        debug_assert_eq!(self.street(), Street::Rive);
         let hero = Strength::from(Hand::from(*self));
         let (won, sum) = self
             .opponents()
@@ -166,7 +166,7 @@ impl From<i64> for Observation {
 /// assemble Observation from private + public Hands
 impl From<(Hand, Hand)> for Observation {
     fn from((pocket, public): (Hand, Hand)) -> Self {
-        debug_assert!(pocket.size() == 2);
+        debug_assert_eq!(pocket.size(), 2);
         debug_assert!(public.size() <= 5);
         Self { pocket, public }
     }
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn bijective_i64() {
         let random = Observation::random();
-        assert!(random == Observation::from(i64::from(random)));
+        assert_eq!(random, Observation::from(i64::from(random)));
     }
 
     /// Counts assume the full 52-card deck. Under `shortdeck` the

@@ -325,7 +325,7 @@ impl<const P: usize> GameN<P> {
     /// Otherwise resets the board, deals new cards, posts blinds, and
     /// rotates the button.
     pub fn continuation(mut self) -> Option<Self> {
-        debug_assert!(self.turn() == Turn::Terminal);
+        debug_assert_eq!(self.turn(), Turn::Terminal);
         self.settlements()
             .iter()
             .zip(self.seats())
@@ -355,13 +355,13 @@ impl<const P: usize> GameN<P> {
     }
 
     fn wipe_board(&mut self) {
-        debug_assert!(self.pot() == 0);
+        debug_assert_eq!(self.pot(), 0);
         self.board.clear();
     }
 
     fn wipe_seats(&mut self) {
-        debug_assert!(self.pot() == 0);
-        debug_assert!(self.street() == Street::Pref);
+        debug_assert_eq!(self.pot(), 0);
+        debug_assert_eq!(self.street(), Street::Pref);
         let mut deck = Deck::new();
         for seat in &mut self.seats {
             seat.reset_state(State::Betting);
@@ -372,9 +372,9 @@ impl<const P: usize> GameN<P> {
     }
 
     fn move_button(&mut self) {
-        debug_assert!(self.pot() == 0);
-        debug_assert!(self.seats.len() == self.n());
-        debug_assert!(self.street() == Street::Pref);
+        debug_assert_eq!(self.pot(), 0);
+        debug_assert_eq!(self.seats.len(), self.n());
+        debug_assert_eq!(self.street(), Street::Pref);
         self.dealer += 1;
         self.dealer %= self.n();
         self.ticker = usize::from(P != 2);
@@ -539,7 +539,7 @@ impl<const P: usize> GameN<P> {
     }
     /// Blind amount to post (SB or BB depending on pot).
     pub fn to_post(&self) -> Chips {
-        debug_assert!(self.street() == Street::Pref);
+        debug_assert_eq!(self.street(), Street::Pref);
         if self.pot() < Self::sblind() {
             Self::sblind().min(self.actor_ref().stack())
         } else {
@@ -1001,8 +1001,8 @@ mod tests {
     fn history_of_checks() {
         // Blinds
         let game = Game::root();
-        assert!(game.board().street() == Street::Pref);
-        assert!(game.pot() == 3);
+        assert_eq!(game.board().street(), Street::Pref);
+        assert_eq!(game.pot(), 3);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal());
@@ -1012,8 +1012,8 @@ mod tests {
         assert!(!game.is_everyone_matched());
         // SmallB Preflop
         let game = game.apply(Action::Call(1));
-        assert!(game.board().street() == Street::Pref);
-        assert!(game.pot() == 4); //
+        assert_eq!(game.board().street(), Street::Pref);
+        assert_eq!(game.pot(), 4); //
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal());
@@ -1023,8 +1023,8 @@ mod tests {
         assert!(game.is_everyone_matched()); //
         // Dealer Preflop
         let game = game.apply(Action::Check);
-        assert!(game.board().street() == Street::Pref);
-        assert!(game.pot() == 4);
+        assert_eq!(game.board().street(), Street::Pref);
+        assert_eq!(game.pot(), 4);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(game.must_deal()); //
@@ -1035,8 +1035,8 @@ mod tests {
         // Flop
         let flop = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(flop));
-        assert!(game.board().street() == Street::Flop); //
-        assert!(game.pot() == 4);
+        assert_eq!(game.board().street(), Street::Flop); //
+        assert_eq!(game.pot(), 4);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal()); //
@@ -1046,8 +1046,8 @@ mod tests {
         assert!(game.is_everyone_matched());
         // SmallB Flop
         let game = game.apply(Action::Check);
-        assert!(game.board().street() == Street::Flop);
-        assert!(game.pot() == 4);
+        assert_eq!(game.board().street(), Street::Flop);
+        assert_eq!(game.pot(), 4);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal());
@@ -1057,8 +1057,8 @@ mod tests {
         assert!(game.is_everyone_matched());
         // Dealer Flop
         let game = game.apply(Action::Check);
-        assert!(game.board().street() == Street::Flop);
-        assert!(game.pot() == 4);
+        assert_eq!(game.board().street(), Street::Flop);
+        assert_eq!(game.pot(), 4);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(game.must_deal()); //
@@ -1069,8 +1069,8 @@ mod tests {
         // Turn
         let turn = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(turn));
-        assert!(game.board().street() == Street::Turn);
-        assert!(game.pot() == 4);
+        assert_eq!(game.board().street(), Street::Turn);
+        assert_eq!(game.pot(), 4);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal()); //
@@ -1080,8 +1080,8 @@ mod tests {
         assert!(game.is_everyone_matched());
         // SmallB Turn
         let game = game.apply(Action::Check);
-        assert!(game.board().street() == Street::Turn);
-        assert!(game.pot() == 4);
+        assert_eq!(game.board().street(), Street::Turn);
+        assert_eq!(game.pot(), 4);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal());
@@ -1091,8 +1091,8 @@ mod tests {
         assert!(game.is_everyone_matched());
         // Dealer Turn
         let game = game.apply(Action::Raise(4));
-        assert!(game.board().street() == Street::Turn);
-        assert!(game.pot() == 8);
+        assert_eq!(game.board().street(), Street::Turn);
+        assert_eq!(game.pot(), 8);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal());
@@ -1102,8 +1102,8 @@ mod tests {
         assert!(!game.is_everyone_matched()); //
         // SmallB Turn
         let game = game.apply(Action::Call(4));
-        assert!(game.board().street() == Street::Turn);
-        assert!(game.pot() == 12); //
+        assert_eq!(game.board().street(), Street::Turn);
+        assert_eq!(game.pot(), 12); //
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(game.must_deal()); //
@@ -1114,8 +1114,8 @@ mod tests {
         // River
         let rive = game.deck().deal(game.board().street());
         let game = game.apply(Action::Draw(rive));
-        assert!(game.board().street() == Street::Rive); //
-        assert!(game.pot() == 12);
+        assert_eq!(game.board().street(), Street::Rive); //
+        assert_eq!(game.pot(), 12);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal()); //
@@ -1125,8 +1125,8 @@ mod tests {
         assert!(game.is_everyone_matched()); //
         // SmallB River
         let game = game.apply(Action::Check);
-        assert!(game.board().street() == Street::Rive);
-        assert!(game.pot() == 12);
+        assert_eq!(game.board().street(), Street::Rive);
+        assert_eq!(game.pot(), 12);
         assert!(!game.must_post());
         assert!(!game.must_stop());
         assert!(!game.must_deal());
@@ -1136,8 +1136,8 @@ mod tests {
         assert!(game.is_everyone_matched());
         // Dealer River
         let game = game.apply(Action::Check);
-        assert!(game.board().street() == Street::Rive);
-        assert!(game.pot() == 12);
+        assert_eq!(game.board().street(), Street::Rive);
+        assert_eq!(game.pot(), 12);
         assert!(!game.must_post());
         assert!(game.must_stop()); //
         assert!(!game.must_deal());

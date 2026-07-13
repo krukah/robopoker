@@ -76,7 +76,7 @@ mod tests {
         let ref h2 = Histogram::from(Observation::from(Street::Turn));
         let d12 = metric.emd(h1, h2);
         let d21 = metric.emd(h2, h1);
-        assert!(d12 == d21);
+        assert_eq!(d12, d21);
     }
     #[test]
     fn is_equity_emd_positive() {
@@ -93,7 +93,7 @@ mod tests {
         let metric = Metric::default();
         let h = Histogram::from(Observation::from(Street::Turn));
         let d = metric.emd(&h, &h);
-        assert!(d == 0.);
+        assert_eq!(d, 0.);
     }
 
     /// sinkhorn implementation should be
@@ -160,7 +160,7 @@ mod tests {
         let EMD(metric, h1, h2, _) = EMD::random();
         let d11 = Heuristic::from((&h1, &h1, &metric)).minimize().cost();
         let d22 = Heuristic::from((&h2, &h2, &metric)).minimize().cost();
-        assert!(d11 == 0.);
-        assert!(d22 == 0.);
+        assert_eq!(d11, 0.);
+        assert_eq!(d22, 0.);
     }
 }

@@ -197,7 +197,7 @@ mod tests {
         for q in 0..=Abstraction::N {
             let p = Abstraction::floatize(q);
             let i = Abstraction::quantize(p);
-            assert!(q == i);
+            assert_eq!(q, i);
         }
     }
     #[test]

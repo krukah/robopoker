@@ -36,7 +36,7 @@ impl Hand {
     /// from `Add::add` (which is bitwise OR with no disjointness check).
     #[allow(clippy::should_implement_trait)]
     pub fn add(lhs: Self, rhs: Self) -> Self {
-        debug_assert!((lhs.0 & rhs.0) == 0);
+        debug_assert_eq!((lhs.0 & rhs.0), 0);
         lhs + rhs
     }
     /// All cards not in this hand.

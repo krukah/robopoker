@@ -196,7 +196,7 @@ where
 
 impl From<Observation> for Histogram {
     fn from(ref turn: Observation) -> Self {
-        debug_assert!(turn.street() == Street::Turn);
+        debug_assert_eq!(turn.street(), Street::Turn);
         turn.children()
             .map(|river| river.equity())
             .map(Abstraction::from)

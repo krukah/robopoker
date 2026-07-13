@@ -165,19 +165,19 @@ mod tests {
     #[test]
     fn map_identity() {
         let identity = Permutation::identity();
-        assert!(identity.map(&Suit::C) == Suit::C);
-        assert!(identity.map(&Suit::D) == Suit::D);
-        assert!(identity.map(&Suit::H) == Suit::H);
-        assert!(identity.map(&Suit::S) == Suit::S);
+        assert_eq!(identity.map(&Suit::C), Suit::C);
+        assert_eq!(identity.map(&Suit::D), Suit::D);
+        assert_eq!(identity.map(&Suit::H), Suit::H);
+        assert_eq!(identity.map(&Suit::S), Suit::S);
     }
 
     #[test]
     fn map_arbitrary() {
         let permutation = Permutation([Suit::H, Suit::S, Suit::C, Suit::D]);
-        assert!(permutation.map(&Suit::C) == Suit::H);
-        assert!(permutation.map(&Suit::D) == Suit::S);
-        assert!(permutation.map(&Suit::H) == Suit::C);
-        assert!(permutation.map(&Suit::S) == Suit::D);
+        assert_eq!(permutation.map(&Suit::C), Suit::H);
+        assert_eq!(permutation.map(&Suit::D), Suit::S);
+        assert_eq!(permutation.map(&Suit::H), Suit::C);
+        assert_eq!(permutation.map(&Suit::S), Suit::D);
     }
 
     #[test]
@@ -185,7 +185,7 @@ mod tests {
         let permutation = Permutation([Suit::H, Suit::C, Suit::S, Suit::D]);
         let hearts = Hand::from(0b_0100_0100_0100_0100_0100_0100_0100_0100_u64);
         let spades = Hand::from(0b_1000_1000_1000_1000_1000_1000_1000_1000_u64);
-        assert!(permutation.image(&hearts) == spades);
+        assert_eq!(permutation.image(&hearts), spades);
     }
 
     #[test]
@@ -197,7 +197,7 @@ mod tests {
             .map(|p| p.image(hand))
             .inspect(|h| assert!(unique.insert(*h)))
             .count();
-        assert!(n == 24);
+        assert_eq!(n, 24);
     }
 
     #[test]
@@ -205,7 +205,7 @@ mod tests {
         let permutation = Permutation([Suit::D, Suit::H, Suit::C, Suit::S]);
         let original = Hand::from(0b_1010_1010_1010_1010__0100_0100_0100_0100_u64);
         let permuted = Hand::from(0b_1100_1100_1100_1100__0001_0001_0001_0001_u64);
-        assert!(permutation.image(&original) == permuted);
+        assert_eq!(permutation.image(&original), permuted);
     }
 
     #[test]
@@ -213,7 +213,7 @@ mod tests {
         let permutation = Permutation([Suit::S, Suit::C, Suit::D, Suit::H]);
         let original = Hand::try_from("Ac Kd Qh Js").unwrap();
         let permuted = Hand::try_from("As Kc Qd Jh").unwrap();
-        assert!(permutation.image(&original) == permuted);
+        assert_eq!(permutation.image(&original), permuted);
     }
 
     #[test]
@@ -230,13 +230,13 @@ mod tests {
         use pokerkit::Arbitrary;
         let permutation = Permutation::identity();
         let hand = Hand::random();
-        assert!(permutation.image(&hand) == hand);
+        assert_eq!(permutation.image(&hand), hand);
     }
 
     #[test]
     fn inverse_identity() {
         let identity = Permutation::identity();
-        assert!(identity.inverse() == identity);
+        assert_eq!(identity.inverse(), identity);
     }
 
     #[test]

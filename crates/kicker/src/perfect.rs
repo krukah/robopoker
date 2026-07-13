@@ -47,7 +47,7 @@ impl From<(&Witness, Hole)> for Perfect {
     /// - Opponent's cards from `hole` parameter
     /// - Blinds already posted (POST-blind state)
     fn from((witness, hole): (&Witness, Hole)) -> Self {
-        debug_assert!(witness.base().n() == 2);
+        debug_assert_eq!(witness.base().n(), 2);
         let preblind = witness.base().fix(witness.turn(), hole);
         let root = Game::blinds().into_iter().fold(preblind, |mut g, a| g.consume(a));
         Self {

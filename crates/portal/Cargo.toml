@@ -17,7 +17,7 @@ pokerkit = { workspace = true }
 bouncer  = { workspace = true, features = ["server"] }
 deuce    = { workspace = true }
 lloyd    = { workspace = true }
-daybook   = { workspace = true }
+daybook  = { workspace = true }
 arena    = { workspace = true }
 parlor   = { workspace = true, features = ["server"] }
 kicker   = { workspace = true }

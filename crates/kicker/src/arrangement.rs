@@ -213,19 +213,19 @@ mod tests {
     #[test]
     fn shuffle() {
         let random = Arrangement::random();
-        assert!(random.observation() == random.shuffle().observation());
+        assert_eq!(random.observation(), random.shuffle().observation());
     }
 
     #[test]
     fn permute() {
         let random = Arrangement::random();
-        assert!(random.isomorphism() == random.permute().isomorphism());
+        assert_eq!(random.isomorphism(), random.permute().isomorphism());
     }
 
     #[test]
     fn justify() {
         let random = Arrangement::random();
-        assert!(random == random.justify(random.street()));
+        assert_eq!(random, random.justify(random.street()));
     }
 
     #[test]

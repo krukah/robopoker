@@ -54,7 +54,7 @@ impl Lookup {
     /// Computes histogram over next-street abstractions for an isomorphism.
     /// This is the core operation that enables hierarchical clustering.
     fn future(&self, iso: &Isomorphism) -> Histogram {
-        debug_assert!(iso.0.street() != Street::Rive);
+        debug_assert_ne!(iso.0.street(), Street::Rive);
         iso.0
             .children()
             .collect::<Vec<_>>()

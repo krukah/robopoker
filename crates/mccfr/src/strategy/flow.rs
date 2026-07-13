@@ -233,7 +233,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     ///
     /// Uses DFS subtree traversal instead of collecting descendants.
     fn expected_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        debug_assert!(self.walker() == root.game().turn());
+        debug_assert_eq!(self.walker(), root.game().turn());
         let weight = self.ancestor_reach(root);
         let policy = self.iterated_distribution(root.info());
         weight
@@ -248,7 +248,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     ///
     /// Uses DFS subtree traversal instead of collecting descendants.
     fn cfactual_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>, edge: &Self::E) -> Utility {
-        debug_assert!(self.walker() == root.game().turn());
+        debug_assert_eq!(self.walker(), root.game().turn());
         root.step(edge)
             .map(|child| self.ancestor_reach(root) * self.recursed_value(root, &child, 1.0, 1.0))
             .expect("edge belongs to outgoing branches")
@@ -265,7 +265,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// would we gain by following this Edge at this Node?
     /// Takes pre-computed expected value to avoid redundant computation.
     fn gain(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>, edge: &Self::E, baseline: Utility) -> Utility {
-        debug_assert!(self.walker() == root.game().turn());
+        debug_assert_eq!(self.walker(), root.game().turn());
         self.cfactual_value(root, edge) - baseline
     }
     /// Deterministic RNG seeded by epoch, info set, and tree identity.

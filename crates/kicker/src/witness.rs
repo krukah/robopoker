@@ -742,8 +742,8 @@ mod tests {
             .push(Action::Check); // P0 flop (no turn, obs is flop)
         let t = r.truncate(Street::Pref);
         // sprout advances to flop since obs has flop cards
-        assert!(r.head().street() == Street::Flop);
-        assert!(t.head().street() == Street::Flop);
+        assert_eq!(r.head().street(), Street::Flop);
+        assert_eq!(t.head().street(), Street::Flop);
         assert!(t.actions().len() < r.actions().len());
     }
 

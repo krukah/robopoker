@@ -1,7 +1,7 @@
 # TOML formatting rules for the workspace (Cargo.toml grid alignment).
 # Run `taplo fmt` to apply, `taplo fmt --check` to verify.
 include = ["**/Cargo.toml", "taplo.toml"]
-exclude = ["target/**"]
+exclude = ["target/**", ".claude/**"]
 
 [formatting]
 align_entries         = true

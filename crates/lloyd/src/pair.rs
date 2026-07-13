@@ -77,7 +77,7 @@ impl Pair {
 
 impl From<(&Abstraction, &Abstraction)> for Pair {
     fn from((a, b): (&Abstraction, &Abstraction)) -> Self {
-        debug_assert!(a.street() == b.street());
+        debug_assert_eq!(a.street(), b.street());
         Self::new(a.street(), a.index(), b.index())
     }
 }

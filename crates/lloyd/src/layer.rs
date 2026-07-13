@@ -149,7 +149,7 @@ impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
         use std::hash::Hasher;
         // don't do any abstraction on preflop or river
         if matches!(self.street(), Street::Pref | Street::Rive) {
-            debug_assert!(N == K);
+            debug_assert_eq!(N, K);
             return std::array::from_fn(|i| self.points()[i]);
         }
         // deterministic pseudo-random clustering

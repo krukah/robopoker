@@ -141,17 +141,17 @@ mod tests {
     #[test]
     fn bijective_u8() {
         let rank = Rank::Five;
-        assert!(rank == Rank::from(u8::from(rank)));
+        assert_eq!(rank, Rank::from(u8::from(rank)));
     }
 
     #[test]
     fn bijective_u16() {
         let rank = Rank::Five;
-        assert!(rank == Rank::from(u16::from(rank)));
+        assert_eq!(rank, Rank::from(u16::from(rank)));
     }
 
     #[test]
     fn injective_u64() {
-        assert!(u64::from(Rank::Five) == 0b1111000000000000);
+        assert_eq!(u64::from(Rank::Five), 0b1111000000000000);
     }
 }

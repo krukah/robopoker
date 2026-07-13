@@ -152,18 +152,18 @@ mod tests {
         let card = Deck::new().draw();
         let suit = card.suit();
         let rank = card.rank();
-        assert!(card == Card::from((rank, suit)));
+        assert_eq!(card, Card::from((rank, suit)));
     }
 
     #[test]
     fn bijective_u8() {
         let card = Deck::new().draw();
-        assert!(card == Card::from(u8::from(card)));
+        assert_eq!(card, Card::from(u8::from(card)));
     }
 
     #[test]
     fn bijective_u32() {
         let card = Deck::new().draw();
-        assert!(card == Card::from(u32::from(card)));
+        assert_eq!(card, Card::from(u32::from(card)));
     }
 }

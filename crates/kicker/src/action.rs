@@ -247,7 +247,7 @@ mod tests {
             Action::Shove(1738),
             Action::Draw(Hand::try_from("2c Th As").unwrap()),
         ] {
-            assert!(action == Action::from(u32::from(action)));
+            assert_eq!(action, Action::from(u32::from(action)));
         }
     }
 }

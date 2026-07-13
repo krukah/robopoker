@@ -145,7 +145,7 @@ pub trait AsyncProfile: Send + Sync {
     }
     /// Policy-weighted expected utility at this node.
     async fn expected_value(&self, root: &Node<'_, Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        debug_assert!(self.traverser() == root.game().turn());
+        debug_assert_eq!(self.traverser(), root.game().turn());
         let reach = self.ancestor_reach(root).await;
         let policy = self.policy(root.info()).await;
         let mut total = 0.0;
@@ -156,7 +156,7 @@ pub trait AsyncProfile: Send + Sync {
     }
     /// Counterfactual value of taking an action at a node.
     async fn cfactual_value(&self, root: &Node<'_, Self::T, Self::E, Self::G, Self::I>, edge: &Self::E) -> Utility {
-        debug_assert!(self.traverser() == root.game().turn());
+        debug_assert_eq!(self.traverser(), root.game().turn());
         let reach = self.ancestor_reach(root).await;
         let child = root.step(edge).expect("edge belongs to outgoing branches");
         reach * self.recursed_value(root, &child, 1.0, 1.0).await

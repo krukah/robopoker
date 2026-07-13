@@ -127,7 +127,7 @@ mod tests {
             Hand::try_from("As Ah").unwrap(),
             Hand::try_from("Js Tc 5c").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod tests {
             Hand::try_from("Tc Ad").unwrap(),
             Hand::try_from("Td Kd Kh").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -153,7 +153,7 @@ mod tests {
             Hand::try_from("Ah Jd").unwrap(),
             Hand::try_from("Kh Jh 2c").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -166,7 +166,7 @@ mod tests {
             Hand::try_from("Ad Qh").unwrap(),
             Hand::try_from("Kd Jd 2d").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -179,7 +179,7 @@ mod tests {
             Hand::try_from("As Ks").unwrap(),
             Hand::try_from("Qs Js Ts").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod tests {
             Hand::try_from("As Ks").unwrap(),
             Hand::try_from("Qh Jh Th").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -205,7 +205,7 @@ mod tests {
             Hand::try_from("Ad Kh").unwrap(),
             Hand::try_from("Qd Jh Th").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -218,6 +218,6 @@ mod tests {
             Hand::try_from("Ah Ks").unwrap(),
             Hand::try_from("Qc Jd 9h").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 }

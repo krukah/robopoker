@@ -81,7 +81,7 @@ where
     pub fn grow(&mut self, info: I, leaf: Leaf<E, G>) -> Node<'_, T, E, G, I> {
         let tail = self.graph.add_node((leaf.1, info));
         let edge = self.graph.add_edge(leaf.2, tail, leaf.0);
-        debug_assert!(edge.index() == tail.index() - 1);
+        debug_assert_eq!(edge.index(), tail.index() - 1);
         self.at(tail)
     }
     /// group non-leaf Nodes by Info into InfoSets
