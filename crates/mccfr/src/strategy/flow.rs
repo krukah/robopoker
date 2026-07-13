@@ -24,28 +24,38 @@ pub trait CfrFlow: RefProf + CfrSampling {
     fn weight_denom(&self, info: &Self::I) -> Probability {
         info.choices().map(|ref e| self.weight(info, e)).sum::<Probability>() + self.smoothing()
     }
-    /// Compute sampling distribution for all edges of an info (single pass).
-    /// Returns exploration-adjusted probabilities for MCCFR sampling.
+    /// Unnormalized exploration weight for one edge: `max(ε, (σ(a)/τ + β) / (Σσ + β))`.
+    /// `denom` is [`Self::weight_denom`], hoisted so full-infoset callers compute it once.
+    /// Sums to `Z ≥ 1` over an infoset; divide by that sum to get a probability.
+    fn sampling_weight(&self, info: &Self::I, edge: &Self::E, denom: Probability) -> Probability {
+        ((self.weight(info, edge) / self.temperature() + self.smoothing()) / denom).max(self.curiosity())
+    }
+    /// Sampling distribution over an infoset's edges: the normalized probabilities
+    /// the external sampler draws from.
     fn sampling_distribution(&self, info: &Self::I) -> Policy<Self::E> {
-        let raw = info.choices().map(|e| (e, self.weight(info, &e))).collect::<Vec<_>>();
-        let denom = raw.iter().map(|(_, w)| *w).sum::<Probability>() + self.smoothing();
-        raw.into_iter()
-            .map(|(e, w)| (e, w / self.temperature()))
-            .map(|(e, w)| (e, w + self.smoothing()))
-            .map(|(e, w)| (e, w / denom))
-            .map(|(e, w)| (e, w.max(self.curiosity())))
-            .collect()
+        let denom = self.weight_denom(info);
+        let raw = info
+            .choices()
+            .map(|e| (e, self.sampling_weight(info, &e, denom)))
+            .collect::<Vec<_>>();
+        let z = raw.iter().map(|(_, w)| *w).sum::<Probability>();
+        raw.into_iter().map(|(e, w)| (e, w / z)).collect()
     }
     /// Calculate immediate policy via regret matching for a single edge.
     /// Prefer `iterated_distribution` when multiple edges needed.
     fn instant_policy(&self, info: &Self::I, edge: &Self::E) -> Probability {
         self.regret(info, edge) / self.regret_denom(info)
     }
-    /// Calculate sampling probability for a single edge.
+    /// Normalized probability the external sampler draws `edge` — exactly what
+    /// `WeightedIndex` samples from, so the correct importance term for reaches.
     /// Prefer `sampling_distribution` when multiple edges needed.
     fn sampling(&self, info: &Self::I, edge: &Self::E) -> Probability {
-        ((self.weight(info, edge) / self.temperature() + self.smoothing()) / self.weight_denom(info))
-            .max(self.curiosity())
+        let denom = self.weight_denom(info);
+        let z = info
+            .choices()
+            .map(|ref e| self.sampling_weight(info, e, denom))
+            .sum::<Probability>();
+        self.sampling_weight(info, edge, denom) / z
     }
 
     /// Fused regret + expected value computation for an information set.
@@ -154,16 +164,12 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// Both products share the same path (root->tree_root) and filters
     /// (non-chance, non-walker), so we compute them in a single pass.
     fn ancestor_reach(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> Utility {
-        let (cfactual, sampling) = root.decisions().filter(|(t, _, _)| *t != self.walker()).fold(
-            (1.0, 1.0),
-            |(cf, sm), (_, ref info, ref edge)| {
-                (
-                    cf * (self.regret(info, edge) / self.regret_denom(info)),
-                    sm * ((self.weight(info, edge) / self.temperature() + self.smoothing()) / self.weight_denom(info))
-                        .max(self.curiosity()),
-                )
-            },
-        );
+        let (cfactual, sampling) = root
+            .decisions()
+            .filter(|(t, _, _)| *t != self.walker())
+            .fold((1.0, 1.0), |(cf, sm), (_, ref info, ref edge)| {
+                (cf * self.instant_policy(info, edge), sm * self.sampling(info, edge))
+            });
         cfactual / sampling
     }
 
@@ -186,7 +192,15 @@ pub trait CfrFlow: RefProf + CfrSampling {
         let chance = node.game().turn() == Self::T::chance();
         let walker = node.game().turn() == self.walker();
         let regret_denom = (!chance).then(|| self.regret_denom(node.info()));
-        let weight_denom = (!chance && !walker).then(|| self.weight_denom(node.info()));
+        let sampling = (!chance && !walker).then(|| {
+            let denom = self.weight_denom(node.info());
+            let z = node
+                .info()
+                .choices()
+                .map(|ref e| self.sampling_weight(node.info(), e, denom))
+                .sum::<Probability>();
+            (denom, z)
+        });
         node.edges()
             .map(|(child, edge)| (node.at(child), edge))
             .map(|(ref child, edge)| {
@@ -195,10 +209,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
                     child,
                     relative_reach * regret_denom.map_or(1.0, |d| self.regret(node.info(), edge) / d),
                     sampling_reach
-                        * weight_denom.map_or(1.0, |d| {
-                            ((self.weight(node.info(), edge) / self.temperature() + self.smoothing()) / d)
-                                .max(self.curiosity())
-                        }),
+                        * sampling.map_or(1.0, |(denom, z)| self.sampling_weight(node.info(), edge, denom) / z),
                 )
             })
             .sum()
