@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 # Cancel superseded runs on the same ref (e.g. PR push during in-flight build).
@@ -25,7 +24,7 @@ env:
 
 jobs:
   format:
-    name: Format
+    name: Rust Format
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -66,7 +65,7 @@ jobs:
   compile:
     name: Compile (${{ matrix.features }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:

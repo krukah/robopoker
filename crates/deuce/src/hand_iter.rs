@@ -140,31 +140,31 @@ mod tests {
     #[test]
     fn choose_3() {
         let mut iter = HandIterator::from((3, Hand::empty()));
-        assert!(iter.next() == Some(Hand::from(0b00111)));
-        assert!(iter.next() == Some(Hand::from(0b01011)));
-        assert!(iter.next() == Some(Hand::from(0b01101)));
-        assert!(iter.next() == Some(Hand::from(0b01110)));
-        assert!(iter.next() == Some(Hand::from(0b10011)));
-        assert!(iter.next() == Some(Hand::from(0b10101)));
-        assert!(iter.next() == Some(Hand::from(0b10110)));
-        assert!(iter.next() == Some(Hand::from(0b11001)));
-        assert!(iter.next() == Some(Hand::from(0b11010)));
-        assert!(iter.next() == Some(Hand::from(0b11100)));
+        assert_eq!(iter.next(), Some(Hand::from(0b00111)));
+        assert_eq!(iter.next(), Some(Hand::from(0b01011)));
+        assert_eq!(iter.next(), Some(Hand::from(0b01101)));
+        assert_eq!(iter.next(), Some(Hand::from(0b01110)));
+        assert_eq!(iter.next(), Some(Hand::from(0b10011)));
+        assert_eq!(iter.next(), Some(Hand::from(0b10101)));
+        assert_eq!(iter.next(), Some(Hand::from(0b10110)));
+        assert_eq!(iter.next(), Some(Hand::from(0b11001)));
+        assert_eq!(iter.next(), Some(Hand::from(0b11010)));
+        assert_eq!(iter.next(), Some(Hand::from(0b11100)));
     }
     #[test]
     fn choose_3_from_5() {
         let mask = Hand::from(0b_________________1111_00_1).complement();
         let mut iter = HandIterator::from((3, mask));
-        assert!(iter.next() == Some(Hand::from(0b0011_00_1)));
-        assert!(iter.next() == Some(Hand::from(0b0101_00_1)));
-        assert!(iter.next() == Some(Hand::from(0b0110_00_1)));
-        assert!(iter.next() == Some(Hand::from(0b0111_00_0)));
-        assert!(iter.next() == Some(Hand::from(0b1001_00_1)));
-        assert!(iter.next() == Some(Hand::from(0b1010_00_1)));
-        assert!(iter.next() == Some(Hand::from(0b1011_00_0)));
-        assert!(iter.next() == Some(Hand::from(0b1100_00_1)));
-        assert!(iter.next() == Some(Hand::from(0b1101_00_0)));
-        assert!(iter.next() == Some(Hand::from(0b1110_00_0)));
+        assert_eq!(iter.next(), Some(Hand::from(0b0011_00_1)));
+        assert_eq!(iter.next(), Some(Hand::from(0b0101_00_1)));
+        assert_eq!(iter.next(), Some(Hand::from(0b0110_00_1)));
+        assert_eq!(iter.next(), Some(Hand::from(0b0111_00_0)));
+        assert_eq!(iter.next(), Some(Hand::from(0b1001_00_1)));
+        assert_eq!(iter.next(), Some(Hand::from(0b1010_00_1)));
+        assert_eq!(iter.next(), Some(Hand::from(0b1011_00_0)));
+        assert_eq!(iter.next(), Some(Hand::from(0b1100_00_1)));
+        assert_eq!(iter.next(), Some(Hand::from(0b1101_00_0)));
+        assert_eq!(iter.next(), Some(Hand::from(0b1110_00_0)));
         assert!(iter.next().is_none());
     }
 }
