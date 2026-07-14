@@ -16,6 +16,7 @@
 //! The implementation uses `ASYMMETRIC_UTILITY` to make Scissors worth more/less,
 //! testing that CFR correctly shifts equilibrium away from uniform.
 
+mod assets;
 mod edge;
 mod encoder;
 mod game;

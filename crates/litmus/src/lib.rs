@@ -1,6 +1,6 @@
 //! Strategic litmus tests for blueprint validation.
 //!
-//! See `scripts/litmus/README.md` for the human-facing workflow.
+//! See this crate's `README.md` for the human-facing workflow.
 //!
 //! This crate is the typed core: schema definitions, named-ref resolution,
 //! family-matrix expansion, per-kind evaluation, and markdown rendering.

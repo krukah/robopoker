@@ -72,7 +72,7 @@ where
 
 /// Generate a self-contained HTML file with SVG simplex visualization.
 pub fn generate(p1: &[Snapshot], p2: &[Snapshot], path: &str) {
-    let html = include_str!("../assets/simplex2d.html")
+    let html = crate::assets::SIMPLEX_2D
         .replace("__P1_DATA__", &snapshots_json(p1))
         .replace("__P2_DATA__", &snapshots_json(p2));
     std::fs::write(path, html).expect("failed to write HTML");
@@ -80,7 +80,7 @@ pub fn generate(p1: &[Snapshot], p2: &[Snapshot], path: &str) {
 
 /// Generate a self-contained HTML file with Three.js 3D simplex visualization.
 pub fn generate_3d(p1: &[Snapshot], p2: &[Snapshot], path: &str) {
-    let html = include_str!("../assets/simplex3d.html")
+    let html = crate::assets::SIMPLEX_3D
         .replace("__P1_DATA__", &snapshots_json(p1))
         .replace("__P2_DATA__", &snapshots_json(p2));
     std::fs::write(path, html).expect("failed to write 3D HTML");
@@ -88,7 +88,7 @@ pub fn generate_3d(p1: &[Snapshot], p2: &[Snapshot], path: &str) {
 
 /// Generate a dual-panel HTML: 2D policy simplex + 3D regret vectors, synchronized.
 pub fn generate_dual(p1: &[Snapshot], p2: &[Snapshot], path: &str) {
-    let html = include_str!("../assets/simplex-dual.html")
+    let html = crate::assets::SIMPLEX_DUAL
         .replace("__P1_DATA__", &snapshots_json(p1))
         .replace("__P2_DATA__", &snapshots_json(p2));
     std::fs::write(path, html).expect("failed to write dual HTML");

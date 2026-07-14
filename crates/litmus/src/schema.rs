@@ -4,7 +4,7 @@
 //! `categories` libraries, plus `tests` (concrete cases) and `families`
 //! (matrix templates that expand to multiple cases).
 //!
-//! See `scripts/litmus/README.md` for the human-facing schema documentation.
+//! See this crate's `README.md` for the human-facing schema documentation.
 
 use pokerkit::Chips;
 use serde::{Deserialize, Serialize};

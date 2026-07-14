@@ -82,7 +82,7 @@ pub fn render(
 
     out.push_str("## Methodology\n\n");
     out.push_str(
-        "See [`scripts/litmus/README.md`](../scripts/litmus/README.md) and \
+        "See [`crates/litmus/README.md`](../crates/litmus/README.md) and \
          [`bin/litmus/scenarios.json`](../bin/litmus/scenarios.json). The \
          compositional schema uses named hands/histories/categories; tests \
          reference them rather than inlining. Families auto-expand a template \
