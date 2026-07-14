@@ -222,7 +222,7 @@ mod tests {
         let permutation = Permutation([Suit::C, Suit::H, Suit::D, Suit::S]);
         let original = Hand::try_from("2c 3d 4h 5s").unwrap();
         let permuted = Hand::try_from("2c 3h 4d 5s").unwrap();
-        assert!(permutation.image(&original) == permuted);
+        assert_eq!(permutation.image(&original), permuted);
     }
 
     #[test]
@@ -245,7 +245,7 @@ mod tests {
             for suit in Suit::all() {
                 let mapped = perm.map(&suit);
                 let recovered = perm.inverse().map(&mapped);
-                assert!(recovered == suit, "p(s)=t implies p^-1(t)=s");
+                assert_eq!(recovered, suit, "p(s)=t implies p^-1(t)=s");
             }
         }
     }
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn inverse_involution() {
         for perm in Permutation::exhaust() {
-            assert!(perm.inverse().inverse() == perm, "(p^-1)^-1 = p");
+            assert_eq!(perm.inverse().inverse(), perm, "(p^-1)^-1 = p");
         }
     }
 }

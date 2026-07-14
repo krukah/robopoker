@@ -114,7 +114,7 @@ mod tests {
             Hand::try_from("2s Ks").unwrap(),
             Hand::try_from("2h 5c 8d Tc Td").unwrap(),
         )));
-        assert!(a == b);
+        assert_eq!(a, b);
     }
 
     #[test]
