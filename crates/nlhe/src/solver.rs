@@ -125,6 +125,41 @@ where
         let (external, partition, recall) = self.setup(recall);
         SubGameSolver::new(self, external, partition, recall)
     }
+    /// Creates a Modicum-style nested subgame solver for an off-tree raise.
+    ///
+    /// Like [`Self::adapt_full`], but drives the solver over the off-tree
+    /// wrapper types via a [`Nest`] source: the entry node's action menu is
+    /// augmented with the literal `offtree` chip amount, and CFR jointly
+    /// resolves the opponent's mixing over the canonical sizes plus that
+    /// literal. `recall` should be rolled back to *before* the off-tree
+    /// action, so it becomes a menu option at the entry rather than history.
+    ///
+    /// Requires `&'static self` (the live player holds a `&'static Flagship`)
+    /// because the `Nest` source must outlive the returned solver; it is
+    /// `Box::leak`ed — a bounded leak of one source per off-tree re-solve.
+    pub fn adapt_nested(
+        &'static self,
+        recall: &Witness,
+        offtree: Action,
+    ) -> SubGameSolver<
+        'static,
+        { pokerkit::N_WORLDS },
+        { pokerkit::FRONTIER_LEAVES },
+        Nest<'static, R, W, S>,
+        NestInfo<NlheInfo, Action>,
+        NlheSecret,
+    > {
+        let (external, partition, recall) = self.setup(recall);
+        let recall = CfrRecall::new(
+            recall
+                .descents()
+                .iter()
+                .map(|d| Descent(d.0, NestEdge::Game(d.1)))
+                .collect::<Vec<_>>(),
+            NestGame::entry(recall.game(), offtree),
+        );
+        SubGameSolver::new(Box::leak(Box::new(Nest::new(self, offtree))), external, partition, recall)
+    }
     /// Common setup for safe solvers: external identity, belief partition, recall.
     fn setup(&self, recall: &Witness) -> (NlheTurn, Belief<NlheSecret, { pokerkit::N_WORLDS }>, CfrRecall<NlheGame>) {
         let external = opposing(recall.turn());

@@ -12,7 +12,7 @@ flowchart LR
   Prof --> Pol["Policy over NlheEdge<br/><i>Size grid: SPR / BBs</i>"]
 ```
 
-## Bet Sizing Abstraction (v3)
+## Bet Sizing Abstraction
 
 The `Size` enum is the **single source of truth** for which betting edges exist in the game tree:
 
@@ -25,7 +25,7 @@ pub enum Size {
 
 `Size::raises(street, depth)` returns available raise sizes per `(street, depth)`. Defined as `PLURIBUS_INDICES` in `crates/pokerkit/src/lib.rs`. The grid is keyed only on `(street, depth)` — there is **no SPR axis on the menu**, and the InfoSet key does not carry an SPR bucket. Pot-relative sizing already self-scales with stack depth (1× pot at SPR=1 *is* all-in), and `Edge::Shove` is always available regardless of the menu, so the implicit absorbing state handles the SPR collapse without a dedicated key dimension.
 
-The v3 design memo summarizes published menus from Pluribus, Libratus, DeepStack, Slumbot, and GTOWizard — none of those systems condition the menu on an SPR bucket.
+The design memo (archived at `docs/archive/grid-v3.md`) summarizes published menus from Pluribus, Libratus, DeepStack, Slumbot, and GTOWizard — none of those systems condition the menu on an SPR bucket.
 
 ### Menu per row
 
@@ -46,8 +46,8 @@ The v3 design memo summarizes published menus from Pluribus, Libratus, DeepStack
 
 ### Two SPRs (the historical confusion)
 
-- **`Size::SPR(n, d)`** — encoded *bet size* (pot-relative numerator/denominator). Lives on `Edge::Raise`. The thing the action enum carries. Unchanged from v2.
-- **`gameplay::SPR`** — discrete 4-bucket *stack-to-pot ratio* (`Committed` / `Low` / `Mid` / `Deep`, boundaries `[1.5, 4.0, 10.0]`), defined at `crates/kicker/src/geometry.rs`. Computed from live `Game::geometry()`. **No longer on the InfoSet key** (v3 cutover). Still surfaced via `ApiStrategy.spr` for FE display and via the litmus `expected_spr` validator as a sanity check on history-definition chip dynamics.
+- **`Size::SPR(n, d)`** — encoded *bet size* (pot-relative numerator/denominator). Lives on `Edge::Raise`. The thing the action enum carries.
+- **`gameplay::SPR`** — discrete 4-bucket *stack-to-pot ratio* (`Committed` / `Low` / `Mid` / `Deep`, boundaries `[1.5, 4.0, 10.0]`), defined at `crates/kicker/src/geometry.rs`. Computed from live `Game::geometry()`. **Not on the InfoSet key.** Still surfaced via `ApiStrategy.spr` for FE display and via the litmus `expected_spr` validator as a sanity check on history-definition chip dynamics.
 
 ## Game Tree Constants (`pokerkit`)
 

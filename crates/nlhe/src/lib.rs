@@ -37,14 +37,19 @@
 //! raise sizes (see `Info::raises`). This keeps the action space tractable
 //! while preserving strategically important bet sizes.
 
+#[cfg(feature = "server")]
+mod adapt;
 mod edge;
 mod encoder;
 mod flagship;
 mod game;
 mod info;
 #[cfg(feature = "server")]
+mod lazy;
+#[cfg(feature = "server")]
 mod lookup;
 mod memory;
+mod nest;
 #[cfg(feature = "server")]
 mod profile;
 mod public;
@@ -58,14 +63,19 @@ mod source;
 mod strategy;
 mod turn;
 
+#[cfg(feature = "server")]
+pub use adapt::*;
 pub use edge::*;
 pub use encoder::*;
 pub use flagship::*;
 pub use game::*;
 pub use info::*;
 #[cfg(feature = "server")]
+pub use lazy::*;
+#[cfg(feature = "server")]
 pub use lookup::*;
 pub use memory::*;
+pub use nest::*;
 pub use public::*;
 pub use record::*;
 pub use secret::*;
