@@ -99,6 +99,36 @@ pub trait Recall {
             .collect()
     }
 
+    /// Full typed history, preserving off-tree actions.
+    ///
+    /// Like [`Self::history`] but does not panic on the [`Translated::Free`]
+    /// arm: off-grid raises (emitted only under [`pokerkit::Translation::Exact`])
+    /// are handed back verbatim as `Translated::Free(Action::Raise(_))`. A
+    /// nesting player walks this to locate the off-tree entry and re-solve an
+    /// augmented subgame — see `docs/active/off-tree-nesting.md`.
+    ///
+    /// For depth (aggression) bookkeeping the walk still advances its edge
+    /// path by the *canonical* snap of each action ([`Game::edgify`]), so a
+    /// trailing on-tree action after an off-tree raise translates against the
+    /// correct grid cell. The output element stays `Free` regardless.
+    fn typed_history(&self) -> Vec<Translated<Edge, Action>> {
+        let translation = pokerkit::translation();
+        let ref mut rng = rand::rng();
+        self.states()
+            .into_iter()
+            .zip(self.actions().iter())
+            .scan(Path::default(), |past, (game, action)| {
+                let step = game.translate(*action, past.aggression(), &translation, rng);
+                let edge = match step {
+                    Translated::Snap(edge) => edge,
+                    Translated::Free(_) => game.edgify(*action, past.aggression()),
+                };
+                *past = (*past).into_iter().chain(std::iter::once(edge)).collect();
+                Some(step)
+            })
+            .collect()
+    }
+
     /// Current street edges only (trailing choice edges before any Draw).
     fn subgame(&self) -> Path {
         self.history()
@@ -171,5 +201,32 @@ mod tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(translated, manual_edgify_walk, "default Snap must reproduce the historical edgify path");
+    }
+
+    /// Under the default `Snap`, `typed_history` emits every step as
+    /// `Translated::Snap`, and unwrapping those snaps reproduces `history`
+    /// exactly. (The `Free` arm is only reachable under `Translation::Exact`,
+    /// which cannot be set here without corrupting the process-global
+    /// `OnceLock`; off-tree preservation is covered by the direct
+    /// `Game::translate` Exact tests in `game.rs`.)
+    #[test]
+    fn typed_history_under_default_snap_matches_history() {
+        let recall = Witness::initial(Game::root().dealer())
+            .push(Action::Call(1))
+            .push(Action::Check);
+        let flop = recall.head().deck().deal(Street::Pref);
+        let recall = recall
+            .push(Action::Draw(flop))
+            .push(Action::Raise(6))
+            .push(Action::Call(6));
+        let unwound = recall
+            .typed_history()
+            .into_iter()
+            .map(|step| match step {
+                pokerkit::Translated::Snap(edge) => edge,
+                pokerkit::Translated::Free(_) => unreachable!("default Snap never emits Free"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(unwound, recall.history(), "typed_history snaps must match history under default Snap");
     }
 }

@@ -21,10 +21,12 @@ use pokerkit::Utility;
 pub trait CfrGame: Clone + Copy + Send + Sync {
     type E: CfrEdge;
     type T: CfrTurn;
+
     fn root() -> Self;
     fn turn(&self) -> Self::T;
     fn apply(&self, edge: Self::E) -> Self;
     fn payoff(&self, turn: Self::T) -> Utility;
+
     /// Coarse depth indicator for street-level boundary detection.
     ///
     /// Returns 0 by default. Override for games with distinct phases

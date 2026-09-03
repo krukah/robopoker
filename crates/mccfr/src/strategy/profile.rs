@@ -12,8 +12,10 @@ use pokerkit::*;
 pub trait RefProf: CfrRule {
     /// how many iterations
     fn t(&self) -> usize;
+
     /// Sum of positive regrets across all infosets, divided by iterations.
     fn sum_regret(&self) -> Utility;
+
     /// lookup accumulated weight for this information
     fn cum_weight(&self, info: &Self::I, edge: &Self::E) -> Probability;
     /// lookup accumulated regret for this information

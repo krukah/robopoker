@@ -102,7 +102,7 @@ impl ApiSolved {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ApiOpponentRange {
     /// Hole-card-level posterior, normalized to sum to 1. Each entry is
     /// the probability that villain holds that exact pocket given the
@@ -110,7 +110,7 @@ pub struct ApiOpponentRange {
     pub entries: Vec<ApiRangeEntry>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ApiRangeEntry {
     pub obs: Observation,
     pub weight: f32,

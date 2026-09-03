@@ -45,7 +45,7 @@ The `(Version × Regime)` Cartesian product is the "training universe". Tables f
 
 **Note**: `regime!` always suffixes both regime and version. There's no regime-only-without-version macro because every regime-dependent table is a strategy keyed by InfoIds, and InfoIds embed abstraction IDs from the active version. Regime-only suffixing would let two versions corrupt each other's strategy data.
 
-V0's `Version::suffix() == ""` keeps existing prod table names intact (`blueprint_pluribus`, `metric`). When V1 is introduced, all training-derived tables fork cleanly: `blueprint_pluribus_v1`, `metric_v1`, etc.
+`V1` is the sole live version (post-Z-bug reset): training-derived tables are `blueprint_pluribus_v1`, `epoch_pluribus_v1`, etc.; clustering tables are `abstraction_v1`, `metric_v1`, etc. A future version bump forks all of these cleanly under a new suffix.
 
 **Rule**: any new table that derives from clustering output → `versioned!`. Any new table that derives from a trained strategy → `regime_versioned!`. Raw game observations → `table!`.
 
@@ -67,13 +67,13 @@ The `fingerprint_<regime>_<version>` table holds a single row with a textual fin
 
 **When you add a new regime-affecting constant**, add it to `pokerkit::config_string` in `crates/pokerkit/src/regime.rs`. Anything you forget is silent drift that the runtime check won't catch.
 
-**Adding `Version::V1`** (when bumping K-means params):
+**Adding a future `Version`** (when bumping K-means params):
 
-1. Add `V1` variant to enum in `crates/pokerkit/src/version.rs`; update `parse_version()`, `Display`, and `suffix()` matches
-2. Bump `KMEANS_*_CLUSTER_COUNT` constants in `crates/pokerkit/src/lib.rs` (clustering is deterministic via hashed seeds — same params give identical clusters, so V1 is only meaningful with new params)
+1. Add the variant to the enum in `crates/pokerkit/src/version.rs`; update `Display`, `suffix()`, and `clustering_suffix()` matches (clap derives the CLI parse)
+2. Bump `KMEANS_*_CLUSTER_COUNT` constants in `crates/pokerkit/src/lib.rs` (clustering is deterministic via hashed seeds — same params give identical clusters, so a new version is only meaningful with new params)
 3. Recompile + deploy trainer
-4. `trainer --version v1 --fast` auto-clusters fresh into `_v1`-suffixed tables, then trains
-5. **Caveat**: `Layer<K, N>` is const-generic, so one binary has one set of K. To run V0 and V1 concurrently from the same binary, refactor `Street::k()` to runtime dispatch.
+4. `trainer --version <vN> --fast` auto-clusters fresh into `_<vN>`-suffixed tables, then trains
+5. **Caveat**: `Layer<K, N>` is const-generic, so one binary has one set of K. To run two versions concurrently from the same binary, refactor `Street::k()` to runtime dispatch.
 
 ## Schema reference
 
@@ -255,7 +255,7 @@ Deterministic products of hierarchical K-means + Sinkhorn; rebuilt per clusterin
 
 Depend on both clustering and bet-sizing regime. Written by `forge` (trainer) and `nlhe` (profile serialization).
 
-- **`blueprint`** — the MCCFR strategy. Unique key `(past, present, choices, edge)`; `weight`/`regret`/`payoff`/`visits`. (V3 dropped the V2 `geometry`/SPR column.)
+- **`blueprint`** — the MCCFR strategy. Unique key `(past, present, choices, edge)`; `weight`/`regret`/`payoff`/`visits`. (No `geometry`/SPR column — the InfoSet key carries no SPR bucket.)
 - **`epoch`** — single-row training counter (`key='current'`).
 - **`snapshot`** — append-only per-flush training log: `epoch`, `infos`, `nodes`, `exploit` (sum-regret proxy), `elapsed`, `stamped`.
 - **`staging`** — ephemeral `UNLOGGED` COPY buffer, `(LIKE blueprint)`, merged then dropped each flush.

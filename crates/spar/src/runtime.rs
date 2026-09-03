@@ -26,6 +26,8 @@ use crate::benchmark::*;
 use crate::client::*;
 use crate::mode::*;
 use crate::recorder::*;
+use daybook::Check;
+use daybook::Ensure;
 use parlor::VariantExt;
 use pokerkit::Variant;
 use tracing::Instrument;
@@ -75,6 +77,8 @@ impl Runtime {
             "slumbot runtime starting",
         );
         let db = connect().await;
+        db.ensure::<daybook::Benchmark>().await;
+        let epoch = db.epochs().await as i64;
         let flagship = if self.variants.iter().any(|(v, _)| v.requires_blueprint()) {
             Some(parlor::hydrate_blueprint(db.clone()).await)
         } else {
@@ -91,11 +95,8 @@ impl Runtime {
                 let throttle = throttle.clone();
                 let mode = self.mode;
                 tokio::spawn(
-                    async move { execute(v, db, flagship, throttle, mode).await }.instrument(tracing::info_span!(
-                        "variant",
-                        name = v.label(),
-                        session
-                    )),
+                    async move { execute(v, db, flagship, throttle, mode, epoch).await }
+                        .instrument(tracing::info_span!("variant", name = v.label(), session)),
                 )
             })
             .collect();
@@ -127,10 +128,11 @@ async fn execute(
     flagship: Option<&'static nlhe::Flagship>,
     throttle: Throttle,
     mode: Mode,
+    epoch: i64,
 ) {
     let mut player = variant.into_player(flagship);
-    let mut recorder = Recorder::new(db, variant.id()).await;
-    run_benchmark(variant, player.as_mut(), &mut recorder, throttle, mode).await;
+    let mut recorder = Recorder::new(db.clone(), variant.id()).await;
+    run_benchmark(variant, player.as_mut(), &mut recorder, throttle, mode, &db, epoch).await;
 }
 
 async fn run_benchmark(
@@ -139,18 +141,23 @@ async fn run_benchmark(
     recorder: &mut Recorder,
     throttle: Throttle,
     mode: Mode,
+    db: &std::sync::Arc<tokio_postgres::Client>,
+    epoch: i64,
 ) {
     let label = variant.label();
     tracing::info!(variant = label, ?mode, "benchmark starting");
     match mode {
         Mode::Fixed(hands) => match Benchmark::run(variant, player, hands, recorder, throttle).await {
-            Ok(bench) => bench.report(),
+            Ok(bench) => {
+                bench.report();
+                bench.persist(db.as_ref(), variant, epoch).await;
+            }
             Err(e) => tracing::error!(variant = label, error = %e, "benchmark failed"),
         },
         Mode::Continuous => {
-            Benchmark::continuous(variant, player, recorder, throttle)
-                .await
-                .report();
+            let bench = Benchmark::continuous(variant, player, recorder, throttle).await;
+            bench.report();
+            bench.persist(db.as_ref(), variant, epoch).await;
         }
     }
 }

@@ -130,9 +130,9 @@ where
 
 // --- Algorithms (dispatched by [`crate::Translation::resolve`]) ---
 //
-// All snap-family algorithms return [`Anchor`] directly. Brown-style
-// injection variants (future PR B) will return `Option<Anchor>` and let
-// the dispatcher lift to [`Translated::Free`] when off-grid.
+// Snap-family algorithms return [`Anchor`] directly (always on-grid).
+// The Brown-style [`Self::exact`] returns `Option<Anchor>`: the
+// dispatcher lifts `None` to [`Translated::Free`] when off-grid.
 
 impl<A, P> Lattice<A, P>
 where
@@ -186,6 +186,21 @@ where
         } else {
             bracket.hi()
         }
+    }
+
+    /// Exact-hit lookup for Brown-style abstraction-free translation:
+    /// `Some(anchor)` iff `observed` falls within the relative
+    /// [`EXACT_SNAP_TOLERANCE`](crate::EXACT_SNAP_TOLERANCE) of an anchor
+    /// scalar (anchors and observations are both rational bet ratios), else
+    /// `None`. A near-grid bet snaps to its anchor; only a genuinely off-grid
+    /// bet is lifted by the dispatcher to [`Translated::Free`] for a nesting
+    /// player to re-solve against. Since the axis is a bet ratio, the
+    /// relative band is equivalently a relative chip difference.
+    pub fn exact(&self, observed: Scalar<A>) -> Option<Anchor> {
+        let x = observed.value();
+        self.scalars()
+            .position(|a| (a - x).abs() <= crate::EXACT_SNAP_TOLERANCE * a.abs().max(1.0))
+            .map(Anchor::new)
     }
 }
 

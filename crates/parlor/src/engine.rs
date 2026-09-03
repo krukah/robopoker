@@ -387,6 +387,11 @@ impl Engine<Showdown> {
     }
 
     /// Advance to next hand or finish.
+    ///
+    /// The `Err` arm is a typestate branch, not a failure — boxing it to satisfy
+    /// `result_large_err` would buy an allocation per hand and say the wrong
+    /// thing about what `Finished` means.
+    #[allow(clippy::result_large_err)]
     pub async fn conclude(mut self) -> Result<Engine<Dealing>, Engine<Finished>> {
         if let Some(next) = self.core.live.game().continuation() {
             self.core.live.start(self.core.live.epoch() + 1, next);

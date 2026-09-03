@@ -221,18 +221,35 @@ pub trait Solver: Send + Sync {
     ///
     /// it would be nice to do a kind of parameter sweep across
     /// these different settings. i should checkout if criterion supports.
+    /// Runs `f` and folds this worker thread's CPU time for the call into the
+    /// batch CPU meter (see the `cpu` module). Summed across the Rayon pool, this
+    /// yields CPU utilization rather than just wall-clock time.
+    ///
+    /// Applied only at *per-tree* granularity (tree build + partition), never
+    /// per-infoset: `clock_gettime` is a real syscall and a batch has ~1e5
+    /// infosets, so per-infoset metering would add ~1e5 syscalls plus atomic
+    /// contention on the shared counter — degrading the very parallelism it
+    /// measures. Tree build + partition dominate CPU, so utilization stays
+    /// representative (it mildly undercounts by omitting regret matching).
+    fn measured<R>(&self, f: impl FnOnce() -> R) -> R {
+        let (out, cpu) = crate::cpu::measure(f);
+        self.profile().metrics().inspect(|m| m.add_cpu(cpu));
+        out
+    }
+
     #[cfg(feature = "server")]
     fn batch(&self) -> Vec<Decisions<Self::E, Self::I>> {
         use rayon::iter::IntoParallelIterator;
         use rayon::iter::ParallelIterator;
-        // @parallelizable
+        // @parallelizable — per-tree work is CPU-metered; the per-infoset update
+        // stage is intentionally left unmetered (see `measured`).
         (0..Self::batch_size())
             .into_par_iter()
-            .map(|i| self.tree(i))
+            .map(|i| self.measured(|| self.tree(i)))
             .map(|t| self.record_tree(t))
             .collect::<Vec<Tree<_, _, _, _>>>()
             .into_par_iter()
-            .flat_map(|tree| self.record_infosets(tree))
+            .flat_map(|tree| self.measured(|| self.record_infosets(tree)))
             .collect::<Vec<InfoSet<_, _, _, _>>>()
             .into_par_iter()
             .map(|infoset| self.update_vector(infoset))
@@ -255,11 +272,14 @@ pub trait Solver: Send + Sync {
     fn record_tree(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let n = tree.n();
         self.inc_nodes(n);
+        #[cfg(feature = "server")]
+        vitals::metrics::get().mccfr_tree_size.record(n as u64, &[]);
         tree
     }
 
-    /// Partitions a tree by infoset, applies the walker filter, and
-    /// increments the infoset counter.
+    /// Partitions a tree by infoset, applies the walker filter, records
+    /// infoset-level telemetry (`infosets_per_tree` per tree, `infoset_size`
+    /// per infoset), and increments the infoset counter.
     fn record_infosets(
         &self,
         tree: Tree<Self::T, Self::E, Self::G, Self::I>,
@@ -271,6 +291,14 @@ pub trait Solver: Send + Sync {
             .filter(|infoset| infoset.head().game().turn() == walker)
             .collect();
         infosets.iter().for_each(|_| self.inc_infos(1));
+        #[cfg(feature = "server")]
+        {
+            let tel = vitals::metrics::get();
+            tel.mccfr_infosets_per_tree.record(infosets.len() as u64, &[]);
+            infosets
+                .iter()
+                .for_each(|infoset| tel.mccfr_infoset_size.record(infoset.size() as u64, &[]));
+        }
         infosets
     }
 

@@ -6,7 +6,7 @@ use kicker::*;
 
 pub async fn policy(api: web::Data<StrategyAPI>, req: web::Json<GetPolicy>) -> impl Responder {
     let started = std::time::Instant::now();
-    match Witness::try_build(req.turn, req.seen, req.past.clone()) {
+    match Witness::try_build_with(req.turn, req.seen, req.stacks, req.past.clone()) {
         Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {e}")),
         Ok(recall) => api
             .policy(recall)
@@ -39,7 +39,7 @@ where
     F: FnOnce(Witness) -> Fut,
     Fut: std::future::Future<Output = anyhow::Result<ApiSolved>>,
 {
-    match Witness::try_build(req.turn, req.seen, req.past.clone()) {
+    match Witness::try_build_with(req.turn, req.seen, req.stacks, req.past.clone()) {
         Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {e}")),
         Ok(recall) => dispatch(recall).await.map_or_else(
             |e| HttpResponse::InternalServerError().body(e.to_string()),
@@ -60,7 +60,7 @@ fn posterior<F>(req: web::Json<GetPolicy>, compute: F) -> HttpResponse
 where
     F: FnOnce(Witness) -> anyhow::Result<ApiOpponentRange>,
 {
-    match Witness::try_build(req.turn, req.seen, req.past.clone()) {
+    match Witness::try_build_with(req.turn, req.seen, req.stacks, req.past.clone()) {
         Err(e) => HttpResponse::BadRequest().body(format!("invalid action sequence: {e}")),
         Ok(recall) => compute(recall).map_or_else(
             |e| HttpResponse::InternalServerError().body(e.to_string()),

@@ -27,11 +27,13 @@
 mod check;
 mod measure;
 mod schema;
+mod scoreboard;
 mod stage;
 mod traits;
 
 pub use check::*;
 pub use measure::measure;
+pub use scoreboard::*;
 // schema module provides trait impls, no items to re-export
 pub use stage::*;
 pub use traits::*;
@@ -93,10 +95,11 @@ macro_rules! table {
     };
 }
 /// Clustering-derived table: name gets the suffix of the version whose
-/// K-means output this version *uses*. When a new `Version` only changes
-/// the bet-sizing grid (e.g. V3 reuses V1's clustering), it should read
-/// the existing `_v1` clustering tables — not require fresh clustering
-/// under a `_v3` suffix. See [`pokerkit::Version::clustering_suffix`].
+/// K-means output this version *uses*. A version that only changes the
+/// bet-sizing grid reads the existing clustering tables of the version it
+/// derives from rather than requiring a fresh clustering run. With a
+/// single live `V1`, this resolves to the `_v1` clustering tables.
+/// See [`pokerkit::Version::clustering_suffix`].
 macro_rules! versioned {
     ($name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
@@ -112,8 +115,8 @@ macro_rules! versioned {
 /// abstraction IDs from the active version, so regime-only suffixing
 /// would let two versions corrupt each other's strategy data.
 ///
-/// Regime suffix comes first; V0's empty version suffix preserves
-/// existing `<base>_<regime>` table names.
+/// Regime suffix comes first, then the version suffix — e.g.
+/// `blueprint_pluribus_v1`.
 macro_rules! regime {
     ($name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
@@ -174,3 +177,14 @@ regime!(
      that share Edge serialization but change action semantics. Run \
      `--mode reset` to clear and re-fingerprint."
 );
+
+// ── Scoreboard tables (cross-fingerprint measurements) ──────────────────────
+// Deliberately `table!`, NOT `regime!`. The `regime!` rationale — that
+// InfoId-keyed rows from two versions share a byte representation and would
+// corrupt each other — does not apply here: these rows are scalar SCORES,
+// each naming its own (regime, version, fingerprint) via explicit columns,
+// never joined to a blueprint by InfoId. One shared table is what makes
+// "rank every fingerprint" a single `ORDER BY bb DESC` instead of a UNION
+// over regime-suffixed tables. See crates/daybook/CLAUDE.md.
+table!(benchmark, "benchmark", "Slumbot bb/100 scores per (fingerprint × variant). Append-only.");
+table!(litmus, "litmus", "Litmus structural pass/fail counts per fingerprint. Append-only.");

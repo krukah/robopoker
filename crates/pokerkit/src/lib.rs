@@ -66,6 +66,16 @@ pub const B_BLIND: Chips = 2;
 pub const S_BLIND: Chips = 1;
 /// Maximum re-raises per betting round (limits tree width).
 pub const MAX_RAISE_REPEATS: usize = 3;
+/// Off-tree snap tolerance for [`Translation::Exact`], as a **relative**
+/// difference in [0, 1]. A raise whose bet ratio is within this fraction of
+/// a grid anchor is treated as on-grid and snapped, rather than emitted as
+/// `Translated::Free` for a nested re-solve. Applied in the lattice's ratio
+/// space, so it is equivalently a relative *chip* difference (the pot
+/// cancels). Scales with bet size — a fixed 5% band tolerates more chips on
+/// a pot-sized bet than on a min-raise. Absorbs rounding mismatch between an
+/// opponent's integer bet and our pot-fraction grid while keeping nesting
+/// reserved for genuinely off-grid sizes. `0.0` recovers byte-exact matching.
+pub const EXACT_SNAP_TOLERANCE: f64 = 0.05;
 /// Maximum edges in a packed Path (12 nibbles × 5 bits = 60 bits ≤ 64 bits).
 /// Data-representation limit, not a solver depth knob — the subgame tree's
 /// effective depth is controlled by where `DepthGame::at_frontier` fires

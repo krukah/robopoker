@@ -71,4 +71,6 @@ pub enum Query {
         #[arg(required = true)]
         value: i64,
     },
+    #[command(about = "Rank trained fingerprints by Slumbot bb/100 (litmus alongside)", alias = "brd")]
+    Scoreboard,
 }

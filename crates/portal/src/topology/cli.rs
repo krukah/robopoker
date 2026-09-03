@@ -225,6 +225,16 @@ impl CLI {
                     Ok(())
                 }
             }
+            Query::Scoreboard => {
+                use daybook::Scoreboard;
+                let ranked = self.0.client().leaderboard().await;
+                if ranked.is_empty() {
+                    println!("no benchmark or litmus results recorded yet");
+                } else {
+                    println!("{}", daybook::render(&ranked));
+                }
+                Ok(())
+            }
         }
     }
 }

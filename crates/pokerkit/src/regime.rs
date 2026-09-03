@@ -70,3 +70,20 @@ pub fn config_string(r: Regime) -> String {
         Regime::Slumbot => format!("{common};SLUMBOT_INDICES={SLUMBOT_INDICES:?};RAISES={RAISES:?}"),
     }
 }
+
+/// Short, stable hash of the full config fingerprint for regime `r`.
+///
+/// Two runs share a fingerprint iff every regime-affecting constant in
+/// [`config_string`] matches — strictly finer than the `(regime, version)`
+/// table-naming key, which cannot see drift in bet-sizing / stack constants
+/// that leave `Edge::Raise(Size)` byte-identical while changing its meaning.
+/// Used to tag scoreboard rows so persisted scores are attributable to the
+/// exact game tree that produced them. `DefaultHasher` seeds are fixed, so
+/// the digest is stable across processes and builds.
+pub fn fingerprint(r: Regime) -> String {
+    use std::hash::Hash;
+    use std::hash::Hasher;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    config_string(r).hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}

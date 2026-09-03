@@ -62,21 +62,30 @@ impl PreTraining {
         pending
     }
 
-    /// Prepare tables for streaming (truncate if needed).
-    #[allow(unused)]
-    async fn truncate(client: &Arc<Client>) {
+    /// Drop every clustering table so the next [`run`](Self::run) rebuilds the
+    /// abstraction from scratch.
+    ///
+    /// Needed when the evaluator / equity computation changes and the cached
+    /// clustering is stale: river equity (`deuce::Observation::equity`) is
+    /// computed from hand `Strength`, so the whole hierarchy is built on the
+    /// evaluator — the PR #316 full-house-vs-flush fix invalidated it. `run`
+    /// only clusters streets `clustered()` reports missing, so forcing a
+    /// rebuild means clearing the tables first. Names resolve through daybook's
+    /// version-suffixed helpers (never hardcoded `_v1`), and the pipeline
+    /// recreates them (CREATE IF NOT EXISTS) on the rebuild.
+    pub async fn clear(client: &Client) {
+        tracing::warn!("recluster — dropping clustering tables for a full rebuild");
         client
-            .batch_execute(Metric::truncates())
+            .batch_execute(&format!(
+                "DROP TABLE IF EXISTS {}, {}, {}, {}, {} CASCADE;",
+                daybook::abstraction(),
+                daybook::isomorphism(),
+                daybook::street(),
+                daybook::transitions(),
+                daybook::metric(),
+            ))
             .await
-            .expect("truncate table metric");
-        client
-            .batch_execute(Future::truncates())
-            .await
-            .expect("truncate table transitions");
-        client
-            .batch_execute(Lookup::truncates())
-            .await
-            .expect("truncate table isomorphism");
+            .expect("clear clustering tables");
     }
 
     /// Index tables after data is streamed.

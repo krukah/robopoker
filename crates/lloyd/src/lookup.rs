@@ -3,6 +3,7 @@ use deuce::*;
 use kicker::*;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::OnceLock;
 
 /// Mapping from hand isomorphisms to abstraction buckets.
@@ -81,6 +82,7 @@ impl daybook::Schema for Lookup {
         &[
             tokio_postgres::types::Type::INT8, // obs (observation/isomorphism)
             tokio_postgres::types::Type::INT2, // abs (abstraction bucket)
+            tokio_postgres::types::Type::INT4, // position (dense per-bucket index)
         ]
     }
 
@@ -104,17 +106,16 @@ impl daybook::Schema for Lookup {
         let t = daybook::isomorphism();
         SQL.get_or_init(|| {
             daybook::leaked(format!(
-                "WITH numbered AS (
-                SELECT obs, (ROW_NUMBER() OVER (PARTITION BY abs ORDER BY obs) - 1)::INTEGER AS pos
-                FROM {t}
-             )
-             UPDATE {t} i SET position = n.pos
-             FROM numbered n
-             WHERE i.obs = n.obs AND i.position IS DISTINCT FROM n.pos;
-             CREATE INDEX IF NOT EXISTS idx_{t}_obs ON {t} (obs);
-             CREATE INDEX IF NOT EXISTS idx_{t}_abs ON {t} (abs);
+                // Index-only. `position` (the dense per-bucket index the topology
+                // sampler reads) is computed in memory and streamed in via COPY —
+                // see the `Streamable` impl below — so finalize no longer runs the
+                // full-table `UPDATE ... position` that went disk-bound for hours
+                // on the ~123M-row river table. `idx_covering` serves the
+                // `obs -> abs` lookup in `nlhe::lookup`; `idx_abs_pos` serves the
+                // sampler's `(abs, position)` access; `idx_abs_obs` serves
+                // per-bucket scans.
+                "CREATE INDEX IF NOT EXISTS idx_{t}_abs_obs ON {t} (abs, obs);
              CREATE INDEX IF NOT EXISTS idx_{t}_abs_pos ON {t} (abs, position);
-             CREATE INDEX IF NOT EXISTS idx_{t}_abs_obs ON {t} (abs, obs);
              CREATE INDEX IF NOT EXISTS idx_{t}_covering ON {t} (obs, abs) INCLUDE (abs);"
             ))
         })
@@ -122,7 +123,9 @@ impl daybook::Schema for Lookup {
 
     fn copy() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| daybook::leaked(format!("COPY {} (obs, abs) FROM STDIN BINARY", daybook::isomorphism())))
+        SQL.get_or_init(|| {
+            daybook::leaked(format!("COPY {} (obs, abs, position) FROM STDIN BINARY", daybook::isomorphism()))
+        })
     }
 
     fn truncates() -> &'static str {
@@ -145,10 +148,20 @@ impl daybook::Schema for Lookup {
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl daybook::Streamable for Lookup {
-    type Row = (i64, i16);
+    type Row = (i64, i16, i32);
 
+    /// Yields `(obs, abs, position)`, where `position` is the dense per-bucket
+    /// index (`0..population` within each `abs`) the topology sampler reads,
+    /// computed in one pass so finalize is index-only. The sampler treats it as
+    /// an opaque dense index (`e.position = FLOOR(RANDOM() * population)`), so
+    /// the per-bucket order — here, canonical `Isomorphism` order — is
+    /// deterministic but otherwise unobservable: no sort, no full-table UPDATE.
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
-        self.0.into_iter().map(|(iso, abs)| (i64::from(iso), i16::from(abs)))
+        self.0
+            .into_iter()
+            .scan(HashMap::<Abstraction, i32>::new(), |counts, (iso, abs)| {
+                Some((i64::from(iso), i16::from(abs), *counts.entry(abs).and_modify(|n| *n += 1).or_insert(0)))
+            })
     }
 }
 

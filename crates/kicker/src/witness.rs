@@ -180,6 +180,20 @@ impl Witness {
     pub fn try_build(pov: Turn, seen: Observation, actions: Vec<Action>) -> anyhow::Result<Self> {
         Self::try_arrange(pov, Arrangement::from(seen), actions)
     }
+    /// [`try_build`](Self::try_build) with explicit starting stacks.
+    ///
+    /// Depth-aware reconstruction: an off-100BB spot (e.g. a drifting
+    /// elimination-tournament stack) replays its action sequence against the
+    /// real stacks instead of the default 100BB, so the sequence stays legal
+    /// and the resulting infoset keys at the correct depth.
+    pub fn try_build_with(
+        pov: Turn,
+        seen: Observation,
+        stacks: [Chips; N],
+        actions: Vec<Action>,
+    ) -> anyhow::Result<Self> {
+        Self::try_arrange_with(pov, Arrangement::from(seen), stacks, actions)
+    }
     /// Fallible constructor from (POV, arrangement, actions).
     ///
     /// Preferred over [`try_build`](Self::try_build) when an [`Arrangement`]

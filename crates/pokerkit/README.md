@@ -19,7 +19,7 @@ flowchart LR
     A5["ID&lt;T&gt;"]
   end
   subgraph Config["Runtime config (OnceLock)"]
-    C1["Version - V0..V3"]
+    C1["Version - V1"]
     C2["Regime - Pluribus / Slumbot"]
     C3["Translation - Snap / Harmonic / Phargmax"]
   end

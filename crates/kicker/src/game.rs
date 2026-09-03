@@ -804,6 +804,11 @@ impl<const P: usize> GameN<P> {
                 match Size::translate(Raise::new(chips, self.pot(), self.street(), depth), policy, rng) {
                     Translated::Snap(Size::BBs(n)) => Translated::Snap(Edge::Open(n)),
                     Translated::Snap(Size::SPR(n, d)) => Translated::Snap(Edge::Raise(Odds::new(n, d))),
+                    // An off-grid raise at or above the all-in threshold is a
+                    // shove — on-grid via Edge::Shove. Free is reserved for
+                    // genuinely off-grid, non-shove raises the nesting player
+                    // re-solves against.
+                    Translated::Free(c) if c >= self.to_shove() => Translated::Snap(Edge::Shove),
                     Translated::Free(c) => Translated::Free(Action::Raise(c)),
                 }
             }
@@ -1870,6 +1875,38 @@ mod tests {
                 "trial {trial}: Harmonic(Raise(7)) = {result:?} must be one of {{{lo:?}, {hi:?}}}",
             );
         }
+    }
+
+    /// `Exact` snaps a raise that lands on (or within the relative
+    /// `EXACT_SNAP_TOLERANCE` of) a grid anchor and leaves a genuinely
+    /// off-grid raise `Free`. Preflop depth 0: OPENS = [2,3,4,5] BBs =
+    /// [4,6,8,10] chips. Raise(6) = 3 BB = Open(3) (exact); Raise(7) = 3.5 BB
+    /// is 16.7% off the nearest anchor, well beyond tolerance → off-grid.
+    #[test]
+    fn translate_exact_snaps_on_anchor_else_free() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        assert_eq!(game.translate(Action::Raise(6), 0, &Translation::Exact, rng), Translated::Snap(Edge::Open(3)));
+        assert_eq!(game.translate(Action::Raise(7), 0, &Translation::Exact, rng), Translated::Free(Action::Raise(7)));
+    }
+
+    /// The shove guard: an off-grid raise at or above the all-in threshold
+    /// snaps to `Edge::Shove` rather than escaping as `Free`, keeping `Free`
+    /// reserved for genuinely off-grid, non-shove raises.
+    #[test]
+    fn translate_exact_off_grid_at_shove_snaps_to_shove() {
+        use rand::SeedableRng;
+        use rand::rngs::SmallRng;
+        let game = Game::root();
+        let ref mut rng = SmallRng::seed_from_u64(0);
+        let shove = game.to_shove();
+        assert_eq!(game.translate(Action::Raise(shove), 0, &Translation::Exact, rng), Translated::Snap(Edge::Shove));
+        assert_eq!(
+            game.translate(Action::Raise(shove + 50), 0, &Translation::Exact, rng),
+            Translated::Snap(Edge::Shove)
+        );
     }
 
     /// Non-raise actions resolve to the same canonical Edge under every

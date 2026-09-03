@@ -13,6 +13,7 @@
 //! - `sample` — Sampling schemes
 //! - `metrics` — Training observability
 
+mod cpu;
 mod hyperparams;
 mod metrics;
 mod policy;

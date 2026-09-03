@@ -26,6 +26,16 @@ impl Row for (i64, i16) {
     }
 }
 
+/// Row format for isomorphism → abstraction mappings carrying the derived
+/// per-bucket `position` (`obs, abs, position`) — streamed so finalize is
+/// index-only, with no full-table UPDATE.
+#[async_trait::async_trait]
+impl Row for (i64, i16, i32) {
+    async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
+        writer.write(&[&self.0, &self.1, &self.2]).await.expect("write");
+    }
+}
+
 /// Row format for triangular index → distance mappings.
 #[async_trait::async_trait]
 impl Row for (i32, f32) {

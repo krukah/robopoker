@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RPS Simplex Trajectory</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; color: #e0e0e0; font-family: 'SF Mono', 'Fira Code', monospace; display: flex; height: 100vh; }
+#canvas { flex: 1; display: flex; align-items: center; justify-content: center; }
+#panel { width: 380px; padding: 24px; border-left: 1px solid #222; overflow-y: auto; font-size: 13px; }
+svg { filter: drop-shadow(0 0 20px rgba(100,100,255,0.08)); }
+.controls { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.controls button { background: #1a1a2e; border: 1px solid #333; color: #ccc; padding: 6px 14px; cursor: pointer; font-family: inherit; font-size: 12px; }
+.controls button:hover { background: #2a2a4e; }
+.controls button.active { background: #3a3a6e; border-color: #667; }
+input[type=range] { flex: 1; accent-color: #667; min-width: 120px; }
+.label { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 6px; }
+table { width: 100%; border-collapse: collapse; margin: 4px 0; table-layout: fixed; }
+td, th { padding: 2px 0; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; white-space: pre; }
+th { color: #555; font-weight: normal; }
+th:first-child { text-align: left; color: #666; width: 36px; }
+.p1 { color: #6699ff; }
+.p2 { color: #ff6666; }
+tr.p1-row th { color: #6699ff; }
+tr.p1-row td { color: #8ab4ff; }
+tr.p2-row th { color: #ff6666; }
+tr.p2-row td { color: #ff9999; }
+.nash { color: #44dd88; }
+#epoch { font-size: 22px; font-weight: bold; margin-bottom: 12px; letter-spacing: -0.5px; }
+.sep { border-top: 1px solid #1a1a1a; margin: 6px 0; }
+</style>
+</head>
+<body>
+<div id="canvas">
+<svg id="simplex" width="600" height="560" viewBox="-20 -20 640 600"></svg>
+</div>
+<div id="panel">
+<div id="epoch">t = 0</div>
+<div class="controls">
+  <button id="play" class="active">Play</button>
+  <button id="pause">Pause</button>
+  <input type="range" id="slider" min="0" max="0" value="0">
+</div>
+<div class="controls">
+  <button id="speed1">1x</button>
+  <button id="speed2" class="active">4x</button>
+  <button id="speed4">16x</button>
+  <button id="player-toggle">Show: Both</button>
+</div>
+<div class="label">Iterated Policy</div>
+<table id="iterated-table">
+<thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead>
+<tbody></tbody>
+</table>
+<div class="label">Averaged Strategy</div>
+<table id="averaged-table">
+<thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead>
+<tbody></tbody>
+</table>
+<div class="sep"></div>
+<div class="label p1">P1 Encounters</div>
+<table id="p1-table"><thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead><tbody></tbody></table>
+<div class="label p2">P2 Encounters</div>
+<table id="p2-table"><thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead><tbody></tbody></table>
+</div>
+<script>
+const P1 = __P1_DATA__;
+const P2 = __P2_DATA__;
+const SZ = 560;
+const PAD = 20;
+const TRI = [
+  [PAD, SZ - PAD],
+  [SZ - PAD, SZ - PAD],
+  [SZ / 2, PAD + (SZ - 2 * PAD) * (1 - Math.sqrt(3) / 2)]
+];
+function bary2xy(bary) {
+  const [r, p, s] = bary;
+  return [
+    TRI[0][0] * r + TRI[1][0] * p + TRI[2][0] * s,
+    TRI[0][1] * r + TRI[1][1] * p + TRI[2][1] * s
+  ];
+}
+const NASH = bary2xy([0.4, 0.4, 0.2]);
+const svg = document.getElementById('simplex');
+function el(tag, attrs) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+// triangle
+svg.appendChild(el('polygon', {
+  points: TRI.map(p => p.join(',')).join(' '),
+  fill: 'none', stroke: '#333', 'stroke-width': '1.5'
+}));
+// vertex labels
+for (const [txt, pos, off] of [['R', TRI[0], [-14, 18]], ['P', TRI[1], [6, 18]], ['S', TRI[2], [-4, -10]]]) {
+  const t = el('text', { x: pos[0] + off[0], y: pos[1] + off[1], fill: '#888', 'font-size': '16', 'font-family': 'inherit' });
+  t.textContent = txt;
+  svg.appendChild(t);
+}
+// nash marker
+const nashG = el('g', {});
+nashG.appendChild(el('circle', { cx: NASH[0], cy: NASH[1], r: '6', fill: 'none', stroke: '#44dd88', 'stroke-width': '1.5', 'stroke-dasharray': '3,3' }));
+nashG.appendChild(el('circle', { cx: NASH[0], cy: NASH[1], r: '2', fill: '#44dd88' }));
+svg.appendChild(nashG);
+// trail groups
+const p1trail = el('g', { opacity: '0.5' });
+const p2trail = el('g', { opacity: '0.5' });
+const p1avg   = el('g', { opacity: '0.9' });
+const p2avg   = el('g', { opacity: '0.9' });
+svg.appendChild(p1trail); svg.appendChild(p2trail);
+svg.appendChild(p1avg);   svg.appendChild(p2avg);
+// current dots
+const p1dot    = el('circle', { r: '5', fill: '#6699ff', stroke: '#fff', 'stroke-width': '1' });
+const p2dot    = el('circle', { r: '5', fill: '#ff6666', stroke: '#fff', 'stroke-width': '1' });
+const p1avgdot = el('circle', { r: '6', fill: 'none', stroke: '#6699ff', 'stroke-width': '2' });
+const p2avgdot = el('circle', { r: '6', fill: 'none', stroke: '#ff6666', 'stroke-width': '2' });
+svg.appendChild(p1dot); svg.appendChild(p2dot);
+svg.appendChild(p1avgdot); svg.appendChild(p2avgdot);
+// state
+let frame = 0;
+let playing = true;
+let speed = 4;
+let showPlayer = 'both';
+const slider = document.getElementById('slider');
+slider.max = P1.length - 1;
+// formatters
+function fProb(v) { return (v >= 0 ? ' ' : '') + v.toFixed(3); }
+function fReg(v)  { return (v >= 0 ? '+' : '') + v.toFixed(2); }
+function fSci(v)  { return v.toExponential(2).replace('e+', 'e'); }
+function fEv(v)   { return (v >= 0 ? '+' : '') + v.toFixed(4); }
+function fVis(v)  { return String(v).padStart(7); }
+function policyRow(cls, label, arr) {
+  return `<tr class="${cls}-row"><th>${label}</th><td>${fProb(arr[0])}</td><td>${fProb(arr[1])}</td><td>${fProb(arr[2])}</td></tr>`;
+}
+function updatePolicyTable(id, s1, s2, field) {
+  document.querySelector(`#${id} tbody`).innerHTML =
+    policyRow('p1', 'P1', s1[field]) +
+    policyRow('p2', 'P2', s2[field]);
+}
+function updateTable(id, snap) {
+  document.querySelector(`#${id} tbody`).innerHTML =
+    `<tr><th>reg</th><td>${fReg(snap.regrets[0])}</td><td>${fReg(snap.regrets[1])}</td><td>${fReg(snap.regrets[2])}</td></tr>` +
+    `<tr><th>wgt</th><td>${fSci(snap.weights[0])}</td><td>${fSci(snap.weights[1])}</td><td>${fSci(snap.weights[2])}</td></tr>` +
+    `<tr><th>ev</th><td>${fEv(snap.payoffs[0])}</td><td>${fEv(snap.payoffs[1])}</td><td>${fEv(snap.payoffs[2])}</td></tr>` +
+    `<tr><th>vis</th><td>${fVis(snap.visits[0])}</td><td>${fVis(snap.visits[1])}</td><td>${fVis(snap.visits[2])}</td></tr>`;
+}
+function renderFrame() {
+  const s1 = P1[frame], s2 = P2[frame];
+  document.getElementById('epoch').textContent = `t = ${s1.epoch}`;
+  slider.value = frame;
+  // iterated dots
+  const [x1, y1] = bary2xy(s1.iterated);
+  const [x2, y2] = bary2xy(s2.iterated);
+  p1dot.setAttribute('cx', x1); p1dot.setAttribute('cy', y1);
+  p2dot.setAttribute('cx', x2); p2dot.setAttribute('cy', y2);
+  // averaged dots
+  const [ax1, ay1] = bary2xy(s1.averaged);
+  const [ax2, ay2] = bary2xy(s2.averaged);
+  p1avgdot.setAttribute('cx', ax1); p1avgdot.setAttribute('cy', ay1);
+  p2avgdot.setAttribute('cx', ax2); p2avgdot.setAttribute('cy', ay2);
+  // trails
+  if (frame > 0) {
+    const prev1 = bary2xy(P1[frame-1].iterated);
+    p1trail.appendChild(el('circle', { cx: prev1[0], cy: prev1[1], r: '1.5', fill: '#6699ff', opacity: '0.4' }));
+    const prev2 = bary2xy(P2[frame-1].iterated);
+    p2trail.appendChild(el('circle', { cx: prev2[0], cy: prev2[1], r: '1.5', fill: '#ff6666', opacity: '0.4' }));
+    const aprev1 = bary2xy(P1[frame-1].averaged);
+    p1avg.appendChild(el('line', { x1: aprev1[0], y1: aprev1[1], x2: ax1, y2: ay1, stroke: '#6699ff', 'stroke-width': '1', opacity: '0.6' }));
+    const aprev2 = bary2xy(P2[frame-1].averaged);
+    p2avg.appendChild(el('line', { x1: aprev2[0], y1: aprev2[1], x2: ax2, y2: ay2, stroke: '#ff6666', 'stroke-width': '1', opacity: '0.6' }));
+  }
+  // visibility
+  const show1 = showPlayer !== 'p2';
+  const show2 = showPlayer !== 'p1';
+  p1trail.style.display  = show1 ? '' : 'none';
+  p1avg.style.display    = show1 ? '' : 'none';
+  p1dot.style.display    = show1 ? '' : 'none';
+  p1avgdot.style.display = show1 ? '' : 'none';
+  p2trail.style.display  = show2 ? '' : 'none';
+  p2avg.style.display    = show2 ? '' : 'none';
+  p2dot.style.display    = show2 ? '' : 'none';
+  p2avgdot.style.display = show2 ? '' : 'none';
+  // data panel
+  updatePolicyTable('iterated-table', s1, s2, 'iterated');
+  updatePolicyTable('averaged-table', s1, s2, 'averaged');
+  updateTable('p1-table', s1);
+  updateTable('p2-table', s2);
+}
+// controls
+document.getElementById('play').onclick = () => { playing = true; document.getElementById('play').classList.add('active'); document.getElementById('pause').classList.remove('active'); };
+document.getElementById('pause').onclick = () => { playing = false; document.getElementById('pause').classList.add('active'); document.getElementById('play').classList.remove('active'); };
+slider.oninput = () => { frame = parseInt(slider.value); clearTrails(); rebuildTrails(); renderFrame(); };
+document.getElementById('speed1').onclick = () => { speed = 1; updateSpeedBtns(); };
+document.getElementById('speed2').onclick = () => { speed = 4; updateSpeedBtns(); };
+document.getElementById('speed4').onclick = () => { speed = 16; updateSpeedBtns(); };
+function updateSpeedBtns() {
+  for (const b of [document.getElementById('speed1'), document.getElementById('speed2'), document.getElementById('speed4')]) b.classList.remove('active');
+  if (speed === 1) document.getElementById('speed1').classList.add('active');
+  if (speed === 4) document.getElementById('speed2').classList.add('active');
+  if (speed >= 16) document.getElementById('speed4').classList.add('active');
+}
+document.getElementById('player-toggle').onclick = () => {
+  const btn = document.getElementById('player-toggle');
+  if (showPlayer === 'both') { showPlayer = 'p1'; btn.textContent = 'Show: P1'; }
+  else if (showPlayer === 'p1') { showPlayer = 'p2'; btn.textContent = 'Show: P2'; }
+  else { showPlayer = 'both'; btn.textContent = 'Show: Both'; }
+  renderFrame();
+};
+function clearTrails() { p1trail.innerHTML = ''; p2trail.innerHTML = ''; p1avg.innerHTML = ''; p2avg.innerHTML = ''; }
+function rebuildTrails() {
+  for (let i = 0; i < frame; i++) {
+    const [cx, cy] = bary2xy(P1[i].iterated);
+    p1trail.appendChild(el('circle', { cx, cy, r: '1.5', fill: '#6699ff', opacity: '0.4' }));
+    const [cx2, cy2] = bary2xy(P2[i].iterated);
+    p2trail.appendChild(el('circle', { cx: cx2, cy: cy2, r: '1.5', fill: '#ff6666', opacity: '0.4' }));
+    if (i > 0) {
+      const [px, py] = bary2xy(P1[i-1].averaged);
+      const [nx, ny] = bary2xy(P1[i].averaged);
+      p1avg.appendChild(el('line', { x1: px, y1: py, x2: nx, y2: ny, stroke: '#6699ff', 'stroke-width': '1', opacity: '0.6' }));
+      const [px2, py2] = bary2xy(P2[i-1].averaged);
+      const [nx2, ny2] = bary2xy(P2[i].averaged);
+      p2avg.appendChild(el('line', { x1: px2, y1: py2, x2: nx2, y2: ny2, stroke: '#ff6666', 'stroke-width': '1', opacity: '0.6' }));
+    }
+  }
+}
+renderFrame();
+let tick = 0;
+setInterval(() => {
+  if (!playing || frame >= P1.length - 1) return;
+  tick++;
+  if (tick % Math.max(1, Math.round(4 / speed)) === 0) {
+    frame++;
+    renderFrame();
+  }
+}, 16);
+</script>
+</body>
+</html>

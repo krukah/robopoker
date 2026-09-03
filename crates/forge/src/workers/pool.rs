@@ -35,7 +35,9 @@ impl Pool {
             let curr = self.infos();
             let rate = (curr - prior.1) as f64 / secs;
             *prior = (Instant::now(), curr);
-            Some(Checkpoint::new(self.epoch(), self.nodes(), curr, rate))
+            // Distributed workers are separate processes; per-thread CPU
+            // utilization isn't metered here (it's a FastSession/in-memory metric).
+            Some(Checkpoint::new(self.epoch(), self.nodes(), curr, rate, 0.0))
         } else {
             None
         }

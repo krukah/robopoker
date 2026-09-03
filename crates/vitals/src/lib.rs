@@ -73,8 +73,7 @@ pub fn init() -> TelemetryGuard {
     let service = service_name();
     let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").unwrap_or_else(|_| DEFAULT_OTLP_ENDPOINT.to_string());
     let disabled = std::env::var("RBP_TELEMETRY_DISABLED")
-        .ok()
-        .is_some_and(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes"));
+        .is_ok_and(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes"));
     let resource = build_resource(&service);
     let meter_provider = if disabled { None } else { install_meter(&endpoint, resource.clone()) };
     let _ = tracing_log::LogTracer::init();

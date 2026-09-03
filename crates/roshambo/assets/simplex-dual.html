@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RPS Simplex: Policy + Regret</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; color: #e0e0e0; font-family: 'SF Mono', 'Fira Code', monospace; overflow: hidden; }
+#viewport { width: 100vw; height: 100vh; position: relative; }
+#data-overlay {
+  position: absolute; bottom: 100px; right: 16px;
+  background: rgba(10,10,10,0.85); border: 1px solid #333;
+  border-radius: 6px; padding: 8px 12px; font-size: 11px; z-index: 5;
+  display: none; opacity: 0;
+}
+#data-overlay table { border-collapse: collapse; }
+#data-overlay td, #data-overlay th { padding: 1px 0; font-variant-numeric: tabular-nums; white-space: pre; font-size: 11px; }
+#data-overlay th { color: #555; font-weight: normal; }
+.p1-val { color: #8ab4ff; }
+.p2-val { color: #ff9999; }
+.p1-hdr { color: #6699ff; font-weight: bold; }
+.p2-hdr { color: #ff6666; font-weight: bold; }
+.vertex-label {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 10px;
+  pointer-events: none; user-select: none; white-space: pre;
+  background: rgba(10,10,10,0.75); border-radius: 3px; padding: 3px 5px;
+  line-height: 1.4;
+}
+#controls {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(10,10,10,0.85); border: 1px solid #333;
+  border-radius: 8px; padding: 10px 16px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 10;
+}
+.ctrl-row { display: flex; gap: 8px; align-items: center; }
+#epoch { font-size: 16px; font-weight: bold; letter-spacing: -0.5px; min-width: 90px; }
+.ctrl-row input[type=range] { width: 200px; accent-color: #667; }
+button {
+  background: #1a1a2e; border: 1px solid #333; color: #ccc;
+  padding: 4px 10px; cursor: pointer; font-family: inherit;
+  font-size: 11px; border-radius: 3px; white-space: nowrap;
+}
+button:hover { background: #2a2a4e; }
+button.active { background: #3a3a6e; border-color: #667; }
+.btn-group { display: flex; }
+.btn-group button { border-radius: 0; border-right-width: 0; }
+.btn-group button:first-child { border-radius: 3px 0 0 3px; }
+.btn-group button:last-child { border-radius: 0 3px 3px 0; border-right-width: 1px; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="viewport">
+  <div id="data-overlay"><table id="overlay-table"></table></div>
+  <div id="controls">
+    <div class="ctrl-row">
+      <span id="epoch">t = 0</span>
+      <button id="restart">&#x23EE;</button>
+      <button id="playpause">&#x23F8;</button>
+      <input type="range" id="slider" min="0" max="0" value="0">
+    </div>
+    <div class="ctrl-row">
+      <div class="btn-group" id="speed-group">
+        <button data-speed="1">&times;1</button>
+        <button data-speed="4" class="active">&times;4</button>
+        <button data-speed="16">&times;16</button>
+      </div>
+      <div class="btn-group" id="view-group">
+        <button data-view="policy" class="active">Policy</button>
+        <button data-view="regret">Regret</button>
+      </div>
+      <button id="player-toggle">Both</button>
+      <button id="spin-toggle" class="active">Spin</button>
+    </div>
+  </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ═══════════════════ DATA ═══════════════════════
+const P1 = __P1_DATA__;
+const P2 = __P2_DATA__;
+const N = P1.length;
+const FADE_WINDOW = 200;
+const BG = { r: 0.04, g: 0.04, b: 0.04 };
+
+// ═══════════════════ FORMATTERS ═════════════════
+const PW = 6;
+const SW = 8;
+const EW = 7;
+const G = '  ';
+function fPol(v)  { return ((v * 100).toFixed(1) + '%').padStart(PW); }
+function fSgn(v)  { return ((v >= 0 ? '+' : '-') + Math.abs(v).toExponential(1)).padStart(SW); }
+function fEval(v) { return ((v >= 0 ? '+' : '-') + Math.abs(v).toFixed(3)).padStart(EW); }
+
+// ═══════════════════ STATE ═════════════════════
+const state = { frame: 0, playing: true, speed: 4, mode: 'policy', showPlayer: 'both', spin: true };
+const sliderEl = document.getElementById('slider');
+sliderEl.max = N - 1;
+
+// ═══════════════════ CAMERA PRESETS ════════════
+const POLICY_CAM    = new THREE.Vector3(0, 3.5, 0.01);
+const POLICY_TARGET = new THREE.Vector3(0, 0.577, 0);
+const REGRET_CAM    = new THREE.Vector3(0, 1.5, 2.5);
+const REGRET_TARGET = new THREE.Vector3(0, 0.3, 0);
+
+// ═══════════════════ SCENE SETUP ═══════════════
+const vp = document.getElementById('viewport');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(vp.clientWidth, vp.clientHeight);
+renderer.setClearColor(0x0a0a0a);
+vp.insertBefore(renderer.domElement, vp.firstChild);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(vp.clientWidth, vp.clientHeight);
+labelRenderer.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+vp.insertBefore(labelRenderer.domElement, vp.children[1]);
+const camera = new THREE.PerspectiveCamera(50, vp.clientWidth / vp.clientHeight, 0.01, 100);
+camera.position.copy(POLICY_CAM);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(POLICY_TARGET);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.autoRotate = false;
+controls.autoRotateSpeed = 0.5;
+controls.minPolarAngle = 0.3;
+controls.maxPolarAngle = Math.PI * 0.45;
+controls.enabled = false;
+controls.update();
+const scene = new THREE.Scene();
+
+// ═══════════════════ GROUP ROTATION ════════════
+const group = new THREE.Group();
+const baseQ = new THREE.Quaternion().setFromUnitVectors(
+  new THREE.Vector3(1, 1, 1).normalize(), new THREE.Vector3(0, 1, 0));
+const sAfterQ = new THREE.Vector3(0, 0, 1).applyQuaternion(baseQ);
+const spinQ = new THREE.Quaternion().setFromAxisAngle(
+  new THREE.Vector3(0, 1, 0), Math.atan2(sAfterQ.x, -sAfterQ.z));
+group.quaternion.copy(spinQ.multiply(baseQ));
+scene.add(group);
+const simplexVerts = [new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
+
+// ═══════════════════ SIMPLEX WIRE + FILL ═══════
+const simplexWire = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints([...simplexVerts, simplexVerts[0]]),
+  new THREE.LineBasicMaterial({ color: 0x444444, transparent: true, opacity: 1 }));
+group.add(simplexWire);
+const fillGeo = new THREE.BufferGeometry();
+fillGeo.setAttribute('position', new THREE.Float32BufferAttribute([1,0,0, 0,1,0, 0,0,1], 3));
+fillGeo.setIndex([0, 1, 2]);
+const simplexFill = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({
+  color: 0x334455, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }));
+group.add(simplexFill);
+
+// ═══════════════════ AXES (positive only) ═════
+const axisLen = 1.15;
+const axisNames = ['R', 'P', 'S'];
+const axisEnds = [new THREE.Vector3(axisLen,0,0), new THREE.Vector3(0,axisLen,0), new THREE.Vector3(0,0,axisLen)];
+const axisLines = [], axisLabelObjs = [];
+for (let i = 0; i < 3; i++) {
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), axisEnds[i]]),
+    new THREE.LineBasicMaterial({ color: 0x555555, transparent: true, opacity: 0 }));
+  line.visible = false;
+  group.add(line);
+  axisLines.push(line);
+  const div = document.createElement('div');
+  div.style.cssText = 'color:#888;font:14px SF Mono,Fira Code,monospace;pointer-events:none;user-select:none;';
+  div.textContent = axisNames[i];
+  const lbl = new CSS2DObject(div);
+  lbl.position.copy(axisEnds[i]);
+  lbl.visible = false;
+  group.add(lbl);
+  axisLabelObjs.push(lbl);
+}
+
+// ═══════════════════ ZERO-PLANES ═══════════════
+const L = 2.0, zeroPlanes = [];
+for (const v of [[0,0,0,0,L,0,0,0,L],[0,0,0,L,0,0,0,0,L],[0,0,0,L,0,0,0,L,0]]) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  g.setIndex([0, 1, 2]);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+    color: 0x335577, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+  m.visible = false;
+  group.add(m);
+  zeroPlanes.push(m);
+}
+
+// ═══════════════════ ORIGIN MARKER ═════════════
+const originSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(0.012, 12, 12), new THREE.MeshBasicMaterial({ color: 0x444444 }));
+originSphere.visible = false;
+group.add(originSphere);
+
+// ═══════════════════ TRAIL POINT CLOUDS ════════
+function createTrail(color) {
+  const positions = new Float32Array(N * 3);
+  const colors = new Float32Array(N * 3);
+  const baseColor = new THREE.Color(color);
+  for (let i = 0; i < N; i++) {
+    colors[i*3] = baseColor.r; colors[i*3+1] = baseColor.g; colors[i*3+2] = baseColor.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setDrawRange(0, 0);
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
+    size: 0.012, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.8 }));
+  pts.renderOrder = 1;
+  group.add(pts);
+  return { geo, positions, colors, pts, baseColor };
+}
+function computeRegretScale() {
+  let mx = 0.001;
+  for (const s of P1) for (const v of s.regrets) mx = Math.max(mx, Math.abs(v));
+  for (const s of P2) for (const v of s.regrets) mx = Math.max(mx, Math.abs(v));
+  return 1.0 / mx;
+}
+const RS = computeRegretScale();
+const p1PolTrail = createTrail(0x6699ff), p2PolTrail = createTrail(0xff6666);
+const p1RegTrail = createTrail(0x6699ff), p2RegTrail = createTrail(0xff6666);
+for (let i = 0; i < N; i++) {
+  const s1 = P1[i], s2 = P2[i], j = i * 3;
+  p1PolTrail.positions[j]=s1.iterated[0]; p1PolTrail.positions[j+1]=s1.iterated[1]; p1PolTrail.positions[j+2]=s1.iterated[2];
+  p2PolTrail.positions[j]=s2.iterated[0]; p2PolTrail.positions[j+1]=s2.iterated[1]; p2PolTrail.positions[j+2]=s2.iterated[2];
+  p1RegTrail.positions[j]=s1.regrets[0]*RS; p1RegTrail.positions[j+1]=s1.regrets[1]*RS; p1RegTrail.positions[j+2]=s1.regrets[2]*RS;
+  p2RegTrail.positions[j]=s2.regrets[0]*RS; p2RegTrail.positions[j+1]=s2.regrets[1]*RS; p2RegTrail.positions[j+2]=s2.regrets[2]*RS;
+}
+for (const t of [p1PolTrail, p2PolTrail, p1RegTrail, p2RegTrail]) t.geo.attributes.position.needsUpdate = true;
+p1RegTrail.pts.visible = false;
+p2RegTrail.pts.visible = false;
+
+// ═══════════════════ CURRENT DOTS ══════════════
+function makeDot(color) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16), new THREE.MeshBasicMaterial({ color }));
+  m.renderOrder = 10;
+  group.add(m);
+  return m;
+}
+const p1PolDot = makeDot(0x6699ff), p2PolDot = makeDot(0xff6666);
+const p1RegDot = makeDot(0x6699ff), p2RegDot = makeDot(0xff6666);
+p1RegDot.visible = false; p2RegDot.visible = false;
+
+// ═══════════════════ AVERAGED CROSSES ══════════
+function makeCross(color) {
+  const hw = 0.025, ht = 0.004, s = new THREE.Shape();
+  s.moveTo(-hw,-ht); s.lineTo(-hw,ht); s.lineTo(-ht,ht);
+  s.lineTo(-ht,hw); s.lineTo(ht,hw); s.lineTo(ht,ht);
+  s.lineTo(hw,ht); s.lineTo(hw,-ht); s.lineTo(ht,-ht);
+  s.lineTo(ht,-hw); s.lineTo(-ht,-hw); s.lineTo(-ht,-ht);
+  s.closePath();
+  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity: 1, side: THREE.DoubleSide, depthTest: false }));
+  mesh.renderOrder = 5;
+  group.add(mesh);
+  return mesh;
+}
+const p1cross = makeCross(0x6699ff), p2cross = makeCross(0xff6666);
+
+// ═══════════════════ VERTEX LABELS ═════════════
+const vertexLabels = [];
+const labelDefs = [
+  { name: 'R', idx: 0, pos: simplexVerts[0], transform: 'translate(-50%, 12px)' },
+  { name: 'P', idx: 1, pos: simplexVerts[1], transform: 'translate(-50%, 12px)' },
+  { name: 'S', idx: 2, pos: simplexVerts[2], transform: 'translate(-50%, calc(-100% - 12px))' },
+];
+for (const ld of labelDefs) {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'width:0;height:0;overflow:visible;';
+  const inner = document.createElement('div');
+  inner.className = 'vertex-label';
+  inner.style.cssText = `position:absolute;left:0;width:max-content;transform:${ld.transform};`;
+  wrapper.appendChild(inner);
+  const obj = new CSS2DObject(wrapper);
+  obj.position.copy(ld.pos);
+  group.add(obj);
+  vertexLabels.push({ name: ld.name, idx: ld.idx, wrapper, div: inner });
+}
+
+// ═══════════════════ FADE COLORS ═══════════════
+function updateFade(frame, trail) {
+  for (let i = 0; i <= frame; i++) {
+    const t = Math.max(0, 1 - (frame - i) / FADE_WINDOW);
+    trail.colors[i*3]   = BG.r + (trail.baseColor.r - BG.r) * t;
+    trail.colors[i*3+1] = BG.g + (trail.baseColor.g - BG.g) * t;
+    trail.colors[i*3+2] = BG.b + (trail.baseColor.b - BG.b) * t;
+  }
+  trail.geo.attributes.color.needsUpdate = true;
+}
+
+// ═══════════════════ MORPH / CROSSFADE ═════════
+let morphing = false, morphStart = 0, morphToMode = 'policy';
+const MORPH_MS = 600;
+const morphFrom = { pos: null, tgt: null }, morphTo = { pos: null, tgt: null };
+function ease(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2; }
+
+function startMorph(toMode) {
+  if (morphing || state.mode === toMode) return;
+  morphing = true;
+  morphStart = performance.now();
+  morphToMode = toMode;
+  morphFrom.pos = camera.position.clone();
+  morphFrom.tgt = controls.target.clone();
+  morphTo.pos = (toMode === 'policy' ? POLICY_CAM : REGRET_CAM).clone();
+  morphTo.tgt = (toMode === 'policy' ? POLICY_TARGET : REGRET_TARGET).clone();
+  controls.enabled = false;
+  // show everything for crossfade
+  const s1 = state.showPlayer !== 'p2', s2 = state.showPlayer !== 'p1';
+  simplexWire.visible = true; simplexFill.visible = true;
+  p1PolTrail.pts.visible = s1; p2PolTrail.pts.visible = s2;
+  p1RegTrail.pts.visible = s1; p2RegTrail.pts.visible = s2;
+  p1PolDot.visible = s1; p2PolDot.visible = s2;
+  p1RegDot.visible = s1; p2RegDot.visible = s2;
+  p1cross.visible = s1; p2cross.visible = s2;
+  for (const a of axisLines) a.visible = true;
+  for (const l of axisLabelObjs) l.visible = true;
+  for (const p of zeroPlanes) p.visible = true;
+  for (const vl of vertexLabels) vl.wrapper.style.display = '';
+  document.getElementById('data-overlay').style.display = 'block';
+  originSphere.visible = true;
+}
+
+function updateMorph(now) {
+  if (!morphing) return;
+  const raw = Math.min(1, (now - morphStart) / MORPH_MS);
+  const t = ease(raw);
+  const toP = morphToMode === 'policy';
+  camera.position.lerpVectors(morphFrom.pos, morphTo.pos, t);
+  controls.target.lerpVectors(morphFrom.tgt, morphTo.tgt, t);
+  const pOp = toP ? t : 1 - t;
+  const rOp = toP ? 1 - t : t;
+  simplexWire.material.opacity = pOp;
+  simplexFill.material.opacity = pOp * 0.08;
+  p1PolTrail.pts.material.opacity = pOp * 0.8;
+  p2PolTrail.pts.material.opacity = pOp * 0.8;
+  p1cross.material.opacity = pOp;
+  p2cross.material.opacity = pOp;
+  for (const vl of vertexLabels) vl.div.style.opacity = pOp;
+  for (const a of axisLines) a.material.opacity = rOp * 0.6;
+  for (const p of zeroPlanes) p.material.opacity = rOp * 0.05;
+  p1RegTrail.pts.material.opacity = rOp * 0.8;
+  p2RegTrail.pts.material.opacity = rOp * 0.8;
+  document.getElementById('data-overlay').style.opacity = rOp;
+  if (raw >= 1) {
+    morphing = false;
+    state.mode = morphToMode;
+    controls.enabled = !toP;
+    updateVisibility();
+  }
+}
+
+// ═══════════════════ VISIBILITY ═════════════════
+function updateVisibility() {
+  const pol = state.mode === 'policy';
+  const s1 = state.showPlayer !== 'p2', s2 = state.showPlayer !== 'p1';
+  simplexWire.visible = pol; simplexWire.material.opacity = pol ? 1 : 0;
+  simplexFill.visible = pol; simplexFill.material.opacity = pol ? 0.08 : 0;
+  p1PolTrail.pts.visible = pol && s1; p2PolTrail.pts.visible = pol && s2;
+  p1PolTrail.pts.material.opacity = 0.8; p2PolTrail.pts.material.opacity = 0.8;
+  p1PolDot.visible = pol && s1; p2PolDot.visible = pol && s2;
+  p1cross.visible = pol && s1; p2cross.visible = pol && s2;
+  p1cross.material.opacity = 1; p2cross.material.opacity = 1;
+  for (const vl of vertexLabels) { vl.wrapper.style.display = pol ? '' : 'none'; vl.div.style.opacity = pol ? 1 : 0; }
+  for (const a of axisLines) { a.visible = !pol; a.material.opacity = !pol ? 0.6 : 0; }
+  for (const l of axisLabelObjs) l.visible = !pol;
+  for (const p of zeroPlanes) { p.visible = !pol; p.material.opacity = !pol ? 0.05 : 0; }
+  p1RegTrail.pts.visible = !pol && s1; p2RegTrail.pts.visible = !pol && s2;
+  p1RegTrail.pts.material.opacity = 0.8; p2RegTrail.pts.material.opacity = 0.8;
+  p1RegDot.visible = !pol && s1; p2RegDot.visible = !pol && s2;
+  originSphere.visible = !pol;
+  controls.autoRotate = !pol && state.spin;
+  const ov = document.getElementById('data-overlay');
+  ov.style.display = !pol ? 'block' : 'none'; ov.style.opacity = !pol ? 1 : 0;
+}
+
+// ═══════════════════ VERTEX LABEL UPDATE ═══════
+function updateVertexLabels() {
+  const s1 = P1[state.frame], s2 = P2[state.frame];
+  const sh1 = state.showPlayer !== 'p2', sh2 = state.showPlayer !== 'p1';
+  function row(cls, label, snap, idx) {
+    const c = s => `<span class="${cls}-val">${s}</span>`;
+    return `<span class="${cls}-hdr">${label}</span>${c(fPol(snap.iterated[idx]))}${G}${c(fSgn(snap.regrets[idx]))}${G}${c(fSgn(snap.weights[idx]))}${G}${c(fEval(snap.payoffs[idx]))}\n`;
+  }
+  for (const vl of vertexLabels) {
+    const i = vl.idx;
+    let h = `<span style="color:#888;font-size:11px;font-weight:bold">${vl.name}</span>\n`;
+    h += `<span style="color:#555">   ${'pol'.padStart(PW)}${G}${'reg'.padStart(SW)}${G}${'wgt'.padStart(SW)}${G}${'ev'.padStart(EW)}</span>\n`;
+    if (sh1) h += row('p1', 'P1 ', s1, i);
+    if (sh2) h += row('p2', 'P2 ', s2, i);
+    vl.div.innerHTML = h.trimEnd();
+  }
+}
+
+// ═══════════════════ DATA OVERLAY ═══════════════
+function updateOverlay() {
+  const s1 = P1[state.frame], s2 = P2[state.frame];
+  const sh1 = state.showPlayer !== 'p2', sh2 = state.showPlayer !== 'p1';
+  let h = `<tr><th>  </th><th style="color:#666">${G}${'pol'.padStart(PW)}</th><th style="color:#666">${G}${'reg'.padStart(SW)}</th><th style="color:#666">${G}${'wgt'.padStart(SW)}</th><th style="color:#666">${G}${'ev'.padStart(EW)}</th></tr>`;
+  function aRow(cls, label, snap, i) {
+    return `<tr><th class="${cls}-hdr">${label}</th><td class="${cls}-val">${G}${fPol(snap.iterated[i])}</td><td class="${cls}-val">${G}${fSgn(snap.regrets[i])}</td><td class="${cls}-val">${G}${fSgn(snap.weights[i])}</td><td class="${cls}-val">${G}${fEval(snap.payoffs[i])}</td></tr>`;
+  }
+  if (sh1) { h += aRow('p1','R ',s1,0); h += aRow('p1','P ',s1,1); h += aRow('p1','S ',s1,2); }
+  if (sh1 && sh2) h += '<tr><td colspan="5" style="border-top:1px solid #222;padding:2px"></td></tr>';
+  if (sh2) { h += aRow('p2','R ',s2,0); h += aRow('p2','P ',s2,1); h += aRow('p2','S ',s2,2); }
+  document.getElementById('overlay-table').innerHTML = h;
+}
+
+// ═══════════════════ RENDER FRAME ═══════════════
+function renderFrame() {
+  const f = state.frame, s1 = P1[f], s2 = P2[f];
+  p1PolDot.position.set(s1.iterated[0], s1.iterated[1], s1.iterated[2]);
+  p2PolDot.position.set(s2.iterated[0], s2.iterated[1], s2.iterated[2]);
+  p1RegDot.position.set(s1.regrets[0]*RS, s1.regrets[1]*RS, s1.regrets[2]*RS);
+  p2RegDot.position.set(s2.regrets[0]*RS, s2.regrets[1]*RS, s2.regrets[2]*RS);
+  p1cross.position.set(s1.averaged[0], s1.averaged[1], s1.averaged[2]);
+  p2cross.position.set(s2.averaged[0], s2.averaged[1], s2.averaged[2]);
+  p1cross.lookAt(camera.position);
+  p2cross.lookAt(camera.position);
+  for (const t of [p1PolTrail, p2PolTrail, p1RegTrail, p2RegTrail]) {
+    const start = Math.max(0, f - FADE_WINDOW);
+    t.geo.setDrawRange(start, f - start + 1);
+  }
+  updateFade(f, p1PolTrail); updateFade(f, p2PolTrail);
+  updateFade(f, p1RegTrail); updateFade(f, p2RegTrail);
+  updateVertexLabels();
+  updateOverlay();
+  document.getElementById('epoch').textContent = `t = ${s1.epoch}`;
+  sliderEl.value = f;
+}
+
+// ═══════════════════ CONTROLS ═══════════════════
+document.getElementById('playpause').onclick = () => {
+  state.playing = !state.playing;
+  document.getElementById('playpause').innerHTML = state.playing ? '&#x23F8;' : '&#x25B6;';
+};
+document.getElementById('restart').onclick = () => { state.frame = 0; renderFrame(); };
+sliderEl.oninput = () => { state.frame = parseInt(sliderEl.value); renderFrame(); };
+for (const b of document.querySelectorAll('#speed-group button'))
+  b.onclick = () => {
+    state.speed = parseInt(b.dataset.speed);
+    for (const x of document.querySelectorAll('#speed-group button')) x.classList.remove('active');
+    b.classList.add('active');
+  };
+for (const b of document.querySelectorAll('#view-group button'))
+  b.onclick = () => {
+    startMorph(b.dataset.view);
+    for (const x of document.querySelectorAll('#view-group button')) x.classList.remove('active');
+    b.classList.add('active');
+  };
+document.getElementById('player-toggle').onclick = () => {
+  const b = document.getElementById('player-toggle');
+  if (state.showPlayer === 'both') { state.showPlayer = 'p1'; b.textContent = 'P1'; }
+  else if (state.showPlayer === 'p1') { state.showPlayer = 'p2'; b.textContent = 'P2'; }
+  else { state.showPlayer = 'both'; b.textContent = 'Both'; }
+  if (!morphing) updateVisibility();
+  renderFrame();
+};
+document.getElementById('spin-toggle').onclick = () => {
+  state.spin = !state.spin;
+  controls.autoRotate = state.spin && state.mode !== 'policy';
+  document.getElementById('spin-toggle').classList.toggle('active');
+};
+
+// ═══════════════════ RESIZE ═════════════════════
+window.addEventListener('resize', () => {
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h); labelRenderer.setSize(w, h);
+});
+
+// ═══════════════════ ANIMATION LOOP ════════════
+renderFrame();
+updateVisibility();
+let tick = 0;
+(function loop() {
+  requestAnimationFrame(loop);
+  updateMorph(performance.now());
+  controls.update();
+  if (state.playing && state.frame < N - 1 && ++tick % 4 === 0) {
+    state.frame = Math.min(N - 1, state.frame + state.speed);
+    renderFrame();
+  }
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

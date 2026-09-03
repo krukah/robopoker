@@ -771,6 +771,7 @@ dependencies = [
  "futures",
  "kicker",
  "pokerkit",
+ "serde",
  "tokio",
  "tokio-postgres",
  "tracing",
@@ -1768,12 +1769,14 @@ dependencies = [
  "async-trait",
  "futures",
  "kicker",
+ "libc",
  "monge",
  "paste",
  "petgraph",
  "pokerkit",
  "rand 0.9.2",
  "rayon",
+ "vitals",
 ]
 
 [[package]]
@@ -2546,18 +2549,23 @@ dependencies = [
 
 [[package]]
 name = "robopoker"
-version = "1.1.0"
+version = "1.0.0"
 dependencies = [
+ "bouncer",
  "daybook",
  "deuce",
- "elkan",
+ "forge",
  "kicker",
+ "leduc",
+ "lloyd",
  "mccfr",
  "monge",
  "nlhe",
+ "parlor",
  "pokerkit",
+ "portal",
+ "roshambo",
  "subgame",
- "vitals",
 ]
 
 [[package]]
@@ -2869,6 +2877,7 @@ version = "1.1.0"
 dependencies = [
  "anyhow",
  "bouncer",
+ "daybook",
  "deuce",
  "kicker",
  "nlhe",

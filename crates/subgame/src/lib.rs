@@ -26,8 +26,10 @@
 //! Science, 365(6456), 885-890.
 
 mod depth;
+mod nest;
 mod world;
 pub use depth::*;
+pub use nest::*;
 pub use world::*;
 
 mod encoder;

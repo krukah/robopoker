@@ -6,38 +6,25 @@
 //! k-means clustering, potentially with different K values, distance
 //! metrics, or street hierarchies.
 //!
-//! V3 is the live writable version. V0/V1/V2 remain in the enum so tooling
-//! can address their DB tables, but the live training/serving codepath
-//! (post-SPR-cutover) only writes V3 — V0/V1/V2 tables are cold storage.
+//! V1 is the sole version. It carries the pluribus-faithful design and reads
+//! the (bug-free, deterministic) `_v1` clustering tables.
 
 /// Abstraction version controlling clustering parameters and table names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum Version {
-    /// The initial abstraction family. Bare table names (no suffix) for
-    /// backwards compatibility with prod. Read-only: blueprint schema
-    /// predates the SPR axis and the v3 cutover.
-    V0,
     /// K=256 clustering with debiased Sinkhorn metric. Tables suffixed
-    /// `_v1`. Clustering tables here are still the source of truth for
-    /// V3 (see [`Self::clustering_suffix`]).
-    V1,
-    /// SPR-keyed action grid. Blueprint tables suffixed `_v2`. Read-only
-    /// under v3 code — blueprint schema includes the `geometry` column
-    /// which v3 no longer writes.
-    V2,
-    /// Pluribus-faithful grid with no SPR axis on the InfoSet key.
-    /// Blueprint tables suffixed `_v3`; clustering tables continue to be
-    /// read from the `_v1` suffix via [`Self::clustering_suffix`].
+    /// `_v1`. The only live version; carries the pluribus-faithful grid
+    /// with no SPR axis on the InfoSet key.
     #[default]
-    V3,
+    V1,
 }
 
 static VERSION: std::sync::OnceLock<Version> = std::sync::OnceLock::<Version>::new();
 
-/// Returns the active version. Defaults to V3.
+/// Returns the active version. Defaults to V1.
 pub fn version() -> Version {
-    *VERSION.get_or_init(|| Version::V3)
+    *VERSION.get_or_init(|| Version::V1)
 }
 
 /// Sets the active version. Must be called before any table access.
@@ -50,13 +37,9 @@ pub fn init_version(v: Version) {
 
 impl Version {
     /// Database table suffix for this version.
-    /// V0 uses no suffix for backwards compatibility with existing tables.
     pub fn suffix(self) -> &'static str {
         match self {
-            Self::V0 => "",
             Self::V1 => "_v1",
-            Self::V2 => "_v2",
-            Self::V3 => "_v3",
         }
     }
 
@@ -64,13 +47,11 @@ impl Version {
     ///
     /// Clustering tables (`abstraction`, `isomorphism`, `metric`, `street`,
     /// `transitions`) are expensive to recompute and depend only on
-    /// K-means / Sinkhorn parameters — not on the bet-sizing grid. When a
-    /// new `Version` only changes the grid (V2 & V3 both reuse V1's
-    /// clustering), it reads the existing `_v1` clustering tables.
+    /// K-means / Sinkhorn parameters — not on the bet-sizing grid. They are
+    /// unaffected by the MCCFR sampling-weight bug and are reused as-is.
     pub fn clustering_suffix(self) -> &'static str {
         match self {
-            Self::V0 => "",
-            Self::V1 | Self::V2 | Self::V3 => "_v1",
+            Self::V1 => "_v1",
         }
     }
 }
@@ -78,10 +59,7 @@ impl Version {
 impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::V0 => write!(f, "v0"),
             Self::V1 => write!(f, "v1"),
-            Self::V2 => write!(f, "v2"),
-            Self::V3 => write!(f, "v3"),
         }
     }
 }

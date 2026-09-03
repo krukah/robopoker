@@ -8,15 +8,17 @@ pub struct Checkpoint {
     nodes: usize,
     infos: usize,
     rate: f64,
+    cpu_util: f64,
 }
 
 impl Checkpoint {
-    pub fn new(epoch: usize, nodes: usize, infos: usize, rate: f64) -> Self {
+    pub fn new(epoch: usize, nodes: usize, infos: usize, rate: f64, cpu_util: f64) -> Self {
         Self {
             epoch,
             nodes,
             infos,
             rate,
+            cpu_util,
         }
     }
 
@@ -35,17 +37,22 @@ impl Checkpoint {
     pub fn rate(&self) -> f64 {
         self.rate
     }
+
+    pub fn cpu_util(&self) -> f64 {
+        self.cpu_util
+    }
 }
 
 impl Display for Checkpoint {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:<20}{:<20}{:<20}{:<20}",
+            "{:<20}{:<20}{:<20}{:<20}{:<20}",
             format!("batch {}", self.epoch),
             format!("nodes {}", self.nodes),
             format!("infos {}", self.infos),
             format!("I/sec {:.1}", self.rate),
+            format!("cpu {:.0}%", self.cpu_util),
         )
     }
 }

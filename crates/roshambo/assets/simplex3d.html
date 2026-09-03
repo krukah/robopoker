@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RPS 3D Simplex Trajectory</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; color: #e0e0e0; font-family: 'SF Mono', 'Fira Code', monospace; display: flex; height: 100vh; overflow: hidden; }
+#canvas { flex: 1; position: relative; }
+#canvas canvas { display: block; width: 100% !important; height: 100% !important; }
+#panel { width: 380px; padding: 24px; border-left: 1px solid #222; overflow-y: auto; font-size: 13px; }
+.transport { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; }
+.transport input[type=range] { flex: 1; accent-color: #667; min-width: 80px; }
+.ctrl-row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+.ctrl-group { display: flex; flex-direction: column; gap: 3px; }
+.ctrl-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 2px; }
+button { background: #1a1a2e; border: 1px solid #333; color: #ccc; padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 3px; }
+button:hover { background: #2a2a4e; }
+button.active { background: #3a3a6e; border-color: #667; }
+.btn-group { display: flex; }
+.btn-group button { border-radius: 0; border-right-width: 0; padding: 5px 10px; }
+.btn-group button:first-child { border-radius: 3px 0 0 3px; }
+.btn-group button:last-child { border-radius: 0 3px 3px 0; border-right-width: 1px; }
+.btn-pair { display: flex; }
+.btn-pair button { border-radius: 0; border-right-width: 0; padding: 5px 10px; min-width: 44px; text-align: center; }
+.btn-pair button:first-child { border-radius: 3px 0 0 3px; }
+.btn-pair button:last-child { border-radius: 0 3px 3px 0; border-right-width: 1px; }
+.cycle-btn { min-width: 62px; text-align: center; }
+.label { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 6px; }
+table { width: 100%; border-collapse: collapse; margin: 4px 0; table-layout: fixed; }
+td, th { padding: 2px 0; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; white-space: pre; }
+th { color: #555; font-weight: normal; }
+th:first-child { text-align: left; color: #666; width: 36px; }
+.p1 { color: #6699ff; }
+.p2 { color: #ff6666; }
+tr.p1-row th { color: #6699ff; }
+tr.p1-row td { color: #8ab4ff; }
+tr.p2-row th { color: #ff6666; }
+tr.p2-row td { color: #ff9999; }
+.nash { color: #44dd88; }
+#epoch { font-size: 22px; font-weight: bold; margin-bottom: 12px; letter-spacing: -0.5px; }
+.sep { border-top: 1px solid #1a1a1a; margin: 6px 0; }
+.label-3d { position: absolute; color: #888; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 14px; pointer-events: none; user-select: none; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="canvas"></div>
+<div id="panel">
+<div id="epoch">t = 0</div>
+<div class="transport">
+  <div class="btn-pair">
+    <button id="play" class="active">Play</button>
+    <button id="pause">Pause</button>
+  </div>
+  <input type="range" id="slider" min="0" max="0" value="0">
+</div>
+<div class="ctrl-row">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Speed</span>
+    <div class="btn-group">
+      <button id="speed1">1x</button>
+      <button id="speed2" class="active">4x</button>
+      <button id="speed4">16x</button>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Mode</span>
+    <button id="mode-toggle" class="cycle-btn">Policy</button>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Show</span>
+    <button id="player-toggle" class="cycle-btn">Both</button>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">&nbsp;</span>
+    <button id="rotate-toggle" class="active">Spin</button>
+  </div>
+</div>
+<div class="label">Iterated Policy</div>
+<table id="iterated-table">
+<thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead>
+<tbody></tbody>
+</table>
+<div class="label">Averaged Strategy</div>
+<table id="averaged-table">
+<thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead>
+<tbody></tbody>
+</table>
+<div class="sep"></div>
+<div class="label p1">P1 Encounters</div>
+<table id="p1-table"><thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead><tbody></tbody></table>
+<div class="label p2">P2 Encounters</div>
+<table id="p2-table"><thead><tr><th></th><th>R</th><th>P</th><th>S</th></tr></thead><tbody></tbody></table>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ═══════════════════ DATA LAYER ═══════════════════
+
+const P1 = __P1_DATA__;
+const P2 = __P2_DATA__;
+const N = P1.length;
+const FADE_WINDOW = 200;
+const BG = { r: 0.04, g: 0.04, b: 0.04 };
+
+function computeRegretScale(p1, p2) {
+  let mx = 0.001;
+  for (const snap of p1) for (const v of snap.regrets) mx = Math.max(mx, Math.abs(v));
+  for (const snap of p2) for (const v of snap.regrets) mx = Math.max(mx, Math.abs(v));
+  return 1.0 / mx;
+}
+function policyPos(snap)        { return [snap.iterated[0], snap.iterated[1], snap.iterated[2]]; }
+function avgPos(snap)           { return [snap.averaged[0], snap.averaged[1], snap.averaged[2]]; }
+function regretPos(snap, scale) { return [snap.regrets[0] * scale, snap.regrets[1] * scale, snap.regrets[2] * scale]; }
+function projectToSimplex(regrets) {
+  const pos = regrets.map(r => Math.max(0, r));
+  const sum = pos[0] + pos[1] + pos[2];
+  return sum < 1e-9 ? [1/3, 1/3, 1/3] : [pos[0] / sum, pos[1] / sum, pos[2] / sum];
+}
+function setVec3(arr, i, xyz) {
+  arr[i * 3]     = xyz[0];
+  arr[i * 3 + 1] = xyz[1];
+  arr[i * 3 + 2] = xyz[2];
+}
+
+const REGRET_SCALE = computeRegretScale(P1, P2);
+
+// ═══════════════════ SCENE SETUP ══════════════════
+
+function initRenderers(container) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setClearColor(0x0a0a0a);
+  container.appendChild(renderer.domElement);
+  const labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(container.clientWidth, container.clientHeight);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0';
+  labelRenderer.domElement.style.pointerEvents = 'none';
+  container.appendChild(labelRenderer.domElement);
+  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.01, 100);
+  camera.position.set(0, 1.5, 2.5);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 1 / Math.sqrt(3), 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.5;
+  controls.update();
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    labelRenderer.setSize(w, h);
+  });
+  return { renderer, labelRenderer, camera, controls };
+}
+function buildSceneGroup(scene) {
+  const group = new THREE.Group();
+  const from = new THREE.Vector3(1, 1, 1).normalize();
+  const to = new THREE.Vector3(0, 1, 0);
+  group.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(from, to));
+  scene.add(group);
+  return group;
+}
+function buildAxes(group) {
+  const len = 1.15;
+  const names = ['R', 'P', 'S'];
+  const ends = [new THREE.Vector3(len, 0, 0), new THREE.Vector3(0, len, 0), new THREE.Vector3(0, 0, len)];
+  for (let i = 0; i < 3; i++) {
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), ends[i]]);
+    group.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x555555 })));
+    const div = document.createElement('div');
+    div.className = 'label-3d';
+    div.textContent = names[i];
+    const lbl = new CSS2DObject(div);
+    lbl.position.copy(ends[i]);
+    group.add(lbl);
+  }
+}
+function buildSimplex(group) {
+  const wire = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)
+    ]),
+    new THREE.LineBasicMaterial({ color: 0x333333 })
+  );
+  group.add(wire);
+  const fillGeo = new THREE.BufferGeometry();
+  fillGeo.setAttribute('position', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1], 3));
+  fillGeo.setIndex([0, 1, 2]);
+  const fill = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({
+    color: 0x334455, transparent: true, opacity: 0.08, side: THREE.DoubleSide
+  }));
+  group.add(fill);
+  return { wire, fill };
+}
+function buildNash(group) {
+  const pos = new THREE.Vector3(0.4, 0.4, 0.2);
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.015, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0x44dd88 })
+  );
+  sphere.position.copy(pos);
+  group.add(sphere);
+  const ring = new THREE.Mesh(
+    new THREE.SphereGeometry(0.025, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0x44dd88, wireframe: true, transparent: true, opacity: 0.4 })
+  );
+  ring.position.copy(pos);
+  group.add(ring);
+  return { sphere, ring };
+}
+
+// ═══════════════════ TRAIL GEOMETRY ═══════════════
+
+function createTrailPoints(n, color, group) {
+  const positions = new Float32Array(n * 3);
+  const colors = new Float32Array(n * 3);
+  const baseColor = new THREE.Color(color);
+  for (let i = 0; i < n; i++) {
+    colors[i * 3]     = baseColor.r;
+    colors[i * 3 + 1] = baseColor.g;
+    colors[i * 3 + 2] = baseColor.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setDrawRange(0, 0);
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
+    size: 0.012, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.8
+  }));
+  group.add(pts);
+  return { geo, positions, colors, pts, baseColor };
+}
+function createTrailLine(n, color, group) {
+  const positions = new Float32Array(n * 3);
+  const colors = new Float32Array(n * 3);
+  const baseColor = new THREE.Color(color);
+  for (let i = 0; i < n; i++) {
+    colors[i * 3]     = baseColor.r;
+    colors[i * 3 + 1] = baseColor.g;
+    colors[i * 3 + 2] = baseColor.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setDrawRange(0, 0);
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.7
+  }));
+  group.add(line);
+  return { geo, positions, colors, line, baseColor };
+}
+function createProjectionLines(n, group) {
+  const p1pos = new Float32Array(n * 2 * 3);
+  const p2pos = new Float32Array(n * 2 * 3);
+  const p1geo = new THREE.BufferGeometry();
+  p1geo.setAttribute('position', new THREE.BufferAttribute(p1pos, 3));
+  p1geo.setDrawRange(0, 0);
+  const p1lines = new THREE.LineSegments(p1geo, new THREE.LineBasicMaterial({
+    color: 0x6699ff, transparent: true, opacity: 0.15
+  }));
+  group.add(p1lines);
+  const p2geo = new THREE.BufferGeometry();
+  p2geo.setAttribute('position', new THREE.BufferAttribute(p2pos, 3));
+  p2geo.setDrawRange(0, 0);
+  const p2lines = new THREE.LineSegments(p2geo, new THREE.LineBasicMaterial({
+    color: 0xff6666, transparent: true, opacity: 0.15
+  }));
+  group.add(p2lines);
+  return {
+    p1: { geo: p1geo, positions: p1pos, lines: p1lines },
+    p2: { geo: p2geo, positions: p2pos, lines: p2lines }
+  };
+}
+
+// ═══════════════════ MARKERS ═════════════════════
+
+function createMarkers(group) {
+  const p1dot  = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16),  new THREE.MeshBasicMaterial({ color: 0x6699ff }));
+  const p2dot  = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16),  new THREE.MeshBasicMaterial({ color: 0xff6666 }));
+  const p1ring = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16), new THREE.MeshBasicMaterial({ color: 0x6699ff, wireframe: true }));
+  const p2ring = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff6666, wireframe: true }));
+  group.add(p1dot); group.add(p2dot); group.add(p1ring); group.add(p2ring);
+  return { p1dot, p2dot, p1ring, p2ring };
+}
+
+// ═══════════════════ POSITION & COLOR ════════════
+
+function fillPositions(mode, trails) {
+  const { p1iter, p2iter, p1avg, p2avg, proj } = trails;
+  for (let i = 0; i < N; i++) {
+    const s1 = P1[i], s2 = P2[i];
+    const ipos1 = (mode === 'regret' || mode === 'both') ? regretPos(s1, REGRET_SCALE) : policyPos(s1);
+    const ipos2 = (mode === 'regret' || mode === 'both') ? regretPos(s2, REGRET_SCALE) : policyPos(s2);
+    setVec3(p1iter.positions, i, ipos1);
+    setVec3(p2iter.positions, i, ipos2);
+    const apos1 = mode === 'policy' ? avgPos(s1) : regretPos(s1, REGRET_SCALE);
+    const apos2 = mode === 'policy' ? avgPos(s2) : regretPos(s2, REGRET_SCALE);
+    setVec3(p1avg.positions, i, apos1);
+    setVec3(p2avg.positions, i, apos2);
+    if (mode === 'both') {
+      const rp1 = regretPos(s1, REGRET_SCALE);
+      const sp1 = projectToSimplex(s1.regrets);
+      setVec3(proj.p1.positions, i * 2, rp1);
+      setVec3(proj.p1.positions, i * 2 + 1, sp1);
+      const rp2 = regretPos(s2, REGRET_SCALE);
+      const sp2 = projectToSimplex(s2.regrets);
+      setVec3(proj.p2.positions, i * 2, rp2);
+      setVec3(proj.p2.positions, i * 2 + 1, sp2);
+    }
+  }
+  p1iter.geo.attributes.position.needsUpdate = true;
+  p2iter.geo.attributes.position.needsUpdate = true;
+  p1avg.geo.attributes.position.needsUpdate = true;
+  p2avg.geo.attributes.position.needsUpdate = true;
+  if (mode === 'both') {
+    proj.p1.geo.attributes.position.needsUpdate = true;
+    proj.p2.geo.attributes.position.needsUpdate = true;
+  }
+}
+function updateFade(frame, trail) {
+  for (let i = 0; i <= frame; i++) {
+    const t = Math.max(0, 1 - (frame - i) / FADE_WINDOW);
+    trail.colors[i * 3]     = BG.r + (trail.baseColor.r - BG.r) * t;
+    trail.colors[i * 3 + 1] = BG.g + (trail.baseColor.g - BG.g) * t;
+    trail.colors[i * 3 + 2] = BG.b + (trail.baseColor.b - BG.b) * t;
+  }
+  trail.geo.attributes.color.needsUpdate = true;
+}
+
+// ═══════════════════ PANEL ═══════════════════════
+
+function fProb(v) { return (v >= 0 ? ' ' : '') + v.toFixed(3); }
+function fReg(v)  { return (v >= 0 ? '+' : '') + v.toFixed(2); }
+function fSci(v)  { return v.toExponential(2).replace('e+', 'e'); }
+function fEv(v)   { return (v >= 0 ? '+' : '') + v.toFixed(4); }
+function fVis(v)  { return String(v).padStart(7); }
+function policyRow(cls, label, arr) {
+  return `<tr class="${cls}-row"><th>${label}</th><td>${fProb(arr[0])}</td><td>${fProb(arr[1])}</td><td>${fProb(arr[2])}</td></tr>`;
+}
+function updatePolicyTable(id, s1, s2, field) {
+  document.querySelector(`#${id} tbody`).innerHTML =
+    policyRow('p1', 'P1', s1[field]) +
+    policyRow('p2', 'P2', s2[field]);
+}
+function updateTable(id, snap) {
+  document.querySelector(`#${id} tbody`).innerHTML =
+    `<tr><th>reg</th><td>${fReg(snap.regrets[0])}</td><td>${fReg(snap.regrets[1])}</td><td>${fReg(snap.regrets[2])}</td></tr>` +
+    `<tr><th>wgt</th><td>${fSci(snap.weights[0])}</td><td>${fSci(snap.weights[1])}</td><td>${fSci(snap.weights[2])}</td></tr>` +
+    `<tr><th>ev</th><td>${fEv(snap.payoffs[0])}</td><td>${fEv(snap.payoffs[1])}</td><td>${fEv(snap.payoffs[2])}</td></tr>` +
+    `<tr><th>vis</th><td>${fVis(snap.visits[0])}</td><td>${fVis(snap.visits[1])}</td><td>${fVis(snap.visits[2])}</td></tr>`;
+}
+
+// ═══════════════════ FRAME RENDERING ═════════════
+
+function renderFrame(state, trails, markers, simplex, nash) {
+  const { frame, mode, showPlayer } = state;
+  const s1 = P1[frame], s2 = P2[frame];
+  document.getElementById('epoch').textContent = `t = ${s1.epoch}`;
+  state.slider.value = frame;
+  const { p1iter, p2iter, p1avg, p2avg, proj } = trails;
+  p1iter.geo.setDrawRange(0, frame + 1);
+  p2iter.geo.setDrawRange(0, frame + 1);
+  p1avg.geo.setDrawRange(0, frame + 1);
+  p2avg.geo.setDrawRange(0, frame + 1);
+  proj.p1.geo.setDrawRange(0, (frame + 1) * 2);
+  proj.p2.geo.setDrawRange(0, (frame + 1) * 2);
+  // dissolving trail colors
+  updateFade(frame, p1iter);
+  updateFade(frame, p2iter);
+  updateFade(frame, p1avg);
+  updateFade(frame, p2avg);
+  // current position markers
+  const iterFn = (snap) => (mode === 'regret' || mode === 'both') ? regretPos(snap, REGRET_SCALE) : policyPos(snap);
+  const [ix1, iy1, iz1] = iterFn(s1);
+  const [ix2, iy2, iz2] = iterFn(s2);
+  markers.p1dot.position.set(ix1, iy1, iz1);
+  markers.p2dot.position.set(ix2, iy2, iz2);
+  if (mode === 'both') {
+    const sp1 = projectToSimplex(s1.regrets);
+    const sp2 = projectToSimplex(s2.regrets);
+    markers.p1ring.position.set(sp1[0], sp1[1], sp1[2]);
+    markers.p2ring.position.set(sp2[0], sp2[1], sp2[2]);
+  } else {
+    const avgFn = (snap) => mode === 'policy' ? avgPos(snap) : regretPos(snap, REGRET_SCALE);
+    const [ax1, ay1, az1] = avgFn(s1);
+    const [ax2, ay2, az2] = avgFn(s2);
+    markers.p1ring.position.set(ax1, ay1, az1);
+    markers.p2ring.position.set(ax2, ay2, az2);
+  }
+  // visibility: player filter
+  const show1 = showPlayer !== 'p2';
+  const show2 = showPlayer !== 'p1';
+  p1iter.pts.visible       = show1;
+  p2iter.pts.visible       = show2;
+  markers.p1dot.visible    = show1;
+  markers.p2dot.visible    = show2;
+  p1avg.line.visible       = show1;
+  p2avg.line.visible       = show2;
+  markers.p1ring.visible   = show1;
+  markers.p2ring.visible   = show2;
+  // projection lines: only in both mode
+  proj.p1.lines.visible    = show1 && mode === 'both';
+  proj.p2.lines.visible    = show2 && mode === 'both';
+  // simplex + nash: visible in policy and both, hidden in regret
+  const showSimplex        = mode !== 'regret';
+  simplex.wire.visible     = showSimplex;
+  simplex.fill.visible     = showSimplex;
+  nash.sphere.visible      = showSimplex;
+  nash.ring.visible        = showSimplex;
+  // data panel
+  updatePolicyTable('iterated-table', s1, s2, 'iterated');
+  updatePolicyTable('averaged-table', s1, s2, 'averaged');
+  updateTable('p1-table', s1);
+  updateTable('p2-table', s2);
+}
+
+// ═══════════════════ CONTROLS ════════════════════
+
+function updateSpeedBtns(speed) {
+  for (const id of ['speed1', 'speed2', 'speed4']) document.getElementById(id).classList.remove('active');
+  if (speed === 1)  document.getElementById('speed1').classList.add('active');
+  if (speed === 4)  document.getElementById('speed2').classList.add('active');
+  if (speed >= 16)  document.getElementById('speed4').classList.add('active');
+}
+function setupControls(state, trails, markers, simplex, nash, controls) {
+  const render = () => renderFrame(state, trails, markers, simplex, nash);
+  document.getElementById('play').onclick = () => {
+    state.playing = true;
+    document.getElementById('play').classList.add('active');
+    document.getElementById('pause').classList.remove('active');
+  };
+  document.getElementById('pause').onclick = () => {
+    state.playing = false;
+    document.getElementById('pause').classList.add('active');
+    document.getElementById('play').classList.remove('active');
+  };
+  state.slider.oninput = () => { state.frame = parseInt(state.slider.value); render(); };
+  document.getElementById('speed1').onclick = () => { state.speed = 1;  updateSpeedBtns(1); };
+  document.getElementById('speed2').onclick = () => { state.speed = 4;  updateSpeedBtns(4); };
+  document.getElementById('speed4').onclick = () => { state.speed = 16; updateSpeedBtns(16); };
+  document.getElementById('player-toggle').onclick = () => {
+    const btn = document.getElementById('player-toggle');
+    if (state.showPlayer === 'both')     { state.showPlayer = 'p1';   btn.textContent = 'P1'; }
+    else if (state.showPlayer === 'p1')  { state.showPlayer = 'p2';   btn.textContent = 'P2'; }
+    else                                 { state.showPlayer = 'both'; btn.textContent = 'Both'; }
+    render();
+  };
+  document.getElementById('mode-toggle').onclick = () => {
+    const btn = document.getElementById('mode-toggle');
+    if (state.mode === 'policy')      { state.mode = 'regret'; btn.textContent = 'Regret'; }
+    else if (state.mode === 'regret') { state.mode = 'both';   btn.textContent = 'Both'; }
+    else                              { state.mode = 'policy'; btn.textContent = 'Policy'; }
+    fillPositions(state.mode, trails);
+    render();
+  };
+  document.getElementById('rotate-toggle').onclick = () => {
+    controls.autoRotate = !controls.autoRotate;
+    document.getElementById('rotate-toggle').classList.toggle('active');
+  };
+}
+
+// ═══════════════════ ANIMATION ═══════════════════
+
+function animate(state, renderer, labelRenderer, camera, scene, controls, trails, markers, simplex, nash) {
+  let tick = 0;
+  function loop() {
+    requestAnimationFrame(loop);
+    controls.update();
+    if (state.playing && state.frame < N - 1) {
+      tick++;
+      if (tick % Math.max(1, Math.round(4 / state.speed)) === 0) {
+        state.frame++;
+        renderFrame(state, trails, markers, simplex, nash);
+      }
+    }
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
+  }
+  loop();
+}
+
+// ═══════════════════ MAIN ════════════════════════
+
+(function main() {
+  const container = document.getElementById('canvas');
+  const scene = new THREE.Scene();
+  const { renderer, labelRenderer, camera, controls } = initRenderers(container);
+  const group   = buildSceneGroup(scene);
+  buildAxes(group);
+  const simplex = buildSimplex(group);
+  const nash    = buildNash(group);
+  const p1iter  = createTrailPoints(N, 0x6699ff, group);
+  const p2iter  = createTrailPoints(N, 0xff6666, group);
+  const p1avg   = createTrailLine(N, 0x6699ff, group);
+  const p2avg   = createTrailLine(N, 0xff6666, group);
+  const proj    = createProjectionLines(N, group);
+  const trails  = { p1iter, p2iter, p1avg, p2avg, proj };
+  const markers = createMarkers(group);
+  const slider  = document.getElementById('slider');
+  slider.max = N - 1;
+  const state = { frame: 0, playing: true, speed: 4, showPlayer: 'both', mode: 'policy', slider };
+  fillPositions(state.mode, trails);
+  setupControls(state, trails, markers, simplex, nash, controls);
+  renderFrame(state, trails, markers, simplex, nash);
+  animate(state, renderer, labelRenderer, camera, scene, controls, trails, markers, simplex, nash);
+})();
+</script>
+</body>
+</html>

@@ -12,19 +12,23 @@ categories   = ["algorithms", "mathematics", "game-development"]
 
 [features]
 default = ["server"]
-server  = ["pokerkit/server", "rayon"]
+server  = ["pokerkit/server", "rayon", "vitals"]
 async   = ["async-trait", "futures"]
 
 [dependencies]
 pokerkit    = { workspace = true }
 kicker      = { workspace = true }
 monge       = { workspace = true }
+vitals      = { workspace = true, optional = true }
 rand        = { workspace = true }
 petgraph    = { workspace = true }
 paste       = "1.0"
 rayon       = { optional = true, version = "1.10" }
 async-trait = { optional = true, version = "0.1" }
 futures     = { optional = true, version = "0.3" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [lints]
 workspace = true

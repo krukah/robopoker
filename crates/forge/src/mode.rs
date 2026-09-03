@@ -8,6 +8,7 @@ use nlhe::NlheProfile;
 pub enum Mode {
     Status,
     Cluster,
+    Recluster,
     Fast,
     Slow,
     Reset,
@@ -24,6 +25,7 @@ impl Mode {
             Self::Forget => Self::forget(&client).await,
             Self::Status => client.status().await,
             Self::Cluster => PreTraining::run(&client).await,
+            Self::Recluster => PreTraining::clear(&client).await,
         }
     }
 

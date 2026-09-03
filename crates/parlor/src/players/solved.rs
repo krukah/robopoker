@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 
 use deuce::Street;
+use kicker::Action;
 use kicker::Edge;
 use mccfr::Harvest;
 use mccfr::Solver;
@@ -13,6 +14,8 @@ use nlhe::NlheInfo;
 use pokerkit::Chips;
 use pokerkit::Probability;
 use pokerkit::Utility;
+use subgame::NestEdge;
+use subgame::NestInfo;
 use subgame::SubgameHyperParams;
 use vitals::KeyValue;
 
@@ -53,6 +56,38 @@ impl Solved {
             .into_iter()
             .filter(|(e, _)| e.is_choice())
             .map(|(e, v)| (Edge::from(e), v))
+            .collect();
+        Self {
+            iterations,
+            elapsed,
+            regret: harvest.regret,
+            policy,
+            visits,
+        }
+    }
+
+    /// Run pipeline for a nested (off-tree) solve. Same shape as [`Self::run`],
+    /// but the solver harvests over the `Nest*` wrapper types: the base is
+    /// `NestInfo::Augmented(info)` — hero's node is a *descendant of the
+    /// off-tree edge* — and the harvested `NestEdge`s are projected back to
+    /// canonical `Edge`s (`OffTree` never appears among hero's own responses).
+    pub fn run_nested<S>(mut solver: S, info: NlheInfo, deadline: Duration) -> Self
+    where
+        S: Solver + Harvest<Base = NestInfo<NlheInfo, Action>, Edge = NestEdge<NlheEdge, Action>>,
+    {
+        let (iterations, elapsed) = solver.spend(deadline);
+        let harvest = solver.harvest(NestInfo::Augmented(info));
+        let policy = harvest
+            .refined
+            .into_iter()
+            .filter_map(|(e, p)| e.game().map(|g| (Edge::from(g), p)))
+            .filter(|(e, _)| e.is_choice())
+            .collect();
+        let visits = harvest
+            .visits
+            .into_iter()
+            .filter_map(|(e, v)| e.game().map(|g| (Edge::from(g), v)))
+            .filter(|(e, _)| e.is_choice())
             .collect();
         Self {
             iterations,
@@ -122,6 +157,34 @@ impl Solved {
             self.emit_extraction_stats(tag, street, policy, &blend, total);
             blend
         })
+    }
+
+    /// Nested-solve extraction (Modicum): adopt the re-solved policy directly.
+    ///
+    /// Unlike [`Self::extract`], this does **not** visits-blend against the
+    /// `prior`. An augmented infoset is a novel key the blueprint never
+    /// trained, so `averaged_distribution` returns uniform there — and with
+    /// `visit_threshold = 2^18` a subgame's per-edge visits give a blend
+    /// weight `w ≈ 0`, so the blend would return ~that uniform prior and
+    /// discard the fresh solve entirely. The re-solved augmented subgame *is*
+    /// the answer here; `prior` is passed only for the deviation telemetry.
+    pub fn adopt_refined(
+        &self,
+        prior: &BTreeMap<Edge, Probability>,
+        tag: Tag,
+        street: Street,
+    ) -> BTreeMap<Edge, Probability> {
+        let total = self.policy.values().sum::<Probability>().max(pokerkit::EPSILON);
+        let refined = self
+            .policy
+            .iter()
+            .map(|(e, p)| (*e, p / total))
+            .collect::<BTreeMap<Edge, Probability>>();
+        tracing::info_span!("subgame.extract", variant = tag.label).in_scope(|| {
+            self.emit_verify(tag, prior, &refined);
+            self.emit_extraction_stats(tag, street, prior, &refined, self.visits.values().map(|&v| v as u64).sum());
+        });
+        refined
     }
 
     /// Per-edge visits-weighted convex mix of `self.refined` and `blueprint`:

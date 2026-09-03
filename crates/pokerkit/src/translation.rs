@@ -14,8 +14,8 @@
 //! ## Why this does NOT require retraining
 //!
 //! Training only walks canonical edges; `Game::translate` never
-//! observes an off-tree action during training. So all six translations
-//! produce identical training output. Only inference (against external
+//! observes an off-tree action during training. So every translation
+//! produces identical training output. Only inference (against external
 //! opponents who play arbitrary chip amounts) sees the difference.
 
 use crate::translate::*;
@@ -25,12 +25,14 @@ use rand::Rng;
 /// resolve runs that algorithm against a [`Lattice`] and a [`Scalar`]
 /// to produce a [`Translated<P, F>`].
 ///
-/// All current variants always return [`Translated::Snap`] (never
-/// [`Translated::Free`]) — they snap onto the abstract grid one way or
-/// another. Brown-style abstraction-free variants (`Exact`,
-/// `EpsilonPrune`, `EpsilonHarmonic`) were elided until a player exists
-/// that can consume off-tree resolutions; pure-blueprint players panic
-/// on that case.
+/// The snap-family variants (`Snap`, `Harmonic`, `Phargmax`) always
+/// return [`Translated::Snap`] — they map an off-grid raise onto the
+/// abstract grid one way or another. The Brown-style [`Self::Exact`]
+/// variant instead returns [`Translated::Free`] for genuinely off-grid
+/// raises, deferring them to a nesting player that re-solves an
+/// augmented subgame (see `docs/active/off-tree-nesting.md`). A
+/// pure-blueprint player must not run under `Exact` — it has no way to
+/// consume the off-tree resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum Translation {
@@ -41,6 +43,10 @@ pub enum Translation {
     Harmonic,
     /// Deterministic argmax variant of [`Self::Harmonic`] for replay.
     Phargmax,
+    /// Brown-style abstraction-free (Modicum 2018). Snaps only when the
+    /// raise lands exactly on a grid anchor; otherwise emits
+    /// [`Translated::Free`] carrying the caller's off-grid value.
+    Exact,
 }
 
 impl Translation {
@@ -61,13 +67,15 @@ impl Translation {
         P: Copy,
         R: Rng + ?Sized,
     {
-        let _ = free;
-        let anchor = match self {
-            Self::Snap => lattice.snap(observed),
-            Self::Phargmax => lattice.phargmax(observed),
-            Self::Harmonic => lattice.harmonic(observed, rng),
-        };
-        Translated::Snap(*lattice.payload(anchor))
+        match self {
+            Self::Snap => Translated::Snap(*lattice.payload(lattice.snap(observed))),
+            Self::Phargmax => Translated::Snap(*lattice.payload(lattice.phargmax(observed))),
+            Self::Harmonic => Translated::Snap(*lattice.payload(lattice.harmonic(observed, rng))),
+            Self::Exact => match lattice.exact(observed) {
+                Some(anchor) => Translated::Snap(*lattice.payload(anchor)),
+                None => Translated::Free(free),
+            },
+        }
     }
 }
 
@@ -77,6 +85,7 @@ impl std::fmt::Display for Translation {
             Self::Snap => write!(f, "snap"),
             Self::Harmonic => write!(f, "harmonic"),
             Self::Phargmax => write!(f, "phargmax"),
+            Self::Exact => write!(f, "exact"),
         }
     }
 }
@@ -174,5 +183,26 @@ mod tests {
         let ref mut rng = seeded();
         assert_eq!(Translation::Snap.resolve(obs(0.4), &l, 0u32, rng), Translated::Snap("lo"),);
         assert_eq!(Translation::Phargmax.resolve(obs(1.9), &l, 0u32, rng), Translated::Snap("hi"),);
+    }
+
+    #[test]
+    fn exact_snaps_on_anchor_only() {
+        let l: Lattice<T, &'static str> = [(0.5, "lo"), (1.0, "mid"), (2.0, "hi")].into_iter().collect();
+        let ref mut rng = seeded();
+        assert_eq!(Translation::Exact.resolve(obs(1.0), &l, 42u32, rng), Translated::Snap("mid"));
+        assert_eq!(Translation::Exact.resolve(obs(0.5), &l, 42u32, rng), Translated::Snap("lo"));
+        assert_eq!(Translation::Exact.resolve(obs(0.7), &l, 42u32, rng), Translated::Free(42u32));
+        assert_eq!(Translation::Exact.resolve(obs(5.0), &l, 42u32, rng), Translated::Free(42u32));
+    }
+
+    #[test]
+    fn exact_snaps_within_relative_tolerance() {
+        let l = lat([0.5, 1.0, 2.0]);
+        // exact hit (plus float noise) on the 1.0 anchor
+        assert_eq!(l.exact(obs(1.0 / 3.0 + 2.0 / 3.0)), Some(Anchor::new(1)));
+        // within the 5% relative band of 1.0 (+4%) → snaps to the anchor
+        assert_eq!(l.exact(obs(1.04)), Some(Anchor::new(1)));
+        // beyond the band of every anchor (20% off 1.0) → off-grid
+        assert_eq!(l.exact(obs(1.2)), None);
     }
 }

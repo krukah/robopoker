@@ -1,5 +1,6 @@
 use crate::*;
 use deuce::*;
+use pokerkit::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -55,6 +56,15 @@ pub struct GetPolicy {
     pub turn: Turn,
     pub seen: Observation,
     pub past: Vec<Action>,
+    /// Starting stacks, for depth-aware reconstruction. `serde(default)` keeps
+    /// old clients (and analysis-mode callers) at 100BB, so the server rebuilds
+    /// exactly as before unless a caller sends real stacks (e.g. the chipzen
+    /// tournament bot's off-100BB spots).
+    #[serde(default = "default_stacks")]
+    pub stacks: [Chips; N],
+}
+fn default_stacks() -> [Chips; N] {
+    [STACK; N]
 }
 
 impl From<&Witness> for GetPolicy {
@@ -63,6 +73,7 @@ impl From<&Witness> for GetPolicy {
             turn: recall.turn(),
             seen: recall.seen(),
             past: recall.actions().iter().filter(|a| a.is_choice()).copied().collect(),
+            stacks: recall.stacks(),
         }
     }
 }

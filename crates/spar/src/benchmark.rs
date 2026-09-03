@@ -2,6 +2,7 @@ use crate::client::*;
 use crate::recorder::*;
 use crate::result::*;
 use crate::session::*;
+use daybook::Scoreboard;
 use kicker::Turn;
 use parlor::VariantExt;
 use pokerkit::Variant;
@@ -170,6 +171,26 @@ impl Benchmark {
             stddev = self.stddev(),
             "slumbot benchmark complete",
         );
+    }
+
+    /// Append this run's aggregate score to the shared `benchmark` table,
+    /// tagged with the active fingerprint and the blueprint `epoch` it was
+    /// played against, so it can be ranked against other configs.
+    pub async fn persist(&self, db: &tokio_postgres::Client, variant: Variant, epoch: i64) {
+        let stamped = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time")
+            .as_secs() as i64;
+        db.record_benchmark(
+            variant.label(),
+            epoch,
+            self.results.len() as i64,
+            self.bb_per_100(),
+            self.confidence(),
+            self.stddev(),
+            stamped,
+        )
+        .await;
     }
 }
 
