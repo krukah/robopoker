@@ -3,8 +3,12 @@ use super::rank::Rank;
 /// Poker hand category from high card to straight flush.
 ///
 /// Each variant carries the primary rank(s) that define the hand. Kickers
-/// are tracked separately in [`Kickers`]. Ordering reflects standard poker
-/// rankings (with flush beating full house in short deck variant).
+/// are tracked separately in [`Kickers`].
+///
+/// **Declaration order is the hand ranking.** `Ord` is derived, so it reads
+/// variant position — moving a variant silently changes who wins a showdown.
+/// Short deck is the only difference between the two blocks below: with nine
+/// ranks a flush is rarer than a full house, so it outranks one.
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(feature = "shortdeck")]
@@ -15,8 +19,8 @@ pub enum Ranking {
     TwoPair(Rank, Rank),   // 1 kickers
     ThreeOAK(Rank),        // 2 kickers
     Straight(Rank),        // 0 kickers
-    Flush(Rank),           // 0 kickers
     FullHouse(Rank, Rank), // 0 kickers
+    Flush(Rank),           // 4 kickers — short deck: a flush beats a boat
     FourOAK(Rank),         // 1 kickers
     StraightFlush(Rank),   // 0 kickers
     MAX,                   // useful for showdown implementation
@@ -24,8 +28,10 @@ pub enum Ranking {
 /// Poker hand category from high card to straight flush.
 ///
 /// Each variant carries the primary rank(s) that define the hand. Kickers
-/// are tracked separately in [`Kickers`]. Ordering reflects standard poker
-/// rankings.
+/// are tracked separately in [`Kickers`].
+///
+/// **Declaration order is the hand ranking.** `Ord` is derived, so it reads
+/// variant position — moving a variant silently changes who wins a showdown.
 ///
 /// [`Kickers`]: super::kicks::Kickers
 #[cfg(not(feature = "shortdeck"))]
@@ -36,8 +42,8 @@ pub enum Ranking {
     TwoPair(Rank, Rank),   // 1 kickers
     ThreeOAK(Rank),        // 2 kickers
     Straight(Rank),        // 0 kickers
+    Flush(Rank),           // 4 kickers
     FullHouse(Rank, Rank), // 0 kickers
-    Flush(Rank),           // 0 kickers
     FourOAK(Rank),         // 1 kickers
     StraightFlush(Rank),   // 0 kickers
     MAX,                   // useful for showdown implementation
@@ -45,24 +51,33 @@ pub enum Ranking {
 
 impl Ranking {
     /// Number of deuce cards used for this hand type.
+    ///
+    /// A flush needs four: it is compared over all five of its cards, and only
+    /// its highest is carried in the variant. A straight and a straight flush
+    /// need none — their top card determines the other four.
     pub fn n_kickers(&self) -> usize {
         match self {
-            Ranking::HighCard(_) => 4,
+            Ranking::HighCard(_) | Ranking::Flush(_) => 4,
             Ranking::OnePair(_) => 3,
             Ranking::ThreeOAK(_) => 2,
             Ranking::FourOAK(_) | Ranking::TwoPair(_, _) => 1,
             _ => 0,
         }
     }
+
     /// Bitmask of ranks NOT used in the hand's primary ranking.
     ///
-    /// Used to extract deuce cards from the remaining ranks.
+    /// Used to extract deuce cards from the remaining ranks. A flush masks off
+    /// only its high card; which *suit* the rest may come from is the caller's
+    /// job — see `Evaluator::eligible`.
     pub fn mask(&self) -> u16 {
         match *self {
             Ranking::TwoPair(hi, lo) => !(u16::from(hi) | u16::from(lo)),
-            Ranking::HighCard(hi) | Ranking::OnePair(hi) | Ranking::FourOAK(hi) | Ranking::ThreeOAK(hi) => {
-                !(u16::from(hi))
-            }
+            Ranking::HighCard(hi)
+            | Ranking::OnePair(hi)
+            | Ranking::FourOAK(hi)
+            | Ranking::ThreeOAK(hi)
+            | Ranking::Flush(hi) => !(u16::from(hi)),
             _ => unreachable!(),
         }
     }

@@ -55,19 +55,30 @@ impl Evaluator {
     pub fn find_kickers(&self, value: Ranking) -> Kickers {
         match value.n_kickers() {
             0 => Kickers::from(0),
-            n => {
-                let hand = u16::from(self.0);
-                let mask = value.mask();
-                let mut rank = hand & mask;
-                while n < rank.count_ones() as usize {
-                    let last = rank.trailing_zeros();
-                    let flip = 1 << last;
-                    let skip = !flip;
-                    rank &= skip;
-                }
-                Kickers::from(rank)
-            }
+            n => Kickers::from(Self::highest(self.eligible(value), n)),
         }
+    }
+
+    /// Ranks that may serve as kickers for `value`, with its primary ranks
+    /// already masked off.
+    ///
+    /// Every ranking draws from the whole hand except a flush, whose kickers
+    /// have to come from the flush suit — drawing from the whole hand would let
+    /// an off-suit card outrank a card that is actually in the flush.
+    fn eligible(&self, value: Ranking) -> u16 {
+        value.mask()
+            & match value {
+                Ranking::Flush(_) => self.find_suit_of_flush().map_or(0, |suit| u16::from(self.0.of(&suit))),
+                _ => u16::from(self.0),
+            }
+    }
+
+    /// Keeps the `n` highest set bits, dropping the rest from the bottom.
+    fn highest(mut bits: u16, n: usize) -> u16 {
+        while n < bits.count_ones() as usize {
+            bits &= !(1 << bits.trailing_zeros());
+        }
+        bits
     }
 
     fn find_1_oak(&self) -> Option<Ranking> {
@@ -230,13 +241,14 @@ mod tests {
         assert_eq!(kickers, Kickers::from(vec![]));
     }
 
+    #[rustfmt::skip]
     #[test]
     fn flush() {
         let eval = Evaluator::from(Hand::try_from("As Ks Qs Js 9s").unwrap());
         let ranking = eval.find_ranking();
         let kickers = eval.find_kickers(ranking);
         assert_eq!(ranking, Ranking::Flush(Rank::Ace));
-        assert_eq!(kickers, Kickers::from(vec![]));
+        assert_eq!(kickers, Kickers::from(vec![Rank::King, Rank::Queen, Rank::Jack, Rank::Nine]));
     }
 
     #[test]
@@ -293,13 +305,16 @@ mod tests {
         assert_eq!(kickers, Kickers::from(vec![Rank::Queen]));
     }
 
+    /// The offsuit ten is the highest card in the hand and takes no part in the
+    /// flush, so it must not appear among its kickers.
+    #[rustfmt::skip]
     #[test]
     fn flush_over_straight() {
         let eval = Evaluator::from(Hand::try_from("4h 6h 7h 8h 9h Ts").unwrap());
         let ranking = eval.find_ranking();
         let kickers = eval.find_kickers(ranking);
         assert_eq!(ranking, Ranking::Flush(Rank::Nine));
-        assert_eq!(kickers, Kickers::from(vec![]));
+        assert_eq!(kickers, Kickers::from(vec![Rank::Eight, Rank::Seven, Rank::Six, Rank::Four]));
     }
 
     #[test]
