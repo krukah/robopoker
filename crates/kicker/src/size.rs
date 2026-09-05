@@ -294,9 +294,9 @@ mod tests {
     #[test]
     fn raises_grid_counts() {
         assert_eq!(Size::raises(Street::Pref, 0).len(), 4); // 2BB, 3BB, 4BB, 5BB
-        assert_eq!(Size::raises(Street::Pref, 1).len(), 2); // 1:1, 2:1
-        assert_eq!(Size::raises(Street::Pref, 2).len(), 1); // 1:1
-        assert_eq!(Size::raises(Street::Pref, 3).len(), 1);
+        assert_eq!(Size::raises(Street::Pref, 1).len(), 3); // 1:1, 2:1, 3:1
+        assert_eq!(Size::raises(Street::Pref, 2).len(), 2); // 1:1, 2:1
+        assert_eq!(Size::raises(Street::Pref, 3).len(), 2);
         assert_eq!(Size::raises(Street::Flop, 0).len(), 5); // 1/4, 1/2, 3/4, 1:1, 2:1
         assert_eq!(Size::raises(Street::Flop, 1).len(), 2); // 1/2, 1:1
         assert_eq!(Size::raises(Street::Flop, 2).len(), 1); // 1:1

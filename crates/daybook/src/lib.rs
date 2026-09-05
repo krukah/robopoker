@@ -115,15 +115,25 @@ macro_rules! versioned {
 /// abstraction IDs from the active version, so regime-only suffixing
 /// would let two versions corrupt each other's strategy data.
 ///
-/// Regime suffix comes first, then the version suffix — e.g.
-/// `blueprint_pluribus_v1`.
+/// A compile-time players component comes first (empty at heads-up, `_6max`
+/// under the `sixmax` build), then the regime suffix, then the version suffix
+/// — e.g. `blueprint_pluribus_v1` at N=2, `blueprint_6max_pluribus_v1` at N=6.
+/// The players component is compile-time (from `pokerkit::N`), so a 6-max
+/// binary can never address a heads-up table regardless of the runtime regime.
+/// `versioned!` tables deliberately omit it so the abstraction stays shared.
 macro_rules! regime {
     ($name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
         pub fn $name() -> &'static str {
             static T: OnceLock<&str> = OnceLock::<&str>::new();
             *T.get_or_init(|| {
-                leaked(format!("{}{}{}", $default, pokerkit::regime().suffix(), pokerkit::version().suffix(),))
+                leaked(format!(
+                    "{}{}{}{}",
+                    $default,
+                    pokerkit::players_suffix(),
+                    pokerkit::regime().suffix(),
+                    pokerkit::version().suffix(),
+                ))
             })
         }
     };

@@ -54,7 +54,7 @@ impl NlheInfo {
         self.0.public().aggression()
     }
     /// Current-street historical edges as a Path.
-    pub fn subgame(&self) -> Path {
+    pub fn subgame(&self) -> Subgame {
         self.0.public().subgame()
     }
     /// Available actions at this decision point.
@@ -64,6 +64,10 @@ impl NlheInfo {
     /// The private abstraction bucket.
     pub fn bucket(&self) -> NlheSecret {
         self.0.secret()
+    }
+    /// Button-anchored live set + acting position.
+    pub fn field(&self) -> Field {
+        self.0.public().field()
     }
 }
 
@@ -118,12 +122,12 @@ where
         let head = recall.head();
         let subgame = recall.subgame();
         let choices = head.choices(subgame.aggression());
-        Self::from((subgame, secret, choices))
+        Self::from((subgame, secret, choices, head.field()))
     }
 }
 
-impl From<(Path, Abstraction, Path)> for NlheInfo {
-    fn from((subgame, secret, choices): (Path, Abstraction, Path)) -> Self {
+impl From<(Subgame, Abstraction, Path, Field)> for NlheInfo {
+    fn from((subgame, secret, choices, field): (Subgame, Abstraction, Path, Field)) -> Self {
         let subgame = subgame
             .into_iter()
             .rev()
@@ -131,8 +135,8 @@ impl From<(Path, Abstraction, Path)> for NlheInfo {
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .collect::<Path>();
-        let public = NlhePublic::new(subgame, choices);
+            .collect::<Subgame>();
+        let public = NlhePublic::new(subgame, choices, field);
         let secret = NlheSecret::from(secret);
         Self::new(public, secret)
     }
@@ -151,10 +155,10 @@ impl From<(&NlheEncoder, &NlheTree, NlheLeaf)> for NlheInfo {
             .into_iter()
             .rev()
             .map(Edge::from)
-            .collect::<Path>();
+            .collect::<Subgame>();
         let choices = game.as_ref().choices(subgame.aggression());
         let secret = NlheSecret::from(encoder.abstraction(&game.sweat()));
-        let public = NlhePublic::new(subgame, choices);
+        let public = NlhePublic::new(subgame, choices, game.field());
         Self::new(public, secret)
     }
 }
@@ -188,11 +192,11 @@ impl Arbitrary for NlheInfo {
             .collect::<Vec<_>>()
             .into_iter()
             .rev()
-            .collect::<Path>();
+            .collect::<Subgame>();
             let choices = game.choices(subgame.aggression());
             if choices.length() > 0 {
                 let secret = NlheSecret::from(Abstraction::from(street));
-                return Self::new(NlhePublic::new(subgame, choices), secret);
+                return Self::new(NlhePublic::new(subgame, choices, game.field()), secret);
             }
         }
     }
@@ -285,14 +289,16 @@ mod tests {
     fn roundtrip_string_serialization() {
         let info = NlheInfo::random();
         let deserialized = NlheInfo::from((
-            Path::from(i64::from(info.subgame())),
+            Subgame::from(info.subgame().words()),
             Abstraction::from(i16::from(info.bucket())),
             Path::from(i64::from(info.choices())),
+            Field::from(i32::from(info.field())),
         ));
         assert_eq!(info.subgame(), deserialized.subgame());
         assert_eq!(info.street(), deserialized.street());
         assert_eq!(info.bucket(), deserialized.bucket());
         assert_eq!(info.choices(), deserialized.choices());
+        assert_eq!(info.field(), deserialized.field());
     }
 
     #[test]
@@ -332,7 +338,7 @@ mod tests {
             .push(Action::Raise(9))
             .push(Action::Call(6));
         let abs = Abstraction::random();
-        let info = NlheInfo::from((recall.subgame(), abs, recall.choices()));
+        let info = NlheInfo::from((recall.subgame(), abs, recall.choices(), recall.head().field()));
         let current = recall
             .subgame()
             .into_iter()

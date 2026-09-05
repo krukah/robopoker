@@ -15,6 +15,7 @@ default = []
 server  = ["tracing", "tokio"]
 client  = ["uuid/js"]
 cli     = ["clap"]
+sixmax  = []
 
 [dependencies]
 rand    = { workspace = true }

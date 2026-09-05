@@ -13,12 +13,12 @@ categories   = ["game-development", "mathematics"]
 
 [dependencies]
 pokerkit       = { workspace = true }
-deuce          = { workspace = true }
-kicker         = { workspace = true }
+deuce          = { workspace = true, features = ["sql"] }
+kicker         = { workspace = true, features = ["sql"] }
 parlor         = { workspace = true, features = ["server"] }
 daybook        = { workspace = true }
 bouncer        = { workspace = true }
-nlhe           = { workspace = true }
+nlhe           = { workspace = true, features = ["server"] }
 mccfr          = { workspace = true }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 const_format   = "0.2"

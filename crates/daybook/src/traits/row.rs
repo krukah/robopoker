@@ -18,49 +18,7 @@ pub trait Row: Send {
     async fn write(self, writer: Pin<&mut BinaryCopyInWriter>);
 }
 
-/// Row format for isomorphism → abstraction mappings.
-#[async_trait::async_trait]
-impl Row for (i64, i16) {
-    async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
-        writer.write(&[&self.0, &self.1]).await.expect("write");
-    }
-}
-
-/// Row format for isomorphism → abstraction mappings carrying the derived
-/// per-bucket `position` (`obs, abs, position`) — streamed so finalize is
-/// index-only, with no full-table UPDATE.
-#[async_trait::async_trait]
-impl Row for (i64, i16, i32) {
-    async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
-        writer.write(&[&self.0, &self.1, &self.2]).await.expect("write");
-    }
-}
-
-/// Row format for triangular index → distance mappings.
-#[async_trait::async_trait]
-impl Row for (i32, f32) {
-    async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
-        writer.write(&[&self.0, &self.1]).await.expect("write");
-    }
-}
-
-/// Row format for transition probabilities.
-#[async_trait::async_trait]
-impl Row for (i16, i16, f32) {
-    async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
-        writer.write(&[&self.0, &self.1, &self.2]).await.expect("write");
-    }
-}
-
-/// Row format for blueprint strategies.
-/// `(past, present, choices, edge, weight, regret, payoff, visits)`.
-#[rustfmt::skip]
-#[async_trait::async_trait]
-impl Row for (i64, i16, i64, i64, f32, f32, f32, i32) {
-    async fn write(self, writer: Pin<&mut BinaryCopyInWriter>) {
-        writer
-            .write(&[&self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6, &self.7])
-            .await
-            .expect("write");
-    }
-}
+// Concrete row types live beside the domain types they serialize —
+// `nlhe::Wire` (blueprint), `lloyd::{Mapping, Shift, Gap}` (isomorphism,
+// transitions, metric) — so every column is written as its domain type via
+// the ToSql codecs on those types, never as an anonymous primitive tuple.

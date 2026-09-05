@@ -486,9 +486,22 @@ impl<const P: usize> GameN<P> {
         self.is_everyone_touched() && self.is_everyone_matched()
     }
     /// All players have acted at least once this street.
+    ///
+    /// The ticker counts *seat-steps* from the button, not actions:
+    /// [`Self::next_player`] increments it once per seat while skipping
+    /// folded/all-in players, so a seat's ticker offset is positional and
+    /// fold-invariant. A street closes once the ticker has passed one full
+    /// orbit beyond the street's last-option seat: postflop that is the
+    /// button (offset 0 → threshold `n`); preflop it is the big blind, whose
+    /// option must survive a limped pot (offset `1` heads-up where BB is
+    /// dealer+1, else `2` → threshold `n + bb`). Combined with
+    /// [`Self::is_everyone_matched`], this closes action exactly when it
+    /// returns to the last aggressor: an intervening raise breaks `matched`
+    /// and forces another orbit, while `touched` guarantees the BB option
+    /// and every live seat's first look are never skipped.
     fn is_everyone_touched(&self) -> bool {
-        let offset = if P == 2 { 1 } else { 2 };
-        self.ticker > self.n() + if self.street() == Street::Pref { offset } else { 0 }
+        let bb = if P == 2 { 1 } else { 2 };
+        self.ticker > self.n() + if self.street() == Street::Pref { bb } else { 0 }
     }
     /// All betting players are in for the effective stake.
     fn is_everyone_matched(&self) -> bool {
@@ -559,15 +572,7 @@ impl<const P: usize> GameN<P> {
             .iter()
             .filter(|s| s.state() != State::Folding)
             .map(Seat::stake)
-            .fold((0, 0), |(most, next), stake| {
-                if stake > most {
-                    (stake, most)
-                } else if stake > next {
-                    (most, stake)
-                } else {
-                    (most, next)
-                }
-            });
+            .fold((0, 0), Self::podium);
         let relative_raise = most_large_stake - self.actor().stake();
         let marginal_raise = most_large_stake - next_large_stake;
         let required_raise = std::cmp::max(marginal_raise, Self::bblind());
@@ -675,12 +680,31 @@ impl<const P: usize> GameN<P> {
     pub fn total(&self) -> Chips {
         self.pot() + self.seats().iter().map(Seat::stack).sum::<Chips>()
     }
-    /// Effective stack (minimum stack for heads-up).
-    ///
-    /// In N-way pots this would be the second-largest stack;
-    /// for heads-up it's simply the smaller of the two.
+    /// Effective stack: the second-largest stack among live (non-folded)
+    /// players — the most chips that can actually be put at risk, since the
+    /// largest stack has no one left to cover the excess. Heads-up this is
+    /// exactly the smaller of the two, so behavior there is unchanged. With
+    /// fewer than two live players (terminal-ish states) nothing more can be
+    /// contested, so it returns 0.
     pub fn effective(&self) -> Chips {
-        self.seats.iter().map(Seat::stack).min().unwrap_or(0)
+        self.seats
+            .iter()
+            .filter(|s| s.state() != State::Folding)
+            .map(Seat::stack)
+            .fold((0, 0), Self::podium)
+            .1
+            .max(0)
+    }
+
+    /// Folds a value into a running (largest, second-largest) pair.
+    fn podium((most, next): (Chips, Chips), value: Chips) -> (Chips, Chips) {
+        if value > most {
+            (value, most)
+        } else if value > next {
+            (most, value)
+        } else {
+            (most, next)
+        }
     }
     /// Stack-to-pot ratio (effective stack / pot).
     pub fn spr(&self) -> f32 {
@@ -773,6 +797,23 @@ impl<const P: usize> GameN<P> {
     /// actions delegate to [`Size::translate`], which dispatches axis
     /// internally via `Size::raises_grid`.
     ///
+    /// Snap-only translation for the canonical history walk. Panics on the
+    /// [`Translated::Free`] arm — no current [`Translation`] variant emits
+    /// it; a future Brown-style variant needs a custom history walker.
+    pub fn snapped<R>(&self, depth: usize, action: Action, policy: &Translation, rng: &mut R) -> Edge
+    where
+        R: rand::Rng + ?Sized,
+    {
+        match self.translate(action, depth, policy, rng) {
+            Translated::Snap(edge) => edge,
+            Translated::Free(_) => unreachable!(
+                "no current Translation variant emits Translated::Free; \
+                 add a custom history walker for any future \
+                 off-tree-emitting translation",
+            ),
+        }
+    }
+
     /// [`Self::edgify`] is the [`Translation::Snap`] shorthand and
     /// remains untouched; this method is purely additive.
     pub fn translate<R>(
@@ -1946,5 +1987,338 @@ mod tests {
         assert_eq!(game.translate(Action::Raise(2), 0, &Translation::Snap, rng), Translated::Snap(Edge::Open(2)),);
         // Above largest: Raise(20) = 10 BB, largest is BBs(5) = Open(5).
         assert_eq!(game.translate(Action::Raise(20), 0, &Translation::Snap, rng), Translated::Snap(Edge::Open(5)),);
+    }
+
+    /// 6-player: BB raises their option after five limps; all five call;
+    /// the street closes at the aggressor without BB acting again.
+    #[test]
+    fn six_player_bb_option_raise() {
+        let mut game = Game6::root();
+        for _ in 0..5 {
+            game = game.apply(Action::Call(game.to_call()));
+        }
+        assert!(!game.is_everyone_touched(), "BB option must still be open");
+        let bb = game.turn().position();
+        game = game.apply(Action::Raise(game.to_raise()));
+        assert_eq!(game.street(), Street::Pref);
+        for _ in 0..5 {
+            assert_ne!(game.turn().position(), bb, "BB must not act again before closure");
+            game = game.apply(Action::Call(game.to_call()));
+        }
+        assert!(game.is_everyone_touched());
+        assert!(game.is_everyone_matched());
+        assert!(game.must_deal(), "all calls of the BB raise must close preflop");
+    }
+
+    /// 6-player: a 3-bet war closes exactly when the last aggressor is called.
+    #[test]
+    fn six_player_closure_at_aggressor() {
+        let mut game = Game6::root();
+        game = game.apply(Action::Raise(game.to_raise())); // UTG opens
+        game = game.apply(Action::Fold); // HJ
+        game = game.apply(Action::Fold); // CO
+        game = game.apply(Action::Raise(game.to_raise())); // BTN 3-bets
+        game = game.apply(Action::Fold); // SB
+        game = game.apply(Action::Fold); // BB
+        assert!(!game.must_deal(), "UTG still owes a decision on the 3-bet");
+        game = game.apply(Action::Call(game.to_call())); // UTG calls
+        assert!(game.must_deal(), "calling the last aggressor must close the street");
+    }
+
+    /// 6-player: only CO and BTN see the flop (raise folds out the blinds);
+    /// check-check closes the street with each acting exactly once despite
+    /// four folded seats between them.
+    #[test]
+    fn six_player_postflop_two_live_late_seats() {
+        let mut game = Game6::root();
+        game = game.apply(Action::Fold); // UTG
+        game = game.apply(Action::Fold); // HJ
+        game = game.apply(Action::Raise(game.to_raise())); // CO opens
+        game = game.apply(Action::Call(game.to_call())); // BTN calls
+        game = game.apply(Action::Fold); // SB
+        game = game.apply(Action::Fold); // BB
+        let flop = game.deck().deal(Street::Pref);
+        let mut game = game.apply(Action::Draw(flop));
+        assert_eq!(game.street(), Street::Flop);
+        let first = game.turn().position();
+        game = game.apply(Action::Check);
+        let second = game.turn().position();
+        assert_ne!(first, second, "two live players must alternate");
+        game = game.apply(Action::Check);
+        assert!(game.must_deal(), "check-check between the two live seats must close the flop");
+    }
+
+    /// 6-player: flop bet / raise / call between live players closes the
+    /// street, and the multiway min-raise obeys the increment rule.
+    #[test]
+    fn six_player_min_raise_increment() {
+        let mut game = Game6::root();
+        for _ in 0..5 {
+            game = game.apply(Action::Call(game.to_call()));
+        }
+        game = game.apply(Action::Check); // BB option
+        let flop = game.deck().deal(Street::Pref);
+        let mut game = game.apply(Action::Draw(flop));
+        game = game.apply(Action::Raise(10)); // SB bets 10
+        assert_eq!(game.to_raise(), 20, "min-raise must call 10 and raise by the 10 increment");
+        game = game.apply(Action::Raise(game.to_raise())); // BB raises to 20
+        assert_eq!(game.to_raise(), 30, "increment is 10, so next min-raise is to 30");
+    }
+
+    /// 6-player: shove and a single covering caller runs out to showdown;
+    /// the lone live player checks down and chips are conserved throughout.
+    /// (BB gets a covering stack — with equal stacks the exact-all-in call
+    /// would have to be a Shove; see `six_player_exact_call_is_shove`.)
+    #[test]
+    fn six_player_allin_single_caller_runout() {
+        let mut game = Game6::preblind(0, [200, 200, 400, 200, 200, 200]);
+        game.act(game.posts());
+        game.act(game.posts());
+        let total = game.total();
+        game = game.apply(Action::Shove(game.to_shove())); // UTG jams
+        for _ in 0..4 {
+            game = game.apply(Action::Fold); // HJ, CO, BTN, SB
+        }
+        game = game.apply(Action::Call(game.to_call())); // BB calls, covering
+        let mut steps = 0;
+        while game.turn() != Turn::Terminal {
+            assert_eq!(game.total(), total, "chips must be conserved during runout");
+            match game.turn() {
+                Turn::Chance => game = game.apply(game.reveal()),
+                Turn::Choice(_) => game = game.apply(Action::Check),
+                Turn::Terminal => unreachable!(),
+            }
+            steps += 1;
+            assert!(steps < 32, "runout must terminate");
+        }
+        assert_eq!(game.street(), Street::Rive, "all-in call must run out all streets");
+        let rewards = game.settlements().iter().map(|s| s.pnl().reward()).sum::<Chips>();
+        assert_eq!(rewards, game.pot(), "settlements must redistribute exactly the pot");
+    }
+
+    /// 3-player: three different stacks all in preflop creates side pots;
+    /// settlement rewards redistribute exactly the pot.
+    #[test]
+    fn three_player_side_pot_conservation() {
+        let mut game = Game3::preblind(0, [50, 100, 200]);
+        game.act(game.posts());
+        game.act(game.posts());
+        let total = game.total();
+        game = game.apply(Action::Shove(game.to_shove()));
+        game = game.apply(Action::Shove(game.to_shove()));
+        game = game.apply(Action::Shove(game.to_shove()));
+        let mut steps = 0;
+        while game.turn() != Turn::Terminal {
+            assert_eq!(game.total(), total);
+            game = game.apply(game.reveal());
+            steps += 1;
+            assert!(steps < 8, "all-shoved runout must terminate");
+        }
+        let rewards = game.settlements().iter().map(|s| s.pnl().reward()).sum::<Chips>();
+        assert_eq!(rewards, game.pot(), "side pots must redistribute exactly the pot");
+    }
+
+    /// 6-player: everyone folds to the big blind, who wins the blinds
+    /// without acting (walking BB).
+    #[test]
+    fn six_player_walking_bb() {
+        let mut game = Game6::root();
+        for _ in 0..5 {
+            game = game.apply(Action::Fold);
+        }
+        assert_eq!(game.turn(), Turn::Terminal);
+        let rewards = game.settlements().iter().map(|s| s.pnl().reward()).sum::<Chips>();
+        assert_eq!(rewards, game.pot(), "walking BB must collect exactly the pot");
+    }
+
+    /// Multiway effective stack is the second-largest among live players,
+    /// so folded stacks can no longer drag the SPR down.
+    #[test]
+    fn six_player_effective_second_largest() {
+        let mut game = Game6::preblind(0, [10, 300, 200, 100, 50, 25]);
+        game.act(game.posts());
+        game.act(game.posts());
+        // post-blind stacks: [10, 299, 198, 100, 50, 25] -> 2nd-largest = 198
+        assert_eq!(game.effective(), 198, "second-largest of live stacks");
+        let game = game.apply(Action::Fold); // UTG (seat 3, stack 100) folds
+        assert_eq!(game.effective(), 198, "folding a mid stack keeps 2nd-largest among live");
+        let game = game.apply(Action::Fold); // HJ (seat 4, stack 50) folds
+        let game = game.apply(Action::Fold); // CO (seat 5, stack 25) folds
+        let game = game.apply(Action::Fold); // BTN (seat 0, stack 10) folds
+        // live: SB 299, BB 198 -> heads-up semantics = smaller of the two
+        assert_eq!(game.effective(), 198, "reduces to min of the two live stacks");
+    }
+
+    /// A call that is exactly all-in is not a legal Call — the engine
+    /// requires it to be expressed as a Shove. Pins the call-as-shove
+    /// semantic so action encoding stays consistent multiway.
+    #[test]
+    fn six_player_exact_call_is_shove() {
+        let mut game = Game6::root();
+        game = game.apply(Action::Shove(game.to_shove())); // UTG jams 200
+        for _ in 0..4 {
+            game = game.apply(Action::Fold); // HJ, CO, BTN, SB
+        }
+        // BB has 198 behind and owes exactly 198: Call is illegal, Shove is the call.
+        assert_eq!(game.to_call(), game.to_shove());
+        assert!(!game.may_call(), "exact all-in call must not be a Call");
+        assert!(game.may_shove());
+        let game = game.apply(Action::Shove(game.to_shove()));
+        assert!(game.is_everyone_shoving(), "both all-in triggers pure runout");
+    }
+
+    /// Randomized playouts: 3- and 6-player games driven by seeded random
+    /// legal actions must conserve chips at every step, keep legal actions
+    /// available at every decision, and terminate within a bounded number
+    /// of actions with settlements that redistribute exactly the pot.
+    /// Stacks are randomized down to the big blind (stressing all-in-from-
+    /// blind and side-pot paths) and the button visits every seat.
+    #[test]
+    fn multiway_random_playout_invariants() {
+        fn playout<const P: usize>(seed: u64) {
+            use rand::Rng;
+            use rand::SeedableRng;
+            let ref mut rng = rand::rngs::SmallRng::seed_from_u64(seed);
+            let dealer = rng.random_range(0..P);
+            let stacks = std::array::from_fn::<Chips, P, _>(|_| rng.random_range(GameN::<P>::bblind()..3 * STACK));
+            let mut game = GameN::<P>::from_start(dealer, stacks);
+            let total = game.total();
+            let mut steps = 0;
+            while game.turn() != Turn::Terminal {
+                assert_eq!(game.total(), total, "P={P} seed={seed}: chips must be conserved");
+                assert_eq!(
+                    game.board_cards().len(),
+                    game.street().n_observed() - 2,
+                    "P={P} seed={seed}: board must match street"
+                );
+                let legal = game.legal();
+                assert!(!legal.is_empty(), "P={P} seed={seed}: non-terminal state must have legal actions");
+                let action = legal[rng.random_range(0..legal.len())];
+                let action = match action {
+                    Action::Raise(_) if game.to_raise() < game.to_shove() => {
+                        Action::Raise(rng.random_range(game.to_raise()..game.to_shove()))
+                    }
+                    a => a,
+                };
+                assert!(game.is_allowed(&action), "P={P} seed={seed}: sampled action must be legal");
+                game = game.apply(action);
+                steps += 1;
+                assert!(steps < 512, "P={P} seed={seed}: playout must terminate");
+            }
+            let settlements = game.settlements();
+            assert_eq!(settlements.len(), P, "P={P} seed={seed}: one settlement per seat");
+            let rewards = settlements.iter().map(|s| s.pnl().reward()).sum::<Chips>();
+            assert_eq!(rewards, game.pot(), "P={P} seed={seed}: settlements must redistribute the pot");
+            assert_eq!(game.total(), total, "P={P} seed={seed}: chips must be conserved at terminal");
+        }
+        for seed in 0..512 {
+            playout::<3>(seed);
+            playout::<6>(seed);
+        }
+    }
+
+    /// Pins the current min-raise rule after a short all-in: the engine
+    /// bases the next minimum raise on the *actual* largest increment (the
+    /// short shove), which is more lenient than the TDA "last full raise"
+    /// rule. Deliberately unchanged — the (street, depth)-keyed sizing grid
+    /// snaps amounts anyway, and altering `to_raise` would churn the choices
+    /// mask that keys the live heads-up blueprint. Revisit only alongside a
+    /// deliberate re-key.
+    #[test]
+    fn three_player_short_allin_min_raise_pins_lenient_rule() {
+        // dealer=0 -> seat 1 = SB (200), seat 2 = BB (13, i.e. 11 behind).
+        let mut game = Game3::preblind(0, [200, 200, 13]);
+        game.act(game.posts());
+        game.act(game.posts());
+        game = game.apply(Action::Raise(10)); // BTN opens to 10
+        game = game.apply(Action::Call(game.to_call())); // SB calls 9 (stake 10)
+        game = game.apply(Action::Shove(game.to_shove())); // BB short-jams 11 (stake 13)
+        assert!(game.is_everyone_shoving().not() && game.turn().is_choice());
+        assert_eq!(game.turn().position(), 0, "action returns to BTN");
+        // BTN min-raise puts in call 3 + max(short increment 3, bb 2) = 6,
+        // NOT the TDA call 3 + last full raise 8 = 11.
+        assert_eq!(game.to_raise(), 6, "lenient short-all-in increment is the pinned behavior");
+    }
+
+    /// Pins reopen rights: after a short all-in, the original aggressor may
+    /// raise again when action returns (TDA would deny re-raise rights).
+    /// Same rationale as the min-raise pin: abstraction-tolerant, and fixing
+    /// it would churn live blueprint keys.
+    #[test]
+    fn three_player_short_allin_reopens_action_pins_lenient_rule() {
+        let mut game = Game3::preblind(0, [200, 200, 13]);
+        game.act(game.posts());
+        game.act(game.posts());
+        game = game.apply(Action::Raise(10)); // BTN opens to 10
+        game = game.apply(Action::Call(game.to_call())); // SB calls (stake 10)
+        game = game.apply(Action::Shove(game.to_shove())); // BB short-jams (stake 13)
+        assert_eq!(game.turn().position(), 0, "action returns to the original aggressor");
+        assert!(game.may_raise(), "pinned: short all-in reopens raising for the original aggressor");
+    }
+
+    /// A single 6-max street can legally produce more abstract edges than a
+    /// heads-up `Path<1>` holds (12). The width-pinned [`Subgame`] type must
+    /// hold it — and if even that capacity is ever exceeded, the collect
+    /// must PANIC rather than silently truncate onto a colliding info-set
+    /// key (the failure mode that motivated widening `Path`).
+    #[test]
+    fn six_player_street_exceeds_headsup_path_capacity() {
+        // A legal 6-max preflop: 4 limps + SB call + BB raise + 5 calls +
+        // UTG re-raise + 2 calls = 14 abstract edges on one street.
+        let street = [
+            Edge::Call,
+            Edge::Call,
+            Edge::Call,
+            Edge::Call,
+            Edge::Call,
+            Edge::Raise(Odds::new(1, 1)),
+            Edge::Call,
+            Edge::Call,
+            Edge::Call,
+            Edge::Call,
+            Edge::Call,
+            Edge::Raise(Odds::new(1, 1)),
+            Edge::Call,
+            Edge::Call,
+        ];
+        assert!(street.len() > Path::<1>::CAPACITY, "sequence exceeds heads-up capacity by construction");
+        assert!(street.len() <= Path::<4>::CAPACITY, "a 6-max-width Subgame must hold a legal street");
+        let path = street.into_iter().collect::<Path<4>>();
+        assert_eq!(path.length(), street.len(), "no truncation at multiway width");
+        assert_eq!(path.into_iter().collect::<Vec<_>>(), street.to_vec(), "lossless round-trip");
+        assert!(
+            std::panic::catch_unwind(|| street.into_iter().collect::<Path<1>>()).is_err(),
+            "overflowing a narrow Path must panic, never truncate"
+        );
+    }
+
+    /// Randomized multi-hand sessions: continuation() must rotate the button,
+    /// re-post blinds, and preserve total chips across hand boundaries.
+    #[test]
+    fn multiway_random_session_continuation() {
+        use rand::Rng;
+        use rand::SeedableRng;
+        let ref mut rng = rand::rngs::SmallRng::seed_from_u64(42);
+        let mut game = Game6::root();
+        let total = game.total();
+        for _ in 0..64 {
+            let mut steps = 0;
+            while game.turn() != Turn::Terminal {
+                let legal = game.legal();
+                let action = legal[rng.random_range(0..legal.len())];
+                game = game.apply(action);
+                steps += 1;
+                assert!(steps < 512, "hand must terminate");
+            }
+            match game.continuation() {
+                Some(next) => {
+                    assert_eq!(next.total(), total, "chips must be conserved across hands");
+                    assert_eq!(next.street(), Street::Pref);
+                    assert_eq!(next.pot(), Game6::sblind() + Game6::bblind());
+                    game = next;
+                }
+                None => break, // someone busted; session over
+            }
+        }
     }
 }

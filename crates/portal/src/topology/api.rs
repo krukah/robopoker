@@ -11,18 +11,6 @@ use tokio_postgres::Client;
 const N_NEIGHBORS: i64 = 6;
 
 // Local conversion functions for database types.
-// These bridge tokio_postgres::Row to our domain types.
-// We use free functions instead of From traits due to orphan rules.
-
-fn api_sample_from_row(row: tokio_postgres::Row) -> ApiSample {
-    ApiSample {
-        obs: Observation::from(row.get::<_, i64>("obs")),
-        abs: Abstraction::from(row.get::<_, i16>("abs")),
-        equity: row.get::<_, f32>("equity"),
-        density: row.get::<_, f32>("density"),
-        distance: row.try_get::<_, f32>("distance").unwrap_or_default(),
-    }
-}
 
 pub struct TopologyAPI(Arc<Client>);
 
@@ -48,11 +36,10 @@ impl TopologyAPI {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!("SELECT abs FROM {} WHERE obs = $1", isomorphism()));
         let iso = Isomorphism::from(obs);
-        let idx = i64::from(iso);
         self.0
-            .query_one(sql.as_str(), &[&idx])
+            .query_one(sql.as_str(), &[&iso])
             .await
-            .map(|row| Abstraction::from(row.get::<_, i16>(0)))
+            .map(|row| row.get::<_, Abstraction>(0))
             .map_err(|e| anyhow::anyhow!("fetch abstraction: {e}"))
     }
 
@@ -80,7 +67,6 @@ impl TopologyAPI {
     pub async fn abs_equity(&self, abs: Abstraction) -> anyhow::Result<Probability> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!("SELECT equity FROM {} WHERE abs = $1", abstraction()));
-        let abs = i16::from(abs);
         self.0
             .query_one(sql.as_str(), &[&abs])
             .await
@@ -104,7 +90,7 @@ impl TopologyAPI {
                 abstraction()
             )
         });
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         let sql = if obs.street() == Street::Rive { river } else { other };
         Ok(self
             .0
@@ -159,7 +145,6 @@ impl TopologyAPI {
     pub async fn abs_population(&self, abs: Abstraction) -> anyhow::Result<usize> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!("SELECT population FROM {} WHERE abs = $1", abstraction()));
-        let abs = i16::from(abs);
         self.0
             .query_one(sql.as_str(), &[&abs])
             .await
@@ -179,7 +164,7 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         Ok(self
             .0
             .query_one(sql.as_str(), &[&iso])
@@ -194,17 +179,16 @@ impl TopologyAPI {
     pub async fn abs_histogram(&self, abs: Abstraction) -> anyhow::Result<Histogram> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!("SELECT next, dx FROM {} WHERE prev = $1", transitions()));
-        let abs_i = i16::from(abs);
         let street = abs.street().next();
         let rows = self
             .0
-            .query(sql.as_str(), &[&abs_i])
+            .query(sql.as_str(), &[&abs])
             .await
             .map_err(|e| anyhow::anyhow!("fetch abstraction histogram: {e}"))?;
         Ok(rows
             .iter()
-            .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
-            .map(|(next, dx)| (Abstraction::from(next), (dx * 1000.0) as usize))
+            .map(|row| (row.get::<_, Abstraction>(0), row.get::<_, Energy>(1)))
+            .map(|(next, dx)| (next, (dx * 1000.0) as usize))
             .fold(Histogram::empty(street), |mut h, (next, dx)| {
                 h.set(next, dx);
                 h
@@ -223,18 +207,17 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let idx = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         let mass = obs.street().n_children() as f32;
         let street = obs.street().next();
         Ok(self
             .0
-            .query(sql.as_str(), &[&idx])
+            .query(sql.as_str(), &[&iso])
             .await
             .map_err(|e| anyhow::anyhow!("fetch observation histogram: {e}"))?
             .iter()
-            .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
+            .map(|row| (row.get::<_, Abstraction>(0), row.get::<_, Energy>(1)))
             .map(|(next, dx)| (next, (dx * mass).round() as usize))
-            .map(|(next, dx)| (Abstraction::from(next), dx))
             .fold(Histogram::empty(street), |mut h, (next, dx)| {
                 h.set(next, dx);
                 h
@@ -264,13 +247,13 @@ impl TopologyAPI {
             )
         });
         let n = obs.street().n_observations() as f32;
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         let row = self
             .0
             .query_one(sql.as_str(), &[&iso, &n])
             .await
             .map_err(|e| anyhow::anyhow!("explore with respect to observation: {e}"))?;
-        Ok(api_sample_from_row(row))
+        Ok(ApiSample::from(row))
     }
 
     pub async fn exp_wrt_abs(&self, abs: Abstraction) -> anyhow::Result<ApiSample> {
@@ -297,13 +280,12 @@ impl TopologyAPI {
             )
         });
         let n = abs.street().n_isomorphisms() as f32;
-        let abs = i16::from(abs);
         let row = self
             .0
             .query_one(sql.as_str(), &[&abs, &n])
             .await
             .map_err(|e| anyhow::anyhow!("explore with respect to abstraction: {e}"))?;
-        Ok(api_sample_from_row(row))
+        Ok(ApiSample::from(row))
     }
 }
 
@@ -323,15 +305,13 @@ impl TopologyAPI {
                 metric()
             )
         });
-        let abs = i16::from(abs);
         Ok(self
             .0
             .query(sql.as_str(), &[&abs, &N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch nearby abstractions: {e}"))?
             .iter()
-            .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
-            .map(|(abs, distance)| (Abstraction::from(abs), distance))
+            .map(|row| (row.get::<_, Abstraction>(0), row.get::<_, Energy>(1)))
             .collect())
     }
 
@@ -352,15 +332,14 @@ impl TopologyAPI {
                 metric()
             )
         });
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         Ok(self
             .0
             .query(sql.as_str(), &[&iso, &N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch nearby abstractions for observation: {e}"))?
             .iter()
-            .map(|row| (row.get::<_, i16>(0), row.get::<_, Energy>(1)))
-            .map(|(abs, distance)| (Abstraction::from(abs), distance))
+            .map(|row| (row.get::<_, Abstraction>(0), row.get::<_, Energy>(1)))
             .collect())
     }
 }
@@ -389,14 +368,14 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         Ok(self
             .0
             .query(sql.as_str(), &[&iso, &N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch similar observations: {e}"))?
             .iter()
-            .map(|row| row.get::<_, i64>(0))
+            .map(|row| row.get::<_, Isomorphism>(0))
             .map(Observation::from)
             .collect())
     }
@@ -420,14 +399,13 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let abs = i16::from(abs);
         Ok(self
             .0
             .query(sql.as_str(), &[&abs, &N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch observations similar to abstraction: {e}"))?
             .iter()
-            .map(|row| row.get::<_, i64>(0))
+            .map(|row| row.get::<_, Isomorphism>(0))
             .map(Observation::from)
             .collect())
     }
@@ -453,13 +431,13 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         let row = self
             .0
             .query_one(sql.as_str(), &[&iso])
             .await
             .map_err(|e| anyhow::anyhow!("replace observation: {e}"))?;
-        Ok(Observation::from(row.get::<_, i64>(0)))
+        Ok(Observation::from(row.get::<_, Isomorphism>(0)))
     }
 }
 
@@ -514,14 +492,12 @@ impl TopologyAPI {
             )
         });
         let n = wrt.street().n_isomorphisms() as f32;
-        let abs = i16::from(abs);
-        let wrt = i16::from(wrt);
         let row = self
             .0
             .query_one(sql.as_str(), &[&abs, &n, &wrt])
             .await
             .map_err(|e| anyhow::anyhow!("fetch neighbor abstraction: {e}"))?;
-        Ok(api_sample_from_row(row))
+        Ok(ApiSample::from(row))
     }
 
     pub async fn nbr_obs_wrt_abs(&self, wrt: Abstraction, obs: Observation) -> anyhow::Result<ApiSample> {
@@ -548,14 +524,13 @@ impl TopologyAPI {
             )
         });
         let n = wrt.street().n_isomorphisms() as f32;
-        let iso = i64::from(Isomorphism::from(obs));
-        let wrt = i16::from(wrt);
+        let iso = Isomorphism::from(obs);
         let row = self
             .0
             .query_one(sql.as_str(), &[&iso, &n, &wrt])
             .await
             .map_err(|e| anyhow::anyhow!("fetch neighbor observation: {e}"))?;
-        Ok(api_sample_from_row(row))
+        Ok(ApiSample::from(row))
     }
 }
 
@@ -594,13 +569,12 @@ impl TopologyAPI {
         });
         let n = wrt.street().n_isomorphisms() as f32;
         let s = wrt.street() as i16;
-        let wrt = i16::from(wrt);
         let rows = self
             .0
             .query(sql.as_str(), &[&wrt, &s, &N_NEIGHBORS, &n])
             .await
             .map_err(|e| anyhow::anyhow!("fetch k-farthest neighbors: {e}"))?;
-        Ok(rows.into_iter().map(api_sample_from_row).collect())
+        Ok(rows.into_iter().map(ApiSample::from).collect())
     }
 
     pub async fn knn_wrt_abs(&self, wrt: Abstraction) -> anyhow::Result<Vec<ApiSample>> {
@@ -636,13 +610,12 @@ impl TopologyAPI {
         });
         let n = wrt.street().n_isomorphisms() as f32;
         let s = wrt.street() as i16;
-        let wrt = i16::from(wrt);
         let rows = self
             .0
             .query(sql.as_str(), &[&wrt, &s, &N_NEIGHBORS, &n])
             .await
             .map_err(|e| anyhow::anyhow!("fetch k-nearest neighbors: {e}"))?;
-        Ok(rows.into_iter().map(api_sample_from_row).collect())
+        Ok(rows.into_iter().map(ApiSample::from).collect())
     }
 
     pub async fn kgn_wrt_abs(&self, wrt: Abstraction, nbr: Vec<Observation>) -> anyhow::Result<Vec<ApiSample>> {
@@ -675,13 +648,12 @@ impl TopologyAPI {
             .map(i64::from)
             .collect::<Vec<_>>();
         let n = wrt.street().n_isomorphisms() as f32;
-        let wrt = i16::from(wrt);
         let rows = self
             .0
             .query(sql.as_str(), &[&n, &wrt, &&isos, &N_NEIGHBORS])
             .await
             .map_err(|e| anyhow::anyhow!("fetch given neighbors: {e}"))?;
-        Ok(rows.into_iter().map(api_sample_from_row).collect())
+        Ok(rows.into_iter().map(ApiSample::from).collect())
     }
 }
 
@@ -728,13 +700,13 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let iso = i64::from(Isomorphism::from(obs));
+        let iso = Isomorphism::from(obs);
         let rows = self
             .0
             .query(sql.as_str(), &[&iso])
             .await
             .map_err(|e| anyhow::anyhow!("fetch river observation distribution: {e}"))?;
-        Ok(rows.into_iter().map(api_sample_from_row).collect())
+        Ok(rows.into_iter().map(ApiSample::from).collect())
     }
 
     async fn hst_wrt_obs_on_other(&self, obs: Observation) -> anyhow::Result<Vec<ApiSample>> {
@@ -772,8 +744,8 @@ impl TopologyAPI {
             .into_iter()
             .map(|row| {
                 (
-                    Observation::from(row.get::<_, i64>(0)),
-                    Abstraction::from(row.get::<_, i16>(1)),
+                    Observation::from(row.get::<_, Isomorphism>(0)),
+                    row.get::<_, Abstraction>(1),
                     Probability::from(row.get::<_, f32>(2)),
                 )
             })
@@ -824,13 +796,12 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let ref abs = i16::from(abs);
         let rows = self
             .0
-            .query(sql.as_str(), &[abs])
+            .query(sql.as_str(), &[&abs])
             .await
             .map_err(|e| anyhow::anyhow!("fetch river abstraction distribution: {e}"))?;
-        Ok(rows.into_iter().map(api_sample_from_row).collect())
+        Ok(rows.into_iter().map(ApiSample::from).collect())
     }
 
     async fn hst_wrt_abs_on_other(&self, abs: Abstraction) -> anyhow::Result<Vec<ApiSample>> {
@@ -859,12 +830,11 @@ impl TopologyAPI {
                 isomorphism()
             )
         });
-        let ref abs = i16::from(abs);
         let rows = self
             .0
-            .query(sql.as_str(), &[abs])
+            .query(sql.as_str(), &[&abs])
             .await
             .map_err(|e| anyhow::anyhow!("fetch abstraction distribution: {e}"))?;
-        Ok(rows.into_iter().map(api_sample_from_row).collect())
+        Ok(rows.into_iter().map(ApiSample::from).collect())
     }
 }

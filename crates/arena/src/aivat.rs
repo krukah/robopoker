@@ -173,18 +173,16 @@ impl Aivat {
             _ => return Ok(None),
         };
         let pocket = *recall.seen().pocket();
-        let isos: Vec<i64> = deals
+        let isos: Vec<Isomorphism> = deals
             .iter()
             .map(|d| Observation::from((pocket, deuce::Hand::add(board, *d))))
-            .map(|o| i64::from(Isomorphism::from(o)))
+            .map(Isomorphism::from)
             .collect();
-        let observed_iso = i64::from(Isomorphism::from(Observation::from((pocket, deuce::Hand::add(board, observed)))));
+        let observed_iso = Isomorphism::from(Observation::from((pocket, deuce::Hand::add(board, observed))));
         let info = NlheInfo::from((recall, Abstraction::default()));
-        let past = i64::from(info.subgame());
-        let choices = i64::from(info.choices());
         let Some((avg, obs)) = self
             .0
-            .eval_chance_correction(&isos, past, choices, observed_iso)
+            .eval_chance_correction(&isos, info.subgame(), info.choices(), observed_iso)
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?
         else {
@@ -201,19 +199,13 @@ impl Aivat {
         observed: Action,
     ) -> anyhow::Result<Option<Utility>> {
         let iso = Isomorphism::from(recall.seen());
-        let abs = match self
-            .0
-            .eval_abstraction(i64::from(iso))
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))?
-        {
-            Some(a) => Abstraction::from(a),
-            None => return Ok(None),
+        let Some(abs) = self.0.eval_abstraction(iso).await.map_err(|e| anyhow::anyhow!("{e}"))? else {
+            return Ok(None);
         };
         let info = NlheInfo::from((recall, abs));
         let rows = self
             .0
-            .eval_policy(i64::from(info.subgame()), i16::from(info.bucket()), i64::from(info.choices()))
+            .eval_policy(info.subgame(), info.bucket(), info.choices(), info.field())
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         if rows.is_empty() {
@@ -224,7 +216,7 @@ impl Aivat {
             return Ok(None);
         }
         let edge = NlheEdge::from(game.edgify(observed, recall.aggression()));
-        let idx = rows.iter().position(|(e, _, _)| NlheEdge::from(*e as u64) == edge);
+        let idx = rows.iter().position(|(e, _, _)| NlheEdge::from(*e) == edge);
         Ok(Some(action_correction(&policy, idx)))
     }
 }

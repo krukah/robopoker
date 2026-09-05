@@ -63,6 +63,10 @@ impl std::fmt::Display for Board {
     }
 }
 
+// SQL codec via the packed i64 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Board as i64, |b: &Board| u64::from(Hand::from(*b)) as i64, |v| Board::from(Hand::from(v as u64)));
+
 #[cfg(test)]
 mod tests {
     use super::*;

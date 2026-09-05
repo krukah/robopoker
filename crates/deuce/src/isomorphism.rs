@@ -70,6 +70,10 @@ impl std::fmt::Display for Isomorphism {
     }
 }
 
+// SQL codec: a `BIGINT` column via the packed i64 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Isomorphism as i64, |i: &Isomorphism| i64::from(*i), Isomorphism::from);
+
 #[cfg(test)]
 mod tests {
     use super::super::hand::Hand;

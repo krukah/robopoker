@@ -62,6 +62,8 @@ mod solver;
 mod source;
 mod strategy;
 mod turn;
+#[cfg(feature = "server")]
+mod wire;
 
 #[cfg(feature = "server")]
 pub use adapt::*;
@@ -86,6 +88,8 @@ pub use solver::*;
 pub use source::*;
 pub use strategy::*;
 pub use turn::*;
+#[cfg(feature = "server")]
+pub use wire::*;
 
 /// Flagship NLHE solver configuration.
 ///

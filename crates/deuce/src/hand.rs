@@ -247,6 +247,10 @@ impl<'de> serde::Deserialize<'de> for Hand {
     }
 }
 
+// SQL codec via the packed i64 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Hand as i64, |h: &Hand| u64::from(*h) as i64, |v| Hand::from(v as u64));
+
 #[cfg(test)]
 mod tests {
     use super::*;

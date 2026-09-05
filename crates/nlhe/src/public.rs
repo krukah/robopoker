@@ -14,26 +14,38 @@ use mccfr::*;
 /// What's needed for info set indexing:
 /// - `subgame`: Current-street action history (resets on each Draw)
 /// - `choices`: Available actions at this decision point
+/// - `field`: Button-anchored live set + acting position (the cross-street
+///   state `subgame` drops on every `Draw`; carries no information at N=2 but
+///   distinguishes multiway spots at N>2)
 ///
 /// Street information comes from [`NlheSecret`] which embeds street in its encoding.
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NlhePublic {
-    subgame: Path,
+    subgame: Subgame,
     choices: Path,
+    field: Field,
 }
 
 impl NlhePublic {
-    /// Creates a new public state from subgame history and available choices.
-    pub fn new(subgame: Path, choices: Path) -> Self {
-        Self { subgame, choices }
+    /// Creates a new public state from subgame history, available choices, and field.
+    pub fn new(subgame: Subgame, choices: Path, field: Field) -> Self {
+        Self {
+            subgame,
+            choices,
+            field,
+        }
     }
     /// Current-street historical edges as a Path.
-    pub fn subgame(&self) -> Path {
+    pub fn subgame(&self) -> Subgame {
         self.subgame
     }
     /// Aggression (trailing aggressive actions) for bet sizing grid selection.
     pub fn aggression(&self) -> usize {
         self.subgame.aggression()
+    }
+    /// Button-anchored live set + acting position.
+    pub fn field(&self) -> Field {
+        self.field
     }
 }
 
@@ -59,7 +71,7 @@ mod tests {
             .into_iter()
             .collect::<Path>();
         let choices = Path::default();
-        let public = NlhePublic::new(subgame, choices);
+        let public = NlhePublic::new(subgame, choices, Field::default());
         assert_eq!(public.aggression(), 2);
     }
     #[test]
@@ -68,7 +80,7 @@ mod tests {
             .into_iter()
             .collect::<Path>();
         let choices = Path::default();
-        let public = NlhePublic::new(subgame, choices);
+        let public = NlhePublic::new(subgame, choices, Field::default());
         let history = public.subgame().into_iter().collect::<Vec<_>>();
         assert_eq!(history.len(), 2);
         assert_eq!(history[0], Edge::Check);
@@ -78,14 +90,14 @@ mod tests {
     fn choices_returns_stored_choices() {
         let subgame = Path::default();
         let choices = [Edge::Fold, Edge::Call, Edge::Shove].into_iter().collect::<Path>();
-        let public = NlhePublic::new(subgame, choices);
+        let public = NlhePublic::new(subgame, choices, Field::default());
         assert_eq!(public.choices().count(), 3);
     }
     #[test]
     fn path_returns_subgame() {
         let subgame = [Edge::Check, Edge::Check].into_iter().collect::<Path>();
         let choices = Path::default();
-        let public = NlhePublic::new(subgame, choices);
+        let public = NlhePublic::new(subgame, choices, Field::default());
         assert_eq!(public.subgame(), subgame);
     }
 }

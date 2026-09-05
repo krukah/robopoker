@@ -84,16 +84,9 @@ pub trait Recall {
         self.states()
             .into_iter()
             .zip(self.actions().iter())
-            .scan(Path::default(), |past, (game, action)| {
-                let edge = match game.translate(*action, past.aggression(), &translation, rng) {
-                    Translated::Snap(edge) => edge,
-                    Translated::Free(_) => unreachable!(
-                        "no current Translation variant emits Translated::Free; \
-                         add a custom history walker for any future \
-                         off-tree-emitting translation",
-                    ),
-                };
-                *past = (*past).into_iter().chain(std::iter::once(edge)).collect();
+            .scan(Subgame::default(), |past, (game, action)| {
+                let edge = game.snapped(past.aggression(), *action, &translation, rng);
+                *past = past.flow(edge);
                 Some(edge)
             })
             .collect()
@@ -117,20 +110,21 @@ pub trait Recall {
         self.states()
             .into_iter()
             .zip(self.actions().iter())
-            .scan(Path::default(), |past, (game, action)| {
+            .scan(Subgame::default(), |past, (game, action)| {
                 let step = game.translate(*action, past.aggression(), &translation, rng);
                 let edge = match step {
                     Translated::Snap(edge) => edge,
                     Translated::Free(_) => game.edgify(*action, past.aggression()),
                 };
-                *past = (*past).into_iter().chain(std::iter::once(edge)).collect();
+                *past = past.flow(edge);
                 Some(step)
             })
             .collect()
     }
 
     /// Current street edges only (trailing choice edges before any Draw).
-    fn subgame(&self) -> Path {
+    /// Width-pinned by player count: heads-up `Subgame = Path<1>`.
+    fn subgame(&self) -> Subgame {
         self.history()
             .into_iter()
             .rev()
@@ -194,7 +188,7 @@ mod tests {
             .states()
             .into_iter()
             .zip(recall.actions().iter())
-            .scan(Path::default(), |past, (game, action)| {
+            .scan(Subgame::default(), |past, (game, action)| {
                 let edge = game.edgify(*action, past.aggression());
                 *past = (*past).into_iter().chain(std::iter::once(edge)).collect();
                 Some(edge)

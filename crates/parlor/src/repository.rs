@@ -1,3 +1,4 @@
+use crate::records::Chair;
 use crate::records::Hand;
 use crate::records::Participant;
 use crate::records::Play;
@@ -42,15 +43,14 @@ impl HistoryRepository for Arc<Client> {
         let sql = SQL.get_or_init(|| {
             format!("INSERT INTO {} (id, room_id, board, pot, dealer) VALUES ($1, $2, $3, $4, $5)", hands())
         });
-        let board: deuce::Hand = hand.board().into();
         self.execute(
             sql.as_str(),
             &[
                 &hand.id().inner(),
                 &hand.room().inner(),
-                &(u64::from(board) as i64),
+                &hand.board(),
                 &hand.pot(),
-                &(hand.dealer() as i16),
+                &Chair::from(hand.dealer()),
             ],
         )
         .await
@@ -63,17 +63,16 @@ impl HistoryRepository for Arc<Client> {
             "INSERT INTO {} (hand_id, user_id, seat, hole, stack, visibility, pnl) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             players()
         ));
-        let hole: deuce::Hand = player.hole().into();
         let user_id: Option<uuid::Uuid> = player.user().map(|id| id.inner());
         self.execute(
             sql.as_str(),
             &[
                 &player.hand().inner(),
                 &user_id,
-                &(player.seat() as i16),
-                &(u64::from(hole) as i64),
+                &Chair::from(player.seat()),
+                &player.hole(),
                 &player.stack(),
-                &i16::from(player.visibility()),
+                &player.visibility(),
                 &player.pnl(),
             ],
         )
@@ -96,7 +95,7 @@ impl HistoryRepository for Arc<Client> {
                 &action.hand().inner(),
                 &action.seq(),
                 &player_id,
-                &(u32::from(action.action()) as i32),
+                &action.action(),
                 &action.elapsed(),
             ],
         )
@@ -135,9 +134,9 @@ impl HistoryRepository for Arc<Client> {
                 Hand::new(
                     ID::from(row.get::<_, uuid::Uuid>(0)),
                     ID::from(row.get::<_, uuid::Uuid>(1)),
-                    Board::from(deuce::Hand::from(row.get::<_, i64>(2) as u64)),
+                    row.get::<_, Board>(2),
                     row.get::<_, Chips>(3),
-                    row.get::<_, i16>(4) as Position,
+                    row.get::<_, Chair>(4).into(),
                 )
             })
         })
@@ -158,10 +157,10 @@ impl HistoryRepository for Arc<Client> {
                     Participant::with_visibility(
                         ID::from(row.get::<_, uuid::Uuid>(0)),
                         user_id.map(ID::from),
-                        row.get::<_, i16>(2) as Position,
-                        Hole::from(deuce::Hand::from(row.get::<_, i64>(3) as u64)),
+                        row.get::<_, Chair>(2).into(),
+                        row.get::<_, Hole>(3),
                         row.get::<_, Chips>(4),
-                        Visibility::from(row.get::<_, i16>(5)),
+                        row.get::<_, Visibility>(5),
                         row.get::<_, Chips>(6),
                     )
                 })
@@ -185,7 +184,7 @@ impl HistoryRepository for Arc<Client> {
                         ID::from(row.get::<_, uuid::Uuid>(0)),
                         row.get::<_, Epoch>(1),
                         player_id.map(ID::from),
-                        Action::from(row.get::<_, i32>(3) as u32),
+                        row.get::<_, Action>(3),
                         row.get::<_, Option<i32>>(4),
                     )
                 })
@@ -203,6 +202,6 @@ impl HistoryRepository for Arc<Client> {
         });
         self.query_opt(sql.as_str(), &[&hand.inner(), &(seat as i16), &viewer.inner()])
             .await
-            .map(|opt| opt.map(|row| Hole::from(deuce::Hand::from(row.get::<_, i64>(0) as u64))))
+            .map(|opt| opt.map(|row| row.get::<_, Hole>(0)))
     }
 }

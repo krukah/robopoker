@@ -180,6 +180,10 @@ impl<'de> serde::Deserialize<'de> for Abstraction {
     }
 }
 
+// SQL codec: a `SMALLINT` column via the packed i16 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Abstraction as i16, |a: &Abstraction| i16::from(*a), Abstraction::from);
+
 #[cfg(test)]
 mod tests {
     use super::*;

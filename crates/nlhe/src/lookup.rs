@@ -18,7 +18,7 @@ fn policy_sql() -> &'static str {
     SQL.get_or_init(|| {
         daybook::leaked(format!(
             "SELECT edge, weight, visits, payoff FROM {} \
-         WHERE past = $1 AND present = $2 AND choices = $3",
+         WHERE past = $1 AND present = $2 AND choices = $3 AND context = $4",
             daybook::blueprint()
         ))
     })
@@ -35,31 +35,33 @@ fn policy_sql() -> &'static str {
 pub async fn lookup(client: &tokio_postgres::Client, recall: &Witness) -> Option<Strategy> {
     let iso = Isomorphism::from(recall.seen());
     let abs = client
-        .query_one(abs_sql(), &[&i64::from(iso)])
+        .query_one(abs_sql(), &[&iso])
         .await
-        .map(|row| Abstraction::from(row.get::<_, i16>(0)))
+        .map(|row| row.get::<_, Abstraction>(0))
         .inspect_err(|e| tracing::warn!("obs_to_abs failed: {e}"))
         .ok()?;
     let info = NlheInfo::from((recall, abs));
     let sql = policy_sql();
-    let ref history = i64::from(info.subgame());
-    let ref present = i16::from(info.bucket());
-    let ref choices = i64::from(info.choices());
     let rows = client
-        .query(sql, &[history, present, choices])
+        .query(sql, &[&info.subgame(), &info.bucket(), &info.choices(), &info.field()])
         .await
         .inspect_err(|e| tracing::warn!("blueprint query failed: {e}"))
         .ok()?;
     match rows.len() {
         0 => {
-            tracing::debug!("blueprint miss: past={history} present={present} choices={choices}");
+            tracing::debug!(
+                "blueprint miss: past={} present={} choices={}",
+                info.subgame(),
+                info.bucket(),
+                info.choices()
+            );
             None
         }
         _ => Some(Strategy::from((
             info,
             rows.into_iter()
                 .map(|row| Decision {
-                    edge: NlheEdge::from(row.get::<_, i64>("edge") as u64),
+                    edge: NlheEdge::from(row.get::<_, Edge>("edge")),
                     mass: Probability::from(row.get::<_, f32>("weight")),
                     visits: row.get::<_, i32>("visits") as u32,
                     payoff: row.get::<_, f32>("payoff"),

@@ -63,7 +63,7 @@ impl std::fmt::Display for Regime {
 pub fn config_string(r: Regime) -> String {
     use crate::*;
     let common = format!(
-        "STACK={STACK};B_BLIND={B_BLIND};S_BLIND={S_BLIND};MAX_RAISE_REPEATS={MAX_RAISE_REPEATS};OPENS={OPENS:?}",
+        "N={N};STACK={STACK};B_BLIND={B_BLIND};S_BLIND={S_BLIND};MAX_RAISE_REPEATS={MAX_RAISE_REPEATS};OPENS={OPENS:?}",
     );
     match r {
         Regime::Pluribus => format!("{common};PLURIBUS_INDICES={PLURIBUS_INDICES:?};RAISES={RAISES:?}"),

@@ -13,7 +13,7 @@ categories   = ["algorithms", "mathematics"]
 
 [features]
 default = []
-server  = ["daybook", "tokio-postgres", "const_format", "async-trait"]
+server  = ["daybook", "tokio-postgres", "const_format", "async-trait", "deuce/sql", "kicker/sql"]
 
 [dependencies]
 tracing        = { workspace = true }

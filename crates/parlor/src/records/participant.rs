@@ -172,3 +172,6 @@ mod schema {
         }
     }
 }
+
+#[cfg(feature = "server")]
+pokerkit::codec!(Visibility as i16, |v: &Visibility| i16::from(*v), Visibility::from);

@@ -182,6 +182,10 @@ impl From<u64> for Edge {
         }
     }
 }
+// SQL codec: a `BIGINT` column via the packed u64 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Edge as i64, |e: &Edge| u64::from(*e) as i64, |v| Edge::from(v as u64));
+
 impl From<Edge> for u64 {
     fn from(edge: Edge) -> Self {
         match edge {

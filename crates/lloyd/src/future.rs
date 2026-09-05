@@ -98,14 +98,13 @@ impl daybook::Schema for Future {
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl daybook::Streamable for Future {
-    type Row = (i16, i16, f32);
+    type Row = Shift;
 
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
-        self.0.into_iter().flat_map(|(abs, hist)| {
-            let prev = i16::from(abs);
+        self.0.into_iter().flat_map(|(prev, hist)| {
             hist.distribution()
                 .into_iter()
-                .map(move |(abs, dx)| (prev, i16::from(abs), dx))
+                .map(move |(next, dx)| Shift::from((prev, next, dx)))
         })
     }
 }

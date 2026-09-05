@@ -24,6 +24,10 @@ impl NlheGame {
     pub fn sweat_at(&self, position: usize) -> Observation {
         self.0.sweat_at(position)
     }
+    /// Button-anchored [`Field`] at the current decision node.
+    pub fn field(&self) -> Field {
+        self.0.field()
+    }
 }
 
 impl CfrGame for NlheGame {

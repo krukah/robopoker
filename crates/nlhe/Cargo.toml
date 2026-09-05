@@ -12,7 +12,16 @@ categories   = ["game-development", "algorithms"]
 
 [features]
 default = []
-server  = ["tokio-postgres", "const_format", "async-trait", "daybook", "futures", "mccfr/server"]
+server = [
+  "tokio-postgres",
+  "const_format",
+  "async-trait",
+  "daybook",
+  "futures",
+  "mccfr/server",
+  "kicker/sql",
+  "deuce/sql",
+]
 
 [dependencies]
 tracing        = { workspace = true }

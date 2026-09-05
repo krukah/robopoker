@@ -19,9 +19,9 @@ fn upsert_sql() -> &'static str {
     static SQL: OnceLock<&str> = OnceLock::<&str>::new();
     SQL.get_or_init(|| {
         leaked(format!(
-            "INSERT INTO {} (past, present, choices, edge, weight, regret, payoff, visits) \
-         VALUES         ($1,   $2,      $3,       $4,   $5,     $6,     $7,     $8) \
-         ON CONFLICT (past, present, choices, edge) \
+            "INSERT INTO {} (past, present, choices, context, edge, weight, regret, payoff, visits) \
+         VALUES         ($1,   $2,      $3,       $4,      $5,   $6,     $7,     $8,     $9) \
+         ON CONFLICT (past, present, choices, context, edge) \
          DO UPDATE SET \
              weight = EXCLUDED.weight, \
              regret = EXCLUDED.regret, \
@@ -43,10 +43,11 @@ impl Sink for Client {
             self.execute(
                 upsert_sql(),
                 &[
-                    &i64::from(record.info.subgame()),
-                    &i16::from(record.info.bucket()),
-                    &i64::from(record.info.choices()),
-                    &(u64::from(record.edge) as i64),
+                    &record.info.subgame(),
+                    &record.info.bucket(),
+                    &record.info.choices(),
+                    &record.info.field(),
+                    &record.edge,
                     &record.weight,
                     &record.regret,
                     &record.payoff,

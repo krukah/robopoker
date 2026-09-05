@@ -46,7 +46,7 @@ impl FastSession {
             .as_secs() as i64;
         self.client.stage().await;
         let copy = format!(
-            "COPY {t} (past, present, choices, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
+            "COPY {t} (past, present, choices, context, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
             t = daybook::staging()
         );
         let writer =

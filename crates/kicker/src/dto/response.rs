@@ -14,6 +14,21 @@ pub struct ApiSample {
     pub distance: f32,
 }
 
+/// Bridges a `SELECT obs, abs, equity, density[, distance]` row straight to
+/// the DTO via the domain codecs (`Isomorphism`/`Abstraction` FromSql).
+#[cfg(feature = "sql")]
+impl From<tokio_postgres::Row> for ApiSample {
+    fn from(row: tokio_postgres::Row) -> Self {
+        Self {
+            obs: Observation::from(row.get::<_, Isomorphism>("obs")),
+            abs: row.get::<_, Abstraction>("abs"),
+            equity: row.get::<_, f32>("equity"),
+            density: row.get::<_, f32>("density"),
+            distance: row.try_get::<_, f32>("distance").unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiDecision {
     pub edge: Edge,
@@ -22,9 +37,10 @@ pub struct ApiDecision {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiStrategy {
-    pub history: Path,
+    pub history: Subgame,
     pub present: Abstraction,
     pub choices: Path,
+    pub field: Field,
     pub spr: u8,
     pub accumulated: BTreeMap<Edge, f32>,
     pub visits: BTreeMap<Edge, u32>,
@@ -179,17 +195,17 @@ pub struct ApiStreetStats {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiColdInfoset {
-    pub past: i64,
-    pub present: i16,
-    pub choices: i64,
+    pub past: Subgame,
+    pub present: Abstraction,
+    pub choices: Path,
     pub visits: i32,
     pub edges: i64,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiHotInfoset {
-    pub past: i64,
-    pub present: i16,
-    pub choices: i64,
+    pub past: Subgame,
+    pub present: Abstraction,
+    pub choices: Path,
     pub max_regret: f32,
     pub edges: i64,
 }

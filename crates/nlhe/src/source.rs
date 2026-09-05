@@ -30,11 +30,10 @@ impl Source for Client {
             "SELECT abs FROM {} WHERE obs = $1",
             isomorphism()
         ));
-        self.query_one(sql.as_str(), &[&i64::from(iso)])
+        self.query_one(sql.as_str(), &[&iso])
             .await
             .expect("isomorphism lookup")
-            .get::<_, i16>(0)
-            .into()
+            .get::<_, Abstraction>(0)
     }
 
     async fn memory(&self, info: NlheInfo) -> Memory {
@@ -44,16 +43,17 @@ impl Source for Client {
              FROM   {} \
              WHERE  past    = $1 \
              AND    present = $2 \
-             AND    choices = $3",
+             AND    choices = $3 \
+             AND    context = $4",
             blueprint()
         ));
         let data = self
-            .query(sql.as_str(), &[&i64::from(info.subgame()), &i16::from(info.bucket()), &i64::from(info.choices())])
+            .query(sql.as_str(), &[&info.subgame(), &info.bucket(), &info.choices(), &info.field()])
             .await
             .expect("memory lookup")
             .into_iter()
             .map(|row| {
-                let edge = Edge::from(row.get::<_, i64>(0) as u64);
+                let edge = row.get::<_, Edge>(0);
                 let weight = row.get::<_, f32>(1);
                 let regret = row.get::<_, f32>(2);
                 let payoff = row.get::<_, f32>(3);
@@ -71,15 +71,16 @@ impl Source for Client {
              FROM   {} \
              WHERE  past    = $1 \
              AND    present = $2 \
-             AND    choices = $3",
+             AND    choices = $3 \
+             AND    context = $4",
             blueprint()
         ));
-        self.query(sql.as_str(), &[&i64::from(info.subgame()), &i16::from(info.bucket()), &i64::from(info.choices())])
+        self.query(sql.as_str(), &[&info.subgame(), &info.bucket(), &info.choices(), &info.field()])
             .await
             .expect("strategy lookup")
             .into_iter()
             .map(|row| {
-                let edge = Edge::from(row.get::<_, i64>(0) as u64);
+                let edge = row.get::<_, Edge>(0);
                 let weight = row.get::<_, f32>(1);
                 (edge, weight)
             })
@@ -92,7 +93,7 @@ impl Source for Client {
             "SELECT equity FROM {} WHERE abs = $1",
             abstraction()
         ));
-        self.query_one(sql.as_str(), &[&i16::from(abs)])
+        self.query_one(sql.as_str(), &[&abs])
             .await
             .expect("equity lookup")
             .get::<_, f32>(0)
@@ -104,7 +105,7 @@ impl Source for Client {
             "SELECT population FROM {} WHERE abs = $1",
             abstraction()
         ));
-        self.query_one(sql.as_str(), &[&i16::from(abs)])
+        self.query_one(sql.as_str(), &[&abs])
             .await
             .expect("population lookup")
             .get::<_, i32>(0) as usize

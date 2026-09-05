@@ -56,8 +56,28 @@ pub trait Unique<T = Self> {
 // ============================================================================
 // GAME TREE PARAMETERS
 // ============================================================================
-/// Number of players at the table.
+/// Number of players at the table. Compile-time — the `sixmax` feature flips
+/// the entire build to 6-max. `N` cannot be mixed within one process, so a
+/// 6-max trainer is a separate binary (`--features sixmax`) writing to its own
+/// `(regime, version)`-suffixed tables; a 2-max run continues untouched.
+#[cfg(not(feature = "sixmax"))]
 pub const N: usize = 2;
+/// Number of players at the table (6-max build; see the 2-max variant).
+#[cfg(feature = "sixmax")]
+pub const N: usize = 6;
+/// Table-name component that isolates training-derived (`regime!`) tables by
+/// player count, so a compile-time `N` change can never address another
+/// game's blueprint/epoch/staging/snapshot/fingerprint tables regardless of
+/// the runtime regime. Empty at N=2 to preserve historical heads-up table
+/// names; abstraction-derived (`versioned!`) tables deliberately omit this so
+/// the cluster abstraction stays shared across player counts.
+pub const fn players_suffix() -> &'static str {
+    match N {
+        2 => "",
+        6 => "_6max",
+        _ => panic!("add a players_suffix arm for this N"),
+    }
+}
 /// Starting stack size in chips.
 pub const STACK: Chips = 200;
 /// Big blind amount.
@@ -76,10 +96,18 @@ pub const MAX_RAISE_REPEATS: usize = 3;
 /// opponent's integer bet and our pot-fraction grid while keeping nesting
 /// reserved for genuinely off-grid sizes. `0.0` recovers byte-exact matching.
 pub const EXACT_SNAP_TOLERANCE: f64 = 0.05;
-/// Maximum edges in a packed Path (12 nibbles × 5 bits = 60 bits ≤ 64 bits).
-/// Data-representation limit, not a solver depth knob — the subgame tree's
-/// effective depth is controlled by where `DepthGame::at_frontier` fires
-/// (first chance node past origin), not by this constant.
+/// Number of u64 words in a subgame-carrying `Path<W>`: 1 at heads-up
+/// (byte-identical to the historical u64 Path, same DB `BIGINT` column),
+/// 4 multiway (256 bits ≈ 48 edges — a legal 6-max street can exceed the
+/// heads-up 12-edge capacity, e.g. limps + raise + calls + re-raise). Like
+/// `Field`, this keys on the compile-time `N` so the width can never drift
+/// out of sync with the build.
+pub const WORDS: usize = if N > 2 { 4 } else { 1 };
+/// Maximum edges in one packed Path word (12 edges × 5 bits = 60 ≤ 64 bits).
+/// Total capacity of a `Path<W>` is `W * MAX_PATH_EDGES`. Data-representation
+/// limit, not a solver depth knob — the subgame tree's effective depth is
+/// controlled by where `DepthGame::at_frontier` fires (first chance node past
+/// origin), not by this constant.
 pub const MAX_PATH_EDGES: usize = 12;
 
 // ============================================================================
@@ -137,15 +165,34 @@ const fn pick<const N: usize>(idx: [usize; N]) -> [(Chips, Chips); N] {
 /// `(Pref, 0)` is empty here — preflop opens are BB-relative and use
 /// `OPENS` instead.
 ///
+/// **Why the preflop raise rows run larger than the postflop ones.** A 3-bet
+/// or 4-bet is a big fraction of a pot that is still small, so the sizes that
+/// actually get played sit *above* where postflop sizes do. Truncating the row
+/// leaves no rung between the top anchor and `Edge::Shove`, and CFR takes the
+/// shove — which is what the `preflop_overjam` litmus category measures. Three
+/// separate readings put `Pref/1` and `Pref/N` short: Pluribus's own logs raise
+/// past `2:1` on 63% of 3-bets and 100% of 4-bets (`phh-cli calibrate`); our
+/// blueprint piles 3.6× more weight on preflop `2:1` than on `1:1`, the
+/// signature of a clipped row, where postflop `2:1` draws near zero; and the
+/// litmus catalog fails `AKo`/`AQo` BB-defends-2bb at 89%/77% jam against a
+/// 30% bar, diagnosing the `2:1 → !` cliff by name. `3:1` was in `Pref/1`
+/// before the SPR axis was removed and was dropped in that collapse, stranding
+/// the `structural_grid` test that expects it.
+///
+/// **`OPENS` is deliberately left alone.** The same Pluribus logs make our
+/// 4bb/5bb opens look dead, but that does not survive contact with heads-up:
+/// the blueprint spends 6.9% and 5.6% weighted frequency on them. Opening size
+/// is where 6-max and heads-up diverge most, so 6-max evidence does not carry.
+///
 /// **Bit-packing budget:** max cell width is 5 (Flop/0:
 /// `[1/4, 1/2, 3/4, 1:1, 2:1]`). Max `choices` is 5 raises +
 /// Fold/Check/Call/Shove = 9 edges × 5 bits = 45 bits, under the
-/// 60-bit Path capacity.
+/// 60-bit Path capacity. Preflop tops out at 3 raises, well inside it.
 #[rustfmt::skip]
 pub const PLURIBUS_INDICES: [&[usize]; 12] = [
     &[],              // (Pref, 0) opens — see OPENS
-    &[5, 8],          // (Pref, 1) 3-bet:   [1:1, 2:1]
-    &[5],             // (Pref, N) 4-bet+:  [1:1]
+    &[5, 8, 9],       // (Pref, 1) 3-bet:   [1:1, 2:1, 3:1]
+    &[5, 8],          // (Pref, N) 4-bet+:  [1:1, 2:1]
     &[0, 2, 4, 5, 8], // (Flop, 0):         [1/4, 1/2, 3/4, 1:1, 2:1]
     &[2, 5],          // (Flop, 1):         [1/2, 1:1]
     &[5],             // (Flop, N):         [1:1]
@@ -306,5 +353,18 @@ fn parse_duration(s: &str) -> Option<std::time::Duration> {
         "h" => Some(std::time::Duration::from_secs(value * 3600)),
         "d" => Some(std::time::Duration::from_secs(value * 86400)),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn players_suffix_matches_build() {
+        #[cfg(not(feature = "sixmax"))]
+        assert_eq!(players_suffix(), "", "heads-up must keep historical bare table names");
+        #[cfg(feature = "sixmax")]
+        assert_eq!(players_suffix(), "_6max", "6-max must isolate training tables by player count");
     }
 }

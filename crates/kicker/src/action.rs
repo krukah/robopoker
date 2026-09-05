@@ -234,6 +234,10 @@ impl std::fmt::Display for Action {
     }
 }
 
+// SQL codec via the packed i32 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Action as i32, |a: &Action| u32::from(*a) as i32, |v| Action::from(v as u32));
+
 #[cfg(test)]
 mod tests {
     use super::*;

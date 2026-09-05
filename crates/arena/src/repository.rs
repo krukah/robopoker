@@ -1,7 +1,8 @@
 use bouncer::Member;
 use daybook::*;
 use deuce::*;
-use kicker::Action;
+use kicker::*;
+use nlhe::NlheSecret;
 use parlor::records::{Hand as HandRecord, Participant, Play, Visibility};
 use pokerkit::*;
 use std::sync::Arc;
@@ -77,15 +78,20 @@ pub trait EvaluationRepository {
     async fn eval_count_by_stakes(&self, user: ID<Member>, stakes: i16) -> Result<i64, PgErr>;
     async fn eval_count_human_hero(&self, bots: &[uuid::Uuid]) -> Result<i64, PgErr>;
     async fn eval_count_human_against(&self, user: ID<Member>, bots: &[uuid::Uuid]) -> Result<i64, PgErr>;
-    async fn eval_policy(&self, past: i64, present: i16, choices: i64) -> Result<Vec<(i64, f32, f32)>, PgErr>;
-    async fn eval_abstraction(&self, iso: i64) -> Result<Option<i16>, PgErr>;
-    async fn eval_abstractions(&self, isos: &[i64]) -> Result<Vec<(i64, i16)>, PgErr>;
+    async fn eval_policy(
+        &self,
+        past: Subgame,
+        present: NlheSecret,
+        choices: Path,
+        context: Field,
+    ) -> Result<Vec<(Edge, f32, f32)>, PgErr>;
+    async fn eval_abstraction(&self, iso: Isomorphism) -> Result<Option<Abstraction>, PgErr>;
     async fn eval_chance_correction(
         &self,
-        isos: &[i64],
-        past: i64,
-        choices: i64,
-        observed_iso: i64,
+        isos: &[Isomorphism],
+        past: Subgame,
+        choices: Path,
+        observed_iso: Isomorphism,
     ) -> Result<Option<(f32, f32)>, PgErr>;
 }
 
@@ -365,20 +371,26 @@ impl EvaluationRepository for Arc<Client> {
             .map(|row| row.get(0))
     }
 
-    async fn eval_policy(&self, past: i64, present: i16, choices: i64) -> Result<Vec<(i64, f32, f32)>, PgErr> {
+    async fn eval_policy(
+        &self,
+        past: Subgame,
+        present: NlheSecret,
+        choices: Path,
+        context: Field,
+    ) -> Result<Vec<(Edge, f32, f32)>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| {
             format!(
-                "SELECT edge, weight, payoff FROM {} WHERE past = $1 AND present = $2 AND choices = $3",
+                "SELECT edge, weight, payoff FROM {} WHERE past = $1 AND present = $2 AND choices = $3 AND context = $4",
                 blueprint()
             )
         });
-        self.query(sql.as_str(), &[&past, &present, &choices])
+        self.query(sql.as_str(), &[&past, &present, &choices, &context])
             .await
             .map(|rows| rows.iter().map(|r| (r.get(0), r.get(1), r.get(2))).collect())
     }
 
-    async fn eval_abstraction(&self, iso: i64) -> Result<Option<i16>, PgErr> {
+    async fn eval_abstraction(&self, iso: Isomorphism) -> Result<Option<Abstraction>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!("SELECT abs FROM {} WHERE obs = $1", isomorphism()));
         self.query_opt(sql.as_str(), &[&iso])
@@ -386,20 +398,12 @@ impl EvaluationRepository for Arc<Client> {
             .map(|opt| opt.map(|row| row.get(0)))
     }
 
-    async fn eval_abstractions(&self, isos: &[i64]) -> Result<Vec<(i64, i16)>, PgErr> {
-        static SQL: OnceLock<String> = OnceLock::<String>::new();
-        let sql = SQL.get_or_init(|| format!("SELECT obs, abs FROM {} WHERE obs = ANY($1)", isomorphism()));
-        self.query(sql.as_str(), &[&isos])
-            .await
-            .map(|rows| rows.iter().map(|r| (r.get(0), r.get(1))).collect())
-    }
-
     async fn eval_chance_correction(
         &self,
-        isos: &[i64],
-        past: i64,
-        choices: i64,
-        observed_iso: i64,
+        isos: &[Isomorphism],
+        past: Subgame,
+        choices: Path,
+        observed_iso: Isomorphism,
     ) -> Result<Option<(f32, f32)>, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| {
@@ -446,9 +450,9 @@ fn hand_from(row: &tokio_postgres::Row) -> HandRecord {
     HandRecord::new(
         ID::from(row.get::<_, uuid::Uuid>(0)),
         ID::from(row.get::<_, uuid::Uuid>(1)),
-        Board::from(deuce::Hand::from(row.get::<_, i64>(2) as u64)),
+        row.get::<_, Board>(2),
         row.get::<_, Chips>(3),
-        row.get::<_, i16>(4) as Position,
+        row.get::<_, parlor::records::Chair>(4).into(),
     )
 }
 
@@ -456,10 +460,10 @@ fn participant_from(row: &tokio_postgres::Row) -> Participant {
     Participant::with_visibility(
         ID::from(row.get::<_, uuid::Uuid>(0)),
         row.get::<_, Option<uuid::Uuid>>(1).map(ID::from),
-        row.get::<_, i16>(2) as Position,
-        Hole::from(deuce::Hand::from(row.get::<_, i64>(3) as u64)),
+        row.get::<_, parlor::records::Chair>(2).into(),
+        row.get::<_, Hole>(3),
         row.get::<_, Chips>(4),
-        Visibility::from(row.get::<_, i16>(5)),
+        row.get::<_, Visibility>(5),
         row.get::<_, Chips>(6),
     )
 }
@@ -469,7 +473,7 @@ fn play_from(row: &tokio_postgres::Row) -> Play {
         ID::from(row.get::<_, uuid::Uuid>(0)),
         row.get::<_, Epoch>(1),
         row.get::<_, Option<uuid::Uuid>>(2).map(ID::from),
-        Action::from(row.get::<_, i32>(3) as u32),
+        row.get::<_, Action>(3),
         row.get::<_, Option<i32>>(4),
     )
 }

@@ -179,9 +179,9 @@ impl TrainingAPI {
             .map(|rows| {
                 rows.into_iter()
                     .map(|r| ApiColdInfoset {
-                        past: r.get(0),
-                        present: r.get(1),
-                        choices: r.get(2),
+                        past: r.get::<_, kicker::Subgame>(0),
+                        present: r.get::<_, kicker::Abstraction>(1),
+                        choices: r.get::<_, kicker::Path>(2),
                         visits: r.get(3),
                         edges: r.get(4),
                     })
@@ -208,9 +208,9 @@ impl TrainingAPI {
             .map(|rows| {
                 rows.into_iter()
                     .map(|r| ApiHotInfoset {
-                        past: r.get(0),
-                        present: r.get(1),
-                        choices: r.get(2),
+                        past: r.get::<_, kicker::Subgame>(0),
+                        present: r.get::<_, kicker::Abstraction>(1),
+                        choices: r.get::<_, kicker::Path>(2),
                         max_regret: r.get(3),
                         edges: r.get(4),
                     })

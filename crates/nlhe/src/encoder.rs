@@ -35,10 +35,10 @@ impl NlheEncoder {
     }
     /// Creates an info set for the root game state.
     pub fn root(&self, game: &NlheGame) -> NlheInfo {
-        let subgame = Path::default();
+        let subgame = Subgame::default();
         let present = self.abstraction(&game.sweat());
         let choices = game.as_ref().choices(0);
-        NlheInfo::from((subgame, present, choices))
+        NlheInfo::from((subgame, present, choices, game.field()))
     }
 }
 
@@ -60,10 +60,10 @@ impl mccfr::CfrEncoder for NlheEncoder {
     where
         P: IntoIterator<Item = Self::E>,
     {
-        let subgame = past.into_iter().map(Edge::from).collect::<Path>();
+        let subgame = past.into_iter().map(Edge::from).collect::<Subgame>();
         let present = self.abstraction(&game.sweat());
         let choices = game.as_ref().choices(subgame.aggression());
-        NlheInfo::from((subgame, present, choices))
+        NlheInfo::from((subgame, present, choices, game.field()))
     }
 }
 
@@ -201,8 +201,8 @@ impl daybook::Hydrate for NlheEncoder {
         let mut count = 0usize;
         while let Some(row) = stream.next().await {
             let row = row.expect("isomorphism row");
-            let obs = Isomorphism::from(row.get::<_, i64>(0));
-            let abs = Abstraction::from(row.get::<_, i16>(1));
+            let obs = row.get::<_, Isomorphism>(0);
+            let abs = row.get::<_, Abstraction>(1);
             lookup.insert(obs, abs);
             count += 1;
             if count.is_multiple_of(10_000_000) {

@@ -218,10 +218,10 @@ impl daybook::Schema for Metric {
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl daybook::Streamable for Metric {
-    type Row = (i32, f32);
+    type Row = Gap;
 
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send {
-        self.into_iter()
+        self.into_iter().map(Gap::from)
     }
 }
 

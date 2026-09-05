@@ -171,7 +171,7 @@ impl CLI {
                 Err("invalid histogram target".into())
             }
             Query::Path { value } => {
-                let path = Path::from(value);
+                let path = Path::<1>::from(value);
                 println!("Path({value})");
                 println!("  Display:  {path}");
                 println!("  Length:   {}", path.length());

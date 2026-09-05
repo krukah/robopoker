@@ -35,16 +35,22 @@ mod distances;
 mod emd;
 mod equity;
 mod future;
+#[cfg(feature = "server")]
+mod gap;
 mod heuristic;
 mod histogram;
 mod hyperparams;
 mod kmeans;
 mod layer;
 mod lookup;
+#[cfg(feature = "server")]
+mod mapping;
 mod metric;
 mod pair;
 mod phi;
 mod potential;
+#[cfg(feature = "server")]
+mod shift;
 mod sinkhorn;
 mod telemetry;
 mod tests;
@@ -59,15 +65,21 @@ pub use distances::*;
 pub use emd::*;
 pub use equity::*;
 pub use future::*;
+#[cfg(feature = "server")]
+pub use gap::*;
 pub use heuristic::*;
 pub use histogram::*;
 pub use hyperparams::*;
 pub use kmeans::*;
 pub use layer::*;
 pub use lookup::*;
+#[cfg(feature = "server")]
+pub use mapping::*;
 pub use metric::*;
 pub use pair::*;
 pub use phi::*;
 pub use potential::*;
+#[cfg(feature = "server")]
+pub use shift::*;
 pub use sinkhorn::*;
 pub use tests::*;

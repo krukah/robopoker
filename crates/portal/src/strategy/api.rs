@@ -52,6 +52,7 @@ fn api_strategy_from(strategy: Strategy, recall: &Witness) -> ApiStrategy {
         history: strategy.info().subgame(),
         present: Abstraction::from(strategy.info().bucket()),
         choices: strategy.info().choices(),
+        field: strategy.info().field(),
         spr: recall.head().geometry().tag(),
         accumulated: strategy.accumulated().clone(),
         visits: strategy.visits().clone(),
@@ -86,6 +87,7 @@ fn run_solve(blueprint: &'static Flagship, recall: &Witness, kind: Kind) -> ApiS
         history: info.subgame(),
         present: Abstraction::from(info.bucket()),
         choices: info.choices(),
+        field: info.field(),
         spr: recall.head().geometry().tag(),
         accumulated: solved.policy().clone(),
         visits: solved.visits().clone(),
@@ -235,7 +237,7 @@ impl StrategyAPI {
             .into_iter()
             .map(|r| ApiGridUsage {
                 street: street_name(r.get::<_, i16>(0)).to_string(),
-                edge: format!("{}", Edge::from(r.get::<_, i64>(1) as u64)),
+                edge: format!("{}", r.get::<_, Edge>(1)),
                 avg_freq: r.get::<_, f32>(2),
                 weighted_freq: r.get::<_, f32>(3),
                 n_decisions_with_edge: r.get::<_, i64>(4),

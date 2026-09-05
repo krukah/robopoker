@@ -178,9 +178,9 @@ impl Worker {
 
     async fn seed(&self, game: &Game) -> NlheInfo {
         let present = self.encode(game).await;
-        let subgame = Path::default();
+        let subgame = Subgame::default();
         let choices = game.choices(0);
-        NlheInfo::from((subgame, present, choices))
+        NlheInfo::from((subgame, present, choices, game.field()))
     }
 
     async fn info(
@@ -193,12 +193,12 @@ impl Worker {
             .chain(tree.at(head).map(mccfr::Jump::edge))
             .take_while(nlhe::NlheEdge::is_choice)
             .map(Edge::from)
-            .collect::<Path>()
+            .collect::<Subgame>()
             .rev()
-            .collect::<Path>();
+            .collect::<Subgame>();
         let present = self.encode(game.as_ref()).await;
         let choices = game.as_ref().choices(subgame.aggression());
-        NlheInfo::from((subgame, present, choices))
+        NlheInfo::from((subgame, present, choices, game.field()))
     }
 
     fn branches(&self, node: &Node<NlheTurn, NlheEdge, NlheGame, NlheInfo>) -> Vec<Leaf<NlheEdge, NlheGame>> {

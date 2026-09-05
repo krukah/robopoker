@@ -79,3 +79,7 @@ impl<'de> serde::Deserialize<'de> for Hole {
         Self::try_from(s.as_str()).map_err(serde::de::Error::custom)
     }
 }
+
+// SQL codec via the packed i64 representation.
+#[cfg(feature = "sql")]
+pokerkit::codec!(Hole as i64, |h: &Hole| u64::from(Hand::from(*h)) as i64, |v| Hole::from(Hand::from(v as u64)));

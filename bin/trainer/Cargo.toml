@@ -12,8 +12,16 @@ license      = "MIT"
 name = "trainer"
 path = "src/main.rs"
 
+[features]
+default = []
+# 6-max build: flips pokerkit::N to 6 across the whole trainer graph (cargo
+# unifies the pokerkit compile). Run with `--features sixmax` to launch a
+# 6-way trainer alongside an untouched 2-max run.
+sixmax = ["pokerkit/sixmax"]
+
 [dependencies]
 forge              = { path = "../../crates/forge" }
+pokerkit           = { path = "../../crates/pokerkit" }
 clap               = { version = "4", features = ["derive"] }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

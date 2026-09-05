@@ -51,3 +51,6 @@ impl std::fmt::Display for NlheSecret {
         write!(f, "{}", Abstraction::from(*self))
     }
 }
+
+#[cfg(feature = "server")]
+pokerkit::codec!(NlheSecret as i16, |s: &NlheSecret| i16::from(*s), NlheSecret::from);

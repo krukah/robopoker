@@ -13,12 +13,15 @@ categories   = ["game-development", "algorithms"]
 [features]
 default   = []
 shortdeck = []
+# SQL codecs (ToSql/FromSql) directly on domain types (Isomorphism).
+sql = ["tokio-postgres"]
 
 [dependencies]
-pokerkit = { workspace = true }
-rand     = { workspace = true }
-serde    = { version = "1.0", features = ["derive"] }
-anyhow   = "1.0"
+pokerkit       = { workspace = true }
+tokio-postgres = { version = "0.7", optional = true }
+rand           = { workspace = true }
+serde          = { version = "1.0", features = ["derive"] }
+anyhow         = "1.0"
 
 [lints]
 workspace = true

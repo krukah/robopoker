@@ -100,7 +100,7 @@ where
             })
             .collect::<Path>();
         let choices = recall.head().choices(subgame.aggression());
-        NlheInfo::from((subgame, model.encoder().abstraction(&recall.seen()), choices))
+        NlheInfo::from((subgame, model.encoder().abstraction(&recall.seen()), choices, recall.head().field()))
     }
 
     /// Roll the recall back by `count` actions (removing the off-tree raise and

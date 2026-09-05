@@ -148,7 +148,7 @@ impl daybook::Schema for Lookup {
 #[cfg(feature = "server")]
 #[async_trait::async_trait]
 impl daybook::Streamable for Lookup {
-    type Row = (i64, i16, i32);
+    type Row = Mapping;
 
     /// Yields `(obs, abs, position)`, where `position` is the dense per-bucket
     /// index (`0..population` within each `abs`) the topology sampler reads,
@@ -160,7 +160,7 @@ impl daybook::Streamable for Lookup {
         self.0
             .into_iter()
             .scan(HashMap::<Abstraction, i32>::new(), |counts, (iso, abs)| {
-                Some((i64::from(iso), i16::from(abs), *counts.entry(abs).and_modify(|n| *n += 1).or_insert(0)))
+                Some(Mapping::from((iso, abs, *counts.entry(abs).and_modify(|n| *n += 1).or_insert(0))))
             })
     }
 }

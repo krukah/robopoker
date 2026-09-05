@@ -13,7 +13,7 @@ categories   = ["game-development", "asynchronous"]
 
 [features]
 default = []
-server  = ["daybook", "nlhe", "mccfr", "subgame", "monge", "vitals"]
+server  = ["daybook", "nlhe", "mccfr", "subgame", "monge", "vitals", "deuce/sql", "kicker/sql"]
 cli     = ["dialoguer"]
 
 [dependencies]

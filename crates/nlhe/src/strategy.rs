@@ -145,7 +145,7 @@ impl From<(NlheInfo, Vec<Decision<NlheEdge>>)> for Strategy {
 
 impl From<ApiStrategy> for Strategy {
     fn from(api: ApiStrategy) -> Self {
-        let info = NlheInfo::from((api.history, api.present, api.choices));
+        let info = NlheInfo::from((api.history, api.present, api.choices, api.field));
         Self {
             info,
             accumulated: api.accumulated,
