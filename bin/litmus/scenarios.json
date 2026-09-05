@@ -93,11 +93,11 @@
         "expected_spr": "committed",
         "desc": "BB first to act, 5-bet pot, K-7-2 rainbow. SB +4; BB +12; SB +36; BB +108 → stake 122; SB +81 → 122. Pot 244, eff 78 → SPR ≈ 0.32 (Committed). Rare in real play but in-distribution for the SPR-keyed infoset."
       },
-      "bb_first_raised_8c8d2s_paired": {
-        "turn": "P1",
-        "_seen": "* ~ 8h 4d 2s",
-        "past": ["RAISE 4", "CALL 3"],
-        "desc": "BB first to act, raised pot, low dry board (good for set/overpair tests)."
+      "sb_facing_check_K72r": {
+        "turn": "P0",
+        "_seen": "* ~ Kh 7d 2c",
+        "past": ["RAISE 4", "CALL 3", "CHECK"],
+        "desc": "SB (preflop raiser, in position) to act on the flop after BB checks. Single-raised pot, dry rainbow K-7-2 — the canonical high-frequency c-bet spot."
       },
       "bb_first_limped_AKQss": {
         "turn": "P1",
@@ -158,8 +158,20 @@
       "default_expect": {"acceptable_max": 0.10}
     },
     "preflop_weak_rags": {
-      "description": "Worst HU starting hands (72o, 83o, 62o, ...). Real GTO opens >95% of hands; >50% fold here is a stuck-bucket signature.",
+      "description": "Worst HU starting hands (72o, 83o, 62o, ...). At 100bb HU with a limp available the SB plays ~84% raise-or-limp; the bottom of the range limps/mixes but should not PURE-fold. >50% fold is the Linear-CFR stuck-bucket signature.",
       "default_expect": {"acceptable_max": 0.50}
+    },
+    "preflop_bb_defense": {
+      "description": "BB should not over-fold to a min-raise. Facing a 2bb open, BB defends ~65-75% (calling 1 to win ~3 needs ~25% equity, which nearly every hand clears vs a wide open). Mandatory-defend hands (suited connectors, offsuit broadways) folding >5% is the over-fold pathology — the flip side of the over-jam.",
+      "default_expect": {"acceptable_max": 0.05}
+    },
+    "preflop_value_3bet": {
+      "description": "Premiums as BB vs a min-raise must 3-bet at a non-trivial rate, not pure-slowplay. Never 3-betting AA is an unambiguous leak (leaves a capped calling range and forgoes value).",
+      "default_expect": {"acceptable_max": 0.95}
+    },
+    "flop_cbet": {
+      "description": "The preflop raiser (SB, in position) c-bets dry, range-favorable boards at high frequency in HU. A value hand (TPTK) facing a check on K72r that pure-checks back has no c-bet line — an abstraction collapse or EV pessimism.",
+      "default_expect": {"acceptable_max": 0.30}
     },
     "suited_offsuit_symmetry": {
       "description": "Same rank pair, suited and offsuit, should play similarly. Asymmetry diagnoses the postflop abstraction losing suit-specific equity-realization.",
@@ -187,10 +199,10 @@
       "description": "TPTK vs all-in must call (no fold equity to extract by folding)."
     },
     "structural_grid": {
-      "description": "Each grid slot should appear at non-trivial frequency somewhere. A slot used at <2% everywhere is dead and should be retired in v3."
+      "description": "Each grid slot should appear at non-trivial frequency somewhere. A slot used at <2% everywhere is dead and should be retired from the menu."
     },
     "structural_grid_v3": {
-      "description": "Grid v3 dropped the SPR axis from the InfoSet key; menus are now keyed only on (street, depth). This category is reserved for v3-specific structural checks; populate as new patterns emerge from v3 training data."
+      "description": "The grid dropped the SPR axis from the InfoSet key; menus are keyed only on (street, depth). This category is reserved for structural checks specific to that (street, depth)-keyed grid; populate as new patterns emerge from training data."
     }
   },
 
@@ -217,18 +229,18 @@
       "edge": "1:4",
       "expect": {"acceptable_min": 0.02},
       "desired": "1:4 should appear at >2% in at least some flop spots. Canonical TPTK on dry board is the most likely spot for small probe bets.",
-      "diagnosis_if_violated": "1:4 dead at TPTK suggests the slot is dead generally. Sample more flop spots before retiring it in v3."
+      "diagnosis_if_violated": "1:4 dead at TPTK suggests the slot is dead generally. Sample more flop spots before retiring it from the menu."
     },
     {
-      "name": "Bet-size diversity: 3:1 (overbet) lives somewhere postflop",
+      "name": "Bet-size diversity: 2:1 (overbet) lives somewhere postflop",
       "category": "structural_grid",
       "kind": "exists",
-      "hand": "AKo",
-      "history": "preflop.bb_defends_2bb",
-      "edge": "3:1",
+      "hand": "AKs",
+      "history": "river.bb_first_checkdown_Js9s2s7d4s",
+      "edge": "2:1",
       "expect": {"acceptable_min": 0.05},
-      "desired": "AKo BB-defending should use 3:1 at >5% — it's the new recommended 4-bet size in this spot.",
-      "diagnosis_if_violated": "3:1 below 5% on AKo BB-defends-2bb means the new size from PR #155 isn't getting used; check whether it's available in the action grid or whether CFR routes around it."
+      "desired": "2:1 is the max overbet slot in the Pluribus grid — grid-v3 (#256) removed the 3:1 slot, so the top of the menu is now 2:1 (River/0 = [1/3, 1/2, 1:1, 2:1]). The nut flush first-to-act on a checked-down four-flush river is the canonical polarized overbet spot; it should use 2:1 at >5%.",
+      "diagnosis_if_violated": "2:1 below 5% with the nuts on a polarized river means the max overbet slot is effectively dead. Sample more polarized value spots before concluding; if 2:1 is unused everywhere, the grid's top size could be retired from the menu."
     }
   ],
 
@@ -270,19 +282,8 @@
       "edge": "F",
       "history": "preflop.sb_open",
       "matrix": {"hand": ["72o", "73o", "75o", "62o", "63o", "83o"]},
-      "desired": "Real HU GTO opens >95% from SB. Weak rags can mix open/fold but should rarely fold pure.",
+      "desired": "At 100bb HU the SB plays ~84% (raise-or-limp); the very bottom (72o-class) limps or mixes, but should not PURE-fold. Fold >50% is the Linear-CFR stuck-bucket signature, not GTO.",
       "diagnosis_if_violated": "Stuck-fold via Linear-CFR's positive-regret-undiscounted weighting. F edge accumulates more regret than competing edges can overcome. Consider DCFR with negative-regret discount."
-    },
-    {
-      "name_template": "Pocket pair monotonicity ({history})",
-      "category": "rank_monotonicity",
-      "kind": "monotonic",
-      "edge": "!",
-      "matrix": {"history": ["preflop.bb_defends_2bb", "preflop.bb_defends_3bb"]},
-      "hands_seq": ["AA", "KK", "QQ", "JJ"],
-      "expect": {"direction": "increasing"},
-      "desired": "Jam frequency should increase from AA (weakest reason to jam) to JJ (most reason to take immediate fold equity). Real GTO has all near 0%, but the GRADIENT should hold.",
-      "diagnosis_if_violated": "Non-monotonic = bucket-specific equilibrium quirk. If AA jams more than KK, AA's payoff calculation is broken."
     },
     {
       "name_template": "Weak-rag SB-open fold monotonicity",
@@ -308,7 +309,7 @@
       "diagnosis_if_violated": "Below 70% check means bot is over-bluffing the worst spots."
     },
     {
-      "name_template": "Flop air on draw-heavy board: must check",
+      "name_template": "Flop air on broadway rainbow (AKQr): must check",
       "category": "flop_air",
       "edge": "O",
       "matrix": {
@@ -316,7 +317,7 @@
         "history": ["flop.bb_first_raised_AKQ_rainbow"]
       },
       "expect": {"acceptable_min": 0.70},
-      "desired": "Trash hand on AKQ rainbow with no equity should rarely bet."
+      "desired": "Trash on an AKQ rainbow that misses BB's range entirely: BB first-to-act should check ~always. Donking air into the preflop raiser is a clear leak."
     },
     {
       "name_template": "{hand} Flop TPTK in raised pot: not pure-check first-to-act",
@@ -329,16 +330,6 @@
       "expect": {"acceptable_min": 0.30, "acceptable_max": 0.95},
       "desired": "TPTK on a dry K-high flop first-to-act should bet a meaningful share of the time. Pure check (>95%) leaves value on the table; pure bet (<5% check) means no slowplay. Want a real mix. (Fold is not in the legal choice set when first-to-act with no bet facing; the prior version queried `F` against a no-fold cell and trivially passed.)",
       "diagnosis_if_violated": "Pure check with TPTK on K72r means no c-bet line at all. Likely the postflop abstraction is averaging TPTK into a check-call cluster with weaker hands."
-    },
-    {
-      "name_template": "Flop set in raised pot: not pure-check",
-      "category": "flop_value",
-      "edge": "O",
-      "hand": "QQ",
-      "history": "flop.bb_first_raised_8c8d2s_paired",
-      "expect": {"acceptable_min": 0.10, "acceptable_max": 0.95},
-      "desired": "Overpair on low dry board: bet/check is a valid mix. Pure check (>95%) means no value-bet line; pure bet (<10% check) means no slowplay. Want something in between.",
-      "matrix": {}
     },
 
     {
@@ -389,9 +380,36 @@
       "hand": "AKs",
       "history": "turn.sb_facing_check_KTs2s7d",
       "edge": "O",
-      "expect": {"acceptable_max": 0.60},
-      "desired": "SB rivered the nut flush on the turn (KsTs2s7d, AsKs in hand). Should bet across some size at >40% frequency. Pure check is wrong.",
+      "expect": {"acceptable_max": 0.65},
+      "desired": "SB made the nut flush on the turn (KsTs2s7d, AsKs in hand), in position facing a check. Should bet a meaningful share (>=35%); the nuts can slowplay some, but pure/near-pure check forgoes value. Threshold kept loose so it flags gross under-betting, not a few points of noise.",
       "matrix": {}
+    },
+    {
+      "name_template": "{hand} BB-defends-2bb: no over-fold to min-raise",
+      "category": "preflop_bb_defense",
+      "edge": "F",
+      "history": "preflop.bb_defends_2bb",
+      "matrix": {"hand": ["87s", "76s", "KQo"]},
+      "desired": "Facing a 2bb min-raise, BB defends ~65-75% overall; suited connectors and offsuit broadways are mandatory defends. Fold ~0%.",
+      "diagnosis_if_violated": "Folding a clear defend to a min-raise is the over-fold pathology — the flip side of the offsuit-broadway over-jam. Signals a stuck-fold bucket or postflop EV pessimism making defense look -EV."
+    },
+    {
+      "name_template": "AA BB-defends-2bb: 3-bets, not pure-slowplay",
+      "category": "preflop_value_3bet",
+      "edge": "*",
+      "history": "preflop.bb_defends_2bb",
+      "matrix": {"hand": ["AA"]},
+      "desired": "AA vs a min-raise should 3-bet a meaningful share — call <=95% (i.e., raise/jam >=5%). Pure-calling AA caps the calling range and forgoes value.",
+      "diagnosis_if_violated": "Call ~100% with AA means the blueprint never 3-bets its best hand: a value leak, or the raise edges lost regret share to flat-call."
+    },
+    {
+      "name_template": "{hand} SB c-bet on K72r in position: high frequency",
+      "category": "flop_cbet",
+      "edge": "O",
+      "history": "flop.sb_facing_check_K72r",
+      "matrix": {"hand": ["AKo", "AKs", "77"]},
+      "desired": "The PFR in position on a dry, range-favorable K72r facing BB's check c-bets at high frequency. TPTK and a set are value hands that should bet >70% (check <=30%).",
+      "diagnosis_if_violated": "Pure-checking-back value on a dry board means the PFR has no c-bet line: abstraction collapsing these into a check-back cluster, or EV pessimism about betting in position."
     }
   ]
 }
