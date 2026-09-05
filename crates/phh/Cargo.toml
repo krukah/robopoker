@@ -1,0 +1,23 @@
+[package]
+name         = "phh"
+publish      = false
+version      = "1.0.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Poker Hand History (PHH) parsing, chip-exact replay, and 6-max to heads-up projection"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "phh", "hand-history", "pluribus", "evaluation"]
+categories   = ["game-development", "parser-implementations"]
+
+[dependencies]
+pokerkit = { workspace = true }
+deuce    = { workspace = true }
+kicker   = { workspace = true }
+rand     = { workspace = true }
+anyhow   = "1"
+toml     = "0.9"
+
+[lints]
+workspace = true

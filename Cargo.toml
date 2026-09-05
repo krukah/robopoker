@@ -11,6 +11,7 @@ members = [
   "crates/lloyd",
   "crates/subgame",
   "crates/nlhe",
+  "crates/phh",
   "crates/leduc",
   "crates/kuhn",
   "crates/roshambo",
@@ -33,6 +34,7 @@ members = [
   "bin/trainer",
   "bin/convert",
   "bin/litmus",
+  "bin/phh",
   "bin/slumbot",
 ]
 
@@ -57,6 +59,7 @@ elkan    = { version = "1.1", path = "crates/elkan" }
 lloyd    = { version = "1.1", path = "crates/lloyd" }
 subgame  = { version = "1.1", path = "crates/subgame" }
 nlhe     = { version = "1.1", path = "crates/nlhe" }
+phh      = { version = "1.0", path = "crates/phh" }
 leduc    = { version = "1.1", path = "crates/leduc" }
 kuhn     = { version = "1.1", path = "crates/kuhn" }
 roshambo = { version = "1.1", path = "crates/roshambo" }
@@ -75,6 +78,7 @@ tokio          = { version = "1", features = ["full"] }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 async-trait    = "0.1"
 futures        = "0.3"
+reqwest        = { version = "0.12", features = ["json"] }
 anyhow         = "1"
 log            = "0.4"
 serde          = { version = "1.0", features = ["derive"] }
