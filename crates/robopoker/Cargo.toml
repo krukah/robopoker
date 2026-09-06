@@ -1,6 +1,6 @@
 [package]
 name         = "robopoker"
-version      = "2.0.0"
+version      = "1.2.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -11,14 +11,14 @@ keywords     = ["poker", "mccfr", "gto", "solver", "holdem"]
 categories   = ["game-development", "algorithms", "mathematics"]
 
 [dependencies]
-pokerkit = { version = "2.0", path = "../pokerkit" }
-monge    = { version = "2.0", path = "../monge" }
-deuce    = { version = "2.0", path = "../deuce" }
-mccfr    = { version = "2.0", path = "../mccfr" }
-subgame  = { version = "2.0", path = "../subgame" }
-kicker   = { version = "2.0", path = "../kicker" }
-nlhe     = { version = "2.0", path = "../nlhe" }
-daybook  = { version = "2.0", path = "../daybook" }
+pokerkit = { version = "1.2", path = "../pokerkit" }
+monge    = { version = "1.2", path = "../monge" }
+deuce    = { version = "1.2", path = "../deuce" }
+mccfr    = { version = "1.2", path = "../mccfr" }
+subgame  = { version = "1.2", path = "../subgame" }
+kicker   = { version = "1.2", path = "../kicker" }
+nlhe     = { version = "1.2", path = "../nlhe" }
+daybook  = { version = "1.2", path = "../daybook" }
 
 [lints]
 workspace = true
