@@ -1,14 +1,10 @@
 //! [`Agent<B>`] — wraps a [`Brain`] and implements [`Player`].
 //!
-//! The single [`Player`] impl in this module covers every cell of the
-//! bot-config hypercube. Agent's job each turn is to read the brain's
-//! distribution and sample from it; the variety in bot behavior comes
-//! entirely from the brain's structure (`Blueprint`, `Depth<B>`,
-//! `World<B>`, `Dirac<B>` — and any future wrapper that adds an axis).
-//!
-//! Dirac-as-Brain means sampling from a Dirac delta = deterministic
-//! argmax — no separate "argmax player" code path, the distribution's
-//! shape carries the semantics.
+//! The single [`Player`] impl here covers every cell of the bot-config
+//! hypercube: Agent reads the brain's distribution and samples it, so all
+//! behavioral variety comes from the brain's structure instead. That includes
+//! determinism — sampling a [`Dirac`](super::Dirac) delta is argmax, so there
+//! is no separate "argmax player" path.
 use std::collections::BTreeMap;
 
 use kicker::Action;
@@ -44,9 +40,6 @@ where
     }
 
     /// Sample an action from a distribution, with debug-level telemetry.
-    /// Bound to `Agent` because both inputs (`brain` for the label, the
-    /// distribution itself) come from this struct's state and decision-
-    /// time game ref.
     fn sample(&self, game: &Game, dist: &BTreeMap<Edge, Probability>) -> Action {
         let label = self.brain.tag().label;
         let edges = dist.keys().copied().collect::<Vec<_>>();

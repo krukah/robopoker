@@ -39,11 +39,9 @@ impl Size {
     }
     /// Translate a [`Raise`] under a [`Translation`].
     ///
-    /// Nlhe-specific adapter over the translation lattice: dispatches to the
-    /// appropriate axis (BB-relative for opening spots, pot-fraction
-    /// otherwise) via [`Self::grid`] and resolves through the
-    /// policy. Returns [`Translated::Snap`] if the resolved anchor is
-    /// a canonical `Size`, or [`Translated::Free`] if the policy
+    /// Dispatches to the right axis via [`Self::grid`] (BB-relative for opening
+    /// spots, pot-fraction otherwise). [`Translated::Snap`] when the resolved
+    /// anchor is a canonical `Size`, [`Translated::Free`] when the policy
     /// injected the observed amount as a fresh anchor.
     pub fn translate<R>(raise: Raise, policy: &Translation, rng: &mut R) -> Translated<Self, Chips>
     where
@@ -127,12 +125,11 @@ impl Size {
         }
     }
 
-    /// Returns available raise sizes as an owned vector of [`Size`].
+    /// Available raise sizes for a cell.
     ///
-    /// Allocation is bounded (≤ 5 elements per cell) and the call site
-    /// — [`crate::Edge::raises`] — already collects into a `Vec<Edge>`,
-    /// so swapping the per-cell static const arrays for this on-the-fly
-    /// resolution doesn't add hot-path allocations.
+    /// Allocation is bounded (≤ 5 per cell) and the caller
+    /// [`crate::Edge::raises`] already collects into a `Vec<Edge>`, so
+    /// resolving on the fly costs no extra hot-path allocation.
     pub fn raises(street: Street, depth: usize) -> Vec<Self> {
         if depth > pokerkit::MAX_RAISE_REPEATS {
             return Vec::new();

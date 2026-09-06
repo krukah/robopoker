@@ -10,18 +10,11 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 use tokio_postgres::Client;
 
-/// Worker implements async MCCFR training with direct database access.
-/// Each worker runs independently, reading/writing to PostgreSQL.
-/// Multiple workers can train concurrently on the same database.
+/// Async MCCFR training with direct database access. Workers run
+/// independently and may train concurrently against the same database.
 ///
-/// Implements [`AsyncProfile`] for database-backed strategy lookups.
-/// The trait provides default implementations for reach probabilities,
-/// expected values, and regret calculations — Worker only implements
-/// the core data access methods (`policy`, `sample`, `advice`).
-///
-/// Uses Pluribus (Brown & Sandholm, Science 2019) configuration:
-/// - [`LinearRegret`] — Linear CFR = DCFR(1, 1, 1), as used in Pluribus
-/// - [`LinearWeight`] — linear weighting for average strategy
+/// Uses the Pluribus (Brown & Sandholm, Science 2019) configuration:
+/// [`LinearRegret`] (Linear CFR = DCFR(1, 1, 1)) + [`LinearWeight`].
 pub struct Worker {
     client: Arc<Client>,
     nodes: AtomicUsize,
@@ -70,12 +63,9 @@ impl Worker {
     }
 }
 
-/// AsyncProfile implementation for database-backed strategy lookups.
-///
-/// This implementation provides the core data access methods that fetch
-/// accumulated regrets and weights from PostgreSQL. All the reach
-/// probability, expected value, and regret calculations use the default
-/// trait implementations, which call these methods via `join_all`.
+/// Database-backed strategy lookups. Only the data-access methods are
+/// implemented here; reach/EV/regret use the trait defaults, which fan these
+/// out via `join_all`.
 #[async_trait::async_trait]
 impl AsyncProfile for Worker {
     type T = NlheTurn;

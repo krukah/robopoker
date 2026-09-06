@@ -26,7 +26,7 @@ static HANDLES: OnceLock<Handles> = OnceLock::new();
 /// preserves the alignment.
 #[rustfmt::skip]
 pub struct Handles {
-    // ── MCCFR training ──────────────────────────────────────────────────
+    // MCCFR training
     pub mccfr_steps:                Counter   <u64>,
     pub mccfr_nodes:                Counter   <u64>,
     pub mccfr_infos:                Counter   <u64>,
@@ -35,7 +35,7 @@ pub struct Handles {
     pub mccfr_tree_size:            Histogram <u64>,
     pub mccfr_infoset_size:         Histogram <u64>,
     pub mccfr_infosets_per_tree:    Histogram <u64>,
-    // ── K-means clustering ──────────────────────────────────────────────
+    // K-means clustering
     pub kmeans_iterations:          Counter   <u64>,
     pub kmeans_early_terminated:    Counter   <u64>,
     pub kmeans_drift_max:           Gauge     <f64>,
@@ -44,19 +44,19 @@ pub struct Handles {
     pub kmeans_phase_ms:            Histogram <f64>,
     pub kmeans_cluster_size:        Histogram <u64>,
     pub kmeans_drift_dist:          Histogram <f64>,
-    // ── Subgame solver internals ────────────────────────────────────────
+    // Subgame solver internals
     pub subgame_decisions:          Counter   <u64>,
     pub subgame_decision_ms:        Histogram <f64>,
     pub subgame_iterations:         Histogram <u64>,
     pub subgame_relative_regret:    Histogram <f64>,
     pub subgame_policy_deviation:   Histogram <f64>,
-    // ── HTTP server ─────────────────────────────────────────────────────
+    // HTTP server
     pub http_requests:              Counter   <u64>,
     pub http_duration_ms:           Histogram <f64>,
-    // ── Database ────────────────────────────────────────────────────────
+    // Database
     pub db_queries:                 Counter   <u64>,
     pub db_query_ms:                Histogram <f64>,
-    // ── Slumbot benchmark ───────────────────────────────────────────────
+    // Slumbot benchmark
     pub slumbot_hands:              Counter   <u64>,
     pub slumbot_hand_bb_won:        Counter   <f64>,
     pub slumbot_hand_bb_lost:       Counter   <f64>,

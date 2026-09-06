@@ -2,12 +2,7 @@
 
 use super::*;
 
-/// Bundle of outputs from clustering a single street.
-///
-/// Each layer produces three artifacts that are persisted to the database:
-/// - [`Lookup`] — Isomorphism → Abstraction mapping
-/// - [`Metric`] — Pairwise EMD distances between abstractions
-/// - [`Future`] — Abstraction → Histogram centroids (transition model)
+/// The three outputs of clustering one street, all persisted to the database.
 pub struct Artifacts {
     /// The hand-to-bucket assignment table.
     pub lookup: Lookup,

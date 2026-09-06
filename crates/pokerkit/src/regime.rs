@@ -1,10 +1,10 @@
-//! Action abstraction regime controlling bet sizing grid and database table names.
+//! Action abstraction regime controlling bet sizing grid and table names.
 //!
-//! Regimes form the other axis of the (Version × Regime) training configuration:
-//! they suffix policy-layer tables (blueprint, epoch, snapshot). Every regime
-//! gets its own suffixed tables — no regime is "default."
+//! One axis of the (Version × Regime) training configuration: regimes suffix
+//! policy-layer tables (blueprint, epoch, snapshot). Every regime gets its own
+//! suffixed tables — no regime is "default."
 
-/// Action abstraction regime controlling bet sizing grid and database table names.
+/// Action abstraction regime controlling bet sizing grid and table names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum Regime {
@@ -57,9 +57,9 @@ impl std::fmt::Display for Regime {
 /// by `Edge::Raise(Size)` carry the same byte representation but mean
 /// different actions when the underlying `Size` lattice shifts.
 ///
-/// **Add a constant here when you add one whose change should invalidate
-/// existing blueprints.** Anything you forget to add is silent drift the
-/// runtime check at trainer startup will not catch.
+/// Add a constant here whenever its change should invalidate existing
+/// blueprints — anything omitted is silent drift that the runtime check at
+/// trainer startup will not catch.
 pub fn config_string(r: Regime) -> String {
     use crate::*;
     let common = format!(
@@ -77,9 +77,9 @@ pub fn config_string(r: Regime) -> String {
 /// [`config_string`] matches — strictly finer than the `(regime, version)`
 /// table-naming key, which cannot see drift in bet-sizing / stack constants
 /// that leave `Edge::Raise(Size)` byte-identical while changing its meaning.
-/// Used to tag scoreboard rows so persisted scores are attributable to the
-/// exact game tree that produced them. `DefaultHasher` seeds are fixed, so
-/// the digest is stable across processes and builds.
+/// Tags scoreboard rows so persisted scores are attributable to the exact game
+/// tree that produced them. `DefaultHasher` seeds are fixed, so the digest is
+/// stable across processes and builds.
 pub fn fingerprint(r: Regime) -> String {
     use std::hash::Hash;
     use std::hash::Hasher;

@@ -5,12 +5,6 @@ use pokerkit::Chips;
 ///
 /// Tracks chips risked and won without revealing hole cards. This is the
 /// information visible to all players at showdown before cards are revealed.
-///
-/// # Fields
-///
-/// - `reward` — Total chips received from pot
-/// - `risked` — Total chips committed to pot
-/// - `status` — Final betting state (for determining eligibility)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PnL {
     reward: Chips,

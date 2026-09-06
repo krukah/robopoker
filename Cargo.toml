@@ -39,7 +39,7 @@ members = [
 ]
 
 [workspace.package]
-version      = "1.1.0"
+version      = "2.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -50,28 +50,28 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-pokerkit = { version = "1.1", path = "crates/pokerkit" }
-monge    = { version = "1.1", path = "crates/monge" }
-deuce    = { version = "1.1", path = "crates/deuce" }
-mccfr    = { version = "1.1", path = "crates/mccfr" }
-kicker   = { version = "1.1", path = "crates/kicker" }
-elkan    = { version = "1.1", path = "crates/elkan" }
-lloyd    = { version = "1.1", path = "crates/lloyd" }
-subgame  = { version = "1.1", path = "crates/subgame" }
-nlhe     = { version = "1.1", path = "crates/nlhe" }
-phh      = { version = "1.0", path = "crates/phh" }
-leduc    = { version = "1.1", path = "crates/leduc" }
-kuhn     = { version = "1.1", path = "crates/kuhn" }
-roshambo = { version = "1.1", path = "crates/roshambo" }
-arena    = { version = "1.1", path = "crates/arena" }
-spar     = { version = "1.1", path = "crates/spar" }
-litmus   = { version = "1.1", path = "crates/litmus" }
-daybook  = { version = "1.1", path = "crates/daybook" }
-bouncer  = { version = "1.1", path = "crates/bouncer" }
-vitals   = { version = "1.1", path = "crates/vitals" }
-parlor   = { version = "1.1", path = "crates/parlor" }
-portal   = { version = "1.1", path = "crates/portal" }
-forge    = { version = "1.1", path = "crates/forge" }
+pokerkit = { version = "2.0", path = "crates/pokerkit" }
+monge    = { version = "2.0", path = "crates/monge" }
+deuce    = { version = "2.0", path = "crates/deuce" }
+mccfr    = { version = "2.0", path = "crates/mccfr" }
+kicker   = { version = "2.0", path = "crates/kicker" }
+elkan    = { version = "2.0", path = "crates/elkan" }
+lloyd    = { version = "2.0", path = "crates/lloyd" }
+subgame  = { version = "2.0", path = "crates/subgame" }
+nlhe     = { version = "2.0", path = "crates/nlhe" }
+phh      = { version = "2.0", path = "crates/phh" }
+leduc    = { version = "2.0", path = "crates/leduc" }
+kuhn     = { version = "2.0", path = "crates/kuhn" }
+roshambo = { version = "2.0", path = "crates/roshambo" }
+arena    = { version = "2.0", path = "crates/arena" }
+spar     = { version = "2.0", path = "crates/spar" }
+litmus   = { version = "2.0", path = "crates/litmus" }
+daybook  = { version = "2.0", path = "crates/daybook" }
+bouncer  = { version = "2.0", path = "crates/bouncer" }
+vitals   = { version = "2.0", path = "crates/vitals" }
+parlor   = { version = "2.0", path = "crates/parlor" }
+portal   = { version = "2.0", path = "crates/portal" }
+forge    = { version = "2.0", path = "crates/forge" }
 
 # External dependencies
 tokio          = { version = "1", features = ["full"] }

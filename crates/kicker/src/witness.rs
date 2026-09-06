@@ -5,33 +5,11 @@ use std::ops::Not;
 
 /// Perfect-recall game history from a **single player's** perspective.
 ///
-/// While [`Game`] is memoryless, `Witness` tracks the complete action sequence
-/// from the start of a hand. This is the primary type for **inference time**:
-/// hero knows their own cards but not the opponent's.
-///
-/// # Information Boundary
-///
-/// | Type | Perspective | Used For |
-/// |------|-------------|----------|
-/// | `Witness` | Hero only (own cards) | Inference, UI, opponent iteration |
-/// | `Perfect` | God's view (both hands) | Training CFR traversal |
-///
-/// # Key Operations
-///
-/// - `NlheInfo::from((&witness, abstraction))` for strategy lookup
-/// - `Perfect::from((&witness, hole))` for opponent modeling
-/// - `witness.histories()` → iterate all possible opponent hands
-///
-/// # Structure
-///
-/// - `pov` — Which player's perspective we're tracking
-/// - `actions` — Action sequence excluding blinds (bets, draws)
-/// - `reveals` — The card arrangement for this hand (hero's observation)
-///
-/// # Invariants
-///
-/// Carries initial stacks and dealer position for correct state reconstruction.
-/// Blinds are constant and handled by `root()` returning a POST-blind state.
+/// Where [`Game`] is memoryless, `Witness` tracks the complete action sequence
+/// from the start of a hand. This is the inference-time type — hero knows their
+/// own cards but not the opponent's; [`Perfect`] is the god's-view counterpart
+/// used for CFR traversal. Blinds are not stored in `actions`: they are constant
+/// and applied by `root()`, which returns a POST-blind state.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Witness {
     pov: Turn,
@@ -117,13 +95,11 @@ impl Witness {
             .collect()
     }
 
-    /// Enumerates all possible opponent hands with complete-info histories.
+    /// The uniform prior over villain holdings, as (observation, [`Perfect`]) pairs.
     ///
-    /// Yields (villain observation, [`Perfect`] history) pairs representing
-    /// the uniform prior over villain holdings. Each villain observation
-    /// shares hero's board but has a different pocket drawn from cards not
-    /// visible to hero. The [`Perfect`] carries both players' cards, enabling
-    /// downstream reach computation via blueprint policy lookup.
+    /// Each villain observation shares hero's board but draws its pocket from
+    /// cards not visible to hero; the [`Perfect`] carries both players' cards so
+    /// downstream reach computation can look up the blueprint policy.
     pub fn possibilities(&self) -> Vec<(Observation, Perfect)> {
         self.seen()
             .opponents()
@@ -166,17 +142,12 @@ impl From<(Turn, Observation, Vec<Action>)> for Witness {
 }
 
 impl Witness {
-    /// Fallible constructor from (POV, observation, actions).
+    /// Fallible constructor from (POV, observation, actions), excluding blinds.
     ///
-    /// Converts `seen` to an [`Arrangement`] via `Arrangement::from(seen)`,
-    /// which assigns public cards to street slots using canonical [`Hand`]
-    /// iteration order. This is a **lossy** conversion: the original deal
-    /// order is not recoverable from an [`Observation`] alone.
-    ///
-    /// Prefer [`try_arrange`](Self::try_arrange) when the caller has an
-    /// [`Arrangement`] that preserves the actual deal order.
-    ///
-    /// The `actions` parameter should NOT include blinds.
+    /// **Lossy**: assigning public cards to street slots uses canonical [`Hand`]
+    /// iteration order, and the original deal order is not recoverable from an
+    /// [`Observation`] alone. Prefer [`try_arrange`](Self::try_arrange) when the
+    /// caller has an [`Arrangement`] that preserves it.
     pub fn try_build(pov: Turn, seen: Observation, actions: Vec<Action>) -> anyhow::Result<Self> {
         Self::try_arrange(pov, Arrangement::from(seen), actions)
     }
@@ -196,14 +167,8 @@ impl Witness {
     }
     /// Fallible constructor from (POV, arrangement, actions).
     ///
-    /// Preferred over [`try_build`](Self::try_build) when an [`Arrangement`]
-    /// with the correct per-street card assignment is available. The
-    /// arrangement determines which cards [`revealed`](Self::revealed)
-    /// attributes to each street and which [`Draw`](Action::Draw) actions
-    /// `sprout` inserts at street boundaries.
-    ///
-    /// The `actions` parameter should NOT include blinds or draws —
-    /// draws are auto-inserted by `sprout` based on the arrangement.
+    /// `actions` must exclude blinds and draws — `sprout` auto-inserts the
+    /// [`Draw`](Action::Draw)s at street boundaries from the arrangement.
     pub fn try_arrange(pov: Turn, reveals: Arrangement, actions: Vec<Action>) -> anyhow::Result<Self> {
         Self::try_arrange_with(pov, reveals, [STACK; N], actions)
     }
@@ -397,15 +362,9 @@ impl Witness {
     }
 }
 
-/// Game tree traversal methods.
-///
-/// These methods provide granular access to the decision structure
-/// for UI components that need to visualize the game tree.
+/// Game tree traversal, for UI components visualizing the decision structure.
 impl Witness {
-    /// Returns the aggression depth at a specific state index.
-    ///
-    /// Aggression is the count of trailing aggressive edges on the current street,
-    /// computed from history[0..state_idx].
+    /// Count of trailing aggressive edges on the current street, as of `history[0..i]`.
     fn aggression_at(&self, i: usize) -> usize {
         self.history()
             .iter()
@@ -415,11 +374,7 @@ impl Witness {
             .filter(|e| e.is_aggro())
             .count()
     }
-    /// Returns the available edges at a specific state index.
-    ///
-    /// For Choice turns: betting edges (Fold, Call, Raise variants)
-    /// For Chance turns: [Edge::Draw]
-    /// For Terminal: empty
+    /// Available edges at state index `i`; empty at terminal.
     fn edges_at(&self, i: usize) -> Vec<Edge> {
         self.states().get(i).map_or(Vec::new(), |game| match game.turn() {
             Turn::Chance => vec![Edge::Draw],
@@ -431,12 +386,7 @@ impl Witness {
     fn taken_at(&self, i: usize) -> Option<Edge> {
         self.history().get(i).copied()
     }
-    /// Returns unified tree traversal data for visualization.
-    ///
-    /// Each tuple contains: (available_edges, taken_edge_index)
-    /// - Choice turns: multiple betting edges
-    /// - Chance turns: [Edge::Draw] (use revealed() to get cards)
-    /// - Terminal: empty edges
+    /// Per-state `(available_edges, index_of_taken_edge)` for visualization.
     pub fn tree_nodes(&self) -> Vec<(Vec<Edge>, Option<usize>)> {
         self.states()
             .into_iter()
@@ -464,9 +414,6 @@ impl Witness {
         self.try_push(action).expect("valid action")
     }
     /// Fallible version of [`push`](Self::push).
-    ///
-    /// Returns `Err` if the action is not legal in the current state,
-    /// enabling graceful error handling instead of panicking.
     pub fn try_push(&self, action: Action) -> anyhow::Result<Self> {
         if !self.can_push(&action) {
             return Err(anyhow::anyhow!("illegal action {:?} at {:?}", action, self.head().turn()));
@@ -578,9 +525,8 @@ impl Witness {
     }
 }
 
-/// Display shows a compact visual representation of the game history
-/// Format: table with cards from arrangement (preserving deal order)
-/// and actions in a fixed-width grid layout
+/// Compact table of the game history: cards in deal order, actions in a
+/// fixed-width grid.
 impl std::fmt::Display for Witness {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         const L: usize = 4;

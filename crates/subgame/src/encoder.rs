@@ -1,19 +1,11 @@
 //! Combined encoder for safe subgame solving + depth-limited frontiers.
-//!
-//! Merges the responsibilities of [`WorldEncoder`] and [`DepthEncoder`]:
-//! tags all info sets with the current world AND detects frontier chance
-//! nodes to inject continuation-choice branches.
 use crate::depth::*;
 use crate::world::*;
 use mccfr::*;
 
-/// Combined encoder for safe subgame solving + depth-limited frontiers.
-///
-/// Merges the responsibilities of [`WorldEncoder`] and [`DepthEncoder`]:
-/// - Tags all info sets with `WorldInfo<DepthInfo<I>>`
-/// - At leaf (frontier) chance nodes: produces continuation Pick branches
-/// - At non-leaf chance/terminal nodes: produces no branches
-/// - At player nodes: produces Game-wrapped branches
+/// Merges [`WorldEncoder`] and [`DepthEncoder`]: tags info sets as
+/// `WorldInfo<DepthInfo<I>>`, and expands frontier chance nodes into
+/// continuation `Pick` branches while other chance/terminal nodes stay leaves.
 pub struct SubGameEncoder<'blueprint, N, const L: usize>
 where
     N: DepthSampler<L>,

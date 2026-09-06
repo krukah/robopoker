@@ -1,9 +1,5 @@
-//! CFR training algorithm and utilities.
-//!
-//! This module defines the training loop and supporting structures:
-//! - Solver: orchestrates tree sampling and regret updates
-//! - TreeBuilder: lazy iterator-based tree construction
-//! - Decisions: update vectors for regret/policy
+//! The CFR training loop: [`Solver`] orchestrates tree sampling and regret
+//! updates over [`TreeBuilder`] trees and [`Decisions`] update vectors.
 
 mod builder;
 mod decisions;

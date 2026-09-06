@@ -80,43 +80,20 @@ where
     }
 }
 
-/// # Convergence Results
+/// Convergence tests at 2^16 iterations.
 ///
-/// All tests use 2^16 (64K) iterations. RNG is seeded from a per-thread
-/// tree-id counter (reset at the start of each `Solver::solve`), so runs
-/// are deterministic. Prunable/Pluribus sampling behave like External for
-/// RPS since regrets never fall below the pruning threshold in this small
-/// game. Targeted sampling is excluded — its per-node importance
-/// weighting introduces too much variance.
+/// RNG is seeded from a per-thread tree-id counter (reset each
+/// `Solver::solve`), so runs are deterministic. Prunable/Pluribus sampling
+/// behave like External for RPS since regrets never fall below the pruning
+/// threshold in a game this small.
 ///
-/// Per-test tolerances follow the same empirical volatility pattern as Kuhn,
-/// scaled to RPS's 0.050 base. Higher tolerance = higher variance combo.
+/// Tolerances follow Kuhn's empirical volatility pattern scaled to an 0.050
+/// base; higher tolerance = higher-variance combo.
 ///
-/// | Tolerance | Combos                                           |
-/// |-----------|--------------------------------------------------|
-/// | 0.050     | Floored/Discounted regret, Constant/Linear weight |
-/// | 0.060     | Linear/Summed regret + Quadratic/Linear weight   |
-/// | 0.070     | Pluribus/Summed regret + Quadratic/Exponential   |
-/// | 0.080     | Pluribus regret + Exponential/Quadratic (worst)  |
-///
-/// # Non-Working Combinations
-///
-/// | Sampling | Regret       | Weight            | Reason                              |
-/// |----------|--------------|-------------------|-------------------------------------|
-/// | Vanilla  | Any          | Any               | Incompatible with external-sampling |
-/// | External | Any          | Exponential(0.99) | Oscillates — forgets history        |
-/// | Targeted | Any          | Any               | Too high variance for stable tests  |
-///
-/// # Excluded Combinations
-///
-/// - **Prunable/Pluribus + Summed/Linear**: Behave identically to ExternalSampling
-///   for RPS since regrets never fall below the pruning threshold in this small game
-///
-/// # Key Findings
-///
-/// - **Best**: CFR+/DCFR/Pluribus regret + External/Prunable + Constant/Linear weight
-/// - **Pluribus config**: DiscountedRegret + LinearWeight + PluribusSampling (flagship)
-/// - **Exponential**: Works at 0.9999 decay, oscillates at 0.99
+/// Combos deliberately not tested: Vanilla sampling (incompatible with
+/// external sampling), Targeted sampling (per-node importance weighting is too
+/// high variance), and Exponential weight at 0.99 decay (oscillates — forgets
+/// history; 0.9999 is fine).
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,7 +177,6 @@ mod tests {
     }
 
     //                                                                  tolerance
-    //                                                                  ─────────
     // External Sampling (5×4 matrix)
     #[rustfmt::skip] rps!(ExternalSampling, SummedRegret,     ConstantWeight,     0.050);
     #[rustfmt::skip] rps!(ExternalSampling, SummedRegret,     LinearWeight,       0.060);

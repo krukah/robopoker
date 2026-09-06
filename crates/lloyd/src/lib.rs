@@ -1,33 +1,11 @@
-//! Hierarchical k-means clustering for strategic abstraction.
+//! Hierarchical k-means clustering for strategic abstraction: reduces 3.1
+//! trillion poker situations to strategically-equivalent buckets, one street
+//! at a time, clustering hands by their distribution over next-street
+//! outcomes.
 //!
-//! This module reduces the 3.1 trillion unique poker situations into a tractable
-//! number of strategically-equivalent buckets. The abstraction proceeds street-by-street,
-//! clustering hands based on their distributions over next-street outcomes.
-//!
-//! ## Pipeline
-//!
-//! 1. **River** — Cluster by raw equity (win probability against random hands)
-//! 2. **Turn** — Cluster by distribution over river buckets
-//! 3. **Flop** — Cluster by distribution over turn buckets
-//! 4. **Preflop** — Cluster by distribution over flop buckets
-//!
-//! ## Core Types
-//!
-//! - [`Layer`] — A clustering layer mapping observations to abstract buckets
-//! - [`Histogram`] — Distribution over child buckets for a given hand
-//! - [`Lookup`] — Precomputed observation → bucket mapping
-//! - [`Metric`] — Pairwise EMD distances between buckets
-//!
-//! ## Algorithms
-//!
-//! - [`Elkan`] — Accelerated k-means with triangle inequality bounds
-//! - [`Sinkhorn`] — Entropic optimal transport for EMD computation
-//! - [`Absorb`] — Incremental centroid updates during clustering
-//!
-//! ## Persistence
-//!
-//! - [`Artifacts`] — Serialization of clustering results to PostgreSQL
-//! - [`Distances`] — Precomputed distance matrices for online lookup
+//! River clusters on raw equity; turn, flop, and preflop each cluster on the
+//! distribution over the street below. See `README.md` for the pipeline
+//! diagram and cost model.
 mod abstraction;
 mod artifacts;
 mod bins;

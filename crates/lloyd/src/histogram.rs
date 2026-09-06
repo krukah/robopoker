@@ -6,23 +6,14 @@ use pokerkit::*;
 
 /// A distribution over abstraction buckets for a specific street.
 ///
-/// Histograms are the core data type for clustering: each poker hand
-/// isomorphism maps to a histogram describing its distribution over
-/// the next street's abstraction buckets. For example, a turn hand's
-/// histogram shows how often it transitions into each river equity bucket.
+/// The core data type for clustering: each hand isomorphism maps to a
+/// histogram over the *next* street's buckets (a turn hand's histogram says
+/// how often it transitions into each river equity bucket). K-means over these
+/// under EMD yields the buckets, and the histogram→bucket map is the
+/// [`Lookup`] table.
 ///
-/// # Stack Allocation
-///
-/// Uses a tagged enum over street-specific [`Bins`] arrays to avoid
-/// heap allocation. The enum variant determines the array size at
-/// compile time (e.g., `BinsRive` for river histograms).
-///
-/// # Usage in Clustering
-///
-/// 1. Compute histograms for all isomorphisms at a given street
-/// 2. Cluster histograms using k-means with EMD distance
-/// 3. Each cluster centroid becomes an abstraction bucket
-/// 4. The histogram→bucket mapping becomes the [`Lookup`] table
+/// Tagged over street-specific [`Bins`] arrays so the array size is fixed at
+/// compile time and no histogram ever touches the heap.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Histogram {
     Pref(BinsPref),
@@ -32,7 +23,6 @@ pub enum Histogram {
 }
 
 impl Histogram {
-    /// Creates an empty histogram for the given street.
     pub const fn new(street: Street) -> Self {
         Self::empty(street)
     }
@@ -90,9 +80,8 @@ impl Histogram {
             Histogram::Rive(b) => b.street(),
         }
     }
-    /// insert the Abstraction into our support,
-    /// incrementing its local weight,
-    /// incrementing our global norm.
+    /// insert the Abstraction into our support, incrementing its local weight
+    /// and our global norm.
     pub fn increment(mut self, abstraction: Abstraction) -> Self {
         match &mut self {
             Histogram::Pref(b) => b.increment(abstraction),
@@ -117,10 +106,8 @@ impl Histogram {
             _ => panic!("mismatched histogram streets in engulf"),
         }
     }
-    /// it is useful in EMD calculation
-    /// to know if we're dealing with ::Equity or ::Random
-    /// Abstraction variants, so we expose this method to
-    /// infer the type of Abstraction contained by this Histogram.
+    /// Any Abstraction in the support — EMD dispatch needs to know whether
+    /// this Histogram holds ::Equity or ::Random variants.
     pub fn peek(&self) -> Abstraction {
         match self {
             Histogram::Pref(b) => b.peek(),
@@ -129,9 +116,7 @@ impl Histogram {
             Histogram::Rive(b) => b.peek(),
         }
     }
-    /// exhaustive calculation of all
-    /// possible Rivers and Showdowns,
-    /// naive to strategy of course.
+    /// exhaustive over all possible Rivers and Showdowns, naive to strategy.
     pub fn equity(&self) -> Probability {
         match self {
             Histogram::Pref(b) => b.equity(),
@@ -140,13 +125,9 @@ impl Histogram {
             Histogram::Rive(b) => b.equity(),
         }
     }
-    /// this yields the posterior equity distribution
-    /// at Street::Turn.
-    /// this is the only street we explicitly can calculate
-    /// the Probability of transitioning into a Probability
-    ///     Probability -> Probability
-    /// vs  Probability -> Abstraction
-    /// hence a distribution over showdown equities.
+    /// Posterior equity distribution at Street::Turn — the only street where
+    /// we can compute Probability -> Probability (rather than
+    /// Probability -> Abstraction), hence a distribution over showdown equities.
     pub fn pdf(&self) -> Vec<(Probability, Probability)> {
         match self {
             Histogram::Pref(b) => b.pdf(),
@@ -155,8 +136,7 @@ impl Histogram {
             Histogram::Rive(b) => b.pdf(),
         }
     }
-    /// owned vector of Abstractions and their densities
-    /// sorted by density in descending order (most likely first)
+    /// Abstractions and their densities, most likely first.
     pub fn distribution(&self) -> Vec<(Abstraction, Probability)> {
         match self {
             Histogram::Pref(b) => b.distribution(),

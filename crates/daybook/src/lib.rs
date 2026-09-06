@@ -3,27 +3,8 @@
 //! Bulk data movement between Rust structures and PostgreSQL, optimized for
 //! the large-scale writes required during abstraction and blueprint training.
 //!
-//! ## Connectivity
-//!
-//! - [`db()`] — Establishes a database connection from `DB_URL`
-//!
-//! ## Serialization Traits
-//!
-//! - [`Schema`] — Table metadata and DDL generation
-//! - [`Derive`] — INSERT statement generation for enumerable types
-//! - [`Hydrate`] — Binary format decoding from rows
-//! - [`Row`] — Binary row serialization for COPY protocol
-//! - [`Streamable`] — Bulk data upload via COPY
-//!
-//! ## Core Types
-//!
-//! - [`Stage`] — Temporary staging table management
-//! - [`Check`] — Schema validation and migration status
-//!
-//! ## Table Names
-//!
-//! Constants for all persistent entities: abstractions, blueprints,
-//! metrics, hands, sessions, and more.
+//! Table names are functions, not constants, because the suffix depends on the
+//! active regime/version — see the `table!` / `versioned!` / `regime!` macros.
 mod check;
 mod measure;
 mod schema;
@@ -41,18 +22,9 @@ pub use traits::*;
 use std::sync::Arc;
 use tokio_postgres::Client;
 
-/// Establishes a database connection.
+/// Connects to PostgreSQL via the `DB_URL` env var, sharable across tasks.
 ///
-/// Connects to PostgreSQL using the `DB_URL` environment variable.
-/// Returns an `Arc<Client>` suitable for sharing across async tasks.
-///
-/// # Environment
-///
-/// Requires `DB_URL` to be set (e.g., `postgres://user:pass@host:port/db`).
-///
-/// # Panics
-///
-/// Panics if `DB_URL` is not set or if connection fails.
+/// Panics if `DB_URL` is unset or the connection fails.
 pub async fn db() -> Arc<Client> {
     tracing::info!("connecting to database");
     let tls = tokio_postgres::tls::NoTls;
@@ -139,7 +111,7 @@ macro_rules! regime {
     };
 }
 
-// ── Shared tables (game-level / auth — invariant under V × R) ───────────────
+// Shared tables (game-level / auth — invariant under V × R).
 table!(actions, "actions", "Table for game actions (bets, raises, folds, etc.).");
 table!(hands, "hands", "Table for completed poker hands.");
 table!(players, "players", "Table for player participation in hands.");
@@ -147,7 +119,7 @@ table!(rooms, "rooms", "Table for active game rooms.");
 table!(sessions, "sessions", "Table for user authentication sessions.");
 table!(users, "users", "Table for registered user accounts and identity.");
 
-// ── Versioned tables (abstraction-derived — depend on K-means params) ───────
+// Versioned tables (abstraction-derived — depend on K-means params).
 versioned!(abstraction, "abstraction", "Table for abstraction bucket definitions.");
 versioned!(isomorphism, "isomorphism", "Table for isomorphism → abstraction mappings.");
 versioned!(street, "street", "Table for street-specific metadata.");
@@ -159,7 +131,7 @@ versioned!(
      between buckets is meaningless across abstractions with different K."
 );
 
-// ── Regime × Version tables (training-derived — depend on K-means × bet sizing)
+// Regime x Version tables (training-derived — K-means x bet sizing).
 regime!(
     blueprint,
     "blueprint",
@@ -188,7 +160,7 @@ regime!(
      `--mode reset` to clear and re-fingerprint."
 );
 
-// ── Scoreboard tables (cross-fingerprint measurements) ──────────────────────
+// Scoreboard tables (cross-fingerprint measurements).
 // Deliberately `table!`, NOT `regime!`. The `regime!` rationale — that
 // InfoId-keyed rows from two versions share a byte representation and would
 // corrupt each other — does not apply here: these rows are scalar SCORES,

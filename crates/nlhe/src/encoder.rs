@@ -8,24 +8,15 @@ use subgame::*;
 
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
 
-/// CfrEncoder that maps poker game states to information set identifiers.
-///
-/// Maintains a lookup table from suit-isomorphic hand representations
-/// ([`Isomorphism`]) to strategic abstraction buckets ([`Abstraction`]).
-/// This mapping is loaded from the database and represents the output of
-/// the k-means clustering pipeline.
-///
-/// # Database Loading
-///
-/// With the `database` feature, implements `Hydrate` to load the
-/// isomorphism→abstraction mapping from PostgreSQL.
+/// Maps poker game states to info-set identifiers, via a lookup table from
+/// suit-isomorphic hands ([`Isomorphism`]) to strategic abstraction buckets
+/// ([`Abstraction`]) — the output of the k-means clustering pipeline, hydrated
+/// from PostgreSQL under the `database` feature.
 #[derive(Default)]
 pub struct NlheEncoder(BTreeMap<Isomorphism, Abstraction>);
 
 impl NlheEncoder {
-    /// Looks up the abstraction bucket for an observation.
-    ///
-    /// Internally converts to canonical isomorphism for lookup.
+    /// Abstraction bucket for an observation, via its canonical isomorphism.
     /// Panics if the isomorphism is not in the lookup table.
     pub fn abstraction(&self, obs: &Observation) -> Abstraction {
         self.0
@@ -114,9 +105,7 @@ impl NlheEncoder {
             }
         }
     }
-    /// Sample an edge from a biased distribution.
-    ///
-    /// The target action type probability is multiplied by the runtime-configured
+    /// Sample an edge, with the target action type's probability multiplied by
     /// `FrontierHyperParams::get().bias()` (default 5.0), then renormalized.
     fn sample_biased(dist: &Policy<NlheEdge>, bias: Continuation) -> NlheEdge {
         let bias_mult = FrontierHyperParams::get().bias();

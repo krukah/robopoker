@@ -16,16 +16,10 @@ pub type BinsFlop = Bins<N_FLOP>;
 pub type BinsTurn = Bins<N_TURN>;
 pub type BinsRive = Bins<N_RIVE>;
 
-/// A zero-allocation distribution over abstraction buckets.
-///
-/// Stores counts as a dense array indexed by [`Abstraction::index()`].
-/// The `weight` field tracks total mass for efficient density computation.
-///
-/// # Const Generics
-///
-/// The array size `N` is determined at compile time based on the street's
-/// abstraction count. This enables stack allocation while supporting
-/// different sizes per street (e.g., 169 preflop vs 200 flop buckets).
+/// A zero-allocation distribution over abstraction buckets: dense counts
+/// indexed by [`Abstraction::index`], plus a running `weight` so density is a
+/// single divide. `N` is the street's abstraction count, fixed at compile time
+/// so every `Bins` is stack-allocated at exactly its street's size.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Bins<const N: usize> {
     /// The street these bins represent.
@@ -86,19 +80,18 @@ impl<const N: usize> Bins<N> {
             .filter(|&(_, &count)| count > 0)
             .map(|(i, _)| Abstraction::from((self.street(), i)))
     }
-    /// Returns first abstraction in support (for type inference).
+    /// First abstraction in the support (for type inference).
     pub fn peek(&self) -> Abstraction {
         self.support().next().expect("non empty histogram")
     }
-    /// Computes expected equity for river histograms.
-    /// Only valid when street is River with Equity abstractions.
+    /// Expected equity. Only valid on River, over Equity abstractions.
     pub fn equity(&self) -> Probability {
         debug_assert!(matches!(self.street(), Street::Rive));
         debug_assert!(matches!(self.peek().street(), Street::Rive));
         self.pdf().iter().map(|(x, y)| x * y).sum()
     }
-    /// Returns (equity, probability) pairs for visualization.
-    /// The equity abstraction is converted to its `[0,1]` value.
+    /// (equity, probability) pairs, the equity abstraction converted to its
+    /// `[0,1]` value.
     pub fn pdf(&self) -> Vec<(Probability, Probability)> {
         debug_assert!(matches!(self.street(), Street::Rive));
         debug_assert!(matches!(self.peek().street(), Street::Rive));
@@ -109,7 +102,7 @@ impl<const N: usize> Bins<N> {
             .map(|(k, v)| (Probability::from(k), Probability::from(v)))
             .collect()
     }
-    /// Returns (abstraction, density) pairs sorted by density descending.
+    /// (abstraction, density) pairs, densest first.
     pub fn distribution(&self) -> Vec<(Abstraction, Probability)> {
         let mut distribution = self.support().map(|abs| (abs, self.density(&abs))).collect::<Vec<_>>();
         distribution.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());

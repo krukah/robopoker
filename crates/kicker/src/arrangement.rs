@@ -8,13 +8,6 @@ use pokerkit::*;
 /// the first two cards are the hole cards, followed by flop (3), turn (1),
 /// and river (1). This is essential for UI display and card animation.
 ///
-/// # Structure
-///
-/// - Indices 0–1: Hole cards
-/// - Indices 2–4: Flop
-/// - Index 5: Turn
-/// - Index 6: River
-///
 /// Empty slots are `None`, enabling witness deals (e.g., preflop-only).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Arrangement([Option<Card>; 7]);

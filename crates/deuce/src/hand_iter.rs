@@ -1,21 +1,11 @@
 use super::hand::Hand;
 
-/// Combinatorial iterator over all n-card hands from a deck.
+/// Combinatorial iterator over all C(k, n) n-card hands drawn from the k cards
+/// a mask leaves available. Built from `(n, mask)`, where `mask` is a [`Hand`]
+/// of already-dealt cards to exclude.
 ///
-/// Generates all C(k, n) combinations of n cards from the k available cards
-/// (those not blocked by the mask). Uses bit-twiddling to generate successive
-/// permutations without storing them in memory.
-///
-/// # Construction
-///
-/// Created from `(n, mask)` where `n` is the hand size and `mask` is a [`Hand`]
-/// of cards to exclude (already dealt cards).
-///
-/// # Performance
-///
-/// - Memory: O(1) — only stores current state, not all combinations
-/// - Time per `.next()`: O(1) amortized via Gosper's hack
-/// - Deterministic ordering for reproducible iteration
+/// O(1) memory and O(1) amortized per `.next()` via Gosper's hack — successive
+/// bit permutations, deterministically ordered, never materialized.
 pub struct HandIterator {
     next: u64,
     mask: u64,

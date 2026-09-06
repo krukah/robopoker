@@ -27,12 +27,6 @@ use pokerkit::*;
 /// collide distinct action sequences onto one info-set key (the failure mode
 /// that motivated widening). If a legal street ever trips the assert, bump
 /// [`pokerkit::WORDS`].
-///
-/// # Use Cases
-///
-/// - Information set keys (abstraction + path = unique info state)
-/// - Strategy table lookups
-/// - Subgame depth tracking (counting trailing raises)
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct Path<const W: usize = 1>([u64; W]);
 

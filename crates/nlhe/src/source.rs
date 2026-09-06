@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio_postgres::Client;
 
-/// Source defines the read interface between NLHE domain types and PostgreSQL.
-/// All SELECT queries are consolidated here, decoupling SQL from business logic.
+/// The read interface between NLHE domain types and PostgreSQL: every SELECT
+/// lives here, so no SQL leaks into business logic.
 #[async_trait::async_trait]
 pub trait Source: Send + Sync {
     async fn memory(&self, info: NlheInfo) -> Memory;

@@ -12,15 +12,9 @@ use mccfr::*;
 /// to select which world's tree is being traversed. All info sets produced
 /// by this encoder carry that world tag.
 ///
-/// # Encoding Strategy
-///
-/// All three methods delegate to `inner.resume(prefix, game)`:
-/// - **`seed`**: Encodes the entry game state with prefix context
-/// - **`info`**: Encodes child states during tree expansion
-/// - **`resume`**: Prepends prefix to the given history
-///
-/// The `branches` method uses the default (delegates to `node.branches()`).
-/// No rejection sampling, no phase dispatch — just world-tagged delegation.
+/// `seed` / `info` / `resume` all funnel through `inner.resume(prefix, game)`,
+/// and `branches` takes the trait default. No rejection sampling, no phase
+/// dispatch — just world-tagged delegation.
 pub struct WorldEncoder<'blueprint, N>
 where
     N: CfrEncoder,

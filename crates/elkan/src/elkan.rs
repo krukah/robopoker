@@ -2,28 +2,10 @@ use super::*;
 use crate::Energy;
 use rayon::prelude::*;
 
-/// Triangle-inequality accelerated k-means clustering.
-///
-/// Implements Elkan (2003) to reduce the O(N × K × T) naive algorithm's
-/// distance computations. By maintaining upper/lower bounds on point-centroid
-/// distances, we can skip most EMD calculations while guaranteeing identical
-/// results to naive k-means.
-///
-/// # Complexity
-///
-/// - Naive: O(N × K × T × D) where D is EMD cost
-/// - Elkan: O(N × K × T × D / prune_factor) with ~10-100x speedup typical
-///
-/// # Implementation
-///
-/// - `step_elkan()` — Single iteration with bound maintenance
-/// - `step_naive()` — Reference implementation for verification
-/// - `init_centroids()` — K-means++ initialization for better convergence
-///
-/// # Type Parameters
-///
-/// - `K` — Number of clusters (compile-time constant)
-/// - `N` — Number of data points (compile-time constant)
+/// Triangle-inequality accelerated k-means (Elkan 2003), over `K` clusters and
+/// `N` points. Upper/lower bounds on point-centroid distances let it skip most
+/// of the naive O(N × K × T × D) distance calls — typically 10-100× fewer —
+/// while producing results identical to naive k-means.
 pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// Point type that can be absorbed into centroids.
     type P: Absorb + Copy + Sync + Send;

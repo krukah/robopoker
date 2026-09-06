@@ -5,23 +5,14 @@ use monge::*;
 use pokerkit::*;
 use std::sync::OnceLock;
 
-/// Distance metric between abstractions for a specific street.
+/// Distance metric between abstractions for a specific street: point-to-point
+/// via [`Measure::distance`], histogram-to-histogram via [`Self::emd`].
 ///
-/// Provides two key operations:
-/// 1. Point-to-point distance between abstractions (via `distance()`)
-/// 2. Histogram-to-histogram EMD using Sinkhorn optimal transport (via `emd()`)
-///
-/// # Street-Specific Storage
-///
-/// Uses triangular [`Distances`] arrays to store pairwise distances:
-/// - Preflop/Flop/Turn: Precomputed from clustering, loaded from database
-/// - River: Uses raw equity difference (no precomputation needed)
-///
-/// # EMD Computation
-///
-/// For Flop/Turn histograms, EMD is computed via Sinkhorn algorithm using
-/// this metric as the ground distance. River histograms use total variation
-/// distance since equity abstractions have a natural ordering on `[0,1]`.
+/// Preflop/flop/turn distances live in triangular [`Distances`] arrays,
+/// precomputed by clustering and loaded from the database; river needs no
+/// storage, since raw equity difference is the distance. Flop/turn EMD runs
+/// Sinkhorn over this metric as the ground distance, while river uses total
+/// variation — equity abstractions are naturally ordered on `[0,1]`.
 #[derive(Clone, Copy)]
 pub enum Metric {
     Pref(DistPref),
@@ -37,8 +28,8 @@ impl Default for Metric {
 }
 
 impl Metric {
-    /// Internal distance computation taking raw Abstraction references.
-    /// Used by Sinkhorn and other internal code that works with Abstraction directly.
+    /// Distance over raw `Abstraction` references, for Sinkhorn and other
+    /// internals that don't go through [`ClusterAbs`].
     pub fn raw_distance(&self, x: &Abstraction, y: &Abstraction) -> Energy {
         if x == y {
             0.
@@ -101,11 +92,9 @@ impl Metric {
             Metric::Rive => unreachable!("no metric over Histogram<River>"),
         }
     }
-    /// Computes Earth Mover's Distance between two histograms.
-    ///
-    /// For Flop/Turn: Uses Sinkhorn divergence (debiased entropic OT) so
-    /// that `emd(μ, μ) = 0` despite finite regularization temperature.
-    /// For River: Uses total variation (integrated CDF difference).
+    /// Earth Mover's Distance between two histograms. Flop/turn use the
+    /// Sinkhorn divergence (debiased entropic OT) so `emd(μ, μ) = 0` despite
+    /// finite temperature; river uses total variation (integrated CDF diff).
     pub fn emd(&self, source: &Histogram, target: &Histogram) -> Energy {
         match source.peek().street() {
             Street::Flop | Street::Turn => Sinkhorn::divergence(source, target, self),

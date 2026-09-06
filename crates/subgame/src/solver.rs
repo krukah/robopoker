@@ -1,14 +1,10 @@
 //! Subgame solver: safe subgame solving with optional depth-limited frontiers.
 //!
-//! The solver overrides `step()` to:
-//! 1. Sample a world from the belief distribution
-//! 2. Restrict the observed game state via the [`WorldRestrict`] trait
-//! 3. Run standard CFR on the resolve-phase tree
-//!
-//! World separation is achieved through [`WorldInfo`] tagging.
-//! Depth-limited frontier evaluation is achieved through [`DepthGame`]
-//! wrapping. When `origin = None`, frontier detection is disabled
-//! and the solver degenerates to pure safe subgame solving.
+//! `step()` samples a world from the belief distribution, restricts the
+//! observed game state through [`WorldRestrict`], and runs standard CFR on the
+//! resulting tree. World separation comes from [`WorldInfo`] tagging and
+//! frontier evaluation from [`DepthGame`] wrapping; with `origin = None`
+//! frontier detection is off and this degenerates to pure safe subgame solving.
 use std::collections::BTreeMap;
 
 use crate::SubGameEncoder;

@@ -7,14 +7,7 @@ use super::lehmer::Lehmer;
 ///
 /// `Hand` is an unordered bitmask — it forgets insertion order. `HandSeq`
 /// preserves that ordering so cards can be reconstructed in the sequence
-/// they were dealt. Implements [`IntoIterator`] to yield a [`CardSeq`].
-///
-/// # Trait relationships
-///
-/// - [`IntoIterator`] → [`CardSeq`] (zero-allocation, ordered traversal)
-/// - [`FromIterator<Card>`] — collect an ordered card sequence
-/// - [`From<Hand>`] — upgrade with identity (canonical) ordering
-/// - [`From<HandSeq>`] for [`Hand`] — downgrade, discarding order
+/// they were dealt. [`IntoIterator`] yields a [`CardSeq`] with no allocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HandSeq {
     hand: Hand,

@@ -2,10 +2,8 @@
 
 use super::*;
 
-/// CFR+ regret update strategy.
-///
-/// Floors regrets at zero after each update, preventing negative regret
-/// accumulation. This improves convergence speed significantly for large games.
+/// Floors regret at zero after each update, forbidding negative accumulation.
+/// Converges significantly faster on large games.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FlooredRegret;
 

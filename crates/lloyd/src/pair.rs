@@ -7,15 +7,10 @@ use kicker::*;
 /// - Bits 30-31: Street discriminant (0-3)
 /// - Bits 0-29: Triangular index `j*(j-1)/2 + i` where `i < j`
 ///
-/// This packing enables O(1) lookup in triangular distance matrices while
-/// preserving symmetry: `Pair::from((a, b)) == Pair::from((b, a))`.
-///
-/// # Triangular Indexing
-///
-/// For K abstractions, there are K*(K-1)/2 unique pairs. The triangular
-/// index bijectively maps pairs (i,j) with i<j to integers 0..K*(K-1)/2.
-/// This enables dense storage without wasting space on diagonal or
-/// duplicate entries.
+/// O(1) lookup in triangular distance matrices, symmetric by construction
+/// (`Pair::from((a, b)) == Pair::from((b, a))`). The triangular index is a
+/// bijection from pairs `i < j` onto `0..K*(K-1)/2`, so storage wastes no
+/// space on diagonal or duplicate entries.
 #[derive(Default, Copy, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Debug)]
 pub struct Pair(u32);
 
@@ -47,15 +42,13 @@ impl Pair {
     pub const fn triangular(&self) -> usize {
         (self.0 & INDEX_MASK) as usize
     }
-    /// Converts triangular index back to (i, j) indices.
-    /// Uses inverse triangular number formula.
+    /// Triangular index back to `(i, j)`, via the inverse triangular number.
     pub const fn split(t: usize) -> (usize, usize) {
         let j = (1 + 8 * t).isqrt().div_ceil(2);
         let i = t - j * (j - 1) / 2;
         (i, j)
     }
-    /// Converts (i, j) indices to triangular index.
-    /// Ensures i < j by sorting.
+    /// `(i, j)` to triangular index, sorting so `i < j`.
     pub const fn merge(i: usize, j: usize) -> usize {
         let (lo, hi) = if i < j { (i, j) } else { (j, i) };
         if hi == 0 { 0 } else { hi * (hi - 1) / 2 + lo }

@@ -1,23 +1,14 @@
 use super::rank::Rank;
 use super::suit::Suit;
 
-/// A playing card encoded as a single byte.
+/// A playing card encoded as a single byte: the 52 cards map bijectively onto
+/// `0..52` as `rank * 4 + suit`, so the natural order is by rank then suit.
 ///
-/// The 52 cards are bijectively mapped to `0..52` where the encoding is
-/// `rank * 4 + suit`. This yields a natural ordering where cards are sorted
-/// first by rank, then by suit within each rank.
-///
-/// # Representations
-///
-/// Multiple numeric representations are supported for different use cases:
-/// - `u8`: Compact index `0..52` for array indexing and serialization
-/// - `u32`: Bitmask with separate rank and suit bits for fast evaluation
-/// - `u64`: Single-bit representation for set membership in [`Hand`]
-///
-/// # Parsing
-///
-/// Cards can be parsed from two-character strings like `"As"` (ace of spades)
-/// or `"Tc"` (ten of clubs). Use [`Card::parse`] for multiple cards.
+/// Three numeric views, each for a different job: `u8` is the compact index
+/// for array lookup and serialization, `u32` splits rank and suit into
+/// bitmasks for evaluation, `u64` is one-hot for set membership in [`Hand`].
+/// Parses from two-character notation (`"As"`, `"Tc"`); [`Card::parse`] takes
+/// several at once.
 ///
 /// [`Hand`]: super::hand::Hand
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

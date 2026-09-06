@@ -1,7 +1,5 @@
-//! K-means clustering layer for poker hand abstraction.
-//!
-//! This module implements a single clustering layer that maps poker hand isomorphisms
-//! to abstract buckets using the k-means algorithm with Elkan acceleration.
+//! One k-means clustering layer, mapping hand isomorphisms to abstract
+//! buckets via Elkan-accelerated k-means.
 
 use super::*;
 use deuce::*;
@@ -9,17 +7,9 @@ use kicker::*;
 use pokerkit::*;
 use std::collections::BTreeMap;
 
-/// A clustering layer that maps poker hand isomorphisms to abstract buckets.
-///
-/// Each layer corresponds to a single betting street and maintains:
-/// - The full dataset of hand histograms (one per isomorphism)
-/// - K-means cluster centroids learned via the Elkan algorithm
-/// - Distance bounds for acceleration during clustering
-///
-/// The layer produces three artifacts:
-/// 1. A `Lookup` table mapping isomorphisms to abstractions
-/// 2. A `Future` transition model mapping abstractions to next-street distributions
-/// 3. A `Metric` defining distances between learned abstractions
+/// One street's clustering layer, producing three artifacts: a [`Lookup`]
+/// (isomorphism → abstraction), a [`Future`] transition model (abstraction →
+/// next-street distribution), and a [`Metric`] over the learned abstractions.
 pub struct Layer<const K: usize, const N: usize> {
     /// The betting street this layer represents
     street: Street,
@@ -34,7 +24,6 @@ pub struct Layer<const K: usize, const N: usize> {
 }
 
 impl<const K: usize, const N: usize> Layer<K, N> {
-    /// Returns the betting street for this layer.
     fn street(&self) -> Street {
         self.street
     }
@@ -113,7 +102,6 @@ impl<const K: usize, const N: usize> Layer<K, N> {
     }
 }
 
-/// Elkan k-means implementation for clustering poker hand abstractions.
 impl<const K: usize, const N: usize> Elkan<K, N> for Layer<K, N> {
     type P = Histogram;
 
@@ -191,7 +179,7 @@ impl<const K: usize, const N: usize> Layer<K, N> {
 
 #[cfg(feature = "server")]
 impl<const K: usize, const N: usize> Layer<K, N> {
-    /// Internal clustering implementation for a specific K, N.
+    /// Full clustering run for a specific K, N.
     pub async fn cluster(street: Street, client: &tokio_postgres::Client) -> Artifacts {
         use crate::telemetry::phase;
         use std::time::Instant;

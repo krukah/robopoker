@@ -1,30 +1,16 @@
 //! Subgame profile that routes lookups between blueprint and local storage.
-//!
-//! During safe subgame solving, we maintain:
-//! - A frozen blueprint profile for fallback reach/EV computation
-//! - Fresh local regrets/weights for the subgame being solved
-//!
-//! The profile routes lookups based on whether local data exists,
-//! falling through to clean blueprint values for unvisited infosets.
-//!
-//! World differentiation comes from the SubGameSolver's card restriction
-//! mechanism (different worlds = different card deals = different game
-//! trees), NOT from policy perturbation. This is the safe subgame
-//! solving approach from Brown & Sandholm 2017.
 use super::*;
 use mccfr::*;
 use pokerkit::*;
 use std::collections::HashMap;
 
-/// Profile wrapper for safe subgame solving.
+/// Routes strategy lookups between a frozen blueprint and fresh local storage:
+/// local data for a `(WorldInfo, Edge)` pair wins, otherwise the blueprint's
+/// accumulated values do.
 ///
-/// Routes strategy lookups between a frozen blueprint and fresh local storage.
-/// When local data exists for a `(WorldInfo, Edge)` pair, returns it directly.
-/// Otherwise falls through to the blueprint's accumulated values.
-///
-/// No perturbation is applied — worlds differentiate structurally through
-/// the `WorldRestrict` mechanism which assigns different opponent cards per
-/// world, producing distinct game trees and therefore distinct strategies.
+/// No policy perturbation is applied. Worlds differentiate *structurally*, via
+/// [`WorldRestrict`] dealing different opponent cards per world — the Brown &
+/// Sandholm 2017 formulation of safe subgame solving.
 pub struct WorldProfile<'blueprint, P>
 where
     P: RefProf,

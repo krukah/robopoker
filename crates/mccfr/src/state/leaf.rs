@@ -1,10 +1,6 @@
-/// A pending child node not yet added to the tree.
+/// A pending child not yet added to the tree: the edge taken, the game state it
+/// produced, and the parent's index.
 ///
-/// Contains everything needed to expand the game tree:
-/// - The edge (action) taken from the parent
-/// - The resulting game state after applying that action
-/// - The parent's node index for creating the graph edge
-///
-/// Used by `CfrEncoder::info` to compute information sets for new nodes
-/// and by `Tree::grow` to materialize the branch as a tree node.
+/// `CfrEncoder::info` reads it to compute the new node's information set;
+/// `Tree::grow` materializes it as a tree node.
 pub type Leaf<E, G> = (E, G, petgraph::graph::NodeIndex);

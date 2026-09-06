@@ -1,10 +1,7 @@
-//! Sampling strategies for MCCFR tree traversal.
+//! Sampling strategies for MCCFR tree traversal: which branches [`TreeBuilder`]
+//! explores, trading off variance against convergence speed and cost.
 //!
-//! Controls which branches are explored during [`TreeBuilder`] construction.
-//! Different strategies trade off between variance, convergence speed, and
-//! computational cost.
-//!
-//! # Available Strategies
+//! All are zero-cost unit structs selected via the [`Solver::S`] associated type.
 //!
 //! | Strategy | Walker Nodes | Opponent Nodes | Use Case |
 //! |----------|--------------|----------------|----------|
@@ -13,12 +10,6 @@
 //! | [`VanillaSampling`] | Explore all | Explore all | Full tree (expensive) |
 //! | [`PrunableSampling`] | Prune low-regret | Sample one | Deterministic pruning |
 //! | [`PluribusSampling`] | Prune + explore 5% | Sample one | Production (Pluribus) |
-//!
-//! # Composition
-//!
-//! All strategies are zero-cost unit structs selected via the [`Solver::S`] associated type.
-//!
-//! # References
 //!
 //! - External sampling: Lanctot et al., "Monte Carlo Sampling for Regret Minimization"
 //! - Pruning: Brown & Sandholm, "Regret-Based Pruning in Extensive-Form Games"
@@ -38,23 +29,13 @@ pub use vanilla::*;
 
 use crate::*;
 
-/// Trait for sampling strategies in Monte Carlo CFR variants.
+/// Which branches [`TreeBuilder`] explores at each node, invoked after the
+/// encoder generates candidates and before expansion continues.
 ///
-/// Implementations control which branches [`TreeBuilder`] explores at each node.
-/// The strategy is invoked after the encoder generates candidate branches,
-/// filtering or sampling them before tree expansion continues.
-///
-/// # Implementor Guidelines
-///
-/// - Return `branches` unchanged to explore all actions
-/// - Return a subset to prune or sample
-/// - Return empty vec only if `branches` was empty (terminal node)
-/// - Use `profile.rng(node)` for deterministic randomness
+/// Implementors: return empty only if `branches` was empty, and draw randomness
+/// from `profile.rng(node)` so traversals stay deterministic per epoch.
 pub trait SamplingScheme {
-    /// Filter or sample branches for tree expansion.
-    ///
-    /// Called by [`TreeBuilder`] at each node during tree construction.
-    /// The returned branches will be added to the expansion queue.
+    /// Filter or sample branches into [`TreeBuilder`]'s expansion queue.
     fn sample<T, E, G, I, P>(profile: &P, node: &Node<T, E, G, I>, branches: Vec<Leaf<E, G>>) -> Vec<Leaf<E, G>>
     where
         T: CfrTurn,

@@ -1,7 +1,5 @@
-//! Blueprint policy lookup via database queries.
-//!
-//! Shared query logic for resolving a player's recall into a trained
-//! strategy. Used by both the analysis API and CPU player implementations.
+//! Blueprint policy lookup via database queries — resolving a recall into a
+//! trained strategy, shared by the analysis API and the CPU players.
 use super::*;
 use deuce::Isomorphism;
 use kicker::*;
@@ -24,14 +22,9 @@ fn policy_sql() -> &'static str {
     })
 }
 
-/// Looks up the trained blueprint strategy for a given recall state.
-///
-/// Performs two database queries:
-/// 1. Maps the observation to its abstraction bucket
-/// 2. Fetches the accumulated strategy weights for that information set
-///
-/// Returns `None` if the observation has no abstraction mapping or the
-/// information set has no trained strategy.
+/// Trained blueprint strategy for a recall state: one query to map the
+/// observation to its abstraction bucket, one to fetch that info set's
+/// accumulated weights. `None` if either is missing.
 pub async fn lookup(client: &tokio_postgres::Client, recall: &Witness) -> Option<Strategy> {
     let iso = Isomorphism::from(recall.seen());
     let abs = client

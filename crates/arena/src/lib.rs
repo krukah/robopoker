@@ -1,14 +1,7 @@
 //! Hand history analysis with AIVAT variance reduction.
 //!
-//! Provides statistical evaluation of player performance from stored hand
-//! histories, using the AIVAT technique to reduce variance by 10-44x.
-//!
-//! ## Modules
-//!
-//! - [`replay`] — Reconstruct `Game` states from database records
-//! - `metrics` — Aggregate statistics and derived poker metrics
-//! - `aivat` — AIVAT variance reduction estimator
-//! - `repository` — Bulk database queries for evaluation
+//! Statistical evaluation of player performance from stored hand histories,
+//! using AIVAT to cut variance 10-44x.
 mod aivat;
 mod correction;
 mod metrics;

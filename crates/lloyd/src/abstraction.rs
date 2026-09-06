@@ -2,8 +2,8 @@
 use kicker::Abstraction;
 use monge::Support;
 
-/// Newtype wrapper for Abstraction that implements Support.
-/// Used for optimal transport calculations in clustering.
+/// Newtype over Abstraction implementing Support, for the optimal transport
+/// calculations in clustering.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ClusterAbs(Abstraction);
 

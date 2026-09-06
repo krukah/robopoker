@@ -1,23 +1,10 @@
 use monge::Support;
 
-/// A representation of private information in an information set.
+/// The part of an information set visible only to the acting player — hole cards
+/// in poker.
 ///
-/// Private information is observable only by the acting player.
-/// In poker, this is the player's hole cards. Different representations
-/// offer different tradeoffs:
-///
-/// - **Exact**: Lossless but larger state space
-/// - **Abstracted**: Lossy but tractable for full-game solving
-///
-/// # Requirements
-///
-/// Types implementing this trait must be:
-/// - `Support` — Can serve as distribution support
-/// - `Copy` + `Clone` — Cheap to duplicate
-/// - `Hash` + `Eq` — Usable as hash map keys
-/// - `Ord` — Sortable for deterministic iteration
-/// - `Debug` — Printable for debugging
-/// - `Send` + `Sync` — Safe for parallel CFR
+/// Implementations trade exactness against size: lossless representations blow
+/// up the state space, abstracted ones stay tractable for full-game solving.
 pub trait CfrSecret
 where
     Self: Support,

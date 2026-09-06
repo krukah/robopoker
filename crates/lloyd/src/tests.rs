@@ -2,15 +2,12 @@ use super::*;
 use deuce::*;
 use pokerkit::Energy;
 
-/// Test fixture for Elkan algorithm verification.
-///
-/// Clusters random Turn histograms with small fixed constants for
-/// fast unit testing. Verifies that Elkan produces identical results
-/// to naive k-means while demonstrating convergence properties.
+/// Small fixed sizes so Elkan verification runs fast.
 const K: usize = 8;
 const N: usize = 2048;
 
-/// Test layer implementing Elkan trait for algorithm verification.
+/// Test layer over random Turn histograms, used to check that Elkan matches
+/// naive k-means and converges.
 #[derive(Clone)]
 pub struct TestLayer {
     metric: Metric,
@@ -24,7 +21,6 @@ impl TestLayer {
     const fn t() -> usize {
         8
     }
-    /// Creates a new test layer with random Turn histograms.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let points = (0..N)

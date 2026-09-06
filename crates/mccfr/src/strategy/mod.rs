@@ -1,16 +1,8 @@
-//! Strategy representation and abstraction.
+//! How strategies are encoded and stored: [`CfrEncoder`] buckets game states,
+//! [`RefProf`] holds accumulated regrets and policies, and [`CfrNash`] /
+//! [`CfrFlow`] blanket the read-only queries and the CFR math on top of it.
 //!
-//! This module defines how strategies are encoded and stored:
-//! - CfrEncoder: maps game states to information set buckets
-//! - Profile: stores accumulated regrets and policies
-//! - CfrNash: read-only Nash strategy queries (blanket from Profile)
-//! - CfrSampling: walker identity and sampling parameters
-//! - CfrFlow: regret/value flow (blanket from Profile + CfrSampling)
-//! - CfrSolution: convenience supertrait combining all capabilities
-//! - AsyncProfile: async variant for database-backed training
-//! - InfoSet: groups tree nodes sharing the same information
-//! - Decision: action-weight pairs for strategy construction
-//! - Posterior: Bayesian belief over opponent's private information
+//! [`CfrSolution`] is the supertrait combining every capability.
 
 #[cfg(feature = "async")]
 mod async_profile;

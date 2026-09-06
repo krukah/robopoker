@@ -1,20 +1,8 @@
 //! Authentication, sessions, and identity management.
 //!
-//! JWT-based authentication with Argon2 password hashing. Supports both
-//! registered members and anonymous lurkers for spectating games.
-//!
-//! ## Identity Types
-//!
-//! - [`Member`] — Registered user with credentials
-//! - [`Lurker`] — Anonymous session for spectators
-//! - [`User`] — Authenticated user (member or lurker)
-//! - [`Session`] — Active login session with expiry
-//!
-//! ## Security
-//!
-//! - [`Crypto`] — JWT signing and verification
-//! - [`Claims`] — JWT payload structure
-//! - [`password`] — Argon2 hashing and verification
+//! JWT-based auth ([`Crypto`], [`Claims`]) with Argon2 password hashing.
+//! Identity is either a registered [`Member`] or an anonymous [`Lurker`]
+//! spectator, unified as [`User`] once authenticated into a [`Session`].
 mod claims;
 mod crypto;
 mod dto;

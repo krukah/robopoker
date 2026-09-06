@@ -1,38 +1,14 @@
-//! Complete-information game history for **training time**.
+//! Complete-information game history for **training time**, the god's-view
+//! counterpart to [`Witness`].
 //!
-//! # Information Boundary
-//!
-//! | Type | Perspective | Context |
-//! |------|-------------|---------|
-//! | `Witness` | Hero only | Inference (strategy lookup) |
-//! | `Perfect` | Both hands | Training (CFR traversal) |
-//!
-//! During CFR training, we traverse the game tree knowing both players' cards
-//! (god's view), but strategies are indexed only by `NlheInfo` (public edges +
-//! private bucket). `Perfect` stores the complete root state needed for reach
-//! probability computation and counterfactual value calculation.
-//!
-//! # Conversions
-//!
-//! ```text
-//! Perfect::from((witness, hole))  ────►  Perfect     (add opponent info)
-//!                                 ◄────
-//! perfect.witness(hero)                              (erase opponent info)
-//!
-//! witness.histories() ─────►  Vec<(Obs, Perfect)>  (iterate all opponents)
-//! ```
-//!
-//! # Blind Handling
-//!
-//! Like `Witness`, blinds are constant and NOT stored in `actions`.
-//! The `root` field stores a POST-blind game state.
+//! CFR traversal knows both players' cards, but strategies are indexed only by
+//! `NlheInfo` (public edges + private bucket). `Perfect` stores the complete
+//! root state needed for reach probabilities and counterfactual values. As with
+//! `Witness`, blinds are not in `actions` — `root` is already POST-blind.
 use super::*;
 use deuce::*;
 
 /// Complete game history with both players' cards known.
-///
-/// Stores root game state (POST-blind, with all cards set) and action sequence
-/// (excluding blinds). Game states are derived by applying actions to root.
 #[derive(Debug, Clone)]
 pub struct Perfect {
     root: Game,
@@ -40,12 +16,8 @@ pub struct Perfect {
 }
 
 impl From<(&Witness, Hole)> for Perfect {
-    /// Creates history from witness with assumed opponent hole.
-    ///
-    /// Hero is derived from `witness.turn()`. The root game has:
-    /// - Hero's cards from `witness.seen()`
-    /// - Opponent's cards from `hole` parameter
-    /// - Blinds already posted (POST-blind state)
+    /// Creates history from witness with assumed opponent hole; hero is
+    /// derived from `witness.turn()`.
     fn from((witness, hole): (&Witness, Hole)) -> Self {
         debug_assert_eq!(witness.base().n(), 2);
         let preblind = witness.base().fix(witness.turn(), hole);
@@ -71,9 +43,8 @@ impl Recall for Perfect {
 impl Perfect {
     /// Erases opponent information, returning hero's perspective.
     ///
-    /// Reconstructs the [`Arrangement`] from hero's hole cards and the
-    /// [`Draw`](Action::Draw) actions in the history, preserving the
-    /// per-street card assignment from the original [`Witness`].
+    /// Rebuilds the [`Arrangement`] from hero's hole cards and the history's
+    /// [`Draw`](Action::Draw)s, preserving per-street card assignment.
     fn erase(&self, hero: Turn) -> Witness {
         let hole = self.root.seats()[hero.position()].cards();
         let reveals = Arrangement::from(

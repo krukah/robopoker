@@ -1,18 +1,9 @@
-/// Trait for k-means centroid computation via incremental aggregation.
+/// K-means centroid computation via incremental aggregation, generalizing the
+/// mean: combine samples without tracking a count (for histograms, merge
+/// probability mass instead of averaging coordinates).
 ///
-/// The "absorb" pattern generalizes mean computation: we can incrementally
-/// combine samples without tracking the count explicitly. For histograms,
-/// this means merging probability mass rather than averaging coordinates.
-///
-/// # Required Methods
-///
-/// - `identity()` — Returns the neutral element for absorption
-/// - `absorb()` — Combines two points into one (associative, commutative)
-///
-/// # Invariant
-///
-/// After absorbing N points, the result should be the centroid (mean) of
-/// those points in whatever sense is appropriate for the point type.
+/// `absorb` must be associative and commutative, and absorbing N points into
+/// `identity` must yield their centroid in whatever sense fits the point type.
 pub trait Absorb {
     /// Returns the identity element (zero histogram, etc.).
     fn identity(&self) -> Self;

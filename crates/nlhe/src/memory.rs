@@ -2,9 +2,9 @@ use super::*;
 use kicker::*;
 use pokerkit::*;
 
-/// Memory represents all accumulated values for a single info.
-/// Fetched in a single query via SQL join over edges.
-/// Uses Edge::policy() and Edge::regret() defaults when not found.
+/// All accumulated values for a single info, fetched in one SQL join over
+/// edges. Missing edges fall back to the `Edge::policy()` / `Edge::regret()`
+/// priors rather than to zero.
 #[derive(Debug, Clone)]
 pub struct Memory {
     info: NlheInfo,
@@ -23,22 +23,22 @@ impl Memory {
     pub fn data(&self) -> &[(Edge, Probability, Utility, Utility, u32)] {
         &self.data
     }
-    /// Lookup weight for edge, defaulting to Edge::policy().0 if not found.
+    /// Weight for edge, defaulting to `Edge::policy().0`.
     pub fn weight(&self, edge: &Edge) -> Probability {
         self.data()
             .iter()
             .find(|(e, _, _, _, _)| e == edge)
             .map_or_else(|| edge.policy().0, |(_, w, _, _, _)| *w)
     }
-    /// Lookup regret for edge, defaulting to Edge::regret().1 if not found.
-    /// This preserves the fold bias from Edge::regret().
+    /// Regret for edge, defaulting to `Edge::regret().1` — which preserves the
+    /// fold bias.
     pub fn regret(&self, edge: &Edge) -> Utility {
         self.data()
             .iter()
             .find(|(e, _, _, _, _)| e == edge)
             .map_or_else(|| edge.regret().1, |(_, _, r, _, _)| *r)
     }
-    /// Lookup EV for edge, defaulting to 0.0 if not found.
+    /// EV for edge, defaulting to 0.0.
     pub fn payoff(&self, edge: &Edge) -> Utility {
         self.data()
             .iter()
@@ -46,7 +46,7 @@ impl Memory {
             .map(|(_, _, _, v, _)| *v)
             .unwrap_or_default()
     }
-    /// Lookup visits for edge, defaulting to 0 if not found.
+    /// Visits for edge, defaulting to 0.
     pub fn visits(&self, edge: &Edge) -> u32 {
         self.data()
             .iter()

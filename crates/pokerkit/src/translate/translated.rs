@@ -1,19 +1,10 @@
 //! Unified resolution result type.
 
-/// Outcome of running a `Translation` policy against a
-/// [`crate::Lattice`] and a [`crate::Scalar`].
-///
-/// - [`Self::Snap`] — resolved to a canonical lattice payload (the
-///   common case under all current policies).
-/// - [`Self::Free`] — left off-grid; carries the verbatim observation
-///   value supplied by the caller. Only emitted by Brown-style
-///   injection policies (`Exact`, `EpsilonPrune`, `EpsilonHarmonic`),
-///   which are not yet wired up.
-///
-/// Type parameters:
-/// - `P` is the lattice payload type (e.g. `Size`, `Edge`, `()`)
-/// - `F` is the off-grid value type chosen by the caller (e.g. `Chips`,
-///   `Action`) — handed back unchanged in the [`Self::Free`] arm.
+/// Outcome of running a `Translation` policy against a [`crate::Lattice`] and
+/// a [`crate::Scalar`]: `Snap` carries a canonical lattice payload `P`, `Free`
+/// hands the caller's off-grid value `F` back verbatim. `Free` is only emitted
+/// by Brown-style injection policies (`Exact`, `EpsilonPrune`,
+/// `EpsilonHarmonic`).
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Translated<P, F> {
     Snap(P),

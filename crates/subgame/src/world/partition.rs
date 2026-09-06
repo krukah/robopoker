@@ -1,9 +1,7 @@
-//! Extension trait for discretizing posteriors into belief partitions.
-//!
-//! Sorts secrets by reach probability, partitions into K segments of equal
-//! probability mass, and returns each segment's weight alongside the
-//! secret-to-world classification. World 0 contains the highest-reach
-//! secrets, world K-1 the lowest.
+//! Extension trait for discretizing posteriors into belief partitions: sorts
+//! secrets by reach, cuts into K segments of equal probability mass, and
+//! returns each segment's weight with its secret-to-world classification.
+//! World 0 holds the highest-reach secrets, world K-1 the lowest.
 use super::Belief;
 use super::World;
 use mccfr::CfrSecret;

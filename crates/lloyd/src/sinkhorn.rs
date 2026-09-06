@@ -9,56 +9,37 @@ use std::hash::{Hash, Hasher};
 /// Per-thread cache of `OT_ε(μ, μ)` self-costs, keyed by histogram content
 /// hash + street.
 ///
-/// # Cache validity contract
+/// `OT_ε(h, h)` is a pure function of `(h, T, ground_metric)`, so the cache is
+/// correct only under three invariants — all true today, and violating any one
+/// (e.g. a runtime-tunable temperature, a mutating `Metric`) makes it serve
+/// stale values:
 ///
-/// `OT_ε(h, h)` is a pure function of `(h, T, ground_metric)`. The cache
-/// is correct under three invariants — all currently true in this crate:
+/// 1. `SinkhornHyperParams::DEFAULT` is `const`, so `T` never changes within
+///    a process.
+/// 2. Each `Metric` is constructed once (`Metric::set` only runs inside
+///    `Metric::from`) and never mutated.
+/// 3. All `Metric` instances for the same `Street` within a process yield
+///    identical `raw_distance(x, y)` — they derive from the same DB row set
+///    or the same deterministic clustering output.
 ///
-/// 1. `SinkhornHyperParams::DEFAULT` (temperature, iters, tolerance) is
-///    `const`, so `T` never changes within a process.
-/// 2. Each `Metric` is constructed once and never mutated. `Metric::set`
-///    is only called during construction (in `Metric::from`).
-/// 3. All `Metric` instances for the same `Street` within a process
-///    yield identical `raw_distance(x, y)` values — they all derive
-///    from the same DB row set or the same deterministic clustering
-///    output.
-///
-/// **If any of these is violated** (e.g. a runtime-tunable temperature, or
-/// a mutating `Metric`), this cache will return stale values and must be
-/// removed or invalidated.
-///
-/// Bounded by clear-on-overflow rather than LRU — simpler, cheap, and the
-/// hot-path access pattern (k-means: `K` centroids + `N` points repeatedly
-/// queried) is monotonic within a phase, so eviction is rare.
-///
-/// Sized for the largest expected per-thread working set on a Flop run
-/// (`N/threads ≈ 160k` points + `K × E ≈ 2.5k` centroid states) with
-/// headroom for thread-count variation. At ~25 bytes/entry (hashbrown
-/// overhead included), ~6 MB/thread × ~16 threads ≈ 100 MB peak total.
+/// Bounded by clear-on-overflow rather than LRU: the hot-path access pattern
+/// (`K` centroids + `N` points, repeatedly queried) is monotonic within a
+/// phase, so eviction is rare. Sized for the largest per-thread working set on
+/// a Flop run (`N/threads ≈ 160k` points + `K × E ≈ 2.5k` centroid states);
+/// at ~25 bytes/entry that is ~6 MB/thread, ≈ 100 MB over ~16 threads.
 const SELF_COST_CACHE_LIMIT: usize = 1 << 18;
 thread_local! {
     static SELF_COST_CACHE: RefCell<HashMap<u64, Energy>> = RefCell::new(HashMap::new());
 }
 
-/// Entropic optimal transport via Sinkhorn iteration.
+/// Entropic optimal transport via Sinkhorn iteration: EMD (Wasserstein-1)
+/// between two histograms in O(n²) instead of O(n³ log n), at the price of
+/// approximation error.
 ///
-/// Computes the Earth Mover's Distance (Wasserstein-1) between two histograms
-/// using the Sinkhorn algorithm with entropic regularization. This trades
-/// slight approximation error for O(n²) complexity instead of O(n³ log n).
-///
-/// # Algorithm
-///
-/// Uses the Kantorovich-Rubinstein dual formulation with Sinkhorn scaling:
-/// 1. Initialize potentials uniformly
-/// 2. Alternately scale LHS and RHS potentials
-/// 3. Stop when potential changes fall below tolerance
-/// 4. Compute transport cost from final coupling
-///
-/// # Regularization
-///
-/// The `temperature` hyperparameter controls entropic smoothing:
-/// - Lower → sharper coupling, closer to true EMD, slower convergence
-/// - Higher → smoother coupling, faster convergence, more approximation
+/// Works in the Kantorovich-Rubinstein dual — uniform potentials, alternating
+/// LHS/RHS scaling until the potential delta falls under tolerance, then
+/// transport cost from the final coupling. `temperature` sets the entropic
+/// smoothing: lower is sharper and closer to true EMD but converges slower.
 pub struct Sinkhorn<'a> {
     /// Ground metric for distance between abstractions.
     metric: &'a Metric,

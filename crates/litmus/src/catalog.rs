@@ -67,9 +67,14 @@ pub fn build_witness(catalog: &Catalog, hand_ref: &str, history_ref: &str) -> an
         .collect::<anyhow::Result<Vec<_>>>()?;
     let witness = match history.stacks {
         None => Witness::try_build(turn, obs, past),
-        Some(stacks) => past
-            .into_iter()
-            .try_fold(Witness::initial_with(turn, Arrangement::from(obs), stacks, 0), |w, a| w.try_push(a)),
+        Some(stacks) => {
+            // Scenarios are heads-up; widen into the N-seat array so the lib
+            // compiles at any table size (extra seats sit empty).
+            let mut seats = [0; pokerkit::N];
+            seats.iter_mut().zip(stacks).for_each(|(seat, stack)| *seat = stack);
+            past.into_iter()
+                .try_fold(Witness::initial_with(turn, Arrangement::from(obs), seats, 0), |w, a| w.try_push(a))
+        }
     }
     .map_err(|e| anyhow::anyhow!("witness build (hand={hand_ref}, history={history_ref}): {e}"))?;
     if let Some(claim) = &history.expected_spr {

@@ -1,17 +1,5 @@
-//! Game-agnostic CFR abstractions and machinery.
-//!
-//! This module contains all the generic traits and types that define the
-//! CFR algorithm independently of any specific game implementation.
-//!
-//! # Module Structure
-//!
-//! - `state` — State primitives (Turn, Edge, Game, Info, Tree)
-//! - `strategy` — Strategy representation (CfrEncoder, Profile, InfoSet)
-//! - `solver` — Training algorithm (Solver, TreeBuilder, Decisions)
-//! - `policy` — Strategy weighting schemes
-//! - `regret` — Regret update schemes
-//! - `sample` — Sampling schemes
-//! - `metrics` — Training observability
+//! Game-agnostic CFR: the traits and types defining the algorithm independently
+//! of any specific game. See `README.md` for the trait hierarchy and CFR loop.
 
 mod cpu;
 mod hyperparams;

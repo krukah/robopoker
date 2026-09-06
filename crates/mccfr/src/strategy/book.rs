@@ -2,15 +2,13 @@ use crate::*;
 use pokerkit::*;
 use std::collections::HashMap;
 
-/// Accessor trait for HashMap-based CFR storage.
+/// Implement this one accessor trait — encounters as
+/// `HashMap<I, HashMap<E, Encounter>>` plus a `usize` epoch — and get blanket
+/// [`CfrRule`], [`MutProf`], [`RefProf`], and [`CfrSampling`] impls.
 ///
-/// Games that store encounters as `HashMap<I, HashMap<E, Encounter>>` with a
-/// `usize` epoch counter can implement this single trait to receive blanket
-/// impls for [`CfrRule`], `Storage`, `Profile`, and [`CfrSampling`].
-///
-/// Edge-specific warmstart defaults are wired through [`CfrEdge::default_policy`]
-/// and [`CfrEdge::default_regret`], allowing games like NLHE to bias initial
-/// strategies without overriding Storage/Profile manually.
+/// Edge-specific warmstart defaults route through [`CfrEdge::default_policy`]
+/// and [`CfrEdge::default_regret`], so games like NLHE can bias initial
+/// strategies without hand-rolling the storage traits.
 pub trait CfrData: Sized {
     type T: CfrTurn;
     type E: CfrEdge;

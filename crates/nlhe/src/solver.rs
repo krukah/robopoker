@@ -12,13 +12,11 @@ mccfr!(Nlhe, NlheEncoder, NlheTurn, NlheEdge, NlheGame, NlheInfo, 128);
 
 /// Authoritative current-street `(turn, edge)` pairs from a witness recall.
 ///
-/// Walks `recall.states()` alongside `recall.history()` — the state at
-/// index `i` is the game BEFORE action `i`, so its turn is the turn that
-/// owns that edge. Trims to trailing choice edges, matching
-/// [`Recall::subgame`]'s definition of "current street." This is the
-/// only safe way to get turns for a nlhe prefix: replaying edges
-/// from `NlheGame::root()` would silently diverge at chip snapping or
-/// chance card draws.
+/// The state at index `i` is the game BEFORE action `i`, so its turn owns that
+/// edge. Trims to trailing choice edges, matching [`Recall::subgame`]'s notion
+/// of "current street." This is the only safe way to get turns for a nlhe
+/// prefix: replaying edges from `NlheGame::root()` would silently diverge at
+/// chip snapping or chance card draws.
 fn subgame_descents(recall: &Witness) -> Vec<Descent<NlheTurn, NlheEdge>> {
     recall
         .states()
@@ -89,22 +87,16 @@ where
     W: WeightSchedule,
     S: SamplingScheme,
 {
-    /// Creates a depth-limited solver rooted at the current decision point.
-    ///
-    /// No opponent range partitioning or world sampling — solves the
-    /// depth-limited tree from `recall.head()` using biased continuation
-    /// rollouts at the leaves.
+    /// Depth-limited solver rooted at the current decision point: no opponent
+    /// range partitioning or world sampling, biased rollouts at the leaves.
     pub fn adapt_leaf(&self, recall: &Witness) -> DepthSolver<'_, Self, { pokerkit::FRONTIER_LEAVES }> {
         let internal = NlheTurn::from(recall.turn());
         let entry = NlheGame::from(recall.head());
         let prefix = subgame_descents(recall);
         DepthSolver::new(self, prefix, internal, entry)
     }
-    /// Creates a safe subgame solver from game history (no depth limiting).
-    ///
-    /// Identical setup to [`Self::adapt_full`] but uses [`WorldSolver`]
-    /// which expands the full tree to terminal nodes instead of cutting
-    /// off at a depth limit.
+    /// Safe subgame solver: [`Self::adapt_full`]'s setup, but [`WorldSolver`]
+    /// expands to terminal nodes instead of cutting off at a depth limit.
     pub fn adapt_safe(
         &self,
         recall: &Witness,
@@ -112,12 +104,9 @@ where
         let (external, partition, recall) = self.setup(recall);
         WorldSolver::new(&self.encoder, &self.profile, external, partition, recall)
     }
-    /// Creates a combined safe + depth-limited subgame solver.
-    ///
-    /// Computes opponent reach distribution, partitions into K worlds
-    /// with secret-to-world mapping, and initializes the solver from
-    /// game root through the prefix. The partition enables rejection
-    /// sampling of card deals to condition on the selected world.
+    /// Combined safe + depth-limited subgame solver. The opponent posterior is
+    /// partitioned into K worlds; the partition drives rejection sampling of
+    /// card deals so the tree conditions on the selected world.
     pub fn adapt_full(
         &self,
         recall: &Witness,
@@ -125,14 +114,13 @@ where
         let (external, partition, recall) = self.setup(recall);
         SubGameSolver::new(self, external, partition, recall)
     }
-    /// Creates a Modicum-style nested subgame solver for an off-tree raise.
+    /// Modicum-style nested subgame solver for an off-tree raise.
     ///
-    /// Like [`Self::adapt_full`], but drives the solver over the off-tree
-    /// wrapper types via a [`Nest`] source: the entry node's action menu is
-    /// augmented with the literal `offtree` chip amount, and CFR jointly
-    /// resolves the opponent's mixing over the canonical sizes plus that
-    /// literal. `recall` should be rolled back to *before* the off-tree
-    /// action, so it becomes a menu option at the entry rather than history.
+    /// Like [`Self::adapt_full`], but over [`Nest`] wrapper types: the entry
+    /// node's menu is augmented with the literal `offtree` amount, and CFR
+    /// jointly resolves mixing over the canonical sizes plus that literal.
+    /// `recall` must be rolled back to *before* the off-tree action, so it
+    /// becomes a menu option at the entry rather than history.
     ///
     /// Requires `&'static self` (the live player holds a `&'static Flagship`)
     /// because the `Nest` source must outlive the returned solver; it is
@@ -186,14 +174,10 @@ where
             .product()
     }
 
-    /// Unnormalized hole-card-level posterior — the raw `(Observation,
-    /// reach)` stream that backs both [`Self::opponent_range`] (which
-    /// projects to abstractions) and [`Self::opponent_observations`]
-    /// (which normalizes and surfaces hole cards). Walks
-    /// [`Witness::possibilities`] and computes external reach via
-    /// `Self::reach` along the observed action sequence. This
-    /// is the unnormalized P(hand | actions) ∝ P(actions | hand) × 1
-    /// from a uniform prior.
+    /// Unnormalized hole-card-level posterior backing both
+    /// [`Self::opponent_range`] and [`Self::opponent_observations`]: over a
+    /// uniform prior on [`Witness::possibilities`], reach is the unnormalized
+    /// P(hand | actions) ∝ P(actions | hand).
     fn opponent_reaches(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
         let external = opposing(recall.turn());
         recall
@@ -202,42 +186,17 @@ where
             .map(|(obs, case)| (obs, self.reach(case, external)))
             .collect()
     }
-    /// Computes the opponent's posterior range over abstraction buckets.
-    ///
-    /// Transforms priors into posteriors through four layers:
-    ///
-    /// 1. **Uniform prior** — [`Observation::opponents`] enumerates all
-    ///    external hole cards consistent with internal's information
-    ///    (excludes internal pocket and dealt board cards), each with
-    ///    implicit weight 1.
-    ///
-    /// 2. **Likelihood** — For each external hand, `Witness::histories`
-    ///    builds a complete-info [`Perfect`] history, and
-    ///    [`Solver::external_reach`] computes the product of external's
-    ///    blueprint action probabilities at every external decision node
-    ///    along the observed action sequence. This is P(actions | hand).
-    ///
-    /// 3. **Unnormalized posterior** — Each (observation, reach) pair is the
-    ///    unnormalized P(hand | actions) ∝ P(actions | hand) × 1.
-    ///
-    /// 4. **Abstraction projection** — Observations are mapped to abstraction
-    ///    buckets via the encoder; reach values sharing a bucket are summed.
-    ///    The result is a `Posterior<NlheSecret>` suitable for partitioning
-    ///    into subgame worlds.
+    /// [`Self::opponent_reaches`] projected onto abstraction buckets, summing
+    /// reach within a bucket — the granularity subgame worlds partition at.
     pub fn opponent_range(&self, recall: &Witness) -> Posterior<NlheSecret> {
         self.opponent_reaches(recall)
             .into_iter()
             .map(|(obs, reach)| (NlheSecret::from(self.encoder.abstraction(&obs)), reach))
             .collect::<Posterior<NlheSecret>>()
     }
-    /// Hole-card-level normalized opponent range.
-    ///
-    /// Same likelihood computation as [`Self::opponent_range`] but skips
-    /// the abstraction projection — yields one entry per concrete villain
-    /// hole-card combo with weights normalized to sum to 1. Intended for
-    /// surfacing the opponent's range to clients at the granularity the
-    /// frontend cares about (hole cards), not the granularity CFR
-    /// solves at (abstraction buckets).
+    /// [`Self::opponent_range`] without the abstraction projection: one
+    /// normalized entry per concrete villain combo. For clients, which care
+    /// about hole cards rather than the buckets CFR solves at.
     pub fn opponent_observations(&self, recall: &Witness) -> Vec<(Observation, Probability)> {
         normalize(self.opponent_reaches(recall))
     }

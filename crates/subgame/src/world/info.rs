@@ -1,16 +1,10 @@
 //! World-tagged information set for subgame solving.
-//!
-//! Wraps the inner game's info set with a [`World`] tag so that each world
-//! accumulates separate regrets and weights during subgame CFR. All methods
-//! delegate to the inner info set — the world tag only affects identity.
 use super::*;
 use mccfr::*;
 
-/// Information set tagged with its world for per-world regret separation.
-///
-/// Two `WorldInfo` values with the same inner info but different worlds
-/// are distinct info sets, enabling the solver to maintain independent
-/// strategies per world.
+/// An info set tagged with its [`World`]. Every method delegates inward; the
+/// tag only affects identity, so the same inner info under two worlds is two
+/// distinct info sets accumulating independent regrets and weights.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct WorldInfo<I>(World, I)
 where

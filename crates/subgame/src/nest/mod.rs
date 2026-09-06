@@ -6,14 +6,10 @@
 //! off-tree action through the CFR framework without touching the base game's
 //! canonical edge type (which typically bit-packs and can't hold the payload).
 //!
-//! # Fully generic — one seam
-//!
-//! Unlike the original NLHE-only implementation, this is generic over any
-//! [`Augmentable`] game. That trait is the *entire* domain-specific surface:
-//! its single method, [`Augmentable::augment`], says how to apply the off-tree
-//! action to the base game. Everything else — [`NestEdge`], [`NestGame`],
-//! [`NestInfo`], [`NestPublic`], [`NestView`], [`NestProfile`], [`NestEncoder`]
-//! — is game-agnostic and unit-tested here on a toy game (no blueprint/DB).
+//! Generic over any [`Augmentable`] game. That trait is the *entire*
+//! domain-specific surface: its single method, [`Augmentable::augment`], says
+//! how to apply the off-tree action to the base game. Everything else is
+//! game-agnostic and unit-tested here on a toy game (no blueprint/DB).
 //!
 //! ```mermaid
 //! flowchart TD

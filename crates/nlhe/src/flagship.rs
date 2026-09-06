@@ -1,12 +1,6 @@
-//! Flagship solver variant scaffold.
-//!
-//! Names the canonical solver configurations. Today only `Pluribus` is wired
-//! to the `Flagship` type alias; future variants (Discounted, CFR+) will be
-//! added here and dispatched through `FlagshipConfig`.
-//!
-//! No runtime dispatch yet — this is a typed enum scaffold for the top-level
-//! `Config` to compose. The existing `pub type Flagship = Nlhe<...>` alias
-//! continues to drive monomorphization.
+//! Names the canonical solver configurations. A typed scaffold only — no
+//! runtime dispatch: `pub type Flagship = Nlhe<...>` still drives
+//! monomorphization, and only `Pluribus` is wired to it today.
 
 /// Named flagship solver configurations.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

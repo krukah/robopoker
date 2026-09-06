@@ -7,9 +7,7 @@ use monge::Support;
 use pokerkit::Probability;
 use pokerkit::Utility;
 
-/// NLHE edge type for CFR tree traversal.
-///
-/// Newtype wrapper around gameplay `Edge` for NLHE-specific CFR.
+/// NLHE edge for CFR tree traversal: a newtype over `kicker::Edge`.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NlheEdge(Edge);
 

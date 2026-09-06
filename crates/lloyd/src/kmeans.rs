@@ -1,9 +1,7 @@
 //! Iterator that drives Elkan k-means iterations as a stream of `Step<K>`.
 //!
-//! `Layer::kmeans()` returns a `Kmeans` — built fluently with optional
-//! `with_bound` / `with_threshold`. Each step yielded carries the
-//! drift, elapsed time, and freeze detection so the consumer doesn't
-//! have to track any of that itself.
+//! Each yielded step carries drift, elapsed time, and freeze detection, so the
+//! consumer tracks none of it itself.
 
 use crate::Bounds;
 use crate::Elkan;

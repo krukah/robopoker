@@ -1,19 +1,8 @@
 //! Async runtime for live poker games.
 //!
-//! This module orchestrates multiplayer poker sessions, coordinating between
-//! the game engine and various player types (human, AI, network) through
-//! message-passing channels.
-//!
-//! ## Architecture
-//!
-//! - [`Room`] — Game coordinator managing player registration and hand lifecycle
-//! - [`Actor`] — Async task wrapper for a single player's decision loop
-//! - [`Engine`] — Game state machine driving the hand forward
-//!
-//! ## Events
-//!
-//! - [`Event`] — Messages from room to player (deal, turn, result)
-//! - [`Player`] — Trait for pluggable player implementations
+//! Orchestrates multiplayer sessions, coordinating a [`Room`] coordinator, an
+//! [`Actor`] per player, and the [`Engine`] state machine over message-passing
+//! channels. Player types (human, AI, network) plug in via [`Player`].
 mod actor;
 mod context;
 mod engine;

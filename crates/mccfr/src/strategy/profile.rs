@@ -2,13 +2,10 @@ use crate::*;
 use monge::Density;
 use pokerkit::*;
 
-/// Core read-only access layer for CFR strategy data.
+/// Read-only access to accumulated regrets, weights, payoffs, and visits.
 ///
-/// Provides the required methods for reading accumulated regrets, weights,
-/// expected values, and visits. All methods take `&self` for read-only queries.
-/// Decoupled from `Storage` (the write layer) so that read-only consumers
-/// need not carry mutable access. Extends [`CfrRule`] for the shared
-/// associated types.
+/// Deliberately split from `Storage` (the write layer) so read-only consumers
+/// need not carry mutable access.
 pub trait RefProf: CfrRule {
     /// how many iterations
     fn t(&self) -> usize;
@@ -16,47 +13,39 @@ pub trait RefProf: CfrRule {
     /// Sum of positive regrets across all infosets, divided by iterations.
     fn sum_regret(&self) -> Utility;
 
-    /// lookup accumulated weight for this information
     fn cum_weight(&self, info: &Self::I, edge: &Self::E) -> Probability;
-    /// lookup accumulated regret for this information
     fn cum_regret(&self, info: &Self::I, edge: &Self::E) -> Utility;
-    /// lookup accumulated payoff for this information-action pair
     fn cum_payoff(&self, info: &Self::I, edge: &Self::E) -> Utility;
-    /// lookup accumulated encounter visits for this information-action pair
     fn cum_visits(&self, info: &Self::I, edge: &Self::E) -> u32;
 
-    /// optional metrics for logging (default: None)
+    /// Optional metrics sink for logging.
     fn metrics(&self) -> Option<&Metrics> {
         None
     }
-    /// floored accumulated regret (never below POLICY_MIN)
+    /// Accumulated regret floored at `EPSILON`, as regret matching requires.
     fn regret(&self, info: &Self::I, edge: &Self::E) -> Utility {
         self.cum_regret(info, edge).max(EPSILON)
     }
-    /// floored accumulated weight (never below POLICY_MIN)
+    /// Accumulated weight floored at `EPSILON`.
     fn weight(&self, info: &Self::I, edge: &Self::E) -> Probability {
         self.cum_weight(info, edge).max(EPSILON)
     }
     /// Historical weighted average strategy (Nash approximation).
-    /// Derived from accumulated weights. Override to apply perturbation.
+    /// Override to apply perturbation.
     fn averaged_distribution(&self, info: &Self::I) -> Policy<Self::E> {
         let all = info.choices().map(|e| (e, self.weight(info, &e))).collect::<Vec<_>>();
         let sum = all.iter().map(|(_, w)| *w).sum::<Probability>();
         all.into_iter().map(|(e, w)| (e, w / sum)).collect()
     }
     /// Current iteration strategy via regret matching.
-    /// Derived from accumulated regrets.
     fn iterated_distribution(&self, info: &Self::I) -> Policy<Self::E> {
         let raw = info.choices().map(|e| (e, self.regret(info, &e))).collect::<Vec<_>>();
         let denom = raw.iter().map(|(_, r)| r).sum::<Utility>();
         raw.into_iter().map(|(e, r)| (e, r / denom)).collect()
     }
 
-    /// Seed a subgame-local CFR accumulator from this profile's accumulated
-    /// values, in a way that's agnostic to how long this profile has been
-    /// trained.
-    ///
-    /// # Why iteration-count agnosticism matters
+    /// Seed a subgame-local CFR accumulator from this profile, agnostic to how
+    /// long this profile has been trained.
     ///
     /// Under `LinearWeight`, `cum_weight` grows as O(T²) in the blueprint's
     /// iteration count T. The naive `(K/T) × cum_weight` scaling is linear

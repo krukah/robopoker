@@ -1,53 +1,33 @@
 use crate::*;
 
-/// Maps game states to information set identifiers.
+/// The abstraction layer: maps game states to information set identifiers,
+/// collapsing the state space into a tractable number of buckets. Trivial for
+/// RPS; learned k-means clusters for NLHE.
 ///
-/// The encoder is responsible for the abstraction layer: collapsing
-/// the vast game state space into a tractable number of information
-/// buckets. Simple games (like RPS) have trivial encoding. Complex
-/// games (like NLHE) use learned abstractions, such as from k-means clustering.
-///
-/// # Methods
-///
-/// - `seed()` — Creates info for the root game state
-/// - `info()` — Creates info for a child state during tree expansion
-/// - `grow()` — Creates info from explicit history path (for subgame solving)
-/// - `branches()` — Returns valid child branches (default delegates to node)
-///
-/// # Design Notes
-///
-/// The encoder has access to the full tree context, enabling path-dependent
-/// or probabilistic abstractions if needed.
+/// Methods receive full tree context, so path-dependent or probabilistic
+/// abstractions are expressible.
 pub trait CfrEncoder {
     type T: CfrTurn;
     type E: CfrEdge;
     type G: CfrGame<E = Self::E, T = Self::T>;
     type I: CfrInfo<E = Self::E, T = Self::T>;
 
-    /// Attestation that this encoder satisfies [`PerfectRecall`] semantics
-    /// strongly enough to enable runtime cross-checking of `info(tree, leaf)`
-    /// against `resume(past, head)`.
+    /// Opts into a debug-only assertion that `info(tree, leaf)` agrees with
+    /// `resume(past, head)` at every [`TreeBuilder`] expansion, catching silent
+    /// drift early.
     ///
-    /// Set to `true` by encoders that implement [`EmbeddedHistory`] or
-    /// [`PerfectRecall`]. When `true` and `cfg(debug_assertions)` is on,
-    /// [`TreeBuilder`] asserts that the two paths produce equal infos at
-    /// every expansion, catching silent drift early.
-    ///
-    /// Defaults to `false` because the check must be explicitly opted into —
-    /// encoders that legitimately diverge between the two paths (e.g. nlhe's
-    /// chip-snapping `apply` fixup) would trip the assertion.
+    /// Off by default: encoders that legitimately diverge between the two paths
+    /// (e.g. nlhe's chip-snapping `apply` fixup) would trip it.
     const CHECK_RECALL: bool = false;
 
     fn seed(&self, game: &Self::G) -> Self::I;
 
-    /// Creates info set label for a child state during tree expansion.
+    /// Info set label for a child state during tree expansion.
     ///
-    /// The default implementation delegates to [`CfrEncoder::resume`] with an
-    /// empty past and the post-application game state. This is correct for
-    /// any encoder whose [`CfrInfo`] is a pure function of the game state
-    /// alone — see [`EmbeddedHistory`]. Encoders whose info depends on tree
-    /// context (e.g. when the `resume` path cannot reconstruct the full
-    /// current-phase history from `head` alone) must override this method.
+    /// The default delegates to [`CfrEncoder::resume`] with an empty past, which
+    /// is correct only when [`CfrInfo`] is a pure function of the game state —
+    /// see [`EmbeddedHistory`]. Encoders whose info needs tree context (because
+    /// `head` alone can't reconstruct the current-phase history) must override.
     fn info(&self, _: &Tree<Self::T, Self::E, Self::G, Self::I>, leaf: Leaf<Self::E, Self::G>) -> Self::I {
         let (_, game, _) = leaf;
         self.resume(std::iter::empty(), &game)
@@ -55,20 +35,16 @@ pub trait CfrEncoder {
 
     /// Build info from a downward edge sequence and the resulting game head.
     ///
-    /// Takes any `IntoIterator<Item = Self::E>` so callers can pass a bare
-    /// slice (via `.iter().copied()`), a `Vec` (by value or by `.into_iter()`),
-    /// or the edge projection of a [`Descent`](crate::Descent) stream
-    /// (via [`JumpStream::edges`](crate::JumpStream)) without an
-    /// intermediate collect.
+    /// Generic over `IntoIterator` so a slice, a `Vec`, or the edge projection
+    /// of a [`Descent`](crate::Descent) stream (via
+    /// [`JumpStream::edges`](crate::JumpStream)) all pass without a collect.
     fn resume<P>(&self, past: P, head: &Self::G) -> Self::I
     where
         P: IntoIterator<Item = Self::E>;
 
-    /// Replays a path downward from root, yielding `(turn, info, edge)` at
-    /// each decision node. Dual of [`Node::decisions`], which walks upward.
-    ///
-    /// Produces the same `(T, I, E)` triples, enabling reach computations
-    /// to consume either direction through the same iterator interface.
+    /// Replays a path downward from root, yielding `(turn, info, edge)` at each
+    /// decision node — the same triples as [`Node::decisions`] walking upward,
+    /// so reach computations consume either direction identically.
     fn replay(&self, root: Self::G, path: impl IntoIterator<Item = Self::E>) -> Vec<(Self::T, Self::I, Self::E)> {
         let mut game = root;
         let mut past: Vec<Self::E> = Vec::new();
@@ -82,8 +58,7 @@ pub trait CfrEncoder {
             })
             .collect()
     }
-    /// Delegates branching to the node, which has all the necessary
-    /// information to compute the valid edges and resulting game states.
+    /// Valid child branches; delegated to the node, which knows the legal edges.
     fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
         node.branches()
     }

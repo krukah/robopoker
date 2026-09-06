@@ -5,10 +5,8 @@ use monge::Density;
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
 
-/// Targeted sampling strategy.
-///
-/// Focuses exploration on strategically important parts of the tree
-/// by biasing toward actions with higher policy mass.
+/// Biases exploration toward actions with higher policy mass, concentrating
+/// effort on the strategically important parts of the tree.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TargetedSampling;
 

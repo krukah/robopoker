@@ -311,7 +311,7 @@ checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
 name = "arena"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "bouncer",
@@ -480,7 +480,7 @@ dependencies = [
 
 [[package]]
 name = "bouncer"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "actix-web",
  "argon2",
@@ -763,7 +763,7 @@ dependencies = [
 
 [[package]]
 name = "daybook"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -812,7 +812,7 @@ dependencies = [
 
 [[package]]
 name = "deuce"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "pokerkit",
@@ -864,7 +864,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "elkan"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "rayon",
 ]
@@ -963,7 +963,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "forge"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1586,7 +1586,7 @@ dependencies = [
 
 [[package]]
 name = "kicker"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "deuce",
@@ -1602,7 +1602,7 @@ dependencies = [
 
 [[package]]
 name = "kuhn"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -1632,7 +1632,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "leduc"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -1672,7 +1672,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "litmus"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1700,7 +1700,7 @@ dependencies = [
 
 [[package]]
 name = "lloyd"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1766,7 +1766,7 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 
 [[package]]
 name = "mccfr"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1827,7 +1827,7 @@ dependencies = [
 
 [[package]]
 name = "monge"
-version = "1.1.0"
+version = "2.0.0"
 
 [[package]]
 name = "native-tls"
@@ -1848,7 +1848,7 @@ dependencies = [
 
 [[package]]
 name = "nlhe"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2090,7 +2090,7 @@ dependencies = [
 
 [[package]]
 name = "parlor"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "bouncer",
@@ -2178,7 +2178,7 @@ dependencies = [
 
 [[package]]
 name = "phh"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "deuce",
@@ -2247,7 +2247,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "pokerkit"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "clap",
  "rand 0.9.2",
@@ -2259,7 +2259,7 @@ dependencies = [
 
 [[package]]
 name = "portal"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "actix-cors",
  "actix-web",
@@ -2582,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "robopoker"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "bouncer",
  "daybook",
@@ -2603,7 +2603,7 @@ dependencies = [
 
 [[package]]
 name = "roshambo"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -2915,7 +2915,7 @@ dependencies = [
 
 [[package]]
 name = "spar"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "bouncer",
@@ -2959,7 +2959,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "subgame"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -3583,7 +3583,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vitals"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",

@@ -6,22 +6,10 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-/// Mapping from hand isomorphisms to abstraction buckets.
-///
-/// This is the primary output of clustering: given any poker hand
-/// (represented as a suit-isomorphic [`Isomorphism`]), look up which
-/// strategic [`Abstraction`] bucket it belongs to.
-///
-/// # Construction
-///
-/// - River: Computed directly from showdown equity
-/// - Preflop: One bucket per isomorphism (no abstraction)
-/// - Flop/Turn: Learned via k-means clustering over next-street histograms
-///
-/// # Database
-///
-/// With the `database` feature, supports streaming to/from PostgreSQL
-/// for persistence between training runs.
+/// Mapping from hand isomorphisms to abstraction buckets — the primary output
+/// of clustering. River buckets come straight from showdown equity, preflop
+/// gets one bucket per isomorphism (no abstraction), and flop/turn are learned
+/// by k-means over next-street histograms.
 #[derive(Default)]
 pub struct Lookup(BTreeMap<Isomorphism, Abstraction>);
 
@@ -37,7 +25,7 @@ impl From<BTreeMap<Isomorphism, Abstraction>> for Lookup {
 }
 
 impl Lookup {
-    /// Looks up the abstraction for a hand isomorphism.
+    /// The abstraction for a hand isomorphism.
     pub fn lookup(&self, iso: &Isomorphism) -> Abstraction {
         self.0.get(iso).copied().expect("precomputed abstraction in lookup")
     }
@@ -52,8 +40,8 @@ impl Lookup {
             .collect::<Vec<Histogram>>()
     }
 
-    /// Computes histogram over next-street abstractions for an isomorphism.
-    /// This is the core operation that enables hierarchical clustering.
+    /// Histogram over next-street abstractions for an isomorphism — the
+    /// operation hierarchical clustering is built on.
     fn future(&self, iso: &Isomorphism) -> Histogram {
         debug_assert_ne!(iso.0.street(), Street::Rive);
         iso.0
@@ -183,10 +171,8 @@ impl Lookup {
 }
 
 impl Lookup {
-    /// Creates lookup tables for streets that don't require clustering.
-    ///
-    /// - River: Uses equity as abstraction (discretized win probability)
-    /// - Preflop: Each isomorphism gets its own bucket (no compression)
+    /// Lookup for the streets that need no clustering: river discretizes
+    /// equity, preflop gives each isomorphism its own bucket.
     pub fn grow(street: Street) -> Self {
         match street {
             Street::Rive => IsomorphismIterator::from(Street::Rive)

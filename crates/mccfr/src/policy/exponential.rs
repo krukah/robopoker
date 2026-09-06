@@ -2,9 +2,7 @@
 
 use super::*;
 
-/// Exponential weighting scheme.
-///
-/// Uses exponential weighting with configurable decay rate.
+/// Discounts prior weight by a fixed decay rate each epoch.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ExponentialWeight;
 

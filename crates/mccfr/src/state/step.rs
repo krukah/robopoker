@@ -1,58 +1,37 @@
-//! Directional (turn, edge) pairs for tree traversal.
+//! Directional (turn, edge) pairs for tree traversal: [`Descent`] steps parent →
+//! child, [`Ascent`] steps child → parent. Both anchor on the *parent* turn and
+//! so carry identical data for a given tree edge.
 //!
-//! A tree edge connects a parent to a child. Either endpoint can serve as
-//! the pair's "anchor turn"; which endpoint makes sense depends on the
-//! traversal direction:
+//! They are distinct types so the compiler enforces directional intent: a fn
+//! taking `impl IntoIterator<Item = Descent<T, E>>` won't silently accept an
+//! upward walk, and a naive rewrap would still leave the sequence reversed.
+//! Converting directions requires re-walking (or explicit `collect` + `reverse` +
+//! re-flavor), which makes the fencepost an active decision rather than a
+//! forgettable one-liner.
 //!
-//! - [`Descent`]: downward step from parent to child. The anchor is the
-//!   parent — the turn you're AT when you choose to descend via this edge.
-//! - [`Ascent`]: upward step from child to parent. The anchor is the parent
-//!   again — the turn you ARRIVE at after ascending.
+//! [`Jump`] unifies the two for direction-agnostic work like edge extraction.
+//! Direction-sensitive operations (e.g. `current_street`, which splits on chance
+//! boundaries in the parent turn) live only on Descent-flavored blankets.
 //!
-//! Descent and Ascent carry the same underlying `(parent_turn, edge)` data
-//! for any given tree edge. They are distinct types so the compiler can
-//! enforce directional intent: a function accepting
-//! `impl IntoIterator<Item = Descent<T, E>>` will not silently accept an
-//! upward walk, and a naive rewrap would still land the sequence in the
-//! wrong order. Converting between directions requires re-walking the tree
-//! (or an explicit `collect` + `reverse` + re-flavor), which makes the
-//! fencepost question an active design decision rather than a forgettable
-//! one-liner.
-//!
-//! The [`Jump`] trait unifies the two for direction-agnostic operations
-//! like "extract the edges." Direction-sensitive operations (e.g.
-//! `current_street`, which splits on chance boundaries in the parent turn)
-//! live only on Descent-flavored blankets, in sibling modules.
-//!
-//! # Generic over `T`
-//!
-//! `T` is deliberately unconstrained here — implementations can carry a
-//! bare turn, a full game state, a [`Node`](crate::Node) handle, or
-//! anything else that makes sense at the anchor point. Capability bounds
-//! are introduced at the use site.
+//! `T` is deliberately unconstrained — a bare turn, a full game state, a
+//! [`Node`](crate::Node) handle. Capability bounds arrive at the use site.
 use crate::CfrEdge;
 
-/// A downward step `(parent_turn, edge)` in the game tree.
-///
-/// The anchor turn is the origin of the descent — the node you're at
-/// *before* following `edge` to its child.
+/// A downward step `(parent_turn, edge)`: the anchor is where you are *before*
+/// following `edge` to its child.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Descent<T, E>(pub T, pub E);
 
-/// An upward step `(edge, parent_turn)` in the game tree.
-///
-/// The anchor turn is the destination of the ascent — the node you arrive
-/// at *after* following `edge` in reverse from its child.
+/// An upward step `(edge, parent_turn)`: the anchor is where you arrive *after*
+/// following `edge` in reverse from its child.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ascent<E, T>(pub E, pub T);
 
 /// Shared accessors for [`Descent`] and [`Ascent`].
 ///
-/// The node slot is always whatever sits at the non-edge endpoint of the
-/// pair; direction only decides which tuple position stores what. Blankets
-/// that don't care about direction (edge extraction, counting by edge
-/// predicate, etc.) can be written against `Jump` uniformly. Direction-
-/// sensitive blankets should name `Descent` or `Ascent` explicitly.
+/// The node slot is whatever sits at the non-edge endpoint; direction only
+/// decides which tuple position holds it. Direction-sensitive blankets should
+/// name `Descent` or `Ascent` explicitly rather than bound on `Jump`.
 pub trait Jump: Copy {
     type T: Copy;
     type E: Copy;
@@ -90,12 +69,11 @@ where
     }
 }
 
-/// Direction-agnostic extensions available on any stream of [`Jump`]
-/// pairs, regardless of `Descent` vs `Ascent` flavor.
+/// Direction-agnostic extensions on any stream of [`Jump`] pairs.
 ///
-/// Only edge-level projections live here. Anything that depends on the
-/// structural meaning of the sequence order (e.g. splitting at chance
-/// boundaries) must be keyed to a specific direction.
+/// Only edge-level projections belong here; anything depending on the structural
+/// meaning of sequence order (e.g. splitting at chance boundaries) must be keyed
+/// to a specific direction.
 pub trait JumpStream: IntoIterator + Sized
 where
     Self::Item: Jump,
@@ -120,16 +98,13 @@ where
 {
 }
 
-/// Compose a downward walk from a root game state and a sequence of edges.
+/// Compose a downward walk from a root game state and a sequence of edges,
+/// folding `CfrGame::apply` and emitting the pre-apply turn at each step.
 ///
-/// Folds `CfrGame::apply` over the edges, emitting `Descent(turn, edge)`
-/// at each step where `turn` is the pre-apply turn at the origin. Works
-/// for any game whose turn class is determined by round structure alone
-/// (independent of chance entropy) — which is every `CfrGame` we care
-/// about today. Intermediate game states are discarded; only turns are
-/// observable. If you need full game reconstruction across chance
-/// boundaries, the edge sequence is not enough — chance edges don't
-/// carry the concrete outcome.
+/// Valid only because turn class is determined by round structure alone,
+/// independent of chance entropy — true of every `CfrGame` today. Intermediate
+/// game states are discarded, and edges alone cannot reconstruct them across
+/// chance boundaries since chance edges don't carry the concrete outcome.
 pub fn descents_from<G, I>(root: G, edges: I) -> impl Iterator<Item = Descent<G::T, G::E>>
 where
     G: crate::CfrGame + Copy,

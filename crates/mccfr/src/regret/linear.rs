@@ -2,10 +2,8 @@
 
 use super::*;
 
-/// Linear discounting for CFR-D.
-///
-/// Applies linear time-weighted discounting where older iterations
-/// are weighted proportionally less. Uses discount factor t/(t+1) at each epoch.
+/// Time-weighted discounting by `t/(t+1)` each epoch, so older iterations count
+/// proportionally less.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct LinearRegret;
 

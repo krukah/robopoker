@@ -4,17 +4,10 @@ use pokerkit::Chips;
 
 /// Computes chip distributions at showdown.
 ///
-/// Handles all the edge cases of poker settlement: side pots from all-ins,
-/// split pots between equal hands, and folded players receiving nothing.
-/// The algorithm iterates by strength tier, distributing chips from weakest
-/// to strongest hands.
-///
-/// # Algorithm
-///
-/// 1. Find the strongest unprocessed hand
-/// 2. For that strength tier, compute the side pot they're eligible for
-/// 3. Split that pot among all players with that strength
-/// 4. Repeat until all chips are distributed
+/// Handles side pots from all-ins, split pots between equal hands, and folded
+/// players receiving nothing. Iterates by strength tier: take the strongest
+/// unprocessed hand, compute the side pot that tier is eligible for, split it
+/// among everyone at that strength, repeat until all chips are distributed.
 pub struct Showdown {
     payouts: Vec<Settlement>,
     distributing: Chips,

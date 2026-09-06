@@ -14,15 +14,10 @@ const WHEEL: u16 = 0b_1000011110000;
 #[cfg(feature = "shortdeck")]
 const LOWEST_STRAIGHT_RANK: Rank = Rank::Nine;
 
-/// Bitwise hand strength evaluator.
-///
-/// Given a [`Hand`] of 5-7 cards, finds the best poker ranking using fast
-/// bit manipulation. Searches from strongest (straight flush) to weakest
-/// (high card), returning on first match.
-///
-/// This evaluator uses no lookup tables — all detection is done via bit
-/// twiddling on the hand's u64 representation. Arguably the fastest
-/// open-source implementation available.
+/// Bitwise hand strength evaluator: given a [`Hand`] of 5-7 cards, searches
+/// strongest (straight flush) to weakest (high card) and returns on first
+/// match. No lookup tables — every detection is bit twiddling on the hand's
+/// u64 representation. Arguably the fastest open-source implementation around.
 #[derive(Clone, Copy)]
 pub struct Evaluator(Hand);
 impl From<Hand> for Evaluator {
@@ -32,10 +27,7 @@ impl From<Hand> for Evaluator {
 }
 
 impl Evaluator {
-    /// Determines the best poker hand ranking.
-    ///
-    /// Searches in order: straight flush, four of a kind, full house,
-    /// flush, straight, three of a kind, two pair, one pair, high card.
+    /// Best poker hand ranking, searched strongest-first.
     pub fn find_ranking(&self) -> Ranking {
         None.or_else(|| self.find_straight_flush())
             .or_else(|| self.find_4_oak())
@@ -48,10 +40,8 @@ impl Evaluator {
             .or_else(|| self.find_1_oak())
             .expect("at least one card in Hand")
     }
-    /// Extracts the deuce cards for tie-breaking.
-    ///
-    /// Returns the highest unpaired cards not used in the main ranking,
-    /// up to the number required for that hand type.
+    /// Tie-breaking kickers: the highest unpaired cards outside the main
+    /// ranking, as many as the hand type requires.
     pub fn find_kickers(&self, value: Ranking) -> Kickers {
         match value.n_kickers() {
             0 => Kickers::from(0),

@@ -5,9 +5,7 @@ use kicker::*;
 use mccfr::*;
 use pokerkit::Utility;
 
-/// NLHE game state for CFR traversal.
-///
-/// Newtype wrapper around gameplay `Game` for NLHE-specific CFR.
+/// NLHE game state for CFR traversal: a newtype over `kicker::Game`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NlheGame(Game);
 
@@ -41,12 +39,10 @@ impl CfrGame for NlheGame {
     fn turn(&self) -> Self::T {
         NlheTurn::from(self.0.turn())
     }
-    /// Applies an edge to the game state.
-    ///
-    /// Handles canonical replay divergence: when replaying edge history
-    /// from a different context (e.g., AIVAT inference), snapped chip
-    /// amounts can cause the canonical game to reach Chance or Terminal
-    /// at a different point than the actual game.
+    /// Applies an edge, tolerating canonical replay divergence: replaying an
+    /// edge history from another context (e.g. AIVAT inference) can have
+    /// snapped chip amounts reach Chance or Terminal at a different point than
+    /// the actual game did.
     ///
     /// - Choice edge at Chance: auto-deal through chance nodes first
     /// - Draw edge at Choice: skip (canonical hasn't reached that street)

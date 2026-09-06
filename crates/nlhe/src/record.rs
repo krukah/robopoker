@@ -2,8 +2,8 @@ use super::*;
 use kicker::*;
 use pokerkit::*;
 
-/// Record represents a single update to the blueprint profile.
-/// Contains the final computed values after discounting and accumulation.
+/// A single update to the blueprint profile — final values, post-discounting
+/// and accumulation.
 #[derive(Debug, Clone)]
 pub struct Record {
     pub info: NlheInfo,

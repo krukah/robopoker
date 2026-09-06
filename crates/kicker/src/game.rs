@@ -4,28 +4,12 @@ use pokerkit::Translated;
 use pokerkit::*;
 use std::ops::Not;
 
-/// The memoryless state of a poker hand.
+/// The memoryless state machine for a No-Limit Hold'em hand.
 ///
-/// `GameN` is the core state machine for No-Limit Texas Hold'em, encoding everything
-/// needed to determine legal actions and compute payoffs. It manages player stacks,
-/// the pot, community cards, and whose turn it is to act.
-///
-/// # Architecture
-///
-/// The design is deliberately memoryless: `GameN` contains only the current state,
-/// not the history of how we got here. This makes it suitable as a CFR node
-/// representation where states can be reached via different action sequences.
-///
-/// State transitions are functional—[`apply`](Self::apply) returns a new `GameN`
-/// rather than mutating in place. This enables tree traversal without undo logic.
-///
-/// # Fields
-///
-/// - `pot` — Total chips in the center (including current street bets)
-/// - `board` — Community cards (0–5 depending on street)
-/// - `seats` — Per-player state (stack, stake, status, hole cards)
-/// - `dealer` — Button position
-/// - `ticker` — Action counter for determining whose turn it is
+/// Deliberately memoryless: only the current state, not the history that reached
+/// it, so the same CFR node can be arrived at via different action sequences.
+/// Transitions are functional — [`apply`](Self::apply) returns a new `GameN`, so
+/// tree traversal needs no undo logic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameN<const P: usize> {
     pot: Chips,
@@ -52,10 +36,7 @@ impl<const P: usize> Default for GameN<P> {
 
 /// Game tree entry points.
 impl<const P: usize> GameN<P> {
-    /// Creates a pre-blind game state with custom dealer and stacks.
-    ///
     /// Deals random hole cards to each player but does NOT post blinds.
-    /// Use this as the base for `Witness::base()` or chain with blind posting.
     pub fn preblind(dealer: Position, stacks: [Chips; P]) -> Self {
         let mut deck = Deck::new();
         Self {
@@ -66,10 +47,7 @@ impl<const P: usize> GameN<P> {
             ticker: usize::from(P != 2),
         }
     }
-    /// Creates the canonical starting state for MCCFR traversal.
-    ///
-    /// Returns a game with blinds posted and ready for the dealer's first
-    /// decision. Default stack is 100bb with P0 on the button.
+    /// Canonical MCCFR root: blinds posted, 100bb stacks, P0 on the button.
     pub fn root() -> Self {
         let mut game = Self::default();
         game.act(game.posts());
@@ -89,8 +67,6 @@ impl<const P: usize> GameN<P> {
         self
     }
     /// Replaces all players' hole cards with the given hand.
-    ///
-    /// Used for setting up counterfactual game states during analysis.
     pub fn wipe(mut self, hole: Hole) -> Self {
         for seat in &mut self.seats {
             seat.reset_cards(hole);
@@ -98,9 +74,6 @@ impl<const P: usize> GameN<P> {
         self
     }
     /// Replaces all players' hole cards EXCEPT the given seat.
-    ///
-    /// Used for computing opponent reach: sets all non-hero seats to the
-    /// assumed opponent hole while preserving hero's cards.
     ///
     /// Seat identity is position-indexed (`Turn::Choice(i)` matches seat `i`),
     /// independent of dealer button rotation.
@@ -112,19 +85,10 @@ impl<const P: usize> GameN<P> {
             .for_each(|(_, seat)| seat.reset_cards(hole));
         self
     }
-    /// Fast-forward to the given street by taking passive actions.
+    /// Fast-forward to `target` by repeatedly applying `passive()`.
     ///
-    /// From the root state, advances the game by repeatedly applying
-    /// `passive()` (check if allowed, fold otherwise) until reaching
-    /// the target street. This is useful for constructing subgame roots
-    /// at arbitrary streets for exact subgame solving.
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - The target street has already passed
-    /// - The game reaches a terminal state before the target street
-    /// - An all-in situation occurs before reaching the target street
+    /// Used to construct subgame roots at arbitrary streets. Panics if the
+    /// target has passed, or if the hand goes terminal/all-in en route.
     pub fn ffwd(mut self, target: Street) -> Self {
         while self.street() < target {
             match self.turn() {
@@ -228,16 +192,11 @@ impl<const P: usize> GameN<P> {
         self.act(action);
         *self
     }
-    /// Returns a new game state with the action applied.
-    ///
-    /// Panics if the action is not legal in the current state.
+    /// Returns a new game state with the action applied. Panics if illegal.
     pub fn apply(&self, action: Action) -> Self {
         self.try_apply(action).expect("valid action")
     }
     /// Fallible version of [`apply`](Self::apply).
-    ///
-    /// Returns `Err` if the action is not legal in the current state,
-    /// enabling graceful error handling instead of panicking.
     pub fn try_apply(&self, action: Action) -> anyhow::Result<Self> {
         if !self.is_allowed(&action) {
             return Err(anyhow::anyhow!("illegal action {:?} in state {:?}", action, self.turn()));
@@ -246,10 +205,7 @@ impl<const P: usize> GameN<P> {
         child.act(action);
         Ok(child)
     }
-    /// Returns all legal actions in the current state.
-    ///
-    /// Empty at terminal nodes. Contains exactly one action at chance nodes.
-    /// Contains multiple options at decision nodes.
+    /// All legal actions: empty at terminal, exactly one at chance nodes.
     pub fn legal(&self) -> Vec<Action> {
         // action is determined if it's Turn::Chance
         if self.must_stop() {
@@ -292,8 +248,6 @@ impl<const P: usize> GameN<P> {
         next
     }
     /// Checks if a specific action is legal.
-    ///
-    /// Performs bounds checking for raises (min/max) and draws (correct cards).
     pub fn is_allowed(&self, action: &Action) -> bool {
         // do "bounds checking" on the two actions with degrees of freedom;
         // Action::Raise is constrained by min/max raise
@@ -319,11 +273,7 @@ impl<const P: usize> GameN<P> {
 
 /// Hand-to-hand transitions.
 impl<const P: usize> GameN<P> {
-    /// Advances to the next hand if both players have sufficient stacks.
-    ///
-    /// Returns `None` if a player is busted (can't cover the big blind).
-    /// Otherwise resets the board, deals new cards, posts blinds, and
-    /// rotates the button.
+    /// Advances to the next hand, or `None` if a player can't cover the BB.
     pub fn continuation(mut self) -> Option<Self> {
         debug_assert_eq!(self.turn(), Turn::Terminal);
         self.settlements()
@@ -389,9 +339,6 @@ impl<const P: usize> GameN<P> {
         self.force_act(a);
     }
     /// Core state transition without validation.
-    ///
-    /// Used by `force_apply` for server-authoritative actions where the
-    /// client may have placeholder cards that fail `is_allowed()` checks.
     fn force_act(&mut self, a: Action) {
         match a {
             Action::Check => {
@@ -786,20 +733,10 @@ impl<const P: usize> GameN<P> {
             Action::Raise(chips) => self.snap_to_edge(chips, depth),
         }
     }
-    /// Translate an [`Action`] under a [`Translation`].
+    /// Snap-only translation for the canonical history walk.
     ///
-    /// Universal action-translation hook that returns either an on-tree
-    /// [`Edge`] (resolved to the abstraction) or an off-tree [`Action`]
-    /// (the original raise amount, only emitted by injection-style
-    /// policies like `Exact` or `EpsilonPrune`).
-    ///
-    /// Non-raise actions always map to canonical [`Edge`]s. Raise
-    /// actions delegate to [`Size::translate`], which dispatches axis
-    /// internally via `Size::raises_grid`.
-    ///
-    /// Snap-only translation for the canonical history walk. Panics on the
-    /// [`Translated::Free`] arm — no current [`Translation`] variant emits
-    /// it; a future Brown-style variant needs a custom history walker.
+    /// Panics on the [`Translated::Free`] arm — no current [`Translation`]
+    /// variant emits it; a future Brown-style variant needs a custom walker.
     pub fn snapped<R>(&self, depth: usize, action: Action, policy: &Translation, rng: &mut R) -> Edge
     where
         R: rand::Rng + ?Sized,
@@ -814,8 +751,11 @@ impl<const P: usize> GameN<P> {
         }
     }
 
-    /// [`Self::edgify`] is the [`Translation::Snap`] shorthand and
-    /// remains untouched; this method is purely additive.
+    /// Universal action-translation hook: returns either an on-tree [`Edge`]
+    /// or an off-tree [`Action`] (the original raise amount, only emitted by
+    /// injection-style policies like `Exact` or `EpsilonPrune`).
+    ///
+    /// [`Self::edgify`] is the [`Translation::Snap`] shorthand.
     pub fn translate<R>(
         &self,
         action: Action,
@@ -868,16 +808,6 @@ impl<const P: usize> GameN<P> {
     /// legal actions due to stack/pot differences from prior streets.
     /// Semi-recursive: aggressive actions cascade through the fallback chain
     /// `Raise → Shove → Call → passive`.
-    ///
-    /// # Mapping rules
-    ///
-    /// - `Raise(x)` where `x >= to_shove()` → recurse with `Shove`
-    /// - `Raise(x)` where `x < to_raise()` → `Raise(to_raise())`
-    /// - `Raise(_)` when `!may_raise()` → recurse with `Shove`
-    /// - `Shove` when `!may_shove()` → recurse with `Call`
-    /// - `Call` when `!may_call()` → `passive()`
-    /// - `Check` when `!may_check()` → `Call` or `Fold`
-    /// - `Fold` when `!may_fold()` → `Check`
     pub fn snap(&self, action: Action) -> Action {
         match action {
             Action::Raise(x) if x >= self.to_shove() => self.snap(self.shove()), //
@@ -910,9 +840,8 @@ impl<const P: usize> std::fmt::Display for GameN<P> {
         Ok(())
     }
 }
-/// Infinite iterator over actions across games.
+/// Infinite iterator over actions, resetting to a fresh game when busted.
 ///
-/// Yields each `Action` played, resetting to a fresh game when busted.
 /// Never terminates — use `.take(n)` to bound iteration.
 pub struct Perpetual(Game);
 impl Perpetual {
@@ -936,10 +865,7 @@ impl Iterator for Perpetual {
     }
 }
 
-/// Iterator over completed hands in a session.
-///
-/// Yields the terminal `Game` state at the end of each hand.
-/// Stops when a player busts (can't cover the big blind).
+/// Iterator over terminal `Game` states, one per hand, stopping on bust.
 pub struct Hands(Game);
 impl Hands {
     pub fn new(game: Game) -> Self {
@@ -961,10 +887,7 @@ impl Iterator for Hands {
     }
 }
 
-/// Iterator over actions in a session.
-///
-/// Yields each `Action` played across multiple hands.
-/// Stops when a player busts (can't cover the big blind).
+/// Iterator over actions across multiple hands, stopping on bust.
 pub struct Session(Game);
 impl Session {
     pub fn new(game: Game) -> Self {

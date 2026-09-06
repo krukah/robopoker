@@ -2,9 +2,7 @@
 
 use super::*;
 
-/// Quadratic weighting scheme.
-///
-/// Later iterations are weighted by the square of their iteration number.
+/// Weights each iteration by the square of its iteration number.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QuadraticWeight;
 

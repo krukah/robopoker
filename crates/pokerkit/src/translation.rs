@@ -1,22 +1,15 @@
 //! Runtime-dispatched action-translation policy.
 //!
-//! Mirrors the [`crate::Regime`] pattern: a process-global `OnceLock` set
-//! once at startup via [`init_translation`] and queried via [`translation`].
-//! Binaries take `--translation <name>` on the CLI via clap.
+//! Global `OnceLock` like [`crate::Regime`], set at startup via
+//! [`init_translation`] (`--translation <name>` on the CLI). `Regime` selects
+//! which abstract tree to train against; `Translation` selects how to map an
+//! external opponent's off-tree raise onto that tree at inference time. Both
+//! are static config — neither changes per-decision.
 //!
-//! ## Why global, like `Regime`?
-//!
-//! [`Regime`] selects which abstract tree to train against; [`Translation`]
-//! selects how to map an external opponent's off-tree raise onto the
-//! abstract tree at inference time. Both are static configuration set
-//! at startup — neither changes per-decision.
-//!
-//! ## Why this does NOT require retraining
-//!
-//! Training only walks canonical edges; `Game::translate` never
-//! observes an off-tree action during training. So every translation
-//! produces identical training output. Only inference (against external
-//! opponents who play arbitrary chip amounts) sees the difference.
+//! Changing it does NOT require retraining: training only walks canonical
+//! edges, so `Game::translate` never sees an off-tree action and every
+//! translation yields identical training output. Only inference against
+//! external opponents (arbitrary chip amounts) sees the difference.
 
 use crate::translate::*;
 use rand::Rng;

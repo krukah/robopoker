@@ -1,7 +1,4 @@
-//! Core type aliases, traits, and constants for robopoker.
-//!
-//! This crate provides the foundational types and configuration parameters
-//! used throughout the robopoker workspace.
+//! Core type aliases, traits, and constants shared across the workspace.
 #![allow(dead_code)]
 
 mod id;
@@ -21,9 +18,7 @@ pub use translation::*;
 pub use variant::*;
 pub use version::*;
 
-// ============================================================================
 // TYPE ALIASES
-// ============================================================================
 /// Stack sizes and bet amounts in big blinds.
 pub type Chips = i16;
 /// Seat index around the table (0 = button in heads-up).
@@ -39,23 +34,17 @@ pub type Utility = f32;
 /// Strategy weights, sampling distributions, and reach probabilities.
 pub type Probability = f32;
 
-// ============================================================================
 // TRAITS
-// ============================================================================
 /// Random instance generation for testing and Monte Carlo sampling.
 pub trait Arbitrary {
-    /// Generate a uniformly random instance.
     fn random() -> Self;
 }
 
-/// Unique identifier trait for domain entities.
 pub trait Unique<T = Self> {
     fn id(&self) -> ID<T>;
 }
 
-// ============================================================================
 // GAME TREE PARAMETERS
-// ============================================================================
 /// Number of players at the table. Compile-time — the `sixmax` feature flips
 /// the entire build to 6-max. `N` cannot be mixed within one process, so a
 /// 6-max trainer is a separate binary (`--features sixmax`) writing to its own
@@ -110,11 +99,9 @@ pub const WORDS: usize = if N > 2 { 4 } else { 1 };
 /// origin), not by this constant.
 pub const MAX_PATH_EDGES: usize = 12;
 
-// ============================================================================
 // BET SIZING ABSTRACTION
-// RAISES is the canonical pool; SIZE_* select subsets via index.
-// To change the game tree, edit RAISES or the index arrays below.
-// ============================================================================
+// RAISES is the canonical pool; the index arrays below select subsets.
+// To change the game tree, edit RAISES or those arrays.
 /// Preflop open sizes in BB units (depth=0 only).
 pub const OPENS: [Chips; 4] = [2, 3, 4, 5];
 /// Canonical raise pool as pot-relative (numerator, denominator) fractions.
@@ -210,9 +197,7 @@ pub const PLURIBUS_INDICES: [&[usize]; 12] = [
 pub const SLUMBOT_INDICES: &[usize] = &[2, 5];
 
 // GAME PACING (milliseconds)
-/// Delay after hand start before dealing hole cards.
 pub const PACE_DEAL_HOLE: u64 = 0;
-/// Delay after dealing community cards.
 pub const PACE_DEAL_BOARD: u64 = 0;
 /// Simulated think time for bot actions.
 pub const PACE_BOT_THINK: u64 = 0;
@@ -227,13 +212,9 @@ pub const PACE_ROOM_STARTUP: u64 = 30000;
 /// Maximum consecutive all-timeout hands before ending session.
 pub const MAX_IDLE_HANDS: usize = 3;
 
-// ============================================================================
 // K-MEANS CLUSTERING — STRUCTURAL CONSTANTS
 // Cluster counts are const-generic / array-size; can't be runtime config.
-// Tuning knobs (iterations, RMS interval, drift threshold) live in
-// `KmeansHyperParams` (lloyd); Sinkhorn knobs in
-// `SinkhornHyperParams`.
-// ============================================================================
+// Tuning knobs live in `KmeansHyperParams` / `SinkhornHyperParams` (lloyd).
 const _: () = assert!(KMEANS_FLOP_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
 const _: () = assert!(KMEANS_TURN_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
 const _: () = assert!(KMEANS_EQTY_CLUSTER_COUNT <= KMEANS_MAX_CLUSTER_COUNT);
@@ -247,39 +228,25 @@ pub const KMEANS_TURN_CLUSTER_COUNT: usize = 256;
 /// Equity histogram resolution (0%, 1%, ..., 100%).
 pub const KMEANS_EQTY_CLUSTER_COUNT: usize = 101;
 
-// ============================================================================
-// MCCFR SOLVER CONFIGURATIONS
-// Batch size = trees per iteration, tree count = total training budget.
-// ============================================================================
 /// Asymmetric payoff for RPS test game (rock beats scissors by 2x).
 pub const ASYMMETRIC_UTILITY: f32 = 2.0;
 
-// ============================================================================
-// REGRET MATCHING
-// ============================================================================
 /// Minimum policy weight to prevent division by zero in normalization.
 pub const EPSILON: Probability = Probability::MIN_POSITIVE;
 
-// ============================================================================
 // SUBGAME SOLVING — STRUCTURAL CONSTANTS
-// `N_WORLDS` and `FRONTIER_LEAVES` are const-generic depths in the world /
-// depth solvers; they can't be runtime config. Tuning knobs live in
-// `SubgameHyperParams` (subgame) and `FrontierHyperParams` (horizon).
-// ============================================================================
-/// Alternative opponent hand partitions in the subgame (safe subgame solving).
-/// Each world represents a partition of the opponent's range conditioned on
-/// the observed action sequence. More worlds = finer range partitioning =
-/// more robust strategy, but higher memory and slower convergence.
+// Const-generic depths in the world / depth solvers; can't be runtime config.
+// Tuning knobs live in `SubgameHyperParams` / `FrontierHyperParams`.
+/// Alternative opponent hand partitions in the subgame (safe subgame solving),
+/// each a partition of the opponent's range conditioned on the observed action
+/// sequence. More worlds = more robust strategy, slower convergence.
 pub const N_WORLDS: usize = 4;
 /// Number of biased continuation strategies at depth-limited frontiers.
 /// D=4: unmodified blueprint + fold-biased + call-biased + raise-biased (Pluribus).
 pub const FRONTIER_LEAVES: usize = 4;
 
-// ============================================================================
 // RUNTIME UTILITIES
-// ============================================================================
 /// Register Ctrl+C handler for immediate (non-graceful) termination.
-/// Use when you need hard shutdown without waiting for current batch.
 #[cfg(feature = "server")]
 pub fn kys() {
     tokio::spawn(async move {

@@ -3,20 +3,12 @@ use pokerkit::KMEANS_EQTY_CLUSTER_COUNT;
 use pokerkit::KMEANS_FLOP_CLUSTER_COUNT;
 use pokerkit::KMEANS_TURN_CLUSTER_COUNT;
 
-/// The four betting rounds in Texas Hold'em.
+/// The four betting rounds in Texas Hold'em. The abstraction hierarchy is
+/// built street-by-street: river abstractions come from equity, earlier
+/// streets cluster on their distributions over child-street buckets.
 ///
-/// Each street reveals additional community cards and represents a distinct
-/// phase of the hand. The abstraction hierarchy is built street-by-street,
-/// with river abstractions based on equity and earlier streets clustering
-/// by their distributions over child-street buckets.
-///
-/// # Combinatorics
-///
-/// The number of unique situations varies dramatically by street:
-/// - Preflop: 169 strategically-distinct starting hands
-/// - Flop: ~1.3M isomorphisms
-/// - Turn: ~14M isomorphisms
-/// - River: ~123M isomorphisms
+/// Situation counts vary wildly — 169 preflop, ~1.3M flop, ~14M turn, ~123M
+/// river isomorphisms.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Street {
     #[default]

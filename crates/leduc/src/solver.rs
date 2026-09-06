@@ -72,29 +72,20 @@ where
     }
 }
 
-/// # Convergence Results
+/// Convergence tests at 2^18 iterations.
 ///
-/// All tests use 2^18 (256K) iterations. RNG is seeded from a per-thread
-/// tree-id counter (reset at the start of each `Solver::solve`), so runs
-/// are deterministic. Prunable sampling behaves like External for Leduc
-/// since regrets rarely fall below the pruning threshold.
+/// RNG is seeded from a per-thread tree-id counter (reset each
+/// `Solver::solve`), so runs are deterministic. Prunable sampling behaves like
+/// External here since regrets rarely fall below the pruning threshold.
 ///
 /// Exploitability at N18 ranges 0.039–0.058 for stable combos. Only
-/// FlooredRegret/DiscountedRegret + LinearWeight are tested — larger
-/// Leduc game makes volatile combos too slow to converge at this N.
+/// Floored/Discounted regret + LinearWeight are tested; volatile combos (and
+/// External + SummedRegret, at O(1/√T)) are too slow to converge at this N.
 ///
-/// # Excluded Combinations
-///
-/// | Sampling | Regret       | Weight | Reason                                        |
-/// |----------|--------------|--------|-----------------------------------------------|
-/// | External | SummedRegret | Any    | O(1/√T) convergence too slow at N18 for Leduc |
-///
-/// # Why exploitability only
-///
-/// Individual policy values shift significantly between N18 and N24,
-/// meaning N18 policies aren't precise enough to test against reference
-/// values. Exploitability measures distance from Nash equilibrium directly
-/// without requiring known equilibrium strategies.
+/// Asserts exploitability rather than policy values: individual policies shift
+/// noticeably between N18 and N24, so N18 isn't precise enough to compare
+/// against references, whereas exploitability measures distance from Nash
+/// directly without needing a known equilibrium.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,7 +108,6 @@ mod tests {
     }
 
     //                                                                  tolerance
-    //                                                                  ─────────
     #[rustfmt::skip] leduc!(ExternalSampling, FlooredRegret,    LinearWeight,       0.080);
     #[rustfmt::skip] leduc!(ExternalSampling, DiscountedRegret,   LinearWeight,       0.080);
     #[rustfmt::skip] leduc!(PrunableSampling, FlooredRegret,    LinearWeight,       0.080);
@@ -150,17 +140,16 @@ mod tests {
         }
     }
 
-    // ── subgame tests ───────────────────────────────────────────────────
+    // subgame tests
     //
-    // SubGameSolver solves a single random card deal with N_WORLDS worlds.
-    // With uniform belief, all worlds see the same cards so the subgame
-    // should converge to a locally optimal strategy for that deal.
+    // SubGameSolver solves one random deal across N_WORLDS worlds; under
+    // uniform belief every world sees the same cards, so it should converge to
+    // a locally optimal strategy for that deal.
     //
     // Unlike Kuhn (where J-folds and K-calls are universal Nash properties),
-    // Leduc's equilibrium strategies are deal-dependent — whether J should
-    // fold depends on the board card and opponent's hole card. We therefore
-    // check regret convergence across multiple blueprint algorithm combos
-    // rather than asserting specific policy values.
+    // Leduc equilibria are deal-dependent — whether J folds depends on the
+    // board and the opponent's hole card. So these check regret convergence
+    // across blueprint combos rather than asserting policy values.
 
     macro_rules! subgame {
         ($S:ident, $R:ident, $W:ident) => {
@@ -284,11 +273,10 @@ mod tests {
         assert!(regret < 0.03, "regret {regret:.6} >= 0.03");
     }
 
-    // ── depth-limited tests ────────────────────────────────────────
+    // depth-limited tests
     //
-    // DepthEncoder wraps LeducEncoder and expands frontier chance
-    // nodes (board card deal) into continuation-choice subtrees.
-    // Verifies the depth-limited tree structure and convergence.
+    // DepthEncoder wraps LeducEncoder and expands frontier chance nodes (board
+    // card deal) into continuation-choice subtrees.
 
     #[test]
     fn depth_limited_tree_has_front_nodes() {

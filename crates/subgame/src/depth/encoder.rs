@@ -1,18 +1,14 @@
 //! CfrEncoder for depth-limited frontier games.
-//!
-//! Wraps a source that implements [`DepthSampler`] (providing both game
-//! encoding and blueprint profile access) and intercepts tree building
-//! at frontier chance nodes to inject continuation-choice branches.
 use super::*;
 use mccfr::*;
 
-/// CfrEncoder that augments the source with frontier expansion.
+/// Wraps a [`DepthSampler`] source, intercepting frontier chance nodes to
+/// inject continuation-choice branches.
 ///
-/// The `prefix` is the action history from game root to subgame entry
-/// — prepended to all within-tree paths so blueprint lookups find
-/// the info sets they were trained on. The internal player and origin
-/// depth live on [`DepthGame`]; the encoder reads them off the game
-/// when it needs them.
+/// `prefix` is the action history from game root to subgame entry, prepended
+/// to every within-tree path so blueprint lookups land on the info sets they
+/// were trained on. Internal player and origin depth are read off
+/// [`DepthGame`] rather than stored here.
 pub struct DepthEncoder<'blueprint, N, const D: usize>
 where
     N: DepthSampler<D>,

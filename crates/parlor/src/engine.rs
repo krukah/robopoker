@@ -136,11 +136,9 @@ impl Recall for EngineCore {
     }
 }
 
-/// Functional core for a live poker game.
-/// Maintains game state, enforces rules, and coordinates player communication.
-/// Driven by Room (imperative shell) which handles persistence concerns.
-///
-/// Uses typestate pattern to encode valid phase transitions at compile time.
+/// Functional core for a live poker game: state, rules, and player
+/// communication. Driven by Room (the imperative shell), which owns
+/// persistence. Phase transitions are encoded as typestate.
 pub struct Engine<Phase> {
     core: EngineCore,
     phase: PhantomData<Phase>,

@@ -2,9 +2,7 @@
 
 use super::*;
 
-/// Constant weighting scheme.
-///
-/// All iterations are weighted equally.
+/// Weights all iterations equally.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ConstantWeight;
 

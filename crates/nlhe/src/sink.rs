@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio_postgres::Client;
 
-/// Sink defines the write interface between NLHE domain types and PostgreSQL.
-/// All INSERT/UPDATE queries are consolidated here.
+/// The write interface between NLHE domain types and PostgreSQL: every
+/// INSERT/UPDATE lives here.
 #[async_trait::async_trait]
 pub trait Sink: Send + Sync {
     async fn submit(&self, records: Vec<Record>);

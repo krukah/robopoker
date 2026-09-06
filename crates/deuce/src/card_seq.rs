@@ -7,9 +7,6 @@ use super::hand::Hand;
 /// stack-allocated snapshot of the canonical cards and the decoded
 /// index permutation.
 ///
-/// Implements [`Iterator`], [`ExactSizeIterator`],
-/// [`DoubleEndedIterator`], and `FusedIterator`.
-///
 /// [`Lehmer::arrange`]: crate::Lehmer::arrange
 /// [`HandSeq::cards`]: super::hand_seq::HandSeq::cards
 #[derive(Debug, Clone, Copy)]

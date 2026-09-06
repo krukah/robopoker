@@ -1,20 +1,9 @@
-/// Per-point metadata for Elkan's accelerated k-means algorithm.
+/// Per-point distance bounds enabling Elkan's triangle-inequality pruning:
+/// bounds to all K centroids plus the current assignment (`j` = `c(x)`,
+/// `lower` = `l(x, c)`, `error` = `u(x)`).
 ///
-/// Stores distance bounds that enable triangle inequality pruning,
-/// dramatically reducing the number of expensive EMD computations.
-/// Each point maintains bounds to all K centroids plus its current assignment.
-///
-/// # Algorithm (Elkan 2003)
-///
-/// The key insight: if we know d(x, c) ≤ u and d(c, c') ≤ 2u,
-/// then d(x, c') cannot be less than d(x, c), so we skip computing it.
-///
-/// # Fields
-///
-/// - `j` — Index of currently assigned centroid (c(x) in paper)
-/// - `lower` — Lower bounds l(x, c) for each centroid c
-/// - `error` — Upper bound u(x) on distance to assigned centroid
-/// - `stale` — Whether upper bound needs refreshing after centroid drift
+/// Elkan (2003)'s insight: given `d(x, c) ≤ u` and `d(c, c') ≤ 2u`, `d(x, c')`
+/// cannot beat `d(x, c)`, so it is never computed.
 #[derive(Debug, Clone)]
 pub struct Bounds<const K: usize> {
     /// Currently assigned centroid index.

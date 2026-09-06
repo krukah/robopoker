@@ -17,7 +17,6 @@ type FlopLayer = Layer<{ Street::Flop.k() }, { Street::Flop.n_isomorphisms() }>;
 type TurnLayer = Layer<{ Street::Turn.k() }, { Street::Turn.n_isomorphisms() }>;
 
 /// Zero-sized orchestrator for the clustering pipeline.
-/// Encapsulates all clustering logic so Trainer stays clean.
 pub struct PreTraining;
 
 impl PreTraining {

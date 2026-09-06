@@ -2,16 +2,13 @@
 use super::*;
 use mccfr::*;
 
-/// Trait for computing frontier payoff matrices.
+/// Computes frontier payoff matrices. The implementor bundles a
+/// [`CfrEncoder`] with a blueprint profile, so `&self` serves both game
+/// encoding and strategy lookup.
 ///
-/// The implementor bundles a [`CfrEncoder`] with a blueprint profile,
-/// so `&self` provides both game encoding and strategy lookup.
-/// The const generic D determines the number of continuation strategies.
-///
-/// Implementors must define `payoffs` — the semantic meaning of each
-/// `Continuation(k)` index is game-specific, and producing a D×D matrix
-/// of EVs is the only place that contract is encoded. For a no-op
-/// continuation layer, return `Payoffs::uniform(...)` explicitly.
+/// `payoffs` is the only place the meaning of a `Continuation(k)` index is
+/// pinned down — that contract is game-specific and lives nowhere else. A
+/// no-op continuation layer should return `Payoffs::uniform(...)` explicitly.
 pub trait DepthSampler<const D: usize>: CfrEncoder {
     type Blueprint: RefProf<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
     fn blueprint(&self) -> &Self::Blueprint;

@@ -1,12 +1,11 @@
 use crate::*;
 use pokerkit::*;
 
-/// Core training state: walker identity and sampling parameters.
+/// The minimal state an MCCFR iteration needs: who is traversing, how to advance
+/// the epoch, and the sampling hyperparameters.
 ///
-/// This trait provides the minimal state needed for MCCFR iteration:
-/// which player is currently traversing, how to advance epochs, and
-/// sampling hyperparameters. The actual CFR math lives in
-/// `Counterfactual`, which is blanket-implemented for `Profile + CfrSampling`.
+/// The CFR math itself lives in [`CfrFlow`], blanket-implemented for
+/// `RefProf + CfrSampling`.
 pub trait CfrSampling: CfrRule {
     /// who's turn is it?
     fn walker(&self) -> Self::T;

@@ -10,16 +10,10 @@ pub type PhiFlop = Phi<N_FLOP>;
 pub type PhiTurn = Phi<N_TURN>;
 pub type PhiRive = Phi<N_RIVE>;
 
-/// Dual potential for optimal transport computation.
-///
-/// In the Kantorovich-Rubinstein dual, the EMD equals the max over Lipschitz
-/// potentials. Sinkhorn iteration finds these potentials via alternating
-/// projection onto the marginal constraints.
-///
-/// # Stack Allocation
-///
-/// Like [`Histogram`], uses a tagged enum over fixed-size [`Phi`] arrays
-/// to avoid heap allocation during EMD computation.
+/// Dual potential for optimal transport. In the Kantorovich-Rubinstein dual
+/// the EMD is the max over Lipschitz potentials; Sinkhorn finds them by
+/// alternating projection onto the marginal constraints. Tagged over
+/// fixed-size [`Phi`] arrays, like [`Histogram`], so EMD never allocates.
 #[derive(Debug, Clone, Copy)]
 pub enum Potential {
     Pref(PhiPref),

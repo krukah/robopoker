@@ -5,8 +5,6 @@
 //! only the "World" layer — see `horizon` for leaf (depth-limited)
 //! evaluation and `subgame` for the combined solver.
 //!
-//! # Overview
-//!
 //! Standard subgame solving can be exploited: an opponent could deviate from
 //! the blueprint before entering the subgame, reaching states the solver
 //! didn't account for. Safe subgame solving addresses this by:
@@ -15,21 +13,6 @@
 //! 2. Partitioning into K "worlds" weighted by reach probability
 //! 3. Sampling worlds proportional to belief weights each iteration
 //! 4. Running CFR with per-world info sets to prevent exploitation
-//!
-//! # File layout (one type per file)
-//!
-//! - `belief` — `Belief`
-//! - `world` — `World` (primitive index)
-//! - `info` — `WorldInfo`
-//! - `profile` — `WorldProfile`
-//! - `encoder` — `WorldEncoder`
-//! - `partition` — `Partition` trait
-//! - `recall` — `CfrRecall`
-//! - `restrict` — `WorldRestrict` trait
-//! - `secret` — `Secret` type alias
-//! - `solver` — `WorldSolver`
-//!
-//! # References
 //!
 //! Brown, N., & Sandholm, T. (2019). Superhuman AI for multiplayer poker.
 //! Science, 365(6456), 885-890.

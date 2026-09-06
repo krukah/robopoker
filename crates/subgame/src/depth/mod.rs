@@ -9,34 +9,10 @@
 //! learns the optimal mix over iterations, providing robust leaf
 //! evaluation without solving the full remaining tree.
 //!
-//! # Composability
-//!
-//! This crate is orthogonal to `worldview` (safe subgame solving):
-//!
-//! | Crate | Concern | Acts on |
-//! |-------|---------|---------|
-//! | `worldview` | Root safety (opponent range partitioning) | Info sets |
-//! | `horizon` | Leaf evaluation (continuation strategies) | Game states |
-//!
-//! They compose via wrapper types:
-//! - `DepthGame<G, D>` wraps the game at the game level
-//! - `WorldInfo<DepthInfo<I, D>>` wraps info at the info level
-//! - Neither references the other's types
-//!
-//! # File layout (one type per file)
-//!
-//! - `continuation` — `Continuation`
-//! - `edge` — `DepthEdge`
-//! - `payoffs` — `Payoffs` (D×D matrix)
-//! - `phase` — `DepthPhase` (Delegate / Frontier / Internal / External)
-//! - `game` — `DepthGame`
-//! - `info` — `DepthInfo`
-//! - `public` — `DepthPublic`
-//! - `encoder` — `DepthEncoder`
-//! - `view` — `DepthView` (read-only adapter)
-//! - `profile` — `DepthProfile` (mutable local)
-//! - `sampler` — `DepthSampler` trait
-//! - `solver` — `DepthSolver`
+//! Orthogonal to `world` (safe subgame solving), which acts on info sets while
+//! this acts on game states. They compose purely through wrapper types —
+//! `DepthGame<G, D>` at the game level, `WorldInfo<DepthInfo<I, D>>` at the
+//! info level — and neither references the other's types.
 
 mod continuation;
 mod edge;

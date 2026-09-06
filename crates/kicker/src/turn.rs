@@ -1,13 +1,5 @@
-/// Whose turn it is to act in the game tree.
-///
-/// Distinguishes between player decision nodes, chance nodes (card deals),
-/// and terminal nodes (hand complete).
-///
-/// # Variants
-///
-/// - `Choice(usize)` — Player `usize` must make a decision
-/// - `Chance` — Dealer reveals cards (no player decision)
-/// - `Terminal` — Hand is over, compute payoffs
+/// Whose turn it is to act: a player decision node, a chance node (card deal),
+/// or terminal (hand complete, compute payoffs).
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Turn {
     Terminal,

@@ -1,40 +1,17 @@
-//! Regret-based pruning (RBP) sampling strategy.
-//!
-//! Deterministic pruning that skips actions with deeply negative regret.
-//! Simpler than [`PluribusSampling`] but lacks warm-up and exploration.
+//! Deterministic regret-based pruning (RBP), without Pluribus' warm-up or
+//! exploration.
 
 use super::*;
 
-/// Deterministic regret-based pruning (RBP) sampling strategy.
+/// Skips walker branches whose regret sits below
+/// [`PruningHyperParams::threshold`] — deeply negative actions are unlikely to be
+/// played, so dropping them shrinks the tree without moving the equilibrium.
+/// Opponent and chance nodes delegate to [`ExternalSampling`].
 ///
-/// Prunes branches whose regret has fallen below
-/// [`PruningHyperParams::threshold`], reducing tree size while preserving
-/// convergence. Actions that have accumulated enough negative regret are
-/// unlikely to be played, so skipping them saves computation without
-/// significantly affecting results.
+/// If every branch would be pruned, all are kept as a safety fallback.
 ///
-/// # Algorithm
-///
-/// At walker decision nodes:
-/// 1. Filter branches where `cum_regret(info, edge) > PruningHyperParams::threshold`
-/// 2. If all branches would be pruned, keep all (safety fallback)
-/// 3. Expand only the surviving branches
-///
-/// At opponent/chance nodes: delegates to [`ExternalSampling`].
-///
-/// # Tradeoffs vs [`PluribusSampling`]
-///
-/// | Aspect | PrunableSampling | PluribusSampling |
-/// |--------|------------------|------------------|
-/// | Warm-up | None | 1000 epochs |
-/// | Exploration | 0% | 5% |
-/// | Determinism | Yes | No |
-/// | Risk | May prune too early | Slower convergence |
-///
-/// Use `PrunableSampling` for faster iteration when you trust regrets have
-/// stabilized. Use [`PluribusSampling`] for production training.
-///
-/// # References
+/// Faster to iterate with than [`PluribusSampling`] once regrets have
+/// stabilized, but risks pruning too early; production training uses Pluribus.
 ///
 /// Brown & Sandholm, "Regret-Based Pruning in Extensive-Form Games" (NeurIPS 2015)
 #[derive(Debug, Clone, Copy, Default)]

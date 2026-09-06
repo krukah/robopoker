@@ -1,15 +1,14 @@
 //! The bot zoo — runtime → comptime binding for the bot-config hypercube.
 //!
 //! Three binary axes (depth-limit, world-choice, dirac) give 8 concrete
-//! [`Brain`](super::Brain) compositions. All three are wrappers — depth
-//! and world add subgame solver layers, [`Dirac`](super::Dirac) sharpens
-//! to a Dirac delta. The [`Agent`](super::Agent) wraps the chosen
-//! [`Brain`] and implements [`Player`].
+//! [`Brain`](super::Brain) compositions, all wrappers: depth and world add
+//! subgame solver layers, [`Dirac`](super::Dirac) sharpens to a Dirac delta.
+//! [`Agent`](super::Agent) wraps the chosen [`Brain`] and implements
+//! [`Player`].
 //!
-//! Adding the harmonic axis = double the cells (16) and add another
-//! match dimension. The grid below aligns each axis token at its
-//! position in the bottom row's `Dirac<World<Depth<Blueprint>>>` —
-//! reading column-by-column tells you which axis is active.
+//! The grid below aligns each axis token at its position in the bottom row's
+//! `Dirac<World<Depth<Blueprint>>>`, so reading column-by-column tells you
+//! which axis is active.
 use pokerkit::Config;
 use vitals::KeyValue;
 
@@ -23,13 +22,12 @@ use crate::Player;
 use nlhe::Flagship;
 use pokerkit::Translation;
 
-/// A bot's display identity + cube coordinate. Threaded through the
-/// [`Mount`](super::Mount) cascade so every emission site (metrics,
-/// tracing) can lift the same triple of axis labels (`depth`, `world`,
-/// `dirac`) onto Prometheus series alongside the composite `variant`
-/// label. Lets Grafana group/filter by axis and compute corner-pair
-/// diffs (e.g. marginal value of depth-limiting averaged over the
-/// `world × dirac` plane) directly in PromQL.
+/// A bot's display identity + cube coordinate.
+///
+/// Threaded through the [`Mount`](super::Mount) cascade so every emission site
+/// lifts the same axis labels (`depth`/`world`/`dirac`) alongside the composite
+/// `variant`. Lets Grafana compute corner-pair diffs — e.g. the marginal value
+/// of depth-limiting averaged over the `world × dirac` plane — in PromQL.
 #[derive(Copy, Clone, Debug)]
 pub struct Tag {
     pub label: &'static str,
@@ -37,12 +35,11 @@ pub struct Tag {
 }
 
 impl Tag {
-    /// The four OTLP labels every cube-cell metric carries: composite
-    /// `variant` for stable color/legend rules + DB joins, plus three
-    /// axis labels for cube slicing. Each axis label name + value
-    /// matches the [`Config`] field 1:1 (`depth`/`world`/`dirac`,
-    /// each `on`/`off`) so dashboard PromQL never has to translate.
-    /// Append metric-specific keys (e.g. `street`) at the call site.
+    /// The four OTLP labels every cube-cell metric carries: composite `variant`
+    /// (stable legend rules + DB joins) plus the three axis labels. Each axis
+    /// label name and value matches its [`Config`] field 1:1 (`on`/`off`) so
+    /// dashboard PromQL never translates. Append metric-specific keys (e.g.
+    /// `street`) at the call site.
     pub fn keys(&self) -> [KeyValue; 4] {
         [
             KeyValue::new("variant", self.label),

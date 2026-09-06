@@ -7,15 +7,10 @@ use std::ops::AddAssign;
 /// Sentinel value indicating an abstraction is not in the support.
 const ABSENT: Entropy = Entropy::NEG_INFINITY;
 
-/// Zero-allocation potential array for Sinkhorn iteration.
-///
-/// Stores entropy (log-probability) values indexed by abstraction index.
-/// Uses `NEG_INFINITY` as a sentinel for absent entries, enabling
-/// sparse support while maintaining dense storage.
-///
-/// # Const Generic
-///
-/// `N` is the street's abstraction count, enabling compile-time sizing.
+/// Zero-allocation potential array for Sinkhorn iteration: entropies
+/// (log-probabilities) indexed by abstraction index, sized `N` = the street's
+/// abstraction count. `NEG_INFINITY` marks absent entries, so a sparse support
+/// rides on dense storage.
 #[derive(Debug, Clone, Copy)]
 pub struct Phi<const N: usize>([Entropy; N]);
 

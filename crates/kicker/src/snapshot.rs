@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn server_message_session_end_serializes_reason() {
-        let json = ServerMessage::session_end([100, 200], Reason::Busted).to_json();
+        let json = ServerMessage::session_end([100; pokerkit::N], Reason::Busted).to_json();
         assert!(json.contains(r#""type":"session_end""#));
         assert!(json.contains(r#""reason":"busted""#));
     }

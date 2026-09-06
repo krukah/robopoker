@@ -1,17 +1,11 @@
 //! Uniform sampling strategy (vanilla CFR).
-//!
-//! **Warning**: Incompatible with the current solver implementation.
 
 use super::*;
 
-/// Uniform sampling strategy (vanilla CFR).
+/// Explores every branch, expanding the full tree.
 ///
-/// Explores all branches with equal probability.
-///
-/// # Compatibility Warning
-///
-/// **This sampling scheme does not work with the current solver.**
-/// The solver uses external-sampling CFR math which assumes sampled opponent actions.
+/// **Does not work with the current solver**, whose CFR math is
+/// external-sampling and assumes opponent actions were sampled.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VanillaSampling;
 

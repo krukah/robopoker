@@ -1,21 +1,13 @@
 //! Extension of [`CfrEncoder`] for world-restricted game state generation.
-//!
-//! Games that support subgame solving must produce a game state identical
-//! to the observed state except with the external player's private
-//! information resampled to belong to a target world. The framework
-//! never sees rejection sampling or game-specific dealing logic.
 use super::Belief;
 use super::Secret;
 use super::World;
 use mccfr::CfrEncoder;
 
-/// Restricts a game state so that the external player's secret belongs
-/// to a target world.
-///
-/// Given the observed game state at the subgame entry, the implementor
-/// returns a copy where public state (board, pot, stacks) is preserved
-/// and only the external player's private information is resampled to
-/// belong to the specified world according to the belief partition.
+/// Restricts a game state so the external player's secret belongs to a target
+/// world: public state (board, pot, stacks) is preserved and only the external
+/// private information is resampled per the belief partition. Rejection
+/// sampling and game-specific dealing stay behind this seam.
 pub trait WorldRestrict<const W: usize>: CfrEncoder {
     fn restrict(
         &self,

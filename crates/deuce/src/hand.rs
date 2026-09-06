@@ -3,23 +3,12 @@ use super::rank::Rank;
 use super::suit::Suit;
 use pokerkit::Arbitrary;
 
-/// An unordered set of cards represented as a 64-bit bitmask.
+/// An unordered set of cards as a 64-bit bitmask: each of the 52 cards is one
+/// bit in `0..52`, so union / intersection / complement are single bitwise
+/// instructions and nothing touches the heap.
 ///
-/// Each of the 52 cards maps to one bit in positions `0..52`. Set operations
-/// (union, intersection, complement) become single bitwise instructions.
-/// This representation avoids heap allocation and enables fast iteration.
-///
-/// # Operations
-///
-/// - [`Hand::add`] / [`Hand::or`] — Set union (combine two hands)
-/// - [`Hand::complement`] — Cards not in this hand (the remaining deck)
-/// - [`Hand::of`] — Filter to cards of a specific suit
-/// - [`Hand::ranks`] — Collapse to a 13-bit rank bitmask
-///
-/// # Iteration
-///
-/// `Hand` implements `Iterator<Item = Card>`, yielding cards from low to high.
-/// This consumes the hand; clone first if you need to preserve it.
+/// Iterating a `Hand` yields cards low to high and consumes it — clone first
+/// if you need to keep it.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand(u64);
 
@@ -89,10 +78,8 @@ impl Hand {
         cards.shuffle(rng);
         cards
     }
-    /// Collapses suit information into a 13-bit rank bitmask.
-    ///
-    /// Each bit indicates whether at least one card of that rank is present.
-    /// Zero-allocation bit manipulation — no iteration required.
+    /// Collapses suit information into a 13-bit rank bitmask — one bit per
+    /// rank present. Pure bit manipulation, no iteration.
     pub fn ranks(&self) -> u16 {
         let mut x = self.0;
         x |= x >> 1;
@@ -126,8 +113,8 @@ impl Hand {
     }
 }
 
-/// Yields cards from lowest to highest index (2c → As)
-/// by popping the lowest set bit until the hand is empty.
+/// Yields cards lowest to highest index (2c → As), popping the lowest set bit
+/// until the hand is empty.
 impl Iterator for Hand {
     type Item = Card;
 

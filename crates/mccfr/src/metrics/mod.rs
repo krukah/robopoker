@@ -26,10 +26,10 @@ fn workers() -> usize {
 
 thread_local! { static LOCAL_EPOCH: Cell<usize> = const { Cell::new(0) }; }
 
-/// Thread-local accumulated metrics for CFR training.
-/// Uses thread-local counter for epochs to avoid contention in parallel execution.
-/// Nodes and infos use direct atomic adds since they're counted at batch boundaries.
-/// Owns timing for both started and periodic checkpoint logging.
+/// Accumulated CFR training counters, plus the timing for periodic checkpoints.
+///
+/// Epochs go through a thread-local counter to dodge contention; nodes and infos
+/// use direct atomic adds since they're only touched at batch boundaries.
 pub struct Metrics {
     epoch: AtomicUsize,
     nodes: AtomicUsize,
@@ -57,8 +57,7 @@ impl Metrics {
             prior: Mutex::new((now, 0)),
         }
     }
-    /// Increments the thread-local epoch counter.
-    /// Call once per training iteration.
+    /// Increments the thread-local epoch counter; call once per iteration.
     pub fn inc_epoch(&self) {
         LOCAL_EPOCH.with(|c| c.set(c.get() + 1));
     }
@@ -79,14 +78,15 @@ impl Metrics {
     pub fn cpu(&self) -> Duration {
         Duration::from_nanos(self.cpu.load(Ordering::Relaxed))
     }
-    /// Flushes thread-local epoch count to the shared atomic.
-    /// Call before reading epoch to ensure accuracy.
+    /// Flushes the thread-local epoch count into the shared atomic; must precede
+    /// any read of `epoch`.
     pub fn flush(&self) {
         LOCAL_EPOCH.with(|c| self.epoch.fetch_add(c.replace(0), Ordering::Relaxed));
     }
-    /// Returns stats only if checkpoint interval has elapsed.
-    /// Updates checkpoint time when stats are returned.
-    /// Reports interval rate (I/sec since last checkpoint) rather than cumulative.
+    /// Stats, but only once the checkpoint interval has elapsed.
+    ///
+    /// The reported rate is per-interval (I/sec since the last checkpoint),
+    /// not cumulative.
     pub fn checkpoint(&self) -> Option<Checkpoint> {
         let mut prior = self.prior.lock().expect("poison");
         if prior.0.elapsed() >= crate::TrainingHyperParams::get().log_interval() {

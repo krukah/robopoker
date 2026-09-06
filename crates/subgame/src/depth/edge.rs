@@ -4,7 +4,7 @@ use mccfr::*;
 use monge::Support;
 use pokerkit::*;
 
-/// Edge type that extends the base game edges with continuation choices.
+/// Base game edges extended with continuation choices.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DepthEdge<E, const D: usize>
 where

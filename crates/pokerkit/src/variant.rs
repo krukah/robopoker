@@ -1,37 +1,27 @@
 //! The cube grain — single shape used everywhere the user picks a bot.
+//! Hosting endpoint, slumbot CLI, and the gameplay UI all parse into the same
+//! [`Variant`]; the cube IS the identity (`bot:<label>` username + derived UUID
+//! v5), with no name layer in between.
 //!
-//! Hosting endpoint, slumbot CLI, and the gameplay UI all
-//! deserialize / parse into the same [`Variant`]. No name layer
-//! between the cube and the rest of the system.
-//!
-//! Pure data lives here in [`pokerkit`] so the WASM client can use it
-//! without dragging in the database/nlhe feature graph. Gameroom-side
-//! extensions (`into_player`, `member`, telemetry keys) live in
+//! Pure data lives here in [`pokerkit`] so the WASM client can use it without
+//! dragging in the database/nlhe feature graph. Gameroom-side extensions
+//! (`into_player`, `member`, telemetry keys) live in
 //! `parlor::players::variant` and read this type.
 //!
-//! ```text
-//! Variant := Fish | Bot { depth: bool, world: bool, dirac: bool }
-//! ```
-//!
-//! # Wire format (serde)
+//! Wire format (serde):
 //!
 //! ```json
 //! { "kind": "fish" }
 //! { "kind": "bot", "depth": false, "world": true, "dirac": false }
 //! ```
 //!
-//! # CLI grammar
+//! CLI grammar:
 //!
 //! - `fish` — random opponent (no model, not in the cube)
 //! - `base` — the empty flag-set cube cell (raw blueprint sample)
 //! - `+`-joined flags from `{depth, world, dirac}` in canonical order:
 //!   `depth`, `world`, `dirac`, `depth+world`, `depth+dirac`,
 //!   `world+dirac`, `depth+world+dirac`
-//!
-//! # Identity
-//!
-//! Every variant has a stable username `bot:<label>` and a UUID v5
-//! derived from that username. The cube IS the identity.
 
 /// Namespace UUID v5 for deterministic bot identity. Combined with the
 /// `bot:<label>` username, gives every cube cell + fish a stable UUID

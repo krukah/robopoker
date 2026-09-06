@@ -1,23 +1,12 @@
 use crate::CfrEdge;
 use pokerkit::*;
 
-/// First-class representation of accumulated CFR data for an info-action pair.
+/// Accumulated CFR data for one info-action pair: strategy `weight` (normalize
+/// to get policy), counterfactual `regret`, `payoff`, and `visits`.
 ///
-/// Replaces the raw `(Probability, Utility)` tuple with a semantic struct that
-/// also tracks expected value, enabling depth-limited search and subgame solving.
-///
-/// # Fields
-///
-/// - `weight` — Cumulative strategy weight for this action (normalize to get policy)
-/// - `regret` — Cumulative counterfactual regret for not taking this action
-/// - `payoff` — Expected value of the information set V(I) (stored per action)
-/// - `visits` — Number of times this info-action pair has been encountered
-///
-/// # EV Semantics
-///
-/// The `payoff` field stores the cumulative (uniformly accumulated) expected value
-/// of the information set V(I). Stored redundantly for each action to enable
-/// efficient frontier evaluation. Normalize by `visits` to get average V(I).
+/// `payoff` is the infoset-level V(I), stored redundantly on every action so
+/// frontier evaluation in depth-limited search and subgame solving is a single
+/// lookup.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Encounter {
     pub weight: Probability,
@@ -27,7 +16,6 @@ pub struct Encounter {
 }
 
 impl Encounter {
-    /// Create a new encounter with initial values.
     pub fn new(weight: Probability, regret: Utility, payoff: Utility, visits: u32) -> Self {
         Self {
             weight,
@@ -36,7 +24,7 @@ impl Encounter {
             visits,
         }
     }
-    /// Create encounter from legacy tuple format (payoff and visits default to 0).
+    /// Legacy tuple format; `payoff` and `visits` default to zero.
     pub fn from_tuple(weight: Probability, regret: Utility) -> Self {
         Self {
             weight,

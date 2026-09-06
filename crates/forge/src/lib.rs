@@ -1,19 +1,10 @@
-//! Automated training pipeline orchestration.
+//! Automated training pipeline orchestration, from database-state check through
+//! clustering to blueprint generation.
 //!
-//! This module manages the complete training workflow, from checking database
-//! state through clustering and blueprint generation. Supports both single-machine
-//! and distributed training modes.
-//!
-//! ## Pipeline Stages
-//!
-//! 1. **Pretraining** — Generate abstractions via hierarchical clustering
-//! 2. **Fast mode** — Single-machine MCCFR with in-memory profile
-//! 3. **Slow mode** — Distributed workers with PostgreSQL synchronization
-//!
-//! ## Core Types
-//!
-//! - [`Trainer`] — Main entry point for training orchestration
-//! - [`Mode`] — Training configuration (fast vs slow, clustering vs blueprint)
+//! Pretraining generates abstractions via hierarchical clustering; then either
+//! fast mode (single-machine MCCFR, in-memory profile) or slow mode
+//! (distributed workers synchronizing through PostgreSQL) runs. [`Trainer`] is
+//! the entry point, [`Mode`] the configuration.
 mod epoch;
 mod fast;
 mod fingerprint;

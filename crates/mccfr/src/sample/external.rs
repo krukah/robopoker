@@ -6,10 +6,8 @@ use pokerkit::EPSILON;
 use rand::distr::Distribution;
 use rand::distr::weighted::WeightedIndex;
 
-/// External sampling strategy.
-///
-/// - Fully explores all actions at the traverser's decision nodes
-/// - Samples a single action at opponent/chance nodes according to the strategy
+/// Explores every action at the traverser's decision nodes, but samples a single
+/// action at opponent and chance nodes according to the strategy.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ExternalSampling;
 

@@ -3,30 +3,14 @@ use monge::*;
 use pokerkit::*;
 use std::collections::BTreeMap;
 
-/// Greedy heuristic for optimal transport (bipartite matching).
+/// Greedy heuristic for optimal transport (bipartite matching): repeatedly
+/// move `min(source_mass, target_capacity)` from each source with mass left to
+/// its nearest target with capacity left. O(N × M).
 ///
-/// Iteratively pairs each source to its nearest available target, moving
-/// as much mass as possible. This is O(N × M) but produces a suboptimal
-/// coupling in many cases.
-///
-/// # Algorithm
-///
-/// For each source with remaining mass:
-/// 1. Find nearest target with remaining capacity
-/// 2. Transfer min(source_mass, target_capacity)
-/// 3. Update remaining masses and continue
-///
-/// # Limitations
-///
-/// This greedy approach can be arbitrarily far from optimal EMD, even in
-/// trivial 1D cases. It's provided primarily for benchmarking against
-/// Sinkhorn, not for production use.
-///
-/// # Allocation
-///
-/// Currently uses `BTreeMap` for the transport plan, which incurs allocation
-/// overhead. A zero-allocation version would improve performance for the
-/// billions of EMD computations during clustering.
+/// Can land arbitrarily far from optimal EMD, even in trivial 1D cases — this
+/// exists to benchmark against Sinkhorn, not for production. The `BTreeMap`
+/// transport plan also allocates, which a production path could not afford
+/// across billions of EMD computations.
 pub struct Heuristic<'a> {
     /// Transport plan mapping pairs to flow amount.
     plan: BTreeMap<Pair, Probability>,

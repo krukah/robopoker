@@ -6,16 +6,10 @@ use rand::Rng;
 
 use super::*;
 
-/// A non-empty, strictly ascending sequence of finite f64 anchors,
-/// each paired with a payload `P`, tagged with its [`Axis`].
-///
-/// Storage is a single `Box<[(f64, P)]>` — co-indexing of scalars and
-/// payloads is **structural**, not an unwritten invariant.
-///
-/// `P` defaults to `()` for the no-payload case; `Lattice<A>` and
-/// `Lattice<A, ()>` are the same type. Construct via [`FromIterator`]:
-/// `pairs.into_iter().collect::<Lattice<A, P>>()` for the payload case
-/// or `xs.into_iter().collect::<Lattice<A>>()` for the unit case.
+/// A non-empty, strictly ascending sequence of finite f64 anchors, each paired
+/// with a payload `P`, tagged with its [`Axis`]. Storage is a single
+/// `Box<[(f64, P)]>`, so co-indexing of scalars and payloads is structural
+/// rather than an unwritten invariant. Construct via [`FromIterator`].
 pub struct Lattice<A, P = ()>
 where
     A: Axis,

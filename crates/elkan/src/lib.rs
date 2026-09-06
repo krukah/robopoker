@@ -5,12 +5,7 @@
 //! [`Absorb`] impl for incremental centroid updates) and the trait's default
 //! methods run k-means while skipping most distance computations via
 //! upper/lower bounds, producing results identical to naive k-means.
-//!
-//! - [`Elkan`] — the accelerated algorithm (with `step_naive` for verification)
-//! - [`Absorb`] — incremental centroid aggregation for the point type
-//! - [`Bounds`] — per-point distance bounds maintained across iterations
-//! - [`Drift`] — per-centroid movement between iterations
-//! - [`Step`] / [`Prior`] — iteration bookkeeping helpers
+//! `step_naive` is kept for verification against the accelerated path.
 
 /// Scalar type for distances and drifts.
 pub type Energy = f32;

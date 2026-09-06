@@ -2,10 +2,8 @@
 
 use super::*;
 
-/// Asymmetric regret schedule (undiscounted positive, linear-decayed negative).
-///
-/// - **Positive regrets**: No discounting — accumulate directly
-/// - **Negative regrets**: Discounted by t/(t+1) — decay toward zero
+/// Positive regrets accumulate undiscounted; negative regrets decay toward zero
+/// by `t/(t+1)`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AsymmetricRegret;
 

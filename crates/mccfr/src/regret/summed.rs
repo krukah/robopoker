@@ -2,10 +2,8 @@
 
 use super::*;
 
-/// Vanilla CFR regret accumulation.
-///
-/// Simply adds immediate regret to accumulated regret with no discounting.
-/// Regrets can go arbitrarily negative. This is the original CFR algorithm.
+/// Adds immediate to accumulated regret with no discounting, so regrets can go
+/// arbitrarily negative. The original CFR algorithm.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SummedRegret;
 

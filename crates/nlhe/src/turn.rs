@@ -3,9 +3,7 @@ use kicker::Turn;
 use mccfr::*;
 use monge::Support;
 
-/// NLHE turn indicator for CFR traversal.
-///
-/// Newtype wrapper around gameplay `Turn` for NLHE-specific CFR.
+/// NLHE turn indicator for CFR traversal: a newtype over `kicker::Turn`.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct NlheTurn(Turn);
 

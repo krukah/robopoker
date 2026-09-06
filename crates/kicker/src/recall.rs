@@ -1,29 +1,14 @@
-//! Trait for game history types that can replay actions.
+//! Shared replay interface for [`Perfect`] and [`Witness`], the complete-info
+//! and hero-only views of a game history.
 //!
-//! Both [`Perfect`] and [`Witness`] represent game histories from different
-//! perspectives (complete vs hero-only information). This trait captures
-//! their shared interface for action replay, state reconstruction, and
-//! edge conversion.
-//!
-//! # Blind Handling
-//!
-//! Blinds are constant and deterministic, so they are NOT stored in `actions()`.
-//! The `root()` method returns a POST-blind game state. Use `all_actions()`
-//! when you need the complete action sequence including blinds (e.g., for display).
+//! Blinds are constant and deterministic, so they are NOT stored in `actions()`:
+//! `root()` returns a POST-blind state, and `complete()` re-attaches them for
+//! display.
 use super::*;
 use deuce::Card;
 use pokerkit::Translated;
 
 /// A game history that can be replayed from a root state.
-///
-/// Provides default implementations for derived computations:
-/// - `head()` — Current game state
-/// - `states()` — Full sequence of game states
-/// - `history()` — Full edge history (all streets)
-/// - `subgame()` — Current street edges only
-/// - `choices()` — Available actions at current state
-/// - `aggression()` — Trailing aggressive action count
-/// - `complete()` — Complete action sequence including blinds (for display)
 pub trait Recall {
     /// The starting game state for replaying actions (POST-blind).
     fn root(&self) -> Game;
@@ -69,15 +54,11 @@ pub trait Recall {
             .count()
     }
 
-    /// Full edge history (all streets).
+    /// Full edge history (all streets), via the global [`pokerkit::translation`].
     ///
-    /// Maps each `Action` onto an `Edge` via the global [`pokerkit::translation`].
-    /// All current [`pokerkit::Translation`] variants (`Snap`, `Harmonic`,
-    /// `Phargmax`) always resolve on-tree; the `Translated::Free` arm
-    /// is unreachable under the live enum and triggers `unreachable!()`
-    /// if hit. If a future Brown-style variant is added, this arm needs
-    /// to be revisited (likely via a custom history walker on the
-    /// player that consumes off-tree actions).
+    /// Every live [`pokerkit::Translation`] variant resolves on-tree, so the
+    /// `Translated::Free` arm is unreachable and panics if hit. A future
+    /// Brown-style variant needs a custom walker that consumes off-tree actions.
     fn history(&self) -> Vec<Edge> {
         let translation = pokerkit::translation();
         let ref mut rng = rand::rng();

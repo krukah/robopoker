@@ -3,22 +3,10 @@ use crate::Schema;
 
 /// Derived table generation from enumerable domain values.
 ///
-/// For tables whose contents can be exhaustively enumerated at runtime
-/// (e.g., street configurations, abstraction definitions), this trait
-/// generates INSERT statements programmatically.
-///
-/// # Usage
-///
-/// Implement [`exhaust`](Derive::exhaust) to enumerate all valid values,
-/// and [`inserts`](Derive::inserts) to format each as an INSERT statement.
-/// The [`derives`](Derive::derives) method combines these into a single
-/// SQL batch.
-///
-/// # Contrast with Streamable
-///
-/// Use `Derive` for small, enumerable tables where INSERT is sufficient.
-/// Use [`Streamable`](crate::Streamable) for large datasets requiring
-/// binary COPY performance.
+/// For small tables whose contents can be exhaustively enumerated at runtime
+/// (street configurations, abstraction definitions). Use
+/// [`Streamable`](crate::Streamable) instead for large datasets that need
+/// binary COPY throughput.
 pub trait Derive: Sized + Schema {
     /// Enumerates all values that should be inserted into the table.
     fn exhaust() -> Vec<Self>;

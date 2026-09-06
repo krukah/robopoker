@@ -3,24 +3,12 @@ use pokerkit::Arbitrary;
 use pokerkit::Probability;
 use std::cmp::Ordering;
 
-/// A player's view of the game: hole cards plus visible board.
+/// A player's view of the game: hole cards plus visible board — the atomic
+/// unit of poker abstraction. Carries every card a player can see and nothing
+/// about action history, which the game tree tracks separately.
 ///
-/// Observations are the atomic units of poker abstraction. Each observation
-/// encodes all card information available to a player at a given point,
-/// ignoring action history (which is tracked separately in the game tree).
-///
-/// # Operations
-///
-/// - [`Observation::children`] — Iterate over all possible next-street continuations
-/// - [`Observation::simulate`] — Compute showdown win rate against random hands
-/// - [`Observation::equity`] — Compute showdown win rate against exhaustive opponent hands
-/// - [`Observation::street`] — Infer the current street from card counts
-///
-/// # Serialization
-///
-/// Observations serialize to `i64` by packing cards into bytes, enabling
-/// efficient database storage. The separator `~` distinguishes hole from board
-/// in string representation.
+/// Serializes to `i64` by packing cards into bytes for database storage; the
+/// string form separates hole from board with `~`.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Observation {
     pocket: Hand,
@@ -28,20 +16,16 @@ pub struct Observation {
 }
 
 impl Observation {
-    /// Iterates over all possible next-street observations.
-    ///
-    /// Each child represents dealing the appropriate number of new cards
-    /// (3 for flop, 1 for turn/river) from the remaining deck.
+    /// All possible next-street observations — deal 3 cards for the flop, 1
+    /// for turn/river, from the remaining deck.
     pub fn children(&self) -> impl Iterator<Item = Self> + '_ {
         let n = self.street().next().n_revealed();
         HandIterator::from((n, Hand::from(*self)))
             .map(|reveal| Hand::add(self.public, reveal))
             .map(|public| Self::from((self.pocket, public)))
     }
-    /// Computes exact equity against the uniform distribution of opponent hands.
-    ///
-    /// Only valid on the river. Enumerates all possible opponent hole cards
-    /// and computes the fraction that we beat (excluding ties).
+    /// Exact equity against the uniform distribution of opponent hands: the
+    /// fraction of all villain holdings we beat, ties excluded. River only.
     pub fn equity(&self) -> Probability {
         debug_assert_eq!(self.street(), Street::Rive);
         let hero = Strength::from(Hand::from(*self));
@@ -64,12 +48,9 @@ impl Observation {
     pub fn simulate(&self, _: usize) -> Probability {
         todo!("run out some number of simulations and take equity as average")
     }
-    /// Equity of `self` vs a specific villain pocket on the shared board.
-    ///
-    /// Runs `trials` Monte Carlo runouts from the current street through
-    /// the river. Returns wins (ties = 0.5) divided by trials. On the
-    /// river the comparison is exact (no remaining cards) and `trials`
-    /// is ignored.
+    /// Equity of `self` vs a specific villain pocket on the shared board:
+    /// `trials` Monte Carlo runouts to the river, wins (ties = 0.5) over
+    /// trials. On the river the comparison is exact and `trials` is ignored.
     pub fn equity_vs(&self, villain: Hand, trials: usize) -> Probability {
         use rand::seq::IndexedRandom;
         let need = 5 - self.public.size();
@@ -112,13 +93,9 @@ impl Observation {
     pub fn public(&self) -> &Hand {
         &self.public
     }
-    /// Iterates over all possible opponent observations (uniform prior).
-    ///
-    /// Returns observations sharing this board but with different hole cards,
-    /// drawn from cards not in hero's pocket or on the board. Each observation
-    /// has equal implicit weight, forming the uniform prior over villain
-    /// holdings conditioned on hero's information. For river, this yields
-    /// C(45, 2) = 990 possible opponent holdings.
+    /// All possible opponent observations: same board, hole cards drawn from
+    /// what hero cannot see. Equal implicit weight each, so this is the
+    /// uniform prior over villain holdings — C(45, 2) = 990 on the river.
     pub fn opponents(&self) -> impl Iterator<Item = Self> + '_ {
         HandIterator::from((2, Hand::from(*self)))
             .map(|hole| (hole, self.public))
@@ -127,10 +104,8 @@ impl Observation {
     /// String separator between hole and board in display format.
     pub const SEPARATOR: &'static str = "~";
 }
-/// i64 isomorphism
-///
-/// Packs all the cards in order, starting from LSBs.
-/// Good for database serialization. Interchangable with u64
+/// i64 isomorphism: packs all cards in order from the LSBs up. Interchangeable
+/// with u64, and what the database stores.
 impl From<Observation> for i64 {
     fn from(observation: Observation) -> Self {
         std::iter::empty::<Card>()

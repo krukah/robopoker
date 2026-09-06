@@ -2,9 +2,7 @@
 
 use super::*;
 
-/// Linear weighting scheme.
-///
-/// Later iterations are weighted proportionally to their iteration number.
+/// Weights each iteration proportionally to its iteration number.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct LinearWeight;
 

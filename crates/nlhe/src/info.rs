@@ -7,37 +7,16 @@ use pokerkit::Arbitrary;
 type NlheTree = Tree<NlheTurn, NlheEdge, NlheGame, NlheInfo>;
 type NlheLeaf = Leaf<NlheEdge, NlheGame>;
 
-/// NLHE information set: what a player knows at a decision point.
+/// NLHE information set: public state (current-street edges + choices) paired
+/// with an abstraction bucket. Training recall is `Perfect` and inference recall
+/// is `Witness`, but CFR indexes both by this same key.
 ///
-/// Combines public state (subgame history + choices) with private state
-/// (abstraction bucket encoding hand strength).
+/// The available-action mask is part of the identity: two states with identical
+/// `(subgame, secret)` but different legal actions — stack constraints cutting
+/// off raise sizes — are distinct info sets.
 ///
-/// # Information Boundary
-///
-/// | Context | Recall | Info | Secret |
-/// |---------|--------|------|--------|
-/// | Training (CFR) | Perfect (both hands) | NlheInfo | Abstraction bucket |
-/// | Inference (play) | Witness (hero only) | NlheInfo | Abstraction bucket |
-///
-/// At **training time**, `Perfect` recall knows both players' cards but CFR
-/// only indexes by `NlheInfo` (public edges + private bucket). The secret
-/// bucket is derived from the acting player's observation at each node.
-///
-/// At **inference time**, `Witness` recall knows only hero's cards. Strategy
-/// lookup uses `NlheInfo::from((&recall, abstraction))` for policy queries.
-///
-/// # Action Space
-///
-/// Available actions are stored in `NlhePublic` and become part of the info set's
-/// identity. Two states with identical `(subgame, secret)` but different available
-/// actions are distinct info sets. This handles cases where different game tree
-/// paths lead to different betting options due to stack constraints.
-/// Newtype over [`Composite<NlhePublic, NlheSecret>`] so NLHE-specific
-/// inherent methods (`street`, `aggression`, `subgame`, `choices`, `bucket`)
-/// and `From` constructors live in this crate. Conceptually identical to
-/// `Composite<NlhePublic, NlheSecret>`; the newtype exists only because
-/// the orphan rule prevents this crate from hanging those methods and
-/// impls on the generic `Composite` from `regret`.
+/// The newtype exists only because the orphan rule prevents hanging NLHE
+/// inherent methods and `From` impls on `regret`'s generic `Composite`.
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NlheInfo(Composite<NlhePublic, NlheSecret>);
 
@@ -92,32 +71,24 @@ impl CfrInfo for NlheInfo {
     }
 }
 
-// =============================================================================
-// Construction methods
-// =============================================================================
-
 impl<R> From<(&R, Abstraction)> for NlheInfo
 where
     R: Recall,
 {
-    /// Constructs info set for policy lookup from recall history.
+    /// Info set for policy lookup, with `choices()` taken from the live recall
+    /// state (`recall.head()`).
     ///
-    /// `choices()` is computed from the live recall state (`recall.head()`).
-    /// An earlier design replayed the recall's edge sequence through
-    /// `CfrGame::apply` and used the resulting canonical state, on the
-    /// rationale that training also applies edges with snapped chip amounts
-    /// — so canonical chip amounts ought to match the trained infosets even
-    /// for off-grid recall actions.
-    ///
-    /// In practice, accumulated chip drift on aggressive multi-raise lines
-    /// occasionally pushes the canonical replay into a different game-tree
-    /// turn than the live recall (e.g. `1:1` pot-bet sizing on a snap-
-    /// inflated pot lands canonical all-in while recall still has stack).
-    /// The resulting infoset has `choices = [Edge::Draw]`, which crashes the
-    /// blueprint's regret default. Using `recall.head()` keeps the lookup
-    /// on the actual decision point at the cost of (rare) info-set
-    /// mismatch when canonical and recall disagree on the legal-action mask
-    /// at a non-divergent turn.
+    /// An earlier design replayed the recall's edges through `CfrGame::apply`
+    /// and used the canonical state, so snapped chip amounts would match the
+    /// trained infosets even for off-grid recall actions. In practice, chip
+    /// drift on aggressive multi-raise lines occasionally pushes the canonical
+    /// replay into a different game-tree turn than the live recall (e.g. `1:1`
+    /// pot-bet sizing on a snap-inflated pot lands canonical all-in while
+    /// recall still has stack). The resulting infoset has
+    /// `choices = [Edge::Draw]`, which crashes the blueprint's regret default.
+    /// `recall.head()` keeps the lookup on the actual decision point, at the
+    /// cost of rare info-set mismatch when canonical and recall disagree on
+    /// the legal-action mask at a non-divergent turn.
     fn from((recall, secret): (&R, Abstraction)) -> Self {
         let head = recall.head();
         let subgame = recall.subgame();
@@ -143,9 +114,8 @@ impl From<(Subgame, Abstraction, Path, Field)> for NlheInfo {
 }
 
 impl From<(&NlheEncoder, &NlheTree, NlheLeaf)> for NlheInfo {
-    /// Creates an info set during tree expansion.
-    /// Used by [`CfrEncoder::info`] to compute info for new tree nodes.
-    /// Collects current-street edge history from tree traversal.
+    /// Info set for a node being expanded, walking the tree back up to collect
+    /// the current-street edge history.
     fn from((encoder, tree, leaf): (&NlheEncoder, &NlheTree, NlheLeaf)) -> Self {
         let (edge, ref game, head) = leaf;
         let subgame = std::iter::once(edge)
@@ -344,9 +314,9 @@ mod tests {
             .into_iter()
             .rev()
             .take_while(kicker::Edge::is_choice)
-            .collect::<Path>()
+            .collect::<Subgame>()
             .rev()
-            .collect::<Path>();
+            .collect::<Subgame>();
         assert_eq!(info.subgame(), current);
     }
     #[test]

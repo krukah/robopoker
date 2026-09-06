@@ -8,16 +8,11 @@ pub const TRI_PREF: usize = Street::Pref.n_abstractions() * (Street::Pref.n_abst
 pub const TRI_FLOP: usize = Street::Flop.n_abstractions() * (Street::Flop.n_abstractions() - 1) / 2;
 pub const TRI_TURN: usize = Street::Turn.n_abstractions() * (Street::Turn.n_abstractions() - 1) / 2;
 
-/// Dense triangular storage for pairwise distances between abstractions.
-///
-/// Stores the lower triangle of the symmetric distance matrix (excluding diagonal)
-/// as a flat array indexed by [`Pair::triangular()`]. This halves memory usage
-/// compared to a full matrix while enabling O(1) lookup.
-///
-/// # Const Generic
-///
-/// `T` is the triangular number K*(K-1)/2 where K is the street's abstraction count.
-/// This enables stack allocation with compile-time size checking.
+/// Dense triangular storage for pairwise distances between abstractions: the
+/// lower triangle of the symmetric matrix (no diagonal), flat and indexed by
+/// [`Pair::triangular`] — half the memory of a full matrix, still O(1) lookup.
+/// `T` is `K*(K-1)/2` for the street's abstraction count `K`, so the array is
+/// stack-allocated and size-checked at compile time.
 #[derive(Clone, Copy)]
 pub struct Distances<const T: usize> {
     /// Street these distances are for.

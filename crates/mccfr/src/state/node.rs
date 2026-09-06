@@ -4,24 +4,10 @@ use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use std::ops::Not;
 
-/// A lightweight handle to a node in the game tree.
+/// A `Copy` handle to a node in the game tree: just an index plus a borrow of
+/// the graph, so it is cheap to pass around.
 ///
-/// Stores only an index and a reference to the underlying graph,
-/// making nodes cheap to copy and pass around. Provides navigation
-/// methods for tree traversal (parent, children, descendants).
-///
-/// # Iterator Implementation
-///
-/// Implements `Iterator` for upward traversal: each `next()` yields
-/// the parent node and incoming edge, enabling path reconstruction
-/// from any node back to the root.
-///
-/// # Navigation
-///
-/// - `up()` — Parent node and incoming edge
-/// - `children()` — Direct child nodes
-/// - `descendants()` — All leaf nodes reachable from this node
-/// - `follow(edge)` — Child reached by taking a specific action
+/// Also an `Iterator` walking *upward* to the root — see the impl below.
 #[derive(Copy, Clone)]
 pub struct Node<'tree, T, E, G, I>
 where
@@ -53,10 +39,9 @@ where
     pub fn graph(&self) -> &'tree DiGraph<(G, I), E> {
         self.tree.graph()
     }
-    /// Stable identity for the tree this node belongs to.
-    /// Assigned explicitly at Tree construction (see [`Tree::new`]); the
-    /// caller — typically the par_iter index in `Solver::batch` — provides
-    /// a batch-local id so trees in one batch sample independently.
+    /// Stable identity for the tree this node belongs to, assigned at
+    /// construction (see [`Tree::new`]). `Solver::batch` passes the par_iter
+    /// index so trees within one batch sample independently.
     pub fn seed(&self) -> usize {
         self.tree.id()
     }
@@ -173,12 +158,12 @@ where
     }
 }
 
-/// Node naturally implements Iterator by recursing upward through its tree.
-/// Each iteration yields an [`Ascent`] pair: the edge that was just traversed
-/// in reverse, paired with the parent node we've now arrived at. The
-/// iterator's direction (leaf-to-root) is encoded in the type: consumers
-/// that want a root-to-leaf [`Descent`] sequence must collect + reverse,
-/// not silently flip pairs in place.
+/// Recurses upward through the tree, yielding an [`Ascent`]: the edge just
+/// traversed in reverse plus the parent now arrived at.
+///
+/// Leaf-to-root direction is encoded in the item type, so consumers wanting a
+/// root-to-leaf [`Descent`] sequence must collect + reverse rather than
+/// silently flipping pairs in place.
 impl<T, E, G, I> Iterator for Node<'_, T, E, G, I>
 where
     T: CfrTurn,
@@ -195,9 +180,7 @@ where
     }
 }
 
-/// Debug + Display implementations, which will
-/// treat a Node just as a combination of its
-/// associated Info + its location in the tree
+/// Renders a Node as its Info plus its location in the tree.
 impl<T, E, G, I> std::fmt::Debug for Node<'_, T, E, G, I>
 where
     T: CfrTurn,
@@ -210,10 +193,7 @@ where
     }
 }
 
-/// Eq implementation will assume that any two
-/// Nodes being compared to one another belong
-/// to the same tree/graph. such that, we only
-/// care about comparing indices.
+/// Compares indices only — assumes both Nodes belong to the same tree.
 impl<T, E, G, I> PartialEq for Node<'_, T, E, G, I>
 where
     T: CfrTurn,

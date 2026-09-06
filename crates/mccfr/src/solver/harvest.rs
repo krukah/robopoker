@@ -19,19 +19,16 @@ pub struct Harvested<E> {
     pub regret: Utility,
 }
 
-/// Extract refined policy + visit counts at a base infoset, keyed on the
-/// base edge type. Each solver implementation handles its own
-/// info-wrapping (`DepthInfo::Game`, `WorldInfo::new`) and
-/// edge-unwrapping (`DepthEdge::Game`) — the caller passes the
-/// pre-wrap info and gets back maps over the base edge.
+/// Extract refined policy + visit counts at a base infoset, keyed on the base
+/// edge type.
 ///
-/// `DepthInfo::Game`: subgame::DepthInfo::Game
-/// `DepthEdge::Game`: subgame::DepthEdge::Game
-/// `WorldInfo::new`: subgame::WorldInfo::new
+/// Each solver handles its own info-wrapping (`subgame::DepthInfo::Game`,
+/// `subgame::WorldInfo::new`) and edge-unwrapping (`subgame::DepthEdge::Game`),
+/// so the caller passes pre-wrap info and gets back maps over the base edge.
 pub trait Harvest {
-    /// Base infoset type (pre-wrapping). E.g. `NlheInfo`.
+    /// Base infoset type, pre-wrapping. E.g. `NlheInfo`.
     type Base;
-    /// Base edge type (pre-wrapping). E.g. `NlheEdge`.
+    /// Base edge type, pre-wrapping. E.g. `NlheEdge`.
     type Edge;
 
     fn harvest(&self, base: Self::Base) -> Harvested<Self::Edge>;

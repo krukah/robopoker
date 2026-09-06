@@ -1,11 +1,9 @@
 use super::*;
 
-/// Base trait bundling the four associated types that define
-/// an extensive-form game tree: turns, edges, games, and info sets.
+/// Bundles the four associated types defining an extensive-form game tree.
 ///
-/// Both `Storage` and `Profile`
-/// extend this trait, ensuring their associated types are unified
-/// and `P::T` is unambiguous when both are in scope.
+/// [`MutProf`](crate::MutProf) and [`RefProf`](crate::RefProf) both extend it,
+/// unifying their associated types so `P::T` stays unambiguous with both in scope.
 pub trait CfrRule: Sized {
     type T: CfrTurn;
     type E: CfrEdge;

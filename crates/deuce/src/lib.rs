@@ -1,33 +1,9 @@
 //! Card representation, hand evaluation, and strategic abstraction primitives.
 //!
-//! This module provides the foundational types for representing poker hands and
-//! computing their relative strength. All representations are optimized for
-//! bijective encoding and fast bitwise operations.
-//!
-//! ## Core Types
-//!
-//! - [`Card`] — A single card as a `(Rank, Suit)` tuple encoded in one byte
-//! - [`Hand`] — An unordered set of cards as a 64-bit bitmask
-//! - [`Hole`] — A player's two private cards
-//! - [`Board`] — The community cards (flop, turn, river)
-//! - [`Deck`] — A shuffled collection for dealing
-//!
-//! ## Evaluation
-//!
-//! - [`Evaluator`] — Lookup-table hand evaluator, arguably the fastest around
-//! - [`Strength`] — Evaluated hand ranking with deuce resolution
-//! - [`Ranking`] — Hand category (high card through straight flush)
-//!
-//! ## Abstraction
-//!
-//! - [`Observation`] — A strategically-equivalent game state (hole + board + street)
-//! - [`Isomorphism`] — Canonical representative under suit permutation
-//! - [`Permutation`] — Suit relabeling for equivalence class reduction
-//!
-//! ## Street Progression
-//!
-//! [`Street`] encodes the four betting rounds: preflop → flop → turn → river.
-//! Each street determines board visibility and abstraction granularity.
+//! Every representation here is chosen for bijective encoding and fast bitwise
+//! operations: [`Card`] is one byte, [`Hand`] is a 64-bit set, [`Evaluator`] is
+//! table-driven, and [`Isomorphism`] canonicalizes an [`Observation`] under
+//! suit [`Permutation`].
 mod board;
 mod card;
 mod card_seq;

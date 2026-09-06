@@ -14,7 +14,7 @@ pub use summed::*;
 
 use pokerkit::*;
 
-/// Trait for regret update strategies in CFR variants.
+/// How accumulated regret is updated — the choice that names the CFR variant.
 pub trait RegretSchedule {
     /// Raw regret accumulation before floor.
     fn accumulate(net: Utility, new: Utility, epoch: usize) -> Utility;

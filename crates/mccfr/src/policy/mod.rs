@@ -14,7 +14,7 @@ pub use quadratic::*;
 
 use pokerkit::*;
 
-/// Trait for strategy weighting schemes in CFR.
+/// How each iteration's strategy is weighted into the running average.
 pub trait WeightSchedule {
     /// Raw accumulation before epsilon floor.
     fn accumulate(accumulated: Probability, immediate: Probability, epoch: usize) -> Probability;

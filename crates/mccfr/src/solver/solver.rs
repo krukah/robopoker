@@ -2,92 +2,38 @@ use crate::*;
 
 /// The core training orchestrator for Monte Carlo CFR.
 ///
-/// Given access to a [`CfrSolution`] and [`CfrEncoder`], the `Solver` trait encapsulates:
-/// 1. Sampling game trees via [`SamplingScheme`]
-/// 2. Computing [`Decisions`] regret vectors at each [`InfoSet`]
-/// 3. Updating the [`CfrSolution`] after each batch using [`RegretSchedule`] and [`WeightSchedule`]
-///
-/// # Associated Types
-///
-/// The solver bundles all types defining an extensive-form game:
-///
-/// - **`T: CfrTurn`** — Player/chance/terminal node classification
-/// - **`E: CfrEdge`** — Actions available at decision points
-/// - **`G: CfrGame`** — State transitions and payoff evaluation
-/// - **`I: CfrInfo`** — Information sets combining public and secret state
-/// - **`X: CfrPublic`** — Observable state (action history, board cards)
-/// - **`Y: CfrSecret`** — Private state (hole cards, hand abstractions)
-///
-/// Plus three **algorithm variant** types that control CFR behavior:
-///
-/// - **`S: SamplingScheme`** — How branches are selected during tree traversal
-///   (external sampling, targeted, uniform)
-/// - **`R: RegretSchedule`** — How regrets are accumulated and discounted
-///   (vanilla, CFR+, discounted, linear)
-/// - **`W: WeightSchedule`** — How strategy weights are accumulated across iterations
-///   (constant, linear, quadratic, exponential)
-///
-/// # Implementation
-///
-/// To implement a solver for a new game:
-/// 1. Define game types (Turn, Edge, Game, Info, Public, Secret)
-/// 2. Implement [`CfrEncoder`] and [`CfrSolution`] for your game
-/// 3. Select algorithm variants via `S`, `R`, `W`
-/// 4. Implement required methods: `batch_size`, `tree_count`, `encoder`, `profile`,
-///    `storage`, `advance`
+/// Bundles the game types (`T`/`E`/`G`/`I`/`X`/`Y`) with the three algorithm
+/// variants — `S` sampling, `R` regret, `W` weight — that pin down the CFR
+/// flavor, then drives sample → regret → update batches over a [`CfrSolution`].
 pub trait Solver: Send + Sync {
-    /// Turn type classifying nodes as player, chance, or terminal.
     type T: CfrTurn;
-    /// Edge type representing actions available at decision points.
     type E: CfrEdge;
 
-    /// Game state handling transitions and payoff evaluation.
     type G: CfrGame<E = Self::E, T = Self::T>;
-    /// Information set combining public and private state.
     type I: CfrInfo<E = Self::E, T = Self::T, X = Self::X, Y = Self::Y>;
 
-    /// Public state observable by all players.
     type X: CfrPublic<E = Self::E, T = Self::T>;
-    /// Private state observable only by the acting player.
     type Y: CfrSecret;
 
-    /// Solution type storing accumulated regrets and strategy weights.
     type P: CfrSolution<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
-    /// CfrEncoder type mapping game states to information set identifiers.
     type N: CfrEncoder<T = Self::T, E = Self::E, G = Self::G, I = Self::I>;
 
-    /// Strategy weighting scheme for average strategy computation.
-    ///
-    /// Controls how each iteration's strategy contributes to the final average.
-    /// Common choices: [`LinearWeight`] (emphasize recent), [`ConstantWeight`] (uniform).
+    /// Weighting of each iteration's contribution to the average strategy.
     type W: WeightSchedule;
-    /// Regret update scheme determining CFR variant.
-    ///
-    /// Controls how regrets are accumulated and discounted over time.
-    /// Common choices: [`LinearRegret`] (Pluribus / LCFR), [`DiscountedRegret`] (DCFR), [`FlooredRegret`] (CFR+).
+    /// CFR variant: [`LinearRegret`] is LCFR / Pluribus parity, [`DiscountedRegret`] is DCFR, [`FlooredRegret`] is CFR+.
     type R: RegretSchedule;
-    /// Sampling strategy for tree traversal.
-    ///
-    /// Controls which branches are explored during tree construction.
-    /// Common choices: [`ExternalSampling`] (sample opponents), [`VanillaSampling`] (vanilla).
+    /// Which branches get explored during tree construction.
     type S: SamplingScheme;
 
-    /// Returns the number of trees to process in each training batch.
-    /// Batching allows for more efficient parallel processing of game trees.
+    /// Number of trees per training batch.
     fn batch_size() -> usize;
 
-    /// Returns a reference to the encoder used for converting game states to information sets.
-    /// The encoder handles abstraction of game states into trainable buckets.
     fn encoder(&self) -> &Self::N;
 
-    /// Returns a reference to the strategy profile being trained.
-    /// The profile tracks accumulated regrets and policies that define the strategy.
     fn profile(&self) -> &Self::P;
 
-    /// Returns a mutable reference to the strategy profile for write access.
     fn storage(&mut self) -> &mut Self::P;
 
-    /// Advances the trainer state to the next iteration
     fn advance(&mut self);
 
     // automatic implementation
@@ -104,9 +50,8 @@ pub trait Solver: Send + Sync {
         self.advance();
     }
 
-    /// Runs training for a fixed number of game trees.
+    /// Train over `trees / batch_size` batches, checking for interrupt between each.
     ///
-    /// Processes `trees / batch_size` batches, checking for interrupt between each.
     /// For production training, use the trainer binary which calls `step()` directly.
     fn solve(mut self, trees: usize) -> Self
     where
@@ -136,10 +81,7 @@ pub trait Solver: Send + Sync {
         (iterations, t0.elapsed())
     }
 
-    /// Updates accumulated regret values for each edge in the counterfactual.
-    ///
-    /// Uses the [`RegretSchedule`] associated type (`R`) to determine how regrets
-    /// are updated (vanilla, CFR+, discounted, linear).
+    /// Accumulate regret for each edge in the counterfactual, discounted per `Self::R`.
     fn update_regret(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
         let ref vector = cfr.regret;
@@ -151,10 +93,7 @@ pub trait Solver: Send + Sync {
         }
     }
 
-    /// Updates accumulated weights for each edge in the counterfactual.
-    ///
-    /// Uses the [`WeightSchedule`] associated type (`W`) to determine how weights
-    /// are accumulated (constant, linear, quadratic, exponential).
+    /// Accumulate strategy weight for each edge in the counterfactual, per `Self::W`.
     fn update_weight(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
         let ref vector = cfr.policy;
@@ -166,11 +105,10 @@ pub trait Solver: Send + Sync {
         }
     }
 
-    /// Updates the incremental mean expected value for each edge in the counterfactual.
+    /// Running mean of the infoset-level EV V(I), stored redundantly per action.
     ///
-    /// Stores the infoset-level EV (V(I)) redundantly for each action as a running
-    /// mean. Uses Welford's incremental update: ev += (sample - ev) / (n + 1).
-    /// Runs before `update_visits`, so `cum_visits` holds the pre-increment count.
+    /// Welford's incremental update: `ev += (sample - ev) / (n + 1)`. Must run
+    /// before `update_visits`, so `cum_visits` holds the pre-increment count.
     fn update_payoff(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
         for edge in info.choices() {
@@ -180,10 +118,7 @@ pub trait Solver: Send + Sync {
         }
     }
 
-    /// Updates encounter visits for each edge in the counterfactual.
-    ///
-    /// Increments the visits for each action in the infoset to track
-    /// how many times this info-action pair has been visited during training.
+    /// Increment the visit count of every info-action pair in the infoset.
     fn update_visits(&mut self, cfr: &Decisions<Self::E, Self::I>) {
         let ref info = cfr.info;
         for edge in info.choices() {
@@ -209,21 +144,8 @@ pub trait Solver: Send + Sync {
             .product()
     }
 
-    /// turn a batch of trees into a batch
-    /// of infosets into a batch of counterfactual update vectors.
-    ///
-    /// this encapsulates the largest unit of "update"
-    /// that we can generate in parallel / from immutable reference.
-    /// it is unclear from RPS benchmarks if:
-    /// - what level to parallelize  .collect().into_par_iter()
-    /// - what optimal batch size is given N available CPU cores
-    /// - for small batches, whether overhead is worth it to parallelize at all
-    ///
-    /// it would be nice to do a kind of parameter sweep across
-    /// these different settings. i should checkout if criterion supports.
-    /// Runs `f` and folds this worker thread's CPU time for the call into the
-    /// batch CPU meter (see the `cpu` module). Summed across the Rayon pool, this
-    /// yields CPU utilization rather than just wall-clock time.
+    /// Folds this worker thread's CPU time for `f` into the batch CPU meter
+    /// (see the `cpu` module), so telemetry reports utilization, not wall-clock.
     ///
     /// Applied only at *per-tree* granularity (tree build + partition), never
     /// per-infoset: `clock_gettime` is a real syscall and a batch has ~1e5
@@ -237,6 +159,12 @@ pub trait Solver: Send + Sync {
         out
     }
 
+    /// Trees → infosets → counterfactual update vectors: the largest unit of
+    /// "update" derivable in parallel from an immutable reference.
+    ///
+    /// RPS benchmarks left open which level to parallelize, what batch size is
+    /// optimal for N cores, and whether small batches are worth the overhead at
+    /// all. A parameter sweep (criterion?) would settle it.
     #[cfg(feature = "server")]
     fn batch(&self) -> Vec<Decisions<Self::E, Self::I>> {
         use rayon::iter::IntoParallelIterator;
@@ -266,9 +194,7 @@ pub trait Solver: Send + Sync {
             .collect()
     }
 
-    /// Records tree-level telemetry (`tree_size`, increments node
-    /// counter) and returns the tree unchanged so it can be partitioned
-    /// downstream.
+    /// Records tree-level telemetry and returns the tree unchanged.
     fn record_tree(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Tree<Self::T, Self::E, Self::G, Self::I> {
         let n = tree.n();
         self.inc_nodes(n);
@@ -277,9 +203,7 @@ pub trait Solver: Send + Sync {
         tree
     }
 
-    /// Partitions a tree by infoset, applies the walker filter, records
-    /// infoset-level telemetry (`infosets_per_tree` per tree, `infoset_size`
-    /// per infoset), and increments the infoset counter.
+    /// Partitions a tree by infoset, keeps only the walker's, records telemetry.
     fn record_infosets(
         &self,
         tree: Tree<Self::T, Self::E, Self::G, Self::I>,
@@ -317,10 +241,9 @@ pub trait Solver: Send + Sync {
         .build()
     }
 
-    /// generate the update vectors at a given [InfoSet]. specifically,
-    /// calculate the regret and policy for each action, along with
-    /// the associated `Info` and expected value.
-    /// uses fused regret_and_value to avoid redundant tree traversal.
+    /// Regret + policy + EV vectors at a given [InfoSet].
+    ///
+    /// The fused `dfs` returns regret and value together, avoiding a second traversal.
     fn update_vector(&self, ref infoset: InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Decisions<Self::E, Self::I> {
         let policy = self.profile().policy_vector(infoset);
         let (regret, payoff) = self.profile().dfs(infoset);
@@ -332,8 +255,7 @@ pub trait Solver: Send + Sync {
         }
     }
 
-    /// Returns the root node of the game.
-    /// This is the starting point for tree generation.
+    /// Root node for tree generation.
     ///
     /// we currently require that root generation is
     /// from Self::Game, but that could relax to reference &self: Trainer
@@ -351,7 +273,7 @@ pub trait Solver: Send + Sync {
         self.profile().metrics().inspect(|m| m.add_infos(n));
     }
 
-    /// Compute exploitability by building full tree and delegating to Profile.
+    /// Exploitability over a fully-expanded tree, delegated to the Profile.
     fn exploitability(&self) -> pokerkit::Utility {
         self.profile().exploitability(
             TreeBuilder::<_, _, _, _, _, _, VanillaSampling>::new(
@@ -363,16 +285,11 @@ pub trait Solver: Send + Sync {
             .build(),
         )
     }
-    /// Monte Carlo exploitability estimate.
+    /// Monte Carlo exploitability estimate over `n` random deals.
     ///
-    /// Samples `n` random deals, builds a VanillaSampling tree for each,
-    /// computes per-deal exploitability, and averages. Each call to
-    /// `exploitability_root()` generates a fresh random deal, so the
-    /// average converges to the true expected exploitability at O(1/√n).
-    ///
-    /// Returns an upper bound on true exploitability because per-deal
-    /// best response is less constrained than per-info-set best response
-    /// (Jensen's inequality).
+    /// `exploitability_root()` deals fresh each call, so the mean converges to
+    /// true expected exploitability at O(1/√n). It is an *upper* bound: per-deal
+    /// best response is less constrained than per-infoset (Jensen's inequality).
     fn mxploitability(&self, n: usize) -> pokerkit::Utility {
         (0..n).map(|_| self.exploitability()).sum::<pokerkit::Utility>() / n as pokerkit::Utility
     }

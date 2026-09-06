@@ -1,27 +1,21 @@
 //! One-container runtime for slumbot benchmarks.
 //!
 //! A single process hydrates the blueprint and database once, then spawns
-//! per-variant tokio tasks for each requested
-//! `Variant`. The session count for each
-//! variant comes from a trailing `*N` on its token (see
-//! `variant` grammar) and falls back to the global
-//! `--sessions N` flag (default `1`) when absent — so fast DB-lookup
-//! variants like `blueprint` can stay at 1 while CFR-thinking variants
-//! saturate vCPUs. All sessions across all variants share:
+//! per-variant tokio tasks. Session count per variant comes from a trailing
+//! `*N` on its token, falling back to the global `--sessions N` (default `1`)
+//! — so fast DB-lookup variants like `blueprint` stay at 1 while CFR-thinking
+//! variants saturate vCPUs.
 //!
-//! - `Arc<tokio_postgres::Client>` for hand/action inserts
-//! - `&'static Flagship` for any subgame variant (any cell with `depth` or `world`)
-//! - [`Throttle`] capping aggregate in-flight HTTP requests
-//! - SIGTERM / `TRAIN_DURATION` interrupt signal via [`pokerkit::brb`]
+//! All sessions share the postgres client, the `&'static Flagship` (for any
+//! `depth`/`world` cell), the [`Throttle`] capping aggregate in-flight HTTP,
+//! and the SIGTERM / `TRAIN_DURATION` interrupt via [`pokerkit::brb`]. Each
+//! session owns its own `Player`, `Recorder` (own Room row), and
+//! `slumbot::Client` (own auth token).
 //!
-//! Each session owns its own `Player`, `Recorder` (own Room row), and
-//! `slumbot::Client` (own auth token). Sessions of the same variant emit
-//! metrics with identical labels (`variant`, `regime`, `aws_ecs_task_id`)
-//! so OTLP aggregates them — the variant's bb/100 panel stays correct
-//! across session counts. The point of multi-session is filling
-//! otherwise-idle CPU cores during a single Player's CFR-solve wait:
-//! a 4-vCPU task running `depth*4` runs 4 concurrent CFR solves
-//! at 100% CPU utilization vs. 25% with one session.
+//! Sessions of one variant emit metrics with identical labels so OTLP
+//! aggregates them — bb/100 stays correct across session counts. The point of
+//! multi-session is filling cores idled by a single Player's CFR-solve wait: a
+//! 4-vCPU task running `depth*4` hits 100% utilization vs 25% with one.
 use crate::benchmark::*;
 use crate::client::*;
 use crate::mode::*;

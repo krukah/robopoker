@@ -1,13 +1,9 @@
 //! Abstraction version controlling clustering parameters and table names.
 //!
-//! Versions form one axis of the (Version × Regime) training configuration:
-//! they suffix abstraction-layer tables (isomorphism, abstraction, street,
-//! transitions). Each version represents a distinct run of hierarchical
-//! k-means clustering, potentially with different K values, distance
-//! metrics, or street hierarchies.
-//!
-//! V1 is the sole version. It carries the pluribus-faithful design and reads
-//! the (bug-free, deterministic) `_v1` clustering tables.
+//! One axis of the (Version × Regime) training configuration: versions suffix
+//! abstraction-layer tables (isomorphism, abstraction, street, transitions),
+//! one per distinct hierarchical k-means run (K values, distance metric,
+//! street hierarchy). V1 is the sole version.
 
 /// Abstraction version controlling clustering parameters and table names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -43,12 +39,9 @@ impl Version {
         }
     }
 
-    /// Suffix of the clustering tables this version reads from.
-    ///
-    /// Clustering tables (`abstraction`, `isomorphism`, `metric`, `street`,
-    /// `transitions`) are expensive to recompute and depend only on
-    /// K-means / Sinkhorn parameters — not on the bet-sizing grid. They are
-    /// unaffected by the MCCFR sampling-weight bug and are reused as-is.
+    /// Suffix of the clustering tables this version reads from. These are
+    /// expensive to recompute and depend only on K-means / Sinkhorn
+    /// parameters, not on the bet-sizing grid, so they outlive regime churn.
     pub fn clustering_suffix(self) -> &'static str {
         match self {
             Self::V1 => "_v1",

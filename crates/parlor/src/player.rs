@@ -2,26 +2,21 @@ use super::event::*;
 use kicker::*;
 use std::time::Duration;
 
-/// Trait for entities that make poker decisions.
-/// Implementations can be CPU players, humans via CLI, network players via WebSocket, etc.
+/// Trait for entities that make poker decisions — CPU, human via CLI, network
+/// via WebSocket, etc.
 ///
-/// The async design allows:
-/// - CPU players to spawn blocking computation in separate threads
-/// - Human players to await user input without blocking the room
-/// - Network players to await remote responses with timeouts
-///
-/// Participant is transport-agnostic: the Room doesn't care whether
-/// decisions come from local computation, stdin, HTTP, WebSocket, etc.
+/// Transport-agnostic: the Room doesn't care where a decision comes from. Async
+/// so CPU players can offload blocking work while human and network players
+/// await input without stalling the room.
 #[async_trait::async_trait]
 pub trait Player: Send {
-    /// Check if the player is still connected.
-    /// Returns false when the player has disconnected (channel closed, etc.).
-    /// Default implementation returns true (CPU players are always alive).
+    /// False once the player has disconnected. Defaults to true (CPU players
+    /// are always alive).
     fn alive(&self) -> bool {
         true
     }
-    /// Whether this player voluntarily shows cards at showdown.
-    /// Default is false (mucks when allowed). Override to true for bots.
+    /// Whether this player voluntarily shows at showdown. Defaults to false
+    /// (mucks when allowed); bots override to true.
     fn shows(&self) -> bool {
         false
     }
@@ -30,14 +25,11 @@ pub trait Player: Send {
     fn pace(&self) -> Duration {
         Duration::ZERO
     }
-    /// Make a decision given complete game state.
-    /// Called when it's this player's turn to act.
-    /// Recall contains all information visible to this player.
+    /// Decide when it is this player's turn. Recall holds everything visible
+    /// to them.
     async fn decide(&mut self, recall: &Witness) -> Action;
-    /// Receive notification of game events.
-    /// Called for all public actions and private events relevant to this player.
-    /// Useful for updating UI, logging, or maintaining local state.
-    /// Not required for decision-making (Witness is self-contained).
+    /// Public actions and private events relevant to this player — for UI,
+    /// logging, or local state. Not needed to decide; Witness is self-contained.
     async fn notify(&mut self, _: &Event) {}
 }
 

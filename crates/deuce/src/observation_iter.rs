@@ -3,16 +3,9 @@ use super::hand_iter::HandIterator;
 use super::observation::Observation;
 use super::street::Street;
 
-/// Exhaustive iterator over all observations for a street.
-///
-/// Composes two [`HandIterator`]s: one for hole cards (outer) and one for
-/// board cards (inner). For each hole card combination, iterates through
-/// all valid board combinations.
-///
-/// # Usage
-///
-/// Used during abstraction generation to enumerate all possible situations
-/// on a given street, enabling histogram computation and clustering.
+/// Exhaustive iterator over every observation on a street: two composed
+/// [`HandIterator`]s, hole cards outer and board cards inner. Drives
+/// abstraction generation, where each situation needs a histogram.
 pub struct ObservationIterator {
     street: Street,
     pocket: Hand,

@@ -1,44 +1,16 @@
-//! Lazy tree builder with iterator-based traversal.
-//!
-//! [`TreeBuilder`] constructs game trees incrementally, yielding node indices
-//! as they're created. This enables lazy evaluation patterns and streaming
-//! tree construction.
+//! Lazy tree builder: [`TreeBuilder`] grows game trees incrementally, yielding
+//! node indices as they're created.
 
 use crate::*;
 use petgraph::graph::NodeIndex;
 use std::marker::PhantomData;
 
-/// Lazily builds a game tree by yielding node indices during construction.
+/// Lazily builds a game tree, borrowing an [`CfrEncoder`] for state encoding and
+/// a [`CfrSolution`] for action sampling.
 ///
-/// Holds a [`Tree`] internally and borrows an [`CfrEncoder`] and [`CfrSolution`]
-/// for state encoding and action sampling. Implements [`Iterator`] to yield
-/// [`NodeIndex`] values as nodes are added.
-///
-/// # Type Parameters
-///
-/// - `S` — Sampling scheme controlling branch exploration
-///
-/// # Lifetime
-///
-/// The `'growth` lifetime binds the builder to its encoder and profile references.
-/// The builder cannot outlive the referenced strategy components.
-///
-/// # Iterator Behavior
-///
-/// Each `next()` call:
-/// 1. Pops a branch from the todo stack
-/// 2. Encodes the info using the encoder
-/// 3. Grows the tree with the new node
-/// 4. Samples child branches using the sampling scheme
-/// 5. Extends the todo stack with sampled children
-/// 6. Returns the new node's index
-///
-/// When the todo stack is empty, iteration completes.
-///
-/// # Completion
-///
-/// After exhausting the iterator, call [`finish()`](Self::finish) to
-/// consume the builder and retrieve the completed [`Tree`].
+/// Each `next()` pops one pending branch, encodes it, grows the tree, then pushes
+/// its `S`-sampled children back onto the stack; iteration ends when the stack
+/// drains. Call [`finish()`](Self::finish) afterwards to take the [`Tree`].
 pub struct TreeBuilder<'growth, T, E, G, I, N, P, S>
 where
     T: CfrTurn,
@@ -66,11 +38,10 @@ where
     P: CfrFlow<T = T, E = E, G = G, I = I>,
     S: SamplingScheme,
 {
-    /// Creates a new tree builder starting from the given root game state.
+    /// Seeds the tree from `root` and primes the todo stack with its branches.
     ///
-    /// Seeds the tree with the root node and initializes the todo stack
-    /// with its child branches. `id` is the batch-local tree identifier
-    /// threaded through to [`Node::seed`] for RNG seeding.
+    /// `id` is the batch-local tree identifier threaded through to
+    /// [`Node::seed`] for RNG seeding.
     pub fn new(encoder: &'growth N, profile: &'growth P, root: G, id: usize) -> Self {
         let mut tree = Tree::new(id);
         let info = encoder.seed(&root);
@@ -86,40 +57,34 @@ where
         }
     }
 
-    /// Consumes the builder and returns the completed tree.
+    /// Consumes the builder and returns the tree.
     ///
-    /// This should be called after iteration is complete (i.e., after
-    /// the iterator returns `None`). Calling it mid-iteration will
-    /// return a witness tree.
+    /// Only complete once the iterator has returned `None`; called mid-iteration
+    /// it yields a partial witness tree.
     pub fn finish(self) -> Tree<T, E, G, I> {
         self.tree
     }
 
-    /// Returns a reference to the tree being built.
-    ///
-    /// Useful for inspection during construction without consuming the builder.
+    /// Inspect the tree mid-construction without consuming the builder.
     pub fn tree(&self) -> &Tree<T, E, G, I> {
         &self.tree
     }
 
-    /// Returns the number of nodes in the tree so far.
+    /// Nodes in the tree so far.
     pub fn len(&self) -> usize {
         self.tree.n()
     }
 
-    /// Returns true if no nodes have been added yet.
     pub fn is_empty(&self) -> bool {
         self.tree.n() == 0
     }
 
-    /// Returns the number of pending branches to explore.
+    /// Branches still awaiting exploration.
     pub fn pending(&self) -> usize {
         self.todo.len()
     }
 
-    /// Exhausts the iterator and returns the completed tree.
-    ///
-    /// Convenience method that iterates to completion and returns the tree.
+    /// Iterate to completion and return the finished tree.
     pub fn build(mut self) -> Tree<T, E, G, I> {
         while self.next().is_some() {}
         self.finish()

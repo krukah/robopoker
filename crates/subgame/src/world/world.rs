@@ -1,7 +1,4 @@
 //! World index for safe subgame solving.
-//!
-//! Each world represents a quantile bucket of opponent reach probabilities,
-//! used in the subgame gadget construction.
 use monge::Support;
 
 /// Index of an alternative world in the subgame gadget.

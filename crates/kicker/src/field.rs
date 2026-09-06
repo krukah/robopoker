@@ -12,7 +12,7 @@ const SLOTS: usize = (N > 2) as usize;
 /// The field at a decision node: the live set plus whose turn it is, both
 /// anchored at the dealer button. `hero` is always a member of `live`.
 ///
-/// **Build-specialized on player count via [`SLOTS`].** At heads-up the live
+/// **Build-specialized on player count via `SLOTS`.** At heads-up the live
 /// set is invariant — any fold ends the hand — so the field carries no
 /// information and is a zero-sized `[_; 0]`: an N=2 info-set key is
 /// byte-identical to a build with no multiway support. Multiway it holds one

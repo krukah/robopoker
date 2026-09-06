@@ -2,10 +2,8 @@
 
 use crate::depth::FrontierHyperParams;
 
-/// Subgame solving parameters.
-///
-/// Controls per-decision real-time refinement of the blueprint strategy.
-/// Composes [`FrontierHyperParams`] for the depth-limited leaf evaluation.
+/// Per-decision real-time refinement parameters, composing
+/// [`FrontierHyperParams`] for the depth-limited leaf evaluation.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SubgameHyperParams {
     timeout_ms: u64,

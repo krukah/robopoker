@@ -5,29 +5,17 @@ use std::collections::HashMap;
 
 impl<T> CfrNash for T where T: RefProf {}
 
-/// Read-only Nash strategy queries and exploitability analysis.
-///
-/// Provides the averaged (historical weighted) strategy distribution
-/// used for Nash equilibrium approximation, frontier evaluation, and
-/// best-response analysis. Blanket-implemented for all `Profile` types.
+/// Read-only queries over the averaged (historical weighted) strategy: Nash
+/// approximation, frontier evaluation, best-response analysis.
 pub trait CfrNash: RefProf {
-    /// Calculate historical average for a single edge.
+    /// Historical average probability of a single edge.
     fn averaged_policy(&self, info: &Self::I, edge: &Self::E) -> Probability {
         self.averaged_distribution(info).density(edge)
     }
 
-    /// Computes the exploitability of the current average strategy.
-    ///
-    /// Exploitability measures how far the strategy is from Nash equilibrium.
-    /// For a two-player zero-sum game:
-    ///
-    /// `exploitability = (BR(P1) + BR(P2)) / 2`
-    ///
-    /// where `BR(Pi)` is the expected utility that player i can achieve by
-    /// playing a best response against the opponent's fixed average strategy.
-    ///
-    /// A Nash equilibrium has exploitability of 0. Lower values indicate
-    /// strategies closer to equilibrium.
+    /// Distance from Nash: `(BR(P1) + BR(P2)) / 2` for two-player zero-sum,
+    /// where `BR(Pi)` is i's best-response utility against the opponent's fixed
+    /// average strategy. Zero at equilibrium.
     fn exploitability(&self, tree: Tree<Self::T, Self::E, Self::G, Self::I>) -> Utility {
         let ref partition = tree.partition();
         (0..Self::T::players())
@@ -37,11 +25,11 @@ pub trait CfrNash: RefProf {
             / Self::T::players() as Utility
     }
 
-    /// Returns the expected value at an information set.
+    /// Expected value at an infoset, for frontier evaluation in depth-limited
+    /// search and safe subgame solving.
     ///
-    /// The `payoff` field is an incremental mean (updated via Welford's method),
-    /// so it is directly readable without division by visits. Used for frontier
-    /// evaluation in depth-limited search and safe subgame solving.
+    /// `payoff` is already an incremental (Welford) mean, so it needs no
+    /// division by visits.
     ///
     /// TODO
     /// expected value is actually a property of an INFOSET not an EDGE
@@ -78,11 +66,8 @@ pub trait CfrNash: RefProf {
         }
     }
 
-    /// Expected value at external (opponent-controlled) subtree.
-    ///
-    /// **Recursive descent** through tree children, weighting by opponent's
-    /// averaged strategy at each external node. Handles terminal, frontier,
-    /// and chance nodes. Contrast with upward iteration in `CfrNash::averaged`.
+    /// Expected value of an opponent-controlled subtree: recursive *descent*
+    /// weighting by the opponent's averaged strategy at each external node.
     fn external_payoff(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Utility {
         self.subgamed_payoff(node, hero, None)
     }
@@ -97,9 +82,8 @@ pub trait CfrNash: RefProf {
         self.subgamed_payoff(node, hero, Some(br))
     }
 
-    /// Recursive expected value computation.
-    /// When `br` is `None`, uses average strategy at both hero and opponent nodes.
-    /// When `br` is `Some`, hero follows BR actions while opponents use average strategy.
+    /// Recursive expected value. With `br` as `None` everyone plays the average
+    /// strategy; with `Some`, hero follows the BR actions and opponents don't.
     fn subgamed_payoff(
         &self,
         node: &Node<Self::T, Self::E, Self::G, Self::I>,
@@ -132,12 +116,11 @@ pub trait CfrNash: RefProf {
         }
     }
 
-    /// Product of external (opponent) strategy probabilities along path to node.
+    /// Product of opponent strategy probabilities along the path to `node`.
     ///
-    /// Walks **upward** from node to root via parent pointers, filtering
-    /// to opponent decision points and multiplying averaged probabilities.
-    /// Dual of [`Solver::external_reach`](super::super::solver::Solver::external_reach),
-    /// which walks **downward** from root replaying edges forward.
+    /// Walks **upward** via parent pointers; dual of
+    /// [`Solver::external_reach`](super::super::solver::Solver::external_reach),
+    /// which walks **downward** replaying edges forward.
     fn external_reach(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>, hero: Self::T) -> Probability {
         node.decisions()
             .filter(|(t, _, _)| *t != hero)
@@ -145,8 +128,10 @@ pub trait CfrNash: RefProf {
             .product::<Probability>()
     }
 
-    /// Best response value: optimal play for `hero` against opponents' average strategy.
-    /// Respects info set structure by choosing one action per info set, not per node.
+    /// Best response value for `hero` against opponents' average strategy.
+    ///
+    /// Picks one action per *info set*, not per node, so the response respects
+    /// the information structure.
     fn optimal_response_payoff(
         &self,
         partition: &HashMap<Self::I, InfoSet<Self::T, Self::E, Self::G, Self::I>>,

@@ -4,9 +4,8 @@ use kicker::Abstraction;
 use mccfr::*;
 use monge::Support;
 
-/// NLHE private information: the player's hand abstraction bucket.
-///
-/// Newtype wrapper around gameplay `Abstraction` for NLHE-specific CFR.
+/// NLHE private information — the hand abstraction bucket. Newtype over
+/// `deuce::Abstraction`.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct NlheSecret(Abstraction);
 

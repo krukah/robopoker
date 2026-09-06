@@ -7,13 +7,7 @@ use pokerkit::Chips;
 /// information—in a real game, opponents can't see it. For client-side use,
 /// unknown cards can be represented with placeholder values.
 ///
-/// # Fields
-///
-/// - `state` — Betting, Shoving (all-in), or Folding
-/// - `stack` — Chips behind (not yet committed)
-/// - `stake` — Chips committed this street
-/// - `spent` — Total chips committed this hand
-/// - `cards` — Hole cards (private)
+/// `stake` is chips committed this street; `spent` is chips committed this hand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Seat {
     state: State,
@@ -94,11 +88,8 @@ impl std::fmt::Display for Seat {
     }
 }
 
-/// Player betting status within a hand.
-///
-/// - `Betting` — Active and can still make decisions
-/// - `Shoving` — All-in, no more decisions but still in the pot
-/// - `Folding` — Out of the hand
+/// Player betting status within a hand. `Shoving` is all-in — no more
+/// decisions, but still contesting the pot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum State {

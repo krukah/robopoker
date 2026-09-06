@@ -7,12 +7,6 @@ use super::hand::Hand;
 /// Since `Hand` is an unordered bitset, deal-time card ordering is lost.
 /// `Lehmer` records that ordering as a [Lehmer code](https://en.wikipedia.org/wiki/Lehmer_code)
 /// packed into a single byte. This suffices for up to 5 cards (5! = 120 < 256).
-///
-/// # Trait relationships
-///
-/// - [`FromIterator<Card>`] — collect an ordered card sequence into a `Lehmer`
-/// - [`From<u8>`] / [`Into<u8>`] — serialize the Lehmer code
-/// - [`Lehmer::arrange`] returns a [`CardSeq`] iterator
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Lehmer(u8);
 
@@ -21,11 +15,9 @@ impl Lehmer {
     pub fn identity() -> Self {
         Self(0)
     }
-    /// Constructs a `Lehmer` from an ordered slice of cards.
-    ///
-    /// The Lehmer code is computed by comparing `Card` u8 encodings
-    /// directly — no sorting or intermediate allocation needed, since
-    /// `Hand`'s iteration order matches the u8 encoding.
+    /// From an ordered slice of cards. Compares `Card` u8 encodings directly,
+    /// no sort or intermediate allocation, since `Hand`'s iteration order
+    /// matches that encoding.
     pub fn of(cards: &[Card]) -> Self {
         cards.iter().copied().collect()
     }

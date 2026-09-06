@@ -5,22 +5,13 @@ use monge::*;
 use pokerkit::*;
 use std::collections::BTreeMap;
 
-/// A trained strategy for a specific information set.
+/// A trained strategy for one information set — the query output format for
+/// blueprint strategies.
 ///
-/// Stores accumulated probability mass per action, which can be normalized
-/// to produce the actual mixed strategy. This is the output format for
-/// querying trained blueprint strategies.
-///
-/// # Normalization
-///
-/// Raw accumulated values are not probabilities. Call [`policy()`](Self::policy)
-/// to get a normalized distribution that sums to 1. A minimum probability
-/// floor (`POLICY_MIN`) prevents zero-probability actions.
-///
-/// # Density Implementation
-///
-/// Implements [`Density`] for sampling and probability queries, using the
-/// same normalization logic as `policy()`.
+/// The accumulated mass per action is *not* a distribution; go through
+/// [`policy()`](Self::policy), which normalizes and floors at `POLICY_MIN` so
+/// no action ends up at zero probability. The [`Density`] impl normalizes the
+/// same way.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Strategy {
     info: NlheInfo,
@@ -42,13 +33,11 @@ impl Strategy {
     pub fn visits(&self) -> &BTreeMap<Edge, u32> {
         &self.visits
     }
-    /// Expected value of this information set.
-    /// Stored as an incremental mean, directly readable.
+    /// Expected value of this information set, stored as an incremental mean.
     pub fn payoff(&self) -> f32 {
         self.payoff
     }
-    /// Normalized action probabilities (sums to 1).
-    /// Applies minimum probability floor to prevent zero weights.
+    /// Normalized action probabilities, floored so no weight is zero.
     pub fn policy(&self) -> BTreeMap<Edge, Probability> {
         let denom = self.accumulated.values().map(|&p| p.max(EPSILON)).sum::<Probability>();
         self.accumulated
@@ -56,10 +45,9 @@ impl Strategy {
             .map(|(&edge, &policy)| (edge, policy.max(EPSILON) / denom))
             .collect()
     }
-    /// Argmax (Dirac-sharpened) copy: all probability mass collapses
-    /// onto the highest-mass edge, others zero. Pure post-processing
-    /// on the policy distribution — visits and payoff describe the
-    /// underlying training and stay untouched.
+    /// Dirac-sharpened copy: all mass onto the highest-mass edge. Pure
+    /// post-processing — visits and payoff describe the underlying training
+    /// and stay untouched.
     pub fn argmax(&self) -> Self {
         Self {
             info: self.info,

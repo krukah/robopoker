@@ -9,7 +9,6 @@
 //! bid amounts) satisfies that. Don't declare an [`Axis`] for a
 //! signed quantity.
 
-/// Marker for a scalar axis. Implementors are typically zero-sized
-/// structs like `BB`, `PotFraction`, `BidAmount`. Values along the
-/// axis are assumed non-negative.
+/// Marker for a scalar axis, typically a zero-sized struct like `BB` or
+/// `PotFraction`.
 pub trait Axis: 'static {}

@@ -1,26 +1,15 @@
 //! Combined safe subgame solving + depth-limited frontiers.
 //!
-//! This crate is a thin composition layer over world-partitioned safe subgame solving (safe subgame
-//! solving) and depth-limited leaf evaluation (depth-limited leaf evaluation). It provides
-//! the combined solver that uses both techniques simultaneously.
-//!
-//! # Layering
+//! A thin composition layer: [`SubGameEncoder`] tags info sets with a world
+//! *and* detects frontier chance nodes, so [`SubGameSolver`] runs
+//! world-partitioned safety and depth-limited leaf evaluation at once. The
+//! `world` and `depth` types are re-exported, so `use subgame::*` suffices.
 //!
 //! ```text
 //! WorldInfo<DepthInfo<I>>              ← info-set wrapping (world tag outside, leaf phase inside)
 //!        WorldProfile<DepthView<P>>    ← profile layering (mutable per-world / read-through to blueprint)
 //!               DepthGame<G>          ← game wrapping (depth-limited frontier phase)
 //! ```
-//!
-//! # Contents
-//!
-//! - [`SubGameEncoder`] — Tags info sets with world AND detects frontier chance nodes
-//! - [`SubGameSolver`] — Combined solver using both safety and depth-limiting
-//!
-//! Types from `worldview` and `horizon` are re-exported for convenience so
-//! that downstream callers only need `use subgame::*`.
-//!
-//! # References
 //!
 //! Brown, N., & Sandholm, T. (2019). Superhuman AI for multiplayer poker.
 //! Science, 365(6456), 885-890.

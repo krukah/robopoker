@@ -8,20 +8,8 @@ use tokio_postgres::binary_copy::BinaryCopyInWriter;
 
 /// Bulk data upload via PostgreSQL's binary COPY protocol.
 ///
-/// Enables high-throughput streaming of domain objects to the database
-/// using PostgreSQL's most efficient data ingestion path. The binary
-/// format avoids text parsing overhead and matches Rust's native types.
-///
-/// # Requirements
-///
-/// Implementors must also implement [`Schema`] for table metadata and
-/// define a [`Row`] type that handles binary serialization.
-///
-/// # Performance
-///
-/// Binary COPY is orders of magnitude faster than INSERT statements
-/// for bulk loading. A typical clustering run uploads millions of rows
-/// in seconds rather than hours.
+/// The binary format skips text parsing and maps onto Rust's native types, so a
+/// clustering run uploads millions of rows in seconds rather than hours.
 #[async_trait::async_trait]
 pub trait Streamable: Schema + Sized + Send {
     /// The row type for binary serialization.
@@ -30,9 +18,6 @@ pub trait Streamable: Schema + Sized + Send {
     /// Converts this collection into an iterator of rows for streaming.
     fn rows(self) -> impl Iterator<Item = Self::Row> + Send;
     /// Streams all rows to PostgreSQL via binary COPY.
-    ///
-    /// Opens a COPY stream, writes each row in binary format, and
-    /// finalizes the upload. Consumes `self` to enable move semantics.
     async fn stream(self, client: &Client) {
         client.ensure::<Self>().await;
         measure("stream", async {

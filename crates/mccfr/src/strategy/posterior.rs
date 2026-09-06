@@ -1,12 +1,6 @@
-//! Generic posterior distribution over private information.
-//!
-//! A posterior represents a Bayesian belief over opponent's private information
-//! given observed actions. The `Posterior<P>` type unifies:
-//!
-//! - `Range = Posterior<Observation>` — hole-level distribution
-//! - `Reach = Posterior<Abstraction>` — abstraction-level distribution
-//!
-//! # Bayesian Interpretation
+//! Bayesian belief over an opponent's private information given observed
+//! actions. `Posterior<P>` unifies `Range = Posterior<Observation>` (hole-level)
+//! with `Reach = Posterior<Abstraction>` (abstraction-level).
 //!
 //! ```text
 //! P(private | actions) ∝ P(actions | private) × P(private)
@@ -21,10 +15,8 @@ use monge::Density;
 use pokerkit::Probability;
 use std::collections::BTreeMap;
 
-/// Unnormalized probability distribution over private information.
-///
-/// Maps each possible private value to its reach probability, computed
-/// by multiplying blueprint action probabilities along the observed history.
+/// Unnormalized distribution mapping each private value to its reach
+/// probability, the product of blueprint action probabilities along the history.
 #[derive(Debug, Clone)]
 pub struct Posterior<P>(BTreeMap<P, Probability>)
 where

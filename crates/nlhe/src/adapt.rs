@@ -1,19 +1,15 @@
 //! [`Adapt`] — a subgame sampler generalized over its blueprint store.
 //!
-//! The production [`Nlhe`] solver hard-codes `Blueprint = NlheProfile` (the
-//! full strategy table in RAM). [`Adapt`] is the same subgame-sampler surface
-//! — `adapt_leaf` / `adapt_safe` / `adapt_full` — but *generic* over any
-//! blueprint `B` that reads through the standard [`RefProf`] / [`CfrSolution`]
-//! traits. It bundles a borrowed [`NlheEncoder`] with an owned `B`:
+//! [`Nlhe`] hard-codes `Blueprint = NlheProfile`, the whole strategy table in
+//! RAM. [`Adapt`] offers the same `adapt_leaf` / `adapt_safe` / `adapt_full`
+//! surface over any `B` readable through [`RefProf`] / [`CfrSolution`] —
+//! [`LazyBlueprint`] for DB-backed RAM-free play (aliased [`Lazy`]), or
+//! [`NlheProfile`] moved in.
 //!
-//! - `Adapt<'_, LazyBlueprint>` (aliased [`Lazy`]) — DB-backed, RAM-free.
-//! - `Adapt<'_, NlheProfile>` — the in-RAM store, moved in.
-//!
-//! Nothing in the existing solver zoo is touched: [`Adapt`] simply implements
-//! the existing [`CfrEncoder`] / [`DepthSampler`] / [`WorldRestrict`] traits,
-//! and the subgame solvers — already generic over the sampler and its
-//! blueprint — accept it verbatim. This is the payoff of the blueprint seam
-//! being `RefProf`, not an async parallel of the whole hierarchy.
+//! Nothing in the existing solver zoo is touched: the subgame solvers are
+//! already generic over sampler and blueprint, so they accept [`Adapt`]
+//! verbatim. That is the payoff of the blueprint seam being `RefProf` rather
+//! than an async parallel of the whole hierarchy.
 use super::*;
 use kicker::*;
 use mccfr::*;

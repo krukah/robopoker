@@ -52,13 +52,8 @@ where
     }
 }
 
-/// The tag table (pure — unit-testable without a populated encoder):
-///
-/// | `is_entry` | saw `Off` on path | tag |
-/// |---|---|---|
-/// | true  | (n/a) | `Entry`     |
-/// | false | true  | `Augmented` |
-/// | false | false | `Game`      |
+/// The three-way tag rule, kept pure so it is unit-testable without a
+/// populated encoder.
 pub fn tag<I, G>(inner: I, game: &NestGame<G>, sawoff: bool) -> NestInfo<I, G::Off>
 where
     G: Augmentable,

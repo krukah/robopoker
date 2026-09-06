@@ -1,66 +1,23 @@
-//! Pluribus-style probabilistic pruning with warm-up.
-//!
-//! This is the flagship sampling strategy, matching the approach used in
-//! Facebook AI's Pluribus — the first AI to defeat elite humans in 6-player
-//! no-limit Texas Hold'em.
+//! Pluribus-style probabilistic pruning with warm-up: the flagship sampler.
 
 use super::*;
 use rand::Rng;
 
-/// Pluribus-style sampling with probabilistic pruning and warm-up.
+/// Regret-based pruning with the Pluribus paper's refinements, layered over
+/// [`ExternalSampling`] at opponent nodes.
 ///
-/// Combines regret-based pruning with refinements from the Pluribus paper,
-/// balancing computational efficiency with convergence guarantees.
+/// Each guard exists for a reason:
+/// - **Warm-up** ([`PruningHyperParams::warmup`] epochs, no pruning): early
+///   regrets are noisy, and pruning discards actions before their value is known.
+/// - **Probabilistic exploration** ([`PruningHyperParams::explore`]): actions
+///   whose value shifts as opponents evolve must not be ignored permanently.
+/// - **Pre-terminal exception**: regret on a terminal-bound action can never be
+///   recovered in a later phase, so correctness beats pruning efficiency there.
+/// - **Threshold** ([`PruningHyperParams::threshold`]): remaining actions are
+///   negative enough that equilibrium is unlikely to play them.
 ///
-/// # Pluribus Sampling Overview
-///
-/// 1. **Warm-up period**: No pruning for first [`PruningHyperParams::warmup`]
-///    epochs. Early regrets are noisy — pruning too soon discards potentially
-///    valuable actions before their true value is known.
-///
-/// 2. **Probabilistic exploration**: After warm-up, with probability
-///    [`PruningHyperParams::explore`] (5%), explore all branches anyway.
-///    This prevents permanently ignoring actions whose value might change
-///    as opponent strategies evolve.
-///
-/// 3. **Pre-terminal exception**: Actions leading directly to a terminal
-///    node are never pruned. Regret on those actions cannot be recovered
-///    from any future phase, so getting the strategy right matters more
-///    than pruning efficiency.
-///
-/// 4. **Regret-based pruning**: Otherwise, skip actions with regret below
-///    [`PruningHyperParams::threshold`]. These actions have accumulated enough
-///    negative regret that they're unlikely to be played in equilibrium.
-///
-/// # Training Phases
-///
-/// ```text
-/// Epoch:     0        WARMUP                              ∞
-///            |---------|--------------------------------->
-///            | Warm-up |  Probabilistic Pruning          |
-///            | (no     |  (95% prune, 5% explore)        |
-///            | pruning)|                                 |
-/// ```
-///
-/// # Configuration
-///
-/// | Field | Value | Purpose |
-/// |----------|-------|---------|
-/// | `PruningHyperParams::warmup` | 16k | Epochs before pruning begins |
-/// | `PruningHyperParams::explore` | 0.05 | Probability of exploring anyway |
-/// | `PruningHyperParams::threshold` | -3e5 | Regret level below which actions are pruned |
-/// | `TrainingHyperParams::regret_min` | -4e6 | Floor for regret accumulation (allows recovery) |
-///
-/// # Comparison with [`PrunableSampling`]
-///
-/// | Aspect | PrunableSampling | PluribusSampling |
-/// |--------|------------------|------------------|
-/// | Warm-up | None | 1k epochs |
-/// | Exploration | 0% | 5% |
-/// | Determinism | Deterministic | Probabilistic |
-/// | Use case | Testing, fast iteration | Production training |
-///
-/// # References
+/// Unlike [`PrunableSampling`] (deterministic, no warm-up, no exploration), this
+/// is the production sampler.
 ///
 /// - Brown & Sandholm, "Superhuman AI for multiplayer poker" (Science, 2019)
 /// - Brown & Sandholm, "Regret-Based Pruning in Extensive-Form Games" (NeurIPS 2015)

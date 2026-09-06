@@ -1,20 +1,10 @@
-//! Rock-Paper-Scissors as a minimal CFR test case.
+//! Rock-Paper-Scissors as a minimal CFR test case — both a validation tool and
+//! a reference implementation of the MCCFR trait hierarchy.
 //!
-//! This crate implements RPS using the MCCFR framework, serving as both
-//! a validation tool and a reference implementation for the trait hierarchy.
-//!
-//! # Why RPS?
-//!
-//! RPS is ideal for testing CFR because:
-//! - **Small state space** — Only 13 nodes total (root + 3×P1 + 9×terminal)
-//! - **Known equilibrium** — Uniform mixed strategy is Nash (with asymmetric payoffs, it shifts)
-//! - **Two-player zero-sum** — Perfect for CFR's theoretical guarantees
-//! - **Sequential structure** — P1 moves, then P2 moves (for CFR, not simultaneous)
-//!
-//! # Asymmetric Payoffs
-//!
-//! The implementation uses `ASYMMETRIC_UTILITY` to make Scissors worth more/less,
-//! testing that CFR correctly shifts equilibrium away from uniform.
+//! RPS is a good test bed: 13 nodes total, two-player zero-sum, and a known
+//! equilibrium. It is modeled sequentially (P1 then P2) rather than
+//! simultaneously so CFR applies. `ASYMMETRIC_UTILITY` skews the Scissors
+//! payoff, checking that CFR shifts the equilibrium away from uniform.
 
 mod edge;
 mod encoder;

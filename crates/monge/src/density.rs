@@ -3,23 +3,10 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-/// A discrete probability distribution over a support set.
-///
-/// Provides access to probability mass at each point and iteration over
-/// the support. This abstraction enables optimal transport algorithms to
-/// work with any collection type that maps elements to probabilities.
-///
-/// # Required Methods
-///
-/// - [`density`](Density::density) — Query probability at a point
-/// - [`support`](Density::support) — Iterate over points with positive mass
-///
-/// # Implementations
-///
-/// Provided for common collection types:
-/// - `BTreeMap<T, f32>` — Ordered map with O(log n) lookup
-/// - `HashMap<T, f32>` — Hash map with O(1) expected lookup
-/// - `Vec<(T, f32)>` — Association list with O(n) lookup
+/// A discrete probability distribution over a support set, so the transport
+/// algorithms can run against any collection mapping elements to
+/// probabilities. Implemented below for `BTreeMap`, `HashMap`, and
+/// `Vec<(T, f32)>`.
 pub trait Density {
     /// The type of elements in the distribution's support.
     type Support: Support;

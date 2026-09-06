@@ -1,12 +1,7 @@
-//! Unified Backend Server
-//!
-//! ## Submodules
-//!
-//! - [`topology`]  — Abstraction exploration and clustering queries
-//! - [`strategy`]  — Strategy lookups
-//! - [`gameplay`]  — Hand history evaluation and AIVAT analysis
-//! - [`hosting`]   — WebSocket game hosting infrastructure
-//! - [`training`]  — MCCFR training observability
+//! Unified backend server: abstraction/clustering queries ([`topology`]),
+//! strategy lookups ([`strategy`]), hand-history + AIVAT analysis
+//! ([`gameplay`]), WebSocket game hosting ([`hosting`]), and MCCFR training
+//! observability ([`training`]).
 
 pub mod gameplay;
 pub mod hosting;

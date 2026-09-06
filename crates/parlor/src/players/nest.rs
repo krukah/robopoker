@@ -5,18 +5,15 @@
 //! augmented subgame (`flagship.adapt_nested`) instead of snapping; otherwise
 //! it delegates to the inner brain.
 //!
-//! # Why `distrib` is overridden (not `solve`)
-//!
-//! Off-tree raises only exist under [`pokerkit::Translation::Exact`], and the
+//! `distrib` is overridden rather than `solve` because off-tree raises only
+//! exist under [`pokerkit::Translation::Exact`], and the
 //! default [`Brain::distrib`] pipeline routes through `NlheInfo::from` →
 //! `Recall::history()`, which **panics** on the `Translated::Free` arm. So the
 //! whole postflop path here must be off-tree-safe: everything is derived from
 //! [`Recall::typed_history`] and [`Recall::head`] (which replay actions
 //! directly, never through translation), never from `history()`.
 //!
-//! # Scope
-//!
-//! Handles a single off-tree entry per current-street subgame (the Modicum
+//! Scope: a single off-tree entry per current-street subgame (the Modicum
 //! case). Multi-off-tree lines (a nested re-solve within a nested re-solve)
 //! fall back to an off-tree-safe blueprint lookup rather than panicking.
 //! Runtime-validated at N4 on the retrained V1 blueprint (live-solve smoke +
@@ -98,7 +95,7 @@ where
                 Translated::Snap(e) if e.is_choice() => Some(*e),
                 _ => None,
             })
-            .collect::<Path>();
+            .collect::<Subgame>();
         let choices = recall.head().choices(subgame.aggression());
         NlheInfo::from((subgame, model.encoder().abstraction(&recall.seen()), choices, recall.head().field()))
     }

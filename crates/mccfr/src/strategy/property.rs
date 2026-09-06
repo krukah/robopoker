@@ -1,56 +1,27 @@
-//! Property marker traits for [`CfrEncoder`] implementations.
+//! Empty marker traits carving up CFR-compatible games along axes the type
+//! system can't otherwise see, so downstream code can bound on them.
 //!
-//! These traits carve up the space of CFR-compatible games along axes that
-//! aren't otherwise visible in the type system:
-//!
-//! - [`EmbeddedHistory`] — the info set is a pure function of the game state,
-//!   so `info(tree, leaf)` can blanket-delegate to `resume(&[], &leaf.1)`.
-//! - [`PerfectRecall`] — `info(tree, leaf)` and `resume(past, head)` produce
-//!   the same info for every reachable state. Implied by [`EmbeddedHistory`].
-//! - [`PublicGame`] — no private information; the secret component is `()`.
-//!
-//! These are empty marker traits. Their only job is documentation and being
-//! usable as trait bounds for downstream code (e.g. a debug_assert harness
-//! that cross-checks `info` against `resume` when `PerfectRecall` holds).
-//!
-//! The actual derivation of behavior from [`EmbeddedHistory`] is baked into
-//! [`CfrEncoder::info`]'s default implementation, not into a blanket impl —
-//! Rust's coherence rules don't let us have `impl<H: EmbeddedHistory> CfrEncoder
-//! for H` coexist with the existing `impl<N: CfrEncoder> CfrEncoder for &N` blanket.
-//! So games get the derivation via the default, and opt into [`EmbeddedHistory`]
-//! separately as an attestation.
+//! The derivation implied by [`EmbeddedHistory`] lives in
+//! [`CfrEncoder::info`]'s default, not a blanket impl: coherence forbids
+//! `impl<H: EmbeddedHistory> CfrEncoder for H` coexisting with the existing
+//! `impl<N: CfrEncoder> CfrEncoder for &N`. Games therefore get the behavior from
+//! the default and opt into the marker separately as an attestation.
 
 use crate::*;
 
-/// Attestation that the encoder's info set is a pure function of the game state.
+/// Attestation that the info set is a pure function of the game state, i.e. the
+/// default [`CfrEncoder::info`] (`self.resume(&[], &leaf.1)`) is correct for
+/// every reachable [`Leaf`] and no tree context is needed.
 ///
-/// Concretely: for every reachable [`Leaf`], the default
-/// [`CfrEncoder::info`] implementation (`self.resume(&[], &leaf.1)`) produces
-/// the correct info set. An encoder implementing this trait promises it
-/// does not need tree context to reconstruct info.
-///
-/// # Implications
-///
-/// - [`PerfectRecall`] is implied (see blanket impl below).
-/// - Games tagged with this can delete any hand-rolled `info` override and
-///   rely on the [`CfrEncoder`] default.
+/// Implies [`PerfectRecall`]; lets a game delete any hand-rolled `info` override.
 pub trait EmbeddedHistory: CfrEncoder {}
 
 /// Attestation that `info(tree, leaf)` and `resume(past, head)` agree for
-/// every reachable state.
+/// every reachable state — the weaker form of history stability, where the
+/// encoder may use tree context so long as it doesn't contradict pure replay.
 ///
-/// This is the weaker form of history stability: the encoder may use tree
-/// context in `info`, but doing so must not disagree with a pure replay
-/// from root. Games that satisfy [`EmbeddedHistory`] get this automatically.
-///
-/// # Use
-///
-/// Downstream code that reconstructs info via replay (AIVAT inference,
-/// cross-session analysis, subgame seeding) can rely on this marker as a
-/// type-level guarantee that replay and tree construction produce the same
-/// strategy keys. Code that walks the tree during training can also use this
-/// as a bound to enable debug-assertion harnesses that cross-check both
-/// paths.
+/// Replay-based consumers (AIVAT inference, cross-session analysis, subgame
+/// seeding) bound on this to guarantee both paths yield the same strategy keys.
 pub trait PerfectRecall: CfrEncoder {}
 
 /// Attestation that the game has no private information.

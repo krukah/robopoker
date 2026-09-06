@@ -1,21 +1,10 @@
 use crate::*;
 
-/// A collection of tree nodes sharing the same information set.
+/// The tree nodes sharing one information set, since CFR updates regret and
+/// policy per info set rather than per node.
 ///
-/// In CFR, regret and policy updates are computed per information set,
-/// not per node. This structure groups all nodes with the same info
-/// identifier for batch processing.
-///
-/// # Invariants
-///
-/// 1. All nodes in the set have the same information set identifier
-/// 2. All nodes have identical available actions (required by CFR)
-///
-/// # Usage
-///
-/// Created by [`Tree::partition()`], which groups nodes by info after
-/// tree generation. The `span()` method returns node handles for
-/// iterating over the set.
+/// Built by [`Tree::partition()`] after tree generation. Every member shares the
+/// same info identifier and therefore the same available actions.
 #[derive(Debug)]
 pub struct InfoSet<T, E, G, I>
 where

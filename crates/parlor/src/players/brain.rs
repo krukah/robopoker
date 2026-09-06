@@ -1,14 +1,13 @@
 //! [`Brain`] — the trait every bot composition implements.
 //!
 //! Each cell of the bot-config hypercube is a kind of brain:
-//! [`Blueprint`](super::Blueprint) is the base (in-memory blueprint
-//! lookup); [`Depth`](super::Depth), [`World`](super::World), and
-//! `World<Depth<…>>` wrap an inner brain with a subgame solver.
+//! [`Blueprint`](super::Blueprint) is the base (in-memory lookup);
+//! [`Depth`](super::Depth), [`World`](super::World), and `World<Depth<…>>`
+//! wrap an inner brain with a subgame solver.
 //!
-//! Two trivial accessors (`tag`, `model`), one overrideable hook
-//! ([`solve`](Brain::solve)), one default body ([`distrib`](Brain::distrib)).
-//! Subgame layers override only `solve`; preflop blueprint, postflop
-//! solve+blend, and the no-solve fallback all live in the default.
+//! Subgame layers override only [`solve`](Brain::solve); preflop blueprint,
+//! postflop solve+blend, and the no-solve fallback all live in the default
+//! [`distrib`](Brain::distrib) body.
 use std::collections::BTreeMap;
 use std::time::Duration;
 

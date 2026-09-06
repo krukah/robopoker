@@ -57,12 +57,9 @@ where
         self.inner.solve(recall, info, deadline)
     }
 
-    /// Override the default postflop pipeline: take the inner's full
-    /// distribution and collapse to a Dirac delta on its mode. When
-    /// `Agent::decide` samples from this it deterministically returns
-    /// the mode action. Shares [`nlhe::argmax`] with
-    /// [`nlhe::Strategy::argmax`] so the analysis-side dirac
-    /// post-process and this gameplay brain agree.
+    /// Collapse the inner brain's distribution to a Dirac delta on its mode.
+    /// Shares [`nlhe::argmax`] with [`nlhe::Strategy::argmax`] so the
+    /// analysis-side dirac post-process and this gameplay brain agree.
     fn distrib(&self, recall: &Witness) -> BTreeMap<Edge, Probability> {
         nlhe::argmax(&self.inner.distrib(recall))
     }

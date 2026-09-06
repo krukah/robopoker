@@ -6,15 +6,8 @@ use std::hash::Hash;
 /// An abstracted game tree transition.
 ///
 /// Unlike [`Action`] which carries exact chip amounts, `Edge` abstracts
-/// betting actions for strategy lookup across different stack depths.
-///
-/// # Variants
-///
-/// - `Draw` — Chance node (card deal)
-/// - `Fold`, `Check`, `Call` — Standard player decisions
-/// - `Open(Chips)` — Preflop open in BB units (e.g., 2BB, 3BB)
-/// - `Raise(Odds)` — Pot-relative raise (e.g., 1/2 pot, 2x pot)
-/// - `Shove` — All-in bet
+/// betting actions for strategy lookup across different stack depths:
+/// `Open` is in BB units, `Raise` is pot-relative.
 #[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
 pub enum Edge {
     Draw,
@@ -54,10 +47,8 @@ impl Edge {
 }
 
 impl Edge {
-    /// Initial regret bounds for CFR warmstart.
-    ///
-    /// Returns (min, max) regret to bias exploration toward certain actions.
-    /// Per-action weights — only ratios matter.
+    /// Initial (min, max) regret for CFR warmstart, biasing exploration
+    /// toward certain actions. Per-action weights — only ratios matter.
     pub fn regret(&self) -> (Utility, Utility) {
         let b = BiasHyperParams::get();
         match self {

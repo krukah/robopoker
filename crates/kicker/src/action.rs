@@ -10,10 +10,7 @@ const BITS: u32 = MASK.count_ones();
 /// by players (fold, check, call, raise, shove) and chance events (card deals,
 /// blind posts). Each variant carries the relevant chip amount or cards.
 ///
-/// # Serialization
-///
-/// Actions pack into `u32` for compact storage: 8 bits for the variant tag,
-/// remaining bits for chip amounts or card data.
+/// Packs into a `u32`: 8 bits of variant tag, the rest chip amount or card data.
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub enum Action {
     Draw(Hand),

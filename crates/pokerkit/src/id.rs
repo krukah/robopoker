@@ -18,7 +18,6 @@ impl<T> ID<T> {
         self.inner
     }
     /// Cast `ID<T>` to `ID<U>` while preserving the underlying UUID.
-    /// Useful for converting between marker types.
     pub fn cast<U>(self) -> ID<U> {
         ID {
             inner: self.inner,

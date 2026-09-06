@@ -80,18 +80,14 @@ where
     }
 }
 
-/// # Convergence Results
+/// Nash equilibrium reference for 6-card Kuhn poker.
 ///
-/// All tests use 2^18 (256K) iterations. 6-card Kuhn poker ({J,Q,K} × {♠,♥})
-/// has 12 info sets and 30 deals. Same-rank deals (J♠ vs J♥) produce ties at
-/// showdown, shifting the equilibrium from classical 3-card Kuhn.
+/// All tests use 2^18 iterations. 6-card Kuhn ({J,Q,K} × {♠,♥}) has 12 info
+/// sets and 30 deals; same-rank deals (J♠ vs J♥) tie at showdown, shifting the
+/// equilibrium away from classical 3-card Kuhn. Tolerances are calibrated
+/// empirically as **μ + 4σ** rounded up to 0.005, targeting <1% flake.
 ///
-/// Per-test tolerances are calibrated empirically using **μ + 4σ** rounded up
-/// to nearest 0.005, targeting <1% failure probability.
-///
-/// # Nash Equilibrium for 6-Card Kuhn Poker
-///
-/// ## Pure strategies (invariant to deck size)
+/// Pure strategies (invariant to deck size):
 ///
 /// - **J facing bet**: always fold (EV(call) = −12/7 < −1 = EV(fold))
 /// - **K facing bet**: always call (worst case ties K, otherwise wins)
@@ -100,7 +96,7 @@ where
 /// - **J facing check-bet**: always fold (analogous to J facing bet)
 /// - **K facing check-bet**: always call (analogous to K facing bet)
 ///
-/// ## Mixed strategies (unique, all fractions of 31)
+/// Mixed strategies (unique, all fractions of 31).
 ///
 /// From any rank's perspective, opponent has: same rank 1/5, each other 2/5.
 ///
@@ -123,15 +119,12 @@ where
 /// 7. P0-J indiff at Open → b = 6c₁−3
 /// 8. Solving (5)-(7): b = 9/31, d = 8/31, c₁ = 17/31
 ///
-/// ## Game value
+/// Game value: EV(P0) = -19/465 ≈ -0.041 (P1 has position). Compare 3-card
+/// Kuhn's -1/18 ≈ -0.056 — same-rank ties cut P0's disadvantage by ~26%.
 ///
-/// EV(P0) = -19/465 ≈ -0.041 (P1 has positional advantage).
-/// Compare 3-card Kuhn: -1/18 ≈ -0.056. Same-rank ties reduce P0's
-/// disadvantage by ~26%.
-///
-/// Note: P1-Q is *analytically* indifferent at Check (EV(bet) = EV(check)
-/// for all d), so d's regret signal is weak and convergence is slow.
-/// The test uses a wider tolerance (0.18) for d accordingly.
+/// P1-Q is *analytically* indifferent at Check (EV(bet) = EV(check) for all
+/// d), so d's regret signal is weak and converges slowly — hence the wider
+/// 0.18 tolerance on d.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,21 +175,21 @@ mod tests {
         let near = |v: f32, target: f32, tol: f32, label: &str| {
             assert!((v - target).abs() < tol, "{label}: {v:.3} not within ±{tol} of {target:.3}");
         };
-        // ── pure strategies ────────────────────────────────────────────
+        // pure strategies
         assert!(policy(Rank::J, History::Bet,      KuhnEdge::Fold)  > 0.95, "J|B  should fold");
         assert!(policy(Rank::J, History::CheckBet, KuhnEdge::Fold)  > 0.95, "J|XB should fold");
         assert!(policy(Rank::K, History::Bet,      KuhnEdge::Call)  > 0.95, "K|B  should call");
         assert!(policy(Rank::K, History::CheckBet, KuhnEdge::Call)  > 0.95, "K|XB should call");
         assert!(policy(Rank::K, History::Check,    KuhnEdge::Bet)   > 0.95, "K|X  should bet");
         assert!(policy(Rank::Q, History::Open,     KuhnEdge::Check) > 0.85, "Q|   should check");
-        // ── mixed strategies (analytical: all fractions of 31) ─────────
+        // mixed strategies (analytical: all fractions of 31)
         near(policy(Rank::J, History::Open,     KuhnEdge::Bet),   9.0/31.0, 0.05, "a  = J|  bet");
         near(policy(Rank::K, History::Open,     KuhnEdge::Bet),  27.0/31.0, 0.05, "k  = K|  bet");
         near(policy(Rank::Q, History::Bet,      KuhnEdge::Call), 17.0/31.0, 0.08, "c₁ = Q|B call");
         near(policy(Rank::Q, History::CheckBet, KuhnEdge::Call), 23.0/31.0, 0.05, "c₂ = Q|XB call");
         near(policy(Rank::J, History::Check,    KuhnEdge::Bet),   9.0/31.0, 0.05, "b  = J|X bet");
         near(policy(Rank::Q, History::Check,    KuhnEdge::Bet),   8.0/31.0, 0.18, "d  = Q|X bet");
-        // ── structural invariant: K opens 3× J's bluff rate ───────────
+        // structural invariant: K opens 3x J's bluff rate
         let k_bet = policy(Rank::K, History::Open, KuhnEdge::Bet);
         let j_bet = policy(Rank::J, History::Open, KuhnEdge::Bet);
         near(k_bet / j_bet, 3.0, 0.4, "k/a ≈ 3");
@@ -230,7 +223,6 @@ mod tests {
     }
 
     //                                                                  tolerance
-    //                                                                  ─────────
     #[rustfmt::skip] kuhn!(ExternalSampling, SummedRegret,     ConstantWeight,     0.020);
     #[rustfmt::skip] kuhn!(ExternalSampling, SummedRegret,     LinearWeight,       0.025);
     #[rustfmt::skip] kuhn!(ExternalSampling, SummedRegret,     QuadraticWeight,    0.025);
@@ -276,16 +268,14 @@ mod tests {
     #[rustfmt::skip] kuhn!(PluribusSampling, DiscountedRegret, QuadraticWeight,    0.020);
     #[rustfmt::skip] kuhn!(PluribusSampling, DiscountedRegret, ExponentialWeight,  0.020);
 
-    // ── subgame tests ───────────────────────────────────────────────────
+    // subgame tests
     //
-    // SubGameSolver solves a single random card deal with 4 alternative worlds.
-    // With uniform belief, all worlds see the same cards so averaging across
-    // worlds recovers the per-deal strategy. Unencountered info sets fall
-    // back to blueprint values, so the combined profile approximates Nash.
-    //
-    // Pure-strategy Nash properties (K calls, J folds, K bets after check)
-    // hold regardless of which cards were dealt, providing strong structural
-    // correctness checks beyond regret convergence alone.
+    // SubGameSolver solves one random deal across alternative worlds. Under
+    // uniform belief every world sees the same cards, so averaging recovers the
+    // per-deal strategy; unencountered info sets fall back to blueprint values,
+    // making the combined profile approximate Nash. The pure-strategy Nash
+    // properties (K calls, J folds, K bets after check) hold for any deal, so
+    // they check structure beyond regret convergence alone.
 
     const N16: usize = 1 << 16;
 

@@ -5,16 +5,12 @@ use std::collections::HashMap;
 
 impl<T> CfrFlow for T where T: RefProf + CfrSampling {}
 
-/// Counterfactual regret minimization math.
+/// Counterfactual regret minimization math: regret matching, reach
+/// probabilities, expected values, regret/policy vectors.
 ///
-/// Blanket-implemented for all types implementing both `Profile` (read access
-/// to accumulated regrets/weights) and [`CfrSampling`] (walker identity and sampling
-/// parameters). Provides regret matching, reach probabilities, expected values,
-/// and regret/policy vector computation.
-///
-/// This trait exists because the CFR math is a *gift* derived from having both
-/// Profile and CfrSampling — it doesn't add required methods, so no one implements
-/// it directly.
+/// Blanket-implemented, never implemented directly: the math is a *gift* derived
+/// from having both [`RefProf`] (accumulated regrets/weights) and [`CfrSampling`]
+/// (walker identity, sampling parameters), so it adds no required methods.
 pub trait CfrFlow: RefProf + CfrSampling {
     /// Regret normalization constant for regret-matching denominator.
     fn regret_denom(&self, info: &Self::I) -> Utility {
@@ -30,8 +26,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     fn sampling_weight(&self, info: &Self::I, edge: &Self::E, denom: Probability) -> Probability {
         ((self.weight(info, edge) / self.temperature() + self.smoothing()) / denom).max(self.curiosity())
     }
-    /// Sampling distribution over an infoset's edges: the normalized probabilities
-    /// the external sampler draws from.
+    /// Normalized distribution over an infoset's edges that the sampler draws from.
     fn sampling_distribution(&self, info: &Self::I) -> Policy<Self::E> {
         let denom = self.weight_denom(info);
         let raw = info
@@ -58,9 +53,8 @@ pub trait CfrFlow: RefProf + CfrSampling {
         self.sampling_weight(info, edge, denom) / z
     }
 
-    /// Fused regret + expected value computation for an information set.
-    /// Computes all action values once per root via DFS, then derives both
-    /// regret and EV without redundant tree traversal.
+    /// Fused regret + expected value for an infoset: one DFS per root yields the
+    /// action values from which both are derived, avoiding a second traversal.
     fn dfs(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> (Policy<Self::E>, Utility) {
         let span = infoset.span();
         let rd = self.regret_denom(infoset.head().info());
@@ -86,10 +80,9 @@ pub trait CfrFlow: RefProf + CfrSampling {
         (regrets.into_iter().collect(), payoff)
     }
 
-    /// Compute regret gains for all edges. Pre-computes expected values
-    /// for all roots to avoid redundant computation.
+    /// Regret gains for all edges, with root expected values hoisted.
     ///
-    /// Iterates per-node over each node's actual outgoing edges, since
+    /// Iterates per-node over each node's *actual* outgoing edges, since
     /// sampling may have expanded different edges at different nodes.
     fn regret_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         let ref span = infoset.span();
@@ -111,10 +104,8 @@ pub trait CfrFlow: RefProf + CfrSampling {
             .into_iter()
             .collect()
     }
-    /// Calculate immediate policy distribution from current regrets.
-    ///
-    /// Uses regret matching: pi(a) = max(regret(a), e) / sum max(regret, e).
-    /// Actions with higher regret are chosen more frequently to minimize future regret.
+    /// Immediate policy from current regrets by regret matching:
+    /// `pi(a) = max(regret(a), e) / sum max(regret, e)`.
     fn policy_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         self.iterated_distribution(&infoset.info())
     }
@@ -173,12 +164,12 @@ pub trait CfrFlow: RefProf + CfrSampling {
         cfactual / sampling
     }
 
-    /// Recursive DFS value computation. Accumulates reach during descent,
-    /// eliminating descendants() allocation and per-leaf upward path walks.
+    /// `Σ_leaves [ payoff * pi_rel / pi_smp ]`, where `pi_rel` is relative reach
+    /// (all non-chance) and `pi_smp` is sampling reach below root (non-chance,
+    /// non-walker).
     ///
-    /// Computes: Σ_leaves [ payoff * pi_rel / pi_smp ]
-    /// where pi_rel is accumulated relative reach (iterated for all non-chance)
-    /// and pi_smp is accumulated sampling reach below root (sampling for non-chance, non-walker).
+    /// Reach accumulates during descent, avoiding a `descendants()` allocation
+    /// and a per-leaf upward path walk.
     fn recursed_value(
         &self,
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
@@ -228,9 +219,8 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// Relative to the player at the root Node of this Infoset,
     /// what is the Utility contributed by this leaf Node?
     ///
-    /// For terminal nodes, uses the game's payoff function.
-    /// For frontier nodes (non-terminal leaves in depth-limited trees),
-    /// uses the accumulated payoff from the profile.
+    /// Terminal nodes use the game's payoff; frontier nodes (non-terminal leaves
+    /// in depth-limited trees) use the profile's accumulated payoff.
     fn relative_value(
         &self,
         root: &Node<Self::T, Self::E, Self::G, Self::I>,
@@ -238,11 +228,7 @@ pub trait CfrFlow: RefProf + CfrSampling {
     ) -> Utility {
         self.terminal_value(leaf, root.game().turn()) * self.relative_reach(root, leaf) / self.sampling_reach(leaf)
     }
-    /// Policy-weighted expected utility at this node.
-    ///
-    /// V(I) = sum_a pi(a) * Q(I,a)
-    ///
-    /// Uses DFS subtree traversal instead of collecting descendants.
+    /// Policy-weighted expected utility at this node: `V(I) = Σ_a pi(a) * Q(I,a)`.
     fn expected_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>) -> Utility {
         debug_assert_eq!(self.walker(), root.game().turn());
         let weight = self.ancestor_reach(root);
@@ -256,18 +242,13 @@ pub trait CfrFlow: RefProf + CfrSampling {
     /// If, counterfactually,
     /// we had intended to get ourselves in this infoset,
     /// then what would be the expected Utility of this leaf?
-    ///
-    /// Uses DFS subtree traversal instead of collecting descendants.
     fn cfactual_value(&self, root: &Node<Self::T, Self::E, Self::G, Self::I>, edge: &Self::E) -> Utility {
         debug_assert_eq!(self.walker(), root.game().turn());
         root.step(edge)
             .map(|child| self.ancestor_reach(root) * self.recursed_value(root, &child, 1.0, 1.0))
             .expect("edge belongs to outgoing branches")
     }
-    /// Compute the expected value of an information set under current strategy.
-    ///
-    /// This is the sum of expected values over all nodes in the infoset span.
-    /// Used for EV accumulation during training and frontier evaluation.
+    /// Expected value of an infoset: summed over every node in its span.
     fn infoset_value(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Utility {
         infoset.span().iter().map(|r| self.expected_value(r)).sum::<Utility>()
     }

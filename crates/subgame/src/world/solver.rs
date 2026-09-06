@@ -1,22 +1,16 @@
 //! Safe subgame solver (no depth limiting).
 //!
-//! Implements the safe subgame solving technique using world sampling
-//! and per-world regret separation, without any frontier/depth-limiting
-//! machinery. The tree expands fully to terminal nodes.
-//!
-//! Use [`super::SubGameSolver`] if you also want depth-limited frontier
-//! evaluation, or [`subgame::DepthSolver`] for depth-limiting alone.
+//! See [`super::SubGameSolver`] for safety plus depth-limited frontiers, or
+//! [`subgame::DepthSolver`] for depth-limiting alone.
 use std::collections::BTreeMap;
 
 use super::*;
 use mccfr::*;
 use pokerkit::Probability;
 
-/// Safe subgame solver without depth limiting.
-///
-/// Samples a world from the belief partition, restricts the opponent's
-/// hidden state to that world via [`WorldRestrict`], and runs CFR on the
-/// full (non-depth-limited) subgame tree with per-world info sets.
+/// Samples a world from the belief partition, restricts the opponent's hidden
+/// state to it via [`WorldRestrict`], and runs CFR with per-world info sets on
+/// the full tree, expanded all the way to terminal nodes.
 pub struct WorldSolver<'blueprint, const W: usize, P, N, I, Y>
 where
     P: CfrSolution<I = I>,

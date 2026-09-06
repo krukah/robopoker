@@ -1,52 +1,40 @@
 //! Direction-aware projections over [`Descent`] streams.
 //!
-//! The CFR tree is walked both downward from a root (via
-//! [`CfrGame::apply`](crate::CfrGame::apply)) and upward from a leaf (via
-//! tree ancestors). The in-memory representations of these walks are
-//! structurally similar lists of [`Descent<T, E>`] pairs but mean different
-//! things depending on where the walk came from:
+//! Three newtypes wrap `Vec<Descent<T, E>>`; they are structurally identical but
+//! provenance makes them mean different things:
 //!
-//! - [`Replay`](crate::Replay): the full play-through from game root to
-//!   "now," spanning any chance-node transitions between streets.
-//! - [`Prefix`](crate::Prefix): an immutable context fixed at
-//!   subgame-solver construction time. Represents "these descents already
-//!   happened before the solver even started." Never grows.
-//! - [`Story`](crate::Story): a growing descent story emitted during
-//!   a biased rollout at a subgame frontier. Distinct from the upstream
-//!   solver's own internal path so the compiler refuses to splice it in
-//!   as a prefix.
+//! - [`Replay`](crate::Replay) — full play-through from game root to "now",
+//!   spanning chance transitions between streets.
+//! - [`Prefix`](crate::Prefix) — immutable context fixed when a subgame solver
+//!   was constructed. Never grows.
+//! - [`Story`](crate::Story) — a growing rollout at a subgame frontier, kept
+//!   distinct so the compiler refuses to splice it in as a prefix.
 //!
-//! All three carry `Vec<Descent<T, E>>` internally and implement
-//! [`IntoIterator<Item = Descent<T, E>>`](IntoIterator). Functions that
-//! don't care which of the three they get can simply accept
-//! `impl IntoIterator<Item = Descent<T, E>>`. Direction-specific
-//! projections (`current_street`) are available via the
-//! [`DescentStream`] extension when `T: CfrTurn` — non-turn anchors
-//! (e.g. a [`Node`](crate::Node) handle) should project down to a turn
-//! with a mapping helper before reaching for these methods.
+//! All implement [`IntoIterator<Item = Descent<T, E>>`](IntoIterator), so
+//! provenance-agnostic functions just accept that bound. `current_street` and
+//! friends come from [`DescentStream`] when `T: CfrTurn` — non-turn anchors
+//! (e.g. a [`Node`](crate::Node)) must map down to a turn first.
 use crate::CfrEdge;
 use crate::CfrTurn;
 use crate::Descent;
 
-/// Extension trait for any iterator of [`Descent`] pairs.
+/// Projections over any iterator of [`Descent`] pairs.
 ///
-/// Everything here depends on direction being "downward from root" — the
-/// sequence order defines what "trailing" and "current street" mean. For
-/// an [`Ascent`](crate::Ascent) stream, collect + reverse + re-walk first
-/// rather than trying to reinterpret the pairs in place (the fencepost
-/// shift across chance boundaries is silent and wrong).
+/// Everything here depends on the direction being downward from root, since
+/// sequence order is what makes "trailing" and "current street" meaningful. For
+/// an [`Ascent`](crate::Ascent) stream, collect + reverse + re-walk instead of
+/// reinterpreting pairs in place: the fencepost shift across chance boundaries
+/// is silent and wrong.
 pub trait DescentStream<T, E>: IntoIterator<Item = Descent<T, E>> + Sized
 where
     T: CfrTurn,
     E: CfrEdge,
 {
-    /// Trailing descents after the most recent chance boundary.
+    /// Trailing descents after the most recent chance boundary — a descent
+    /// *anchored at* a chance turn, which is the street transition in NLHE.
     ///
-    /// "Chance boundary" here means a descent whose anchor turn is a
-    /// chance node — i.e., an edge descended FROM a chance turn, which is
-    /// the street transition for games like NLHE. If the sequence ends
-    /// exactly at a chance descent, the result is empty. For games with
-    /// no chance anchors at all, the result is the full sequence.
+    /// Empty if the sequence ends exactly at a chance descent; the full sequence
+    /// if there are no chance anchors at all.
     fn current_street(self) -> Vec<E> {
         let walk: Vec<_> = self.into_iter().collect();
         let start = walk.iter().rposition(|d| d.0.is_chance()).map_or(0, |i| i + 1);

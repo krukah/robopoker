@@ -1,24 +1,11 @@
 use crate::*;
 use petgraph::graph::NodeIndex;
 
-/// A sampled game tree for CFR traversal.
+/// A sampled game tree for CFR traversal: a petgraph `DiGraph` whose vertices
+/// hold `(Game, Info)` and whose edges are labeled with actions.
 ///
-/// Built dynamically by the [`Solver`] during training using the
-/// [`CfrEncoder`] for state encoding and `Profile` for action sampling.
-/// Each vertex stores a `(Game, Info)` tuple; edges are labeled with actions.
-///
-/// # Structure
-///
-/// Internally wraps a petgraph `DiGraph`. The tree is built depth-first
-/// during a single training iteration, then partitioned by information set
-/// for regret computation.
-///
-/// # Traversal
-///
-/// - `at(index)` — Get a [`Node`] handle at a specific index
-/// - `all()` — Iterate over all nodes
-/// - `partition()` — Group nodes by information set for CFR updates
-/// - `bfs()` / `postorder()` — Ordered traversal for value propagation
+/// Grown depth-first over a single training iteration, then `partition()`ed by
+/// information set for regret computation.
 #[derive(Debug)]
 pub struct Tree<T, E, G, I>
 where
@@ -41,10 +28,10 @@ where
 {
     /// Construct an empty tree with the given batch-local identifier.
     ///
-    /// The `id` is used by [`Node::seed`] to distinguish trees within a
-    /// batch at the same epoch, so two trees must get different ids if
-    /// they need independent sampling. In [`Solver::batch`], the par_iter
-    /// index is used; in tests that build a single tree, any id works.
+    /// [`Node::seed`] uses `id` to distinguish trees within a batch at the same
+    /// epoch, so trees needing independent sampling must get distinct ids.
+    /// [`Solver::batch`] passes the par_iter index; single-tree tests can pass
+    /// anything.
     pub fn new(id: usize) -> Self {
         Self {
             id,
@@ -96,16 +83,14 @@ where
         info
     }
 
-    /// Iterate nodes in BFS order (root first) for top-down traversal.
-    /// Returns a Vec that visits parents before children.
+    /// Nodes in BFS order — parents before children, for top-down traversal.
     pub fn bfs(&self) -> Vec<NodeIndex> {
         use petgraph::visit::Walker;
         petgraph::visit::Bfs::new(&self.graph, NodeIndex::new(0))
             .iter(&self.graph)
             .collect()
     }
-    /// Iterate nodes in postorder (leaves first) for bottom-up traversal.
-    /// Returns a Vec since we need to reverse the DFS order.
+    /// Nodes in postorder — leaves first, for bottom-up value propagation.
     pub fn postorder(&self) -> Vec<NodeIndex> {
         let mut result = Vec::with_capacity(self.n());
         let mut stack = vec![(NodeIndex::new(0), false)];

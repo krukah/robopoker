@@ -2,12 +2,9 @@
 
 use pokerkit::Probability;
 
-/// Depth-limited frontier evaluation parameters.
-///
-/// At depth-limited frontiers, each player picks from a fixed number
-/// of biased continuation strategies (the count is the const generic
-/// `FRONTIER_LEAVES`, not part of these tunables). The solver learns
-/// the minimax mix over the resulting payoff matrix.
+/// Depth-limited frontier evaluation parameters. The number of continuation
+/// strategies each player picks from is the const generic `FRONTIER_LEAVES`,
+/// deliberately not a tunable here.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FrontierHyperParams {
     bias: Probability,

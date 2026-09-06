@@ -2,23 +2,14 @@ use super::observation::Observation;
 use super::permutation::Permutation;
 use pokerkit::Arbitrary;
 
-/// A canonical representative of a suit-isomorphic observation class.
+/// A canonical representative of a suit-isomorphic observation class. Suits
+/// are interchangeable in poker — only patterns matter, not labels — so many
+/// distinct observations are strategically identical; the canonical form comes
+/// from applying the appropriate [`Permutation`]. Roughly 4-5x reduction
+/// (preflop 1,326 → 169; river 2.8B → 123M).
 ///
-/// Since suits are interchangeable in poker (only patterns matter, not labels),
-/// many distinct observations are strategically equivalent. An isomorphism is
-/// the canonical form obtained by applying the appropriate [`Permutation`].
-///
-/// # Reduction Factor
-///
-/// Isomorphism reduces the state space by roughly 4-5x depending on street:
-/// - Preflop: 1,326 observations → 169 isomorphisms
-/// - River: 2.8B observations → 123M isomorphisms
-///
-/// # Note on Street Order
-///
-/// Unlike some approaches, we ignore which cards arrived on which street.
-/// This is a form of imperfect recall that trades some strategic precision
-/// for dramatic space savings.
+/// We also ignore *which* street each card arrived on: imperfect recall,
+/// traded deliberately for the space savings.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Isomorphism(pub Observation);
 
@@ -55,10 +46,8 @@ impl Arbitrary for Isomorphism {
 }
 
 impl Isomorphism {
-    /// Tests whether an observation is already in canonical form.
-    ///
-    /// An observation is canonical if applying the canonicalization
-    /// permutation would be the identity (no change).
+    /// True when the canonicalizing permutation is the identity — i.e. the
+    /// observation is already canonical.
     pub fn is_canonical(observation: &Observation) -> bool {
         Permutation::from(observation) == Permutation::identity()
     }

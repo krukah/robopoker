@@ -4,66 +4,29 @@ use pokerkit::*;
 
 /// Async variant of [`CfrSolution`] for database-backed or parallel training.
 ///
-/// This trait provides async versions of the core CFR strategy methods.
-/// It is blanket-implemented for all `CfrSolution` types, wrapping their
-/// synchronous methods in async blocks. This allows database-backed
-/// implementations (like distributed workers) to implement this trait
-/// directly with real async I/O, while in-memory implementations
-/// get async compatibility for free.
+/// CFR is identical whether data lives in memory or a database — only access
+/// differs. So in-memory profiles get this trait free via the blanket impl below,
+/// while DB-backed workers implement it directly with real async I/O.
 ///
-/// # Design
-///
-/// The core insight is that CFR algorithms are identical regardless of
-/// whether data lives in memory or a database — only the data access
-/// pattern differs. By abstracting over sync vs async access:
-///
-/// - In-memory `CfrSolution` impls get `AsyncProfile` via blanket impl
-/// - Database workers implement `AsyncProfile` directly with real async
-/// - Training code can be generic over `AsyncProfile`
-///
-/// # Method Naming
-///
-/// To avoid ambiguity with `Profile` trait methods, this trait uses
-/// distinct names: `traverser()` instead of `walker()`, `iteration()`
-/// instead of `epochs()`. The blanket impl delegates to the Profile methods.
-///
-/// # Key Methods
-///
-/// Distribution calculations (single info, batch-optimized):
-/// - `policy` — Current iteration strategy via regret matching
-/// - `sample` — Exploration-adjusted sampling distribution
-/// - `advice` — Historical average strategy (Nash approximation)
-///
-/// DFS-based reach and value calculations:
-/// - `ancestor_reach` — Fused cfactual/sampling reach in one pass
-/// - `recursed_value` — Recursive DFS accumulating reach during descent
-/// - `dfs` — Fused regret + EV computation for an information set
-///
-/// Derived calculations:
-/// - `expected_value` — Policy-weighted expected utility
-/// - `cfactual_value` — Counterfactual action value
-/// - `regret_vector` — Regret gains for all actions
-/// - `policy_vector` — Policy distribution over actions
-/// - `infoset_value` — Expected value of an information set
+/// Methods that would collide with the sync traits are renamed: `traverser()` for
+/// `walker()`, `iteration()` for `epochs()`.
 #[async_trait::async_trait]
 pub trait AsyncProfile: Send + Sync {
     type T: CfrTurn + Send + Sync;
     type E: CfrEdge + Send + Sync;
     type G: CfrGame<E = Self::E, T = Self::T> + Send + Sync;
     type I: CfrInfo<E = Self::E, T = Self::T> + Send + Sync;
-    /// Current traversing player (distinct name to avoid Profile::walker collision).
+    /// Current traversing player.
     fn traverser(&self) -> Self::T;
-    /// Current training iteration (distinct name to avoid Profile::epochs collision).
+    /// Current training iteration.
     fn iteration(&self) -> usize;
-    /// Sampling temperature parameter.
     fn temperature(&self) -> Entropy {
         SamplingHyperParams::get().temperature()
     }
-    /// Sampling smoothing parameter.
     fn smoothing(&self) -> Energy {
         SamplingHyperParams::get().smoothing()
     }
-    /// Sampling curiosity (exploration floor).
+    /// Exploration floor.
     fn curiosity(&self) -> Probability {
         SamplingHyperParams::get().curiosity()
     }
@@ -73,8 +36,8 @@ pub trait AsyncProfile: Send + Sync {
     async fn sample(&self, info: &Self::I) -> Policy<Self::E>;
     /// Historical average strategy (Nash approximation).
     async fn advice(&self, info: &Self::I) -> Policy<Self::E>;
-    /// Fused cfactual/sampling reach in one upward pass.
-    /// Batch-fetches policies and samples via join_all, then folds both products.
+    /// Fused cfactual/sampling reach in one upward pass, batch-fetching
+    /// policies and samples via `join_all` before folding both products.
     async fn ancestor_reach(&self, root: &Node<'_, Self::T, Self::E, Self::G, Self::I>) -> Utility {
         let path = root
             .decisions()
@@ -93,9 +56,8 @@ pub trait AsyncProfile: Send + Sync {
             .fold((1.0, 1.0), |(cf, sm), (((_, e), pol), smp)| (cf * pol.density(e), sm * smp.density(e)));
         cf / sm
     }
-    /// Async recursive DFS accumulating reach during descent.
-    /// At each internal node, fetches policy (+ sample if non-walker)
-    /// once, then uses .density(edge) per child.
+    /// Recursive DFS accumulating reach during descent. Fetches policy (+ sample
+    /// if non-walker) once per internal node, then `.density(edge)` per child.
     async fn recursed_value(
         &self,
         root: &Node<'_, Self::T, Self::E, Self::G, Self::I>,
@@ -118,9 +80,8 @@ pub trait AsyncProfile: Send + Sync {
         }
         total
     }
-    /// Fused regret + EV in one pass per information set.
-    /// Per root: one ancestor_reach, one policy fetch, recursed_value per edge,
-    /// then derives both regret and EV without redundant tree traversal.
+    /// Fused regret + EV per infoset: one `ancestor_reach` and one policy fetch
+    /// per root, then `recursed_value` per edge — no second tree traversal.
     async fn dfs(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> (Policy<Self::E>, Utility) {
         let span = infoset.span();
         let mut regrets = std::collections::HashMap::<Self::E, Utility>::new();
@@ -165,21 +126,17 @@ pub trait AsyncProfile: Send + Sync {
     async fn infoset_value(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Utility {
         self.dfs(infoset).await.1
     }
-    /// Compute regret gains for all edges in an information set.
+    /// Regret gains for all edges in an information set.
     async fn regret_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         self.dfs(infoset).await.0
     }
-    /// Compute policy vector for an information set.
     async fn policy_vector(&self, infoset: &InfoSet<Self::T, Self::E, Self::G, Self::I>) -> Policy<Self::E> {
         self.policy(&infoset.info()).await
     }
 }
 
-/// Blanket implementation of [`AsyncProfile`] for all [`CfrSolution`] types.
-///
-/// This allows any in-memory strategy profile to be used in async contexts
-/// without modification. The async methods simply delegate to their
-/// synchronous counterparts, wrapped in async blocks.
+/// Blanket [`AsyncProfile`] for all [`CfrSolution`] types: every method delegates
+/// to its synchronous counterpart, so in-memory profiles work in async contexts.
 #[async_trait::async_trait]
 impl<P> AsyncProfile for P
 where

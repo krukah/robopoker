@@ -3,22 +3,11 @@ use kicker::*;
 use monge::*;
 use pokerkit::*;
 
-/// Distance metric for river equity distributions.
+/// Distance metric for river equity distributions, whose abstractions are raw
+/// showdown equities in `[0, 1]`.
 ///
-/// River abstractions represent raw showdown equity values in [0, 1].
-/// This struct provides distance measures between equity abstractions
-/// and between histograms over equity values.
-///
-/// # EMD on [0, 1]
-///
-/// For distributions over a 1D interval, EMD equals the L1 distance between
-/// CDFs (total variation). This avoids the computational cost of Sinkhorn
-/// optimal transport used for higher-dimensional abstraction spaces.
-///
-/// # Kontorovich-Rubinstein Dual
-///
-/// The ground distance `|x - y|` between equity values makes the coupling
-/// constraint equivalent to doubly-stochastic marginals on `[0,1]` × `[0,1]`.
+/// Over a 1D interval EMD equals the L1 distance between CDFs (total
+/// variation), so river distances skip Sinkhorn entirely.
 pub struct Equity;
 
 impl Measure for Equity {
@@ -30,14 +19,11 @@ impl Measure for Equity {
     }
 }
 
-/// Distance metrics for equity histograms.
-///
-/// These exploit the 1D structure of `[0,1]`-valued distributions to provide
-/// efficient alternatives to general optimal transport.
+/// Distance metrics for equity histograms, exploiting the 1D structure of
+/// `[0,1]`-valued distributions instead of general optimal transport.
 #[allow(dead_code)]
 impl Equity {
-    /// Total variation distance (L1 between CDFs).
-    /// This equals EMD for 1D distributions with |x-y| ground cost.
+    /// Total variation (L1 between CDFs) — equals EMD in 1D under `|x-y|`.
     pub fn variation(x: &Histogram, y: &Histogram) -> Energy {
         let mut cdf_x = 0.0;
         let mut cdf_y = 0.0;

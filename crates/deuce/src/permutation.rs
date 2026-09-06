@@ -3,24 +3,19 @@ use super::observation::Observation;
 use super::suit::Suit;
 use pokerkit::Arbitrary;
 
-/// A suit relabeling from the symmetric group S₄.
+/// A suit relabeling from the symmetric group S₄ — the 24 elements form a
+/// group under composition, and applying one puts an observation in canonical
+/// isomorphic form.
 ///
-/// Each permutation maps the four suits to a rearrangement of themselves.
-/// The 24 elements form a group under composition. Used to transform
-/// observations into their canonical isomorphic form.
-///
-/// # Representation
-///
-/// Stored as `[Suit; 4]` where index `i` gives the image of the `i`-th suit.
-/// For example, `[H, S, C, D]` means C→H, D→S, H→C, S→D.
+/// Stored as `[Suit; 4]` where index `i` is the image of the `i`-th suit, so
+/// `[H, S, C, D]` means C→H, D→S, H→C, S→D.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Permutation([Suit; 4]);
 
-/// this yields consistent, though, possibly non-unique,
-/// Permutation that will map an Observation to its canonical form.
-/// suits are sorted co-lexicographically by the number of cards
-/// that they are represented by in hole cards and on the board.
-/// ties are broken by the arbitrary enum impl Ord for Suit !
+/// Yields a consistent — though possibly non-unique — Permutation mapping an
+/// Observation to its canonical form. Suits sort co-lexicographically by how
+/// many cards carry them in the hole and on the board, ties broken by the
+/// arbitrary `Ord` on Suit.
 impl From<&Observation> for Permutation {
     fn from(observation: &Observation) -> Self {
         let mut permutation = Suit::all();
@@ -36,36 +31,26 @@ impl From<&Observation> for Permutation {
 }
 
 impl Permutation {
-    /// Applies the permutation to transform an observation.
-    ///
-    /// Both hole cards and board cards are relabeled according to
-    /// the suit mapping.
+    /// Relabels both hole and board cards through the suit mapping.
     pub fn permute(&self, observation: Observation) -> Observation {
         Observation::from((self.image(observation.pocket()), self.image(observation.public())))
     }
-    /// Applies the permutation to a hand's suits.
-    ///
-    /// Each card's suit is mapped through the permutation while
-    /// preserving its rank. The result is the union of all transformed cards.
+    /// Maps every card's suit through the permutation, ranks preserved.
     pub fn image(&self, hand: &Hand) -> Hand {
         Suit::all()
             .iter()
             .map(|suit| self.shift(suit, hand))
             .fold(Hand::empty(), Hand::add)
     }
-    /// Computes the inverse permutation.
-    ///
-    /// If `self.map(s) = t`, then `self.inverse().map(t) = s`.
+    /// The inverse: if `self.map(s) = t`, then `self.inverse().map(t) = s`.
     pub fn inverse(&self) -> Self {
         let mut inv = [Suit::C; 4];
         Suit::all().iter().for_each(|s| inv[self.map(s) as usize] = *s);
         Self(inv)
     }
-    /// Comparison function for co-lexicographic ordering.
-    ///
-    /// Orders suits by: (1) pocket count, (2) board count,
-    /// (3) min pocket rank, (4) min board rank, (5) max pocket rank,
-    /// (6) max board rank, (7) suit enum order as tiebreaker.
+    /// Co-lexicographic ordering on suits: pocket count, board count, min
+    /// pocket rank, min board rank, max pocket rank, max board rank, then the
+    /// suit enum order as tiebreaker.
     fn order(hearts: &(Suit, Hand, Hand), spades: &(Suit, Hand, Hand)) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal
             .then_with(|| hearts.1.size().cmp(&spades.1.size()))
@@ -76,18 +61,16 @@ impl Permutation {
             .then_with(|| hearts.2.max_rank().cmp(&spades.2.max_rank()))
             .then_with(|| hearts.0.cmp(&spades.0)) // tiebreaker
     }
-    /// there's this thing called co-lexicographic order
-    /// which is a total ordering on some sub sets of cards
-    /// in our case Observation. it implements Order at different
-    /// scopes to break symmetries of strategically identical Observations.
+    /// Co-lexicographic order is a total ordering over subsets of cards — here
+    /// Observations — applied at several scopes to break the symmetries
+    /// between strategically identical Observations.
     fn colex(observation: &Observation, suit: &Suit) -> (Suit, Hand, Hand) {
         let pocket = observation.pocket().of(suit);
         let public = observation.public().of(suit);
         (*suit, pocket, public)
     }
-    /// the hand here gets filtered by the "old" suit
-    /// and then we bitshift so that it is in its "new" suit
-    /// e.g. Full Hand -> Hearts Hand -> Spades Hand
+    /// Filter the hand to the "old" suit, then bitshift it into the "new"
+    /// suit, e.g. Full Hand -> Hearts Hand -> Spades Hand.
     fn shift(&self, suit: &Suit, hand: &Hand) -> Hand {
         let old = *suit;
         let new = self.map(suit);

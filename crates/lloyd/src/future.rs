@@ -3,15 +3,9 @@ use kicker::*;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-/// Transition model mapping abstractions to next-street histograms.
-///
-/// Stores the learned cluster centroids: for each abstraction bucket,
-/// what is the expected distribution over next-street buckets? This
-/// enables propagating beliefs through the abstraction hierarchy.
-///
-/// # Database
-///
-/// Persisted to the `transitions` table for use in real-time inference.
+/// Transition model mapping abstractions to next-street histograms — the
+/// learned cluster centroids, which let beliefs propagate through the
+/// abstraction hierarchy. Persisted to the `transitions` table.
 #[derive(Default)]
 pub struct Future(BTreeMap<Abstraction, Histogram>);
 

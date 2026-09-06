@@ -1,23 +1,18 @@
 use crate::*;
 use pokerkit::*;
 
-/// A single action-weight pair from a trained strategy.
-///
-/// Used as the building block for strategy construction when
-/// loading from database. Each decision represents one row from
-/// the strategy table: an edge (action) and its accumulated mass.
+/// One row of the strategy table: an action plus its accumulated mass — the unit
+/// strategies are rebuilt from when loading out of the database.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Decision<E>
 where
     E: CfrEdge,
 {
-    /// The action this decision represents.
     pub edge: E,
-    /// Accumulated probability mass (not normalized).
+    /// Accumulated probability mass, *not* normalized.
     pub mass: Probability,
-    /// Number of times this action was encountered during training.
     pub visits: u32,
-    /// Expected value of the information set for this action.
+    /// Expected value of the information set.
     pub payoff: Utility,
 }
 

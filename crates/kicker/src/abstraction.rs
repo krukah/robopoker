@@ -12,10 +12,7 @@ use std::hash::Hash;
 /// - **Preflop**: 169 strategically-unique starting hands
 /// - **Flop/Turn**: K-means cluster assignments based on next-street distributions
 ///
-/// # Encoding
-///
-/// Packed as `[8 bits street][8 bits index]` in a `u16`, enabling efficient
-/// storage and comparison.
+/// Packed as `[8 bits street][8 bits index]` in a `u16`.
 #[derive(Default, Copy, Clone, Hash, Eq, PartialEq, Debug, PartialOrd, Ord)]
 pub struct Abstraction(u16);
 

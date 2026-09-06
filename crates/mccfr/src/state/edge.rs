@@ -1,16 +1,10 @@
 use monge::Support;
 
-/// An action or transition in the game tree.
+/// An action or transition in the game tree: a player decision (bet, fold) or a
+/// chance outcome (card deal).
 ///
-/// Edges represent decisions that players can make (bet, fold, etc.) or
-/// chance outcomes (card deals). The trait bounds ensure edges can be
-/// used as keys in strategy tables and transported across threads.
-///
-/// # Requirements
-///
-/// - Copyable and hashable for strategy table lookups
-/// - Ordered for deterministic iteration
-/// - Implements [`Support`](monge::Support) for probability distributions
+/// The bounds make edges usable as strategy-table keys, deterministically
+/// iterable, and transportable across threads.
 pub trait CfrEdge:
     Copy
     + Clone
