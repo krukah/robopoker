@@ -11,21 +11,14 @@ keywords     = ["poker", "mccfr", "gto", "solver", "holdem"]
 categories   = ["game-development", "algorithms", "mathematics"]
 
 [dependencies]
-pokerkit = { path = "../pokerkit" }
-monge    = { path = "../monge" }
-deuce    = { path = "../deuce" }
-mccfr    = { path = "../mccfr" }
-subgame  = { path = "../subgame" }
-kicker   = { path = "../kicker" }
-lloyd    = { path = "../lloyd" }
-nlhe     = { path = "../nlhe" }
-roshambo = { path = "../roshambo" }
-leduc    = { path = "../leduc" }
-daybook  = { path = "../daybook" }
-bouncer  = { path = "../bouncer" }
-parlor   = { path = "../parlor" }
-portal   = { path = "../portal" }
-forge    = { path = "../forge" }
+pokerkit = { version = "2.0", path = "../pokerkit" }
+monge    = { version = "2.0", path = "../monge" }
+deuce    = { version = "2.0", path = "../deuce" }
+mccfr    = { version = "2.0", path = "../mccfr" }
+subgame  = { version = "2.0", path = "../subgame" }
+kicker   = { version = "2.0", path = "../kicker" }
+nlhe     = { version = "2.0", path = "../nlhe" }
+daybook  = { version = "2.0", path = "../daybook" }
 
 [lints]
 workspace = true

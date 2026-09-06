@@ -2584,20 +2584,13 @@ dependencies = [
 name = "robopoker"
 version = "2.0.0"
 dependencies = [
- "bouncer",
  "daybook",
  "deuce",
- "forge",
  "kicker",
- "leduc",
- "lloyd",
  "mccfr",
  "monge",
  "nlhe",
- "parlor",
  "pokerkit",
- "portal",
- "roshambo",
  "subgame",
 ]
 
