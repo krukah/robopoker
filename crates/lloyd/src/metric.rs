@@ -3,6 +3,7 @@ use deuce::*;
 use kicker::*;
 use monge::*;
 use pokerkit::*;
+#[cfg(feature = "server")]
 use std::sync::OnceLock;
 
 /// Distance metric between abstractions for a specific street: point-to-point

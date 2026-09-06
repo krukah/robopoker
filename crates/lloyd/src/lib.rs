@@ -1,3 +1,7 @@
+// Without the `server` feature the DB-backed pipeline orchestration (layer
+// upload, telemetry) is unreachable, leaving just the clustering primitives;
+// this keeps that lean build warning-free.
+#![cfg_attr(not(feature = "server"), allow(dead_code))]
 //! Hierarchical k-means clustering for strategic abstraction: reduces 3.1
 //! trillion poker situations to strategically-equivalent buckets, one street
 //! at a time, clustering hands by their distribution over next-street

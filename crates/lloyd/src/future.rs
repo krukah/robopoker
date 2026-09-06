@@ -1,6 +1,7 @@
 use crate::*;
 use kicker::*;
 use std::collections::BTreeMap;
+#[cfg(feature = "server")]
 use std::sync::OnceLock;
 
 /// Transition model mapping abstractions to next-street histograms — the

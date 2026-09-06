@@ -3,7 +3,9 @@ use deuce::*;
 use kicker::*;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+#[cfg(feature = "server")]
 use std::collections::HashMap;
+#[cfg(feature = "server")]
 use std::sync::OnceLock;
 
 /// Mapping from hand isomorphisms to abstraction buckets — the primary output

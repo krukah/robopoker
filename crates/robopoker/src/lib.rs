@@ -7,17 +7,19 @@
 //! - [`transport`] — optimal transport (Sinkhorn, EMD)
 //! - [`mccfr`] — game-agnostic CFR framework
 //! - [`gameplay`] — poker game engine
+//! - [`clustering`] — hierarchical k-means abstraction (EMD)
 //! - [`holdem`] — No-Limit Hold'em solver
 //! - [`subgame`] — depth-limited and safe subgame solving
 //! - [`database`] — PostgreSQL bulk-IO pipeline
 //!
-//! The clustering, auth, game-hosting, server, and training-orchestration
-//! crates live in the workspace but are not published; depend on the
-//! repository directly to use them.
+//! The auth, game-hosting, server, and training-orchestration crates live
+//! in the workspace but are not published; depend on the repository directly
+//! to use them.
 
 pub use daybook as database;
 pub use deuce as cards;
 pub use kicker as gameplay;
+pub use lloyd as clustering;
 pub use mccfr;
 pub use monge as transport;
 pub use nlhe as holdem;

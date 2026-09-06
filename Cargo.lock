@@ -2587,6 +2587,7 @@ dependencies = [
  "daybook",
  "deuce",
  "kicker",
+ "lloyd",
  "mccfr",
  "monge",
  "nlhe",
