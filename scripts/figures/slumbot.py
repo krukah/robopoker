@@ -13,6 +13,7 @@ engine's SB=1/BB=2, so bb/100 = 50 × mean(pnl).
     DB_URL=postgresql://... python3 scripts/figures/slumbot.py OUTDIR
 """
 
+import bisect
 import math
 import os
 import subprocess
@@ -51,6 +52,8 @@ CORNERS = {
     "world+dirac": (0, 1, 1),
     "depth+world+dirac": (1, 1, 1),
 }
+AXES = ("depth", "world", "dirac")
+SLOT = 15
 LEAD = "world+dirac"
 REF = "base"
 CONTROL = "fish"
@@ -63,12 +66,12 @@ CONTROL = "fish"
 # aqua sits under 3:1 on the surface, which the direct labels relieve.
 THEMES = {
     "light": dict(
-        surface="#fcfcfb", grid="#e8e7e3", axis="#d6d5d0",
+        surface="#fcfcfb", panel="#f2f1ed", grid="#e8e7e3", axis="#c9c8c2",
         primary="#0b0b0b", secondary="#52514e", muted="#8a8983",
         on="#1baf7a", off="#eb6834", control="#2a78d6", faint=0.45,
     ),
     "dark": dict(
-        surface="#1a1a19", grid="#2b2b29", axis="#3a3a37",
+        surface="#1a1a19", panel="#232322", grid="#2b2b29", axis="#46453f",
         primary="#ffffff", secondary="#c3c2b7", muted="#8a8983",
         on="#199e70", off="#d95926", control="#3987e5", faint=0.6,
     ),
@@ -104,6 +107,22 @@ class Series:
             out.append((n, self.bb[i], 1.96 * 50.0 * sd / math.sqrt(n)))
         return out
 
+    def tail(self, start, near, count=320):
+        """Samples log-spaced in hands *remaining* — the resolution a
+        right-aligned plot needs, where log-spacing in hands played would
+        collapse the whole endgame into one straight segment."""
+        out, seen = [], set()
+        for i in range(count + 1):
+            r = 10 ** (math.log10(start) - i * (math.log10(start) - math.log10(near)) / count)
+            j = min(bisect.bisect_left(self.n, self.hands - r), len(self.n) - 1)
+            if j in seen:
+                continue
+            seen.add(j)
+            n, c, c2 = self.pts[j]
+            sd = math.sqrt(max(c2 - c * c / n, 0) / (n - 1))
+            out.append((self.hands - n, self.bb[j], 1.96 * 50.0 * sd / math.sqrt(n)))
+        return sorted(out, reverse=True)
+
     @property
     def dirac(self):
         return CORNERS.get(self.name, (0, 0, 0))[2] == 1
@@ -137,13 +156,12 @@ class Svg:
         self.w, self.h, self.t = w, h, t
         self.body = []
 
-    def rect(self, x, y, w, h, fill, rx=0):
-        self.body.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{rx}" fill="{fill}"/>')
+    def rect(self, x, y, w, h, fill, rx=0, stroke=None, opacity=1):
+        k = f' stroke="{stroke}"' if stroke else ""
+        self.body.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{rx}" fill="{fill}"{k} opacity="{opacity}"/>')
 
-    def line(self, x1, y1, x2, y2, stroke, width=1, dash=None, opacity=1):
-        d = f' stroke-dasharray="{dash}"' if dash else ""
-        o = f' opacity="{opacity}"' if opacity != 1 else ""
-        self.body.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{stroke}" stroke-width="{width}"{d}{o}/>')
+    def line(self, x1, y1, x2, y2, stroke, width=1, opacity=1):
+        self.body.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{stroke}" stroke-width="{width}" opacity="{opacity}"/>')
 
     def path(self, pts, stroke, width, opacity=1):
         d = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in pts)
@@ -154,14 +172,70 @@ class Svg:
             self.body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r + 2:.1f}" fill="{ring}"/>')
         self.body.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{fill}"/>')
 
-    def text(self, x, y, s, fill, size=12, anchor="start", weight=400, mono=False, halo=False):
+    def text(self, x, y, s, fill, size=12, anchor="start", weight=400, mono=False):
         f = "ui-monospace, SFMono-Regular, Menlo, monospace" if mono else FONT
         s = s.replace("&", "&amp;").replace("<", "&lt;")
-        at = f'x="{x:.1f}" y="{y:.1f}" font-family="{f}" font-size="{size}" font-weight="{weight}" text-anchor="{anchor}"'
-        if halo:  # a knocked-out copy underneath — no paint-order, which a sanitizer may drop
-            g = self.t["surface"]
-            self.body.append(f'<text {at} fill="{g}" stroke="{g}" stroke-width="3.5" stroke-linejoin="round">{s}</text>')
-        self.body.append(f'<text {at} fill="{fill}">{s}</text>')
+        self.body.append(f'<text x="{x:.1f}" y="{y:.1f}" fill="{fill}" font-family="{f}" font-size="{size}" '
+                         f'font-weight="{weight}" text-anchor="{anchor}">{s}</text>')
+
+    def glyph(self, kind, x, y, color, on=True):
+        """One degree of freedom, drawn: solid when the feature is on, ghosted when off.
+
+        depth  two descending chevrons — the search walking further down the tree
+        world  a circle with one half filled — belief partitioned over worlds
+        dirac  an impulse on a baseline — all mass on the argmax
+        fish   three scattered dots — uniform random
+        """
+        c = color if on else self.t["axis"]
+        o = 1 if on else 0.55
+        g = [f'<g transform="translate({x:.1f},{y:.1f})" opacity="{o}">']
+        if kind == "depth":
+            g.append(f'<path d="M-4.6,-4.6 L0,-0.2 L4.6,-4.6 M-4.6,0.9 L0,5.3 L4.6,0.9" fill="none" '
+                     f'stroke="{c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>')
+        elif kind == "world":
+            g.append(f'<path d="M0,-4.8 A4.8,4.8 0 0 0 0,4.8 Z" fill="{c}"/>'
+                     f'<circle cx="0" cy="0" r="4.8" fill="none" stroke="{c}" stroke-width="1.5"/>')
+        elif kind == "dirac":
+            g.append(f'<path d="M-5.2,4.6 L5.2,4.6 M0,4.6 L0,-4.2" fill="none" stroke="{c}" '
+                     f'stroke-width="1.7" stroke-linecap="round"/><circle cx="0" cy="-5.2" r="1.8" fill="{c}"/>')
+        elif kind == "fish":
+            g.append("".join(f'<circle cx="{a}" cy="{b}" r="1.5" fill="{c}"/>'
+                             for a, b in ((-4, 2.6), (0.4, -3.4), (4.4, 3.0))))
+        self.body.append("".join(g) + "</g>")
+
+    def slots(self, x, y, corner, hue):
+        """The three DOF in fixed order, so any two pills line up column by column."""
+        if corner is None:
+            self.glyph("fish", x + 7, y, hue)
+            return
+        for i, (kind, on) in enumerate(zip(AXES, corner)):
+            self.glyph(kind, x + 7 + i * SLOT, y, hue, bool(on))
+
+    def pill(self, x, y, corner, hue, value, name=None, lead=False, anchor="start"):
+        """Identity and result in one small panel: DOF slots, an optional name,
+        and the measurement underneath."""
+        t = self.t
+        wide = 3 * SLOT + (10 + 6.5 * len(name) if name else 0)
+        w, h = max(wide, 6.4 * len(value)) + 18, 38
+        x = x if anchor == "start" else x - w
+        self.rect(x, y - h / 2, w, h, t["panel"], rx=9)
+        self.rect(x, y - h / 2, w, h, hue, rx=9, opacity=0.10)
+        self.slots(x + 9, y - 8, corner, hue)
+        if name:
+            self.text(x + 9 + 3 * SLOT + 8, y - 4, name, t["primary"] if lead else t["secondary"],
+                      11.5, weight=600 if lead else 400)
+        self.text(x + 9, y + 13, value, t["primary"] if lead else t["muted"], 11,
+                  weight=600 if lead else 400, mono=True)
+        return w
+
+    def key(self, x, y, arrows=None):
+        """Glyph key — what each degree of freedom looks like when it is on."""
+        for i, kind in enumerate(AXES):
+            self.glyph(kind, x + 7, y - 4, self.t["secondary"])
+            tag = f"{kind} {arrows[i]}" if arrows else kind
+            self.text(x + 19, y, tag, self.t["secondary"], 11.5)
+            x += 26 + 6.6 * len(tag)
+        self.text(x + 2, y, "· solid on, ghosted off", self.t["muted"], 11.5)
 
     def render(self):
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" '
@@ -170,57 +244,50 @@ class Svg:
 
 
 def fmt(v):
-    return f"{v:.1f}".replace("-", "−")
+    return f"{v:.1f}".replace("-", "\u2212")
 
 
 def convergence(data, name):
-    """Running bb/100 against hands played — one line per variant, log x."""
+    """Running bb/100, every series aligned on its own last hand.
+
+    The x-axis is hands *remaining*, so the estimates all land on the right
+    edge at the value Table 1 reports and a longer run simply reaches further
+    left — rather than the short runs stopping dead in the middle of the plot.
+    """
     t = THEMES[name]
-    W, H = 900, 520
-    L, R, T, B = 62, 168, 96, 54
+    W, H = 900, 580
+    L, R, T, B = 62, 208, 104, 56
     x0, x1, y0, y1 = L, W - R, T, H - B
-    lo, hi = 12_000, 500_000
-    top, bot = 30.0, -150.0
-    fx = lambda n: x0 + (x1 - x0) * (math.log10(n) - math.log10(lo)) / (math.log10(hi) - math.log10(lo))
+    near, far = 1_000, 480_000
+    top, bot = 12.0, -150.0
+    span = math.log10(far) - math.log10(near)
+    fx = lambda r: x1 - (x1 - x0) * (math.log10(max(r, near)) - math.log10(near)) / span
     fy = lambda b: y1 - (y1 - y0) * (b - bot) / (top - bot)
     s = Svg(W, H, t)
     s.rect(0, 0, W, H, t["surface"], rx=10)
     s.text(L, 36, "bb/100 against Slumbot", t["primary"], 17, weight=600)
-    s.text(L, 57, "running mean by hands played · 2026-09-04 run · 1.9 M hands", t["muted"], 12)
-    lx = W - 62
-    for label, key in (("uniform random", "control"), ("without dirac", "off"), ("with dirac", "on")):
-        s.text(lx, 36, label, t["secondary"], 12, anchor="end")
-        lx -= 6.9 * len(label) + 9
-        s.dot(lx, 32, 4, t[key])
-        lx -= 20
+    s.text(L, 57, "running mean, aligned on the last hand of each run · 2026-09-04 · 1.9 M hands", t["muted"], 12)
+    s.key(L - 7, 80)
     for b in range(-150, 1, 30):
         s.line(x0, fy(b), x1, fy(b), t["grid"], 1)
         s.text(x0 - 10, fy(b) + 4, fmt(float(b)).rstrip("0").rstrip("."), t["muted"], 11, anchor="end", mono=True)
-    for n in (20_000, 50_000, 100_000, 200_000, 500_000):
-        s.line(fx(n), y0, fx(n), y1, t["grid"], 1)
-        s.text(fx(n), y1 + 20, f"{n // 1000} K", t["muted"], 11, anchor="middle", mono=True)
-    s.text((x0 + x1) / 2, y1 + 42, "hands played", t["secondary"], 12, anchor="middle")
+    for r in (300_000, 100_000, 30_000, 10_000, 3_000, 1_000):
+        s.line(fx(r), y0, fx(r), y1, t["grid"], 1)
+        s.text(fx(r), y1 + 20, f"{r // 1000} K", t["muted"], 11, anchor="middle", mono=True)
+    s.text((x0 + x1) / 2, y1 + 42, "hands remaining  →  end of run", t["secondary"], 12, anchor="middle")
     s.line(x0, fy(0), x1, fy(0), t["axis"], 1)
     s.text(x1 - 4, fy(0) - 8, "break-even", t["muted"], 11, anchor="end")
-    # series, recessive first so the two protagonists sit on top
     for v in sorted(data.values(), key=lambda v: v.lead()):
-        pts = [(fx(n), fy(max(min(b, top), bot))) for n, b, _ in v.walk(lo)]
+        pts = [(fx(r), fy(max(min(b, top), bot))) for r, b, _ in v.tail(v.hands - 20_000, near)]
         s.path(pts, v.hue(t), 2.4 if v.lead() else 1.4, 1 if v.lead() else t["faint"])
-    # direct labels, pushed apart so none collide, each tied back to its line
-    placed = []
-    for y, v in sorted(((fy(v.final), v) for v in data.values()), key=lambda p: p[0]):
-        end = y
-        y = max(y, (placed[-1] + 30) if placed else y0 + 6)
-        placed.append(y)
-        s.line(fx(v.hands), end, x1 + 8, y - 4, v.hue(t), 0.9, opacity=0.25)
-        if v.lead():  # precision, shown only on the two protagonists
-            s.line(fx(v.hands), fy(max(v.final - v.conf, bot)), fx(v.hands), fy(min(v.final + v.conf, top)),
-                   v.hue(t), 1.6, opacity=0.5)
-        s.dot(fx(v.hands), end, 3, v.hue(t), ring=t["surface"])
-        s.dot(x1 + 12, y - 4, 3.5, v.hue(t))
-        s.text(x1 + 22, y, v.name, t["primary"] if v.lead() else t["secondary"], 12,
-               weight=600 if v.lead() else 400)
-        s.text(x1 + 22, y + 14, f"{fmt(v.final)} ± {v.conf:.1f}", t["muted"], 11, mono=True)
+        s.dot(*pts[0], 2.6, t["surface"], ring=v.hue(t))  # where this run enters
+    placed = [y0 - 24]
+    for end, v in sorted(((fy(v.final), v) for v in data.values()), key=lambda p: p[0]):
+        placed.append(max(end, placed[-1] + 44))
+        s.line(x1, end, x1 + 14, placed[-1], v.hue(t), 0.9, opacity=0.3)
+        s.dot(x1, end, 3, v.hue(t), ring=t["surface"])
+        s.pill(x1 + 14, placed[-1], CORNERS.get(v.name), v.hue(t),
+               f"{fmt(v.final)} ± {v.conf:.1f}", v.name, v.lead())
     return s.render()
 
 
@@ -228,13 +295,13 @@ def cube(data, name):
     """The 2×2×2 configuration cube: depth × world × dirac, dirac drawn wide."""
     t = THEMES[name]
     W, H = 900, 430
-    ox, oy = 152, 316
-    D, O, K = (104, -74), (0, -142), (352, 0)
+    ox, oy = 230, 330
+    D, O, K = (100, -70), (0, -136), (340, 0)
     at = lambda d, w, k: (ox + d * D[0] + w * O[0] + k * K[0], oy + d * D[1] + w * O[1] + k * K[1])
     s = Svg(W, H, t)
     s.rect(0, 0, W, H, t["surface"], rx=10)
     s.text(48, 36, "the search cube", t["primary"], 17, weight=600)
-    s.text(48, 57, "every corner played live against Slumbot · bb/100", t["muted"], 12)
+    s.text(48, 57, "every corner played live against Slumbot · bb/100 ± 95% CI", t["muted"], 12)
     face = [(0, 0), (1, 0), (1, 1), (0, 1)]
     for k in (0, 1):
         hue = t["on"] if k else t["off"]
@@ -247,21 +314,19 @@ def cube(data, name):
         a, b = at(d, w, 0), at(d, w, 1)
         gain = data[key_of(d, w, 1)].final - data[key_of(d, w, 0)].final
         s.line(*a, *b, t["axis"], 1.6)
-        mx, my = (a[0] + b[0]) / 2, a[1]
-        s.rect(mx - 26, my - 12, 52, 22, t["surface"], rx=11)
-        s.text(mx, my + 4, f"+{gain:.1f}", t["secondary"], 12.5, anchor="middle", weight=600, mono=True)
+        mx = (a[0] + b[0]) / 2
+        s.rect(mx - 28, a[1] - 12, 56, 24, t["panel"], rx=12)
+        s.text(mx, a[1] + 4, f"+{gain:.1f}", t["secondary"], 12.5, anchor="middle", weight=600, mono=True)
+    rail = (ox - 22, ox + D[0] + K[0] + 22)  # pills flank the cube, never cover it
     for corner, (d, w, k) in CORNERS.items():
         x, y = at(d, w, k)
         v, lead = data[corner], corner == LEAD
+        s.line(rail[k], y, x, y, v.hue(t), 0.9, opacity=0.3)
         s.dot(x, y, 7 if lead else 5, v.hue(t), ring=t["surface"])
-        anchor, dx = ("start", 15) if k else ("end", -15)
-        s.text(x + dx, y - 2, corner, t["primary"] if lead else t["secondary"], 12.5,
-               anchor=anchor, weight=600 if lead else 400, halo=True)
-        s.text(x + dx, y + 15, fmt(v.final), t["primary"] if lead else t["muted"], 12.5,
-               anchor=anchor, weight=600 if lead else 400, mono=True, halo=True)
-    s.text(48, H - 26, "↗ depth    ↑ world    → dirac", t["muted"], 12, mono=True)
-    s.text(W - 48, H - 26, f"off-cube: {CONTROL} (uniform random) {fmt(data[CONTROL].final)}",
-           t["muted"], 12, anchor="end")
+        s.pill(rail[k], y, (d, w, k), v.hue(t), f"{fmt(v.final)} ± {v.conf:.1f}",
+               lead=lead, anchor="start" if k else "end")
+    s.key(40, H - 26, arrows=("↗", "↑", "→"))
+    s.text(W - 44, H - 26, f"off-cube: {CONTROL} {fmt(data[CONTROL].final)}", t["muted"], 11.5, anchor="end")
     return s.render()
 
 

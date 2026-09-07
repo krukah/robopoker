@@ -118,10 +118,12 @@ Each variant layers a different real-time-search technique onto the MCCFR bluepr
 </p>
 
 <p align="center">
-  <sub><b>Figure 5.</b> Every hand of the run, drawn from the hand log rather than from a dashboard. The x-axis is
-  hands played, not wall-clock: <code>base</code>, <code>dirac</code> and <code>fish</code> spend no time per decision
-  and burn 480 K hands in five hours, while the six search variants take seconds per decision and reach ~86 K in
-  twenty-four. Whiskers mark the 95% interval at each protagonist's last hand.</sub>
+  <sub><b>Figure 5.</b> Every hand of the run, drawn from the hand log rather than from a dashboard. Runs are aligned
+  on their <i>last</i> hand — the axis is hands remaining — so every estimate lands on the right edge at the value
+  Table 1 reports, and a longer run simply reaches further left. <code>base</code>, <code>dirac</code> and
+  <code>fish</code> spend no time per decision and play 480 K hands in five hours; the six search variants take
+  seconds per decision and reach ~86 K in twenty-four, so they enter at the hollow dot. Each panel carries the three
+  search features in fixed order — solid when on, ghosted when off.</sub>
 </p>
 
 | Variant             |  Hands |    bb/100 | 95% CI |
@@ -149,7 +151,9 @@ Each variant layers a different real-time-search technique onto the MCCFR bluepr
 
 <p align="center">
   <sub><b>Figure 6.</b> The same run as a configuration cube — each corner one on/off setting of the three search
-  features, each long edge the <code>dirac</code> transition, labelled with what switching it on is worth.</sub>
+  features, each long edge the <code>dirac</code> transition, labelled with what switching it on is worth there. The
+  corner panels drop the name and let the glyphs carry it: <code>depth</code> descending the tree, <code>world</code>
+  a partitioned belief, <code>dirac</code> an impulse on the argmax.</sub>
 </p>
 
 The cube is where the structure shows. `dirac` on its own buys almost nothing (**+4.0** over `base`), but layered onto either search feature it is worth **~+51**. The mirror statement is the same fact: `depth` and `world` *without* `dirac` are catastrophic (−45.1 and −32.0 against `base`), and *with* it they are free or better (+3.0 and +15.2 against `dirac`). Real-time search produces a policy the blueprint's sampler then squanders, and argmaxing it recovers the entire loss. Averaged over the four on/off pairs, `dirac` is worth **+40 bb/100** against **−18** for `depth` and **−5** for `world`. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source** — and search does not paper over it, which is the clearest available direction for further work.
