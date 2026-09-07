@@ -243,10 +243,12 @@ class Svg:
                   weight=600 if lead else 400, mono=True)
         return w
 
-    def key(self, x, y, w, arrows=None):
+    def key(self, x, y, arrows=None):
         """The glyphs are not self-evident, so the key says outright what each
         one means. It gives no short name: `depth` / `world` / `dirac` are
-        labels for the feature, and the feature is right there in words."""
+        labels for the feature, and the feature is right there in words. Nor
+        does it gloss solid-versus-ghosted — a filled mark reading as present
+        needs no caption."""
         t = self.t
         for i, (kind, gloss) in enumerate(AXES):
             self.glyph(kind, x + 7, y - 4, t["secondary"])
@@ -254,7 +256,6 @@ class Svg:
                 self.text(x + 20, y, arrows[i], t["muted"], 11.5)
             self.text(x + (37 if arrows else 20), y, gloss, t["secondary"], 11.5)
             x += (56 if arrows else 39) + 6.3 * len(gloss)
-        self.text(w, y, "solid on · ghosted off", t["muted"], 11.5, anchor="end")
 
     def render(self):
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" '
@@ -289,7 +290,7 @@ def convergence(data, name):
     s.rect(0, 0, W, H, t["surface"], rx=10)
     s.text(L, 36, "bb/100 against Slumbot", t["primary"], 17, weight=600)
     s.text(L, 57, "running mean, aligned on the last hand of each run · 2026-09-04 · 1.9 M hands", t["muted"], 12)
-    s.key(L - 7, 84, W - L)
+    s.key(L - 7, 84)
     for b in range(int(bot), int(top) + 1, step):
         s.line(x0, fy(b), x1, fy(b), t["grid"], 1)
         s.text(x0 - 10, fy(b) + 4, fmt(float(b)).rstrip("0").rstrip("."), t["muted"], 11, anchor="end", mono=True)
@@ -352,7 +353,7 @@ def cube(data, name):
         s.dot(x, y, 7 if lead else 5, v.hue(t), ring=t["surface"])
         s.pill(rail[k], y, (d, w, k), v.hue(t), f"{fmt(v.final)} ± {v.conf:.1f}",
                lead=lead, anchor="start" if k else "end")
-    s.key(41, 84, W - 48, arrows=("↗", "↑", "→"))
+    s.key(41, 84, arrows=("↗", "↑", "→"))
     return s.render()
 
 

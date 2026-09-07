@@ -8,7 +8,6 @@
 <text x="246.3" y="84.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start">safe multi-world subgame</text>
 <g transform="translate(423.5,80.0)" opacity="1"><path d="M-4.1,4.6 L-4.1,1.0" fill="none" stroke="#52514e" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><path d="M0,4.6 L0,-4.6" fill="none" stroke="#52514e" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><path d="M4.1,4.6 L4.1,1.0" fill="none" stroke="#52514e" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><circle cx="0" cy="-6.4" r="1.6" fill="#52514e"/></g>
 <text x="436.5" y="84.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start">zero-temperature argmax</text>
-<text x="838.0" y="84.0" fill="#8a8983" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="end">solid on · ghosted off</text>
 <line x1="62.0" y1="464.0" x2="772.0" y2="464.0" stroke="#e8e7e3" stroke-width="1" opacity="1"/>
 <text x="52.0" y="468.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="400" text-anchor="end">−105</text>
 <line x1="62.0" y1="413.1" x2="772.0" y2="413.1" stroke="#e8e7e3" stroke-width="1" opacity="1"/>

@@ -123,7 +123,7 @@ Each variant layers a different real-time-search technique onto the MCCFR bluepr
   Table 1 reports, and a longer run simply reaches further left. <code>base</code> and <code>dirac</code> spend no
   time per decision and play 480 K hands in five hours; the six search variants take seconds per decision and reach
   ~86 K in twenty-four, so they enter at the hollow dot. Each panel names its variant by the three feature slots
-  rather than in words — solid when the feature is on, ghosted when off, spelled out in the key.</sub>
+  rather than in words, solid where the feature is on; the key says what each one does.</sub>
 </p>
 
 | Variant             |  Hands |    bb/100 | 95% CI |
