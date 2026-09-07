@@ -5,9 +5,12 @@
 [![crates.io](https://img.shields.io/crates/v/robopoker.svg)](https://crates.io/crates/robopoker)
 [![docs.rs](https://img.shields.io/docsrs/robopoker)](https://docs.rs/robopoker)
 
-A Rust implementation of superhuman-scale poker AI, seeking functional parity with Pluribus¹. It reduces the 3.1 trillion situations of No-Limit Texas Hold'em to a tractable abstraction, trains a blueprint strategy by Monte Carlo counterfactual regret minimization, and refines that blueprint at play time with depth-limited and safe subgame solving. Every component — hand evaluation, optimal transport, clustering, the CFR framework, the game engine, persistence, telemetry — is written from scratch as a single-purpose crate.
+A Rust implementation of superhuman-scale poker AI, seeking functional parity with Pluribus¹. Every component — hand evaluation, optimal transport, clustering, the CFR framework, the game engine, persistence, telemetry — is written from scratch as a single-purpose crate.
 
-Against [Slumbot](https://www.slumbot.com), the strongest publicly available benchmark, the best configuration measures **−22.8 bb/100** over 23.1 K hands (§ [Results](#results)). It is not yet winning — but the ablation identifies precisely which component is responsible.
+- **Abstract** — reduce 3.1 T situations to strategically-equivalent buckets, by hierarchical k-means over Earth Mover's Distance
+- **Train** — learn a blueprint against that abstraction by Monte Carlo counterfactual regret minimization
+- **Search** — refine the blueprint at play time with depth-limited¹⁰ and safe, world-partitioned¹² re-solving
+- **Measure** — **−22.8 bb/100** against [Slumbot](https://www.slumbot.com) over 23.1 K hands (§ [Results](#results)); not yet winning, but the ablation says which component is responsible
 
 <p align="center">
   <img src="assets/reel/hero.svg" alt="Living dashboard: one hand from preflop to river" width="900"/>
@@ -22,13 +25,12 @@ Against [Slumbot](https://www.slumbot.com), the strongest publicly available ben
 ## Contributions
 
 - **Fastest open-source hand evaluator** — nanosecond evaluation, outperforming Cactus Kev
-- **Strategic abstraction** — hierarchical k-means clustering of 3.1 T poker situations
-- **Optimal transport** — Earth Mover's Distance via Sinkhorn iteration over generic measures
-- **MCCFR solver** — external sampling, dynamic tree construction, pluggable regret/policy/sampling schemes
-- **Real-time search** — depth-limited¹⁰ and safe, world-partitioned¹² subgame solving that preserves the blueprint equilibrium
+- **Optimal transport from scratch** — Sinkhorn/Greenkhorn⁵ over generic `Density`/`Support` measures, not a poker-specific hack
+- **Game-agnostic CFR framework** — pluggable regret/policy/sampling schemes, held to closed-form equilibria on Kuhn, Leduc, and Rock-Paper-Scissors
 - **Action translation⁷,⁸** — pseudo-harmonic mapping over finite lattices
 - **AIVAT variance reduction** — low-variance evaluation over hand histories
-- **Measured against a live opponent** — 480 K-hand reference tasks with confidence intervals, not self-play claims
+- **Live-opponent measurement** — 480 K-hand reference tasks with confidence intervals, not self-play claims
+- **Twelve published crates** — every layer reusable on its own
 
 ## Method
 
@@ -56,7 +58,12 @@ flowchart LR
 
 ### 1 · Hierarchical abstraction
 
-Per street, river → turn → flop → preflop. `deuce` exhaustively iterates the isomorphic⁴ hand space with nanosecond hand evaluation over bijective `u8`/`u16`/`u32`/`u64` card encodings. `lloyd` groups strategically similar hands by hierarchical k-means — k-means++² seeding, `elkan` triangle-inequality acceleration — measuring distance as the Earth Mover's Distance between child-street distributions, computed by `monge`'s Sinkhorn/Greenkhorn iteration⁵. Abstractions persist through `daybook` (`Schema`/`Row`/`Streamable` over `COPY IN`, `(Regime × Version)` table naming, and a fingerprint check against silent constant drift).
+Computed once, per street, river → turn → flop → preflop.
+
+- `deuce` — exhaustively iterates the isomorphic⁴ hand space; nanosecond evaluation over bijective `u8`/`u16`/`u32`/`u64` card encodings
+- `lloyd` — groups strategically similar hands by hierarchical k-means, with k-means++² seeding and `elkan` triangle-inequality acceleration
+- `monge` — measures distance as the Earth Mover's Distance between child-street distributions, by Sinkhorn/Greenkhorn iteration⁵
+- `daybook` — persists abstractions over `COPY IN`, with `(Regime × Version)` table naming and a fingerprint check against silent constant drift
 
 <p align="center">
   <img src="assets/reel/equity.gif" alt="Equity distributions clustered by Earth Mover's Distance" width="620"/>
@@ -67,7 +74,10 @@ Per street, river → turn → flop → preflop. `deuce` exhaustively iterates t
 
 ### 2 · MCCFR training³
 
-`mccfr` samples trajectories through `kicker`'s engine — full side-pot/all-in/tie settlement, `Size::SPR(n, d)` and `Size::BBs(n)` bet-sizing, and `Witness` (one player's view) versus `Perfect` (god's view) recall. Its `CfrEncoder` → `Solver` → `Tree` machinery is game-agnostic; `nlhe` supplies the concrete schemes through `Nlhe<R, W, S>` and the production `Flagship` configuration: external sampling, discounted/linear regret weighting⁶, regret-based pruning⁹,¹¹. `forge` orchestrates `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing to the database. `kuhn`, `leduc`, and `roshambo` hold the framework to closed-form equilibria on toy games.
+- `kicker` — the game engine sampled through: full side-pot/all-in/tie settlement, `Size::SPR(n, d)` and `Size::BBs(n)` bet-sizing, `Witness` (one player's view) versus `Perfect` (god's view) recall
+- `mccfr` — game-agnostic `CfrEncoder` → `Solver` → `Tree` machinery, with external sampling and dynamic tree construction
+- `nlhe` — the concrete schemes via `Nlhe<R, W, S>` and the production `Flagship` config: discounted/linear regret weighting⁶, regret-based pruning⁹,¹¹
+- `forge` — orchestrates `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing to the database
 
 <p align="center">
   <img src="assets/reel/tree.gif" alt="External-sampling MCCFR tree traversal" width="450"/>
@@ -81,7 +91,11 @@ Per street, river → turn → flop → preflop. `deuce` exhaustively iterates t
 
 ### 3 · Real-time search
 
-At play time `subgame` loads the blueprint as a prior and re-solves the current spot: `DepthEdge<E, D>` builds a depth-limited¹⁰ frontier with biased continuation strategies, `WorldProfile` partitions belief into discrete worlds for safe re-solving¹² that preserves the blueprint equilibrium, and `SubGameSolver` composes both. `pokerkit`'s `Lattice` maps the abstract action back to a concrete chip amount by pseudo-harmonic translation⁷,⁸.
+At play time the blueprint becomes a prior, and the current spot is re-solved.
+
+- `DepthEdge<E, D>` — builds a depth-limited¹⁰ frontier with biased continuation strategies
+- `WorldProfile` — partitions belief into discrete worlds for safe re-solving¹² that preserves the blueprint equilibrium
+- `SubGameSolver` — composes both; `pokerkit`'s `Lattice` maps the abstract action back to a concrete chip amount by pseudo-harmonic translation⁷,⁸
 
 <p align="center">
   <img src="assets/reel/triplet.png" alt="Hero range, policy, villain range" width="820"/>
