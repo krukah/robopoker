@@ -26,7 +26,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 | **Game-agnostic CFR framework** | Pluggable regret/policy/sampling schemes, held to closed-form equilibria on Kuhn, Leduc, and Rock-Paper-Scissors |
 | **Action translation⁷,⁸** | Pseudo-harmonic mapping over finite lattices |
 | **AIVAT variance reduction** | Low-variance evaluation over hand histories |
-| **Evaluated in chips** | **−22.8 bb/100** against live [Slumbot](https://www.slumbot.com) over 23.1 K hands (§ [Evaluation](#evaluation)) |
+| **Evaluated in chips** | **−19.1 bb/100** against live [Slumbot](https://www.slumbot.com) over 52.3 K hands (§ [Evaluation](#evaluation)) |
 | **Evaluated in shape** | A structural litmus suite holding the 169-cell range object to common-knowledge GTO invariants — rank monotonicity, suited/offsuit symmetry, no collapse onto a single action (§ [Evaluation](#evaluation)) |
 | **Twelve published crates** | Every layer reusable on its own |
 
@@ -116,20 +116,23 @@ Each series layers a different real-time-search technique onto the MCCFR bluepri
 
 | Variant             |  Hands |    bb/100 | 95% CI | H/hr |
 | :------------------ | -----: | --------: | -----: | ---: |
-| `world+dirac`       | 23.1 K | **−22.8** | ± 25.8 |  4 K |
-| `dirac`             |  480 K |     −26.6 |  ± 5.7 |    — |
-| `depth+dirac`       | 23.0 K |     −28.6 | ± 25.9 |  3 K |
-| `base`              |  480 K |     −32.8 |  ± 5.7 |    — |
-| `depth+world+dirac` | 3.76 K |     −33.7 | ± 64.0 |    — |
-| `depth`             | 5.93 K |     −48.2 | ± 50.9 |    — |
-| `world`             | 24.2 K |     −68.1 | ± 25.2 |  1 K |
-| `depth+world`       | 21.8 K |     −76.1 | ± 26.6 |    — |
+| `world+dirac`       | 52.3 K | **−19.1** | ± 17.1 |  4 K |
+| `depth+dirac`       | 52.2 K |     −22.1 | ± 17.2 |  3 K |
+| `depth+world+dirac` | 52.7 K |     −24.7 | ± 17.1 |  3 K |
+| `dirac`             |  480 K |     −28.4 |  ± 5.7 |    — |
+| `base`              |  480 K |     −32.4 |  ± 5.7 |    — |
+| `world`             | 55.5 K |     −59.5 | ± 16.6 |  3 K |
+| `depth`             | 55.6 K |     −64.6 | ± 16.6 |  3 K |
+| `depth+world`       | 56.0 K |     −74.3 | ± 16.6 |  4 K |
+| `fish`              |  480 K |    −136.5 |  ± 3.8 |    — |
 
 <sub><b>Table 1.</b> Slumbot results by search configuration.</sub>
 
-**Every variant with `dirac` is at or above `base`; every variant without it — except `base` itself — is well below.** The leader, `world+dirac`, is ten bb/100 ahead of `base` and roughly fifty ahead of `depth+world`. Enabling `dirac` improves bb/100 by an order of magnitude more than enabling `depth` or `world`. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source in the unaugmented blueprint** — the clearest available direction for further work.
+**Every variant with `dirac` beats every variant without it**, with no overlap between the two groups: the weakest `dirac` line is four bb/100 ahead of `base` and thirty ahead of the best non-`dirac` search variant. The leader, `world+dirac`, is thirteen bb/100 ahead of `base` and fifty-five ahead of `depth+world`. Averaged over the four on/off pairs in Table 1, switching `dirac` on is worth **+34 bb/100**, while `depth` (−12) and `world` (−8) are each net-negative on their own. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source in the unaugmented blueprint** — the clearest available direction for further work.
 
-Confidence intervals on the ablation variants are wide (± 25 bb/100 at ~23 K hands; ± 64 on the 3.76 K-hand `depth+world+dirac` task), so ordering *within* the `*+dirac` cluster is not yet statistically separated. The three reference tasks — `base`, `dirac`, `fish` — have each run an order of magnitude longer at 480 K hands, so those estimates are tight (± 5.7).
+Confidence intervals on the six search variants are ± 17 bb/100 at ~52 K hands, so ordering *within* the `*+dirac` cluster is not yet statistically separated — only the split between the `dirac` and non-`dirac` groups is. The three reference tasks — `base`, `dirac`, `fish` — have no per-decision think and blitz their budget, so they run an order of magnitude longer (480 K hands) and their estimates are tight (± 5.7).
+
+These figures postdate a showdown-evaluation fix — full houses now correctly outrank flushes, and flushes carry kickers — which shifts terminal utilities and therefore every number downstream of them. Earlier published results were measured against the buggy evaluator and are not comparable.
 
 ### In shape — the litmus suite
 
