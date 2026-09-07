@@ -108,29 +108,55 @@ Two independent axes. Chips answer whether it wins; shape answers whether the st
 
 ### In chips — live play against Slumbot
 
-<img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600" align="left"/>
+Each variant layers a different real-time-search technique onto the MCCFR blueprint: `depth` (depth-limited solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `base` is the blueprint with no search; `fish` plays uniformly at random. All nine play Slumbot live and in parallel, one task each.
 
-Each series layers a different real-time-search technique onto the MCCFR blueprint: `depth` (depth-limited solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `base` is the blueprint with no search; `fish` plays uniformly at random. All variants play live against Slumbot.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/competition-convergence-dark.svg"/>
+    <img src="assets/images/competition-convergence-light.svg" alt="Running bb/100 by hands played, nine variants" width="880"/>
+  </picture>
+</p>
 
-<br clear="all"/>
+<p align="center">
+  <sub><b>Figure 5.</b> Every hand of the run, drawn from the hand log rather than from a dashboard. The x-axis is
+  hands played, not wall-clock: <code>base</code>, <code>dirac</code> and <code>fish</code> spend no time per decision
+  and burn 480 K hands in five hours, while the six search variants take seconds per decision and reach ~86 K in
+  twenty-four. Whiskers mark the 95% interval at each protagonist's last hand.</sub>
+</p>
 
 | Variant             |  Hands |    bb/100 | 95% CI |
 | :------------------ | -----: | --------: | -----: |
-| `world+dirac`       | 86.0 K | **−13.1** | ± 13.4 |
-| `depth+dirac`       | 86.2 K |     −25.3 | ± 13.4 |
-| `dirac`             |  480 K |     −28.4 |  ± 5.7 |
-| `depth+world+dirac` | 86.7 K |     −28.4 | ± 13.3 |
-| `base`              |  480 K |     −32.4 |  ± 5.7 |
-| `world`             | 90.9 K |     −64.4 | ± 13.0 |
-| `depth`             | 91.4 K |     −77.4 | ± 13.0 |
-| `depth+world`       | 91.7 K |     −79.5 | ± 12.9 |
+| `world+dirac`       | 86.0 K | **−13.1** | ± 14.0 |
+| `depth+dirac`       | 86.2 K |     −25.3 | ± 14.3 |
+| `dirac`             |  480 K |     −28.4 |  ± 6.0 |
+| `depth+world+dirac` | 86.7 K |     −28.4 | ± 14.3 |
+| `base`              |  480 K |     −32.4 |  ± 6.1 |
+| `world`             | 90.9 K |     −64.4 | ± 16.6 |
+| `depth`             | 91.4 K |     −77.4 | ± 17.5 |
+| `depth+world`       | 91.7 K |     −79.5 | ± 16.8 |
 | `fish`              |  480 K |    −136.5 |  ± 3.8 |
 
-<sub><b>Table 1.</b> Slumbot results by search configuration.</sub>
+<sub><b>Table 1.</b> Slumbot results by search configuration. Intervals are 1.96·σ/√n over the per-hand pnl.</sub>
 
-**Every variant with `dirac` beats every variant without it**, with no overlap between the two groups: the weakest `dirac` line is four bb/100 ahead of `base` and thirty-six ahead of the best non-`dirac` search variant. The leader, `world+dirac`, is nineteen bb/100 ahead of `base` and sixty-six ahead of `depth+world`, and its interval (−26.5 … +0.3) reaches break-even. Averaged over the four on/off pairs in Table 1, switching `dirac` on is worth **+40 bb/100**, while `depth` (−18) and `world` (−5) are each net-negative alone — `world` pays only alongside `dirac`, where it is worth +15, which is exactly why `world+dirac` leads. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source in the unaugmented blueprint** — the clearest available direction for further work.
+**Every variant with `dirac` beats every variant without it**, with no overlap between the two groups. The leader, `world+dirac`, is nineteen bb/100 ahead of `base` and sixty-six ahead of `depth+world`, and its interval (−27.2 … +0.9) reaches break-even.
 
-Confidence intervals on the six search variants are ± 13 bb/100 at ~86–92 K hands, so ordering *within* the `*+dirac` cluster is suggestive rather than settled — only the split between the `dirac` and non-`dirac` groups is fully separated. The three reference tasks — `base`, `dirac`, `fish` — have no per-decision think and blitz their budget, so they run an order of magnitude longer (480 K hands) and their estimates are tight (± 5.7).
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/competition-cube-dark.svg"/>
+    <img src="assets/images/competition-cube-light.svg" alt="The eight search configurations as a cube" width="820"/>
+  </picture>
+</p>
+
+<p align="center">
+  <sub><b>Figure 6.</b> The same run as a configuration cube — each corner one on/off setting of the three search
+  features, each long edge the <code>dirac</code> transition, labelled with what switching it on is worth.</sub>
+</p>
+
+The cube is where the structure shows. `dirac` on its own buys almost nothing (**+4.0** over `base`), but layered onto either search feature it is worth **~+51**. The mirror statement is the same fact: `depth` and `world` *without* `dirac` are catastrophic (−45.1 and −32.0 against `base`), and *with* it they are free or better (+3.0 and +15.2 against `dirac`). Real-time search produces a policy the blueprint's sampler then squanders, and argmaxing it recovers the entire loss. Averaged over the four on/off pairs, `dirac` is worth **+40 bb/100** against **−18** for `depth` and **−5** for `world`. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source** — and search does not paper over it, which is the clearest available direction for further work.
+
+Confidence intervals on the six search variants run ± 14 to ± 18 bb/100 at ~86–92 K hands, so ordering *within* the `*+dirac` cluster is suggestive rather than settled — only the split between the `dirac` and non-`dirac` groups is fully separated. The three reference tasks — `base`, `dirac`, `fish` — have no per-decision think and blitz their budget, so they run an order of magnitude longer (480 K hands) and their estimates are tight (± 5.7).
+
+Both figures are generated from the `players ⋈ users ⋈ hands` log by [`scripts/figures/slumbot.py`](scripts/figures/slumbot.py) — no dashboard screenshots, so the plotted endpoints and Table 1 are the same numbers by construction.
 
 These figures postdate a showdown-evaluation fix — full houses now correctly outrank flushes, and flushes carry kickers — which shifts terminal utilities and therefore every number downstream of them. Earlier published results were measured against the buggy evaluator and are not comparable.
 
