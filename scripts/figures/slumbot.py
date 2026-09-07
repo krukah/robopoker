@@ -52,11 +52,15 @@ CORNERS = {
     "world+dirac": (0, 1, 1),
     "depth+world+dirac": (1, 1, 1),
 }
-AXES = ("depth", "world", "dirac")
+AXES = (
+    ("depth", "depth-limited subgame"),
+    ("world", "safe multi-world subgame"),
+    ("dirac", "zero-temperature argmax"),
+)
 SLOT = 15
 LEAD = "world+dirac"
 REF = "base"
-CONTROL = "fish"
+CONTROL = "fish"  # measured as a sanity floor, never plotted
 
 # ── themes ──────────────────────────────────────────────────────────────────
 # Three categorical slots — aqua = search with dirac, orange = without, blue =
@@ -68,12 +72,12 @@ THEMES = {
     "light": dict(
         surface="#fcfcfb", panel="#f2f1ed", grid="#e8e7e3", axis="#c9c8c2",
         primary="#0b0b0b", secondary="#52514e", muted="#8a8983",
-        on="#1baf7a", off="#eb6834", control="#2a78d6", faint=0.45,
+        on="#1baf7a", off="#eb6834", faint=0.45,
     ),
     "dark": dict(
         surface="#1a1a19", panel="#232322", grid="#2b2b29", axis="#46453f",
         primary="#ffffff", secondary="#c3c2b7", muted="#8a8983",
-        on="#199e70", off="#d95926", control="#3987e5", faint=0.6,
+        on="#199e70", off="#d95926", faint=0.6,
     ),
 }
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
@@ -128,8 +132,6 @@ class Series:
         return CORNERS.get(self.name, (0, 0, 0))[2] == 1
 
     def hue(self, t):
-        if self.name == CONTROL:
-            return t["control"]
         return t["on"] if self.dirac else t["off"]
 
     def lead(self):
@@ -198,44 +200,37 @@ class Svg:
         elif kind == "dirac":
             g.append(f'<path d="M-5.2,4.6 L5.2,4.6 M0,4.6 L0,-4.2" fill="none" stroke="{c}" '
                      f'stroke-width="1.7" stroke-linecap="round"/><circle cx="0" cy="-5.2" r="1.8" fill="{c}"/>')
-        elif kind == "fish":
-            g.append("".join(f'<circle cx="{a}" cy="{b}" r="1.5" fill="{c}"/>'
-                             for a, b in ((-4, 2.6), (0.4, -3.4), (4.4, 3.0))))
         self.body.append("".join(g) + "</g>")
 
     def slots(self, x, y, corner, hue):
         """The three DOF in fixed order, so any two pills line up column by column."""
-        if corner is None:
-            self.glyph("fish", x + 7, y, hue)
-            return
-        for i, (kind, on) in enumerate(zip(AXES, corner)):
+        for i, ((kind, _), on) in enumerate(zip(AXES, corner)):
             self.glyph(kind, x + 7 + i * SLOT, y, hue, bool(on))
 
-    def pill(self, x, y, corner, hue, value, name=None, lead=False, anchor="start"):
-        """Identity and result in one small panel: DOF slots, an optional name,
-        and the measurement underneath."""
+    def pill(self, x, y, corner, hue, value, lead=False, anchor="start"):
+        """Identity and result in one small panel: the DOF slots say which
+        variant this is — spelling the name out beside them says it twice."""
         t = self.t
-        wide = 3 * SLOT + (10 + 6.5 * len(name) if name else 0)
-        w, h = max(wide, 6.4 * len(value)) + 18, 38
+        w, h = max(3 * SLOT, 6.4 * len(value)) + 18, 38
         x = x if anchor == "start" else x - w
         self.rect(x, y - h / 2, w, h, t["panel"], rx=9)
         self.rect(x, y - h / 2, w, h, hue, rx=9, opacity=0.10)
         self.slots(x + 9, y - 8, corner, hue)
-        if name:
-            self.text(x + 9 + 3 * SLOT + 8, y - 4, name, t["primary"] if lead else t["secondary"],
-                      11.5, weight=600 if lead else 400)
         self.text(x + 9, y + 13, value, t["primary"] if lead else t["muted"], 11,
                   weight=600 if lead else 400, mono=True)
         return w
 
-    def key(self, x, y, arrows=None):
-        """Glyph key — what each degree of freedom looks like when it is on."""
-        for i, kind in enumerate(AXES):
-            self.glyph(kind, x + 7, y - 4, self.t["secondary"])
+    def key(self, x, y, w, arrows=None):
+        """The glyphs are not self-evident, so the key spells each one out: the
+        symbol, the name Table 1 uses, and what the feature actually does."""
+        t = self.t
+        for i, (kind, gloss) in enumerate(AXES):
+            self.glyph(kind, x + 7, y - 4, t["secondary"])
             tag = f"{kind} {arrows[i]}" if arrows else kind
-            self.text(x + 19, y, tag, self.t["secondary"], 11.5)
-            x += 26 + 6.6 * len(tag)
-        self.text(x + 2, y, "· solid on, ghosted off", self.t["muted"], 11.5)
+            self.text(x + 19, y, tag, t["secondary"], 11.5, weight=600)
+            self.text(x + 25 + 6.4 * len(tag), y, gloss, t["muted"], 11.5)
+            x += 38 + 6.4 * len(tag) + 6.3 * len(gloss)
+        self.text(w, y, "solid on · ghosted off", t["muted"], 11.5, anchor="end")
 
     def render(self):
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" '
@@ -255,11 +250,14 @@ def convergence(data, name):
     left — rather than the short runs stopping dead in the middle of the plot.
     """
     t = THEMES[name]
-    W, H = 900, 580
-    L, R, T, B = 62, 208, 104, 56
+    W, H = 900, 520
+    L, R, T, B = 62, 128, 108, 56
     x0, x1, y0, y1 = L, W - R, T, H - B
-    near, far = 1_000, 480_000
-    top, bot = 12.0, -150.0
+    near, far, step = 1_000, 480_000, 15
+    curve = {v.name: v.tail(v.hands - 20_000, near) for v in drawn(data).values()}
+    flat = [b for c in curve.values() for _, b, _ in c]
+    top = step * math.ceil(max(flat) / step)
+    bot = step * math.floor(min(flat) / step)
     span = math.log10(far) - math.log10(near)
     fx = lambda r: x1 - (x1 - x0) * (math.log10(max(r, near)) - math.log10(near)) / span
     fy = lambda b: y1 - (y1 - y0) * (b - bot) / (top - bot)
@@ -267,8 +265,8 @@ def convergence(data, name):
     s.rect(0, 0, W, H, t["surface"], rx=10)
     s.text(L, 36, "bb/100 against Slumbot", t["primary"], 17, weight=600)
     s.text(L, 57, "running mean, aligned on the last hand of each run · 2026-09-04 · 1.9 M hands", t["muted"], 12)
-    s.key(L - 7, 80)
-    for b in range(-150, 1, 30):
+    s.key(L - 7, 84, W - L)
+    for b in range(int(bot), int(top) + 1, step):
         s.line(x0, fy(b), x1, fy(b), t["grid"], 1)
         s.text(x0 - 10, fy(b) + 4, fmt(float(b)).rstrip("0").rstrip("."), t["muted"], 11, anchor="end", mono=True)
     for r in (300_000, 100_000, 30_000, 10_000, 3_000, 1_000):
@@ -276,26 +274,31 @@ def convergence(data, name):
         s.text(fx(r), y1 + 20, f"{r // 1000} K", t["muted"], 11, anchor="middle", mono=True)
     s.text((x0 + x1) / 2, y1 + 42, "hands remaining  →  end of run", t["secondary"], 12, anchor="middle")
     s.line(x0, fy(0), x1, fy(0), t["axis"], 1)
-    s.text(x1 - 4, fy(0) - 8, "break-even", t["muted"], 11, anchor="end")
-    for v in sorted(data.values(), key=lambda v: v.lead()):
-        pts = [(fx(r), fy(max(min(b, top), bot))) for r, b, _ in v.tail(v.hands - 20_000, near)]
+    s.text(x0 + 8, fy(0) + 15, "break-even", t["muted"], 11)
+    for v in sorted(drawn(data).values(), key=lambda v: v.lead()):
+        pts = [(fx(r), fy(b)) for r, b, _ in curve[v.name]]
         s.path(pts, v.hue(t), 2.4 if v.lead() else 1.4, 1 if v.lead() else t["faint"])
         s.dot(*pts[0], 2.6, t["surface"], ring=v.hue(t))  # where this run enters
-    placed = [y0 - 24]
-    for end, v in sorted(((fy(v.final), v) for v in data.values()), key=lambda p: p[0]):
-        placed.append(max(end, placed[-1] + 44))
-        s.line(x1, end, x1 + 14, placed[-1], v.hue(t), 0.9, opacity=0.3)
+    # one pill per variant, pushed apart to clear each other and then, if the
+    # column ran past the axis, lifted back inside it as a block
+    order = sorted(((fy(v.final), v) for v in drawn(data).values()), key=lambda p: p[0])
+    rows, gap = [], 42
+    for end, _ in order:
+        rows.append(max(end, rows[-1] + gap) if rows else end)
+    lift = max(0, rows[-1] + gap / 2 - y1)
+    for (end, v), y in zip(order, rows):
+        y = max(y - lift, y0 + gap / 2)
+        s.line(x1, end, x1 + 14, y, v.hue(t), 0.9, opacity=0.3)
         s.dot(x1, end, 3, v.hue(t), ring=t["surface"])
-        s.pill(x1 + 14, placed[-1], CORNERS.get(v.name), v.hue(t),
-               f"{fmt(v.final)} ± {v.conf:.1f}", v.name, v.lead())
+        s.pill(x1 + 14, y, CORNERS[v.name], v.hue(t), f"{fmt(v.final)} ± {v.conf:.1f}", v.lead())
     return s.render()
 
 
 def cube(data, name):
     """The 2×2×2 configuration cube: depth × world × dirac, dirac drawn wide."""
     t = THEMES[name]
-    W, H = 900, 430
-    ox, oy = 230, 330
+    W, H = 900, 400
+    ox, oy = 230, 344
     D, O, K = (100, -70), (0, -136), (340, 0)
     at = lambda d, w, k: (ox + d * D[0] + w * O[0] + k * K[0], oy + d * D[1] + w * O[1] + k * K[1])
     s = Svg(W, H, t)
@@ -325,9 +328,14 @@ def cube(data, name):
         s.dot(x, y, 7 if lead else 5, v.hue(t), ring=t["surface"])
         s.pill(rail[k], y, (d, w, k), v.hue(t), f"{fmt(v.final)} ± {v.conf:.1f}",
                lead=lead, anchor="start" if k else "end")
-    s.key(40, H - 26, arrows=("↗", "↑", "→"))
-    s.text(W - 44, H - 26, f"off-cube: {CONTROL} {fmt(data[CONTROL].final)}", t["muted"], 11.5, anchor="end")
+    s.key(41, 84, W - 48, arrows=("↗", "↑", "→"))
     return s.render()
+
+
+def drawn(data):
+    """The eight cube corners. `fish` is a sanity floor, not a search variant —
+    it is measured and tabled, but plotting it only stretches the y-axis."""
+    return {k: v for k, v in data.items() if k in CORNERS}
 
 
 def key_of(d, w, k):
