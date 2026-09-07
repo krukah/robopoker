@@ -232,15 +232,20 @@ class Svg:
 
     def pill(self, x, y, corner, hue, value, lead=False, anchor="start"):
         """Identity and result in one small panel: the DOF slots say which
-        variant this is — spelling the name out beside them says it twice."""
+        variant this is — spelling the name out beside them says it twice.
+
+        Every measurement is padded to the same width (see `stat`), so every
+        pill comes out the same size and both rows can sit centred: the slots
+        stack into one column down the figure, the ± lines up beneath them.
+        """
         t = self.t
-        w, h = max(3 * SLOT, 6.4 * len(value)) + 18, 38
+        w, h = max(3 * SLOT, 6.4 * len(value)) + 20, 38
         x = x if anchor == "start" else x - w
         self.rect(x, y - h / 2, w, h, t["panel"], rx=9)
         self.rect(x, y - h / 2, w, h, hue, rx=9, opacity=0.10)
-        self.slots(x + 9, y - 8, corner, hue)
-        self.text(x + 9, y + 13, value, t["primary"] if lead else t["muted"], 11,
-                  weight=600 if lead else 400, mono=True)
+        self.slots(x + w / 2 - 1.5 * SLOT, y - 8, corner, hue)
+        self.text(x + w / 2, y + 13, value, t["primary"] if lead else t["muted"], 11,
+                  weight=600 if lead else 400, mono=True, anchor="middle")
         return w
 
     def key(self, x, y, arrows=None):
@@ -265,6 +270,12 @@ class Svg:
 
 def fmt(v):
     return f"{v:.1f}".replace("-", "\u2212")
+
+
+def stat(v):
+    """`−13.1 ± 14.0`, padded with figure spaces to a fixed twelve columns —
+    what makes every pill one width and the ± align down the column."""
+    return f"{fmt(v.final):\u2007>5} ± {f'{v.conf:.1f}':\u2007>4}"
 
 
 def convergence(data, name):
@@ -315,7 +326,7 @@ def convergence(data, name):
         y = max(y - lift, y0 + gap / 2)
         s.line(x1, end, x1 + 14, y, v.hue(t), 0.9, opacity=0.3)
         s.dot(x1, end, 3, v.hue(t), ring=t["surface"])
-        s.pill(x1 + 14, y, CORNERS[v.name], v.hue(t), f"{fmt(v.final)} ± {v.conf:.1f}", v.lead())
+        s.pill(x1 + 14, y, CORNERS[v.name], v.hue(t), stat(v), v.lead())
     return s.render()
 
 
@@ -351,8 +362,7 @@ def cube(data, name):
         v, lead = data[corner], corner == LEAD
         s.line(rail[k], y, x, y, v.hue(t), 0.9, opacity=0.3)
         s.dot(x, y, 7 if lead else 5, v.hue(t), ring=t["surface"])
-        s.pill(rail[k], y, (d, w, k), v.hue(t), f"{fmt(v.final)} ± {v.conf:.1f}",
-               lead=lead, anchor="start" if k else "end")
+        s.pill(rail[k], y, (d, w, k), v.hue(t), stat(v), lead=lead, anchor="start" if k else "end")
     s.key(41, 84, arrows=("↗", "↑", "→"))
     return s.render()
 
