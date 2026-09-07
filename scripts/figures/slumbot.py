@@ -11,13 +11,19 @@ the variant carried by `users.username` (`bot:<variant>`). Chip scale is the
 engine's SB=1/BB=2, so bb/100 = 50 × mean(pnl).
 
     DB_URL=postgresql://... python3 scripts/figures/slumbot.py OUTDIR
+
+Rows are cached (SERIES_CACHE, default $TMPDIR/slumbot-series.csv) so that
+redrawing — new glyphs, a different axis — costs nothing and does not need the
+database's temporary ingress reopened.
 """
 
 import bisect
 import math
 import os
+import pathlib
 import subprocess
 import sys
+import tempfile
 
 PSQL = "/opt/homebrew/opt/libpq/bin/psql"
 WINDOW = ("2026-09-04 16:00", "2026-09-05 17:30")
@@ -138,12 +144,21 @@ class Series:
         return self.name in (LEAD, REF)
 
 
-def pull(url):
-    """Run the window query and fold the rows into Series, one per variant."""
-    out = subprocess.run(
-        [PSQL, url, "-At", "-F,", "-c", QUERY % (WINDOW[0], WINDOW[1], STRIDE)],
-        capture_output=True, text=True, check=True,
-    ).stdout
+def pull():
+    """Fold the window query into one Series per variant, from the database if
+    it can be reached and from the cache if it cannot."""
+    cache = pathlib.Path(os.environ.get("SERIES_CACHE", tempfile.gettempdir()) ) / "slumbot-series.csv"
+    try:
+        out = subprocess.run(
+            [PSQL, os.environ["DB_URL"], "-At", "-F,", "-c", QUERY % (WINDOW[0], WINDOW[1], STRIDE)],
+            capture_output=True, text=True, check=True, timeout=180,
+        ).stdout
+        cache.write_text(out)
+    except (KeyError, subprocess.SubprocessError) as e:
+        if not cache.exists():
+            raise
+        print(f"{type(e).__name__}: falling back to {cache}", file=sys.stderr)
+        out = cache.read_text()
     rows = {}
     for line in out.strip().splitlines():
         variant, n, cum, cum2 = line.split(",")
@@ -181,25 +196,34 @@ class Svg:
                          f'font-weight="{weight}" text-anchor="{anchor}">{s}</text>')
 
     def glyph(self, kind, x, y, color, on=True):
-        """One degree of freedom, drawn: solid when the feature is on, ghosted when off.
+        """One degree of freedom, drawn as the thing it does.
 
-        depth  two descending chevrons — the search walking further down the tree
-        world  a circle with one half filled — belief partitioned over worlds
-        dirac  an impulse on a baseline — all mass on the argmax
-        fish   three scattered dots — uniform random
+        The pair is deliberately mirrored: depth branches downward into the
+        tree, world branches upward across it.
+
+        depth  a tree splitting downward, stopped by a hard rule — the search
+               descends only so far, then hands the rest to a leaf value
+        world  branches fanning upward, tied together by an arc — the solve is
+               held safe across every branch, so the opponent cannot pick the
+               world you left exposed
+        dirac  a distribution with a dot on its tallest bar — the argmax lifted
+               out of the policy instead of sampled from it
         """
         c = color if on else self.t["axis"]
         o = 1 if on else 0.55
         g = [f'<g transform="translate({x:.1f},{y:.1f})" opacity="{o}">']
+        k = f'fill="none" stroke="{c}" stroke-linecap="round" stroke-linejoin="round"'
         if kind == "depth":
-            g.append(f'<path d="M-4.6,-4.6 L0,-0.2 L4.6,-4.6 M-4.6,0.9 L0,5.3 L4.6,0.9" fill="none" '
-                     f'stroke="{c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>')
+            g.append(f'<path d="M0,-6.4 L0,-2.6 M0,-2.6 L-4.1,1.2 M0,-2.6 L4.1,1.2" {k} stroke-width="1.5"/>'
+                     f'<path d="M-5.8,4.4 L5.8,4.4" {k} stroke-width="1.5"/>')
         elif kind == "world":
-            g.append(f'<path d="M0,-4.8 A4.8,4.8 0 0 0 0,4.8 Z" fill="{c}"/>'
-                     f'<circle cx="0" cy="0" r="4.8" fill="none" stroke="{c}" stroke-width="1.5"/>')
+            g.append(f'<path d="M0,5.4 L0,1.4 M0,1.4 L-4.7,-2.6 M0,1.4 L0,-4.4 M0,1.4 L4.7,-2.6" '
+                     f'{k} stroke-width="1.5"/>'
+                     f'<path d="M-4.9,-2.4 A6.2,6.2 0 0 1 4.9,-2.4" {k} stroke-width="1.5"/>')
         elif kind == "dirac":
-            g.append(f'<path d="M-5.2,4.6 L5.2,4.6 M0,4.6 L0,-4.2" fill="none" stroke="{c}" '
-                     f'stroke-width="1.7" stroke-linecap="round"/><circle cx="0" cy="-5.2" r="1.8" fill="{c}"/>')
+            for bx, h, w in ((-5.0, 2.3, 1.3), (-1.7, 4.8, 1.3), (1.7, 9.0, 2.1), (5.0, 3.4, 1.3)):
+                g.append(f'<path d="M{bx},4.6 L{bx},{4.6 - h:.1f}" {k} stroke-width="{w}"/>')
+            g.append(f'<circle cx="1.7" cy="-6.4" r="1.6" fill="{c}"/>')
         self.body.append("".join(g) + "</g>")
 
     def slots(self, x, y, corner, hue):
@@ -344,7 +368,7 @@ def key_of(d, w, k):
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "."
-    data = pull(os.environ["DB_URL"])
+    data = pull()
     for name in THEMES:
         for stem, fig in (("convergence", convergence), ("cube", cube)):
             path = f"{out}/competition-{stem}-{name}.svg"
