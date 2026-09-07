@@ -19,13 +19,16 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 
 ## Contributions
 
-- **Fastest open-source hand evaluator** — nanosecond evaluation, outperforming Cactus Kev
-- **Optimal transport from scratch** — Sinkhorn/Greenkhorn⁵ over generic `Density`/`Support` measures, not a poker-specific hack
-- **Game-agnostic CFR framework** — pluggable regret/policy/sampling schemes, held to closed-form equilibria on Kuhn, Leduc, and Rock-Paper-Scissors
-- **Action translation⁷,⁸** — pseudo-harmonic mapping over finite lattices
-- **AIVAT variance reduction** — low-variance evaluation over hand histories
-- **Evaluated two ways** — **−22.8 bb/100** against live [Slumbot](https://www.slumbot.com) over 23.1 K hands, plus a structural litmus suite that asserts strategy shape (§ [Evaluation](#evaluation))
-- **Twelve published crates** — every layer reusable on its own
+| Contribution | What it is |
+| :--- | :--- |
+| **Fastest open-source hand evaluator** | Nanosecond evaluation, outperforming Cactus Kev |
+| **Optimal transport from scratch** | Sinkhorn/Greenkhorn⁵ over generic `Density`/`Support` measures, not a poker-specific hack |
+| **Game-agnostic CFR framework** | Pluggable regret/policy/sampling schemes, held to closed-form equilibria on Kuhn, Leduc, and Rock-Paper-Scissors |
+| **Action translation⁷,⁸** | Pseudo-harmonic mapping over finite lattices |
+| **AIVAT variance reduction** | Low-variance evaluation over hand histories |
+| **Evaluated in chips** | **−22.8 bb/100** against live [Slumbot](https://www.slumbot.com) over 23.1 K hands (§ [Evaluation](#evaluation)) |
+| **Evaluated in shape** | A structural litmus suite holding the 169-cell range object to common-knowledge GTO invariants — rank monotonicity, suited/offsuit symmetry, no collapse onto a single action (§ [Evaluation](#evaluation)) |
+| **Twelve published crates** | Every layer reusable on its own |
 
 ## Method
 
