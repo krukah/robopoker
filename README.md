@@ -5,12 +5,7 @@
 [![crates.io](https://img.shields.io/crates/v/robopoker.svg)](https://crates.io/crates/robopoker)
 [![docs.rs](https://img.shields.io/docsrs/robopoker)](https://docs.rs/robopoker)
 
-A Rust implementation of superhuman-scale poker AI, seeking functional parity with Pluribus¹. Every component — hand evaluation, optimal transport, clustering, the CFR framework, the game engine, persistence, telemetry — is written from scratch as a single-purpose crate.
-
-- **Abstract** — reduce 3.1 T situations to strategically-equivalent buckets, by hierarchical k-means over Earth Mover's Distance
-- **Train** — learn a blueprint against that abstraction by Monte Carlo counterfactual regret minimization
-- **Search** — refine the blueprint at play time with depth-limited¹⁰ and safe, world-partitioned¹² re-solving
-- **Measure** — **−22.8 bb/100** against [Slumbot](https://www.slumbot.com) over 23.1 K hands (§ [Results](#results)); not yet winning, but the ablation says which component is responsible
+A Rust implementation of superhuman-scale poker AI, seeking functional parity with Pluribus¹ — hand evaluation, optimal transport, clustering, the CFR framework, the game engine, persistence, and telemetry, each written from scratch as a single-purpose crate.
 
 <p align="center">
   <img src="assets/reel/hero.svg" alt="Living dashboard: one hand from preflop to river" width="900"/>
@@ -29,7 +24,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 - **Game-agnostic CFR framework** — pluggable regret/policy/sampling schemes, held to closed-form equilibria on Kuhn, Leduc, and Rock-Paper-Scissors
 - **Action translation⁷,⁸** — pseudo-harmonic mapping over finite lattices
 - **AIVAT variance reduction** — low-variance evaluation over hand histories
-- **Live-opponent measurement** — 480 K-hand reference tasks with confidence intervals, not self-play claims
+- **Evaluated two ways** — **−22.8 bb/100** against live [Slumbot](https://www.slumbot.com) over 23.1 K hands, plus a structural litmus suite that asserts strategy shape (§ [Evaluation](#evaluation))
 - **Twelve published crates** — every layer reusable on its own
 
 ## Method
@@ -80,13 +75,11 @@ Computed once, per street, river → turn → flop → preflop.
 - `forge` — orchestrates `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing to the database
 
 <p align="center">
-  <img src="assets/reel/tree.gif" alt="External-sampling MCCFR tree traversal" width="450"/>
-  <img src="assets/reel/tree-kuhn.gif" alt="Kuhn poker tree" width="330"/>
+  <img src="assets/reel/tree.gif" alt="External-sampling MCCFR tree traversal" width="620"/>
   <br/>
   <sub><b>Figure 3.</b> External sampling walks one trajectory per iteration — chance nodes fan into revealed cards,
   decision nodes into the bet-sizing lattice, and the highlighted path is the branch being updated. Streets are the
-  vertical bands; the acting seat labels each column. <i>Right:</i> Kuhn poker, whose entire tree fits on screen, is
-  where convergence is checked against the analytic Nash equilibrium.</sub>
+  vertical bands; the acting seat labels each column.</sub>
 </p>
 
 ### 3 · Real-time search
@@ -106,7 +99,11 @@ At play time the blueprint becomes a prior, and the current spot is re-solved.
   mechanically by <a href="crates/litmus"><code>litmus</code></a>.</sub>
 </p>
 
-## Results
+## Evaluation
+
+Two independent axes: how many chips it wins against a live opponent, and whether the strategy is structurally sound.
+
+### Live play — Slumbot
 
 <img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600" align="left"/>
 
@@ -130,6 +127,36 @@ Each series layers a different real-time-search technique onto the MCCFR bluepri
 **Every variant with `dirac` is at or above `base`; every variant without it — except `base` itself — is well below.** The leader, `world+dirac`, is ten bb/100 ahead of `base` and roughly fifty ahead of `depth+world`. Enabling `dirac` improves bb/100 by an order of magnitude more than enabling `depth` or `world`. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source in the unaugmented blueprint** — the clearest available direction for further work.
 
 Confidence intervals on the ablation variants are wide (± 25 bb/100 at ~23 K hands; ± 64 on the 3.76 K-hand `depth+world+dirac` task), so ordering *within* the `*+dirac` cluster is not yet statistically separated. The three reference tasks — `base`, `dirac`, `fish` — have each run an order of magnitude longer at 480 K hands, so those estimates are tight (± 5.7).
+
+### Structural validation — litmus
+
+Winrate is a single scalar and a slow one to measure; it cannot say *why* a
+strategy is losing. The [`litmus`](crates/litmus) suite asserts invariants the
+169-cell range object must satisfy regardless of opponent — monotonicity along
+hand-strength sequences, suited/offsuit symmetry, no collapse onto a single
+action — and runs against a live blueprint over HTTP.
+
+| Category                  | Pass | Fail | Asserts                                                    |
+| :------------------------ | ---: | ---: | :--------------------------------------------------------- |
+| `preflop_weak_rags`       |    6 |    0 | trash folds rather than sticking in a Linear-CFR bucket     |
+| `flop_air`                |    3 |    1 | air checks on bad boards instead of over-betting            |
+| `flop_cbet` · `flop_value`|    6 |    0 | the c-bet and value lines exist at all                      |
+| `preflop_bb_defense`      |    3 |    0 | BB defends rather than over-folding                         |
+| `preflop_overjam`         |    2 |    2 | `JJ`/`QQ`/`AKo` do not collapse to all-in                   |
+| `suited_offsuit_symmetry` |    2 |    4 | `AKs` and `AKo` play alike                                  |
+| `rank_monotonicity`       |    1 |    0 | aggression rises monotonically with hand strength           |
+| `structural_grid`         |    2 |    0 | every bet-sizing slot is used somewhere                     |
+| river · turn · other      |    5 |    0 | value and air lines by street                               |
+| **Total**                 |   33 |    7 |                                                             |
+
+<sub><b>Table 2.</b> Blueprint at epoch 57.9 M — 156 K infosets, sum regret 62.7.</sub>
+
+The seven failures are informative rather than incidental. Four are
+`suited_offsuit_symmetry`: `AKs` and `AKo` diverge more than equity
+realization justifies, which is the postflop abstraction losing suit-specific
+information. Two are `preflop_overjam`, where strong defending hands still
+collapse toward all-in — the same zero-temperature pathology the `dirac`
+result above measures from the other direction. Both are open.
 
 ## Implementation
 
