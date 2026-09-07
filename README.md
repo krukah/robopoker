@@ -5,201 +5,34 @@
 [![crates.io](https://img.shields.io/crates/v/robopoker.svg)](https://crates.io/crates/robopoker)
 [![docs.rs](https://img.shields.io/docsrs/robopoker)](https://docs.rs/robopoker)
 
-A Rust toolkit for game-theoretically optimal poker strategies, implementing state-of-the-art algorithms for No-Limit Texas Hold'em. Seeking functional parity to Pluribus¹.
+A Rust implementation of superhuman-scale poker AI, seeking functional parity with Pluribus¹ — hand evaluation, optimal transport, clustering, the CFR framework, the game engine, persistence, and telemetry, each written from scratch as a single-purpose crate.
 
-## Visual Tour
+<p align="center">
+  <img src="assets/reel/hero.svg" alt="Living dashboard: one hand from preflop to river" width="900"/>
+</p>
 
-| ![Monte Carlo Tree Search](https://github.com/user-attachments/assets/5118eba3-3d64-42f8-ac07-5c83ff733439) | ![Equity Distributions](https://github.com/user-attachments/assets/90b491df-9482-483e-9475-4360f5a17add) |
-| :---------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
-|                                          _Monte Carlo Tree Search_                                          |                                          _Equity Distributions_                                          |
+<p align="center">
+  <sub><b>Figure 1.</b> One hand, preflop → river, on nested clocks: the game tree flickers as MCCFR samples it,
+  hero's range tightens street by street, the equity curves morph, the policy resolves, and the board deals out.
+  Animated SVG emitted by the solver — no video, no scripts.</sub>
+</p>
 
-A closed-source analysis frontend is built entirely on this repo's public APIs — `portal`'s WebSocket and HTTP endpoints, the `lloyd` abstraction tables, and the blueprint format from `nlhe`. The crates here are sufficient to build a comparable product.
+## Contributions
 
-### Live gameplay
+| Contribution | What it is |
+| :--- | :--- |
+| **Fastest open-source hand evaluator** | Nanosecond evaluation, outperforming Cactus Kev |
+| **Optimal transport from scratch** | Sinkhorn/Greenkhorn⁵ over generic `Density`/`Support` measures, not a poker-specific hack |
+| **Game-agnostic CFR framework** | Pluggable regret/policy/sampling schemes, held to closed-form equilibria on Kuhn, Leduc, and Rock-Paper-Scissors |
+| **Action translation⁷,⁸** | Pseudo-harmonic mapping over finite lattices |
+| **AIVAT variance reduction** | Low-variance evaluation over hand histories |
+| **Evaluated in chips** | **−13.1 bb/100** against live [Slumbot](https://www.slumbot.com) over 86 K hands (§ [Evaluation](#evaluation)) |
+| **Evaluated in shape** | A structural litmus suite holding the 169-cell range object to common-knowledge GTO invariants — rank monotonicity, suited/offsuit symmetry, no collapse onto a single action (§ [Evaluation](#evaluation)) |
+| **Twelve published crates** | Every layer reusable on its own |
 
-<img src="assets/images/frontend-table.png" alt="Live game UI" width="600"/>
+## Method
 
-*Showdown view — the abstraction cube picks the opponent's `depth × world × dirac` configuration. Backed by `portal`'s WebSocket hosting API.*
-
-### Per-decision strategy
-
-<img src="assets/images/frontend-strategy.png" alt="Per-decision strategy view" width="700"/>
-
-*Strategy lookup at flop bucket `F:95` — action distribution, visit count, EV, and subgame history. Reads `portal`'s `/api/strategy`.*
-
-### Opponent range grid
-
-<img src="assets/images/frontend-range.png" alt="Opponent range grid" width="350"/>
-
-*169-cell preflop range grid; cell intensity = opponent's posterior given observed action. Validated by [`litmus`](crates/litmus).*
-
-## Features
-
-- **Fastest open-source hand evaluator** — nanosecond evaluation outperforming Cactus Kev
-- **Strategic abstraction** — hierarchical k-means clustering of 3.1T poker situations
-- **Optimal transport** — Earth Mover's Distance via Sinkhorn algorithm
-- **MCCFR solver** — external sampling with dynamic tree construction, pluggable regret/policy/sampling schemes
-- **Real-time search** — depth-limited¹⁰ and safe, world-partitioned¹² subgame solving that preserves the blueprint equilibrium
-- **Action translation⁷,⁸** — pseudo-harmonic mapping over finite lattices
-- **AIVAT variance reduction** — for hand-history evaluation of trained strategies
-- **PostgreSQL persistence** — binary format serialization for efficiency
-- **Short-deck support** — 36-card variant with adjusted rankings
-
-## Architecture
-
-The project is a workspace of small, single-purpose crates. 🟢 = published to [crates.io](https://crates.io), ⚪ = internal (`publish = false`). The published crates are the reusable libraries; the internal crates are the product built on top of them plus its test scaffolding.
-
-### Dependency graph
-
-Eleven crates make up the public surface — ten libraries plus the `robopoker` facade (not shown below) that re-exports them. Most funnel down toward `pokerkit`; `elkan`, `monge`, and `vitals` stand alone (external dependencies only). Edges point from a crate to its dependencies.
-
-```mermaid
-graph TD
-  classDef pub fill:#d4f8d4,stroke:#2a7,color:#063
-  pokerkit["pokerkit<br/><i>primitives · translation · hyperparams!</i>"]
-  deuce["deuce<br/><i>cards · hand-eval · abstraction</i>"]
-  monge["monge<br/><i>optimal transport · EMD</i>"]
-  kicker["kicker<br/><i>poker game engine</i>"]
-  mccfr["mccfr<br/><i>game-agnostic CFR engine</i>"]
-  subgame["subgame<br/><i>safe + depth-limited solving</i>"]
-  elkan["elkan<br/><i>generic Elkan k-means</i>"]
-  vitals["vitals<br/><i>telemetry</i>"]
-  daybook["daybook<br/><i>postgres persistence</i>"]
-  nlhe["nlhe<br/><i>NLHE solver</i>"]
-
-  deuce --> pokerkit
-  kicker --> pokerkit
-  kicker --> deuce
-  mccfr --> pokerkit
-  mccfr --> kicker
-  mccfr --> monge
-  subgame --> pokerkit
-  subgame --> mccfr
-  subgame --> monge
-  daybook --> pokerkit
-  daybook --> deuce
-  daybook --> kicker
-  daybook --> vitals
-  nlhe --> kicker
-  nlhe --> mccfr
-  nlhe --> subgame
-  nlhe -.->|"server feature"| daybook
-
-  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe pub
-```
-
-Adding the internal crates — hand abstraction (`lloyd`), validation games (`kuhn` / `leduc` / `roshambo`), authentication (`bouncer`), and the applications and tooling layer. `pokerkit` is omitted from the arrows (almost everything depends on it) and the `robopoker` facade is omitted (it re-exports the published crates).
-
-```mermaid
-graph TD
-  classDef pub fill:#d4f8d4,stroke:#2a7,color:#063
-  classDef int fill:#eee,stroke:#999,color:#333
-
-  %% published
-  deuce --> pokerkit
-  kicker --> deuce
-  mccfr --> kicker
-  mccfr --> monge
-  subgame --> mccfr
-  subgame --> monge
-  daybook --> deuce
-  daybook --> kicker
-  daybook --> vitals
-  nlhe --> kicker
-  nlhe --> mccfr
-  nlhe --> subgame
-  nlhe --> daybook
-
-  %% internal: auth
-  bouncer["bouncer · auth"]
-  bouncer --> daybook
-
-  %% internal: abstraction
-  lloyd["lloyd · hand abstraction"]
-  lloyd --> kicker
-  lloyd --> monge
-  lloyd --> elkan
-  lloyd --> vitals
-  lloyd --> daybook
-
-  %% internal: validation games
-  kuhn --> subgame
-  leduc --> subgame
-  roshambo --> subgame
-
-  %% internal: apps / services / tooling
-  forge["forge · training"]
-  parlor["parlor · live games"]
-  portal["portal · http server"]
-  arena["arena · AIVAT eval"]
-  spar["spar · slumbot bench"]
-  litmus["litmus · validation harness"]
-  forge --> lloyd
-  forge --> nlhe
-  forge --> daybook
-  parlor --> nlhe
-  parlor --> subgame
-  parlor --> bouncer
-  arena --> parlor
-  arena --> nlhe
-  spar --> parlor
-  portal --> parlor
-  portal --> forge
-  portal --> arena
-  portal --> litmus
-  litmus --> kicker
-
-  class deuce,monge,kicker,mccfr,subgame,elkan,pokerkit,vitals,daybook,nlhe pub
-  class bouncer,lloyd,kuhn,leduc,roshambo,forge,parlor,portal,arena,spar,litmus int
-```
-
-### Crates
-
-**Core** — the published libraries.
-
-| Crate                             |     | Description                                                                                 |
-| --------------------------------- | --- | ------------------------------------------------------------------------------------------- |
-| [`pokerkit`](crates/pokerkit)     | 🟢  | Type aliases, constants, regime/version metadata, action translation, `hyperparams!` macro  |
-| [`deuce`](crates/deuce)           | 🟢  | Card primitives, hand evaluation, equity, strategic abstraction                             |
-| [`monge`](crates/monge)           | 🟢  | Optimal transport (Sinkhorn, EMD) over arbitrary measures                                   |
-| [`elkan`](crates/elkan)           | 🟢  | Generic, triangle-inequality-accelerated (Elkan 2003) k-means                               |
-| [`kicker`](crates/kicker)         | 🟢  | Poker game engine: state, edges, settlement, witness/perfect recall                         |
-| [`mccfr`](crates/mccfr)           | 🟢  | Game-agnostic MCCFR framework with pluggable regret/policy/sampling                         |
-| [`subgame`](crates/subgame)       | 🟢  | Safe (world-partitioned) + depth-limited subgame solving                                    |
-| [`robopoker`](crates/robopoker)   | 🟢  | Facade re-exporting the published crates                                                    |
-
-**Games & abstraction**
-
-| Crate                         |     | Description                                          |
-| ----------------------------- | --- | ---------------------------------------------------- |
-| [`nlhe`](crates/nlhe)         | 🟢  | No-Limit Hold'em solver and abstraction              |
-| [`lloyd`](crates/lloyd)       | ⚪  | Hierarchical k-means hand abstraction with EMD       |
-| [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation           |
-| [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation              |
-| [`roshambo`](crates/roshambo) | ⚪  | Rock-Paper-Scissors — MCCFR framework validation     |
-
-**Infrastructure**
-
-| Crate                       |     | Description                                                       |
-| --------------------------- | --- | ----------------------------------------------------------------- |
-| [`daybook`](crates/daybook)   | 🟢  | PostgreSQL bulk I/O via `Schema` / `Row` / `Streamable` traits    |
-| [`vitals`](crates/vitals)   | 🟢  | OpenTelemetry init and a centrally-registered metric handle table |
-| [`bouncer`](crates/bouncer) | ⚪  | JWT + Argon2 authentication, session management                   |
-
-**Applications** — the product and its tooling.
-
-| Crate                     |     | Description                                                            |
-| ------------------------- | --- | ---------------------------------------------------------------------- |
-| [`parlor`](crates/parlor) | ⚪  | Async game coordinator with pluggable players and hand-history records |
-| [`portal`](crates/portal) | ⚪  | Unified HTTP/WebSocket backend (analysis API + game hosting)           |
-| [`forge`](crates/forge)   | ⚪  | Training pipeline orchestration with distributed workers               |
-| [`spar`](crates/spar)     | ⚪  | Slumbot API benchmark client for blueprint evaluation                  |
-| [`arena`](crates/arena)   | ⚪  | Hand-history analysis with AIVAT variance reduction                    |
-| [`litmus`](crates/litmus) | ⚪  | Strategic litmus tests for blueprint validation                        |
-
-### How it works
-
-The pipeline runs in three stages — static abstraction, blueprint training, then real-time search — with the crate names and key types shown inline.
+Three stages: a static abstraction computed once, a blueprint trained against it, and a real-time re-solve at play time.
 
 ```mermaid
 flowchart LR
@@ -221,42 +54,221 @@ flowchart LR
   F -.->|concrete action| G["portal · parlor"]
 ```
 
-**1. Hierarchical abstraction** (per street: river → turn → flop → preflop). `deuce` exhaustively iterates the isomorphic⁴ hand space (3.1T situations) with nanosecond hand evaluation over bijective `u8` / `u16` / `u32` / `u64` card encodings. `lloyd` groups strategically similar hands with hierarchical k-means — k-means++² seeding, `elkan` triangle-inequality acceleration — measuring distance as the Earth Mover's Distance between child-street distributions, computed by `monge`'s Sinkhorn / Greenkhorn iteration⁵ over generic `Density` / `Support` measures. Abstractions and metrics persist to PostgreSQL through `daybook` (`Schema` / `Row` / `Streamable` with `COPY IN`, plus `(Regime × Version)` table-naming macros and a fingerprint check against silent constant drift).
+### 1 · Hierarchical abstraction
 
-**2. MCCFR training³.** `mccfr` samples game trajectories through `kicker`'s No-Limit Hold'em engine — full side-pot / all-in / tie settlement, `Size::SPR(n, d)` / `Size::BBs(n)` bet-sizing, and `Witness` (one player's view) vs `Perfect` (god's view) recall. Its `CfrEncoder` → `Solver` → `Tree` machinery is game-agnostic; `nlhe` (`Nlhe<R, W, S>`, its `NlheEncoder`, and the production `Flagship` config) plugs in concrete schemes: external sampling, discounted / linear regret weighting⁶, and regret-based pruning⁹,¹¹. `forge` orchestrates this in `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing the blueprint to the database.
+Computed once, per street, river → turn → flop → preflop.
 
-**3. Real-time search.** At play time, `subgame` loads the blueprint as a prior and re-solves the current spot: `DepthEdge<E, D>` builds a depth-limited¹⁰ frontier with biased continuation strategies, `WorldProfile` partitions belief into discrete worlds for safe re-solving¹² that preserves the blueprint equilibrium, and `SubGameSolver` composes both. `pokerkit`'s `Lattice` then translates the abstract action back to a concrete chip amount via pseudo-harmonic mapping⁷,⁸.
+- `deuce` — exhaustively iterates the isomorphic⁴ hand space; nanosecond evaluation over bijective `u8`/`u16`/`u32`/`u64` card encodings
+- `lloyd` — groups strategically similar hands by hierarchical k-means, with k-means++² seeding and `elkan` triangle-inequality acceleration
+- `monge` — measures distance as the Earth Mover's Distance between child-street distributions, by Sinkhorn/Greenkhorn iteration⁵
+- `daybook` — persists abstractions over `COPY IN`, with `(Regime × Version)` table naming and a fingerprint check against silent constant drift
 
-<img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650" align="left"/>
+<p align="center">
+  <img src="assets/reel/equity.gif" alt="Equity distributions clustered by Earth Mover's Distance" width="620"/>
+  <br/>
+  <sub><b>Figure 2.</b> The clustering feature. Each curve is one hand's distribution over next-street outcomes;
+  hands whose curves lie close in EMD share an abstraction bucket. This is what makes 3.1 T situations tractable.</sub>
+</p>
 
-The `vitals` crate emits OpenTelemetry metrics consumed by any OTLP-compatible backend. Shown: forty hours of MCCFR training — sum regret collapsing to 136, throughput holding at ~309 decisions/sec, 31.9 M decisions accumulated, plus heatmaps of tree-size and infoset-size distributions over time. Add a new metric in `crates/vitals/src/metrics.rs` and it's visible immediately.
+### 2 · MCCFR training³
 
-<br clear="all"/>
+- `kicker` — the game engine sampled through: full side-pot/all-in/tie settlement, `Size::SPR(n, d)` and `Size::BBs(n)` bet-sizing, `Witness` (one player's view) versus `Perfect` (god's view) recall
+- `mccfr` — game-agnostic `CfrEncoder` → `Solver` → `Tree` machinery, with external sampling and dynamic tree construction
+- `nlhe` — the concrete schemes via `Nlhe<R, W, S>` and the production `Flagship` config: discounted/linear regret weighting⁶, regret-based pruning⁹,¹¹
+- `forge` — orchestrates `Fast` (single-machine, in-memory) or `Slow` (distributed workers) mode, checkpointing to the database
 
-## Benchmarks
+<p align="center">
+  <img src="assets/reel/tree.gif" alt="External-sampling MCCFR tree traversal" width="620"/>
+  <br/>
+  <sub><b>Figure 3.</b> External sampling walks one trajectory per iteration — chance nodes fan into revealed cards,
+  decision nodes into the bet-sizing lattice, and the highlighted path is the branch being updated. Streets are the
+  vertical bands; the acting seat labels each column.</sub>
+</p>
 
-<img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600" align="left"/>
+### 3 · Real-time search
 
-Each colored series is a different combination of real-time-search techniques layered on the MCCFR blueprint — `depth` (depth-limited subgame solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `fish` plays uniformly at random and `base` is the blueprint with no real-time search. All variants play against [Slumbot](https://www.slumbot.com).
+At play time the blueprint becomes a prior, and the current spot is re-solved.
 
-<br clear="all"/>
+- `DepthEdge<E, D>` — builds a depth-limited¹⁰ frontier with biased continuation strategies
+- `WorldProfile` — partitions belief into discrete worlds for safe re-solving¹² that preserves the blueprint equilibrium
+- `SubGameSolver` — composes both; `pokerkit`'s `Lattice` maps the abstract action back to a concrete chip amount by pseudo-harmonic translation⁷,⁸
 
-| variant             |  hands |    bb/100 | 95% CI | H/hr |
-| :------------------ | -----: | --------: | -----: | ---: |
-| `world+dirac`       | 23.1 K | **−22.8** | ± 25.8 |  4 K |
-| `dirac`             |  480 K |     −26.6 |  ± 5.7 |    — |
-| `depth+dirac`       | 23.0 K |     −28.6 | ± 25.9 |  3 K |
-| `base`              |  480 K |     −32.8 |  ± 5.7 |    — |
-| `depth+world+dirac` | 3.76 K |     −33.7 | ± 64.0 |    — |
-| `depth`             | 5.93 K |     −48.2 | ± 50.9 |    — |
-| `world`             | 24.2 K |     −68.1 | ± 25.2 |  1 K |
-| `depth+world`       | 21.8 K |     −76.1 | ± 26.6 |    — |
+<p align="center">
+  <img src="assets/reel/triplet.png" alt="Hero range, policy, villain range" width="820"/>
+  <br/>
+  <sub><b>Figure 4.</b> The 169-cell grid is the canonical lens on strategy quality: hero's representing range, the
+  action distribution at the node, villain's defending range. Structural pathologies — non-monotonic hand-strength
+  ordering, suited/offsuit asymmetry, collapsed action support — are visible at a glance, and are asserted
+  mechanically by <a href="crates/litmus"><code>litmus</code></a>.</sub>
+</p>
 
-**Every variant with `dirac` is at or above `base`; every variant without `dirac` (except `base` itself) is well below it.** The leader is `world+dirac` at −22.8 bb/100 — ten bb/100 ahead of `base` and ~50 bb/100 ahead of `depth+world`. The dashboard's running marginal-effect estimator agrees: turning `dirac` on improves bb/100 by an order of magnitude more than turning `depth` or `world` on. Sampling temperature, not tree depth or belief partitioning, is currently the dominant loss source in the unaugmented blueprint — a useful direction for further work.
+## Evaluation
 
-CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on the 3.76 K-hand `depth+world+dirac` task), so the ordering within the `*+dirac` cluster isn't yet statistically separated. The three reference tasks — `base`, `dirac`, and `fish` — have run an order of magnitude longer (480 K hands each), so their estimates are tight (± 5.7).
+Two independent axes. Chips answer whether it wins; shape answers whether the strategy is sound, and can be measured in seconds rather than weeks.
 
-## Feature flags
+### In chips — live play against Slumbot
+
+Each variant layers a different real-time-search technique onto the MCCFR blueprint: `depth` (a depth-limited subgame¹⁰), `world` (a safe multi-world subgame¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `base` is the blueprint with no search; `fish` plays uniformly at random. All nine play Slumbot live and in parallel, one task each.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/competition-convergence-dark.svg"/>
+    <img src="assets/images/competition-convergence-light.svg" alt="Running bb/100 by hands played, nine variants" width="880"/>
+  </picture>
+</p>
+
+<p align="center">
+  <sub><b>Figure 5.</b> Every hand of the run, drawn from the hand log rather than from a dashboard. Runs are aligned
+  on their <i>last</i> hand — the axis is hands remaining — so every estimate lands on the right edge at the value
+  Table 1 reports, and a longer run simply reaches further left. <code>base</code> and <code>dirac</code> spend no
+  time per decision and play 480 K hands in five hours; the six search variants take seconds per decision and reach
+  ~86 K in twenty-four, so they enter at the hollow dot. Each panel names its variant by the three feature slots
+  rather than in words, solid where the feature is on; the key says what each one does.</sub>
+</p>
+
+| Variant             |  Hands |    bb/100 | 95% CI |
+| :------------------ | -----: | --------: | -----: |
+| `world+dirac`       | 86.0 K | **−13.1** | ± 14.0 |
+| `depth+dirac`       | 86.2 K |     −25.3 | ± 14.3 |
+| `dirac`             |  480 K |     −28.4 |  ± 6.0 |
+| `depth+world+dirac` | 86.7 K |     −28.4 | ± 14.3 |
+| `base`              |  480 K |     −32.4 |  ± 6.1 |
+| `world`             | 90.9 K |     −64.4 | ± 16.6 |
+| `depth`             | 91.4 K |     −77.4 | ± 17.5 |
+| `depth+world`       | 91.7 K |     −79.5 | ± 16.8 |
+| `fish`              |  480 K |    −136.5 |  ± 3.8 |
+
+<sub><b>Table 1.</b> Slumbot results by search configuration. Intervals are 1.96·σ/√n over the per-hand pnl.</sub>
+
+**Every variant with `dirac` beats every variant without it**, with no overlap between the two groups. The leader, `world+dirac`, is nineteen bb/100 ahead of `base` and sixty-six ahead of `depth+world`, and its interval (−27.2 … +0.9) reaches break-even.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/competition-cube-dark.svg"/>
+    <img src="assets/images/competition-cube-light.svg" alt="The eight search configurations as a cube" width="820"/>
+  </picture>
+</p>
+
+<p align="center">
+  <sub><b>Figure 6.</b> The same run as a configuration cube — each corner one on/off setting of the three search
+  features, each long edge the <code>dirac</code> transition, labelled with what switching it on is worth there.
+  <code>fish</code>, the uniform-random control, is measured but never plotted: at −136.5 it only stretches the
+  axis.</sub>
+</p>
+
+The cube is where the structure shows. `dirac` on its own buys almost nothing (**+4.0** over `base`), but layered onto either search feature it is worth **~+51**. The mirror statement is the same fact: `depth` and `world` *without* `dirac` are catastrophic (−45.1 and −32.0 against `base`), and *with* it they are free or better (+3.0 and +15.2 against `dirac`). Real-time search produces a policy the blueprint's sampler then squanders, and argmaxing it recovers the entire loss. Averaged over the four on/off pairs, `dirac` is worth **+40 bb/100** against **−18** for `depth` and **−5** for `world`. The interpretation: **sampling temperature, not tree depth or belief partitioning, is the dominant loss source** — and search does not paper over it, which is the clearest available direction for further work.
+
+Confidence intervals on the six search variants run ± 14 to ± 18 bb/100 at ~86–92 K hands, so ordering *within* the `*+dirac` cluster is suggestive rather than settled — only the split between the `dirac` and non-`dirac` groups is fully separated. The three reference tasks — `base`, `dirac`, `fish` — have no per-decision think and blitz their budget, so they run an order of magnitude longer (480 K hands) and their estimates are tight (± 5.7).
+
+Both figures are generated from the `players ⋈ users ⋈ hands` log by [`scripts/figures/slumbot.py`](scripts/figures/slumbot.py) — no dashboard screenshots, so the plotted endpoints and Table 1 are the same numbers by construction.
+
+These figures postdate a showdown-evaluation fix — full houses now correctly outrank flushes, and flushes carry kickers — which shifts terminal utilities and therefore every number downstream of them. Earlier published results were measured against the buggy evaluator and are not comparable.
+
+### In shape — the litmus suite
+
+Winrate is a single scalar, and a slow one — separating two variants takes hundreds of thousands of hands. The [`litmus`](crates/litmus) suite instead asserts invariants the 169-cell range object must satisfy against any opponent: monotonicity along hand-strength sequences, suited/offsuit symmetry, no collapse onto a single action. It runs against a live blueprint over HTTP and answers in seconds.
+
+| Category                  | Pass | Fail | Asserts                                                 |
+| :------------------------ | ---: | ---: | :------------------------------------------------------ |
+| `preflop_weak_rags`       |    5 |    1 | Trash folds instead of sticking in a stuck bucket        |
+| `suited_offsuit_symmetry` |    3 |    3 | `AKs` and `AKo` play alike                               |
+| `flop_air`                |    3 |    1 | Air checks on bad boards instead of over-betting         |
+| `preflop_overjam`         |    3 |    1 | `JJ`/`QQ`/`AKo` do not collapse to all-in                |
+| `flop_cbet`, `flop_value` |    6 |    0 | The c-bet and value lines exist at all                   |
+| `preflop_bb_defense`      |    3 |    0 | BB defends rather than over-folding                      |
+| `preflop_premium_control` |    2 |    0 | `AA`/`AKs` stay aggressive without collapsing            |
+| `structural_grid`         |    2 |    0 | Every bet-sizing slot is used somewhere                  |
+| `rank_monotonicity`       |    1 |    0 | Aggression rises monotonically with hand strength        |
+| Turn and river lines      |    5 |    0 | Value and air lines hold on later streets                |
+| **Total**                 |   34 |    6 |                                                          |
+
+<sub><b>Table 2.</b> Blueprint at epoch 151.7 M — 156 K infosets, sum regret 32.1.</sub>
+
+The six failures are the interesting part, because chasing them produced a root cause that the winrate number alone could never have surfaced. The `suited_offsuit_symmetry` failures look like a suit bug and are not one: preflop is exact — all 169 combinations, no abstraction — and offsuit-only hands like `TT` and `77` show the same pathology. The mechanism is a *kicker* collapse one street later. Flop k-means merges `AQo`, `AJo`, `ATo`, `A5o`, and `AQs` into a single bucket while `AK` gets its own, compressing a 5.1 pp exact kicker gradient to 0.8 pp; since the jam is the only abstraction-free action available, CFR routes each hand's true strength through it. Jam frequency ends up tracking distance above the bucket average rather than hand strength — inverted from GTO, which jams weak aces and never `AQo`.
+
+Higher `k` cannot fix this: cross-kicker EMD (`AQo`–`A5o`, 0.0299) is indistinguishable from within-class distance (0.0262), because the vs-random-equity clustering feature is domination-blind at every street. The fix is targeted bucket surgery rather than more clusters, and `litmus` carries the detectors that gate it.
+
+## Implementation
+
+A workspace of small, single-purpose crates. 🟢 = published to [crates.io](https://crates.io); ⚪ = internal (`publish = false`). Twelve crates form the public surface — eleven libraries plus the `robopoker` facade that re-exports them. Most funnel toward `pokerkit`; `elkan`, `monge`, and `vitals` stand alone. Edges point to dependencies.
+
+```mermaid
+graph TD
+  classDef pub fill:#d4f8d4,stroke:#2a7,color:#063
+  pokerkit["pokerkit<br/><i>primitives · translation · hyperparams!</i>"]
+  deuce["deuce<br/><i>cards · hand-eval · abstraction</i>"]
+  monge["monge<br/><i>optimal transport · EMD</i>"]
+  kicker["kicker<br/><i>poker game engine</i>"]
+  mccfr["mccfr<br/><i>game-agnostic CFR engine</i>"]
+  subgame["subgame<br/><i>safe + depth-limited solving</i>"]
+  elkan["elkan<br/><i>generic Elkan k-means</i>"]
+  vitals["vitals<br/><i>telemetry</i>"]
+  daybook["daybook<br/><i>postgres persistence</i>"]
+  lloyd["lloyd<br/><i>hand abstraction</i>"]
+  nlhe["nlhe<br/><i>NLHE solver</i>"]
+
+  deuce --> pokerkit
+  kicker --> pokerkit
+  kicker --> deuce
+  mccfr --> pokerkit
+  mccfr --> kicker
+  mccfr --> monge
+  subgame --> pokerkit
+  subgame --> mccfr
+  subgame --> monge
+  daybook --> pokerkit
+  daybook --> deuce
+  daybook --> kicker
+  daybook --> vitals
+  lloyd --> kicker
+  lloyd --> monge
+  lloyd --> elkan
+  lloyd --> vitals
+  nlhe --> kicker
+  nlhe --> mccfr
+  nlhe --> subgame
+  nlhe -.->|"server feature"| daybook
+  lloyd -.->|"server feature"| daybook
+
+  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe,lloyd pub
+```
+
+| Crate                           |     | Description                                                                                |
+| ------------------------------- | --- | ------------------------------------------------------------------------------------------ |
+| [`pokerkit`](crates/pokerkit)   | 🟢  | Type aliases, constants, regime/version metadata, action translation, `hyperparams!` macro |
+| [`deuce`](crates/deuce)         | 🟢  | Card primitives, hand evaluation, equity, strategic abstraction                            |
+| [`monge`](crates/monge)         | 🟢  | Optimal transport (Sinkhorn, EMD) over arbitrary measures                                  |
+| [`elkan`](crates/elkan)         | 🟢  | Generic, triangle-inequality-accelerated (Elkan 2003) k-means                              |
+| [`lloyd`](crates/lloyd)         | 🟢  | Hierarchical k-means hand abstraction with EMD                                             |
+| [`kicker`](crates/kicker)       | 🟢  | Poker game engine: state, edges, settlement, witness/perfect recall                        |
+| [`mccfr`](crates/mccfr)         | 🟢  | Game-agnostic MCCFR framework with pluggable regret/policy/sampling                        |
+| [`subgame`](crates/subgame)     | 🟢  | Safe (world-partitioned) and depth-limited subgame solving                                 |
+| [`nlhe`](crates/nlhe)           | 🟢  | No-Limit Hold'em solver and abstraction                                                    |
+| [`daybook`](crates/daybook)     | 🟢  | PostgreSQL bulk I/O via `Schema`/`Row`/`Streamable`                                        |
+| [`vitals`](crates/vitals)       | 🟢  | OpenTelemetry init and a centrally-registered metric table                                 |
+| [`robopoker`](crates/robopoker) | 🟢  | Facade re-exporting the published crates                                                   |
+
+<details>
+<summary><b>Internal crates</b> — the product built on top, and its scaffolding</summary>
+
+| Crate                         |     | Description                                                            |
+| ----------------------------- | --- | ---------------------------------------------------------------------- |
+| [`parlor`](crates/parlor)     | ⚪  | Async game coordinator with pluggable players and hand-history records |
+| [`portal`](crates/portal)     | ⚪  | Unified HTTP/WebSocket backend (analysis API and game hosting)         |
+| [`forge`](crates/forge)       | ⚪  | Training pipeline orchestration with distributed workers               |
+| [`arena`](crates/arena)       | ⚪  | Hand-history analysis with AIVAT variance reduction                    |
+| [`spar`](crates/spar)         | ⚪  | Slumbot API benchmark client                                           |
+| [`litmus`](crates/litmus)     | ⚪  | Strategic litmus tests for blueprint validation                        |
+| [`phh`](crates/phh)           | ⚪  | Poker-hand-history parsing and chip-exact replay                       |
+| [`bouncer`](crates/bouncer)   | ⚪  | JWT and Argon2 authentication, session management                      |
+| [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation                                |
+| [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation                             |
+| [`roshambo`](crates/roshambo) | ⚪  | Rock-Paper-Scissors — MCCFR framework validation                       |
+
+</details>
+
+<details>
+<summary><b>Feature flags, resource requirements, telemetry</b></summary>
 
 | Feature     | Description                                          |
 | ----------- | ---------------------------------------------------- |
@@ -264,21 +276,30 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 | `server`    | Server dependencies (Actix, Tokio, Rayon, telemetry) |
 | `async`     | Async MCCFR sampling/regret variants                 |
 | `shortdeck` | 36-card short-deck variant                           |
+| `sixmax`    | Six-handed build (`N = 6`)                           |
 
-## System requirements
-
-| Street  | Abstraction Size | Metric Size |
+| Street  | Abstraction size | Metric size |
 | ------- | ---------------- | ----------- |
 | Preflop | 4 KB             | 301 KB      |
 | Flop    | 32 MB            | 175 KB      |
 | Turn    | 347 MB           | 175 KB      |
-| River   | 3.02 GB          | -           |
+| River   | 3.02 GB          | —           |
 
-**Recommended:**
+Recommended: training on 16 vCPU / 120 GB RAM; PostgreSQL 14+ on 8 vCPU / 64 GB RAM; analysis on 1 vCPU / 4 GB RAM.
 
-- Training: 16 vCPU, 120 GB RAM
-- Database: PostgreSQL 14+ with 8 vCPU, 64 GB RAM
-- Analysis: 1 vCPU, 4 GB RAM
+`vitals` emits OpenTelemetry metrics to any OTLP-compatible backend — sum regret, throughput, and heatmaps of tree- and infoset-size distributions over time. A metric added in `crates/vitals/src/metrics.rs` is visible immediately.
+
+<img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650"/>
+
+</details>
+
+## Frontend
+
+A closed-source analysis frontend is built entirely on this repository's public APIs — `portal`'s WebSocket and HTTP endpoints, the `lloyd` abstraction tables, and the blueprint format from `nlhe`. The crates here are sufficient to build a comparable product.
+
+| <img src="assets/images/frontend-table.png" alt="Live game UI" width="400"/>                     | <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy" width="400"/>      |
+| :----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
+| <sub>Showdown view; the cube selects the opponent's `depth × world × dirac` configuration.</sub> | <sub>Strategy at flop bucket `F:95` — action distribution, visits, EV, subgame history.</sub> |
 
 ## References
 
@@ -297,4 +318,4 @@ CIs on the ablation variants are wide (±25 bb/100 on ~23 K-hand tasks, ±64 on 
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE).
