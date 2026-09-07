@@ -157,8 +157,11 @@ class Svg:
     def text(self, x, y, s, fill, size=12, anchor="start", weight=400, mono=False, halo=False):
         f = "ui-monospace, SFMono-Regular, Menlo, monospace" if mono else FONT
         s = s.replace("&", "&amp;").replace("<", "&lt;")
-        h = f' stroke="{self.t["surface"]}" stroke-width="3.5" paint-order="stroke"' if halo else ""
-        self.body.append(f'<text x="{x:.1f}" y="{y:.1f}" fill="{fill}" font-family="{f}" font-size="{size}" font-weight="{weight}" text-anchor="{anchor}"{h}>{s}</text>')
+        at = f'x="{x:.1f}" y="{y:.1f}" font-family="{f}" font-size="{size}" font-weight="{weight}" text-anchor="{anchor}"'
+        if halo:  # a knocked-out copy underneath — no paint-order, which a sanitizer may drop
+            g = self.t["surface"]
+            self.body.append(f'<text {at} fill="{g}" stroke="{g}" stroke-width="3.5" stroke-linejoin="round">{s}</text>')
+        self.body.append(f'<text {at} fill="{fill}">{s}</text>')
 
     def render(self):
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" '

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
 <rect x="0.0" y="0.0" width="900.0" height="430.0" rx="10" fill="#fcfcfb"/>
-<text x="48.0" y="36.0" fill="#0b0b0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start">the search cube</text>
-<text x="48.0" y="57.0" fill="#8a8983" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start">every corner played live against Slumbot · bb/100</text>
+<text x="48.0" y="36.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start" fill="#0b0b0b">the search cube</text>
+<text x="48.0" y="57.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start" fill="#8a8983">every corner played live against Slumbot · bb/100</text>
 <polygon points="152.0,316.0 256.0,242.0 256.0,100.0 152.0,174.0" fill="#eb6834" opacity="0.07"/>
 <line x1="152.0" y1="316.0" x2="256.0" y2="242.0" stroke="#eb6834" stroke-width="1.3" opacity="0.5"/>
 <line x1="256.0" y1="242.0" x2="256.0" y2="100.0" stroke="#eb6834" stroke-width="1.3" opacity="0.5"/>
@@ -14,48 +14,64 @@
 <line x1="504.0" y1="174.0" x2="504.0" y2="316.0" stroke="#1baf7a" stroke-width="1.3" opacity="0.5"/>
 <line x1="152.0" y1="316.0" x2="504.0" y2="316.0" stroke="#d6d5d0" stroke-width="1.6"/>
 <rect x="302.0" y="304.0" width="52.0" height="22.0" rx="11" fill="#fcfcfb"/>
-<text x="328.0" y="320.0" fill="#52514e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle">+4.0</text>
+<text x="328.0" y="320.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle" fill="#52514e">+4.0</text>
 <line x1="256.0" y1="242.0" x2="608.0" y2="242.0" stroke="#d6d5d0" stroke-width="1.6"/>
 <rect x="406.0" y="230.0" width="52.0" height="22.0" rx="11" fill="#fcfcfb"/>
-<text x="432.0" y="246.0" fill="#52514e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle">+52.1</text>
+<text x="432.0" y="246.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle" fill="#52514e">+52.1</text>
 <line x1="256.0" y1="100.0" x2="608.0" y2="100.0" stroke="#d6d5d0" stroke-width="1.6"/>
 <rect x="406.0" y="88.0" width="52.0" height="22.0" rx="11" fill="#fcfcfb"/>
-<text x="432.0" y="104.0" fill="#52514e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle">+51.1</text>
+<text x="432.0" y="104.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle" fill="#52514e">+51.1</text>
 <line x1="152.0" y1="174.0" x2="504.0" y2="174.0" stroke="#d6d5d0" stroke-width="1.6"/>
 <rect x="302.0" y="162.0" width="52.0" height="22.0" rx="11" fill="#fcfcfb"/>
-<text x="328.0" y="178.0" fill="#52514e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle">+51.2</text>
+<text x="328.0" y="178.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="middle" fill="#52514e">+51.2</text>
 <circle cx="152.0" cy="316.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="152.0" cy="316.0" r="5.0" fill="#eb6834"/>
-<text x="137.0" y="314.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">base</text>
-<text x="137.0" y="331.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−32.4</text>
+<text x="137.0" y="314.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">base</text>
+<text x="137.0" y="314.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#52514e">base</text>
+<text x="137.0" y="331.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−32.4</text>
+<text x="137.0" y="331.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#8a8983">−32.4</text>
 <circle cx="256.0" cy="242.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="256.0" cy="242.0" r="5.0" fill="#eb6834"/>
-<text x="241.0" y="240.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">depth</text>
-<text x="241.0" y="257.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−77.4</text>
+<text x="241.0" y="240.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">depth</text>
+<text x="241.0" y="240.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#52514e">depth</text>
+<text x="241.0" y="257.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−77.4</text>
+<text x="241.0" y="257.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#8a8983">−77.4</text>
 <circle cx="152.0" cy="174.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="152.0" cy="174.0" r="5.0" fill="#eb6834"/>
-<text x="137.0" y="172.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">world</text>
-<text x="137.0" y="189.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−64.4</text>
+<text x="137.0" y="172.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">world</text>
+<text x="137.0" y="172.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#52514e">world</text>
+<text x="137.0" y="189.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−64.4</text>
+<text x="137.0" y="189.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#8a8983">−64.4</text>
 <circle cx="256.0" cy="100.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="256.0" cy="100.0" r="5.0" fill="#eb6834"/>
-<text x="241.0" y="98.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">depth+world</text>
-<text x="241.0" y="115.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−79.5</text>
+<text x="241.0" y="98.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">depth+world</text>
+<text x="241.0" y="98.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="end" fill="#52514e">depth+world</text>
+<text x="241.0" y="115.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−79.5</text>
+<text x="241.0" y="115.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="end" fill="#8a8983">−79.5</text>
 <circle cx="504.0" cy="316.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="504.0" cy="316.0" r="5.0" fill="#1baf7a"/>
-<text x="519.0" y="314.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">dirac</text>
-<text x="519.0" y="331.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−28.4</text>
+<text x="519.0" y="314.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">dirac</text>
+<text x="519.0" y="314.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#52514e">dirac</text>
+<text x="519.0" y="331.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−28.4</text>
+<text x="519.0" y="331.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" fill="#8a8983">−28.4</text>
 <circle cx="608.0" cy="242.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="608.0" cy="242.0" r="5.0" fill="#1baf7a"/>
-<text x="623.0" y="240.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">depth+dirac</text>
-<text x="623.0" y="257.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−25.3</text>
+<text x="623.0" y="240.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">depth+dirac</text>
+<text x="623.0" y="240.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#52514e">depth+dirac</text>
+<text x="623.0" y="257.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−25.3</text>
+<text x="623.0" y="257.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" fill="#8a8983">−25.3</text>
 <circle cx="504.0" cy="174.0" r="9.0" fill="#fcfcfb"/>
 <circle cx="504.0" cy="174.0" r="7.0" fill="#1baf7a"/>
-<text x="519.0" y="172.0" fill="#0b0b0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">world+dirac</text>
-<text x="519.0" y="189.0" fill="#0b0b0b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−13.1</text>
+<text x="519.0" y="172.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">world+dirac</text>
+<text x="519.0" y="172.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" text-anchor="start" fill="#0b0b0b">world+dirac</text>
+<text x="519.0" y="189.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−13.1</text>
+<text x="519.0" y="189.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="600" text-anchor="start" fill="#0b0b0b">−13.1</text>
 <circle cx="608.0" cy="100.0" r="7.0" fill="#fcfcfb"/>
 <circle cx="608.0" cy="100.0" r="5.0" fill="#1baf7a"/>
-<text x="623.0" y="98.0" fill="#52514e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">depth+world+dirac</text>
-<text x="623.0" y="115.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" stroke="#fcfcfb" stroke-width="3.5" paint-order="stroke">−28.4</text>
-<text x="48.0" y="404.0" fill="#8a8983" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" text-anchor="start">↗ depth    ↑ world    → dirac</text>
-<text x="852.0" y="404.0" fill="#8a8983" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="end">off-cube: fish (uniform random) −136.5</text>
+<text x="623.0" y="98.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">depth+world+dirac</text>
+<text x="623.0" y="98.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" fill="#52514e">depth+world+dirac</text>
+<text x="623.0" y="115.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" fill="#fcfcfb" stroke="#fcfcfb" stroke-width="3.5" stroke-linejoin="round">−28.4</text>
+<text x="623.0" y="115.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="400" text-anchor="start" fill="#8a8983">−28.4</text>
+<text x="48.0" y="404.0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" text-anchor="start" fill="#8a8983">↗ depth    ↑ world    → dirac</text>
+<text x="852.0" y="404.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="end" fill="#8a8983">off-cube: fish (uniform random) −136.5</text>
 </svg>
