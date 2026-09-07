@@ -269,13 +269,16 @@ class Svg:
 
 
 def fmt(v):
-    return f"{v:.1f}".replace("-", "\u2212")
+    """Whole bb/100 only. A tenth of a big blind per hundred is far inside the
+    noise these intervals describe, and printing it invites reading a
+    precision the run does not have."""
+    return f"{v:.0f}".replace("-", "\u2212")
 
 
 def stat(v):
-    """`−13.1 ± 14.0`, padded with figure spaces to a fixed twelve columns —
-    what makes every pill one width and the ± align down the column."""
-    return f"{fmt(v.final):\u2007>5} ± {f'{v.conf:.1f}':\u2007>4}"
+    """`−13 ± 14`, padded with figure spaces to a fixed eight columns — what
+    makes every pill one width and the ± align down the column."""
+    return f"{fmt(v.final):\u2007>3} ± {f'{v.conf:.0f}':\u2007>2}"
 
 
 def convergence(data, name):
@@ -287,7 +290,7 @@ def convergence(data, name):
     """
     t = THEMES[name]
     W, H = 900, 520
-    L, R, T, B = 62, 128, 108, 56
+    L, R, T, B = 62, 106, 108, 56
     x0, x1, y0, y1 = L, W - R, T, H - B
     near, far, step = 1_000, 480_000, 15
     curve = {v.name: v.tail(v.hands - 20_000, near) for v in drawn(data).values()}
@@ -300,11 +303,11 @@ def convergence(data, name):
     s = Svg(W, H, t)
     s.rect(0, 0, W, H, t["surface"], rx=10)
     s.text(L, 36, "bb/100 against Slumbot", t["primary"], 17, weight=600)
-    s.text(L, 57, "running mean, aligned on the last hand of each run · 2026-09-04 · 1.9 M hands", t["muted"], 12)
+    s.text(L, 57, "running mean, aligned on the last hand of each run · 1.9 M hands", t["muted"], 12)
     s.key(L - 7, 84)
     for b in range(int(bot), int(top) + 1, step):
         s.line(x0, fy(b), x1, fy(b), t["grid"], 1)
-        s.text(x0 - 10, fy(b) + 4, fmt(float(b)).rstrip("0").rstrip("."), t["muted"], 11, anchor="end", mono=True)
+        s.text(x0 - 10, fy(b) + 4, fmt(float(b)), t["muted"], 11, anchor="end", mono=True)
     for r in (300_000, 100_000, 30_000, 10_000, 3_000, 1_000):
         s.line(fx(r), y0, fx(r), y1, t["grid"], 1)
         s.text(fx(r), y1 + 20, f"{r // 1000} K", t["muted"], 11, anchor="middle", mono=True)
@@ -354,8 +357,8 @@ def cube(data, name):
         gain = data[key_of(d, w, 1)].final - data[key_of(d, w, 0)].final
         s.line(*a, *b, t["axis"], 1.6)
         mx = (a[0] + b[0]) / 2
-        s.rect(mx - 28, a[1] - 12, 56, 24, t["panel"], rx=12)
-        s.text(mx, a[1] + 4, f"+{gain:.1f}", t["secondary"], 12.5, anchor="middle", weight=600, mono=True)
+        s.rect(mx - 23, a[1] - 12, 46, 24, t["panel"], rx=12)
+        s.text(mx, a[1] + 4, f"+{gain:.0f}", t["secondary"], 12.5, anchor="middle", weight=600, mono=True)
     rail = (ox - 22, ox + D[0] + K[0] + 22)  # pills flank the cube, never cover it
     for corner, (d, w, k) in CORNERS.items():
         x, y = at(d, w, k)
