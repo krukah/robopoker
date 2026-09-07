@@ -108,7 +108,7 @@ Two independent axes. Chips answer whether it wins; shape answers whether the st
 
 ### In chips — live play against Slumbot
 
-Each variant layers a different real-time-search technique onto the MCCFR blueprint: `depth` (depth-limited solving¹⁰), `world` (world-partitioned belief¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `base` is the blueprint with no search; `fish` plays uniformly at random. All nine play Slumbot live and in parallel, one task each.
+Each variant layers a different real-time-search technique onto the MCCFR blueprint: `depth` (a depth-limited subgame¹⁰), `world` (a safe multi-world subgame¹²), and `dirac` (a zero-temperature picker that argmaxes the post-search policy). `base` is the blueprint with no search; `fish` plays uniformly at random. All nine play Slumbot live and in parallel, one task each.
 
 <p align="center">
   <picture>

@@ -220,8 +220,8 @@ class Svg:
                      f'<path d="M-4.1,-4.4 L-4.1,4.6 M0,-4.4 L0,4.6 M4.1,-4.4 L4.1,4.6" '
                      f'{k} stroke-width="1.5"/>')
         elif kind == "dirac":
-            for bx, h, w in ((-3.7, 3.6, 1.4), (0, 9.2, 2.2), (3.7, 3.6, 1.4)):
-                g.append(f'<path d="M{bx},4.6 L{bx},{4.6 - h:.1f}" {k} stroke-width="{w}"/>')
+            for bx, h in ((-4.1, 3.6), (0, 9.2), (4.1, 3.6)):  # same lanes as world
+                g.append(f'<path d="M{bx},4.6 L{bx},{4.6 - h:.1f}" {k} stroke-width="1.5"/>')
             g.append(f'<circle cx="0" cy="-6.4" r="1.6" fill="{c}"/>')
         self.body.append("".join(g) + "</g>")
 
@@ -244,15 +244,16 @@ class Svg:
         return w
 
     def key(self, x, y, w, arrows=None):
-        """The glyphs are not self-evident, so the key spells each one out: the
-        symbol, the name Table 1 uses, and what the feature actually does."""
+        """The glyphs are not self-evident, so the key says outright what each
+        one means. It gives no short name: `depth` / `world` / `dirac` are
+        labels for the feature, and the feature is right there in words."""
         t = self.t
         for i, (kind, gloss) in enumerate(AXES):
             self.glyph(kind, x + 7, y - 4, t["secondary"])
-            tag = f"{kind} {arrows[i]}" if arrows else kind
-            self.text(x + 19, y, tag, t["secondary"], 11.5, weight=600)
-            self.text(x + 25 + 6.4 * len(tag), y, gloss, t["muted"], 11.5)
-            x += 38 + 6.4 * len(tag) + 6.3 * len(gloss)
+            if arrows:
+                self.text(x + 20, y, arrows[i], t["muted"], 11.5)
+            self.text(x + (37 if arrows else 20), y, gloss, t["secondary"], 11.5)
+            x += (56 if arrows else 39) + 6.3 * len(gloss)
         self.text(w, y, "solid on · ghosted off", t["muted"], 11.5, anchor="end")
 
     def render(self):
