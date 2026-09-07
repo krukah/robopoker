@@ -198,16 +198,15 @@ class Svg:
     def glyph(self, kind, x, y, color, on=True):
         """One degree of freedom, drawn as the thing it does.
 
-        The pair is deliberately mirrored: depth branches downward into the
-        tree, world branches upward across it.
+        depth and world are a mirrored pair, and the mirror is where the bar
+        sits: depth branches down onto a floor, world hangs down from a lid.
 
-        depth  a tree splitting downward, stopped by a hard rule — the search
-               descends only so far, then hands the rest to a leaf value
-        world  branches fanning upward, tied together by an arc — the solve is
-               held safe across every branch, so the opponent cannot pick the
-               world you left exposed
-        dirac  a distribution with a dot on its tallest bar — the argmax lifted
-               out of the policy instead of sampled from it
+        depth  a tree splitting downward, stopped by a rule beneath it — the
+               search descends only so far, then hands the rest to a leaf value
+        world  a bar over three equal branches — one commitment held across
+               every world, so the opponent cannot pick the one left exposed
+        dirac  a symmetric distribution with a dot on its tallest bar — the
+               argmax lifted out of the policy instead of sampled from it
         """
         c = color if on else self.t["axis"]
         o = 1 if on else 0.55
@@ -217,13 +216,13 @@ class Svg:
             g.append(f'<path d="M0,-6.4 L0,-2.6 M0,-2.6 L-4.1,1.2 M0,-2.6 L4.1,1.2" {k} stroke-width="1.5"/>'
                      f'<path d="M-5.8,4.4 L5.8,4.4" {k} stroke-width="1.5"/>')
         elif kind == "world":
-            g.append(f'<path d="M0,5.4 L0,1.4 M0,1.4 L-4.7,-2.6 M0,1.4 L0,-4.4 M0,1.4 L4.7,-2.6" '
-                     f'{k} stroke-width="1.5"/>'
-                     f'<path d="M-4.9,-2.4 A6.2,6.2 0 0 1 4.9,-2.4" {k} stroke-width="1.5"/>')
+            g.append(f'<path d="M-5.8,-4.6 L5.8,-4.6" {k} stroke-width="1.5"/>'
+                     f'<path d="M-4.1,-4.4 L-4.1,4.6 M0,-4.4 L0,4.6 M4.1,-4.4 L4.1,4.6" '
+                     f'{k} stroke-width="1.5"/>')
         elif kind == "dirac":
-            for bx, h, w in ((-5.0, 2.3, 1.3), (-1.7, 4.8, 1.3), (1.7, 9.0, 2.1), (5.0, 3.4, 1.3)):
+            for bx, h, w in ((-3.7, 3.6, 1.4), (0, 9.2, 2.2), (3.7, 3.6, 1.4)):
                 g.append(f'<path d="M{bx},4.6 L{bx},{4.6 - h:.1f}" {k} stroke-width="{w}"/>')
-            g.append(f'<circle cx="1.7" cy="-6.4" r="1.6" fill="{c}"/>')
+            g.append(f'<circle cx="0" cy="-6.4" r="1.6" fill="{c}"/>')
         self.body.append("".join(g) + "</g>")
 
     def slots(self, x, y, corner, hue):
