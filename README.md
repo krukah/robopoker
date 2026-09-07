@@ -104,9 +104,9 @@ At play time the blueprint becomes a prior, and the current spot is re-solved.
 
 ## Evaluation
 
-Two independent axes: how many chips it wins against a live opponent, and whether the strategy is structurally sound.
+Two independent axes. Chips answer whether it wins; shape answers whether the strategy is sound, and can be measured in seconds rather than weeks.
 
-### Live play — Slumbot
+### In chips — live play against Slumbot
 
 <img src="assets/images/competition-bb100.png" alt="bb/100 per task — Slumbot benchmark" width="600" align="left"/>
 
@@ -114,7 +114,7 @@ Each series layers a different real-time-search technique onto the MCCFR bluepri
 
 <br clear="all"/>
 
-| variant             |  hands |    bb/100 | 95% CI | H/hr |
+| Variant             |  Hands |    bb/100 | 95% CI | H/hr |
 | :------------------ | -----: | --------: | -----: | ---: |
 | `world+dirac`       | 23.1 K | **−22.8** | ± 25.8 |  4 K |
 | `dirac`             |  480 K |     −26.6 |  ± 5.7 |    — |
@@ -131,35 +131,29 @@ Each series layers a different real-time-search technique onto the MCCFR bluepri
 
 Confidence intervals on the ablation variants are wide (± 25 bb/100 at ~23 K hands; ± 64 on the 3.76 K-hand `depth+world+dirac` task), so ordering *within* the `*+dirac` cluster is not yet statistically separated. The three reference tasks — `base`, `dirac`, `fish` — have each run an order of magnitude longer at 480 K hands, so those estimates are tight (± 5.7).
 
-### Structural validation — litmus
+### In shape — the litmus suite
 
-Winrate is a single scalar and a slow one to measure; it cannot say *why* a
-strategy is losing. The [`litmus`](crates/litmus) suite asserts invariants the
-169-cell range object must satisfy regardless of opponent — monotonicity along
-hand-strength sequences, suited/offsuit symmetry, no collapse onto a single
-action — and runs against a live blueprint over HTTP.
+Winrate is a single scalar, and a slow one — separating two variants takes hundreds of thousands of hands. The [`litmus`](crates/litmus) suite instead asserts invariants the 169-cell range object must satisfy against any opponent: monotonicity along hand-strength sequences, suited/offsuit symmetry, no collapse onto a single action. It runs against a live blueprint over HTTP and answers in seconds.
 
-| Category                  | Pass | Fail | Asserts                                                    |
-| :------------------------ | ---: | ---: | :--------------------------------------------------------- |
-| `preflop_weak_rags`       |    6 |    0 | trash folds rather than sticking in a Linear-CFR bucket     |
-| `flop_air`                |    3 |    1 | air checks on bad boards instead of over-betting            |
-| `flop_cbet` · `flop_value`|    6 |    0 | the c-bet and value lines exist at all                      |
-| `preflop_bb_defense`      |    3 |    0 | BB defends rather than over-folding                         |
-| `preflop_overjam`         |    2 |    2 | `JJ`/`QQ`/`AKo` do not collapse to all-in                   |
-| `suited_offsuit_symmetry` |    2 |    4 | `AKs` and `AKo` play alike                                  |
-| `rank_monotonicity`       |    1 |    0 | aggression rises monotonically with hand strength           |
-| `structural_grid`         |    2 |    0 | every bet-sizing slot is used somewhere                     |
-| river · turn · other      |    5 |    0 | value and air lines by street                               |
-| **Total**                 |   33 |    7 |                                                             |
+| Category                  | Pass | Fail | Asserts                                                 |
+| :------------------------ | ---: | ---: | :------------------------------------------------------ |
+| `preflop_weak_rags`       |    5 |    1 | Trash folds instead of sticking in a stuck bucket        |
+| `suited_offsuit_symmetry` |    3 |    3 | `AKs` and `AKo` play alike                               |
+| `flop_air`                |    3 |    1 | Air checks on bad boards instead of over-betting         |
+| `preflop_overjam`         |    3 |    1 | `JJ`/`QQ`/`AKo` do not collapse to all-in                |
+| `flop_cbet`, `flop_value` |    6 |    0 | The c-bet and value lines exist at all                   |
+| `preflop_bb_defense`      |    3 |    0 | BB defends rather than over-folding                      |
+| `preflop_premium_control` |    2 |    0 | `AA`/`AKs` stay aggressive without collapsing            |
+| `structural_grid`         |    2 |    0 | Every bet-sizing slot is used somewhere                  |
+| `rank_monotonicity`       |    1 |    0 | Aggression rises monotonically with hand strength        |
+| Turn and river lines      |    5 |    0 | Value and air lines hold on later streets                |
+| **Total**                 |   34 |    6 |                                                          |
 
-<sub><b>Table 2.</b> Blueprint at epoch 57.9 M — 156 K infosets, sum regret 62.7.</sub>
+<sub><b>Table 2.</b> Blueprint at epoch 151.7 M — 156 K infosets, sum regret 32.1.</sub>
 
-The seven failures are informative rather than incidental. Four are
-`suited_offsuit_symmetry`: `AKs` and `AKo` diverge more than equity
-realization justifies, which is the postflop abstraction losing suit-specific
-information. Two are `preflop_overjam`, where strong defending hands still
-collapse toward all-in — the same zero-temperature pathology the `dirac`
-result above measures from the other direction. Both are open.
+The six failures are the interesting part, because chasing them produced a root cause that the winrate number alone could never have surfaced. The `suited_offsuit_symmetry` failures look like a suit bug and are not one: preflop is exact — all 169 combinations, no abstraction — and offsuit-only hands like `TT` and `77` show the same pathology. The mechanism is a *kicker* collapse one street later. Flop k-means merges `AQo`, `AJo`, `ATo`, `A5o`, and `AQs` into a single bucket while `AK` gets its own, compressing a 5.1 pp exact kicker gradient to 0.8 pp; since the jam is the only abstraction-free action available, CFR routes each hand's true strength through it. Jam frequency ends up tracking distance above the bucket average rather than hand strength — inverted from GTO, which jams weak aces and never `AQo`.
+
+Higher `k` cannot fix this: cross-kicker EMD (`AQo`–`A5o`, 0.0299) is indistinguishable from within-class distance (0.0262), because the vs-random-equity clustering feature is domination-blind at every street. The fix is targeted bucket surgery rather than more clusters, and `litmus` carries the detectors that gate it.
 
 ## Implementation
 
