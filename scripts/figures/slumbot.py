@@ -303,7 +303,9 @@ def convergence(data, name):
     s = Svg(W, H, t)
     s.rect(0, 0, W, H, t["surface"], rx=10)
     s.text(L, 36, "bb/100 against Slumbot", t["primary"], 17, weight=600)
-    s.text(L, 57, "running mean, aligned on the last hand of each run · 1.9 M hands", t["muted"], 12)
+    played = sum(v.hands for v in data.values())  # every variant, control included
+    s.text(L, 57, f"running mean, aligned on the last hand of each run · {played / 1e6:.0f} M hands",
+           t["muted"], 12)
     s.key(L - 7, 84)
     for b in range(int(bot), int(top) + 1, step):
         s.line(x0, fy(b), x1, fy(b), t["grid"], 1)
