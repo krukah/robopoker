@@ -137,6 +137,7 @@ pub async fn run() -> Result<(), std::io::Error> {
                     .route("/exp-wrt-obs", web::post().to(topology::handlers::exp_wrt_obs))
                     .route("/hst-wrt-abs", web::post().to(topology::handlers::hst_wrt_abs))
                     .route("/hst-wrt-obs", web::post().to(topology::handlers::hst_wrt_obs))
+                    .route("/gloss", web::post().to(topology::handlers::gloss))
                     .route("/distance", web::post().to(topology::handlers::distance)),
             )
             .service(

@@ -215,6 +215,7 @@ graph TD
 | [`arena`](crates/arena)       | ⚪  | Hand-history analysis with AIVAT variance reduction                    |
 | [`spar`](crates/spar)         | ⚪  | Slumbot API benchmark client                                           |
 | [`litmus`](crates/litmus)     | ⚪  | Strategic litmus tests for blueprint validation                        |
+| [`rosetta`](crates/rosetta)   | ⚪  | Names every abstraction bucket from a sample of its own hands          |
 | [`phh`](crates/phh)           | ⚪  | Poker-hand-history parsing and chip-exact replay                       |
 | [`bouncer`](crates/bouncer)   | ⚪  | JWT and Argon2 authentication, session management                      |
 | [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation                                |

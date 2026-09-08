@@ -9,6 +9,7 @@ members = [
   "crates/kicker",
   "crates/elkan",
   "crates/lloyd",
+  "crates/rosetta",
   "crates/subgame",
   "crates/nlhe",
   "crates/phh",
@@ -36,6 +37,7 @@ members = [
   "bin/litmus",
   "bin/phh",
   "bin/slumbot",
+  "bin/mechinterp",
 ]
 
 [workspace.package]
@@ -57,6 +59,7 @@ mccfr    = { version = "1.2", path = "crates/mccfr" }
 kicker   = { version = "1.2", path = "crates/kicker" }
 elkan    = { version = "1.2", path = "crates/elkan" }
 lloyd    = { version = "1.2", path = "crates/lloyd" }
+rosetta  = { version = "1.2", path = "crates/rosetta" }
 subgame  = { version = "1.2", path = "crates/subgame" }
 nlhe     = { version = "1.2", path = "crates/nlhe" }
 phh      = { version = "1.2", path = "crates/phh" }

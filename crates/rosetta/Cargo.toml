@@ -1,0 +1,34 @@
+[package]
+name         = "rosetta"
+publish      = false
+version      = "1.2.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+description  = "Mechanistic interpretability for learned abstractions: mechanical feature profiles that name and describe every k-means bucket"
+keywords     = ["poker", "abstraction", "interpretability", "clustering"]
+categories   = ["game-development", "algorithms"]
+
+[features]
+default = []
+server  = ["daybook", "tokio-postgres", "async-trait", "futures", "deuce/sql", "kicker/sql"]
+
+[dependencies]
+pokerkit       = { workspace = true }
+deuce          = { workspace = true }
+kicker         = { workspace = true }
+tracing        = { workspace = true }
+serde          = { workspace = true }
+rand           = { workspace = true }
+daybook        = { workspace = true, optional = true }
+tokio-postgres = { version = "0.7", optional = true }
+async-trait    = { version = "0.1", optional = true }
+futures        = { version = "0.3", optional = true }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

@@ -225,6 +225,17 @@ impl CLI {
                     Ok(())
                 }
             }
+            Query::Mechinterp { target } => {
+                if let Ok(obs) = Observation::try_from(target.as_str()) {
+                    println!("{}", self.0.abs_gloss(self.0.obs_to_abs(obs).await?).await?);
+                    return Ok(());
+                }
+                if let Ok(abs) = Abstraction::try_from(target.as_str()) {
+                    println!("{}", self.0.abs_gloss(abs).await?);
+                    return Ok(());
+                }
+                Err("invalid mechinterp target".into())
+            }
             Query::Scoreboard => {
                 use daybook::Scoreboard;
                 let ranked = self.0.client().leaderboard().await;

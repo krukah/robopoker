@@ -1,0 +1,24 @@
+[package]
+name         = "mechinterp"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Name and describe every learned abstraction bucket"
+license      = "MIT"
+
+[[bin]]
+name = "mechinterp"
+path = "src/main.rs"
+
+[dependencies]
+rosetta = { workspace = true, features = ["server"] }
+daybook = { workspace = true }
+deuce   = { workspace = true }
+vitals  = { workspace = true }
+clap    = { workspace = true }
+tokio   = { version = "1", features = ["rt-multi-thread", "macros"] }
+anyhow  = "1"
+
+[lints]
+workspace = true

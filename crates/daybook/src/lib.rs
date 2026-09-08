@@ -125,6 +125,13 @@ versioned!(isomorphism, "isomorphism", "Table for isomorphism → abstraction ma
 versioned!(street, "street", "Table for street-specific metadata.");
 versioned!(transitions, "transitions", "Table for abstraction transition probabilities.");
 versioned!(
+    mechinterp,
+    "mechinterp",
+    "Table for human-readable bucket glosses (name + description). Versioned \
+     because a bucket id only means something inside the clustering that \
+     produced it — see the `rosetta` crate."
+);
+versioned!(
     metric,
     "metric",
     "Table for pairwise abstraction distances. Versioned because EMD \

@@ -71,6 +71,11 @@ pub enum Query {
         #[arg(required = true)]
         value: i64,
     },
+    #[command(about = "Read the mechinterp gloss of any given observation or abstraction", alias = "mch")]
+    Mechinterp {
+        #[arg(required = true)]
+        target: String,
+    },
     #[command(about = "Rank trained fingerprints by Slumbot bb/100 (litmus alongside)", alias = "brd")]
     Scoreboard,
 }

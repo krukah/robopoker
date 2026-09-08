@@ -4,6 +4,7 @@ use kicker::*;
 use lloyd::*;
 use monge::*;
 use pokerkit::*;
+use rosetta::*;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio_postgres::Client;
@@ -59,6 +60,18 @@ impl TopologyAPI {
             metric.set(Pair::from(tri), dx);
         }
         Ok(metric)
+    }
+}
+
+// mechanistic interpretability
+impl TopologyAPI {
+    /// The name and description `rosetta` derived for a bucket, if the
+    /// interpretability pass has been run against this clustering.
+    pub async fn abs_gloss(&self, abs: Abstraction) -> anyhow::Result<Gloss> {
+        self.0
+            .lookup(abs)
+            .await
+            .ok_or_else(|| anyhow::anyhow!("no gloss for {abs} — run the mechinterp binary"))
     }
 }
 

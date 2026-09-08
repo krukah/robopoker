@@ -86,6 +86,13 @@ pub async fn hst_wrt_obs(api: web::Data<TopologyAPI>, req: web::Json<ObsHist>) -
     }
 }
 
+pub async fn gloss(api: web::Data<TopologyAPI>, req: web::Json<ReplaceAbs>) -> impl Responder {
+    match api.abs_gloss(req.wrt).await {
+        Err(e) => HttpResponse::NotFound().body(e.to_string()),
+        Ok(gloss) => HttpResponse::Ok().json(gloss),
+    }
+}
+
 pub async fn distance(api: web::Data<TopologyAPI>, req: web::Json<GetDistance>) -> impl Responder {
     let a_obs = Observation::try_from(req.a.as_str()).ok();
     let a_abs = Abstraction::try_from(req.a.as_str()).ok();
