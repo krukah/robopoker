@@ -144,11 +144,24 @@ impl Casino {
             }
             tracing::debug!(bridge = %id, "disconnected");
         });
-        self.rooms
+        // A second `bridge()` call for the same room (client reconnect: page
+        // reload, sleep/wake, network blip, LB idle timeout) must replace,
+        // not merely overwrite, the stored task handle. `rx` is shared via
+        // `Arc<Mutex<..>>`, so if the previous bridge task is left running it
+        // keeps competing with this one for messages on every reconnect,
+        // non-deterministically splitting live-game broadcasts between a
+        // stale session and the new one, and the stale task/session is never
+        // cleaned up by `close()` because its AbortHandle was already
+        // discarded here.
+        if let Some(old) = self
+            .rooms
             .write()
             .await
             .get_mut(&id)
-            .map(|h| h.bridge = Some(task.abort_handle()));
+            .and_then(|h| h.bridge.replace(task.abort_handle()))
+        {
+            old.abort();
+        }
         Ok(())
     }
 }
