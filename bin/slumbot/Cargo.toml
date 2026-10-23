@@ -19,10 +19,13 @@ default  = []
 database = []
 
 [dependencies]
-spar               = { path = "../../crates/spar" }
-clap               = { workspace = true }
-tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+pokerkit = { path = "../../crates/pokerkit", features = ["server", "cli"] }
+vitals   = { path = "../../crates/vitals" }
+bout     = { path = "../../crates/bout" }
+spar     = { path = "../../crates/spar" }
+clap     = { workspace = true }
+tokio    = { version = "1", features = ["rt-multi-thread", "macros"] }
+mimalloc = { workspace = true }
 
 [lints]
 workspace = true

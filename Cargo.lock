@@ -550,6 +550,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bout"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bouncer",
+ "daybook",
+ "deuce",
+ "kicker",
+ "nlhe",
+ "parlor",
+ "pokerkit",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "vitals",
+]
+
+[[package]]
 name = "brotli"
 version = "8.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3336,6 +3355,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "scoreboard"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "daybook",
+ "serde_json",
+ "tokio",
+ "vitals",
+]
+
+[[package]]
 name = "security-framework"
 version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3517,10 +3548,13 @@ dependencies = [
 name = "slumbot"
 version = "0.1.0"
 dependencies = [
+ "bout",
  "clap",
+ "mimalloc",
+ "pokerkit",
  "spar",
  "tokio",
- "tracing-subscriber",
+ "vitals",
 ]
 
 [[package]]
@@ -3544,21 +3578,17 @@ name = "spar"
 version = "1.2.0"
 dependencies = [
  "anyhow",
- "bouncer",
- "daybook",
+ "async-trait",
+ "bout",
  "deuce",
  "kicker",
- "nlhe",
  "parlor",
  "pokerkit",
  "rand 0.9.1",
  "reqwest",
  "serde",
  "serde_json",
- "tokio",
- "tokio-postgres",
  "tracing",
- "vitals",
 ]
 
 [[package]]

@@ -218,6 +218,7 @@ graph TD
 | [`portal`](crates/portal)     | ⚪  | Unified HTTP/WebSocket backend (analysis API and game hosting)         |
 | [`forge`](crates/forge)       | ⚪  | Training pipeline orchestration with distributed workers               |
 | [`arena`](crates/arena)       | ⚪  | Hand-history analysis with AIVAT variance reduction                    |
+| [`bout`](crates/bout)         | ⚪  | Benchmark harness for playing the blueprint against external bots     |
 | [`spar`](crates/spar)         | ⚪  | Slumbot API benchmark client                                           |
 | [`litmus`](crates/litmus)     | ⚪  | Strategic litmus tests for blueprint validation                        |
 | [`rosetta`](crates/rosetta)   | ⚪  | Names every abstraction bucket from a sample of its own hands          |
@@ -227,6 +228,7 @@ graph TD
 | [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation                             |
 | [`roshambo`](crates/roshambo) | ⚪  | Rock-Paper-Scissors — MCCFR framework validation                       |
 | [`petri`](crates/petri)       | ⚪  | Deep CFR on Kuhn and RPS, compiled to WebAssembly and drawn in a browser |
+| [`lints`](crates/lints)       | ⚪  | House Lint: diff-scoped house-style linter (outside the workspace)     |
 
 </details>
 

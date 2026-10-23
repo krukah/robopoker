@@ -28,6 +28,7 @@ members = [
   "crates/portal",
   "crates/forge",
   "crates/arena",
+  "crates/bout",
   "crates/spar",
   # Validation
   "crates/litmus",
@@ -41,7 +42,11 @@ members = [
   "bin/phh",
   "bin/slumbot",
   "bin/mechinterp",
+  "bin/scoreboard",
 ]
+# House Lint. tree-sitter builds C; a member would pay that in every
+# compile-matrix job, and only the House Lint job needs the binary.
+exclude = ["crates/lints"]
 
 [workspace.package]
 version      = "1.2.0"
@@ -72,6 +77,7 @@ leduc    = { version = "1.2", path = "crates/leduc" }
 kuhn     = { version = "1.2", path = "crates/kuhn" }
 roshambo = { version = "1.2", path = "crates/roshambo" }
 arena    = { version = "1.2", path = "crates/arena" }
+bout     = { path = "crates/bout" }
 spar     = { version = "1.2", path = "crates/spar" }
 litmus   = { version = "1.2", path = "crates/litmus" }
 daybook  = { version = "1.2", path = "crates/daybook" }
