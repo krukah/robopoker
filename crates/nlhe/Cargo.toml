@@ -22,6 +22,7 @@ server = [
   "kicker/sql",
   "deuce/sql",
 ]
+neural = ["dep:neural", "dep:rosetta"]
 
 [dependencies]
 tracing        = { workspace = true }
@@ -31,6 +32,8 @@ kicker         = { workspace = true }
 monge          = { workspace = true }
 mccfr          = { version = "1.2", path = "../mccfr", default-features = false }
 subgame        = { workspace = true }
+neural         = { workspace = true, optional = true }
+rosetta        = { workspace = true, optional = true }
 daybook        = { workspace = true, optional = true }
 paste          = "1.0"
 rand           = { workspace = true }

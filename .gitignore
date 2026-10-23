@@ -1,4 +1,5 @@
 /target
+/crates/petri/www/pkg
 /pgcopy
 /data
 /dist

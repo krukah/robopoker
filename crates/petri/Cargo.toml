@@ -1,0 +1,30 @@
+[package]
+name         = "petri"
+publish      = false
+version      = "1.2.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Deep CFR on Kuhn and RPS, compiled to WebAssembly and drawn live in a browser"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pokerkit     = { workspace = true, features = ["client"] }
+monge        = { workspace = true }
+mccfr        = { version = "1.2", path = "../mccfr", default-features = false }
+neural       = { version = "1.2", path = "../neural", default-features = false }
+kuhn         = { path = "../kuhn", default-features = false }
+roshambo     = { path = "../roshambo", default-features = false }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+wasm-bindgen = "0.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3.3", features = ["wasm_js"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Deep CFR Live</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        />
+        <style>
+            /* page tokens match crates/neural/assets/networks.html; chart tokens follow the dataviz reference palette */
+            :root {
+                --bg: #f4f6f9;
+                --surface: #ffffff;
+                --fg: #18202e;
+                --muted: #5a6476;
+                --rule: #d8dee8;
+                --accent: #2f5bd3;
+                --on-accent: #ffffff;
+                --code: #edf1f7;
+                --series-1: #2a78d6;
+                --series-2: #eb6834;
+                --grid: #e8ebf0;
+                --axis: #c3c9d4;
+                --band: rgba(90, 100, 118, 0.13);
+                --good: #0ca30c;
+                --good-text: #006300;
+                --critical: #d03b3b;
+                --font-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+                --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+                --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root:not([data-theme="light"]) {
+                    --bg: #10141c;
+                    --surface: #161b25;
+                    --fg: #e3e8f1;
+                    --muted: #98a2b5;
+                    --rule: #283041;
+                    --accent: #86a6ff;
+                    --on-accent: #0b1220;
+                    --code: #1c2330;
+                    --series-1: #3987e5;
+                    --series-2: #d95926;
+                    --grid: #222937;
+                    --axis: #3a4457;
+                    --band: rgba(152, 162, 181, 0.15);
+                    --good: #0ca30c;
+                    --good-text: #0ca30c;
+                    --critical: #e66767;
+                    color-scheme: dark;
+                }
+            }
+            :root[data-theme="dark"] {
+                --bg: #10141c;
+                --surface: #161b25;
+                --fg: #e3e8f1;
+                --muted: #98a2b5;
+                --rule: #283041;
+                --accent: #86a6ff;
+                --on-accent: #0b1220;
+                --code: #1c2330;
+                --series-1: #3987e5;
+                --series-2: #d95926;
+                --grid: #222937;
+                --axis: #3a4457;
+                --band: rgba(152, 162, 181, 0.15);
+                --good: #0ca30c;
+                --good-text: #0ca30c;
+                --critical: #e66767;
+                color-scheme: dark;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--fg);
+                font-family: var(--font-body);
+                font-size: 15px;
+                line-height: 1.5;
+            }
+            .wrap {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 28px 16px 48px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 18px;
+            }
+            h1,
+            h2 {
+                font-family: var(--font-display);
+                margin: 0;
+                line-height: 1.2;
+                text-wrap: balance;
+            }
+            h1 {
+                font-size: clamp(24px, 4vw, 32px);
+            }
+            h2 {
+                font-size: 17px;
+            }
+            .lede {
+                color: var(--muted);
+                max-width: 80ch;
+                margin: 6px 0 0;
+            }
+            code,
+            .mono {
+                font-family: var(--font-mono);
+                font-size: 0.86em;
+            }
+            code {
+                background: var(--code);
+                padding: 1px 5px;
+                border-radius: 4px;
+            }
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 16px 18px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 12px;
+                min-width: 0;
+                margin: 0;
+            }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px 20px;
+                align-items: end;
+            }
+            .ctl {
+                display: grid;
+                gap: 4px;
+            }
+            .cap {
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: 700;
+            }
+            .seg {
+                display: inline-flex;
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .seg button,
+            .btn {
+                font: inherit;
+                font-size: 13px;
+                border: 0;
+                background: transparent;
+                color: var(--fg);
+                padding: 5px 11px;
+                min-height: 32px;
+                cursor: pointer;
+            }
+            .seg button + button {
+                border-left: 1px solid var(--rule);
+            }
+            .seg button[aria-pressed="true"] {
+                background: var(--accent);
+                color: var(--on-accent);
+            }
+            .btn {
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                padding: 5px 14px;
+            }
+            .btn.primary {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: var(--on-accent);
+                font-weight: 700;
+                min-width: 92px;
+            }
+            .btn:disabled {
+                opacity: 0.5;
+                cursor: default;
+            }
+            button:focus-visible,
+            input:focus-visible,
+            summary:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+            input[type="number"] {
+                font: inherit;
+                font-family: var(--font-mono);
+                font-size: 13px;
+                width: 96px;
+                min-height: 32px;
+                padding: 4px 8px;
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                background: var(--surface);
+                color: var(--fg);
+            }
+            .range {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-height: 32px;
+            }
+            .range input {
+                width: 110px;
+                accent-color: var(--accent);
+            }
+            .range output {
+                font-family: var(--font-mono);
+                font-size: 13px;
+                min-width: 6ch;
+            }
+            .actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+            }
+            .status {
+                font-size: 13px;
+                color: var(--muted);
+            }
+            .status.bad {
+                color: var(--critical);
+            }
+            .tiles {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+            }
+            .tile {
+                background: var(--surface);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 12px 14px;
+                display: grid;
+                gap: 2px;
+                min-width: 0;
+            }
+            .tile .label {
+                font-size: 12.5px;
+                color: var(--muted);
+            }
+            .tile .value {
+                font-family: var(--font-display);
+                font-size: 22px;
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .tile .sub {
+                font-size: 12.5px;
+                color: var(--muted);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .grid2 {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+                gap: 18px;
+            }
+            figcaption p,
+            .note {
+                margin: 2px 0 0;
+                font-size: 13px;
+                color: var(--muted);
+            }
+            .head {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                align-items: baseline;
+                gap: 6px 16px;
+            }
+            .legend {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 16px;
+                font-size: 12.5px;
+                color: var(--muted);
+            }
+            .legend span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .key {
+                width: 18px;
+                height: 0;
+                border-top: 2px solid;
+                border-radius: 2px;
+            }
+            .key.avg {
+                border-color: var(--series-1);
+            }
+            .key.cur {
+                border-color: var(--series-2);
+            }
+            .key.band {
+                height: 10px;
+                border: 0;
+                background: var(--band);
+                border-radius: 2px;
+            }
+            .key.star {
+                width: 10px;
+                height: 10px;
+                border: 0;
+                background: var(--fg);
+                transform: rotate(45deg);
+                border-radius: 1px;
+            }
+            .plot svg,
+            .spark svg,
+            .simplex svg {
+                display: block;
+                width: 100%;
+                height: auto;
+                overflow: visible;
+            }
+            svg text {
+                font-family: var(--font-body);
+                font-size: 11.5px;
+                fill: var(--muted);
+            }
+            svg .gridline {
+                stroke: var(--grid);
+                stroke-width: 1;
+            }
+            svg .axisline {
+                stroke: var(--axis);
+                stroke-width: 1;
+            }
+            svg .ref {
+                stroke: var(--muted);
+                stroke-width: 1;
+                stroke-opacity: 0.6;
+            }
+            svg .avg {
+                fill: none;
+                stroke: var(--series-1);
+                stroke-width: 2;
+                stroke-linejoin: round;
+                stroke-linecap: round;
+            }
+            svg .cur {
+                fill: none;
+                stroke: var(--series-2);
+                stroke-width: 2;
+                stroke-opacity: 0.55;
+                stroke-linejoin: round;
+                stroke-linecap: round;
+            }
+            svg .dot-avg {
+                fill: var(--series-1);
+                stroke: var(--surface);
+                stroke-width: 2;
+            }
+            svg .dot-cur {
+                fill: var(--surface);
+                stroke: var(--series-2);
+                stroke-width: 2;
+            }
+            svg .band {
+                fill: var(--band);
+            }
+            svg .target {
+                stroke: var(--fg);
+                stroke-width: 1;
+                stroke-opacity: 0.55;
+            }
+            svg .star {
+                fill: var(--fg);
+                stroke: var(--surface);
+                stroke-width: 2;
+            }
+            svg .cross {
+                stroke: var(--muted);
+                stroke-width: 1;
+            }
+            svg .hit {
+                fill: transparent;
+            }
+            .rows {
+                display: grid;
+                gap: 0;
+            }
+            .row {
+                display: grid;
+                grid-template-columns: 150px minmax(0, 1fr) 210px;
+                gap: 14px;
+                align-items: center;
+                padding: 8px 0;
+                border-top: 1px solid var(--rule);
+            }
+            .row .who b {
+                font-family: var(--font-mono);
+                font-size: 13px;
+            }
+            .row .who span,
+            .row .now span {
+                display: block;
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .row .now {
+                font-size: 13px;
+            }
+            .row .now strong {
+                font-family: var(--font-mono);
+                font-size: 13px;
+            }
+            .ok {
+                color: var(--good-text);
+            }
+            .off {
+                color: var(--critical);
+            }
+            .group {
+                font-family: var(--font-display);
+                font-weight: 700;
+                font-size: 13px;
+                padding: 12px 0 4px;
+                color: var(--muted);
+            }
+            .simplexes {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+                gap: 18px;
+            }
+            .simplex {
+                display: grid;
+                gap: 8px;
+            }
+            table {
+                border-collapse: collapse;
+                font-size: 13px;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 5px 10px;
+                border-bottom: 1px solid var(--rule);
+                white-space: nowrap;
+            }
+            th {
+                font-size: 12px;
+                color: var(--muted);
+            }
+            td.num {
+                font-family: var(--font-mono);
+                text-align: right;
+                font-variant-numeric: tabular-nums;
+            }
+            .scroll {
+                overflow-x: auto;
+            }
+            summary {
+                cursor: pointer;
+                font-family: var(--font-display);
+                font-weight: 700;
+            }
+            .tip {
+                position: fixed;
+                z-index: 10;
+                pointer-events: none;
+                background: var(--surface);
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                padding: 8px 10px;
+                font-size: 12.5px;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+                display: grid;
+                gap: 2px;
+                max-width: 280px;
+            }
+            .tip div {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .tip strong {
+                font-family: var(--font-mono);
+            }
+            .tip .key {
+                width: 12px;
+            }
+            @media (max-width: 720px) {
+                .row {
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 6px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header>
+                <h1>Deep CFR, live</h1>
+                <p class="lede">
+                    The <code>neural</code> crate's training loop — <code>DeepCfr</code> under external sampling, with
+                    <code>CfrNet</code> or the tabular <code>MockNet</code> — compiled to WebAssembly and running in a
+                    worker. Every number below is read from the live <code>DeepProfile</code>; none is simulated.
+                </p>
+            </header>
+            <section class="card" aria-label="Run settings">
+                <div class="controls" id="controls"></div>
+                <div class="controls" id="knobs" hidden></div>
+                <div class="actions">
+                    <button type="button" class="btn primary" id="run">Start</button>
+                    <button type="button" class="btn" id="step">Step</button>
+                    <button type="button" class="btn" id="reset">Reset</button>
+                    <span class="status" id="status" role="status"></span>
+                </div>
+            </section>
+            <section class="tiles" id="tiles" aria-label="Run status"></section>
+            <section class="grid2">
+                <figure class="card">
+                    <figcaption>
+                        <h2>Exploitability</h2>
+                        <p>Of the average strategy at each checkpoint. Log scale.</p>
+                    </figcaption>
+                    <div class="plot" id="expl"></div>
+                </figure>
+                <figure class="card">
+                    <figcaption>
+                        <h2>Worst miss against Nash</h2>
+                        <p>Largest |average − target| ÷ tolerance over every infoset. Log scale.</p>
+                    </figcaption>
+                    <div class="plot" id="miss"></div>
+                </figure>
+            </section>
+            <section class="card">
+                <div class="head">
+                    <h2 id="board-title">Strategy at every infoset</h2>
+                    <div class="legend" id="legend"></div>
+                </div>
+                <div id="board"></div>
+            </section>
+            <details class="card" id="tablecard">
+                <summary>Checkpoints as a table</summary>
+                <div class="scroll"><table id="table"></table></div>
+            </details>
+            <p class="note">
+                Quick look plateaus near 2× tolerance by epoch 2,048 and drifts to ~10× by 16,384; Bigger fits reach ~1.5× by 2,048 but drift to ~2.8× by 4,096, at ~16× the cost per epoch. Warm start continues each refit from the last weights: one run reached 0.85× at 16,384 epochs, though it swung to 3.7× on the way. Custom keeps steps and batch ≥ 256 and rate ≤ 2^-7; warm start at a high rate diverges.
+                Changing a setting ends the run. A checkpoint fits the strategy net on <code>M_Π</code> and reads the
+                average strategy; training never reads that net, so checkpoints only observe. <code>MockNet</code> ignores
+                the shape and fit knobs: each fit is the exact <code>t</code>-weighted mean, the reference
+                <code>CfrNet</code> is measured against.
+            </p>
+        </div>
+        <div class="tip" id="tip" hidden></div>
+        <script type="module">
+            const GAMES = {
+                kuhn: { label: "Kuhn", budget: 2048 },
+                rps: { label: "Rock-paper-scissors", budget: 1024 },
+            };
+            const PRESETS = {
+                fast: { label: "Quick look", knobs: { traversals: 32, capacity: 65536, width: 32, depth: 2, steps: 64, batch: 128, rate: 2 ** -7 } },
+                sound: { label: "Bigger fits", knobs: { traversals: 32, capacity: 65536, width: 32, depth: 2, steps: 1024, batch: 1024, rate: 2 ** -9 } },
+                tests: { label: "Near test defaults", knobs: { traversals: 32, capacity: 65536, width: 64, depth: 2, steps: 256, batch: 512, rate: 2 ** -8 } },
+                warm: { label: "Warm start", knobs: { traversals: 32, capacity: 65536, width: 32, depth: 2, steps: 256, batch: 256, rate: 2 ** -8, warm: true } },
+                custom: { label: "Custom", knobs: null },
+            };
+            const KNOBS = [
+                ["traversals", "Traversals K", [0, 10]],
+                ["capacity", "Capacity", [8, 20]],
+                ["width", "Width", [2, 9]],
+                ["depth", "Depth", [0, 3]],
+                ["steps", "Steps", [8, 12]],
+                ["batch", "Batch", [8, 12]],
+                ["rate", "Rate", [-12, -7]],
+            ];
+            const cfg = { game: "kuhn", net: "candle", preset: "fast", pace: "watch", budget: 2048, every: 16, custom: { ...PRESETS.warm.knobs } };
+            const run = { worker: null, phase: "idle", error: "", budget: 2048, frame: null, checkpoints: [], currents: [], cost: 0, elapsed: 0, since: 0 };
+            const hover = {};
+            const $ = (id) => document.getElementById(id);
+            const fmt = (v, d = 2) => (v < 0 && v.toFixed(d) !== (0).toFixed(d) ? "−" : "") + Math.abs(v).toFixed(d);
+            const sign = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(3);
+            const knobs = () => (cfg.preset === "custom" ? cfg.custom : PRESETS[cfg.preset].knobs);
+            let queued = false;
+
+            function seg(label, options, active, pick) {
+                const wrap = document.createElement("div");
+                wrap.className = "ctl";
+                const cap = document.createElement("span");
+                cap.className = "cap";
+                cap.textContent = label;
+                const group = document.createElement("div");
+                group.className = "seg";
+                group.setAttribute("role", "group");
+                group.setAttribute("aria-label", label);
+                options.forEach(([value, text]) => {
+                    const b = document.createElement("button");
+                    b.type = "button";
+                    b.textContent = text;
+                    b.dataset.key = `${label}:${value}`;
+                    b.setAttribute("aria-pressed", String(value === active));
+                    b.addEventListener("click", () => {
+                        if (value === active) return;
+                        pick(value);
+                        renderControls();
+                        document.querySelector(`[data-key="${CSS.escape(b.dataset.key)}"]`)?.focus();
+                    });
+                    group.append(b);
+                });
+                wrap.append(cap, group);
+                return wrap;
+            }
+            function number(label, value, [lo, hi], change) {
+                const wrap = document.createElement("div");
+                wrap.className = "ctl";
+                const cap = document.createElement("span");
+                cap.className = "cap";
+                cap.textContent = label;
+                const e = Math.round(Math.log2(value));
+                const range = document.createElement("span");
+                range.className = "range";
+                const input = document.createElement("input");
+                input.type = "range";
+                input.min = lo;
+                input.max = hi;
+                input.step = 1;
+                input.value = e;
+                input.setAttribute("aria-label", label);
+                const out = document.createElement("output");
+                const show = (k) => (k >= 0 ? (2 ** k).toLocaleString("en-US") : `2^${k}`);
+                out.textContent = show(e);
+                input.addEventListener("input", () => (out.textContent = show(Number(input.value))));
+                input.addEventListener("change", () => change(2 ** Number(input.value)));
+                range.append(input, out);
+                wrap.append(cap, range);
+                return wrap;
+            }
+            function renderControls() {
+                $("controls").replaceChildren(
+                    seg("Game", Object.entries(GAMES).map(([k, g]) => [k, g.label]), cfg.game, (v) => {
+                        cfg.game = v;
+                        cfg.budget = GAMES[v].budget;
+                        reset();
+                    }),
+                    seg("Networks", [["candle", "CfrNet"], ["mock", "MockNet"]], cfg.net, (v) => {
+                        cfg.net = v;
+                        reset();
+                    }),
+                    seg("Knobs", Object.entries(PRESETS).map(([k, p]) => [k, p.label]), cfg.preset, (v) => {
+                        cfg.preset = v;
+                        reset();
+                    }),
+                    seg("Pace", [["watch", "Watch"], ["max", "Max"]], cfg.pace, (v) => {
+                        cfg.pace = v;
+                        run.worker?.postMessage({ type: "pace", pace: v });
+                    }),
+                    number("Epochs", cfg.budget, [4, 16], (v) => {
+                        cfg.budget = v;
+                        reset();
+                    }),
+                    number("Checkpoint every", cfg.every, [0, 12], (v) => {
+                        cfg.every = v;
+                        reset();
+                    }),
+                );
+                $("knobs").hidden = cfg.preset !== "custom";
+                $("knobs").replaceChildren(
+                    seg("Warm start", [[false, "Off"], [true, "On"]], !!cfg.custom.warm, (v) => {
+                        cfg.custom.warm = v;
+                        reset();
+                    }),
+                    ...KNOBS.map(([key, label, step]) =>
+                        number(label, cfg.custom[key], step, (v) => {
+                            cfg.custom[key] = v;
+                            reset();
+                        }),
+                    ),
+                );
+            }
+            function phase(next) {
+                if (run.phase === "running" && next !== "running") run.elapsed += performance.now() - run.since;
+                if (next === "running" && run.phase !== "running") run.since = performance.now();
+                run.phase = next;
+                schedule();
+            }
+            function reset() {
+                run.worker?.terminate();
+                Object.assign(run, { worker: null, phase: "idle", error: "", budget: cfg.budget, frame: null, checkpoints: [], currents: [], cost: 0, elapsed: 0, since: 0 });
+                schedule();
+            }
+            function launch(play) {
+                reset();
+                const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+                worker.onmessage = receive;
+                worker.onerror = (e) => fail(e.message || "The worker failed to load. Build and serve this page with crates/petri/build.sh.");
+                run.worker = worker;
+                phase("loading");
+                worker.postMessage({ type: "start", game: cfg.game, net: cfg.net, knobs: knobs(), budget: cfg.budget, every: cfg.every, pace: cfg.pace, play });
+            }
+            function fail(message) {
+                run.error = message;
+                phase("error");
+            }
+            function receive({ data }) {
+                if (data.type === "ready") phase(data.play ? "running" : "paused");
+                if (data.type === "frame") absorb(JSON.parse(data.frame), data.ms / data.epochs);
+                if (data.type === "checkpoint") checkpoint(JSON.parse(data.frame));
+                if (data.type === "done") phase("done");
+                if (data.type === "error") fail(data.message);
+                schedule();
+            }
+            function absorb(frame, cost) {
+                run.frame = frame;
+                run.cost = cost;
+                run.currents.push({ epoch: frame.epoch, p: frame.readings.map((r) => r.lanes.map((l) => l.current)) });
+            }
+            function checkpoint(frame) {
+                const misses = frame.readings.map((r) => Math.max(...r.lanes.map((l) => Math.abs(l.average - l.nash))) / r.tolerance);
+                const worst = misses.indexOf(Math.max(...misses));
+                run.checkpoints.push({
+                    epoch: frame.epoch,
+                    t: frame.t,
+                    exploitability: frame.exploitability,
+                    miss: misses[worst],
+                    worst: frame.readings[worst].label,
+                    p: frame.readings.map((r) => r.lanes.map((l) => l.average)),
+                });
+                if (!run.frame || frame.epoch >= run.frame.epoch) run.frame = frame;
+                if (run.currents.length === 0) run.currents.push({ epoch: frame.epoch, p: frame.readings.map((r) => r.lanes.map((l) => l.current)) });
+            }
+            $("run").addEventListener("click", () => {
+                if (["idle", "done", "error"].includes(run.phase)) launch(true);
+                else if (run.phase === "running") {
+                    run.worker.postMessage({ type: "pause" });
+                    phase("paused");
+                } else if (run.phase === "paused") {
+                    run.worker.postMessage({ type: "play" });
+                    phase("running");
+                }
+            });
+            $("step").addEventListener("click", () => {
+                if (["idle", "error"].includes(run.phase)) launch(false);
+                if (run.phase === "running") {
+                    run.worker.postMessage({ type: "pause" });
+                    phase("paused");
+                }
+                run.worker?.postMessage({ type: "step" });
+            });
+            $("reset").addEventListener("click", reset);
+            $("tablecard").addEventListener("toggle", schedule);
+            window.addEventListener("resize", schedule);
+
+            function schedule() {
+                if (queued) return;
+                queued = true;
+                requestAnimationFrame(() => {
+                    queued = false;
+                    render();
+                });
+            }
+            function render() {
+                renderStatus();
+                renderTiles();
+                renderLine("expl", run.checkpoints.map((c) => ({ x: c.epoch, y: Math.max(c.exploitability, 1e-5) })), {
+                    refs: cfg.game === "kuhn" ? [{ y: 0.05, label: "0.05 · MockNet test bar" }] : [],
+                    value: (v) => fmt(v, 4),
+                    name: "Exploitability",
+                });
+                renderLine("miss", run.checkpoints.map((c) => ({ x: c.epoch, y: Math.max(c.miss, 1e-3), note: c.worst })), {
+                    refs: [
+                        { y: 1, label: "1× · MockNet bar" },
+                        { y: 3, label: "3× · CfrNet bar" },
+                    ],
+                    value: (v) => `${fmt(v, 2)}×`,
+                    name: "Worst miss",
+                });
+                renderBoard();
+                if ($("tablecard").open) renderTable();
+            }
+            function renderStatus() {
+                const words = {
+                    idle: "Ready. Start runs the real Rust training loop in a worker.",
+                    loading: "Loading WebAssembly and building the networks…",
+                    running: "Training.",
+                    paused: "Paused.",
+                    done: "Done: the epoch budget is spent.",
+                    error: run.error,
+                };
+                $("status").textContent = words[run.phase];
+                $("status").classList.toggle("bad", run.phase === "error");
+                $("run").textContent = { idle: "Start", loading: "Loading…", running: "Pause", paused: "Resume", done: "Run again", error: "Retry" }[run.phase];
+                $("run").disabled = run.phase === "loading";
+                $("step").disabled = ["loading", "done"].includes(run.phase);
+            }
+            function renderTiles() {
+                const last = run.checkpoints.at(-1);
+                const elapsed = (run.elapsed + (run.phase === "running" ? performance.now() - run.since : 0)) / 1000;
+                const tiles = [
+                    ["Epoch", run.frame ? run.frame.epoch.toLocaleString("en-US") : "—", `of ${run.budget.toLocaleString("en-US")}`],
+                    ["Iteration t", run.frame ? run.frame.t.toLocaleString("en-US") : "—", "loss weight of new rows"],
+                    ["Exploitability", last ? fmt(last.exploitability, 4) : "—", last ? `at epoch ${last.epoch}` : "no checkpoint yet"],
+                    ["Worst miss", last ? `${fmt(last.miss, 2)}×` : "—", last ? last.worst : "tolerances from the Nash tests"],
+                    ["Per epoch", run.cost ? `${run.cost < 10 ? run.cost.toFixed(1) : Math.round(run.cost)} ms` : "—", run.cost ? `${Math.round(1000 / run.cost).toLocaleString("en-US")} epochs/s at most` : "in WebAssembly"],
+                    ["Elapsed", `${Math.floor(elapsed / 60)}:${String(Math.floor(elapsed % 60)).padStart(2, "0")}`, `${cfg.net === "candle" ? "CfrNet" : "MockNet"} · ${GAMES[cfg.game].label}`],
+                ];
+                $("tiles").replaceChildren(
+                    ...tiles.map(([label, value, sub]) => {
+                        const tile = document.createElement("div");
+                        tile.className = "tile";
+                        [["label", label], ["value", value], ["sub", sub]].forEach(([cls, text]) => {
+                            const el = document.createElement("span");
+                            el.className = cls;
+                            el.textContent = text;
+                            tile.append(el);
+                        });
+                        return tile;
+                    }),
+                );
+            }
+            function ticks(budget) {
+                const raw = budget / 4;
+                const base = 10 ** Math.floor(Math.log10(raw));
+                const step = [1, 2, 2.5, 5, 10].map((m) => m * base).find((s) => budget / s <= 5);
+                return Array.from({ length: Math.floor(budget / step) + 1 }, (_, i) => i * step);
+            }
+            function renderLine(id, points, { refs, value, name }) {
+                const host = $(id);
+                const W = Math.max(280, host.clientWidth);
+                const H = 220;
+                const m = { l: 46, r: 14, t: 12, b: 28 };
+                const ys = points.map((p) => p.y).concat(refs.map((r) => r.y));
+                const lo = Math.floor(Math.log10(Math.min(...ys, 1)));
+                const hi = Math.max(lo + 1, Math.ceil(Math.log10(Math.max(...ys, 1e-9))));
+                const sx = (x) => m.l + (x / run.budget) * (W - m.l - m.r);
+                const sy = (y) => m.t + (1 - (Math.log10(y) - lo) / (hi - lo)) * (H - m.t - m.b);
+                let s = "";
+                for (let e = lo; e <= hi; e++) {
+                    const y = sy(10 ** e);
+                    s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/>`;
+                    s += `<text x="${m.l - 6}" y="${y}" text-anchor="end" dominant-baseline="middle">${10 ** e >= 1 ? 10 ** e : (10 ** e).toFixed(-e)}</text>`;
+                }
+                ticks(run.budget).forEach((x) => {
+                    s += `<text x="${sx(x)}" y="${H - 8}" text-anchor="middle">${x.toLocaleString("en-US")}</text>`;
+                });
+                s += `<line class="axisline" x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/>`;
+                refs.forEach((r) => {
+                    s += `<line class="ref" x1="${m.l}" x2="${W - m.r}" y1="${sy(r.y)}" y2="${sy(r.y)}"/>`;
+                    s += `<text x="${W - m.r}" y="${sy(r.y) - 5}" text-anchor="end">${r.label}</text>`;
+                });
+                if (points.length) {
+                    s += `<path class="avg" d="${points.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join("")}"/>`;
+                    const end = points.at(-1);
+                    s += `<circle class="dot-avg" cx="${sx(end.x)}" cy="${sy(end.y)}" r="4"/>`;
+                    s += `<text x="${Math.min(sx(end.x) + 8, W - m.r)}" y="${sy(end.y) - 8}" text-anchor="${sx(end.x) > W - 80 ? "end" : "start"}" style="fill:var(--fg)">${value(end.y)}</text>`;
+                } else {
+                    s += `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Start a run to plot it</text>`;
+                }
+                const h = hover[id];
+                if (h != null && points[h]) {
+                    s += `<line class="cross" x1="${sx(points[h].x)}" x2="${sx(points[h].x)}" y1="${m.t}" y2="${H - m.b}"/>`;
+                    s += `<circle class="dot-avg" cx="${sx(points[h].x)}" cy="${sy(points[h].y)}" r="4"/>`;
+                }
+                s += `<rect class="hit" x="${m.l}" y="0" width="${W - m.l - m.r}" height="${H}"/>`;
+                host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${name} by epoch">${s}</svg>`;
+                host.onpointermove = (e) => {
+                    if (!points.length) return;
+                    const box = host.getBoundingClientRect();
+                    const x = ((e.clientX - box.left) * (W / box.width) - m.l) / (W - m.l - m.r) * run.budget;
+                    const i = points.reduce((best, p, j) => (Math.abs(p.x - x) < Math.abs(points[best].x - x) ? j : best), 0);
+                    hover[id] = i;
+                    tip(e, [[`epoch ${points[i].x.toLocaleString("en-US")}`], [value(points[i].y), name, "avg"], ...(points[i].note ? [[points[i].note]] : [])]);
+                    schedule();
+                };
+                host.onpointerleave = () => {
+                    hover[id] = null;
+                    untip();
+                    schedule();
+                };
+            }
+            function tip(e, lines) {
+                const t = $("tip");
+                t.replaceChildren(
+                    ...lines.map(([text, label, key]) => {
+                        const row = document.createElement("div");
+                        if (key) {
+                            const k = document.createElement("i");
+                            k.className = `key ${key}`;
+                            row.append(k);
+                        }
+                        const v = document.createElement(label ? "strong" : "span");
+                        v.textContent = text;
+                        row.append(v);
+                        if (label) {
+                            const l = document.createElement("span");
+                            l.textContent = label;
+                            row.append(l);
+                        }
+                        return row;
+                    }),
+                );
+                t.hidden = false;
+                const x = Math.min(e.clientX + 14, window.innerWidth - t.offsetWidth - 8);
+                const y = Math.min(e.clientY + 14, window.innerHeight - t.offsetHeight - 8);
+                t.style.left = `${x}px`;
+                t.style.top = `${y}px`;
+            }
+            function untip() {
+                $("tip").hidden = true;
+            }
+            function legend(items) {
+                $("legend").replaceChildren(
+                    ...items.map(([cls, text]) => {
+                        const span = document.createElement("span");
+                        const key = document.createElement("i");
+                        key.className = `key ${cls}`;
+                        span.append(key, document.createTextNode(text));
+                        return span;
+                    }),
+                );
+            }
+            function renderBoard() {
+                const board = $("board");
+                if (!run.frame) {
+                    delete board.dataset.game;
+                    board.innerHTML = `<p class="note">Each infoset's average strategy, current strategy, and Nash target appear here once a run starts.</p>`;
+                    legend([]);
+                    return;
+                }
+                if (cfg.game === "kuhn") kuhnBoard(board);
+                else rpsBoard(board);
+            }
+            function kuhnBoard(board) {
+                $("board-title").textContent = "Strategy at every Kuhn infoset";
+                legend([
+                    ["avg", "Average Π: the strategy net, at checkpoints"],
+                    ["cur", "Current σᵗ: regret matching on the advantage nets"],
+                    ["band", "Nash target ± tolerance"],
+                ]);
+                const readings = run.frame.readings;
+                if (board.dataset.game !== "kuhn") {
+                    board.dataset.game = "kuhn";
+                    board.innerHTML = "";
+                    const groups = ["Player 0 opens", "Player 1 after a check", "Player 1 facing a bet", "Player 0 facing a bet after checking"];
+                    readings.forEach((r, i) => {
+                        if (i % 3 === 0) {
+                            const g = document.createElement("div");
+                            g.className = "group";
+                            g.textContent = groups[i / 3];
+                            board.append(g);
+                        }
+                        const row = document.createElement("div");
+                        row.className = "row";
+                        row.innerHTML = `<div class="who"><b></b><span></span></div><div class="spark"></div><div class="now"></div>`;
+                        row.querySelector("b").textContent = r.label;
+                        row.querySelector(".who span").textContent = `${r.player} · plots P(${r.lanes[1].edge})`;
+                        board.append(row);
+                    });
+                }
+                [...board.querySelectorAll(".row")].forEach((row, i) => spark(row, i, readings[i]));
+            }
+            function spark(row, i, r) {
+                const host = row.querySelector(".spark");
+                const W = Math.max(200, host.clientWidth);
+                const H = 46;
+                const pad = 5;
+                const sx = (x) => pad + (x / run.budget) * (W - 2 * pad);
+                const sy = (p) => pad + (1 - p) * (H - 2 * pad);
+                const lane = r.lanes[1];
+                const avg = run.checkpoints.map((c) => [c.epoch, c.p[i][1]]);
+                const cur = run.currents.map((c) => [c.epoch, c.p[i][1]]);
+                const path = (pts) => pts.map(([x, p], j) => `${j ? "L" : "M"}${sx(x).toFixed(1)},${sy(p).toFixed(1)}`).join("");
+                let s = `<line class="gridline" x1="${pad}" x2="${W - pad}" y1="${sy(0)}" y2="${sy(0)}"/><line class="gridline" x1="${pad}" x2="${W - pad}" y1="${sy(1)}" y2="${sy(1)}"/>`;
+                s += `<rect class="band" x="${pad}" width="${W - 2 * pad}" y="${sy(Math.min(1, lane.nash + r.tolerance))}" height="${sy(Math.max(0, lane.nash - r.tolerance)) - sy(Math.min(1, lane.nash + r.tolerance))}"/>`;
+                s += `<line class="target" x1="${pad}" x2="${W - pad}" y1="${sy(lane.nash)}" y2="${sy(lane.nash)}"/>`;
+                if (cur.length > 1) s += `<path class="cur" d="${path(cur)}"/>`;
+                if (avg.length) s += `<path class="avg" d="${path(avg)}"/><circle class="dot-avg" cx="${sx(avg.at(-1)[0])}" cy="${sy(avg.at(-1)[1])}" r="4"/>`;
+                const h = hover[`k${i}`];
+                if (h != null) s += `<line class="cross" x1="${sx(h)}" x2="${sx(h)}" y1="0" y2="${H}"/>`;
+                host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="P(${lane.edge}) at ${r.label} by epoch">${s}</svg>`;
+                host.onpointermove = (e) => {
+                    const box = host.getBoundingClientRect();
+                    const x = (((e.clientX - box.left) * (W / box.width) - pad) / (W - 2 * pad)) * run.budget;
+                    const near = (pts) => pts.reduce((best, p) => (!best || Math.abs(p[0] - x) < Math.abs(best[0] - x) ? p : best), null);
+                    const a = near(avg);
+                    const c = near(cur);
+                    hover[`k${i}`] = (a ?? c)?.[0] ?? null;
+                    tip(e, [
+                        [`${r.label} · P(${lane.edge})`],
+                        ...(a ? [[fmt(a[1]), `average at epoch ${a[0]}`, "avg"]] : []),
+                        ...(c ? [[fmt(c[1]), `current at epoch ${c[0]}`, "cur"]] : []),
+                        [`${fmt(lane.nash)} ± ${fmt(r.tolerance)}`, "Nash target", "band"],
+                    ]);
+                    schedule();
+                };
+                host.onpointerleave = () => {
+                    hover[`k${i}`] = null;
+                    untip();
+                    schedule();
+                };
+                const now = row.querySelector(".now");
+                const miss = lane.average == null ? null : Math.abs(lane.average - lane.nash);
+                const last = run.checkpoints.at(-1);
+                now.replaceChildren();
+                const line = document.createElement("div");
+                line.innerHTML = `<strong></strong> avg · <strong></strong> σᵗ`;
+                const [sa, sc] = line.querySelectorAll("strong");
+                sa.textContent = last ? fmt(last.p[i][1]) : "—";
+                sc.textContent = fmt(lane.current);
+                const verdict = document.createElement("span");
+                const gap = last ? Math.abs(last.p[i][1] - lane.nash) : miss;
+                verdict.className = gap == null ? "" : gap <= r.tolerance ? "ok" : "off";
+                verdict.textContent = gap == null ? `target ${fmt(lane.nash)}` : gap <= r.tolerance ? `✓ within ±${fmt(r.tolerance)} of ${fmt(lane.nash)}` : `✗ ${fmt(gap)} off ${fmt(lane.nash)}`;
+                const adv = document.createElement("span");
+                adv.className = "mono";
+                adv.textContent = `V ${r.lanes.map((l) => `${l.edge} ${sign(l.regret)}`).join(" · ")}`;
+                now.append(line, verdict, adv);
+            }
+            function rpsBoard(board) {
+                $("board-title").textContent = "Strategy on the simplex, per player";
+                legend([
+                    ["avg", "Average Π: the strategy net, at checkpoints"],
+                    ["cur", "Current σᵗ: the last 240 frames"],
+                    ["star", "Nash (0.4, 0.4, 0.2)"],
+                ]);
+                const readings = run.frame.readings;
+                if (board.dataset.game !== "rps") {
+                    board.dataset.game = "rps";
+                    board.innerHTML = `<div class="simplexes">${readings.map(() => `<div class="simplex"><div class="tri"></div><div class="scroll"><table></table></div></div>`).join("")}</div>`;
+                }
+                [...board.querySelectorAll(".simplex")].forEach((panel, i) => simplex(panel, i, readings[i]));
+            }
+            function simplex(panel, i, r) {
+                const host = panel.querySelector(".tri");
+                const W = Math.max(260, Math.min(420, host.clientWidth));
+                const pad = 22;
+                const side = W - 2 * pad;
+                const H = side * (Math.sqrt(3) / 2) + 2 * pad + 8;
+                const base = H - pad;
+                const at = ([pr, pp, ps]) => [pad + (pp + 0.5 * ps) * side, base - ps * (Math.sqrt(3) / 2) * side];
+                const pt = (p) => at(p).map((v) => v.toFixed(1)).join(",");
+                let s = `<text x="${W / 2}" y="12" text-anchor="middle" style="fill:var(--fg);font-weight:700">${r.label}</text>`;
+                [0.2, 0.4, 0.6, 0.8].forEach((k) => {
+                    s += `<line class="gridline" x1="${at([1 - k, 0, k])[0]}" y1="${at([1 - k, 0, k])[1]}" x2="${at([0, 1 - k, k])[0]}" y2="${at([0, 1 - k, k])[1]}"/>`;
+                    s += `<line class="gridline" x1="${at([k, 1 - k, 0])[0]}" y1="${at([k, 1 - k, 0])[1]}" x2="${at([k, 0, 1 - k])[0]}" y2="${at([k, 0, 1 - k])[1]}"/>`;
+                    s += `<line class="gridline" x1="${at([1 - k, k, 0])[0]}" y1="${at([1 - k, k, 0])[1]}" x2="${at([0, k, 1 - k])[0]}" y2="${at([0, k, 1 - k])[1]}"/>`;
+                });
+                s += `<polygon points="${pt([1, 0, 0])} ${pt([0, 1, 0])} ${pt([0, 0, 1])}" fill="none" class="axisline"/>`;
+                [["R", [1, 0, 0], -10, 14], ["P", [0, 1, 0], 10, 14], ["S", [0, 0, 1], 0, -8]].forEach(([label, p, dx, dy]) => {
+                    s += `<text x="${at(p)[0] + dx}" y="${at(p)[1] + dy}" text-anchor="middle" style="fill:var(--fg);font-weight:700">${label}</text>`;
+                });
+                const avg = run.checkpoints.map((c) => [c.epoch, c.p[i]]);
+                const cur = run.currents.slice(-240).map((c) => [c.epoch, c.p[i]]);
+                const path = (pts) => pts.map(([, p], j) => `${j ? "L" : "M"}${pt(p)}`).join("");
+                if (cur.length > 1) s += `<path class="cur" d="${path(cur)}"/>`;
+                if (cur.length) s += `<circle class="dot-cur" cx="${at(cur.at(-1)[1])[0]}" cy="${at(cur.at(-1)[1])[1]}" r="4"/>`;
+                if (avg.length > 1) s += `<path class="avg" d="${path(avg)}"/>`;
+                if (avg.length) s += `<circle class="dot-avg" cx="${at(avg.at(-1)[1])[0]}" cy="${at(avg.at(-1)[1])[1]}" r="4.5"/>`;
+                const nash = at(r.lanes.map((l) => l.nash));
+                s += `<rect class="star" x="${nash[0] - 5}" y="${nash[1] - 5}" width="10" height="10" transform="rotate(45 ${nash[0]} ${nash[1]})"/>`;
+                const h = hover[`s${i}`];
+                if (h) s += `<circle cx="${at(h)[0]}" cy="${at(h)[1]}" r="7" fill="none" stroke="var(--fg)" stroke-width="1"/>`;
+                host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="max-width:${W}px" role="img" aria-label="${r.label} strategy on the R, P, S simplex">${s}</svg>`;
+                host.onpointermove = (e) => {
+                    const box = host.querySelector("svg").getBoundingClientRect();
+                    const x = (e.clientX - box.left) * (W / box.width);
+                    const y = (e.clientY - box.top) * (H / box.height);
+                    const all = avg.map((p) => ["average", "avg", ...p]).concat(cur.map((p) => ["current", "cur", ...p]));
+                    const d = ([, , , p]) => Math.hypot(at(p)[0] - x, at(p)[1] - y);
+                    const best = all.reduce((b, p) => (!b || d(p) < d(b) ? p : b), null);
+                    if (!best || d(best) > 28) {
+                        hover[`s${i}`] = null;
+                        untip();
+                    } else {
+                        hover[`s${i}`] = best[3];
+                        tip(e, [[`${r.label} · ${best[0]} at epoch ${best[2]}`], [best[3].map((v, j) => `${r.lanes[j].edge} ${fmt(v)}`).join("  "), "", best[1]]]);
+                    }
+                    schedule();
+                };
+                host.onpointerleave = () => {
+                    hover[`s${i}`] = null;
+                    untip();
+                    schedule();
+                };
+                const last = run.checkpoints.at(-1);
+                const table = panel.querySelector("table");
+                table.innerHTML = `<thead><tr><th>${r.label}</th><th>average</th><th>current σᵗ</th><th>Nash</th><th>advantage</th></tr></thead><tbody></tbody>`;
+                r.lanes.forEach((l, j) => {
+                    const tr = document.createElement("tr");
+                    [l.edge, last ? fmt(last.p[i][j]) : "—", fmt(l.current), fmt(l.nash), sign(l.regret)].forEach((text, k) => {
+                        const td = document.createElement("td");
+                        td.textContent = text;
+                        if (k) td.className = "num";
+                        tr.append(td);
+                    });
+                    table.tBodies[0].append(tr);
+                });
+            }
+            function renderTable() {
+                const table = $("table");
+                table.innerHTML = `<thead><tr><th>Epoch</th><th>t</th><th>Exploitability</th><th>Worst miss</th><th>At</th></tr></thead><tbody></tbody>`;
+                run.checkpoints
+                    .slice(-200)
+                    .reverse()
+                    .forEach((c) => {
+                        const tr = document.createElement("tr");
+                        [[c.epoch.toLocaleString("en-US"), 1], [c.t.toLocaleString("en-US"), 1], [fmt(c.exploitability, 4), 1], [`${fmt(c.miss)}×`, 1], [c.worst, 0]].forEach(([text, num]) => {
+                            const td = document.createElement("td");
+                            td.textContent = text;
+                            if (num) td.className = "num";
+                            tr.append(td);
+                        });
+                        table.tBodies[0].append(tr);
+                    });
+            }
+            renderControls();
+            schedule();
+            setInterval(() => run.phase === "running" && schedule(), 500);
+        </script>
+    </body>
+</html>

@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Parser, Debug)]
 #[command(name = "trainer")]
-#[command(group = ArgGroup::new("mode").required(true).args(["status", "cluster", "recluster", "fast", "slow", "reset", "forget"]))]
+#[command(group = ArgGroup::new("mode").required(true).args(["status", "cluster", "recluster", "fast", "slow", "reset", "forget", "deep"]))]
 pub(crate) struct Cli {
     #[arg(long)]
     status: bool,
@@ -18,6 +18,9 @@ pub(crate) struct Cli {
     reset: bool,
     #[arg(long)]
     forget: bool,
+    /// Deep CFR on NLHE; saves the strategy net into DIR.
+    #[arg(long, value_name = "DIR", num_args = 0..=1, default_missing_value = "nets")]
+    deep: Option<std::path::PathBuf>,
     #[command(flatten)]
     universe: Universe,
 }
@@ -36,6 +39,7 @@ impl Cli {
             (self.reset(), forge::Mode::Reset),
             (self.forget(), forge::Mode::Forget),
             (self.status(), forge::Mode::Status),
+            (self.deep().is_some(), forge::Mode::Deep(self.deep().cloned().unwrap_or_default())),
         ]
         .into_iter()
         .find_map(|(flag, mode)| flag.then_some(mode))
@@ -68,5 +72,9 @@ impl Cli {
 
     fn forget(&self) -> bool {
         self.forget
+    }
+
+    fn deep(&self) -> Option<&std::path::PathBuf> {
+        self.deep.as_ref()
     }
 }

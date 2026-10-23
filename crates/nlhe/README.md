@@ -18,6 +18,7 @@ flowchart LR
 | `cfr/` | The `Flagship` configuration of `Tabular<NlheEncoder, …>`, the `NlheSolver` queries, `NlheEncoder`, and the subgame samplers `Adapt` / `Nest` |
 | `blueprint/` | Trained-strategy views: `Strategy`, `Memory`, `Record`, `Lookup`, and the DB-backed `LazyBlueprint` |
 | `store/` | PostgreSQL I/O (`server` feature): `Source`, `Sink`, the binary-COPY `Wire`, and the blueprint table `NlheBlueprint` |
+| `full/` | `neural` feature: `FullInfo` (whole-hand history, `Ledger` of chips, canonical `Arrangement` of cards), built only by the table-free `FullEncoder::resume`; each part is a `neural::Block`, so `NlheEmbedder` is `FullInfo`'s own 918-wide block, with the 18-edge grid as outputs. |
 
 ## Bet Sizing Abstraction
 

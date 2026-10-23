@@ -21,7 +21,8 @@ lloyd          = { workspace = true, features = ["server"] }
 daybook        = { workspace = true }
 kicker         = { workspace = true }
 mccfr          = { workspace = true, features = ["async"] }
-nlhe           = { workspace = true, features = ["server"] }
+nlhe           = { workspace = true, features = ["server", "neural"] }
+neural         = { workspace = true }
 monge          = { workspace = true }
 vitals         = { workspace = true }
 tokio-postgres = "0.7"
