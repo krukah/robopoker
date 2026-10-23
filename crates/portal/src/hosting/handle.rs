@@ -76,8 +76,12 @@ impl RoomHandle {
         &mut self.bridge
     }
 
+    /// A reconnect replaces the bridge; the stale task would otherwise keep draining the shared
+    /// receiver and escape `abort`.
     pub fn watch(&mut self, bridge: tokio::task::AbortHandle) {
-        *self.bridge_mut() = Some(bridge);
+        if let Some(stale) = self.bridge_mut().replace(bridge) {
+            stale.abort();
+        }
     }
 
     pub fn abort(&self) {
