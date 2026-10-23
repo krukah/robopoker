@@ -4,17 +4,12 @@ use deuce::*;
 use kicker::*;
 use pokerkit::*;
 
-/// The interpretable identity of one abstraction bucket: a short name a human
-/// can hold in their head, and a description that spells out the measured
-/// evidence behind it.
+/// The interpretable identity of one abstraction bucket: a short name a human can hold in their
+/// head, and a description that spells out the measured evidence behind it.
 ///
-/// Both strings are *derived*, never authored — [`Gloss::from`] is a pure
-/// function of a [`Profile`], so re-clustering and re-running the pipeline
-/// reproduces the glossary rather than orphaning hand-written prose against
-/// buckets that have since moved.
-///
-/// Serializes as `{abs, name, description}` — the wire shape the analysis
-/// frontend reads off `/topology/gloss`.
+/// Both strings are *derived*, never authored — [`Gloss::from`] is a pure function of a
+/// [`Profile`], so re-clustering and re-running the pipeline reproduces the glossary rather
+/// than orphaning hand-written prose against buckets that have since moved.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Gloss {
     abs: Abstraction,
@@ -88,9 +83,9 @@ impl Gloss {
         std::iter::once(class.label())
             .chain(
                 Self::qualifiers(profile, baseline, class)
-                    .into_iter()
+                    .iter()
                     .take(Self::TERMS)
-                    .map(|feature| feature.label()),
+                    .map(Feature::label),
             )
             .collect::<Vec<&str>>()
             .join(", ")
@@ -308,7 +303,7 @@ impl From<(Abstraction, String, String)> for Gloss {
 
 impl std::fmt::Display for Gloss {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:<10} {}\n{:<10} {}", self.abs.to_string(), self.name, "", self.description)
+        write!(f, "{:<10} {}\n{:<10} {}", self.abs().to_string(), self.name(), "", self.description())
     }
 }
 
@@ -359,9 +354,6 @@ mod tests {
     use super::*;
 
     /// The wire contract the analysis frontend reads off `/topology/gloss`.
-    /// `abs` goes over as the display form, not the packed integer, so a
-    /// payload stays readable and the client parses it back to the same
-    /// bucket.
     #[test]
     fn wire_shape_is_abs_name_description() {
         assert_eq!(
@@ -389,44 +381,46 @@ mod tests {
         assert_eq!(gloss.description(), back.description());
     }
 
-    fn profile(index: usize, hands: &[&str]) -> Profile {
-        Profile::from((
-            Census::from((Abstraction::from((Street::Flop, index)), hands.len(), 0.5, 0.62, 0.11)),
-            hands
-                .iter()
-                .map(|obs| Observation::try_from(*obs).expect("parses"))
-                .collect::<Vec<Observation>>(),
-        ))
-    }
+    impl Gloss {
+        fn profile(index: usize, hands: &[&str]) -> Profile {
+            Profile::from((
+                Census::from((Abstraction::from((Street::Flop, index)), hands.len(), 0.5, 0.62, 0.11)),
+                hands
+                    .iter()
+                    .map(|obs| Observation::try_from(*obs).expect("parses"))
+                    .collect::<Vec<Observation>>(),
+            ))
+        }
 
-    /// Both buckets sit on high boards, so the texture carries no lift and no
-    /// texture term is earned — which leaves the class and its kicker.
-    fn street() -> Vec<Profile> {
-        vec![
-            profile(0, &["As2h ~ Ad7c9s", "Ks2h ~ Kd7c9s", "Qs3h ~ Qd7c9s", "As4h ~ Ad7c8s"]),
-            profile(1, &["5s4h ~ Ad7c9s", "6s3h ~ Kd7c9s", "5s2h ~ Qd7c9s", "6s4h ~ Ad7c8s"]),
-        ]
-    }
+        /// Both buckets sit on high boards, so the texture carries no lift and no
+        /// texture term is earned — which leaves the class and its kicker.
+        fn street() -> Vec<Profile> {
+            vec![
+                Self::profile(0, &["As2h ~ Ad7c9s", "Ks2h ~ Kd7c9s", "Qs3h ~ Qd7c9s", "As4h ~ Ad7c8s"]),
+                Self::profile(1, &["5s4h ~ Ad7c9s", "6s3h ~ Kd7c9s", "5s2h ~ Qd7c9s", "6s4h ~ Ad7c8s"]),
+            ]
+        }
 
-    fn name(index: usize) -> String {
-        let street = street();
-        String::from(Gloss::from((&street[index], &Baseline::from(street.as_slice()))).name())
+        fn named(index: usize) -> String {
+            let street = Self::street();
+            String::from(Self::from((&street[index], &Baseline::from(street.as_slice()))).name())
+        }
     }
 
     #[test]
     fn a_decisive_class_leads_the_name_and_takes_its_kicker() {
-        assert_eq!("top pair, weak kicker · 62%±11", name(0));
+        assert_eq!("top pair, weak kicker · 62%±11", Gloss::named(0));
     }
 
     #[test]
     fn the_description_names_what_is_distinctive() {
-        let street = street();
+        let street = Gloss::street();
         let gloss = Gloss::from((&street[0], &Baseline::from(street.as_slice())));
         assert!(gloss.description().contains("Distinctive: top pair +50 pts"), "{}", gloss.description());
     }
 
     #[test]
     fn a_bucket_that_missed_says_so() {
-        assert_eq!("no pair · 62%±11", name(1));
+        assert_eq!("no pair · 62%±11", Gloss::named(1));
     }
 }

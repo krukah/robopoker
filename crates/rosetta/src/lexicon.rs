@@ -11,11 +11,10 @@ use tokio_postgres::Client;
 
 /// Reading and writing the `mechinterp` table, and the sampling that feeds it.
 ///
-/// Every read is index-served: the census is one grouped scan of `transitions`
-/// against the 782-row `abstraction` table, and each sample is a
-/// `(abs, position)` range lookup rather than a scan of the 123M-row
-/// `isomorphism` table. Interpreting the whole abstraction costs a few seconds
-/// and touches a few tens of thousands of rows.
+/// Every read is index-served: the census is one grouped scan of `transitions` against the
+/// 782-row `abstraction` table, and each sample is a `(abs, position)` range lookup rather than
+/// a scan of the 123M-row `isomorphism` table. Interpreting the whole abstraction costs a few
+/// seconds and touches a few tens of thousands of rows.
 #[async_trait::async_trait]
 pub trait Lexicon {
     /// Buckets sampled at once. The connection pipelines, so this is bounded

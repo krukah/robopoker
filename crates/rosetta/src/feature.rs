@@ -3,15 +3,7 @@ use deuce::*;
 
 /// One mechanically-decidable predicate about a player's view of a hand.
 ///
-/// Every feature is a pure function of the cards: no equity, no strategy, no
-/// clustering. A bucket is interpreted by which predicates its sampled members
-/// share, so the vocabulary is deliberately small, exhaustive within each
-/// group, and stable across re-clustering — the same cards always yield the
-/// same features, which is what makes a [`Gloss`](crate::Gloss) reproducible.
-///
-/// Declaration order is display order and groups the vocabulary: made hands
-/// first (exactly one holds per observation), then kicker quality, draws, hero
-/// shape, board texture.
+/// Every feature is a pure function of the cards: no equity, no strategy, no clustering.
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Feature {
     Monster,
@@ -456,20 +448,22 @@ impl std::fmt::Display for Feature {
 mod tests {
     use super::*;
 
-    fn read(obs: &str) -> Vec<Feature> {
-        Feature::of(&Observation::try_from(obs).expect("parses"))
+    impl Feature {
+        fn read(obs: &str) -> Vec<Self> {
+            Self::of(&Observation::try_from(obs).expect("parses"))
+        }
     }
 
     #[test]
     fn top_pair_top_kicker() {
-        let features = read("AsKh ~ Kd7c2s");
+        let features = Feature::read("AsKh ~ Kd7c2s");
         assert!(features.contains(&Feature::TopPair));
         assert!(features.contains(&Feature::TopKicker));
     }
 
     #[test]
     fn overpair_carries_no_kicker() {
-        let features = read("AsAh ~ Kd7c2s");
+        let features = Feature::read("AsAh ~ Kd7c2s");
         assert!(features.contains(&Feature::Overpair));
         assert!(features.contains(&Feature::PocketPair));
         assert!(Feature::KICKS.iter().all(|kick| !features.contains(kick)));
@@ -477,36 +471,36 @@ mod tests {
 
     #[test]
     fn pocket_pair_below_the_board_is_an_underpair() {
-        assert!(read("3s3h ~ Kd7c4s").contains(&Feature::Underpair));
+        assert!(Feature::read("3s3h ~ Kd7c4s").contains(&Feature::Underpair));
     }
 
     #[test]
     fn bottom_pair_weak_kicker() {
-        let features = read("2h5s ~ Kd7c2s");
+        let features = Feature::read("2h5s ~ Kd7c2s");
         assert!(features.contains(&Feature::LowPair));
         assert!(features.contains(&Feature::WeakKicker));
     }
 
     #[test]
     fn a_pair_on_the_board_is_not_heros_pair() {
-        let features = read("9s4h ~ KdKc2s");
+        let features = Feature::read("9s4h ~ KdKc2s");
         assert!(features.contains(&Feature::NoPair));
         assert!(features.contains(&Feature::PairedBoard));
     }
 
     #[test]
     fn a_set_reads_as_trips() {
-        assert!(read("7s7h ~ Kd7c2s").contains(&Feature::Trips));
+        assert!(Feature::read("7s7h ~ Kd7c2s").contains(&Feature::Trips));
     }
 
     #[test]
     fn both_cards_pairing_is_two_pair() {
-        assert!(read("Ks7h ~ Kd7c2s").contains(&Feature::TwoPair));
+        assert!(Feature::read("Ks7h ~ Kd7c2s").contains(&Feature::TwoPair));
     }
 
     #[test]
     fn the_ace_of_the_suit_makes_a_flush_draw_the_nuts() {
-        let features = read("AsQs ~ 2s7s9h");
+        let features = Feature::read("AsQs ~ 2s7s9h");
         assert!(features.contains(&Feature::FlushDraw));
         assert!(features.contains(&Feature::NutFlushDraw));
         assert!(features.contains(&Feature::Suited));
@@ -514,44 +508,44 @@ mod tests {
 
     #[test]
     fn three_to_a_flush_is_a_backdoor() {
-        assert!(read("AsQs ~ 2s7h9d").contains(&Feature::BackdoorFlush));
+        assert!(Feature::read("AsQs ~ 2s7h9d").contains(&Feature::BackdoorFlush));
     }
 
     #[test]
     fn two_completing_ranks_is_open_ended() {
-        assert!(read("8s9h ~ 2cTd7s").contains(&Feature::OpenEnded));
+        assert!(Feature::read("8s9h ~ 2cTd7s").contains(&Feature::OpenEnded));
     }
 
     #[test]
     fn one_completing_rank_is_a_gutshot() {
-        assert!(read("8s9h ~ 2cJd7s").contains(&Feature::Gutshot));
+        assert!(Feature::read("8s9h ~ 2cJd7s").contains(&Feature::Gutshot));
     }
 
     #[test]
     fn the_wheel_counts_as_a_straight() {
-        assert!(read("As2h ~ 3d4c5s").contains(&Feature::Straight));
+        assert!(Feature::read("As2h ~ 3d4c5s").contains(&Feature::Straight));
     }
 
     #[test]
     fn a_board_hero_cannot_beat_plays_itself() {
-        assert!(read("2s3h ~ TdJdQcKsAh").contains(&Feature::PlaysBoard));
+        assert!(Feature::read("2s3h ~ TdJdQcKsAh").contains(&Feature::PlaysBoard));
     }
 
     #[test]
     fn the_river_has_no_draws() {
-        let features = read("AsKs ~ 2s7s9h4dJc");
+        let features = Feature::read("AsKs ~ 2s7s9h4dJc");
         assert!(Feature::DRAWS.iter().all(|draw| !features.contains(draw)));
     }
 
     #[test]
     fn ace_high_needs_an_ace_and_no_pair() {
-        assert!(read("AsQh ~ 2d7c9s").contains(&Feature::AceHigh));
-        assert!(!read("AsQh ~ 2d7cQs").contains(&Feature::AceHigh));
+        assert!(Feature::read("AsQh ~ 2d7c9s").contains(&Feature::AceHigh));
+        assert!(!Feature::read("AsQh ~ 2d7cQs").contains(&Feature::AceHigh));
     }
 
     #[test]
     fn a_pocket_pair_over_the_board_is_an_overpair_not_overcards() {
-        let features = read("AsAh ~ 2d7c9s");
+        let features = Feature::read("AsAh ~ 2d7c9s");
         assert!(features.contains(&Feature::Overpair));
         assert!(!features.contains(&Feature::Overcards));
         assert!(!features.contains(&Feature::AceHigh));
@@ -559,36 +553,40 @@ mod tests {
 
     #[test]
     fn three_of_a_rank_on_the_board_is_a_trips_board() {
-        let features = read("AsKh ~ 2d2c2s");
+        let features = Feature::read("AsKh ~ 2d2c2s");
         assert!(features.contains(&Feature::TripsBoard));
         assert!(features.contains(&Feature::PairedBoard));
-        assert!(!read("AsKh ~ 2d2c9s").contains(&Feature::TripsBoard));
+        assert!(!Feature::read("AsKh ~ 2d2c9s").contains(&Feature::TripsBoard));
     }
 
     #[test]
     fn high_card_reads_the_top_unpaired_card() {
-        assert!(read("AsQh ~ 2d7c9s").contains(&Feature::AceHigh));
-        assert!(read("KsQh ~ 2d7c9s").contains(&Feature::KingHigh));
-        assert!(read("QsTh ~ 2d7c9s").contains(&Feature::QueenHigh));
-        assert!(read("Js8h ~ 2d7c9s").contains(&Feature::JackHigh));
-        assert!(Feature::HIGHS.iter().all(|high| !read("Ts8h ~ 2d7c9s").contains(high)));
+        assert!(Feature::read("AsQh ~ 2d7c9s").contains(&Feature::AceHigh));
+        assert!(Feature::read("KsQh ~ 2d7c9s").contains(&Feature::KingHigh));
+        assert!(Feature::read("QsTh ~ 2d7c9s").contains(&Feature::QueenHigh));
+        assert!(Feature::read("Js8h ~ 2d7c9s").contains(&Feature::JackHigh));
+        assert!(
+            Feature::HIGHS
+                .iter()
+                .all(|high| !Feature::read("Ts8h ~ 2d7c9s").contains(high))
+        );
     }
 
     #[test]
     fn a_hand_that_paired_the_board_is_named_by_its_pair() {
-        let features = read("As9h ~ 2d7c9s");
+        let features = Feature::read("As9h ~ 2d7c9s");
         assert!(features.contains(&Feature::TopPair));
         assert!(!features.contains(&Feature::AceHigh));
     }
 
     #[test]
     fn board_texture_reads_off_the_board_alone() {
-        assert!(read("AsKh ~ 2d7dTd").contains(&Feature::MonotoneBoard));
-        assert!(read("AsKh ~ 2d7cTs").contains(&Feature::RainbowBoard));
-        assert!(read("AsKh ~ 7d8c9s").contains(&Feature::ConnectedBoard));
-        assert!(read("AsKh ~ 2d7cQs").contains(&Feature::HighBoard));
-        assert!(read("AsKh ~ 2d7cTs").contains(&Feature::MidBoard));
-        assert!(read("AsKh ~ 2d7c9s").contains(&Feature::LowBoard));
+        assert!(Feature::read("AsKh ~ 2d7dTd").contains(&Feature::MonotoneBoard));
+        assert!(Feature::read("AsKh ~ 2d7cTs").contains(&Feature::RainbowBoard));
+        assert!(Feature::read("AsKh ~ 7d8c9s").contains(&Feature::ConnectedBoard));
+        assert!(Feature::read("AsKh ~ 2d7cQs").contains(&Feature::HighBoard));
+        assert!(Feature::read("AsKh ~ 2d7cTs").contains(&Feature::MidBoard));
+        assert!(Feature::read("AsKh ~ 2d7c9s").contains(&Feature::LowBoard));
     }
 
     #[test]
@@ -601,7 +599,7 @@ mod tests {
             "2s3h ~ TdJdQcKsAh",
         ]
         .iter()
-        .map(|obs| read(obs))
+        .map(|obs| Feature::read(obs))
         .for_each(|features| {
             assert_eq!(1, Feature::MADE.iter().filter(|made| features.contains(made)).count());
         });

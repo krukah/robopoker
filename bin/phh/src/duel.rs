@@ -1,18 +1,13 @@
 //! Tier 3 report: what the logged decisions were worth against our blueprint.
 //!
-//! Unlike `agree`, this reads the blueprint out of the database and into memory
-//! rather than asking a backend over HTTP: a duel makes on the order of a
-//! million policy lookups, and none of them can afford a round trip.
+//! Unlike `agree`, this reads the blueprint out of the database and into memory rather than
+//! asking a backend over HTTP: a duel makes on the order of a million policy lookups, and none
+//! of them can afford a round trip.
 //!
-//! Read `delta` against `t`. A per-decision gain inside two standard errors of
-//! zero is noise however large it looks, and the comparison is built to favor us
-//! (see [`phh::Ledger`]), so a positive `delta` that clears the bar is the only
-//! result that means much.
+//! Read `delta` against `t`.
 
-use crate::mind::mind;
+use crate::minds::Minds;
 use crate::render::Table;
-use crate::render::commas;
-use crate::render::pct;
 use phh::Ledger;
 use phh::Record;
 use pokerkit::Variant;
@@ -69,89 +64,134 @@ pub struct Args {
     pub api: Option<String>,
 }
 
-pub async fn run(records: &[Record], args: &Args) -> anyhow::Result<()> {
-    let spots = phh::harvest(records, args.player.as_deref(), args.others);
-    let spots = &spots[..args.limit.unwrap_or(spots.len()).min(spots.len())];
-    eprintln!("rolling out {} spots × {} worlds ...", commas(spots.len()), args.worlds);
-    let ledger = match args.api.as_deref() {
-        Some(api) => remote(api, spots, args)?,
-        None => local(spots, args).await?,
-    };
-    report(&ledger, args, spots.len());
-    Ok(())
-}
-
-/// The in-memory path: hydrate the blueprint once, then roll out serially. Every
-/// lookup is a map read, so there is nothing for concurrency to hide.
-async fn local(spots: &[phh::Spot], args: &Args) -> anyhow::Result<Ledger> {
-    let variant = Variant::parse(&args.variant).ok_or_else(|| anyhow::anyhow!("unknown variant `{}`", args.variant))?;
-    eprintln!("hydrating the blueprint ...");
-    let model = parlor::Players::hydrate_blueprint(daybook::Pool::db().await).await;
-    let oracle = mind(variant, model, args.solve).ok_or_else(|| anyhow::anyhow!("`fish` has no blueprint to score"))?;
-    Ok(spots
-        .iter()
-        .filter_map(|spot| phh::duel(&oracle, spot, &phh::worlds(spot, args.worlds, args.seed), args.seed))
-        .collect())
-}
-
-/// The over-the-wire path: memoize and fan out across spots, because the wall
-/// clock is round trips.
-///
-/// `--variant` picks the route. `base` is a blueprint lookup; every other cell
-/// runs a CFR re-solve on the backend at roughly a second apiece, so pair those
-/// with a small `--limit` unless you mean to occupy the deployment for hours.
-fn remote(api: &str, spots: &[phh::Spot], args: &Args) -> anyhow::Result<Ledger> {
-    let variant = Variant::parse(&args.variant).ok_or_else(|| anyhow::anyhow!("unknown variant `{}`", args.variant))?;
-    let route = crate::remote::endpoint(variant).ok_or_else(|| anyhow::anyhow!("`fish` has no blueprint to score"))?;
-    let oracle = crate::remote::Remote::new(api, route);
-    eprintln!("route /strategy/{route}{}", if oracle.solves() { " — a CFR re-solve per lookup" } else { "" });
-    let ledger = crate::remote::ledger(&oracle, spots, args.worlds, args.seed);
-    eprintln!("{} distinct information sets queried", commas(oracle.hits()));
-    Ok(ledger)
-}
-
-fn report(all: &Ledger, args: &Args, attempted: usize) {
-    let who = match (args.player.as_deref(), args.others) {
-        (Some(name), false) => name.to_string(),
-        (Some(name), true) => format!("everyone but {name}"),
-        (None, _) => "every player".to_string(),
-    };
-    println!(
-        "## Decision value — {who} vs `{}` ({} of {} spots scored, {} rollouts)\n",
-        args.variant,
-        commas(all.n()),
-        commas(attempted),
-        commas(all.worlds()),
-    );
-    let mut table = Table::new(&["street", "n", "delta", "per 100", "stderr", "t"], &[8, 8, 10, 10, 10, 8]);
-    let row = |label: &str, l: &Ledger| {
-        vec![
-            label.to_string(),
-            commas(l.n()),
-            format!("{:+.4}", l.delta()),
-            format!("{:+.2}", l.per_hundred()),
-            format!("{:.4}", l.stderr()),
-            format!("{:+.2}", l.t()),
-        ]
-    };
-    for street in [deuce::Street::Flop, deuce::Street::Turn, deuce::Street::Rive] {
-        table.push(row(&format!("{street:?}"), &all.on(street)));
+impl Args {
+    fn variant(&self) -> &str {
+        &self.variant
     }
-    table.push(row("all", all));
-    print!("{table}");
-    println!("\n### What each logged action was worth\n");
-    let mut table = Table::new(&["they played", "n", "share", "delta"], &[12, 8, 8, 10]);
-    for (edge, n, delta) in all.by_edge() {
-        table.push(vec![format!("{edge}"), commas(n), pct(n, all.n()), format!("{delta:+.4}")]);
+
+    fn player(&self) -> Option<&str> {
+        self.player.as_deref()
     }
-    print!("{table}");
-    println!(
-        "\n`delta` is big blinds the logged decision gained over ours, playing both out with our\n\
-         own strategy on both seats in the same cards. Positive means they out-decided us. The\n\
-         comparison leans our way — their action was chosen against human professionals, not\n\
-         against us, and our bot plays the continuation — so a positive `delta` is real evidence\n\
-         and a negative one is not. `t` is `delta` in standard errors; inside ±2 the sign is\n\
-         noise. Blueprint had nothing to say at {} rollout decisions.",
-        commas(all.misses()),
-    );
+
+    fn others(&self) -> bool {
+        self.others
+    }
+
+    fn worlds(&self) -> usize {
+        self.worlds
+    }
+
+    fn seed(&self) -> u64 {
+        self.seed
+    }
+
+    fn solve(&self) -> bool {
+        self.solve
+    }
+
+    fn limit(&self) -> Option<usize> {
+        self.limit
+    }
+
+    fn api(&self) -> Option<&str> {
+        self.api.as_deref()
+    }
+
+    pub async fn run(records: &[Record], args: &Args) -> anyhow::Result<()> {
+        let spots = phh::Spot::harvest(records, args.player(), args.others());
+        let spots = &spots[..args.limit().unwrap_or(spots.len()).min(spots.len())];
+        eprintln!("rolling out {} spots × {} worlds ...", Table::commas(spots.len()), args.worlds());
+        let ledger = match args.api() {
+            Some(api) => Args::remote(api, spots, args)?,
+            None => Args::local(spots, args).await?,
+        };
+        Args::report(&ledger, args, spots.len());
+        Ok(())
+    }
+
+    /// The in-memory path: hydrate the blueprint once, then roll out serially. Every
+    /// lookup is a map read, so there is nothing for concurrency to hide.
+    async fn local(spots: &[phh::Spot], args: &Args) -> anyhow::Result<Ledger> {
+        let variant =
+            Variant::parse(args.variant()).ok_or_else(|| anyhow::anyhow!("unknown variant `{}`", args.variant()))?;
+        eprintln!("hydrating the blueprint ...");
+        let model = parlor::Players::hydrate_blueprint(daybook::Pool::db().await).await;
+        let oracle = Minds::mind(variant, model, args.solve())
+            .ok_or_else(|| anyhow::anyhow!("`fish` has no blueprint to score"))?;
+        Ok(spots
+            .iter()
+            .filter_map(|spot| {
+                phh::Duel::play(&oracle, spot, &phh::Duel::worlds(spot, args.worlds(), args.seed()), args.seed())
+            })
+            .collect())
+    }
+
+    /// The over-the-wire path: memoize and fan out across spots, because the wall
+    /// clock is round trips.
+    ///
+    /// `--variant` picks the route. `base` is a blueprint lookup; every other cell
+    /// runs a CFR re-solve on the backend at roughly a second apiece, so pair those
+    /// with a small `--limit` unless you mean to occupy the deployment for hours.
+    fn remote(api: &str, spots: &[phh::Spot], args: &Args) -> anyhow::Result<Ledger> {
+        let variant =
+            Variant::parse(args.variant()).ok_or_else(|| anyhow::anyhow!("unknown variant `{}`", args.variant()))?;
+        let route = crate::remote::Remote::endpoint(variant)
+            .ok_or_else(|| anyhow::anyhow!("`fish` has no blueprint to score"))?;
+        let oracle = crate::remote::Remote::new(api, route);
+        eprintln!("route /strategy/{route}{}", if oracle.solves() { " — a CFR re-solve per lookup" } else { "" });
+        let ledger = crate::remote::Remote::ledger(&oracle, spots, args.worlds(), args.seed());
+        eprintln!("{} distinct information sets queried", Table::commas(oracle.hits()));
+        Ok(ledger)
+    }
+
+    fn report(all: &Ledger, args: &Args, attempted: usize) {
+        let who = match (args.player(), args.others()) {
+            (Some(name), false) => name.to_string(),
+            (Some(name), true) => format!("everyone but {name}"),
+            (None, _) => "every player".to_string(),
+        };
+        println!(
+            "## Decision value — {who} vs `{}` ({} of {} spots scored, {} rollouts)\n",
+            args.variant(),
+            Table::commas(all.n()),
+            Table::commas(attempted),
+            Table::commas(all.worlds()),
+        );
+        let mut table = Table::new(&["street", "n", "delta", "per 100", "stderr", "t"], &[8, 8, 10, 10, 10, 8]);
+        let row = |label: &str, l: &Ledger| {
+            vec![
+                label.to_string(),
+                Table::commas(l.n()),
+                format!("{:+.4}", l.delta()),
+                format!("{:+.2}", l.per_hundred()),
+                format!("{:.4}", l.stderr()),
+                format!("{:+.2}", l.t()),
+            ]
+        };
+        for street in [deuce::Street::Flop, deuce::Street::Turn, deuce::Street::Rive] {
+            table.push(row(&format!("{street:?}"), &all.on(street)));
+        }
+        table.push(row("all", all));
+        print!("{table}");
+        println!("\n### What each logged action was worth\n");
+        let mut table = Table::new(&["they played", "n", "share", "delta"], &[12, 8, 8, 10]);
+        for (edge, n, delta) in all.by_edge() {
+            table.push(vec![
+                format!("{edge}"),
+                Table::commas(n),
+                Table::pct(n, all.n()),
+                format!("{delta:+.4}"),
+            ]);
+        }
+        print!("{table}");
+        println!(
+            "\n`delta` is big blinds the logged decision gained over ours, playing both out with our\n\
+             own strategy on both seats in the same cards. Positive means they out-decided us. The\n\
+             comparison leans our way — their action was chosen against human professionals, not\n\
+             against us, and our bot plays the continuation — so a positive `delta` is real evidence\n\
+             and a negative one is not. `t` is `delta` in standard errors; inside ±2 the sign is\n\
+             noise. Blueprint had nothing to say at {} rollout decisions.",
+            Table::commas(all.misses()),
+        );
+    }
 }

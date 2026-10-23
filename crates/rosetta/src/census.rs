@@ -2,14 +2,9 @@
 use kicker::*;
 use pokerkit::*;
 
-/// The scalar facts SQL can state about one abstraction without looking at a
-/// single card: how many isomorphisms landed in it, what fraction of its
-/// street that is, and the first two moments of the equity distribution the
-/// clustering actually optimized over.
-///
-/// `equity` and `spread` are read off the bucket's own centroid — the
-/// `transitions` mass over next-street buckets weighted by their equity — so
-/// they describe the object k-means clustered, not a card-level estimate.
+/// The scalar facts SQL can state about one abstraction without looking at a single card: how
+/// many isomorphisms landed in it, what fraction of its street that is, and the first two
+/// moments of the equity distribution the clustering actually optimized over.
 #[derive(Copy, Clone, Debug)]
 pub struct Census {
     abs: Abstraction,
@@ -40,18 +35,14 @@ impl Census {
         self.spread
     }
 
-    /// A uniform sample of dense member positions — every position when the
-    /// bucket is smaller than the sample. Positions are the dense per-bucket
-    /// index `lloyd` writes alongside each isomorphism, so a sample is an
-    /// index seek rather than a scan.
+    /// A uniform sample of dense member positions — every position when the bucket is smaller
+    /// than the sample. Positions are the dense per-bucket index `lloyd` writes alongside each
+    /// isomorphism, so a sample is an index seek rather than a scan.
     ///
-    /// Seeded on the bucket id, the way `lloyd` seeds k-means: two runs over
-    /// the same clustering draw the same members and therefore derive the same
-    /// name. An unseeded sampler makes a bucket's name drift across runs by a
-    /// few frequency points, which is enough to flip a threshold and rewrite
-    /// the label for no reason at all.
+    /// Seeded on the bucket id, the way `lloyd` seeds k-means: two runs over the same
+    /// clustering draw the same members and therefore derive the same name.
     pub fn positions(&self, size: usize) -> Vec<i32> {
-        let mut positions = rand::seq::index::sample(&mut self.rng(), self.population, size.min(self.population))
+        let mut positions = rand::seq::index::sample(&mut self.rng(), self.population(), size.min(self.population()))
             .into_iter()
             .map(|i| i as i32)
             .collect::<Vec<i32>>();
@@ -60,7 +51,7 @@ impl Census {
     }
 
     fn rng(&self) -> rand::rngs::SmallRng {
-        rand::SeedableRng::seed_from_u64(u64::from(u16::from(self.abs)))
+        rand::SeedableRng::seed_from_u64(u64::from(u16::from(self.abs())))
     }
 }
 

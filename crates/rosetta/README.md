@@ -25,7 +25,7 @@ flowchart LR
   GLO -->|"Glossary — unique names"| OUT
 ```
 
-Run it with `cargo run --release -p mechinterp -- --streets all --samples 128`. `--dry` prints without writing, `--long` prints descriptions as well as names. A full pass over all 782 buckets samples ~100k isomorphisms and takes well under a minute.
+Run it with `cargo run --release -p mechinterp -- --streets all --samples 128`. `--dry` prints without writing, `--long` prints descriptions as well as names. Re-run after any re-cluster: the table is versioned, so a new clustering writes a fresh `mechinterp_<version>` and the old glossary stays with the clustering it described. Never hand-write a row — a re-cluster would silently orphan it. A full pass over all 782 buckets samples ~100k isomorphisms and takes well under a minute.
 
 ## Where the two halves of a profile come from
 

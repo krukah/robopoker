@@ -4,12 +4,9 @@ use pokerkit::*;
 
 /// The made-hand claim a bucket's name leads with.
 ///
-/// A bucket does not always agree on one class. It can agree that hero paired
-/// *something* without agreeing which pair, or that hero beat one pair without
-/// agreeing how — and both of those are worth saying, because they separate a
-/// value bucket from a bluff bucket. So the head of a name is one of these
-/// five things, not a string, and everything downstream can ask what it is:
-/// a kicker qualifies [`Class::Pairs`] and nothing else.
+/// A bucket does not always agree on one class. It can agree that hero paired *something*
+/// without agreeing which pair, or that hero beat one pair without agreeing how — and both of
+/// those are worth saying, because they separate a value bucket from a bluff bucket.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Class {
     /// One made-hand class the bucket agrees on outright.
@@ -108,21 +105,23 @@ mod tests {
     use deuce::*;
     use kicker::*;
 
-    fn profile(hands: &[&str]) -> Profile {
-        Profile::from((
-            Census::from((Abstraction::from((Street::Flop, 0)), hands.len(), 1.0, 0.5, 0.1)),
-            hands
-                .iter()
-                .map(|obs| Observation::try_from(*obs).expect("parses"))
-                .collect::<Vec<Observation>>(),
-        ))
+    impl Class {
+        fn profile(hands: &[&str]) -> Profile {
+            Profile::from((
+                Census::from((Abstraction::from((Street::Flop, 0)), hands.len(), 1.0, 0.5, 0.1)),
+                hands
+                    .iter()
+                    .map(|obs| Observation::try_from(*obs).expect("parses"))
+                    .collect::<Vec<Observation>>(),
+            ))
+        }
     }
 
     /// Half top pair, half middle pair: no class wins, but the bucket is
     /// unanimous that hero paired something.
     #[test]
     fn a_split_between_pair_classes_is_still_a_pair() {
-        let class = Class::from(&profile(&["As2h ~ Ad7c9s", "Ks2h ~ Kd7c9s", "7s2h ~ Ad7c9s", "7s3h ~ Kd7c9s"]));
+        let class = Class::from(&Class::profile(&["As2h ~ Ad7c9s", "Ks2h ~ Kd7c9s", "7s2h ~ Ad7c9s", "7s3h ~ Kd7c9s"]));
         assert_eq!(Class::Pairs, class);
         assert!(class.pairs());
     }
@@ -130,7 +129,7 @@ mod tests {
     /// One class outright, and it is a pair, so a kicker still qualifies it.
     #[test]
     fn a_decisive_pair_names_itself() {
-        let class = Class::from(&profile(&["As2h ~ Ad7c9s", "Ks2h ~ Kd7c9s", "Qs3h ~ Qd7c9s", "As4h ~ Ad7c8s"]));
+        let class = Class::from(&Class::profile(&["As2h ~ Ad7c9s", "Ks2h ~ Kd7c9s", "Qs3h ~ Qd7c9s", "As4h ~ Ad7c8s"]));
         assert_eq!(Class::Sole(Feature::TopPair), class);
         assert!(class.pairs());
     }
@@ -138,7 +137,7 @@ mod tests {
     /// Nothing paired, so nothing a kicker can attach to.
     #[test]
     fn a_bucket_that_missed_takes_no_kicker() {
-        let class = Class::from(&profile(&["5s4h ~ Ad7c9s", "6s3h ~ Kd7c9s", "5s2h ~ Qd7c9s", "6s4h ~ Ad7c8s"]));
+        let class = Class::from(&Class::profile(&["5s4h ~ Ad7c9s", "6s3h ~ Kd7c9s", "5s2h ~ Qd7c9s", "6s4h ~ Ad7c8s"]));
         assert_eq!(Class::Sole(Feature::NoPair), class);
         assert!(!class.pairs());
     }

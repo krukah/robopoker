@@ -4,11 +4,10 @@ use pokerkit::*;
 
 /// A named slice of the [`Feature`] vocabulary.
 ///
-/// A description section needs three things that must agree: a heading, the
-/// features under it, and whether its shares are of the sample or of the
-/// group. Kicker quality is the odd one — "weak kicker 62%" means 62% of the
-/// hands that *had* a kicker, not of the bucket — and holding that convention
-/// in the caller is how a heading ends up over the wrong denominator.
+/// A description section needs three things that must agree: a heading, the features under it,
+/// and whether its shares are of the sample or of the group. Kicker quality is the odd one —
+/// "weak kicker 62%" means 62% of the hands that *had* a kicker, not of the bucket — and
+/// holding that convention in the caller is how a heading ends up over the wrong denominator.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Group {
     Made,
