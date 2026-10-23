@@ -21,14 +21,17 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 | **Optimal transport from scratch** | Sinkhorn/Greenkhorn⁵ over generic `Density`/`Support` measures |
 | **Game-agnostic CFR framework** | Pluggable regret/policy/sampling, held to closed-form equilibria on Kuhn, Leduc, RPS |
 | **Action translation⁷,⁸** | Pseudo-harmonic mapping over finite lattices |
+| **Deep CFR¹³** | Networks in place of the regret and strategy tables, under the tabular Kuhn and RPS equilibrium tests, trainable in a browser |
 | **AIVAT variance reduction** | Low-variance evaluation over hand histories |
+| **Chip-exact hand-history replay** | The 10,000 published Pluribus hands, replayed and scored decision by decision |
+| **A name for every bucket** | Each abstraction bucket described mechanically from a sample of its own hands |
 | **Evaluated in chips** | **−13.1 bb/100** against live [Slumbot](https://www.slumbot.com) over 86 K hands (§ [Evaluation](#evaluation)) |
 | **Evaluated in shape** | A litmus suite holding the 169-cell range object to GTO invariants (§ [Evaluation](#evaluation)) |
 | **Twelve published crates** | Every layer reusable on its own |
 
 ## Method
 
-An abstraction computed once, a blueprint trained against it, a re-solve at play time.
+An abstraction computed once, a blueprint trained against it — by tables or by networks — and a re-solve at play time.
 
 ```mermaid
 flowchart LR
@@ -39,6 +42,7 @@ flowchart LR
   end
   subgraph S2["2 · training"]
     D["mccfr + nlhe<br/>blueprint (Flagship)"]
+    N["neural<br/>Deep CFR"]
   end
   subgraph S3["3 · search"]
     F["subgame<br/>depth-limited re-solve"]
@@ -88,11 +92,25 @@ flowchart LR
   <sub><b>Figure 4.</b> Hero's range, the action distribution, villain's range — the canonical lens, asserted by <a href="crates/litmus"><code>litmus</code></a>.</sub>
 </p>
 
+### 4 · Deep CFR¹³ — networks in place of the tables
+
+- `neural` — `RegretNet` and `StrategyNet` behind a `DeepProfile` that implements `mccfr`'s `Profile`, so `Flow`, `Equilibrium`, and every sampling scheme run on networks unchanged
+- `CfrNet` — a candle advantage net per player, refit from fresh weights every epoch on reservoir memory; one strategy net, fit once at the end
+- `nlhe` — the `neural` feature: `FullInfo` + `NlheEmbedder`, raw cards and `rosetta`'s predicates in, the static bet grid out; no abstraction tables, no database (`trainer --deep`)
+- `petri` — the same loop on Kuhn and RPS, compiled to WebAssembly and drawn live in a browser
+
+### 5 · Instruments — names, records, opponents
+
+- `rosetta` — names every bucket from a seeded sample of its members: modal made hand, kicker, draw, and the board texture it holds *above its street's base rate*, plus the equity band k-means clustered on
+- `phh` — parses the published Pluribus hand histories, replays them chip-exact independent of `kicker`, then walks them through `kicker` to diff the two; 6-max hands that fit reduce to the heads-up tree
+- `bout` — the benchmark loop written once: one `Rival` trait per opponent, hand-history rows, a 95% interval per run; `spar` is Slumbot
+- `litmus` — the range-object invariants of Table 2, as a typed scenario catalog
+
 ## Evaluation
 
 ### In chips — live play against Slumbot
 
-`depth` = depth-limited subgame¹⁰ · `world` = safe multi-world subgame¹² · `dirac` = argmax the post-search policy · `base` = blueprint alone · `fish` = uniform random. All nine play Slumbot live, in parallel.
+`depth` = depth-limited subgame¹⁰ · `world` = safe multi-world subgame¹² · `dirac` = argmax the post-search policy · `base` = blueprint alone · `fish` = uniform random. All nine play Slumbot live, in parallel; `bin/slumbot` runs them through [`bout`](crates/bout), and `scoreboard` ranks every recorded run by bb/100.
 
 <p align="center">
   <picture>
@@ -144,6 +162,38 @@ flowchart LR
 
 <sub><b>Table 2.</b> [`litmus`](crates/litmus) answers in seconds where a winrate takes weeks. Epoch 151.7 M, 156 K infosets, sum regret 32.1. All six failures share a cause: flop k-means merges `AQo` through `A5o` into one bucket while `AK` gets its own, so CFR routes kicker strength through the jam.</sub>
 
+### In equilibrium — Deep CFR against closed forms
+
+| Network   | Kuhn, 2¹² epochs                                                     | RPS, 2¹² epochs   |
+| :-------- | :------------------------------------------------------------------- | :---------------- |
+| `MockNet` | pass — worst of 40 seeds: exploitability 0.0096, pure miss 0.013     | pass — gap 0.0019 |
+| `CfrNet`  | fail — `Q` checks first to act at 0.78, where equilibrium always checks | fail — gap 0.0345 |
+
+<sub><b>Table 3.</b> `cargo test -p neural`, both networks held to the tabular bars: exploitability < 0.015 and every pure Kuhn target within 0.03; RPS within 0.005 of (0.4, 0.4, 0.2). `MockNet` fits each memory exactly, so it isolates the loop; the `CfrNet` gap is function approximation. The `CfrNet` tests are `#[ignore]`d — minutes in release.</sub>
+
+### Against the record — the Pluribus hand histories
+
+`phh-cli duel` plays each logged decision out twice, behind their action and behind ours, with our strategy on both seats and the same runout. δ = theirs − ours. A converged blueprint best-responds to itself, so δ ≤ 0 everywhere, and `Ledger::delta` lower-bounds our own exploitability in bb/decision.
+
+| Corpus | |
+| :--- | :--- |
+| Hands | 10,000, all six hole cards in every hand |
+| Board dealt to the river | 2,748 |
+| Odd-pot half-chip splits | 8, settled exactly |
+| Always check/call, scored by `duel` | **+0.6188** bb/decision |
+
+<sub><b>Table 4.</b> The last row is the scale: what "very exploitable" reads on this corpus.</sub>
+
+### In words — a name per bucket
+
+| Bucket | By frequency | By lift |
+| :--- | :--- | :--- |
+| `F::4e` | full house, rainbow board (95%, base 40%) | full house, **trips board** (95%, base 0.2%) |
+| `T::b8` | trips, two-tone board (84%, base 70%) | trips, **paired board** (70%, base 33%) |
+| `F::4d` | two pair, connected board (91%) | two pair, **monotone board** (98%, base 8%) |
+
+<sub><b>Table 5.</b> [`rosetta`](crates/rosetta) names all 782 buckets at `v1`. Frequency names the base rate; lift names the bucket.</sub>
+
 ## Implementation
 
 🟢 published to [crates.io](https://crates.io) · ⚪ internal. Edges point to dependencies.
@@ -184,13 +234,14 @@ graph TD
   nlhe --> kicker
   nlhe --> mccfr
   nlhe --> subgame
+  neural --> pokerkit
   neural --> mccfr
   neural --> monge
   nlhe -.->|"server feature"| daybook
   nlhe -.->|"neural feature"| neural
   lloyd -.->|"server feature"| daybook
 
-  class pokerkit,deuce,monge,kicker,mccfr,subgame,neural,elkan,vitals,daybook,nlhe,lloyd pub
+  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe,lloyd pub
 ```
 
 | Crate                           |     | Description                                                                                |
@@ -203,7 +254,6 @@ graph TD
 | [`kicker`](crates/kicker)       | 🟢  | Poker game engine: state, edges, settlement, witness/perfect recall                        |
 | [`mccfr`](crates/mccfr)         | 🟢  | Game-agnostic MCCFR framework with pluggable regret/policy/sampling                        |
 | [`subgame`](crates/subgame)     | 🟢  | Safe (world-partitioned) and depth-limited subgame solving                                 |
-| [`neural`](crates/neural)       | 🟢  | Deep CFR: function approximators in place of MCCFR's regret and strategy tables            |
 | [`nlhe`](crates/nlhe)           | 🟢  | No-Limit Hold'em solver and abstraction                                                    |
 | [`daybook`](crates/daybook)     | 🟢  | PostgreSQL bulk I/O via `Schema`/`Row`/`Streamable`                                        |
 | [`vitals`](crates/vitals)       | 🟢  | OpenTelemetry init and a centrally-registered metric table                                 |
@@ -212,36 +262,39 @@ graph TD
 <details>
 <summary><b>Internal crates</b></summary>
 
-| Crate                         |     | Description                                                            |
-| ----------------------------- | --- | ---------------------------------------------------------------------- |
-| [`parlor`](crates/parlor)     | ⚪  | Async game coordinator with pluggable players and hand-history records |
-| [`portal`](crates/portal)     | ⚪  | Unified HTTP/WebSocket backend (analysis API and game hosting)         |
-| [`forge`](crates/forge)       | ⚪  | Training pipeline orchestration with distributed workers               |
-| [`arena`](crates/arena)       | ⚪  | Hand-history analysis with AIVAT variance reduction                    |
-| [`bout`](crates/bout)         | ⚪  | Benchmark harness for playing the blueprint against external bots     |
-| [`spar`](crates/spar)         | ⚪  | Slumbot API benchmark client                                           |
-| [`litmus`](crates/litmus)     | ⚪  | Strategic litmus tests for blueprint validation                        |
-| [`rosetta`](crates/rosetta)   | ⚪  | Names every abstraction bucket from a sample of its own hands          |
-| [`phh`](crates/phh)           | ⚪  | Poker-hand-history parsing and chip-exact replay                       |
-| [`bouncer`](crates/bouncer)   | ⚪  | JWT and Argon2 authentication, session management                      |
-| [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation                                |
-| [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation                             |
-| [`roshambo`](crates/roshambo) | ⚪  | Rock-Paper-Scissors — MCCFR framework validation                       |
-| [`petri`](crates/petri)       | ⚪  | Deep CFR on Kuhn and RPS, compiled to WebAssembly and drawn in a browser |
-| [`lints`](crates/lints)       | ⚪  | House Lint: diff-scoped house-style linter (outside the workspace)     |
+| Crate                         |     | Description                                                                     |
+| ----------------------------- | --- | ------------------------------------------------------------------------------- |
+| [`neural`](crates/neural)     | ⚪  | Deep CFR: function approximators in place of MCCFR's regret and strategy tables |
+| [`petri`](crates/petri)       | ⚪  | Deep CFR on Kuhn and RPS, compiled to WebAssembly and drawn in a browser        |
+| [`forge`](crates/forge)       | ⚪  | Training orchestration: clustering, fast/slow MCCFR, and Deep CFR               |
+| [`parlor`](crates/parlor)     | ⚪  | Async game coordinator with pluggable players and hand-history records          |
+| [`portal`](crates/portal)     | ⚪  | Unified HTTP/WebSocket backend (analysis API and game hosting)                  |
+| [`bouncer`](crates/bouncer)   | ⚪  | JWT and Argon2 authentication, session management                               |
+| [`arena`](crates/arena)       | ⚪  | Hand-history analysis with AIVAT variance reduction                             |
+| [`bout`](crates/bout)         | ⚪  | Benchmark harness for playing the blueprint against external bots               |
+| [`spar`](crates/spar)         | ⚪  | Slumbot client on `bout`                                                        |
+| [`litmus`](crates/litmus)     | ⚪  | Strategic litmus tests for blueprint validation                                 |
+| [`phh`](crates/phh)           | ⚪  | Poker-hand-history parsing and chip-exact replay                                |
+| [`rosetta`](crates/rosetta)   | ⚪  | Names every abstraction bucket from a sample of its own hands                   |
+| [`reel`](crates/reel)         | ⚪  | Frame-function renderer: any `CfrGame`'s tree as a deterministic animation     |
+| [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation                                         |
+| [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation                                      |
+| [`roshambo`](crates/roshambo) | ⚪  | Rock-Paper-Scissors — MCCFR framework validation                                |
+| [`lints`](crates/lints)       | ⚪  | House Lint: diff-scoped house-style linter (outside the workspace)              |
 
 </details>
 
 <details>
 <summary><b>Feature flags, resources, telemetry</b></summary>
 
-| Feature     | Description                                          |
-| ----------- | ---------------------------------------------------- |
-| `database`  | PostgreSQL integration                               |
-| `server`    | Server dependencies (Actix, Tokio, Rayon, telemetry) |
-| `async`     | Async MCCFR sampling/regret variants                 |
-| `shortdeck` | 36-card short-deck variant                           |
-| `sixmax`    | Six-handed build (`N = 6`)                           |
+| Feature     | On                                         | Description                                      |
+| ----------- | ------------------------------------------ | ------------------------------------------------ |
+| `server`    | `mccfr`, `nlhe`, `lloyd`, `parlor`, …      | Server dependencies: PostgreSQL, Tokio, Rayon, telemetry |
+| `sql`       | `deuce`, `kicker`                          | PostgreSQL row types                             |
+| `async`     | `mccfr`                                    | Async MCCFR sampling/regret variants             |
+| `neural`    | `nlhe`                                     | `FullInfo` + `NlheEmbedder` for Deep CFR on NLHE |
+| `shortdeck` | `deuce`                                    | 36-card short-deck variant                       |
+| `sixmax`    | `pokerkit`, `trainer`                      | Six-handed build (`N = 6`)                       |
 
 | Street  | Abstraction size | Metric size |
 | ------- | ---------------- | ----------- |
@@ -255,6 +308,26 @@ Training: 16 vCPU / 120 GB. PostgreSQL 14+: 8 vCPU / 64 GB. Analysis: 1 vCPU / 4
 <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650"/>
 
 <sub><b>Figure 7.</b> `vitals` emits OpenTelemetry to any OTLP backend; a metric added in <code>crates/vitals/src/metrics.rs</code> is visible immediately.</sub>
+
+</details>
+
+<details>
+<summary><b>Reproduce</b></summary>
+
+Everything but `--deep`, `petri`, and `phh-cli conform`/`calibrate` reads PostgreSQL at `$DB_URL`.
+
+```bash
+cargo run --release --bin trainer -- --cluster          # §1: abstraction, river → preflop
+cargo run --release --bin trainer -- --fast             # §2: MCCFR blueprint
+cargo run --release --bin trainer -- --deep nets        # §4: Deep CFR on NLHE; strategy net → nets/
+crates/petri/build.sh                                   # §4: Deep CFR in the browser, :8787
+cargo run --release --bin slumbot -- --variants base*1,dirac*1 --hands 4096
+cargo run --release --bin scoreboard                    # every fingerprint by bb/100, litmus alongside
+cargo run --release --bin litmus-cli -- --regime pluribus --version v1
+cargo run --release --bin phh-cli -- conform            # corpus at $PHH_DATA
+cargo run --release --bin mechinterp -- --streets all   # Table 5
+cargo run --manifest-path crates/lints/Cargo.toml -- --base origin/main
+```
 
 </details>
 
@@ -280,6 +353,7 @@ Closed-source, built entirely on this repository's public APIs — `portal`'s en
 10. (2018). Depth-Limited Solving for Imperfect-Information Games. [(NeurIPS)](https://arxiv.org/pdf/1805.08195.pdf)
 11. (2017). Reduced Space and Faster Convergence in Imperfect-Information Games via Pruning. [(ICML)](http://www.cs.cmu.edu/~sandholm/reducedSpace.icml17.pdf)
 12. (2017). Safe and Nested Subgame Solving for Imperfect-Information Games. [(NIPS)](https://www.cs.cmu.edu/~noamb/papers/17-NIPS-Safe.pdf)
+13. (2019). Deep Counterfactual Regret Minimization. [(ICML)](https://arxiv.org/abs/1811.00164)
 
 ## License
 
