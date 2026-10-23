@@ -15,12 +15,18 @@ pub struct SlowSession {
 impl SlowSession {
     pub async fn new(client: Arc<Client>) -> Self {
         PreTraining::run(&client).await;
-        crate::ensure_all(&client).await;
+        crate::Tables::ensure_all(&client).await;
         Fingerprint::check(&client).await;
         Self {
             pool: Pool::new(client.clone()).await,
             client,
         }
+    }
+}
+
+impl SlowSession {
+    fn pool(&self) -> &Pool {
+        &self.pool
     }
 }
 
@@ -35,19 +41,19 @@ impl Trainer for SlowSession {
     }
 
     async fn step(&mut self) {
-        self.pool.step().await;
+        self.pool().step().await;
     }
 
     async fn epoch(&self) -> usize {
-        self.pool.epoch()
+        self.pool().epoch()
     }
 
     async fn checkpoint(&self) -> Option<mccfr::Checkpoint> {
-        self.pool.checkpoint()
+        self.pool().checkpoint()
     }
 
     async fn summary(&self) -> String {
-        self.pool.summary()
+        self.pool().summary()
     }
 
     async fn sync(self) {

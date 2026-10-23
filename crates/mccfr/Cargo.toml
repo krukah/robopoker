@@ -22,7 +22,8 @@ monge       = { workspace = true }
 vitals      = { workspace = true, optional = true }
 rand        = { workspace = true }
 petgraph    = { workspace = true }
-paste       = "1.0"
+rustc-hash  = "2.1"
+smallvec    = "1"
 rayon       = { optional = true, version = "1.10" }
 async-trait = { optional = true, version = "0.1" }
 futures     = { optional = true, version = "0.3" }

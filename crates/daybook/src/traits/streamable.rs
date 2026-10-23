@@ -1,8 +1,8 @@
 //! Bulk data upload via PostgreSQL's binary COPY protocol.
 use crate::Ensure;
+use crate::Measure;
 use crate::Row;
 use crate::Schema;
-use crate::measure;
 use tokio_postgres::Client;
 use tokio_postgres::binary_copy::BinaryCopyInWriter;
 
@@ -20,7 +20,7 @@ pub trait Streamable: Schema + Sized + Send {
     /// Streams all rows to PostgreSQL via binary COPY.
     async fn stream(self, client: &Client) {
         client.ensure::<Self>().await;
-        measure("stream", async {
+        Measure::measure("stream", async {
             let sink = client.copy_in(Self::copy()).await.expect("copy_in");
             let writer = BinaryCopyInWriter::new(sink, Self::columns());
             futures::pin_mut!(writer);
@@ -36,11 +36,11 @@ pub trait Streamable: Schema + Sized + Send {
     /// access. Call once after all data has been uploaded.
     async fn finalize(client: &Client) {
         tracing::info!(table = Self::name(), "indexing table");
-        measure("index", client.batch_execute(Self::indices()))
+        Measure::measure("index", client.batch_execute(Self::indices()))
             .await
             .expect("indices");
         tracing::info!(table = Self::name(), "freezing table");
-        measure("freeze", client.batch_execute(Self::freeze()))
+        Measure::measure("freeze", client.batch_execute(Self::freeze()))
             .await
             .expect("freeze");
     }

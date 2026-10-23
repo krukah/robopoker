@@ -1,4 +1,6 @@
 //! Hand history recording and replay structures.
+mod visibility;
+pub use visibility::*;
 mod chair;
 mod hand;
 mod participant;

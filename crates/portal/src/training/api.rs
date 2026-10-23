@@ -16,7 +16,7 @@ impl TrainingAPI {
     pub async fn status(&self) -> anyhow::Result<ApiStatus> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT \
              (SELECT COALESCE(value, 0) FROM {} WHERE key = 'current') AS epoch, \
              (SELECT COUNT(DISTINCT (past, present, choices)) FROM {}) AS infosets, \
@@ -43,7 +43,7 @@ impl TrainingAPI {
     pub async fn snapshots(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<ApiSnapshot>> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT epoch, infos, nodes, exploit, elapsed, stamped \
              FROM {} \
              ORDER BY id DESC \
@@ -74,7 +74,7 @@ impl TrainingAPI {
     pub async fn stats(&self) -> anyhow::Result<ApiBlueprintStats> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT \
              COUNT(DISTINCT (past, present, choices))::BIGINT, \
              COUNT(*)::BIGINT, \
@@ -117,7 +117,7 @@ impl TrainingAPI {
     pub async fn street_stats(&self) -> anyhow::Result<Vec<ApiStreetStats>> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT \
              CASE a.street \
                WHEN 0 THEN 'P' \
@@ -164,7 +164,7 @@ impl TrainingAPI {
     pub async fn cold(&self, limit: i64) -> anyhow::Result<Vec<ApiColdInfoset>> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT past, present, choices, MIN(visits), COUNT(*)::BIGINT \
              FROM {} \
              GROUP BY past, present, choices \
@@ -193,7 +193,7 @@ impl TrainingAPI {
     pub async fn hot(&self, limit: i64) -> anyhow::Result<Vec<ApiHotInfoset>> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT past, present, choices, MAX(regret)::float4, COUNT(*)::BIGINT \
              FROM {} \
              GROUP BY past, present, choices \
@@ -224,7 +224,7 @@ impl TrainingAPI {
     pub async fn convergence(&self, limit: i64) -> anyhow::Result<Vec<ApiConvergence>> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT epoch, exploit, \
              (exploit - LAG(exploit) OVER (ORDER BY id))::float4 AS delta, \
              stamped \
@@ -254,7 +254,7 @@ impl TrainingAPI {
     pub async fn saturation(&self) -> anyhow::Result<ApiSaturation> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "SELECT \
              MAX(weight)::float4, \
              MAX(ABS(regret))::float4, \

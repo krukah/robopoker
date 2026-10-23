@@ -12,7 +12,7 @@ impl daybook::Schema for Snapshot {
     fn creates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            daybook::leaked(format!(
+            daybook::Pool::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 id      BIGSERIAL PRIMARY KEY,
                 epoch   BIGINT NOT NULL,
@@ -29,7 +29,7 @@ impl daybook::Schema for Snapshot {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::snapshot())))
+        SQL.get_or_init(|| daybook::Pool::leaked(format!("TRUNCATE TABLE {};", daybook::snapshot())))
     }
 
     fn indices() -> &'static str {

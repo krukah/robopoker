@@ -10,3 +10,13 @@ pub enum Translated<P, F> {
     Snap(P),
     Free(F),
 }
+
+impl<P, F> Translated<P, F> {
+    /// The snapped payload. Panics on `Free`: call it only under a policy that never declines.
+    pub fn snapped(self) -> P {
+        match self {
+            Self::Snap(payload) => payload,
+            Self::Free(_) => unreachable!("off-tree move under a snapping policy"),
+        }
+    }
+}

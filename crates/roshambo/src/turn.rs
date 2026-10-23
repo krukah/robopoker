@@ -43,10 +43,9 @@ impl CfrTurn for RpsTurn {
 }
 
 impl CfrPublic for RpsTurn {
-    type E = RpsEdge;
-    type T = RpsTurn;
+    type G = RpsGame;
 
-    fn choices(&self) -> impl Iterator<Item = Self::E> + use<> {
+    fn menu(&self) -> impl Iterator<Item = RpsEdge> + use<> {
         match self {
             Self::Terminal => vec![],
             _ => vec![RpsEdge::R, RpsEdge::P, RpsEdge::S],
@@ -54,22 +53,27 @@ impl CfrPublic for RpsTurn {
         .into_iter()
     }
 
-    fn subgame(&self) -> Vec<Self::E> {
-        vec![]
+    fn count(&self) -> usize {
+        match self {
+            Self::Terminal => 0,
+            _ => 3,
+        }
     }
 }
 
 impl CfrInfo for RpsTurn {
     type Y = ();
     type X = RpsTurn;
-    type E = RpsEdge;
-    type T = RpsTurn;
 
     fn public(&self) -> Self::X {
         *self
     }
 
     fn secret(&self) -> Self::Y {}
+
+    fn join(public: RpsTurn, _: ()) -> Self {
+        public
+    }
 }
 
 impl std::fmt::Display for RpsTurn {

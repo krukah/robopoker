@@ -3,7 +3,8 @@ use crate::*;
 use daybook::*;
 use mccfr::*;
 use nlhe::Flagship;
-use nlhe::NlheProfile;
+use nlhe::NlheBlueprint;
+use nlhe::Rows;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
@@ -22,10 +23,10 @@ pub struct FastSession {
 impl FastSession {
     pub async fn new(client: Arc<Client>) -> Self {
         PreTraining::run(&client).await;
-        crate::ensure_all(&client).await;
+        crate::Tables::ensure_all(&client).await;
         Fingerprint::check(&client).await;
         Self {
-            solver: Flagship::hydrate(client.clone()).await,
+            solver: NlheBlueprint::solver(client.clone()).await,
             client,
             flushed: Mutex::new(Instant::now()),
             exploit: Mutex::new(0.),
@@ -34,34 +35,56 @@ impl FastSession {
     }
 
     async fn snapshot(&self) {
-        let profile = self.solver.profile();
+        let profile = self.solver().profile();
         let epochs = profile.t();
         let infos = profile.encounters_ref().len() as i64;
         let nodes = profile.encounters_ref().values().map(|e| e.len() as i64).sum::<i64>();
-        let exploit = *self.exploit.lock().expect("poison");
-        let elapsed = self.started.elapsed().as_secs() as i64;
+        let exploit = *self.exploit().lock().expect("poison");
+        let elapsed = self.started().elapsed().as_secs() as i64;
         let stamped = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("time")
             .as_secs() as i64;
-        self.client.stage().await;
+        self.client().stage().await;
         let copy = format!(
             "COPY {t} (past, present, choices, context, edge, weight, regret, payoff, visits) FROM STDIN BINARY",
             t = daybook::staging()
         );
         let writer =
-            BinaryCopyInWriter::new(self.client.copy_in(&copy).await.expect("copy_in"), NlheProfile::columns());
+            BinaryCopyInWriter::new(self.client().copy_in(&copy).await.expect("copy_in"), NlheBlueprint::columns());
         futures::pin_mut!(writer);
-        for row in self.solver.profile().rows() {
+        for row in self.solver().profile().rows() {
             row.write(writer.as_mut()).await;
         }
         writer.finish().await.expect("finish stream");
-        self.client.merge().await;
-        self.client.stamp(epochs).await;
-        self.client
+        self.client().merge().await;
+        self.client().stamp(epochs).await;
+        self.client()
             .snapshot(epochs as i64, infos, nodes, exploit, elapsed, stamped)
             .await;
         tracing::info!(epoch = epochs, "profile sync complete");
+    }
+}
+
+impl FastSession {
+    fn solver(&self) -> &Flagship {
+        &self.solver
+    }
+
+    fn solver_mut(&mut self) -> &mut Flagship {
+        &mut self.solver
+    }
+
+    fn flushed(&self) -> &Mutex<Instant> {
+        &self.flushed
+    }
+
+    fn exploit(&self) -> &Mutex<pokerkit::Utility> {
+        &self.exploit
+    }
+
+    fn started(&self) -> Instant {
+        self.started
     }
 }
 
@@ -76,19 +99,19 @@ impl Trainer for FastSession {
     }
 
     async fn step(&mut self) {
-        self.solver.step();
+        self.solver_mut().step();
     }
 
     async fn epoch(&self) -> usize {
-        self.solver.profile().t()
+        self.solver().profile().t()
     }
 
     async fn checkpoint(&self) -> Option<mccfr::Checkpoint> {
-        self.solver.profile().metrics().and_then(mccfr::Metrics::checkpoint)
+        self.solver().profile().metrics().and_then(mccfr::Metrics::checkpoint)
     }
 
     async fn summary(&self) -> String {
-        self.solver
+        self.solver()
             .profile()
             .metrics()
             .map_or_else(|| "training stopped".to_string(), Progress::summary)
@@ -96,26 +119,26 @@ impl Trainer for FastSession {
 
     async fn flush(&mut self) {
         let due = {
-            let flushed = self.flushed.lock().expect("poison");
+            let flushed = self.flushed().lock().expect("poison");
             flushed.elapsed() >= TrainingHyperParams::get().flush_interval()
         };
         if !due {
             return;
         }
-        *self.flushed.lock().expect("poison") = Instant::now();
-        let e = self.solver.profile().sum_regret();
-        *self.exploit.lock().expect("poison") = e;
+        *self.flushed().lock().expect("poison") = Instant::now();
+        let e = self.solver().profile().sum_regret();
+        *self.exploit().lock().expect("poison") = e;
         tracing::info!(exploit = e, "exploitability");
         tracing::info!("periodic flush starting...");
         let labels = [
             vitals::KeyValue::new("session_type", self.session_type()),
-            vitals::KeyValue::new("regime", format!("{}", pokerkit::regime())),
+            vitals::KeyValue::new("regime", format!("{}", pokerkit::Regime::current())),
         ];
-        let m = vitals::metrics::get();
-        m.mccfr_sum_regret.record(e as f64, &labels);
+        let m = vitals::metrics::Handles::get();
+        m.mccfr_sum_regret().record(e as f64, &labels);
         let t0 = Instant::now();
         self.snapshot().await;
-        m.mccfr_flush_duration_ms
+        m.mccfr_flush_duration_ms()
             .record(t0.elapsed().as_secs_f64() * 1000.0, &labels);
     }
 

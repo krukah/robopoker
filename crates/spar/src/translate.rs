@@ -159,7 +159,7 @@ pub fn parse_actions(raw: &str, old: &str, game: &Game) -> anyhow::Result<Vec<Ac
         if rest.starts_with('/') {
             parse.street();
             if state.turn() == Turn::Chance {
-                state = state.apply(state.reveal());
+                state = state.apply(state.reveal(&mut rand::rng()));
             }
             rest = &rest[1..];
             continue;

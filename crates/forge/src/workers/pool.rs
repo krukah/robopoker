@@ -25,11 +25,11 @@ impl Pool {
     }
 
     pub async fn step(&self) {
-        futures::future::join_all(self.workers.iter().map(super::worker::Worker::step)).await;
+        futures::future::join_all(self.workers().iter().map(super::worker::Worker::step)).await;
     }
 
     pub fn checkpoint(&self) -> Option<Checkpoint> {
-        let mut prior = self.prior.lock().unwrap();
+        let mut prior = self.prior().lock().unwrap();
         if prior.0.elapsed() >= TrainingHyperParams::get().log_interval() {
             let secs = prior.0.elapsed().as_secs().max(1) as f64;
             let curr = self.infos();
@@ -44,17 +44,27 @@ impl Pool {
     }
 }
 
+impl Pool {
+    fn workers(&self) -> &[Worker] {
+        &self.workers
+    }
+
+    fn prior(&self) -> &Mutex<(Instant, usize)> {
+        &self.prior
+    }
+}
+
 impl Progress for Pool {
     fn epoch(&self) -> usize {
-        self.workers.iter().map(super::worker::Worker::epoch).sum()
+        self.workers().iter().map(super::worker::Worker::epoch).sum()
     }
 
     fn nodes(&self) -> usize {
-        self.workers.iter().map(super::worker::Worker::nodes).sum()
+        self.workers().iter().map(super::worker::Worker::nodes).sum()
     }
 
     fn infos(&self) -> usize {
-        self.workers.iter().map(super::worker::Worker::infos).sum()
+        self.workers().iter().map(super::worker::Worker::infos).sum()
     }
 
     fn elapsed(&self) -> std::time::Duration {

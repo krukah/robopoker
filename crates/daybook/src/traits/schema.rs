@@ -13,12 +13,10 @@ pub trait Schema {
     fn copy() -> &'static str;
     /// Returns `CREATE TABLE IF NOT EXISTS` DDL statement.
     fn creates() -> &'static str;
-    /// Returns `CREATE INDEX IF NOT EXISTS` statements for all indices.
-    /// Implementations may also fold in idempotent derived-column
-    /// population SQL (e.g. UPDATE for a per-group row index) — those
-    /// statements run before the CREATE INDEX so indices land on
-    /// populated rows. See `Lookup::indices` in clustering for an
-    /// example.
+    /// Returns `CREATE INDEX IF NOT EXISTS` statements for all indices. Implementations may
+    /// also fold in idempotent derived-column population SQL (e.g. UPDATE for a per-group row
+    /// index) — those statements run before the CREATE INDEX so indices land on populated rows.
+    /// See `Lookup::indices` in clustering for an example.
     fn indices() -> &'static str;
     /// Returns `TRUNCATE TABLE` statement for clearing data.
     fn truncates() -> &'static str;

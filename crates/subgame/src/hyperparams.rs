@@ -41,10 +41,8 @@ impl Default for SubgameHyperParams {
         Self {
             // Time budget (ms) for real-time subgame solving per decision.
             timeout_ms: 5000,
-            // Visit-count threshold at which subgame's policy gets 50%
-            // weight in the refined extraction. Per-action weight:
-            // `w(a) = visits(a) / (visits(a) + V)`. Sits near observed
-            // p50 visits → ~55-65% subgame / ~35-45% blueprint blend.
+            // Visit-count threshold at which subgame's policy gets 50% weight in the refined
+            // extraction. Per-action weight: `w(a) = visits(a) / (visits(a) + V)`.
             visit_threshold: 1 << 18,
             frontier: FrontierHyperParams::default(),
         }

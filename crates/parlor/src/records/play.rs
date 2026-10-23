@@ -70,7 +70,7 @@ mod schema {
         fn creates() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!(
+                daybook::Pool::leaked(format!(
                     "CREATE TABLE IF NOT EXISTS {} (
                     hand_id     UUID NOT NULL REFERENCES {}(id) ON DELETE CASCADE,
                     seq         SMALLINT NOT NULL,
@@ -89,7 +89,10 @@ mod schema {
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!("CREATE INDEX IF NOT EXISTS idx_actions_player ON {} (player_id);", actions()))
+                daybook::Pool::leaked(format!(
+                    "CREATE INDEX IF NOT EXISTS idx_actions_player ON {} (player_id);",
+                    actions()
+                ))
             })
         }
 

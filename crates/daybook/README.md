@@ -8,7 +8,7 @@ Table naming keys off the `(Version × Regime)` training universe — three clas
 flowchart TD
   U["(Version × Regime)<br/>training universe"]
   U --> T["table!<br/><i>no suffix</i><br/>actions · hands · players · rooms<br/>sessions · users · benchmark · litmus"]
-  U --> V["versioned!<br/><i>suffix _version</i><br/>abstraction · isomorphism<br/>street · transitions · metric"]
+  U --> V["versioned!<br/><i>suffix _version</i><br/>abstraction · isomorphism · street<br/>transitions · metric · mechinterp"]
   U --> R["regime!<br/><i>suffix _regime_version</i><br/>blueprint · epoch<br/>snapshot · staging"]
 ```
 
@@ -35,12 +35,12 @@ Common pitfalls:
 
 ## Database Table Versioning
 
-The `(Version × Regime)` Cartesian product is the "training universe". Tables fall into three classes based on what they depend on. Pick the right macro in `crates/daybook/src/lib.rs`:
+The `(Version × Regime)` Cartesian product is the "training universe". Tables fall into three classes based on what they depend on. Pick the right macro in `crates/daybook/src/tables/names.rs`:
 
 | Class                               | Macro        | Suffix                | Tables                                                          |
 | ----------------------------------- | ------------ | --------------------- | --------------------------------------------------------------- |
 | Shared (game obs / auth)            | `table!`     | none                  | `actions`, `hands`, `players`, `rooms`, `sessions`, `users`     |
-| Versioned (abstraction-derived)     | `versioned!` | `_<version>`          | `abstraction`, `isomorphism`, `street`, `transitions`, `metric` |
+| Versioned (abstraction-derived)     | `versioned!` | `_<version>`          | `abstraction`, `isomorphism`, `street`, `transitions`, `metric`, `mechinterp` |
 | Training-derived (regime × version) | `regime!`    | `_<regime>_<version>` | `blueprint`, `epoch`, `snapshot`, `staging`                     |
 
 **Note**: `regime!` always suffixes both regime and version. There's no regime-only-without-version macro because every regime-dependent table is a strategy keyed by InfoIds, and InfoIds embed abstraction IDs from the active version. Regime-only suffixing would let two versions corrupt each other's strategy data.
@@ -51,7 +51,7 @@ The `(Version × Regime)` Cartesian product is the "training universe". Tables f
 
 ### Scoreboard exception (`benchmark`, `litmus`)
 
-The `benchmark` (Slumbot bb/100) and `litmus` (structural pass/fail) tables in `scoreboard.rs` derive from a trained strategy but deliberately use `table!`, **not** `regime!`. The `regime!` rationale — that InfoId-keyed rows share a byte representation across versions and would corrupt each other — does not apply: these rows are scalar *measurements about* a strategy, each carrying its own `regime` / `version` / `fingerprint` as explicit columns, and are never joined to a blueprint by InfoId. A single shared table is what makes "rank every fingerprint" one `ORDER BY bb DESC` (see `Scoreboard::leaderboard`) instead of a `UNION` over discovered regime-suffixed tables. The `fingerprint` column (a hash of `pokerkit::config_string`, via `pokerkit::fingerprint`) is finer than `(regime, version)` and pins each score to the exact game tree that produced it. Score columns are `DOUBLE PRECISION` to avoid the `float4` panic. Surfaced by `bin/scoreboard` and the `convert` `scoreboard`/`brd` command.
+The `benchmark` (Slumbot bb/100) and `litmus` (structural pass/fail) tables in `src/leaderboard/` derive from a trained strategy but deliberately use `table!`, **not** `regime!`. The `regime!` rationale — that InfoId-keyed rows share a byte representation across versions and would corrupt each other — does not apply: these rows are scalar *measurements about* a strategy, each carrying its own `regime` / `version` / `fingerprint` as explicit columns, and are never joined to a blueprint by InfoId. A single shared table is what makes "rank every fingerprint" one `ORDER BY bb DESC` (see `Scoreboard::leaderboard`) instead of a `UNION` over discovered regime-suffixed tables. The `fingerprint` column (a hash of `pokerkit::config_string`, via `pokerkit::fingerprint`) is finer than `(regime, version)` and pins each score to the exact game tree that produced it. Score columns are `DOUBLE PRECISION` to avoid the `float4` panic. Surfaced by `bin/scoreboard` and the `convert` `scoreboard`/`brd` command.
 
 ## Regime fingerprint
 
@@ -65,12 +65,12 @@ The `fingerprint_<regime>_<version>` table holds a single row with a textual fin
 
 **To resolve a mismatch:** revert the constant change, bump `Version` (forks tables cleanly), or run `trainer --mode reset` (truncates blueprint + epoch + snapshot + fingerprint, then re-fingerprints on next training run).
 
-**When you add a new regime-affecting constant**, add it to `pokerkit::config_string` in `crates/pokerkit/src/regime.rs`. Anything you forget is silent drift that the runtime check won't catch.
+**When you add a new regime-affecting constant**, add it to `pokerkit::config_string` in `crates/pokerkit/src/runtime/regime.rs`. Anything you forget is silent drift that the runtime check won't catch.
 
 **Adding a future `Version`** (when bumping K-means params):
 
-1. Add the variant to the enum in `crates/pokerkit/src/version.rs`; update `Display`, `suffix()`, and `clustering_suffix()` matches (clap derives the CLI parse)
-2. Bump `KMEANS_*_CLUSTER_COUNT` constants in `crates/pokerkit/src/lib.rs` (clustering is deterministic via hashed seeds — same params give identical clusters, so a new version is only meaningful with new params)
+1. Add the variant to the enum in `crates/pokerkit/src/runtime/version.rs`; update `Display`, `suffix()`, and `clustering_suffix()` matches (clap derives the CLI parse)
+2. Bump `KMEANS_*_CLUSTER_COUNT` constants in `crates/pokerkit/src/consts.rs` (clustering is deterministic via hashed seeds — same params give identical clusters, so a new version is only meaningful with new params)
 3. Recompile + deploy trainer
 4. `trainer --version <vN> --fast` auto-clusters fresh into `_<vN>`-suffixed tables, then trains
 5. **Caveat**: `Layer<K, N>` is const-generic, so one binary has one set of K. To run two versions concurrently from the same binary, refactor `Street::k()` to runtime dispatch.
@@ -153,6 +153,11 @@ erDiagram
         real dx
         smallint street
     }
+    MECHINTERP {
+        smallint abs PK
+        text name
+        text description
+    }
     BLUEPRINT {
         bigint edge
         bigint past
@@ -222,6 +227,7 @@ erDiagram
     ABSTRACTION ||--o{ TRANSITIONS : "prev bucket"
     ABSTRACTION ||--o{ TRANSITIONS : "next bucket"
     ABSTRACTION ||--o{ METRIC : "pairwise EMD"
+    ABSTRACTION ||--|| MECHINTERP : "named by"
     ABSTRACTION ||--o{ BLUEPRINT : "present bucket (logical)"
     EPOCH ||--o{ SNAPSHOT : checkpoints
     FINGERPRINT ||--|| BLUEPRINT : guards
@@ -250,6 +256,7 @@ Deterministic products of hierarchical K-means + Sinkhorn; rebuilt per clusterin
 - **`isomorphism`** — canonical-hand → bucket map. `obs` → `abs`; `equity`, `position`.
 - **`transitions`** — next-street bucket flow. `prev`→`next` with mass `dx`.
 - **`metric`** — pairwise EMD between buckets, `tri` = triangular-index-encoded pair.
+- **`mechinterp`** — one derived gloss per bucket: `abs` PK, `name`, `description`. Written by `bin/mechinterp` via the `rosetta` crate, which samples each bucket's members and reads their card features. Versioned because a bucket id only means something inside the clustering that produced it.
 
 ### Training artifacts (`regime!` → `_pluribus_v3`)
 
@@ -263,7 +270,7 @@ Depend on both clustering and bet-sizing regime. Written by `forge` (trainer) an
 
 ### Scoreboard (`table!` — shared)
 
-Cross-fingerprint success metrics — see [Scoreboard exception](#scoreboard-exception-benchmark-litmus) above for the naming rationale, and `scoreboard.rs`. Surfaced by `bin/scoreboard` and the `convert` `scoreboard`/`brd` command.
+Cross-fingerprint success metrics — see [Scoreboard exception](#scoreboard-exception-benchmark-litmus) above for the naming rationale, and `src/leaderboard/`. Surfaced by `bin/scoreboard` and the `convert` `scoreboard`/`brd` command.
 
 - **`benchmark`** — one row per Slumbot benchmark run, per `variant`: `bb` (bb/100), `conf` (95% CI half-width), `stddev`, `hands`, blueprint `epoch`. `FLOAT8` to avoid the `float4` deserializer panic.
 - **`litmus`** — one row per litmus catalog run: `pass`/`fail`/`skip`/`error` counts, blueprint `epoch`.

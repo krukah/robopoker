@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use serde::Serialize;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
@@ -8,20 +7,16 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
-#[derive(Deserialize)]
-pub struct LoginRequest {
-    pub username: String,
-    pub password: String,
-}
+impl RegisterRequest {
+    pub fn email(&self) -> &str {
+        &self.email
+    }
 
-#[derive(Serialize)]
-pub struct AuthResponse {
-    pub token: String,
-    pub user: UserInfo,
-}
+    pub fn username(&self) -> &str {
+        &self.username
+    }
 
-#[derive(Serialize)]
-pub struct UserInfo {
-    pub id: String,
-    pub username: String,
+    pub fn password(&self) -> &str {
+        &self.password
+    }
 }

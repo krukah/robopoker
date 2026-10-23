@@ -74,7 +74,7 @@ impl Runtime {
         db.ensure::<daybook::Benchmark>().await;
         let epoch = db.epochs().await as i64;
         let flagship = if self.variants.iter().any(|(v, _)| v.requires_blueprint()) {
-            Some(parlor::hydrate_blueprint(db.clone()).await)
+            Some(parlor::Players::hydrate_blueprint(db.clone()).await)
         } else {
             None
         };

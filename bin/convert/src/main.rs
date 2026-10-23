@@ -6,8 +6,8 @@
 
 #[tokio::main]
 async fn main() {
-    let _telemetry = vitals::init();
-    pokerkit::kys();
-    pokerkit::brb();
+    let _telemetry = vitals::TelemetryGuard::init();
+    pokerkit::Signals::kys();
+    pokerkit::Signals::brb();
     portal::CLI::run().await;
 }

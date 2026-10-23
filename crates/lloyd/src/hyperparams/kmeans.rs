@@ -29,9 +29,17 @@ impl KmeansHyperParams {
     pub fn iterations(&self, street: Street) -> usize {
         match street {
             Street::Pref | Street::Rive => 0,
-            Street::Flop => self.flop_iterations,
-            Street::Turn => self.turn_iterations,
+            Street::Flop => self.flop_iterations(),
+            Street::Turn => self.turn_iterations(),
         }
+    }
+
+    fn flop_iterations(&self) -> usize {
+        self.flop_iterations
+    }
+
+    fn turn_iterations(&self) -> usize {
+        self.turn_iterations
     }
 
     /// Stop k-means iteration when largest centroid movement falls below this.

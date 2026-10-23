@@ -48,11 +48,11 @@ impl Display for Checkpoint {
         write!(
             f,
             "{:<20}{:<20}{:<20}{:<20}{:<20}",
-            format!("batch {}", self.epoch),
-            format!("nodes {}", self.nodes),
-            format!("infos {}", self.infos),
-            format!("I/sec {:.1}", self.rate),
-            format!("cpu {:.0}%", self.cpu_util),
+            format!("batch {}", self.epoch()),
+            format!("nodes {}", self.nodes()),
+            format!("infos {}", self.infos()),
+            format!("I/sec {:.1}", self.rate()),
+            format!("cpu {:.0}%", self.cpu_util()),
         )
     }
 }

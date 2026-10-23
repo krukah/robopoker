@@ -31,33 +31,33 @@ pub trait Trainer: Send + Sync + Sized {
     async fn train(mut self) {
         tracing::info!(
             session_type = self.session_type(),
-            regime = %pokerkit::regime(),
+            regime = %pokerkit::Regime::current(),
             "training blueprint"
         );
         tracing::info!("press 'Q + ↵' to stop gracefully");
         let labels = [
             vitals::KeyValue::new("session_type", self.session_type()),
-            vitals::KeyValue::new("regime", format!("{}", pokerkit::regime())),
+            vitals::KeyValue::new("regime", format!("{}", pokerkit::Regime::current())),
         ];
-        let metrics = vitals::metrics::get();
+        let metrics = vitals::metrics::Handles::get();
         let mut last_nodes = 0usize;
         let mut last_infos = 0usize;
         loop {
             let epoch = self.epoch().await;
             let step_span = tracing::info_span!("mccfr.step", session_type = self.session_type(), epoch,);
             self.step().instrument(step_span).await;
-            metrics.mccfr_steps.add(1, &labels);
+            metrics.mccfr_steps().add(1, &labels);
             self.checkpoint()
                 .await
                 .inspect(|cp| tracing::info!(nodes = cp.nodes(), infos = cp.infos(), "checkpoint: {}", cp))
                 .inspect(|cp| {
                     metrics
-                        .mccfr_nodes
+                        .mccfr_nodes()
                         .add(cp.nodes().saturating_sub(last_nodes) as u64, &labels);
                 })
                 .inspect(|cp| {
                     metrics
-                        .mccfr_infos
+                        .mccfr_infos()
                         .add(cp.infos().saturating_sub(last_infos) as u64, &labels);
                 })
                 .inspect(|cp| {
@@ -66,7 +66,7 @@ pub trait Trainer: Send + Sync + Sized {
                 });
             let flush_span = tracing::info_span!("mccfr.flush", session_type = self.session_type(), epoch,);
             self.flush().instrument(flush_span).await;
-            if pokerkit::interrupted() {
+            if pokerkit::Signals::interrupted() {
                 tracing::info!("{}", self.summary().await);
                 break;
             }

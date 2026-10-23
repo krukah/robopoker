@@ -1,86 +1,22 @@
-//! Hierarchical k-means clustering for strategic abstraction.
+//! Hierarchical k-means clustering for strategic abstraction: reduces 3.1 trillion poker
+//! situations to strategically-equivalent buckets, one street at a time, clustering hands by
+//! their distribution over next-street outcomes.
 //!
-//! This module reduces the 3.1 trillion unique poker situations into a tractable
-//! number of strategically-equivalent buckets. The abstraction proceeds street-by-street,
-//! clustering hands based on their distributions over next-street outcomes.
-//!
-//! ## Pipeline
-//!
-//! 1. **River** — Cluster by raw equity (win probability against random hands)
-//! 2. **Turn** — Cluster by distribution over river buckets
-//! 3. **Flop** — Cluster by distribution over turn buckets
-//! 4. **Preflop** — Cluster by distribution over flop buckets
-//!
-//! ## Core Types
-//!
-//! - [`Layer`] — A clustering layer mapping observations to abstract buckets
-//! - [`Histogram`] — Distribution over child buckets for a given hand
-//! - [`Lookup`] — Precomputed observation → bucket mapping
-//! - [`Metric`] — Pairwise EMD distances between buckets
-//!
-//! ## Algorithms
-//!
-//! - [`Elkan`] — Accelerated k-means with triangle inequality bounds
-//! - [`Sinkhorn`] — Entropic optimal transport for EMD computation
-//! - [`Absorb`] — Incremental centroid updates during clustering
-//!
-//! ## Persistence
-//!
-//! - [`Artifacts`] — Serialization of clustering results to PostgreSQL
-//! - [`Distances`] — Precomputed distance matrices for online lookup
-mod abstraction;
-mod artifacts;
-mod bins;
-mod distances;
-mod emd;
-mod equity;
-mod future;
-#[cfg(feature = "server")]
-mod gap;
-mod heuristic;
-mod histogram;
+//! River clusters on raw equity; turn, flop, and preflop each cluster on the distribution over
+//! the street below. See `README.md` for the pipeline diagram and cost model.
+mod cluster;
+mod distance;
+mod distribution;
 mod hyperparams;
-mod kmeans;
-mod layer;
-mod lookup;
-#[cfg(feature = "server")]
-mod mapping;
-mod metric;
-mod pair;
-mod phi;
-mod potential;
-#[cfg(feature = "server")]
-mod shift;
-mod sinkhorn;
-#[cfg(feature = "server")]
-mod telemetry;
-mod tests;
+mod output;
+mod transport;
 
 // Generic Elkan k-means engine (Energy excluded — pokerkit::Energy is the same f32).
-pub use elkan::{Absorb, Bounds, Drift, Elkan, Prior, Step};
+pub use elkan::{Absorb, Bounds, Drift, Elkan, Hamerly, Prior, Prune, Step};
 
-pub use abstraction::*;
-pub use artifacts::*;
-pub use bins::*;
-pub use distances::*;
-pub use emd::*;
-pub use equity::*;
-pub use future::*;
-#[cfg(feature = "server")]
-pub use gap::*;
-pub use heuristic::*;
-pub use histogram::*;
+pub use cluster::*;
+pub use distance::*;
+pub use distribution::*;
 pub use hyperparams::*;
-pub use kmeans::*;
-pub use layer::*;
-pub use lookup::*;
-#[cfg(feature = "server")]
-pub use mapping::*;
-pub use metric::*;
-pub use pair::*;
-pub use phi::*;
-pub use potential::*;
-#[cfg(feature = "server")]
-pub use shift::*;
-pub use sinkhorn::*;
-pub use tests::*;
+pub use output::*;
+pub use transport::*;

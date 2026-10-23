@@ -1,3 +1,4 @@
+use super::*;
 use bouncer::Member;
 use daybook::*;
 use deuce::*;
@@ -8,92 +9,6 @@ use pokerkit::*;
 use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio_postgres::Client;
-
-/// Bulk data access for evaluation queries.
-#[allow(async_fn_in_trait)]
-pub trait EvaluationRepository {
-    async fn eval_hands(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_bundle(&self, hand: ID<HandRecord>) -> Result<(HandRecord, Vec<Participant>, Vec<Play>), PgErr>;
-    async fn eval_bundles(
-        &self,
-        hands: &[ID<HandRecord>],
-    ) -> Result<Vec<(HandRecord, Vec<Participant>, Vec<Play>)>, PgErr>;
-    async fn eval_hands_against(
-        &self,
-        user: ID<Member>,
-        against: ID<Member>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_hands_by_stakes(
-        &self,
-        user: ID<Member>,
-        stakes: i16,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_pnl(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<(Chips, Chips)>, PgErr>;
-    async fn eval_pnl_against(
-        &self,
-        user: ID<Member>,
-        against: ID<Member>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<(Chips, Chips)>, PgErr>;
-    async fn eval_pnl_by_stakes(
-        &self,
-        user: ID<Member>,
-        stakes: i16,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<(Chips, Chips)>, PgErr>;
-    async fn eval_pnl_human_hero(
-        &self,
-        bots: &[uuid::Uuid],
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<(Chips, Chips)>, PgErr>;
-    async fn eval_pnl_human_against(
-        &self,
-        user: ID<Member>,
-        bots: &[uuid::Uuid],
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<(Chips, Chips)>, PgErr>;
-    async fn eval_hands_human_hero(
-        &self,
-        bots: &[uuid::Uuid],
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_hands_human_against(
-        &self,
-        user: ID<Member>,
-        bots: &[uuid::Uuid],
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<ID<HandRecord>>, PgErr>;
-    async fn eval_count(&self, user: ID<Member>) -> Result<i64, PgErr>;
-    async fn eval_count_against(&self, user: ID<Member>, against: ID<Member>) -> Result<i64, PgErr>;
-    async fn eval_count_by_stakes(&self, user: ID<Member>, stakes: i16) -> Result<i64, PgErr>;
-    async fn eval_count_human_hero(&self, bots: &[uuid::Uuid]) -> Result<i64, PgErr>;
-    async fn eval_count_human_against(&self, user: ID<Member>, bots: &[uuid::Uuid]) -> Result<i64, PgErr>;
-    async fn eval_policy(
-        &self,
-        past: Subgame,
-        present: NlheSecret,
-        choices: Path,
-        context: Field,
-    ) -> Result<Vec<(Edge, f32, f32)>, PgErr>;
-    async fn eval_abstraction(&self, iso: Isomorphism) -> Result<Option<Abstraction>, PgErr>;
-    async fn eval_chance_correction(
-        &self,
-        isos: &[Isomorphism],
-        past: Subgame,
-        choices: Path,
-        observed_iso: Isomorphism,
-    ) -> Result<Option<(f32, f32)>, PgErr>;
-}
 
 impl EvaluationRepository for Arc<Client> {
     async fn eval_hands(&self, user: ID<Member>, limit: i64, offset: i64) -> Result<Vec<ID<HandRecord>>, PgErr> {
@@ -128,15 +43,15 @@ impl EvaluationRepository for Arc<Client> {
         let record = self
             .query_one(sql_h.as_str(), &[&hand.inner()])
             .await
-            .map(|r| hand_from(&r))?;
+            .map(|r| Repository::hand_from(&r))?;
         let players = self
             .query(sql_p.as_str(), &[&hand.inner()])
             .await
-            .map(|rows| rows.iter().map(participant_from).collect())?;
+            .map(|rows| rows.iter().map(Repository::participant_from).collect())?;
         let actions = self
             .query(sql_a.as_str(), &[&hand.inner()])
             .await
-            .map(|rows| rows.iter().map(play_from).collect())?;
+            .map(|rows| rows.iter().map(Repository::play_from).collect())?;
         Ok((record, players, actions))
     }
 
@@ -158,23 +73,30 @@ impl EvaluationRepository for Arc<Client> {
             "SELECT hand_id, seq, player_id, encoded, elapsed_ms FROM {} WHERE hand_id = ANY($1) ORDER BY hand_id, seq",
             daybook::actions()
         ));
-        let uuids: Vec<uuid::Uuid> = hands.iter().map(pokerkit::ID::inner).collect();
+        let uuids = hands.iter().map(pokerkit::ID::inner).collect::<Vec<uuid::Uuid>>();
         let hrows = self.query(sql_h.as_str(), &[&uuids]).await?;
         let prows = self.query(sql_p.as_str(), &[&uuids]).await?;
         let arows = self.query(sql_a.as_str(), &[&uuids]).await?;
         let mut players: std::collections::HashMap<uuid::Uuid, Vec<Participant>> = std::collections::HashMap::new();
         let mut actions: std::collections::HashMap<uuid::Uuid, Vec<Play>> = std::collections::HashMap::new();
         for row in &prows {
-            players.entry(row.get(0)).or_default().push(participant_from(row));
+            players
+                .entry(row.get(0))
+                .or_default()
+                .push(Repository::participant_from(row));
         }
         for row in &arows {
-            actions.entry(row.get(0)).or_default().push(play_from(row));
+            actions.entry(row.get(0)).or_default().push(Repository::play_from(row));
         }
         Ok(hrows
             .iter()
             .map(|hr| {
                 let hid: uuid::Uuid = hr.get(0);
-                (hand_from(hr), players.remove(&hid).unwrap_or_default(), actions.remove(&hid).unwrap_or_default())
+                (
+                    Repository::hand_from(hr),
+                    players.remove(&hid).unwrap_or_default(),
+                    actions.remove(&hid).unwrap_or_default(),
+                )
             })
             .collect())
     }
@@ -446,34 +368,39 @@ impl EvaluationRepository for Arc<Client> {
     }
 }
 
-fn hand_from(row: &tokio_postgres::Row) -> HandRecord {
-    HandRecord::new(
-        ID::from(row.get::<_, uuid::Uuid>(0)),
-        ID::from(row.get::<_, uuid::Uuid>(1)),
-        row.get::<_, Board>(2),
-        row.get::<_, Chips>(3),
-        row.get::<_, parlor::records::Chair>(4).into(),
-    )
-}
+/// Namespace for the repository routines.
+pub(crate) struct Repository;
 
-fn participant_from(row: &tokio_postgres::Row) -> Participant {
-    Participant::with_visibility(
-        ID::from(row.get::<_, uuid::Uuid>(0)),
-        row.get::<_, Option<uuid::Uuid>>(1).map(ID::from),
-        row.get::<_, parlor::records::Chair>(2).into(),
-        row.get::<_, Hole>(3),
-        row.get::<_, Chips>(4),
-        row.get::<_, Visibility>(5),
-        row.get::<_, Chips>(6),
-    )
-}
+impl Repository {
+    fn hand_from(row: &tokio_postgres::Row) -> HandRecord {
+        HandRecord::new(
+            ID::from(row.get::<_, uuid::Uuid>(0)),
+            ID::from(row.get::<_, uuid::Uuid>(1)),
+            row.get::<_, Board>(2),
+            row.get::<_, Chips>(3),
+            row.get::<_, parlor::records::Chair>(4).into(),
+        )
+    }
 
-fn play_from(row: &tokio_postgres::Row) -> Play {
-    Play::new(
-        ID::from(row.get::<_, uuid::Uuid>(0)),
-        row.get::<_, Epoch>(1),
-        row.get::<_, Option<uuid::Uuid>>(2).map(ID::from),
-        row.get::<_, Action>(3),
-        row.get::<_, Option<i32>>(4),
-    )
+    fn participant_from(row: &tokio_postgres::Row) -> Participant {
+        Participant::with_visibility(
+            ID::from(row.get::<_, uuid::Uuid>(0)),
+            row.get::<_, Option<uuid::Uuid>>(1).map(ID::from),
+            row.get::<_, parlor::records::Chair>(2).into(),
+            row.get::<_, Hole>(3),
+            row.get::<_, Chips>(4),
+            row.get::<_, Visibility>(5),
+            row.get::<_, Chips>(6),
+        )
+    }
+
+    fn play_from(row: &tokio_postgres::Row) -> Play {
+        Play::new(
+            ID::from(row.get::<_, uuid::Uuid>(0)),
+            row.get::<_, Epoch>(1),
+            row.get::<_, Option<uuid::Uuid>>(2).map(ID::from),
+            row.get::<_, Action>(3),
+            row.get::<_, Option<i32>>(4),
+        )
+    }
 }

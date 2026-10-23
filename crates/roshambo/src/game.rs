@@ -4,13 +4,8 @@ use pokerkit::*;
 
 /// Game state for Rock-Paper-Scissors, encoded as a node index.
 ///
-/// The game tree has 13 nodes:
-/// - Node 0: Root (P1 to act)
-/// - Nodes 1-3: P1 chose R/P/S respectively (P2 to act)
-/// - Nodes 4-12: Terminal states (P1 chose X, P2 chose Y)
-///
-/// The `u8` encodes position in this enumeration, enabling O(1)
-/// state transitions and payoff lookups.
+/// The `u8` encodes position in this enumeration, enabling O(1) state transitions and payoff
+/// lookups.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RpsGame(u8);
 
@@ -64,12 +59,12 @@ impl CfrGame for RpsGame {
             _ => unreachable!(),
         };
         let payoff = match self.0 {
-            07 => 0. + P_WIN, // P > R
-            05 => 0. - P_WIN, // R < P
-            06 => 0. + S_WIN, // R > S
-            11 => 0. + S_WIN, // S > P
-            10 => 0. - S_WIN, // S < R
-            09 => 0. - S_WIN, // P < S
+            07 => 0. + P_WIN,
+            05 => 0. - P_WIN,
+            06 => 0. + S_WIN,
+            11 => 0. + S_WIN,
+            10 => 0. - S_WIN,
+            09 => 0. - S_WIN,
             04 | 08 | 12 => 0.0,
             00..=03 => unreachable!("eval at terminal node, depth > 1"),
             _ => unreachable!(),

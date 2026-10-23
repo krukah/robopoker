@@ -1,7 +1,6 @@
 use crate::translate::SLUMBOT_STACK;
 use bouncer::*;
 use kicker::*;
-use parlor::slumbot_opponent_id;
 use parlor::*;
 use pokerkit::*;
 use std::sync::Arc;
@@ -27,7 +26,7 @@ impl Recorder {
             room,
             context: HandContext::default(),
             hero,
-            villain: slumbot_opponent_id(),
+            villain: ID::from(Adversary::Slumbot.uuid()),
             seat: 0,
             hand: 0,
         }

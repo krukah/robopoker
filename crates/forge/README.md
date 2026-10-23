@@ -73,7 +73,7 @@ Each street produces a `lookup` (iso→abs), plus `metric` and `future` (except 
 
 ```mermaid
 flowchart TD
-  I["IsomorphismIterator(River)"] --> E["iso.equity()<br/>Monte Carlo hand strength"]
+  I["IsomorphismIterator(River)"] --> E["iso.equity()<br/>exact hand strength, ties half"]
   E --> A["Abstraction from<br/>equity percent (0-100 buckets)"]
   A --> L["Lookup → isomorphism table"]
 ```

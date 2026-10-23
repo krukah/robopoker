@@ -284,7 +284,7 @@ mod tests {
         assert_eq!(cell.observed(), [0.5]);
         assert_eq!(cell.median_error(), Some(0.0));
         assert_eq!(cell.on_grid(), 1.0);
-        assert_eq!(cell.usage(), [("1/4", 0.0), ("1/2", 1.0), ("3/4", 0.0), ("1/1", 0.0), ("2/1", 0.0)]);
+        assert_eq!(cell.usage(), [("1/4", 0.0), ("1/2", 1.0), ("1/1", 0.0), ("2/1", 0.0)]);
     }
 
     #[test]

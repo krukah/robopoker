@@ -8,12 +8,12 @@ pub struct Decision<E>
 where
     E: CfrEdge,
 {
-    pub edge: E,
+    edge: E,
     /// Accumulated probability mass, *not* normalized.
-    pub mass: Probability,
-    pub visits: u32,
+    mass: Probability,
+    visits: u32,
     /// Expected value of the information set.
-    pub payoff: Utility,
+    payoff: Utility,
 }
 
 impl<E> Decision<E>
@@ -23,10 +23,38 @@ where
     /// Divides mass by denominator for normalization.
     pub fn normalize(self, denom: Probability) -> Self {
         Self {
-            edge: self.edge,
-            mass: self.mass / denom,
-            visits: self.visits,
-            payoff: self.payoff,
+            mass: self.mass() / denom,
+            ..self
         }
+    }
+}
+
+impl<E> Decision<E>
+where
+    E: CfrEdge,
+{
+    pub fn new(edge: E, mass: Probability, visits: u32, payoff: Utility) -> Self {
+        Self {
+            edge,
+            mass,
+            visits,
+            payoff,
+        }
+    }
+
+    pub fn edge(&self) -> &E {
+        &self.edge
+    }
+
+    pub fn mass(&self) -> Probability {
+        self.mass
+    }
+
+    pub fn visits(&self) -> u32 {
+        self.visits
+    }
+
+    pub fn payoff(&self) -> Utility {
+        self.payoff
     }
 }

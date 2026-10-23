@@ -35,3 +35,20 @@ flowchart TD
 ```
 
 `GameN<P>` is generic over player count (`Game` / `HeadsUp` = 2, `FunTable` = 6, `NitTable` = 10). While `Game` forgets history, the `Recall` trait replays an action log from a post-blind root: `Witness` is the hero-only (inference) view, `Perfect` is the god's-eye (CFR training) view carrying both hands. `Showdown` distributes the pot from strongest hand down, handling side pots and split pots, emitting a `Settlement` / `PnL` per seat. Built on sibling crates `deuce` (cards, hand evaluation) and `pokerkit` (chip types, constants, regime configuration).
+
+## Layout
+
+Every module re-exports flat, so `kicker::Game` and `kicker::dto::ApiStrategy` name the same items wherever their files sit.
+
+```mermaid
+flowchart LR
+    lib["kicker"] --> table["table/<br/>Game, Seat, State, Turn, PositionName, SPR"]
+    lib --> betting["betting/<br/>Action, Edge, Size, Odds, Raise, BiasHyperParams"]
+    betting --> regime["regime/<br/>Regimen, Shape, Digest, Grid, axes"]
+    lib --> info["info/<br/>Abstraction, Field, Live, Path, Subgame"]
+    lib --> history["history/<br/>Recall, Witness, Perfect, Arrangement, Stride"]
+    lib --> settle["settle/<br/>Showdown, Settlement, PnL"]
+    lib --> room["room/<br/>LiveGame, Snapshot, ServerMessage, Phase"]
+    lib --> rollout["rollout/<br/>Hands, Session, Perpetual"]
+    lib --> dto["dto/<br/>gameplay, strategy, topology, training"]
+```

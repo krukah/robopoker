@@ -11,9 +11,13 @@ repository   = "https://github.com/krukah/robopoker"
 keywords     = ["kuhn", "cfr", "game-theory", "poker", "solver"]
 categories   = ["algorithms", "mathematics", "game-development"]
 
+[features]
+default = ["server"]
+server  = ["mccfr/server"]
+
 [dependencies]
 pokerkit = { workspace = true }
-mccfr    = { workspace = true }
+mccfr    = { version = "1.2", path = "../mccfr", default-features = false }
 subgame  = { workspace = true }
 monge    = { workspace = true }
 paste    = "1.0"

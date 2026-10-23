@@ -36,18 +36,12 @@ impl PruningHyperParams {
 impl Default for PruningHyperParams {
     fn default() -> Self {
         Self {
-            // Actions with regret below this are candidates for pruning
-            // (-300k ≈ 3× max pot). Above the regret floor so floored
-            // actions can recover via exploration.
+            // Actions with regret below this are candidates for pruning (-300k ≈ 3× max pot).
+            // Above the regret floor so floored actions can recover via exploration.
             threshold: -3e5,
             // Probability of sampling pruned actions anyway.
             explore: 0.05,
-            // Warm-up epochs before pruning activates. One epoch = one
-            // CFR step = `batch_size` trees (128 for NLHE Nlhe, see
-            // `mccfr!()` invocation in `crates/nlhe/src/solver.rs`).
-            // 16384 epochs × 128 trees = ~2.1M trees. On an r6i.8xlarge
-            // at ~300k infosets/sec this completes in roughly 5 minutes
-            // — pruning is effectively active for the entire run.
+            // Warm-up epochs before pruning activates.
             warmup: 16_384,
         }
     }

@@ -1,0 +1,110 @@
+use super::*;
+use deuce::*;
+use kicker::*;
+use monge::*;
+use pokerkit::*;
+
+/// Street-specific potential type aliases.
+pub type PhiPref = Phi<N_PREF>;
+pub type PhiFlop = Phi<N_FLOP>;
+pub type PhiTurn = Phi<N_TURN>;
+pub type PhiRive = Phi<N_RIVE>;
+
+/// Dual potential for optimal transport. In the Kantorovich-Rubinstein dual
+/// the EMD is the max over Lipschitz potentials; Sinkhorn finds them by
+/// alternating projection onto the marginal constraints. Tagged over
+/// fixed-size [`Phi`] arrays, like [`Histogram`], so EMD never allocates.
+#[derive(Debug, Clone, Copy)]
+pub enum Potential {
+    Pref(PhiPref),
+    Flop(PhiFlop),
+    Turn(PhiTurn),
+    Rive(PhiRive),
+}
+
+impl Potential {
+    /// Creates a potential with zero values on the histogram's support.
+    pub fn zeroes(h: &Histogram) -> Self {
+        match h {
+            Histogram::Pref(b) => Potential::Pref(Phi::zeroes(b)),
+            Histogram::Flop(b) => Potential::Flop(Phi::zeroes(b)),
+            Histogram::Turn(b) => Potential::Turn(Phi::zeroes(b)),
+            Histogram::Rive(b) => Potential::Rive(Phi::zeroes(b)),
+        }
+    }
+    /// Creates a uniform potential (log(1/n) at each support element).
+    pub fn uniform(h: &Histogram) -> Self {
+        match h {
+            Histogram::Pref(b) => Potential::Pref(Phi::uniform(b)),
+            Histogram::Flop(b) => Potential::Flop(Phi::uniform(b)),
+            Histogram::Turn(b) => Potential::Turn(Phi::uniform(b)),
+            Histogram::Rive(b) => Potential::Rive(Phi::uniform(b)),
+        }
+    }
+    /// Creates a potential from histogram densities.
+    pub fn derive(h: &Histogram) -> Self {
+        match h {
+            Histogram::Pref(b) => Potential::Pref(Phi::derive(b)),
+            Histogram::Flop(b) => Potential::Flop(Phi::derive(b)),
+            Histogram::Turn(b) => Potential::Turn(Phi::derive(b)),
+            Histogram::Rive(b) => Potential::Rive(Phi::derive(b)),
+        }
+    }
+    /// Gets potential value at an abstraction.
+    pub fn density(&self, x: &Abstraction) -> Entropy {
+        match self {
+            Potential::Pref(p) => p.density(x),
+            Potential::Flop(p) => p.density(x),
+            Potential::Turn(p) => p.density(x),
+            Potential::Rive(p) => p.density(x),
+        }
+    }
+    /// Iterates over abstractions in the support.
+    pub fn support(&self) -> impl Iterator<Item = Abstraction> + '_ {
+        match self {
+            Potential::Pref(p) => IterWrap::Pref(p.support(Street::Pref)),
+            Potential::Flop(p) => IterWrap::Flop(p.support(Street::Flop)),
+            Potential::Turn(p) => IterWrap::Turn(p.support(Street::Turn)),
+            Potential::Rive(p) => IterWrap::Rive(p.support(Street::Rive)),
+        }
+    }
+    /// Adds delta to potential value at x.
+    pub fn increment(&mut self, x: &Abstraction, delta: Entropy) {
+        match self {
+            Potential::Pref(p) => p.increment(x, delta),
+            Potential::Flop(p) => p.increment(x, delta),
+            Potential::Turn(p) => p.increment(x, delta),
+            Potential::Rive(p) => p.increment(x, delta),
+        }
+    }
+    /// Sets potential value at x.
+    pub fn set(&mut self, x: &Abstraction, value: Entropy) {
+        match self {
+            Potential::Pref(p) => p.set(x, value),
+            Potential::Flop(p) => p.set(x, value),
+            Potential::Turn(p) => p.set(x, value),
+            Potential::Rive(p) => p.set(x, value),
+        }
+    }
+    /// Iterates over non-absent potential values.
+    pub fn values(&self) -> impl Iterator<Item = Entropy> + '_ {
+        match self {
+            Potential::Pref(p) => IterValWrap::Pref(p.values()),
+            Potential::Flop(p) => IterValWrap::Flop(p.values()),
+            Potential::Turn(p) => IterValWrap::Turn(p.values()),
+            Potential::Rive(p) => IterValWrap::Rive(p.values()),
+        }
+    }
+}
+
+impl Density for Potential {
+    type Support = ClusterAbs;
+
+    fn density(&self, x: &Self::Support) -> Entropy {
+        Potential::density(self, x)
+    }
+
+    fn support(&self) -> impl Iterator<Item = Self::Support> {
+        Potential::support(self).map(ClusterAbs::from)
+    }
+}

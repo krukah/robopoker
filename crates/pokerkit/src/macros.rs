@@ -2,16 +2,9 @@
 
 /// Declare a process-global singleton for a hyperparameter struct.
 ///
-/// The struct must implement [`Default`]. `T::get()` returns the active value,
-/// lazily initialized from `Default`; `T::init(v)` sets it once, returning
-/// `Err(v)` if it was already set. Replaces the former `#[derive(HyperParams)]`.
-///
-/// ```ignore
-/// #[derive(Clone, Copy, Default)]
-/// struct FooHyperParams { threshold: f32 }
-/// pokerkit::hyperparams!(FooHyperParams);
-/// // FooHyperParams::get(); FooHyperParams { threshold: 0.5 }.init();
-/// ```
+/// The struct must implement [`Default`]. `T::get()` returns the active value, lazily
+/// initialized from `Default`; `T::init(v)` sets it once, returning `Err(v)` if it was already
+/// set. Replaces the former `#[derive(HyperParams)]`.
 #[macro_export]
 macro_rules! hyperparams {
     ($ty:ty) => {
@@ -22,7 +15,7 @@ macro_rules! hyperparams {
             }
             /// Active process-global value; lazily `Default`-initialized.
             pub fn get() -> &'static Self {
-                Self::cell().get_or_init(<Self as ::std::default::Default>::default)
+                Self::cell().get_or_init(Self::default)
             }
             /// Set the process-global value once; `Err(self)` if already set.
             pub fn init(self) -> ::std::result::Result<(), Self> {
@@ -32,14 +25,8 @@ macro_rules! hyperparams {
     };
 }
 
-/// Implements `tokio_postgres` SQL codecs (ToSql/FromSql) for a domain type
-/// by delegating to a primitive representation. Every path inside is fully
-/// qualified, so call sites need no imports:
-///
-/// ```ignore
-/// #[cfg(feature = "sql")]
-/// pokerkit::codec!(Edge as i64, |e| u64::from(*e) as i64, |v| Edge::from(v as u64));
-/// ```
+/// Implements `tokio_postgres` SQL codecs (ToSql/FromSql) for a domain type by delegating to a
+/// primitive representation.
 #[macro_export]
 macro_rules! codec {
     ($ty:ty as $prim:ty, $to:expr, $from:expr) => {
@@ -59,10 +46,10 @@ macro_rules! codec {
             ::tokio_postgres::types::to_sql_checked!();
         }
 
-        impl<'a> ::tokio_postgres::types::FromSql<'a> for $ty {
+        impl<'row> ::tokio_postgres::types::FromSql<'row> for $ty {
             fn from_sql(
                 ty: &::tokio_postgres::types::Type,
-                raw: &'a [u8],
+                raw: &'row [u8],
             ) -> Result<Self, Box<dyn ::std::error::Error + Sync + Send>> {
                 <$prim as ::tokio_postgres::types::FromSql>::from_sql(ty, raw).map($from)
             }

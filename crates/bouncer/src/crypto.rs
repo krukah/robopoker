@@ -24,12 +24,20 @@ impl Crypto {
     }
 
     pub fn encode(&self, claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> {
-        jsonwebtoken::encode(&jsonwebtoken::Header::default(), claims, &self.encoding)
+        jsonwebtoken::encode(&jsonwebtoken::Header::default(), claims, self.encoding())
     }
 
     pub fn decode(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-        jsonwebtoken::decode::<Claims>(token, &self.decoding, &jsonwebtoken::Validation::default())
-            .map(|data| data.claims)
+        jsonwebtoken::decode::<Claims>(token, self.decoding(), &jsonwebtoken::Validation::default())
+            .map(|jsonwebtoken::TokenData { claims, .. }| claims)
+    }
+
+    fn encoding(&self) -> &jsonwebtoken::EncodingKey {
+        &self.encoding
+    }
+
+    fn decoding(&self) -> &jsonwebtoken::DecodingKey {
+        &self.decoding
     }
 
     pub fn hash(token: &str) -> Vec<u8> {

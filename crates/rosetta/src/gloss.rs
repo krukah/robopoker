@@ -321,7 +321,7 @@ impl daybook::Schema for Gloss {
     fn creates() -> &'static str {
         static SQL: std::sync::OnceLock<&str> = std::sync::OnceLock::<&str>::new();
         SQL.get_or_init(|| {
-            daybook::leaked(format!(
+            daybook::Pool::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                 abs         SMALLINT PRIMARY KEY,
                 name        TEXT NOT NULL,
@@ -338,7 +338,7 @@ impl daybook::Schema for Gloss {
 
     fn truncates() -> &'static str {
         static SQL: std::sync::OnceLock<&str> = std::sync::OnceLock::<&str>::new();
-        SQL.get_or_init(|| daybook::leaked(format!("TRUNCATE TABLE {};", daybook::mechinterp())))
+        SQL.get_or_init(|| daybook::Pool::leaked(format!("TRUNCATE TABLE {};", daybook::mechinterp())))
     }
 
     fn copy() -> &'static str {

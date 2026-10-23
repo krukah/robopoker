@@ -1,10 +1,9 @@
-//! Optimal transport and Earth Mover's Distance: distances between
-//! probability distributions over metric spaces, which is how clustering
-//! measures strategic similarity between poker situations.
+//! Optimal transport and Earth Mover's Distance: distances between probability distributions
+//! over metric spaces, which is how clustering measures strategic similarity between poker
+//! situations.
 //!
-//! Sinkhorn iteration is driven by temperature, iteration count, and
-//! convergence tolerance; lower temperature sharpens the transport plan at the
-//! cost of numerical stability.
+//! Sinkhorn iteration is driven by temperature, iteration count, and convergence tolerance;
+//! lower temperature sharpens the transport plan at the cost of numerical stability.
 mod coupling;
 mod density;
 mod greedy;

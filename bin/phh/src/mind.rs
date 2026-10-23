@@ -67,7 +67,7 @@ where
 #[rustfmt::skip]
 pub fn mind(variant: Variant, model: &'static nlhe::Flagship, solve: bool) -> Option<Box<dyn Oracle>> {
     let tag = variant.tag()?;
-    Some(match (tag.config.depth, tag.config.world, tag.config.dirac) {
+    Some(match (tag.config().depth(), tag.config().world(), tag.config().dirac()) {
         (false, false, false) => Mind::<                  Blueprint   >::boxed(tag, model, solve),
         (false, false, true ) => Mind::<Dirac<            Blueprint  >>::boxed(tag, model, solve),
         (true,  false, false) => Mind::<            Depth<Blueprint>  >::boxed(tag, model, solve),

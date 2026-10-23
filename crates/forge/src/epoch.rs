@@ -13,7 +13,7 @@ impl daybook::Schema for EpochMeta {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let t = daybook::epoch();
         SQL.get_or_init(|| {
-            daybook::leaked(format!(
+            daybook::Pool::leaked(format!(
                 "CREATE TABLE IF NOT EXISTS {t} (
                 key   TEXT PRIMARY KEY,
                 value BIGINT NOT NULL
@@ -35,7 +35,9 @@ impl daybook::Schema for EpochMeta {
 
     fn truncates() -> &'static str {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
-        SQL.get_or_init(|| daybook::leaked(format!("UPDATE {} SET value = 0 WHERE key = 'current'", daybook::epoch())))
+        SQL.get_or_init(|| {
+            daybook::Pool::leaked(format!("UPDATE {} SET value = 0 WHERE key = 'current'", daybook::epoch()))
+        })
     }
 
     fn freeze() -> &'static str {

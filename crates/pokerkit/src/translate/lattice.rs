@@ -24,7 +24,7 @@ where
     P: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Lattice").field("pairs", &self.pairs).finish()
+        f.debug_struct("Lattice").field("pairs", &self.pairs()).finish()
     }
 }
 
@@ -35,7 +35,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            pairs: self.pairs.clone(),
+            pairs: Box::from(self.pairs()),
             axis: PhantomData,
         }
     }
@@ -84,25 +84,29 @@ impl<A, P> Lattice<A, P>
 where
     A: Axis,
 {
+    fn pairs(&self) -> &[(f64, P)] {
+        &self.pairs
+    }
+
     /// Anchor count. Always `>= 1`.
     pub fn len(&self) -> usize {
-        self.pairs.len()
+        self.pairs().len()
     }
 
     /// True iff the lattice has no anchors. Always `false` in practice
     /// (constructor guarantees `len >= 1`), exposed to satisfy clippy.
     pub fn is_empty(&self) -> bool {
-        self.pairs.is_empty()
+        self.pairs().is_empty()
     }
 
     /// Iterator over scalars in ascending order.
     pub fn scalars(&self) -> impl ExactSizeIterator<Item = f64> + '_ {
-        self.pairs.iter().map(|(s, _)| *s)
+        self.pairs().iter().map(|(s, _)| *s)
     }
 
     /// Payload at the given anchor.
     pub fn payload(&self, anchor: Anchor) -> &P {
-        &self.pairs[anchor.idx()].1
+        &self.pairs()[anchor.idx()].1
     }
 
     /// Locate bracketing anchors `(lo, hi)` for `observed`. Returns
@@ -111,22 +115,19 @@ where
     /// anchors.
     pub fn bracket(&self, observed: Scalar<A>) -> Bracket {
         let x = observed.value();
-        let i = self.pairs.len() - 1;
-        if x <= self.pairs[0].0 {
+        let i = self.pairs().len() - 1;
+        if x <= self.pairs()[0].0 {
             Bracket::new(Anchor::new(0), Anchor::new(0))
-        } else if x >= self.pairs[i].0 {
+        } else if x >= self.pairs()[i].0 {
             Bracket::new(Anchor::new(i), Anchor::new(i))
         } else {
-            Bracket::from(self.pairs.partition_point(|(s, _)| *s < x))
+            Bracket::from(self.pairs().partition_point(|(s, _)| *s < x))
         }
     }
 }
 
-// --- Algorithms (dispatched by [`crate::Translation::resolve`]) ---
-//
-// Snap-family algorithms return [`Anchor`] directly (always on-grid).
-// The Brown-style [`Self::exact`] returns `Option<Anchor>`: the
-// dispatcher lifts `None` to [`Translated::Free`] when off-grid.
+// Snap-family algorithms return `Anchor` directly, always on-grid. `exact`
+// returns `None` off-grid, which `resolve` lifts to `Translated::Free`.
 
 impl<A, P> Lattice<A, P>
 where
@@ -143,19 +144,18 @@ where
         Anchor::new(i)
     }
 
-    /// Pseudo-harmonic conditional probability of the lower anchor for
-    /// observation `x` bracketed by `(lo, hi)`. Encodes the
-    /// Ganzfried-Sandholm 2013 formula `p = (B-x)(1+A) / (B-A)(1+x)`.
+    /// Pseudo-harmonic conditional probability of the lower anchor for observation `x`
+    /// bracketed by `(lo, hi)`. Encodes the Ganzfried-Sandholm 2013 formula `p = (B-x)(1+A) /
+    /// (B-A)(1+x)`.
     ///
-    /// The `(1+x)` term assumes the axis is non-negative — see [`Axis`].
-    /// The `lo != hi` precondition is asserted; callers must check
-    /// `Bracket::is_clamped` first.
+    /// The `(1+x)` term assumes the axis is non-negative — see [`Axis`]. The `lo != hi`
+    /// precondition is asserted; callers must check `Bracket::is_clamped` first.
     pub fn pharmonic(&self, bracket: Bracket, observed: Scalar<A>) -> f64 {
         if bracket.is_clamped() {
             unreachable!("pharmonic requires distinct bracketing anchors")
         } else {
-            let a = self.pairs[bracket.lo().idx()].0;
-            let b = self.pairs[bracket.hi().idx()].0;
+            let a = self.pairs()[bracket.lo().idx()].0;
+            let b = self.pairs()[bracket.hi().idx()].0;
             let x = observed.value();
             ((b - x) * (1.0 + a)) / ((b - a) * (1.0 + x))
         }
@@ -182,14 +182,10 @@ where
         }
     }
 
-    /// Exact-hit lookup for Brown-style abstraction-free translation:
-    /// `Some(anchor)` iff `observed` falls within the relative
-    /// [`EXACT_SNAP_TOLERANCE`](crate::EXACT_SNAP_TOLERANCE) of an anchor
-    /// scalar (anchors and observations are both rational bet ratios), else
-    /// `None`. A near-grid bet snaps to its anchor; only a genuinely off-grid
-    /// bet is lifted by the dispatcher to [`Translated::Free`] for a nesting
-    /// player to re-solve against. Since the axis is a bet ratio, the
-    /// relative band is equivalently a relative chip difference.
+    /// Exact-hit lookup for Brown-style abstraction-free translation: `Some(anchor)` iff
+    /// `observed` falls within the relative
+    /// [`EXACT_SNAP_TOLERANCE`](crate::EXACT_SNAP_TOLERANCE) of an anchor scalar (anchors and
+    /// observations are both rational bet ratios), else `None`.
     pub fn exact(&self, observed: Scalar<A>) -> Option<Anchor> {
         let x = observed.value();
         self.scalars()
@@ -205,17 +201,19 @@ mod tests {
     struct T;
     impl Axis for T {}
 
-    fn obs(x: f64) -> Scalar<T> {
-        Scalar::new(x)
-    }
+    impl T {
+        fn obs(x: f64) -> Scalar<Self> {
+            Scalar::new(x)
+        }
 
-    fn lat(xs: impl IntoIterator<Item = f64>) -> Lattice<T> {
-        xs.into_iter().collect()
+        fn lat(xs: impl IntoIterator<Item = f64>) -> Lattice<Self> {
+            xs.into_iter().collect()
+        }
     }
 
     #[test]
     fn from_scalars_constructs_unit_payload() {
-        let l = lat([0.5, 1.0, 2.0]);
+        let l = T::lat([0.5, 1.0, 2.0]);
         assert_eq!(l.scalars().collect::<Vec<_>>(), vec![0.5, 1.0, 2.0]);
         assert_eq!(l.len(), 3);
     }
@@ -250,30 +248,30 @@ mod tests {
 
     #[test]
     fn bracket_clamps_below_extreme() {
-        let l = lat([0.5, 1.0, 2.0]);
-        let b = l.bracket(obs(0.1));
+        let l = T::lat([0.5, 1.0, 2.0]);
+        let b = l.bracket(T::obs(0.1));
         assert!(b.is_clamped());
         assert_eq!(b.lo(), Anchor::new(0));
-        let b = l.bracket(obs(0.5));
+        let b = l.bracket(T::obs(0.5));
         assert!(b.is_clamped());
         assert_eq!(b.lo(), Anchor::new(0));
     }
 
     #[test]
     fn bracket_clamps_above_extreme() {
-        let l = lat([0.5, 1.0, 2.0]);
-        let b = l.bracket(obs(2.0));
+        let l = T::lat([0.5, 1.0, 2.0]);
+        let b = l.bracket(T::obs(2.0));
         assert!(b.is_clamped());
         assert_eq!(b.lo(), Anchor::new(2));
-        let b = l.bracket(obs(3.0));
+        let b = l.bracket(T::obs(3.0));
         assert!(b.is_clamped());
         assert_eq!(b.lo(), Anchor::new(2));
     }
 
     #[test]
     fn bracket_inside_returns_distinct_anchors() {
-        let l = lat([0.5, 1.0, 2.0]);
-        let b = l.bracket(obs(0.75));
+        let l = T::lat([0.5, 1.0, 2.0]);
+        let b = l.bracket(T::obs(0.75));
         assert!(!b.is_clamped());
         assert_eq!(b.lo(), Anchor::new(0));
         assert_eq!(b.hi(), Anchor::new(1));
@@ -281,10 +279,10 @@ mod tests {
 
     #[test]
     fn pharmonic_formula_exact() {
-        let l = lat([0.5, 1.0]);
-        let bracket = l.bracket(obs(0.75));
+        let l = T::lat([0.5, 1.0]);
+        let bracket = l.bracket(T::obs(0.75));
         let expected = (1.0 - 0.75) * (1.0 + 0.5) / ((1.0 - 0.5) * (1.0 + 0.75));
-        let p = l.pharmonic(bracket, obs(0.75));
+        let p = l.pharmonic(bracket, T::obs(0.75));
         assert!((p - expected).abs() < 1e-12);
     }
 }

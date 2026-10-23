@@ -86,7 +86,7 @@ pub async fn run(records: &[Record], args: &Args) -> anyhow::Result<()> {
 async fn local(spots: &[phh::Spot], args: &Args) -> anyhow::Result<Ledger> {
     let variant = Variant::parse(&args.variant).ok_or_else(|| anyhow::anyhow!("unknown variant `{}`", args.variant))?;
     eprintln!("hydrating the blueprint ...");
-    let model = parlor::hydrate_blueprint(daybook::db().await).await;
+    let model = parlor::Players::hydrate_blueprint(daybook::Pool::db().await).await;
     let oracle = mind(variant, model, args.solve).ok_or_else(|| anyhow::anyhow!("`fish` has no blueprint to score"))?;
     Ok(spots
         .iter()

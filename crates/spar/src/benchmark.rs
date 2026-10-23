@@ -29,7 +29,7 @@ impl Benchmark {
         let mut bench = Self { results: Vec::new() };
         let mut client = Client::new().with_throttle(throttle.clone());
         for i in 0..hands {
-            if pokerkit::interrupted() {
+            if pokerkit::Signals::interrupted() {
                 tracing::info!(
                     variant = label,
                     played = bench.results.len(),
@@ -80,7 +80,7 @@ impl Benchmark {
         let mut client = Client::new().with_throttle(throttle.clone());
         let mut errors = 0u32;
         loop {
-            if pokerkit::interrupted() {
+            if pokerkit::Signals::interrupted() {
                 tracing::info!(variant = label, hands = bench.results.len(), "slumbot interrupted");
                 break;
             }
@@ -177,19 +177,15 @@ impl Benchmark {
     /// tagged with the active fingerprint and the blueprint `epoch` it was
     /// played against, so it can be ranked against other configs.
     pub async fn persist(&self, db: &tokio_postgres::Client, variant: Variant, epoch: i64) {
-        let stamped = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("time")
-            .as_secs() as i64;
-        db.record_benchmark(
+        db.record_benchmark(&daybook::Score::new(
+            pokerkit::Adversary::Slumbot.service(),
             variant.label(),
             epoch,
             self.results.len() as i64,
             self.bb_per_100(),
             self.confidence(),
             self.stddev(),
-            stamped,
-        )
+        ))
         .await;
     }
 }
@@ -197,22 +193,28 @@ impl Benchmark {
 /// Standard slumbot metric label set: cube coordinate (4 keys) + regime.
 fn labels(variant: Variant) -> [KeyValue; 5] {
     let [v, p, d, w] = variant.keys();
-    [v, p, d, w, KeyValue::new("regime", pokerkit::regime().to_string())]
+    [
+        v,
+        p,
+        d,
+        w,
+        KeyValue::new("regime", pokerkit::Regime::current().to_string()),
+    ]
 }
 
 fn record_hand(variant: Variant, result: &HandResult) {
     let lab = labels(variant);
-    let m = vitals::metrics::get();
-    m.slumbot_hands.add(1, &lab);
-    m.slumbot_hand_bb.record(result.winnings_bb, &lab);
+    let m = vitals::metrics::Handles::get().slumbot();
+    m.hands().add(1, &lab);
+    m.hand_bb().record(result.winnings_bb, &lab);
     if result.winnings_bb >= 0.0 {
-        m.slumbot_hand_bb_won.add(result.winnings_bb, &lab);
+        m.hand_bb_won().add(result.winnings_bb, &lab);
     } else {
-        m.slumbot_hand_bb_lost.add(-result.winnings_bb, &lab);
+        m.hand_bb_lost().add(-result.winnings_bb, &lab);
     }
 }
 
 fn record_error(variant: Variant) {
     let lab = labels(variant);
-    vitals::metrics::get().slumbot_errors.add(1, &lab);
+    vitals::metrics::Handles::get().slumbot().errors().add(1, &lab);
 }
