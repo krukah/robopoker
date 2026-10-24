@@ -1,7 +1,7 @@
 [package]
 name         = "petri"
 publish      = false
-version      = "1.2.0"
+version      = "3.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -15,8 +15,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 pokerkit     = { workspace = true, features = ["client"] }
 monge        = { workspace = true }
-mccfr        = { version = "1.2", path = "../mccfr", default-features = false }
-neural       = { version = "1.2", path = "../neural", default-features = false }
+mccfr        = { version = "3.0", path = "../mccfr", default-features = false }
+neural       = { package = "robopoker-neural", version = "3.0", path = "../neural", default-features = false }
 kuhn         = { path = "../kuhn", default-features = false }
 roshambo     = { path = "../roshambo", default-features = false }
 serde        = { workspace = true }

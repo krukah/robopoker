@@ -1,6 +1,6 @@
 [package]
-name         = "neural"
-version      = "1.2.0"
+name         = "robopoker-neural"
+version      = "3.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -16,7 +16,7 @@ server  = ["mccfr/server", "rayon"]
 
 [dependencies]
 pokerkit   = { workspace = true }
-mccfr      = { version = "1.2", path = "../mccfr", default-features = false }
+mccfr      = { workspace = true, default-features = false }
 monge      = { workspace = true }
 rand       = { workspace = true }
 rustc-hash = "2.1"
@@ -25,8 +25,11 @@ candle-core = "0.11"
 candle-nn   = "0.11"
 
 [dev-dependencies]
-kuhn     = { workspace = true }
-roshambo = { workspace = true }
+kuhn     = { path = "../kuhn" }
+roshambo = { path = "../roshambo" }
 
 [lints]
 workspace = true
+
+[lib]
+name = "neural"

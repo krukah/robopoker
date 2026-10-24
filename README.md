@@ -27,7 +27,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 | **A name for every bucket** | Each abstraction bucket described mechanically from a sample of its own hands |
 | **Evaluated in chips** | **−13.1 bb/100** against live [Slumbot](https://www.slumbot.com) over 86 K hands (§ [Evaluation](#evaluation)) |
 | **Evaluated in shape** | A litmus suite holding the 169-cell range object to GTO invariants (§ [Evaluation](#evaluation)) |
-| **Twelve published crates** | Every layer reusable on its own |
+| **Fourteen published crates** | Every layer reusable on its own |
 
 ## Method
 
@@ -213,6 +213,7 @@ graph TD
   lloyd["lloyd<br/><i>hand abstraction</i>"]
   nlhe["nlhe<br/><i>NLHE solver</i>"]
   neural["neural<br/><i>Deep CFR</i>"]
+  rosetta["rosetta<br/><i>bucket interpretability</i>"]
 
   deuce --> pokerkit
   kicker --> pokerkit
@@ -238,10 +239,15 @@ graph TD
   neural --> mccfr
   neural --> monge
   nlhe -.->|"server feature"| daybook
+  rosetta --> pokerkit
+  rosetta --> deuce
+  rosetta --> kicker
   nlhe -.->|"neural feature"| neural
+  nlhe -.->|"neural feature"| rosetta
+  rosetta -.->|"server feature"| daybook
   lloyd -.->|"server feature"| daybook
 
-  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe,lloyd pub
+  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe,lloyd,neural,rosetta pub
 ```
 
 | Crate                           |     | Description                                                                                |
@@ -255,6 +261,8 @@ graph TD
 | [`mccfr`](crates/mccfr)         | 🟢  | Game-agnostic MCCFR framework with pluggable regret/policy/sampling                        |
 | [`subgame`](crates/subgame)     | 🟢  | Safe (world-partitioned) and depth-limited subgame solving                                 |
 | [`nlhe`](crates/nlhe)           | 🟢  | No-Limit Hold'em solver and abstraction                                                    |
+| [`neural`](crates/neural)       | 🟢  | Deep CFR: networks in place of MCCFR's regret and strategy tables (`robopoker-neural`)     |
+| [`rosetta`](crates/rosetta)     | 🟢  | Names every abstraction bucket from a sample of its hands (`robopoker-rosetta`)            |
 | [`daybook`](crates/daybook)     | 🟢  | PostgreSQL bulk I/O via `Schema`/`Row`/`Streamable`                                        |
 | [`vitals`](crates/vitals)       | 🟢  | OpenTelemetry init and a centrally-registered metric table                                 |
 | [`robopoker`](crates/robopoker) | 🟢  | Facade re-exporting the published crates                                                   |
@@ -264,7 +272,6 @@ graph TD
 
 | Crate                         |     | Description                                                                     |
 | ----------------------------- | --- | ------------------------------------------------------------------------------- |
-| [`neural`](crates/neural)     | ⚪  | Deep CFR: function approximators in place of MCCFR's regret and strategy tables |
 | [`petri`](crates/petri)       | ⚪  | Deep CFR on Kuhn and RPS, compiled to WebAssembly and drawn in a browser        |
 | [`forge`](crates/forge)       | ⚪  | Training orchestration: clustering, fast/slow MCCFR, and Deep CFR               |
 | [`parlor`](crates/parlor)     | ⚪  | Async game coordinator with pluggable players and hand-history records          |
@@ -275,7 +282,6 @@ graph TD
 | [`spar`](crates/spar)         | ⚪  | Slumbot client on `bout`                                                        |
 | [`litmus`](crates/litmus)     | ⚪  | Strategic litmus tests for blueprint validation                                 |
 | [`phh`](crates/phh)           | ⚪  | Poker-hand-history parsing and chip-exact replay                                |
-| [`rosetta`](crates/rosetta)   | ⚪  | Names every abstraction bucket from a sample of its own hands                   |
 | [`reel`](crates/reel)         | ⚪  | Frame-function renderer: any `CfrGame`'s tree as a deterministic animation     |
 | [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation                                         |
 | [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation                                      |

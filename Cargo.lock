@@ -340,7 +340,7 @@ checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "arena"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "bouncer",
@@ -533,7 +533,7 @@ dependencies = [
 
 [[package]]
 name = "bouncer"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "actix-web",
  "argon2",
@@ -961,7 +961,7 @@ dependencies = [
 
 [[package]]
 name = "daybook"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1039,7 +1039,7 @@ dependencies = [
 
 [[package]]
 name = "deuce"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "pokerkit",
@@ -1107,7 +1107,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "elkan"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "rayon",
 ]
@@ -1236,7 +1236,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "forge"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -1247,11 +1247,11 @@ dependencies = [
  "lloyd",
  "mccfr",
  "monge",
- "neural",
  "nlhe",
  "num_cpus",
  "pokerkit",
  "rand 0.9.1",
+ "robopoker-neural",
  "tokio-postgres",
  "tracing",
  "vitals",
@@ -2002,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "kicker"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "deuce",
@@ -2018,7 +2018,7 @@ dependencies = [
 
 [[package]]
 name = "kuhn"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -2042,7 +2042,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "leduc"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -2087,7 +2087,7 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 
 [[package]]
 name = "litmus"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2116,7 +2116,7 @@ dependencies = [
 
 [[package]]
 name = "lloyd"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "async-trait",
  "const_format",
@@ -2198,7 +2198,7 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 
 [[package]]
 name = "mccfr"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -2232,7 +2232,7 @@ dependencies = [
  "clap",
  "daybook",
  "deuce",
- "rosetta",
+ "robopoker-rosetta",
  "tokio",
  "vitals",
 ]
@@ -2297,7 +2297,7 @@ dependencies = [
 
 [[package]]
 name = "monge"
-version = "1.2.0"
+version = "3.0.0"
 
 [[package]]
 name = "monostate"
@@ -2339,24 +2339,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "neural"
-version = "1.2.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "kuhn",
- "mccfr",
- "monge",
- "pokerkit",
- "rand 0.9.1",
- "rayon",
- "roshambo",
- "rustc-hash",
-]
-
-[[package]]
 name = "nlhe"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2367,11 +2351,11 @@ dependencies = [
  "kicker",
  "mccfr",
  "monge",
- "neural",
  "paste",
  "pokerkit",
  "rand 0.9.1",
- "rosetta",
+ "robopoker-neural",
+ "robopoker-rosetta",
  "subgame",
  "tokio-postgres",
  "tracing",
@@ -2629,7 +2613,7 @@ dependencies = [
 
 [[package]]
 name = "parlor"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "async-trait",
  "bouncer",
@@ -2704,14 +2688,14 @@ dependencies = [
 
 [[package]]
 name = "petri"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "getrandom 0.3.3",
  "kuhn",
  "mccfr",
  "monge",
- "neural",
  "pokerkit",
+ "robopoker-neural",
  "roshambo",
  "serde",
  "serde_json",
@@ -2738,7 +2722,7 @@ dependencies = [
 
 [[package]]
 name = "phh"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "deuce",
@@ -2807,7 +2791,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "pokerkit"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "clap",
  "rand 0.9.1",
@@ -2820,7 +2804,7 @@ dependencies = [
 
 [[package]]
 name = "portal"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "actix-cors",
  "actix-web",
@@ -2844,7 +2828,7 @@ dependencies = [
  "parlor",
  "pokerkit",
  "rand 0.9.1",
- "rosetta",
+ "robopoker-rosetta",
  "serde",
  "serde_json",
  "tokio",
@@ -3104,7 +3088,7 @@ dependencies = [
 
 [[package]]
 name = "reel"
-version = "1.0.0"
+version = "3.0.0"
 dependencies = [
  "deuce",
  "kicker",
@@ -3205,7 +3189,7 @@ dependencies = [
 
 [[package]]
 name = "robopoker"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "daybook",
  "deuce",
@@ -3219,8 +3203,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "rosetta"
-version = "1.2.0"
+name = "robopoker-neural"
+version = "3.0.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "kuhn",
+ "mccfr",
+ "monge",
+ "pokerkit",
+ "rand 0.9.1",
+ "rayon",
+ "roshambo",
+ "rustc-hash",
+]
+
+[[package]]
+name = "robopoker-rosetta"
+version = "3.0.0"
 dependencies = [
  "async-trait",
  "daybook",
@@ -3237,7 +3237,7 @@ dependencies = [
 
 [[package]]
 name = "roshambo"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -3575,7 +3575,7 @@ dependencies = [
 
 [[package]]
 name = "spar"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3634,7 +3634,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "subgame"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "mccfr",
  "monge",
@@ -4349,7 +4349,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vitals"
-version = "1.2.0"
+version = "3.0.0"
 dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
