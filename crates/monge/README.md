@@ -2,7 +2,7 @@
 
 Optimal transport and Earth Mover's Distance via Sinkhorn algorithm.
 
-`monge` defines the generic traits for computing optimal-transport cost — the Earth Mover's Distance (Wasserstein-1) — between two discrete distributions over a shared metric space. It is algorithm-agnostic: the crate specifies the *contract* (distributions, ground metric, transport plan) and ships two solver strategy markers, while concrete solvers are implemented against these traits.
+`monge` defines the generic traits for computing optimal-transport cost — the Earth Mover's Distance (Wasserstein-1) — between two discrete distributions over a shared metric space. It is algorithm-agnostic: the crate specifies the *contract* (distributions, ground metric, transport plan) and ships two solver strategy markers, while concrete solvers — `lloyd`'s Sinkhorn — are implemented against these traits.
 
 ## Architecture
 
@@ -36,4 +36,4 @@ flowchart TD
     Measure -->|ground metric| Coupling
 ```
 
-`Density` is implemented out of the box for `BTreeMap`, `HashMap`, and `Vec` of pairs. Two solver strategies are provided as marker types — `GreedyOptimalTransport` (greedy cost-ordered matching) and `GreenkhornOptimalTransport` (Greenkhorn, a greedy row/column variant of Sinkhorn) — as documented entry points for implementing the `Coupling` contract.
+`Density` is implemented out of the box for `BTreeMap`, `HashMap`, and `Vec` of pairs. Two solver strategies are provided as marker types — `GreedyOptimalTransport` (greedy cost-ordered matching) and `GreenhornOptimalTransport` (Greenkhorn, a greedy row/column variant of Sinkhorn) — as documented entry points for implementing the `Coupling` contract.

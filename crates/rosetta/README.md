@@ -44,7 +44,7 @@ Feature extraction is pure bit manipulation plus one `Strength` evaluation per o
 
 ## Naming rules
 
-Names are **derived, never authored**, so a re-cluster followed by a re-run produces a glossary that still matches its buckets instead of orphaned prose. The phrase is built from thresholds on measured frequencies, all of them constants on `Gloss`:
+Names are **derived, never authored**, so a re-cluster followed by a re-run produces a glossary that still matches its buckets instead of orphaned prose. The phrase is built from thresholds on measured frequencies, all of them constants on `Gloss` and `Class`:
 
 Composition runs in domain types — `Class` for the head, `Feature` for the
 qualifiers — and stringifies once at the end, so nothing downstream has to
@@ -99,11 +99,11 @@ Three surfaces, one row:
 
 | Surface | How |
 |---|---|
-| Analysis UI | The caption under the equity histogram, and the tooltip on the bucket chip in the Strategy panel. Fed by `POST /topology/gloss`. |
+| Analysis UI (closed-source) | The caption under the equity histogram, and the tooltip on the bucket chip in the Strategy panel. Fed by `POST /topology/gloss`. |
 | CLI | `convert> mch F::09` — or `mch AsKh~Kd7c2s` to go through the observation. |
 | Library | `Lexicon::lookup(abs)` / `Lexicon::glossary(street)` from any crate holding a `Client`. |
 
 The HTTP route answers `{abs, name, description}` with `abs` in display form
 (`"F::09"`), and **404 when a bucket has no gloss** — an ordinary state meaning
-the pass hasn't been run against the live clustering, which the frontend renders
-as nothing rather than as an error.
+the pass hasn't been run against the live clustering, which the closed-source frontend
+renders as nothing rather than as an error.

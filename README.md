@@ -10,7 +10,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 <p align="center">
   <img src="assets/reel/hero.gif" alt="The analysis dashboard walked through one hand" width="900"/>
   <br/>
-  <sub><b>Figure 1.</b> The analysis dashboard, driven through one hand.</sub>
+  <sub><b>Figure 1.</b> The analysis dashboard (closed-source; § <a href="#frontend">Frontend</a>), driven through one hand.</sub>
 </p>
 
 ## Contributions
@@ -18,7 +18,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
 | Contribution | What it is |
 | :--- | :--- |
 | **Fastest open-source hand evaluator** | Nanosecond evaluation, outperforming Cactus Kev |
-| **Optimal transport from scratch** | Sinkhorn/Greenkhorn⁵ over generic `Density`/`Support` measures |
+| **Optimal transport from scratch** | Sinkhorn⁵ over generic `Density`/`Support` measures |
 | **Game-agnostic CFR framework** | Pluggable regret/policy/sampling, held to closed-form equilibria on Kuhn, Leduc, RPS |
 | **Action translation⁷,⁸** | Pseudo-harmonic mapping over finite lattices |
 | **Deep CFR¹³** | Networks in place of the regret and strategy tables, under the tabular Kuhn and RPS equilibrium tests, trainable in a browser |
@@ -57,8 +57,8 @@ flowchart LR
 ### 1 · Hierarchical abstraction — once, per street, river → preflop
 
 - `deuce` — iterates the isomorphic⁴ hand space; nanosecond evaluation over bijective card encodings
-- `lloyd` — hierarchical k-means over those hands, k-means++² seeded, `elkan`-accelerated
-- `monge` — distance as Earth Mover's Distance between child-street distributions, by Sinkhorn/Greenkhorn⁵
+- `lloyd` — hierarchical k-means² over those hands, k-means++ seeded, `elkan`-accelerated
+- `monge` — distance as Earth Mover's Distance between child-street distributions; `lloyd` solves it by Sinkhorn⁵ over `monge`'s measures
 - `daybook` — persists them over `COPY IN`, `(Regime × Version)` table naming, fingerprinted against silent constant drift
 
 <p align="center">
@@ -70,9 +70,9 @@ flowchart LR
 ### 2 · MCCFR training³
 
 - `kicker` — the engine sampled through: side-pot/all-in/tie settlement, `Size::SPR`/`Size::BBs` sizing, `Witness` versus `Perfect` recall
-- `mccfr` — game-agnostic `CfrEncoder` → `Solver` → `Tree`, external sampling, dynamic tree construction
-- `nlhe` — the concrete schemes: `Nlhe<R, W, S>`, the `Flagship` config, discounted/linear regret⁶, regret-based pruning⁹,¹¹
-- `forge` — `Fast` (in-memory) or `Slow` (distributed) orchestration, checkpointing to the database
+- `mccfr` — game-agnostic `Encoding` → `Solver` → `Tree`, external sampling, dynamic tree construction
+- `nlhe` — `NlheEncoder` and the `Flagship` config: `mccfr::Tabular` with linear regret⁶ and weighting, Pluribus sampling with regret-based pruning⁹,¹¹
+- `forge` — `Fast` (in-memory) or `Slow` (a worker per core over PostgreSQL) orchestration, checkpointing to the database
 
 <p align="center">
   <img src="assets/reel/tree.gif" alt="External-sampling MCCFR tree traversal" width="620"/>
@@ -84,7 +84,7 @@ flowchart LR
 
 - `DepthEdge<E, D>` — a depth-limited¹⁰ frontier with biased continuations
 - `WorldProfile` — belief partitioned into worlds for safe¹² re-solving
-- `SubGameSolver` — composes both; `pokerkit`'s `Lattice` maps the abstract action back to chips⁷,⁸
+- `SubGameSolver` — composes both; off-grid bets reach the tree through `pokerkit`'s `Lattice`⁷,⁸
 
 <p align="center">
   <img src="assets/reel/triplet.png" alt="Hero range, policy, villain range" width="820"/>
@@ -133,7 +133,7 @@ flowchart LR
 | `depth+world`       | 91.7 K |     −79.5 | ± 16.8 |
 | `fish`              |  480 K |    −136.5 |  ± 3.8 |
 
-<sub><b>Table 1.</b> 1.96·σ/√n over per-hand pnl. Every `dirac` variant beats every non-`dirac` one, no overlap. Post showdown-fix; earlier numbers aren't comparable.</sub>
+<sub><b>Table 1.</b> 1.96·σ/√n over per-hand pnl. Every `dirac` variant ranks above every non-`dirac` one. Post showdown-fix; earlier numbers aren't comparable.</sub>
 
 <p align="center">
   <picture>
@@ -152,7 +152,7 @@ flowchart LR
 | `suited_offsuit_symmetry` |    3 |    3 | `AKs` and `AKo` play alike                         |
 | `flop_air`                |    3 |    1 | Air checks on bad boards instead of over-betting   |
 | `preflop_overjam`         |    3 |    1 | `JJ`/`QQ`/`AKo` do not collapse to all-in          |
-| `flop_cbet`, `flop_value` |    6 |    0 | The c-bet and value lines exist at all             |
+| `flop_cbet`, `flop_donk`  |    6 |    0 | The c-bet and donk lines exist at all              |
 | `preflop_bb_defense`      |    3 |    0 | BB defends rather than over-folding                |
 | `preflop_premium_control` |    2 |    0 | `AA`/`AKs` stay aggressive without collapsing      |
 | `structural_grid`         |    2 |    0 | Every bet-sizing slot is used somewhere            |
@@ -169,7 +169,7 @@ flowchart LR
 | `MockNet` | pass — worst of 40 seeds: exploitability 0.0096, pure miss 0.013     | pass — gap 0.0019 |
 | `CfrNet`  | fail — `Q` checks first to act at 0.78, where equilibrium always checks | fail — gap 0.0345 |
 
-<sub><b>Table 3.</b> `cargo test -p neural`, both networks held to the tabular bars: exploitability < 0.015 and every pure Kuhn target within 0.03; RPS within 0.005 of (0.4, 0.4, 0.2). `MockNet` fits each memory exactly, so it isolates the loop; the `CfrNet` gap is function approximation. The `CfrNet` tests are `#[ignore]`d — minutes in release.</sub>
+<sub><b>Table 3.</b> `cargo test -p robopoker-neural`, both networks held to the tabular bars: exploitability < 0.015 and every pure Kuhn target within 0.03; RPS within 0.005 of (0.4, 0.4, 0.2). `MockNet` fits each memory exactly, so it isolates the loop; the `CfrNet` gap is function approximation. The `CfrNet` tests are `#[ignore]`d — minutes in release.</sub>
 
 ### Against the record — the Pluribus hand histories
 
@@ -221,6 +221,7 @@ graph TD
   mccfr --> pokerkit
   mccfr --> kicker
   mccfr --> monge
+  mccfr -.->|"server feature"| vitals
   subgame --> pokerkit
   subgame --> mccfr
   subgame --> monge
@@ -228,11 +229,16 @@ graph TD
   daybook --> deuce
   daybook --> kicker
   daybook --> vitals
+  lloyd --> pokerkit
+  lloyd --> deuce
   lloyd --> kicker
   lloyd --> monge
   lloyd --> elkan
   lloyd --> vitals
+  nlhe --> pokerkit
+  nlhe --> deuce
   nlhe --> kicker
+  nlhe --> monge
   nlhe --> mccfr
   nlhe --> subgame
   neural --> pokerkit
@@ -254,7 +260,7 @@ graph TD
 | ------------------------------- | --- | ------------------------------------------------------------------------------------------ |
 | [`pokerkit`](crates/pokerkit)   | 🟢  | Type aliases, constants, regime/version metadata, action translation, `hyperparams!` macro |
 | [`deuce`](crates/deuce)         | 🟢  | Card primitives, hand evaluation, equity, strategic abstraction                            |
-| [`monge`](crates/monge)         | 🟢  | Optimal transport (Sinkhorn, EMD) over arbitrary measures                                  |
+| [`monge`](crates/monge)         | 🟢  | Optimal-transport measures and couplings for EMD over arbitrary supports                   |
 | [`elkan`](crates/elkan)         | 🟢  | Generic, triangle-inequality-accelerated (Elkan 2003) k-means                              |
 | [`lloyd`](crates/lloyd)         | 🟢  | Hierarchical k-means hand abstraction with EMD                                             |
 | [`kicker`](crates/kicker)       | 🟢  | Poker game engine: state, edges, settlement, witness/perfect recall                        |
@@ -265,7 +271,7 @@ graph TD
 | [`rosetta`](crates/rosetta)     | 🟢  | Names every abstraction bucket from a sample of its hands (`robopoker-rosetta`)            |
 | [`daybook`](crates/daybook)     | 🟢  | PostgreSQL bulk I/O via `Schema`/`Row`/`Streamable`                                        |
 | [`vitals`](crates/vitals)       | 🟢  | OpenTelemetry init and a centrally-registered metric table                                 |
-| [`robopoker`](crates/robopoker) | 🟢  | Facade re-exporting the published crates                                                   |
+| [`robopoker`](crates/robopoker) | 🟢  | Facade re-exporting nine of the published crates under stable aliases                      |
 
 <details>
 <summary><b>Internal crates</b></summary>
@@ -297,7 +303,7 @@ graph TD
 | ----------- | ------------------------------------------ | ------------------------------------------------ |
 | `server`    | `mccfr`, `nlhe`, `lloyd`, `parlor`, …      | Server dependencies: PostgreSQL, Tokio, Rayon, telemetry |
 | `sql`       | `deuce`, `kicker`                          | PostgreSQL row types                             |
-| `async`     | `mccfr`                                    | Async MCCFR sampling/regret variants             |
+| `async`     | `mccfr`                                    | `AsyncProfile`, for database-backed profiles     |
 | `neural`    | `nlhe`                                     | `FullInfo` + `NlheEmbedder` for Deep CFR on NLHE |
 | `shortdeck` | `deuce`                                    | 36-card short-deck variant                       |
 | `sixmax`    | `pokerkit`, `trainer`                      | Six-handed build (`N = 6`)                       |
@@ -320,7 +326,7 @@ Training: 16 vCPU / 120 GB. PostgreSQL 14+: 8 vCPU / 64 GB. Analysis: 1 vCPU / 4
 <details>
 <summary><b>Reproduce</b></summary>
 
-Everything but `--deep`, `petri`, and `phh-cli conform`/`calibrate` reads PostgreSQL at `$DB_URL`.
+Everything but `--deep`, `petri`, `lints`, `phh-cli conform`/`calibrate`/`agree`, and `phh-cli duel --api` reads PostgreSQL at `$DB_URL`.
 
 ```bash
 cargo run --release --bin trainer -- --cluster          # §1: abstraction, river → preflop

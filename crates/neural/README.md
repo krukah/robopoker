@@ -40,7 +40,7 @@ sequenceDiagram
 | Module           | Holds                                                                                                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `network/`       | `RegretNet` and `StrategyNet`, the approximator traits. Also `MockNet`, a tabular implementation of both.                                                           |
-| `memory/`        | `Reservoir` (Algorithm R), `Sample`, a row of (infoset, iteration `t`, per-edge target), and `Memories`, the three reservoirs every network keeps.                  |
+| `memory/`        | `Reservoir` (Algorithm R), `Sample`, a row of (infoset, iteration `t`, per-edge target), and `Memories`, the reservoirs every network keeps: one of regret rows per player, one of strategy rows.                  |
 | `profile.rs`     | `DeepProfile<N>`, which implements `mccfr::Profile` + `mccfr::Clock` over any `N: RegretNet + StrategyNet`.                                                       |
 | `memo.rs`        | `Memo`, a sharded read-through cache, and `Predictions<N>`, one per network in `DeepProfile`, so each infoset costs one forward pass per network change.            |
 | `solver.rs`      | `DeepSolver`, the training loop. Like `mccfr::Solver`, it extends `mccfr::Grower`, which builds its trees and measures exploitability.                             |
@@ -121,7 +121,7 @@ flowchart LR
 
 `CfrNet::save` writes the fitted strategy net to `strategy.safetensors` in a directory, and `CfrNet::load` reads it back into a net with empty memories. The shape comes from the embedder and `DeepHyperParams`, so load under the same settings that saved. Advantage nets refit from memory every epoch, so they are not saved.
 
-A fit builds into a fresh `VarMap`, so it starts from new weights, then runs AdamW on uniform minibatches toward the paper's `t`-weighted squared error over legal outputs. Weights divide by the memory's mean `t`, not the batch's, so repeated rows keep their weight.
+A fit builds into a fresh `VarMap`, so it starts from new weights (unless `DeepHyperParams::warm`), then runs AdamW on uniform minibatches toward the paper's `t`-weighted squared error over legal outputs. Weights divide by the memory's mean `t`, not the batch's, so repeated rows keep their weight.
 
 ```mermaid
 flowchart LR
@@ -141,7 +141,7 @@ For NLHE the outputs are the static bet-sizing grid, and `Size::raises(street, d
 
 ## Validation
 
-`cargo test -p neural` checks Deep CFR against known solutions, the same `kuhn::KuhnNash` and `roshambo::RpsNash` the tabular tests use:
+`cargo test -p robopoker-neural` checks Deep CFR against known solutions, the same `kuhn::KuhnNash` and `roshambo::RpsNash` the tabular tests use:
 
 | Test                                    | Network   | Bar                                                                                   |
 | --------------------------------------- | --------- | ------------------------------------------------------------------------------------- |

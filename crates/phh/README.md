@@ -55,8 +55,8 @@ flowchart TD
 
 Everything downstream of `Spot` talks to a strategy only through
 [`Oracle`](src/judge/oracle.rs) — one synchronous `Witness → Policy` method. Every cell
-of the `parlor` bot zoo satisfies it (`Brain::policy` / `Brain::distrib`), and so
-does an HTTP client, so the same evaluation scores any of them and this crate
+of the `parlor` bot zoo satisfies it through `phh-cli`'s one-line `Mind` wrapper
+(`Brain::policy` / `Brain::distrib`), and so does an HTTP client, so the same evaluation scores any of them and this crate
 never has to depend on the blueprint or the database.
 
 | Module | Holds |
@@ -157,8 +157,8 @@ difference there.
 cargo run --release -p phh-cli -- conform      # settlement + turn order + engine structure
 cargo run --release -p phh-cli -- calibrate    # observed bet sizes vs. the Size grid
 cargo run --release -p phh-cli -- calibrate --player Pluribus
-cargo run --release -p phh-cli -- agree --player Pluribus   # did we choose the same? (needs --api)
-cargo run --release -p phh-cli -- duel  --player Pluribus   # what was it worth? (needs $DB_URL)
+cargo run --release -p phh-cli -- agree --player Pluribus   # did we choose the same? (over HTTP, --api)
+cargo run --release -p phh-cli -- duel  --player Pluribus   # what was it worth? ($DB_URL, or --api)
 ```
 
 `--data` (or `$PHH_DATA`) points at the corpus; it defaults to
@@ -167,7 +167,8 @@ cargo run --release -p phh-cli -- duel  --player Pluribus   # what was it worth?
 `agree` queries a running backend over HTTP — one request per decision, so
 `--api` is all it needs. `duel` hydrates the blueprint from `$DB_URL` instead: it
 makes on the order of a million policy lookups and cannot afford a round trip in
-front of each one. Pick the bot with `--variant` (`base`, `depth`, `world`,
+front of each one. `duel --api` trades that for no credentials, memoizing the
+lookups against a running backend. Pick the bot with `--variant` (`base`, `depth`, `world`,
 `dirac`, or a `+`-joined combination); `--solve` swaps the blueprint lookup for a
 full subgame re-solve at every rollout decision, which is only affordable
 alongside a small `--limit`.

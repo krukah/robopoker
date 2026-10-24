@@ -21,6 +21,7 @@ crates/petri/build.sh build   # build only; needs `rustup target add wasm32-unkn
 | File | Holds |
 | --- | --- |
 | `session.rs` | `Session`, the wasm export: one run per worker, since `DeepHyperParams` is set once |
+| `lab.rs` | `Lab`, the run as the page drives it, game and networks erased |
 | `run.rs` | `Run<G, P>`: steps the solver; a checkpoint fits the strategy net and reads exploitability |
 | `probe.rs` | `Probe`: the infosets to draw and their Nash targets, for `KuhnEmbedder` and `RpsEmbedder` |
 | `frame.rs`, `reading.rs`, `lane.rs` | What the page draws, per step, per infoset, per edge |

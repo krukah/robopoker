@@ -6,32 +6,38 @@ Automated MCCFR training-pipeline orchestration that streams data directly to Po
 
 ```mermaid
 flowchart TD
-  T["cargo run --bin trainer --features server --<br/>[--status | --cluster | --fast | --slow]"]
+  T["cargo run --bin trainer --<br/>[--status | --cluster | --fast | --slow | --deep]"]
   T --> S["status<br/>(query)"]
   T --> C["cluster<br/>(PreTraining)"]
-  T --> TR["train<br/>(Session)"]
+  T --> TR["train<br/>(Trainer)"]
   C --> P1["Phase 1 · Clustering<br/>(offline)"]
   TR --> P2["Phase 2 · Blueprint<br/>(MCCFR)"]
   P1 -.->|required by| P2
 ```
 
-1. **Clustering Phase**: Reduce 3.1 trillion poker situations into ~500 abstract buckets
+1. **Clustering Phase**: Reduce 3.1 trillion poker situations into 782 abstract buckets (101 + 256 + 256 + 169)
 2. **Blueprint Phase**: Train MCCFR strategies on the abstracted game tree
 
 ## Usage
 
 ```bash
 # Check current state
-cargo run --bin trainer --features server -- --status
+cargo run --bin trainer -- --status
 
 # Run clustering only
-cargo run --bin trainer --features server -- --cluster
+cargo run --bin trainer -- --cluster
+
+# Drop every clustering table, so the next --cluster/--fast/--slow rebuilds the abstraction
+cargo run --bin trainer -- --recluster
 
 # Run fast in-memory training (includes clustering if needed)
-cargo run --bin trainer --features server -- --fast
+cargo run --bin trainer -- --fast
 
 # Run distributed training (includes clustering if needed)
-cargo run --bin trainer --features server -- --slow
+cargo run --bin trainer -- --slow
+
+# Drop the blueprint and truncate epoch, snapshot, fingerprint; --forget truncates hand histories
+cargo run --bin trainer -- --reset
 
 # Deep CFR on NLHE (FullInfo + NlheEmbedder); no database. Saves the strategy net to DIR
 # (default ./nets) every TrainingHyperParams flush interval and on stop
@@ -42,7 +48,7 @@ cargo run --release --bin trainer -- --deep [DIR]
 
 ## Phase 1: Clustering (PreTraining)
 
-**Entry Point:** `PreTraining::run()` in `src/pretraining.rs`
+**Entry Point:** `PreTraining::run()` in `src/pretraining.rs`; streets already in the `isomorphism` table are skipped.
 
 The clustering phase processes streets in **reverse order** (River → Turn → Flop → Preflop) because each street's abstraction depends on the _next_ street's lookup and metric.
 
@@ -50,8 +56,8 @@ The clustering phase processes streets in **reverse order** (River → Turn → 
 
 ```mermaid
 flowchart LR
-  River["RIVER<br/>123M obs · K=101<br/>Lookup::grow()"] -->|lookup| Turn["TURN<br/>14M obs · K=144<br/>Layer::cluster()"]
-  Turn -->|lookup + metric| Flop["FLOP<br/>1.3M obs · K=128<br/>Layer::cluster()"]
+  River["RIVER<br/>123M obs · K=101<br/>Lookup::grow()"] -->|lookup| Turn["TURN<br/>14M obs · K=256<br/>Layer::cluster()"]
+  Turn -->|lookup + metric| Flop["FLOP<br/>1.3M obs · K=256<br/>Layer::cluster()"]
   Flop -->|lookup + metric| Preflop["PREFLOP<br/>169 obs · K=169<br/>Layer::cluster()"]
 ```
 
@@ -62,8 +68,8 @@ Each street produces a `lookup` (iso→abs), plus `metric` and `future` (except 
 | Street  | N           | K   | Metric     | Space                  | Loads                    | Produces                   |
 | ------- | ----------- | --- | ---------- | ---------------------- | ------------------------ | -------------------------- |
 | River   | 123,156,254 | 101 | `f32::abs` | `Probability`          | N/A                      | lookup                     |
-| Turn    | 13,960,050  | 144 | `W1`       | `Density<Probability>` | Lookup River             | lookup, metric, transition |
-| Flop    | 1,286,792   | 128 | `EMD`      | `Density<Abstraction>` | Lookup Turn, Metric Turn | lookup, metric, transition |
+| Turn    | 13,960,050  | 256 | `W1`       | `Density<Probability>` | Lookup River             | lookup, metric, transition |
+| Flop    | 1,286,792   | 256 | `EMD`      | `Density<Abstraction>` | Lookup Turn, Metric Turn | lookup, metric, transition |
 | Preflop | 169         | 169 | `EMD`      | `Density<Abstraction>` | Lookup Flop, Metric Flop | lookup, metric, transition |
 
 - **N**: Number of isomorphic observations on this street
@@ -73,7 +79,7 @@ Each street produces a `lookup` (iso→abs), plus `metric` and `future` (except 
 
 ### Per-Street Processing Detail
 
-#### River Clustering (`pretraining.rs`)
+#### River Clustering (`Lookup::grow`)
 
 ```mermaid
 flowchart TD
@@ -90,7 +96,7 @@ No k-means (equity buckets *are* the abstractions) and no metric (equity distanc
 flowchart TD
   S1["1 · LOAD DEPENDENCIES<br/>Metric + Lookup from next street"] --> S2["2 · BUILD HISTOGRAMS<br/>iso.children() → abstractions → Histogram"]
   S2 --> S3["3 · K-MEANS++ INIT<br/>sample ∝ D(x)² until K centroids"]
-  S3 --> S4["4 · ELKAN K-MEANS ITERS<br/>triangle-inequality bounds · Absorb · drift shift"]
+  S3 --> S4["4 · K-MEANS ITERS<br/>Elkan bounds (flop) · Hamerly bounds (turn)"]
   S4 --> S5["5 · PRODUCE ARTIFACTS<br/>lookup · metric · future → Postgres"]
 ```
 
@@ -99,9 +105,9 @@ flowchart TD
 ```mermaid
 flowchart TD
   R["River 123M · equity()"] --> ISOa["isomorphism (obs, abs)"]
-  T["Turn 14M · children()+lookup"] --> TH["Histogram → Elkan<br/>K=144, EMD"]
+  T["Turn 14M · children()+lookup"] --> TH["Histogram → Hamerly<br/>K=256, W1"]
   TH --> OUTt["isomorphism · metric · transitions"]
-  F["Flop 1.3M"] --> FH["Histogram → Elkan<br/>K=128, EMD"]
+  F["Flop 1.3M"] --> FH["Histogram → Elkan<br/>K=256, EMD"]
   FH --> OUTf["isomorphism · metric · transitions"]
   P["Preflop 169"] --> PH["Histogram → 1:1<br/>K=169"]
   PH --> OUTp["isomorphism · metric · transitions"]
@@ -113,16 +119,18 @@ flowchart TD
 
 ## Phase 2: Blueprint Training
 
-**Entry Point:** `Trainer::train()` in `src/trainer.rs`
+**Entry Point:** `Mode::run()` in `src/mode.rs`; the loop is the default `Trainer::train()` in `src/trainer.rs`.
 
 ```mermaid
 flowchart TD
-  TT["Trainer::train()"] -->|cluster if needed| RC["require_clustering<br/>PreTraining::run()"]
-  RC --> FS["FastSession (--fast)<br/>Nlhe · in-memory"]
-  RC --> SS["SlowSession (--slow)<br/>Pool · distributed"]
-  FS -->|"loop: step() → checkpoint()"| FSY["sync: stage → COPY → merge → stamp(n)"]
-  SS -->|"loop: step().await → checkpoint()"| SSY["direct writes (no-op sync)"]
-  FSY --> DB[("PostgreSQL<br/>blueprint · epoch")]
+  M["Mode::run()"] --> FS["FastSession::new (--fast)<br/>Flagship · in-memory"]
+  M --> SS["SlowSession::new (--slow)<br/>Pool of Workers · Postgres"]
+  FS --> RC["PreTraining::run()<br/>cluster if needed · Fingerprint::check"]
+  SS --> RC
+  RC -->|"loop: step() → checkpoint() → flush()"| TT["Trainer::train()"]
+  TT -->|"fast: every flush interval and on exit"| FSY["stage → COPY → merge → stamp(n) → snapshot"]
+  TT -->|"slow"| SSY["direct writes (no-op sync)"]
+  FSY --> DB[("PostgreSQL<br/>blueprint · epoch · snapshot")]
   SSY --> DB
 ```
 
@@ -132,22 +140,22 @@ flowchart TD
 flowchart TB
   subgraph FAST["FAST MODE (fast.rs)"]
     direction TB
-    F1["Nlhe → BTreeMap<br/>regret[k] · policy[k] (in-memory)"] --> F2["step() sync<br/>(spawn_blocking)"]
-    F2 --> F3["100× faster · single-box"]
-    F3 --> F4["on graceful exit → sync()<br/>stage · COPY · merge · stamp(n)"]
+    F1["Flagship<br/>regret · policy in memory"] --> F2["step()"]
+    F2 --> F3["single box · memory-bound"]
+    F3 --> F4["flush every interval, sync on exit<br/>stage · COPY · merge · stamp(n)"]
   end
   subgraph SLOW["SLOW MODE (slow.rs)"]
     direction TB
-    S1["Pool&lt;Worker&lt;Postgres&gt;&gt;<br/>Worker 1..N"] --> S2["step() async<br/>(tokio)"]
-    S2 --> S3["direct DB writes · scales out"]
+    S1["Pool of Worker<br/>one per core"] --> S2["step() async<br/>(tokio)"]
+    S2 --> S3["direct DB writes"]
     S3 --> S4["already persisted<br/>(no sync needed)"]
   end
 ```
 
-- **Fast**: 100× more efficient, memory-bound, single machine.
-- **Slow**: scales horizontally, I/O-bound, multi-machine ready.
+- **Fast**: memory-bound, single machine.
+- **Slow**: state lives in Postgres, I/O-bound.
 
-Both modes implement the `Trainer` trait for polymorphic training:
+Both implement the `Trainer` trait:
 
 ```rust
 #[async_trait]
@@ -157,9 +165,14 @@ pub trait Trainer: Send + Sync + Sized {
     async fn step(&mut self);
     async fn epoch(&self) -> usize;
     async fn summary(&self) -> String;
-    async fn checkpoint(&self) -> Option<String>;
+    async fn checkpoint(&self) -> Option<Checkpoint>;
+    async fn flush(&mut self) {}
+    fn session_type(&self) -> &'static str { "generic" }
+    async fn train(mut self) { ... }
 }
 ```
+
+`--deep [DIR]` takes neither path: `DeepSession` trains Deep CFR on `nlhe::FullInfo` with no database.
 
 ---
 
@@ -170,51 +183,51 @@ pub trait Trainer: Send + Sync + Sized {
 ```mermaid
 flowchart LR
   subgraph CL["clustering tables"]
-    iso["isomorphism ~139M<br/>obs BIGINT · abs BIGINT"]
-    met["metric ~40K<br/>xor BIGINT · dx REAL (EMD)"]
-    tr["transitions ~29K<br/>prev · next · dx (weight)"]
-    ep["epoch (1 row)<br/>key TEXT · value BIGINT"]
+    iso["isomorphism ~138M<br/>obs BIGINT · abs SMALLINT"]
+    met["metric<br/>tri INT · dx REAL"]
+    tr["transitions<br/>prev · next · dx (weight)"]
   end
-  subgraph BP["blueprint table"]
-    bp["blueprint ~200M+ (grows)<br/>past · present · future · edge<br/>policy REAL · regret REAL"]
+  subgraph BP["training tables"]
+    bp["blueprint (grows)<br/>past · present · choices · context · edge<br/>weight · regret · payoff · visits"]
+    ep["epoch (1 row)<br/>key TEXT · value BIGINT"]
   end
 ```
 
 - `isomorphism` maps every isomorphic hand to its abstraction bucket.
 - `metric` holds pairwise abstraction distances, used by the previous street's EMD.
 - `transitions` holds the distribution over next-street abstractions per abstraction.
-- `blueprint` stores the MCCFR strategy per information set — upserted via a staging table on graceful exit (FastSession) or written directly by workers (SlowSession).
+- `blueprint` stores the MCCFR strategy per information set — upserted via a staging table on each flush (FastSession) or written directly by workers (SlowSession).
 
 ### Derived Tables
 
 | Table         | Columns                           | Rows | Description                   |
 | ------------- | --------------------------------- | ---- | ----------------------------- |
-| `abstraction` | `abs, street, population, equity` | 542  | Summary stats per abstraction |
+| `abstraction` | `abs, street, population, equity` | 782  | Summary stats per abstraction |
 | `street`      | `street, nobs, nabs`              | 4    | Summary stats per street      |
 
 ---
 
 ## Streaming Protocol
 
-All data uses **PostgreSQL binary COPY** in 100k row chunks via the `Streamable` trait:
+All data uses **PostgreSQL binary COPY** via the `Streamable` trait:
 
 ```mermaid
 flowchart LR
   R["T::rows() iterator"] --> W["BinaryCopyInWriter"] --> DB["PostgreSQL table"]
 ```
 
-Implementors: `Lookup` (isomorphism), `Metric` (metric), `Future` (transitions), `Profile` (blueprint via staging).
+Implementors: `Lookup` (isomorphism), `Metric` (metric), `Future` (transitions). The blueprint streams the same way into `staging`.
 
 ---
 
 ## Resumability
 
-| Feature           | Mechanism                                           |
-| ----------------- | --------------------------------------------------- |
-| Progress tracking | Queries `isomorphism` table to check completion     |
-| Partial cleanup   | `truncate_street()` clears data before re-uploading |
-| Epoch persistence | `epoch` table tracks MCCFR iteration count          |
-| Graceful shutdown | Press `Q + Enter` to finish current batch and sync  |
+| Feature           | Mechanism                                                 |
+| ----------------- | --------------------------------------------------------- |
+| Progress tracking | Skips streets already present in `isomorphism`            |
+| Rebuild           | `--recluster` drops every clustering table                |
+| Epoch persistence | `epoch` table tracks MCCFR iteration count                |
+| Graceful shutdown | Press `Q + Enter` to finish current batch and sync        |
 
 ---
 

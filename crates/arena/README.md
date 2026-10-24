@@ -12,7 +12,7 @@ flowchart TD
     DB -->|"EvaluationRepository::eval_bundle"| BUNDLE["HandRecord + Participants + Plays"]
     BUNDLE --> REP["Replayer / replay()"]
     REP -->|reconstruct Game states| RECAP["Recap, per-hand result"]
-    RECAP -->|"summarize()"| SUM["Summary<br/>raw win-rate, stddev"]
+    RECAP -->|"Metrics::summarize"| SUM["Summary<br/>raw win-rate, stddev"]
     BUNDLE --> AIVAT["Aivat::evaluate"]
     BP[("blueprint + isomorphism tables")] -->|eval_policy / eval_abstraction| AIVAT
     AIVAT -->|per-hand corrections| RES["AivatResult<br/>raw vs adjusted"]
@@ -40,6 +40,6 @@ flowchart LR
     ACC -->|"adjusted = raw + corrections"| RES["AivatResult"]
 ```
 
-`EvaluationRepository` bulk-loads each hand as a `(HandRecord, Participants, Plays)` bundle; `Replayer` walks it through the engine to produce a `Recap`, and `summarize` folds recaps into a `Summary` (raw win-rate, VPIP/PFR, stddev). In parallel, `Aivat::evaluate` re-walks the same hand and, at every hero action, villain action, and post-flop chance node, looks up the blueprint's expected values to compute a correction (`action_correction` and `chance_correction` are the two control variates). `Aivat::summarize` combines the per-hand `AivatResult`s with the raw `Summary` into an `AivatDelta` reporting adjusted win-rate, variance-reduction factor, and significance.
+`EvaluationRepository` bulk-loads each hand as a `(HandRecord, Participants, Plays)` bundle; `Replayer` walks it through the engine to produce a `Recap`, and `Metrics::summarize` folds recaps into a `Summary` (raw win-rate, VPIP/PFR, stddev). In parallel, `Aivat::evaluate` re-walks the same hand and, at every hero action, villain action, and post-flop chance node, looks up the blueprint's expected values to compute a correction (`action_correction` and `chance_correction` are the two control variates). `Aivat::summarize` combines the per-hand `AivatResult`s with the raw `Summary` into an `AivatDelta` reporting adjusted win-rate, variance-reduction factor, and significance.
 
 The intuition: AIVAT is a control-variate estimator. It adds a mean-zero correction — the difference between the blueprint's *expected* outcome and the one that actually happened — so favorable and unfavorable chance events cancel out. The estimate stays unbiased while its variance drops sharply, letting you distinguish real skill from noise in far fewer hands.

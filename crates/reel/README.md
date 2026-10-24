@@ -33,10 +33,10 @@ flowchart LR
   end
   subgraph canvas ["canvas/"]
     frame["Frame = Vec&lt;Mark&gt;"]
-    mark["Mark<br/><i>Block | Label | Trace</i>"]
+    mark["Mark<br/><i>Block | Label | Trace | Slice | Disc</i>"]
   end
   subgraph color ["color/"]
-    paint["Palette<br/><i>Hex (SVG) · Css (Leptos)</i>"]
+    paint["Palette<br/><i>Hex (SVG) · Css (CSS vars)</i>"]
   end
   game --> scenic
   scenic --> scene
@@ -78,11 +78,11 @@ Every directory re-exports flat, so the public API is `reel::*` regardless of de
 - **All layout happens in abstract (layer, slot) space**; `Orient` is a single
   axis swap, so the horizontal (`Landscape`) and vertical (`Portrait`) trees
   are two projections of one structure. Glyphs stay upright in both.
-- **`Mark` is pure data** — renderable to SVG strings today, mountable as
-  Leptos views tomorrow. Frame equality is structural, which powers the
+- **`Mark` is pure data** — renderable to SVG strings, and mounted as
+  views by the closed-source Leptos client. Frame equality is structural, which powers the
   no-jitter dedup.
 - **`Palette` is the paint seam**: `Hex` produces the standalone dark-mode
-  assets; `Css` produces `var(--…)` references so the app's theme owns the
+  assets; `Css` produces `var(--…)` references so the client's theme owns the
   values. Same film, two worlds.
 - **Generic up to mccfr**: all game specifics enter through `Scenic`
   (`demo`/`reveals`/`phase`/`badge`/`deed`/`glyph`); menus are the REAL legal
@@ -111,7 +111,7 @@ Painting it only at `close()` is deliberate: during the last phase the hand
 hasn't ended yet, and a gold band sitting there would spoil an outcome the
 probes are still exploring.
 
-NLHE fills it the same way the client's tree does — final pot, then what
+NLHE fills it the same way the closed-source client's tree does — final pot, then what
 hero walked away with: the signed net when a fold settles it, hero's made
 hand when a showdown leaves villain's cards hidden. A `Witness` never holds
 villain's cards, so neither surface ever invents a winner.
@@ -129,8 +129,9 @@ only that completed hand lingers (`LINGER`).
 ## Usage
 
 ```bash
-cargo run -p reel          # → tree_v1_{connected,transposed}.svg + tree_kuhn.svg
-                           #   + docs/assets/_frames/<name>/{NNNN,still}.svg
+cargo run -p reel   # → docs/assets/components/{tree_v1_connected,tree_v1_transposed,triplet,equity}.svg
+                    #   + {tree_kuhn,kuhn_tree_portrait,kuhn_triplet,kuhn_equity}.svg (default `kuhn` feature)
+                    #   + docs/assets/_frames/<name>/{NNNN,still}.svg
 ```
 
 Rust owns the frames; pixels are left to external tools. To rasterize a reel,
