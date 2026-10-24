@@ -14,7 +14,7 @@ impl CfrInfo for ToyInfo {
 
     fn secret(&self) -> Self::Y {}
 
-    fn join(public: ToyInfo, _: ()) -> Self {
+    fn join(public: ToyInfo, (): ()) -> Self {
         public
     }
 }

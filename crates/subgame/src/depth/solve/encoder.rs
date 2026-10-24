@@ -43,9 +43,10 @@ where
     where
         M: Iterator<Item = EdgeOf<N>>,
     {
-        let game = match game.at_frontier() {
-            true => game.to_frontier(self.inner().payoffs(self.prefix(), game.inner(), game.internal())),
-            false => game,
+        let game = if game.at_frontier() {
+            game.to_frontier(self.inner().payoffs(self.prefix(), game.inner(), game.internal()))
+        } else {
+            game
         };
         if game.is_choosing() {
             Branches::new(index, game, Continuation::all::<D>().map(DepthEdge::Pick).collect::<Vec<_>>())

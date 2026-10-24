@@ -8,23 +8,13 @@ use std::ops::Not;
 /// the graph, so it is cheap to pass around.
 ///
 /// Also an `Iterator` walking *upward* to the root — see the impl below.
+#[derive(Clone, Copy)]
 pub struct Node<'tree, F>
 where
     F: CfrInfo,
 {
     index: NodeIndex,
     tree: &'tree Tree<F>,
-}
-
-impl<F> Copy for Node<'_, F> where F: CfrInfo {}
-
-impl<F> Clone for Node<'_, F>
-where
-    F: CfrInfo,
-{
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl<'tree, F> Node<'tree, F>

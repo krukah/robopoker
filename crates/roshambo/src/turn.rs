@@ -71,7 +71,7 @@ impl CfrInfo for RpsTurn {
 
     fn secret(&self) -> Self::Y {}
 
-    fn join(public: RpsTurn, _: ()) -> Self {
+    fn join(public: RpsTurn, (): ()) -> Self {
         public
     }
 }

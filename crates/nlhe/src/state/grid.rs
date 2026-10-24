@@ -43,9 +43,10 @@ impl Approximation for NlheGrid {
 
     fn refine(r: &NlheRules, e: NlheEdge) -> Action {
         let game = r.as_ref();
-        match e.is_chance() {
-            true => game.reveal(&mut rand::rng()),
-            false => game.snap(game.actionize(Edge::from(e))),
+        if e.is_chance() {
+            game.reveal(&mut rand::rng())
+        } else {
+            game.snap(game.actionize(Edge::from(e)))
         }
     }
 }

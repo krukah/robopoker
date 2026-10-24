@@ -18,7 +18,7 @@ impl Encoding for MiniSolver {
     }
 
     fn secret(&self, game: &GameOf<Self>) -> SecretOf<Self> {
-        self.0.secret(game)
+        self.0.secret(game);
     }
 }
 

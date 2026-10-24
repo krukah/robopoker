@@ -3,6 +3,7 @@ use crate::*;
 /// One choice on a path: whose turn it was, the infoset they were in, and the edge they took.
 /// [`Node::decisions`] yields these walking up, [`Encoding::replay`] walking down, so reach
 /// computations consume either direction identically.
+#[derive(Clone, Copy)]
 pub struct Choice<F>
 where
     F: CfrInfo,
@@ -11,17 +12,6 @@ where
     info: InfoOf<F>,
     edge: EdgeOf<F>,
 }
-
-impl<F> Clone for Choice<F>
-where
-    F: CfrInfo,
-{
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<F> Copy for Choice<F> where F: CfrInfo {}
 
 impl<F> Choice<F>
 where
