@@ -11,8 +11,8 @@ use mccfr::*;
 /// `game` is the head, not a seed, so the states cannot be re-derived from it. It is a
 /// [`Prefix`] paired with the position that prefix arrives at.
 ///
-/// The descents provide action-with-anchor-turn context for [`Encoding::resume`] and any
-/// downstream consumer that wants a [`Descent`] stream.
+/// The descents give action-with-anchor-turn context to any consumer that wants a
+/// [`Descent`] stream.
 pub struct CfrRecall<G>
 where
     G: CfrGame,
