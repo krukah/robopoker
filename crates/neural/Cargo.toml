@@ -16,7 +16,7 @@ server  = ["mccfr/server", "rayon"]
 
 [dependencies]
 pokerkit   = { workspace = true }
-mccfr      = { workspace = true, default-features = false }
+mccfr      = { version = "3.0", path = "../mccfr", default-features = false }
 monge      = { workspace = true }
 rand       = { workspace = true }
 rustc-hash = "2.1"
