@@ -8,7 +8,7 @@
 //!
 //! All sessions share the postgres client, the `&'static Flagship` (for any
 //! `depth`/`world` cell), the [`Throttle`] capping aggregate in-flight HTTP,
-//! and the SIGTERM / `TRAIN_DURATION` interrupt via [`pokerkit::brb`]. Each
+//! and the SIGTERM / `TRAIN_DURATION` interrupt via [`pokerkit::Signals::brb`]. Each
 //! session owns its own `Player`, `Recorder` (own Room row), and
 //! `slumbot::Client` (own auth token).
 //!
