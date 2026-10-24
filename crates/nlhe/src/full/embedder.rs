@@ -51,7 +51,7 @@ mod tests {
                         .filter(|stride| stride.turn().is_choice())
                         .zip(FullEncoder.retrace(&witness))
                 })
-                .map(|(stride, choice)| (stride.game(), choice.info().clone()))
+                .map(|(stride, choice)| (stride.game(), *choice.info()))
                 .collect()
         }
     }
@@ -99,8 +99,7 @@ mod tests {
                 let edge = choices
                     .iter()
                     .copied()
-                    .filter(Edge::is_raise)
-                    .last()
+                    .rfind(Edge::is_raise)
                     .or_else(|| choices.iter().copied().find(Edge::is_shove))
                     .or_else(|| choices.iter().copied().find(|edge| matches!(edge, Edge::Call)))
                     .unwrap_or(Edge::Check);

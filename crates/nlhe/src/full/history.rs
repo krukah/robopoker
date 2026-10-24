@@ -31,9 +31,10 @@ impl History {
     /// Each street's choice edges, preflop first.
     pub fn streets(&self) -> Vec<Vec<NlheEdge>> {
         self.edges().fold(vec![Vec::new()], |mut streets, edge| {
-            match edge.is_chance() {
-                true => streets.push(Vec::new()),
-                false => streets.last_mut().expect("starts with preflop").push(edge),
+            if edge.is_chance() {
+                streets.push(Vec::new());
+            } else {
+                streets.last_mut().expect("starts with preflop").push(edge);
             }
             streets
         })
