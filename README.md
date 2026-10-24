@@ -8,7 +8,10 @@
 A Rust implementation of superhuman-scale poker AI, seeking functional parity with Pluribus¹ — hand evaluation, optimal transport, clustering, the CFR framework, the game engine, persistence, and telemetry, each written from scratch as a single-purpose crate.
 
 <p align="center">
-  <img src="assets/reel/hero.gif" alt="The analysis dashboard walked through one hand" width="900"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/hero-dark.gif"/>
+    <img src="assets/reel/hero-light.gif" alt="The analysis dashboard walked through one hand" width="900"/>
+  </picture>
   <br/>
   <sub><b>Figure 1.</b> The analysis dashboard (closed-source; § <a href="#frontend">Frontend</a>), driven through one hand.</sub>
 </p>
@@ -62,9 +65,12 @@ flowchart LR
 - `daybook` — persists them over `COPY IN`, `(Regime × Version)` table naming, fingerprinted against silent constant drift
 
 <p align="center">
-  <img src="assets/reel/equity.gif" alt="Equity distributions clustered by Earth Mover's Distance" width="620"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/equity-dark.gif"/>
+    <img src="assets/reel/equity-light.gif" alt="Equity distributions clustered by Earth Mover's Distance" width="620"/>
+  </picture>
   <br/>
-  <sub><b>Figure 2.</b> Each curve is one hand's distribution over next-street outcomes; hands close in EMD share a bucket.</sub>
+  <sub><b>Figure 2.</b> A hand's equity distribution over next-street outcomes (red, observed) against its bucket's (gold, abstraction), street by street. Hands close in EMD share a bucket.</sub>
 </p>
 
 ### 2 · MCCFR training³
@@ -75,7 +81,10 @@ flowchart LR
 - `forge` — `Fast` (in-memory) or `Slow` (a worker per core over PostgreSQL) orchestration, checkpointing to the database
 
 <p align="center">
-  <img src="assets/reel/tree.gif" alt="External-sampling MCCFR tree traversal" width="620"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/tree-dark.gif"/>
+    <img src="assets/reel/tree-light.gif" alt="External-sampling MCCFR tree traversal" width="620"/>
+  </picture>
   <br/>
   <sub><b>Figure 3.</b> External sampling walks one trajectory per iteration; the highlighted path is the branch being updated.</sub>
 </p>
@@ -87,7 +96,10 @@ flowchart LR
 - `SubGameSolver` — composes both; off-grid bets reach the tree through `pokerkit`'s `Lattice`⁷,⁸
 
 <p align="center">
-  <img src="assets/reel/triplet.png" alt="Hero range, policy, villain range" width="820"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/triplet-dark.gif"/>
+    <img src="assets/reel/triplet-light.gif" alt="Hero range, policy, villain range" width="820"/>
+  </picture>
   <br/>
   <sub><b>Figure 4.</b> Hero's range, the action distribution, villain's range — the canonical lens, asserted by <a href="crates/litmus"><code>litmus</code></a>.</sub>
 </p>
@@ -98,6 +110,24 @@ flowchart LR
 - `CfrNet` — a candle advantage net per player, refit from fresh weights every epoch on reservoir memory; one strategy net, fit once at the end
 - `nlhe` — the `neural` feature: `FullInfo` + `NlheEmbedder`, raw cards and `rosetta`'s predicates in, the static bet grid out; no abstraction tables, no database (`trainer --deep`)
 - `petri` — the same loop on Kuhn and RPS, compiled to WebAssembly and drawn live in a browser
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/neural/networks-dark.gif"/>
+    <img src="assets/neural/networks-light.gif" alt="One forward pass through a CfrNet advantage network" width="820"/>
+  </picture>
+  <br/>
+  <sub><b>Figure 5.</b> One forward pass: the embedder's features, the hidden layers, the legal-action mask, and regret matching over the masked logits. From <a href="crates/neural/assets/networks.html"><code>networks.html</code></a>.</sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/neural/petri-dark.gif"/>
+    <img src="assets/neural/petri-light.gif" alt="Deep CFR training on rock-paper-scissors in the browser" width="820"/>
+  </picture>
+  <br/>
+  <sub><b>Figure 6.</b> <a href="crates/petri"><code>petri</code></a>: 2,048 epochs of <code>CfrNet</code> on RPS, in WebAssembly. The average strategy (blue) settles on Nash; the current strategy (orange) keeps cycling around it, as CFR's iterates do.</sub>
+</p>
 
 ### 5 · Instruments — names, records, opponents
 
@@ -118,7 +148,7 @@ flowchart LR
     <img src="assets/images/competition-convergence-light.svg" alt="Running bb/100 by hands played, nine variants" width="880"/>
   </picture>
   <br/>
-  <sub><b>Figure 5.</b> Every hand, from the hand log; runs align on their <i>last</i>. Search variants think for seconds and enter at the hollow dot.</sub>
+  <sub><b>Figure 7.</b> Every hand, from the hand log; runs align on their <i>last</i>. Search variants think for seconds and enter at the hollow dot.</sub>
 </p>
 
 | Variant             |  Hands |    bb/100 | 95% CI |
@@ -141,7 +171,7 @@ flowchart LR
     <img src="assets/images/competition-cube-light.svg" alt="The eight search configurations as a cube" width="820"/>
   </picture>
   <br/>
-  <sub><b>Figure 6.</b> The run as a cube; long edges are the <code>dirac</code> transition. Alone it buys <b>+4</b>, on top of search <b>~+51</b> — sampling temperature, not search, is the dominant loss.</sub>
+  <sub><b>Figure 8.</b> The run as a cube; long edges are the <code>dirac</code> transition. Alone it buys <b>+4</b>, on top of search <b>~+51</b> — sampling temperature, not search, is the dominant loss.</sub>
 </p>
 
 ### In shape — the litmus suite
@@ -319,7 +349,7 @@ Training: 16 vCPU / 120 GB. PostgreSQL 14+: 8 vCPU / 64 GB. Analysis: 1 vCPU / 4
 
 <img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650"/>
 
-<sub><b>Figure 7.</b> `vitals` emits OpenTelemetry to any OTLP backend; a metric added in <code>crates/vitals/src/metrics.rs</code> is visible immediately.</sub>
+<sub><b>Figure 9.</b> `vitals` emits OpenTelemetry to any OTLP backend; a metric added in <code>crates/vitals/src/metrics.rs</code> is visible immediately.</sub>
 
 </details>
 
@@ -347,9 +377,23 @@ cargo run --manifest-path crates/lints/Cargo.toml -- --base origin/main
 
 Closed-source, built entirely on this repository's public APIs — `portal`'s endpoints, `lloyd`'s tables, `nlhe`'s blueprint format.
 
-| <img src="assets/images/frontend-table.png" alt="Live game UI" width="400"/>                     | <img src="assets/images/frontend-strategy.png" alt="Per-decision strategy" width="400"/>      |
-| :----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-| <sub><b>Figure 8.</b> Showdown; the cube selects villain's `depth × world × dirac`.</sub>        | <sub><b>Figure 9.</b> Flop bucket `F:95` — actions, visits, EV, subgame history.</sub>        |
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/frontend-play-dark.png"/>
+    <img src="assets/images/frontend-play-light.png" alt="The Play table" width="900"/>
+  </picture>
+  <br/>
+  <sub><b>Figure 10.</b> Play: pick the opponent's <code>depth × world × dirac</code> corner of the cube, or <code>fish</code>, and sit down.</sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/frontend-history-dark.png"/>
+    <img src="assets/images/frontend-history-light.png" alt="History: cumulative P&L by matchup" width="900"/>
+  </picture>
+  <br/>
+  <sub><b>Figure 11.</b> History: cumulative P&amp;L for any hero × opponent matchup, with AIVAT below.</sub>
+</p>
 
 ## References
 

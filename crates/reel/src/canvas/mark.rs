@@ -156,7 +156,7 @@ impl Mark {
             size,
             fill: fill.into(),
             anchor: Anchor::Middle,
-            face: Face::Mono,
+            face: Face::Text,
             heft: BOOK,
             fade: 1.0,
         }
@@ -252,7 +252,7 @@ impl Mark {
                 heft,
                 fade,
             } => format!(
-                r#"<text x="{:.1}" y="{:.1}" font-family="{}" font-size="{size}" font-weight="{heft}" fill="{fill}" text-anchor="{}" dominant-baseline="middle" opacity="{fade}">{}</text>"#,
+                r#"<text x="{:.1}" y="{:.1}" {} font-size="{size}" font-weight="{heft}" fill="{fill}" text-anchor="{}" dominant-baseline="middle" opacity="{fade}">{}</text>"#,
                 spot.x(),
                 spot.y(),
                 face.svg(),

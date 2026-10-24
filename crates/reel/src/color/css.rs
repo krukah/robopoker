@@ -29,6 +29,18 @@ impl Palette for Css {
         "var(--tm-border)".into()
     }
 
+    fn inverse(&self) -> String {
+        "var(--tm-inverse)".into()
+    }
+
+    fn ground(&self) -> String {
+        "var(--tree-band-a)".into()
+    }
+
+    fn stripe(&self) -> String {
+        "var(--tree-stripe)".into()
+    }
+
     fn felt(&self) -> String {
         "var(--felt)".into()
     }
@@ -55,6 +67,14 @@ impl Palette for Css {
 
     fn gold(&self) -> String {
         "var(--accent-gold)".into()
+    }
+
+    fn observed(&self) -> String {
+        "var(--hist-obs-stroke)".into()
+    }
+
+    fn range(&self) -> String {
+        "var(--range-color)".into()
     }
 
     fn action(&self, deed: Deed) -> String {

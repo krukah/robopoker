@@ -4,17 +4,37 @@ use super::*;
 pub(crate) struct Run;
 
 impl Run {
+    /// Every game's suite in one register, each asset suffixed `-{tag}`.
+    pub(crate) fn register<P>(root: &std::path::Path, paint: &P, tag: &str)
+    where
+        P: Palette,
+    {
+        Run::suite(
+            root,
+            paint,
+            &Ensemble::<nlhe::NlheGame, P>::new(paint),
+            ["tree_v1_connected", "tree_v1_transposed", "triplet", "equity"].map(|name| format!("{name}-{tag}")),
+        );
+        #[cfg(feature = "kuhn")]
+        Run::suite(
+            root,
+            paint,
+            &Ensemble::<kuhn::KuhnGame, P>::new(paint),
+            ["tree_kuhn", "kuhn_tree_portrait", "kuhn_triplet", "kuhn_equity"].map(|name| format!("{name}-{tag}")),
+        );
+    }
+
     /// One game's full asset suite: both tree orientations (with animated
     /// flipbooks), the triplet, and the equity curve.
-    pub(crate) fn suite<G, P>(root: &std::path::Path, paint: &P, show: &Ensemble<G, P>, names: [&str; 4])
+    pub(crate) fn suite<G, P>(root: &std::path::Path, paint: &P, show: &Ensemble<G, P>, names: [String; 4])
     where
         G: Atlas,
         P: Palette,
     {
-        Run::stage(root, paint, names[0], &show.film(Orient::Landscape), true);
-        Run::stage(root, paint, names[1], &show.film(Orient::Portrait), true);
-        Run::stage(root, paint, names[2], &show.trio(), false);
-        Run::stage(root, paint, names[3], &show.curve(), false);
+        Run::stage(root, paint, &names[0], &show.film(Orient::Landscape), true);
+        Run::stage(root, paint, &names[1], &show.film(Orient::Portrait), true);
+        Run::stage(root, paint, &names[2], &show.trio(), false);
+        Run::stage(root, paint, &names[3], &show.curve(), false);
     }
 
     /// Stages one panel: per-frame SVGs plus the representative still, and the

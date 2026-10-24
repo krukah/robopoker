@@ -67,17 +67,22 @@ where
         let (past, prior) = G::curves(s.saturating_sub(1));
         let mut marks = vec![
             Mark::trace(vec![Point::new(x, y + h), Point::new(x + w, y + h)], self.paint().border(), 1.0),
-            Mark::label(Point::new(x, INSET.1 / 2.0), "EQUITY", 11.0, self.paint().muted())
+            Mark::label(Point::new(x, INSET.1 / 2.0), "EQUITY", 11.0, self.paint().fg())
                 .anchor(Anchor::Start)
-                .heft(600),
-            Mark::label(Point::new(x, y + h + 18.0), "0.0", 9.0, self.paint().muted()).anchor(Anchor::Start),
-            Mark::label(Point::new(x + w, y + h + 18.0), "1.0", 9.0, self.paint().muted()).anchor(Anchor::End),
+                .face(Face::Caps)
+                .heft(700),
+            Mark::label(Point::new(x, y + h + 18.0), "0.0", 9.0, self.paint().muted())
+                .anchor(Anchor::Start)
+                .face(Face::Data),
+            Mark::label(Point::new(x + w, y + h + 18.0), "1.0", 9.0, self.paint().muted())
+                .anchor(Anchor::End)
+                .face(Face::Data),
         ];
         (1..4).for_each(|k| {
             let gx = x + w * k as f64 / 4.0;
             marks.push(Mark::trace(vec![Point::new(gx, y), Point::new(gx, y + h)], self.paint().border(), 0.5));
         });
-        for (was, now, ink) in [(prior, abs, self.paint().gold()), (past, obs, self.paint().red())] {
+        for (was, now, ink) in [(prior, abs, self.paint().gold()), (past, obs, self.paint().observed())] {
             let mix = (0..BUCKETS)
                 .map(|k| was[k] + (now[k] - was[k]) * ramp)
                 .collect::<Vec<f64>>();

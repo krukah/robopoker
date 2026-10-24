@@ -10,7 +10,7 @@ pub const GUTTER: f64 = 2.0;
 pub const APRON: f64 = 26.0;
 
 /// Cell-label text size.
-pub const TEXT: f64 = 9.0;
+pub const LEGEND: f64 = 9.0;
 
 /// Title text size.
 pub const TITLE: f64 = 11.0;
@@ -89,9 +89,10 @@ where
         let (cols, rows) = G::grid();
         let ramp = Easing::fade(t);
         let mut marks = vec![
-            Mark::label(Point::new(APRON, APRON / 2.0), self.title().to_string(), TITLE, self.paint().muted())
+            Mark::label(Point::new(APRON, APRON / 2.0), self.title().to_string(), TITLE, self.paint().fg())
                 .anchor(Anchor::Start)
-                .heft(600),
+                .face(Face::Caps)
+                .heft(700),
         ];
         for row in 0..rows {
             for col in 0..cols {
@@ -109,14 +110,14 @@ where
                     GRAIN,
                     GRAIN,
                 );
-                let fill = if spot { self.paint().action(Deed::Open) } else { self.paint().fg() };
+                let fill = if spot { self.paint().action(Deed::Open) } else { self.paint().range() };
                 marks.push(Mark::block(tile, fill).fade(glow));
                 marks.push(
                     Mark::label(
                         Point::new(tile.x() + GRAIN / 2.0, tile.y() + GRAIN / 2.0),
                         G::cell(col, row),
-                        TEXT,
-                        self.paint().bg(),
+                        LEGEND,
+                        self.paint().inverse(),
                     )
                     .heft(600)
                     .fade(glow),
@@ -124,7 +125,7 @@ where
                 if spot {
                     marks.push(
                         Mark::block(Rect::new(tile.x() - 1.0, tile.y() - 1.0, GRAIN + 2.0, GRAIN + 2.0), "none")
-                            .rim(self.paint().action(Deed::Open), 1.5),
+                            .rim(self.paint().fg(), 1.5),
                     );
                 }
             }
