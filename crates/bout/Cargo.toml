@@ -1,0 +1,30 @@
+[package]
+name         = "bout"
+publish      = false
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Benchmark harness for playing the blueprint against external poker APIs"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+keywords     = ["poker", "benchmark", "harness"]
+categories   = ["game-development"]
+
+[dependencies]
+pokerkit       = { workspace = true }
+deuce          = { workspace = true }
+kicker         = { workspace = true }
+bouncer        = { workspace = true, features = ["server"] }
+parlor         = { workspace = true, features = ["server"] }
+nlhe           = { workspace = true, features = ["server"] }
+daybook        = { workspace = true }
+vitals         = { workspace = true }
+tokio-postgres = { workspace = true }
+tokio          = { version = "1", features = ["rt", "sync", "time"] }
+async-trait    = { workspace = true }
+anyhow         = { workspace = true }
+tracing        = { workspace = true }
+
+[lints]
+workspace = true

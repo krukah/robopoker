@@ -1,133 +1,90 @@
-use serde::Deserialize;
+//! Slumbot's two-endpoint HTTP surface.
+
+use super::*;
+use bout::Throttle;
 use serde::Serialize;
-use std::sync::Arc;
 use std::sync::LazyLock;
-use tokio::sync::Semaphore;
 
 const BASE: &str = "https://slumbot.com/slumbot/api";
 
-/// Shared reqwest client for the whole process. Clones are cheap (the
-/// struct is `Arc`-backed internally) and reusing it lets the TCP
-/// connection pool and TLS session cache be shared across every
-/// variant benchmark + error-retry reconnect. Fresh `reqwest::Client`
-/// instances would each do their own TLS handshake.
+/// Shared reqwest client for the whole process. Clones are cheap (the struct
+/// is `Arc`-backed internally) and reusing it lets the TCP connection pool
+/// and TLS session cache be shared across every variant benchmark and every
+/// error-retry reconnect. Fresh `reqwest::Client` instances would each do
+/// their own TLS handshake.
 static HTTP: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
-#[derive(Debug, Deserialize)]
-pub struct Response {
-    #[serde(default)]
-    pub token: Option<String>,
-    pub client_pos: usize,
-    pub hole_cards: Vec<String>,
-    pub board: Vec<String>,
-    pub action: String,
-    pub old_action: Option<String>,
-    #[serde(default)]
-    pub winnings: Option<i64>,
-}
-
-#[derive(Debug, Serialize)]
-struct NewHandRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    token: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct ActRequest {
-    token: String,
-    incr: String,
-}
-
-/// Shared concurrency limiter for the slumbot HTTP surface. When the
-/// one-container runner spawns multiple variant benchmarks in parallel,
-/// they each hold a clone of the same `Throttle` and serialize their
-/// requests through it — no variant can exceed the global in-flight cap.
-///
-/// A zero-capacity throttle is never constructed (at least one permit is
-/// guaranteed by [`Throttle::new`]), so every acquire call eventually
-/// succeeds.
-#[derive(Clone)]
-pub struct Throttle(Arc<Semaphore>);
-
-impl Throttle {
-    /// Global cap on simultaneous in-flight requests across all holders
-    /// of this clone.
-    pub fn new(max_inflight: usize) -> Self {
-        Self(Arc::new(Semaphore::new(max_inflight.max(1))))
-    }
-}
-
+/// One session's connection: the shared HTTP pool, this session's token, and
+/// the process-wide in-flight cap.
 pub struct Client {
     http: reqwest::Client,
     token: Option<String>,
-    throttle: Option<Throttle>,
-}
-
-impl Default for Client {
-    fn default() -> Self {
-        Self::new()
-    }
+    throttle: Throttle,
 }
 
 impl Client {
-    pub fn new() -> Self {
+    /// A session with no token yet — the first `new_hand` mints one.
+    pub fn new(throttle: Throttle) -> Self {
         Self {
             http: HTTP.clone(),
             token: None,
-            throttle: None,
+            throttle,
         }
     }
 
-    pub fn with_throttle(mut self, throttle: Throttle) -> Self {
-        self.throttle = Some(throttle);
-        self
+    fn http(&self) -> &reqwest::Client {
+        &self.http
     }
 
-    async fn acquire(&self) -> Option<tokio::sync::OwnedSemaphorePermit> {
-        match self.throttle.as_ref() {
-            Some(t) => t.0.clone().acquire_owned().await.ok(),
-            None => None,
-        }
+    fn token(&self) -> Option<&str> {
+        self.token.as_deref()
     }
 
+    fn token_mut(&mut self) -> &mut Option<String> {
+        &mut self.token
+    }
+
+    fn throttle(&self) -> &Throttle {
+        &self.throttle
+    }
+
+    /// Start a hand, carrying the session token forward if we have one.
     pub async fn new_hand(&mut self) -> anyhow::Result<Response> {
-        let permit = self.acquire().await;
-        let text = self
-            .http
-            .post(format!("{BASE}/new_hand"))
-            .json(&NewHandRequest {
-                token: self.token.clone(),
-            })
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await?;
-        drop(permit);
-        let resp = serde_json::from_str::<Response>(&text)
-            .map_err(|e| anyhow::anyhow!("new_hand decode: {e}\nbody: {text}"))?;
-        self.token = resp.token.clone().or(self.token.take());
-        Ok(resp)
+        let token = self.token().map(str::to_owned);
+        self.post("new_hand", &NewHand { token }).await
     }
 
+    /// Send hero's action as a Slumbot increment string.
     pub async fn act(&mut self, incr: &str) -> anyhow::Result<Response> {
-        let permit = self.acquire().await;
+        let token = self
+            .token()
+            .map(str::to_owned)
+            .ok_or_else(|| anyhow::anyhow!("no token"))?;
+        let incr = incr.to_string();
+        self.post("act", &Act { token, incr }).await
+    }
+
+    /// POST a body, decode the response, and refresh the session token.
+    /// Decode failures carry the raw body — Slumbot answers some malformed
+    /// requests with prose, and the text is the whole diagnosis.
+    async fn post<B>(&mut self, route: &str, body: &B) -> anyhow::Result<Response>
+    where
+        B: Serialize,
+    {
+        let permit = self.throttle().acquire().await;
         let text = self
-            .http
-            .post(format!("{BASE}/act"))
-            .json(&ActRequest {
-                token: self.token.clone().ok_or(anyhow::anyhow!("no token"))?,
-                incr: incr.to_string(),
-            })
+            .http()
+            .post(format!("{BASE}/{route}"))
+            .json(body)
             .send()
             .await?
             .error_for_status()?
             .text()
             .await?;
         drop(permit);
-        let resp =
-            serde_json::from_str::<Response>(&text).map_err(|e| anyhow::anyhow!("act decode: {e}\nbody: {text}"))?;
-        self.token = resp.token.clone().or(self.token.take());
-        Ok(resp)
+        let response = serde_json::from_str::<Response>(&text)
+            .map_err(|e| anyhow::anyhow!("{route} decode: {e}\nbody: {text}"))?;
+        *self.token_mut() = response.token().map(str::to_owned).or(self.token_mut().take());
+        Ok(response)
     }
 }

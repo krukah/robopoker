@@ -39,6 +39,39 @@ jobs:
       - name: Taplo (Cargo.toml formatting)
         run: taplo fmt --check
 
+  house-lint:
+    name: House Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Full history so the merge base with the target branch resolves. The
+      # blob filter fetches commits without file contents; git backfills only
+      # the paths the diff touches.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - run: sudo apt-get update && sudo apt-get install -y mold clang
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      # lints sits outside the workspace, so it gets its own cache.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/lints
+          shared-key: robopoker-lints
+      # The root `cargo fmt --all` stops at the workspace, which excludes this
+      # crate.
+      - name: Rust Format (lints)
+        run: cargo fmt --manifest-path crates/lints/Cargo.toml --check
+      # The root Clippy job stops at the workspace, which excludes this crate.
+      - name: Clippy (lints)
+        run: cargo clippy --manifest-path crates/lints/Cargo.toml --all-targets -- -D warnings
+      - name: House Lint
+        # github.base_ref is set on pull_request only. A push to main or a
+        # manual dispatch falls back to main, which diffs against itself.
+        run: cargo run --manifest-path crates/lints/Cargo.toml -- --base origin/${{ github.base_ref || 'main' }}
+
   # Clippy and tests share the same compiled target/ directory — both
   # need `--all-targets` worth of compilation, so doing them in one
   # job cuts ~5 min vs the previous split-job setup.
