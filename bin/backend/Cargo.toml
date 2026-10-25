@@ -13,9 +13,12 @@ name = "backend"
 path = "src/main.rs"
 
 [dependencies]
+pokerkit           = { path = "../../crates/pokerkit", features = ["server", "cli"] }
 portal             = { path = "../../crates/portal" }
+clap               = { workspace = true }
 tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+mimalloc           = { workspace = true }
 
 [lints]
 workspace = true

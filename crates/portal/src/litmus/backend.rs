@@ -13,19 +13,27 @@ impl Backend {
     pub fn new(strategy: StrategyAPI, training: TrainingAPI) -> Self {
         Self { strategy, training }
     }
+
+    fn strategy(&self) -> &StrategyAPI {
+        &self.strategy
+    }
+
+    fn training(&self) -> &TrainingAPI {
+        &self.training
+    }
 }
 
 #[async_trait::async_trait]
 impl litmus::Ops for Backend {
     async fn policy(&self, recall: Witness) -> anyhow::Result<Option<ApiStrategy>> {
-        self.strategy.policy(recall).await
+        self.strategy().policy(recall).await
     }
 
     async fn grid_usage(&self) -> anyhow::Result<Vec<ApiGridUsage>> {
-        self.strategy.grid_usage().await
+        self.strategy().grid_usage().await
     }
 
     async fn status(&self) -> anyhow::Result<ApiStatus> {
-        self.training.status().await
+        self.training().status().await
     }
 }

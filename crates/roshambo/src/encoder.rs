@@ -5,27 +5,24 @@ use subgame::*;
 #[derive(Default)]
 pub struct RpsEncoder;
 
-impl CfrEncoder for RpsEncoder {
-    type T = RpsTurn;
-    type E = RpsEdge;
-    type G = RpsGame;
-    type I = RpsTurn;
-    const CHECK_RECALL: bool = true;
+impl CfrSpec for RpsEncoder {
+    type F = RpsTurn;
+}
 
-    fn seed(&self, _: &Self::G) -> Self::I {
+impl Encoding for RpsEncoder {
+    fn seed(&self, _: &GameOf<Self>) -> InfoOf<Self> {
         RpsTurn::P1
     }
 
-    fn resume<P>(&self, _: P, game: &Self::G) -> Self::I
+    fn public<P>(&self, game: &GameOf<Self>, _: P) -> PublicOf<Self>
     where
-        P: IntoIterator<Item = Self::E>,
+        P: IntoIterator<Item = EdgeOf<Self>>,
     {
         game.turn()
     }
-}
 
-impl EmbeddedHistory for RpsEncoder {}
-impl PublicGame for RpsEncoder {}
+    fn secret(&self, _: &GameOf<Self>) -> SecretOf<Self> {}
+}
 
 impl RpsEncoder {
     pub fn baseline(&self) -> Posterior<()> {
@@ -33,8 +30,16 @@ impl RpsEncoder {
     }
 }
 
+impl<const D: usize> Frontier<D> for RpsEncoder {}
+
 impl<const W: usize> WorldRestrict<W> for RpsEncoder {
-    fn restrict(&self, _: Self::T, _: World, _: &Belief<Secret<Self>, W>, observed: &Self::G) -> Self::G {
+    fn restrict(
+        &self,
+        _: TurnOf<Self>,
+        _: World,
+        _: &Belief<Secret<Self>, W>,
+        observed: &GameOf<Self>,
+    ) -> GameOf<Self> {
         *observed
     }
 }

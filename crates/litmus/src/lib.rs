@@ -2,26 +2,18 @@
 //!
 //! See `scripts/litmus/README.md` for the human-facing workflow.
 //!
-//! This crate is the typed core: schema definitions, named-ref resolution,
-//! family-matrix expansion, per-kind evaluation, and markdown rendering.
-//! It depends only on `deuce` / `kicker` for types; the I/O
-//! surface is the [`Ops`] trait, implemented by the server crate (or any
-//! other backend) so this crate stays cycle-free.
+//! This crate is the typed core: schema definitions, named-ref resolution, family-matrix
+//! expansion, per-kind evaluation, and markdown rendering.
 
-mod api;
-mod catalog;
-mod compose;
-mod evaluate;
-mod ops;
-mod render;
+mod cases;
+mod library;
+mod pipeline;
+mod report;
+mod scenarios;
 mod schema;
-
-pub use api::Litmus;
-pub use catalog::{Catalog, build_witness, parse_edge};
-pub use compose::resolve;
-pub use evaluate::{Outcome, Status, evaluate};
-pub use ops::Ops;
-pub use render::render;
-pub use schema::{
-    Case, CategoryDef, Direction, Expect, Family, HandDef, Historical, HistoryDef, Scenarios, TestKind, load,
-};
+pub use cases::*;
+pub use library::*;
+pub use pipeline::*;
+pub use report::*;
+pub use scenarios::*;
+pub use schema::*;

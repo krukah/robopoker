@@ -10,8 +10,7 @@ pub struct SubGameEncoder<'blueprint, N, const L: usize>
 where
     N: DepthSampler<L>,
 {
-    inner: &'blueprint N,
-    prefix: Prefix<N::T, N::E>,
+    depth: DepthEncoder<'blueprint, N, L>,
     world: World,
 }
 
@@ -19,103 +18,59 @@ impl<'blueprint, N, const L: usize> SubGameEncoder<'blueprint, N, L>
 where
     N: DepthSampler<L>,
 {
-    pub fn new(inner: &'blueprint N, prefix: Vec<Descent<N::T, N::E>>, world: World) -> Self {
+    pub fn new(inner: &'blueprint N, prefix: Prefix<GameOf<N>>, world: World) -> Self {
         Self {
-            inner,
-            prefix: Prefix::new(prefix),
+            depth: DepthEncoder::new(inner, prefix),
             world,
         }
     }
 
     pub fn inner(&self) -> &N {
-        self.inner
+        self.depth.inner()
+    }
+
+    pub fn prefix(&self) -> &Prefix<GameOf<N>> {
+        self.depth.prefix()
+    }
+
+    pub fn world(&self) -> World {
+        self.world
     }
 
     pub fn with_world(&mut self, world: World) {
-        self.world = world;
+        *self.world_mut() = world;
     }
 
-    fn make_info<I>(&self, past: I, game: &DepthGame<N::G, L>) -> WorldInfo<DepthInfo<N::I, L>>
-    where
-        I: IntoIterator<Item = N::E>,
-    {
-        let full = (&self.prefix).edges().chain(past);
-        let inner = self.inner.resume(full, game.inner());
-        let leaf = match game.phase() {
-            DepthPhase::Delegate => DepthInfo::Game(inner),
-            _ => DepthInfo::Pick(inner),
-        };
-        WorldInfo::new(self.world, leaf)
+    fn world_mut(&mut self) -> &mut World {
+        &mut self.world
     }
 }
 
-impl<N, const L: usize> CfrEncoder for SubGameEncoder<'_, N, L>
+impl<N, const L: usize> CfrSpec for SubGameEncoder<'_, N, L>
 where
     N: DepthSampler<L>,
 {
-    type T = N::T;
-    type E = DepthEdge<N::E, L>;
-    type G = DepthGame<N::G, L>;
-    type I = WorldInfo<DepthInfo<N::I, L>>;
+    type F = WorldInfo<DepthInfo<InfoOf<N>, L>>;
+}
 
-    fn seed(&self, game: &Self::G) -> Self::I {
-        self.make_info(std::iter::empty(), game)
-    }
-
-    fn info(
-        &self,
-        tree: &Tree<Self::T, Self::E, Self::G, Self::I>,
-        (edge, game, parent): Leaf<Self::E, Self::G>,
-    ) -> Self::I {
-        let mut path = tree.at(parent).into_iter().map(mccfr::Jump::edge).collect::<Vec<_>>();
-        path.reverse();
-        path.push(edge);
-        let inner_path = path.into_iter().filter_map(|e| match e {
-            DepthEdge::Game(e) => Some(e),
-            DepthEdge::Pick(_) => None,
-        });
-        self.make_info(inner_path, &game)
-    }
-
-    fn resume<P>(&self, past: P, game: &Self::G) -> Self::I
+impl<N, const L: usize> Encoding for SubGameEncoder<'_, N, L>
+where
+    N: DepthSampler<L>,
+{
+    /// The depth encoder's public half, tagged with the world.
+    fn public<P>(&self, game: &GameOf<Self>, past: P) -> PublicOf<Self>
     where
-        P: IntoIterator<Item = Self::E>,
+        P: IntoIterator<Item = EdgeOf<Self>>,
     {
-        let inner_past = past.into_iter().filter_map(|e| match e {
-            DepthEdge::Game(e) => Some(e),
-            DepthEdge::Pick(_) => None,
-        });
-        self.make_info(inner_past, game)
+        WorldPublic::new(self.world(), self.depth.public(game, past))
     }
 
-    fn branches(&self, node: &Node<Self::T, Self::E, Self::G, Self::I>) -> Vec<Leaf<Self::E, Self::G>> {
-        let parent = node.index();
-        let game = *node.game();
-        let game = if game.at_frontier() {
-            let payoffs = self.inner.payoffs(&self.prefix, game.inner(), game.internal());
-            game.to_frontier(payoffs)
-        } else {
-            game
-        };
-        if game.is_choosing() {
-            Continuation::all::<L>()
-                .map(|c| {
-                    let edge = DepthEdge::Pick(c);
-                    (edge, game.apply(edge), parent)
-                })
-                .collect()
-        } else if game.turn().is_terminal() || game.turn().is_chance() {
-            vec![]
-        } else {
-            node.info()
-                .inner()
-                .inner()
-                .choices()
-                .map(|e| {
-                    let edge = DepthEdge::Game(e);
-                    (edge, game.apply(edge), parent)
-                })
-                .collect()
-        }
+    fn secret(&self, game: &GameOf<Self>) -> SecretOf<Self> {
+        self.depth.secret(game)
+    }
+
+    fn branches(&self, node: &Node<Self::F>) -> Branches<GameOf<Self>> {
+        self.depth
+            .grow(node.index(), *node.game(), node.info().public().inner().inner().menu())
     }
 }

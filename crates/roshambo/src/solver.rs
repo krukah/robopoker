@@ -1,144 +1,45 @@
-use crate::*;
-use mccfr::*;
-use subgame::*;
-
-mccfr!(
-    Rps,        //
-    RpsEncoder, //
-    RpsTurn,    //
-    RpsEdge,    //
-    RpsGame,    //
-    RpsTurn,    //
-    1
-);
-
-impl<R, W, S, const L: usize> DepthSampler<L> for Rps<R, W, S>
-where
-    R: RegretSchedule,
-    W: WeightSchedule,
-    S: SamplingScheme,
-{
-    type Blueprint = RpsProfile;
-
-    fn blueprint(&self) -> &Self::Blueprint {
-        &self.profile
-    }
-
-    fn payoffs(&self, prefix: &Prefix<Self::T, Self::E>, game: &Self::G, _: Self::T) -> Payoffs<L> {
-        Payoffs::uniform(
-            self.profile
-                .frontier_payoff(&self.resume(prefix.into_iter().edges(), game)),
-        )
-    }
-}
-
-impl<R, W, S, const WORLDS: usize> WorldRestrict<WORLDS> for Rps<R, W, S>
-where
-    R: RegretSchedule,
-    W: WeightSchedule,
-    S: SamplingScheme,
-{
-    fn restrict(
-        &self,
-        external: Self::T,
-        world: World,
-        belief: &Belief<Secret<Self>, WORLDS>,
-        observed: &Self::G,
-    ) -> Self::G {
-        self.encoder.restrict(external, world, belief, observed)
-    }
-}
-
-#[rustfmt::skip]
-impl<R, W, S> std::fmt::Display for Rps<R, W, S>
-where
-    R: RegretSchedule,
-    W: WeightSchedule,
-    S: SamplingScheme,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Epochs: {}  Exploitability: {:.4}", self.profile.epochs, Solver::exploitability(self))?;
-        writeln!(f, "┌──────┬──────┬──────────┬──────────┬──────────┬──────────┐")?;
-        writeln!(f, "│ Turn │ Edge │ ∑ Regret │ ∑ Weight │  Instant │  Average │")?;
-        writeln!(f, "├──────┼──────┼──────────┼──────────┼──────────┼──────────┤")?;
-        for (turn, edges) in &self.profile.encounters {
-            for edge in edges.keys() {
-                writeln!(
-                    f,
-                    "│ {:>4} │ {:>4} │ {:>+8.2} │ {:>8.2} │ {:>8.2} │ {:>8.2} │",
-                    format!("{turn:?}"),
-                    format!("{edge:?}"),
-                    self.profile().cum_regret(turn, edge),
-                    self.profile().cum_weight(turn, edge),
-                    self.profile().instant_policy(turn, edge),
-                    self.profile().averaged_policy(turn, edge),
-                )?;
-            }
-        }
-        writeln!(f, "└──────┴──────┴──────────┴──────────┴──────────┴──────────┘")?;
-        Ok(())
-    }
-}
-
 /// Convergence tests at 2^16 iterations.
-///
-/// RNG is seeded from a per-thread tree-id counter (reset each
-/// `Solver::solve`), so runs are deterministic. Prunable/Pluribus sampling
-/// behave like External for RPS since regrets never fall below the pruning
-/// threshold in a game this small.
-///
-/// Tolerances follow Kuhn's empirical volatility pattern scaled to an 0.050
-/// base; higher tolerance = higher-variance combo.
-///
-/// Combos deliberately not tested: Vanilla sampling (incompatible with
-/// external sampling), Targeted sampling (per-node importance weighting is too
-/// high variance), and Exponential weight at 0.99 decay (oscillates — forgets
-/// history; 0.9999 is fine).
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::*;
+    use mccfr::*;
     use pokerkit::*;
+    use subgame::*;
 
     const N14: usize = 1 << 14;
     const N16: usize = 1 << 16;
 
     trait RpsEquilibrium {
         fn averaged(&self, turn: RpsTurn, edge: RpsEdge) -> Probability;
+
+        fn equilibrium(&self, tolerance: f32) {
+            let gap = RpsNash::gap(|turn, edge| self.averaged(turn, edge));
+            assert!(gap < tolerance, "off the (0.4, 0.4, 0.2) equilibrium by {gap:.4}");
+        }
     }
-    impl<R, W, S> RpsEquilibrium for Rps<R, W, S>
+    impl<R, W, S> RpsEquilibrium for Tabular<RpsEncoder, R, W, S, 1>
     where
         R: RegretSchedule,
         W: WeightSchedule,
         S: SamplingScheme,
     {
         fn averaged(&self, turn: RpsTurn, edge: RpsEdge) -> Probability {
-            CfrNash::averaged_policy(self.profile(), &turn, &edge)
+            Equilibrium::averaged_policy(self.profile(), &turn, &edge)
         }
     }
     const WORLDS: usize = 2;
 
     impl<P> RpsEquilibrium for WorldProfile<'_, subgame::DepthView<'_, P, 1>>
     where
-        P: RefProf<T = RpsTurn, E = RpsEdge, I = RpsTurn>,
+        P: Profile<F = RpsTurn>,
     {
         fn averaged(&self, turn: RpsTurn, edge: RpsEdge) -> Probability {
             (0..WORLDS)
                 .map(World::from)
-                .map(|w| WorldInfo::new(w, subgame::DepthInfo::<_, 1>::Game(turn)))
-                .map(|i| CfrNash::averaged_policy(self, &i, &subgame::DepthEdge::<_, 1>::Game(edge)))
+                .map(|w| turn.game::<1>().world(w))
+                .map(|i| Equilibrium::averaged_policy(self, &i, &subgame::DepthEdge::<_, 1>::Game(edge)))
                 .sum::<Probability>()
                 / WORLDS as Probability
-        }
-    }
-    #[rustfmt::skip]
-    fn equilibrium(solver: &impl RpsEquilibrium, tolerance: f32) {
-        for turn in [RpsTurn::P1, RpsTurn::P2] {
-            let r = solver.averaged(turn, RpsEdge::R);
-            let p = solver.averaged(turn, RpsEdge::P);
-            let s = solver.averaged(turn, RpsEdge::S);
-            assert!((r - 0.40).abs() < tolerance, "{turn:?} R: {r:.4} ≠ 0.40");
-            assert!((p - 0.40).abs() < tolerance, "{turn:?} P: {p:.4} ≠ 0.40");
-            assert!((s - 0.20).abs() < tolerance, "{turn:?} S: {s:.4} ≠ 0.20");
         }
     }
 
@@ -147,7 +48,7 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<$S:lower _ $R:lower _ $W:lower>]() {
-                    equilibrium(&Rps::<$R, $W, $S>::default().solve(N16), $tol);
+                    RpsEquilibrium::equilibrium(&Tabular::<RpsEncoder, $R, $W, $S, 1>::default().solve(N16), $tol);
                 }
             }
         };
@@ -158,10 +59,10 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<subgame_ $S:lower _ $R:lower _ $W:lower>]() {
-                    let ref blueprint = Rps::<$R, $W, $S>::default().solve(N14);
+                    let ref blueprint = Tabular::<RpsEncoder, $R, $W, $S, 1>::default().solve(N14);
                     let root = RpsGame::root();
-                    equilibrium(
-                        &SubGameSolver::<_, 1, _, _, _>::new(
+                    RpsEquilibrium::equilibrium(
+                        &SubGameSolver::<_, 1, _>::new(
                             blueprint,
                             RpsTurn::P2,
                             blueprint.encoder().baseline().partition::<2>(),
@@ -227,15 +128,17 @@ mod tests {
 
     #[test]
     fn exploitability() {
-        let e16 = Solver::exploitability(&Rps::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N16));
+        let e16 = Grower::exploitability(
+            &Tabular::<RpsEncoder, FlooredRegret, LinearWeight, ExternalSampling, 1>::default().solve(N16),
+        );
         println!("N16={e16:.4}");
         assert!(e16 < 0.03, "2^16 iters: {e16:.4} >= 0.03");
     }
     #[test]
     fn mcxploitability() {
-        let solver = Rps::<FlooredRegret, LinearWeight, ExternalSampling>::default().solve(N16);
-        let exact = Solver::exploitability(&solver);
-        let mc = Solver::mxploitability(&solver, 64);
+        let solver = Tabular::<RpsEncoder, FlooredRegret, LinearWeight, ExternalSampling, 1>::default().solve(N16);
+        let exact = Grower::exploitability(&solver);
+        let mc = Grower::mxploitability(&solver, 64);
         assert!((exact - mc).abs() < 1e-6, "mc {mc:.6} != exact {exact:.6}");
     }
 

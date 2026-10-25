@@ -9,20 +9,22 @@ use rayon::prelude::*;
 pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// Point type that can be absorbed into centroids.
     type P: Absorb + Copy + Sync + Send;
+    /// Per-point bounds that prune distance calls.
+    type B: Prune<K>;
     /// Returns the data points to cluster.
     fn points(&self) -> &[Self::P; N];
     /// Returns current centroid positions.
     fn centroids(&self) -> &[Self::P; K];
     /// Returns per-point distance bounds.
-    fn boundings(&self) -> &[Bounds<K>; N];
+    fn boundings(&self) -> &[Self::B; N];
     /// Initializes centroids (typically k-means++).
     fn init_centroids(&self) -> [Self::P; K];
     /// Initializes bounds by computing all point-centroid distances.
-    fn init_bounds(&self) -> Box<[Bounds<K>; N]> {
+    fn init_bounds(&self) -> Box<[Self::B; N]> {
         (0..N)
             .into_par_iter()
             .map(|i| self.neighbor(i))
-            .map(Bounds::from)
+            .map(Self::B::from)
             .collect::<Vec<_>>()
             .try_into()
             .expect("bounds.len() == N")
@@ -39,7 +41,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
         &self.centroids()[j]
     }
     /// Gets bounds for point by index.
-    fn bound(&self, i: usize) -> &Bounds<K> {
+    fn bound(&self, i: usize) -> &Self::B {
         &self.boundings()[i]
     }
     /// Number of iterations to run.
@@ -91,23 +93,10 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
         Drift::from_array(std::array::from_fn(|i| self.distance(&news[i], self.centroid(i))))
     }
 
-    /// Refreshes stale upper bound before triangle inequality check.
-    fn refresh(&self, b: &mut Bounds<K>, x: &Self::P) {
-        if b.stale() {
-            b.refresh(self.distance(x, self.centroid(b.j())));
-        }
-    }
-    /// Updates bound for point-centroid pair, possibly reassigning.
-    fn rebound(&self, b: &mut Bounds<K>, j: usize, metric: &[[f32; K]; K], x: &Self::P) {
-        if b.has_shifted(metric, j) {
-            b.witness(self.distance(x, self.centroid(j)), j);
-        }
-    }
-
     /// Computes new centroids from current assignments. Each new
     /// centroid is the result of absorbing every point assigned to
     /// that cluster into the running mean.
-    fn recompute(&self, bounds: &[Bounds<K>]) -> [Self::P; K] {
+    fn recompute(&self, bounds: &[Self::B]) -> [Self::P; K] {
         use rayon::prelude::*;
         let centroids = (0..K)
             .into_par_iter()
@@ -123,26 +112,24 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
         std::array::from_fn(|j| centroids[j])
     }
 
-    /// Executes one Elkan iteration with bound maintenance.
-    ///
-    /// 1. Update bounds and reassign points using current centroids
-    /// 2. Compute new centroids from updated assignments
-    /// 3. Compute drift (how far each centroid moved)
-    /// 4. Shift bounds to account for centroid movement
-    ///
-    /// Returns `(new_centroids, drift)` so the caller can report convergence
-    /// telemetry without recomputing distances.
-    fn step_elkan(&self, bounds: &mut [Bounds<K>; N]) -> ([Self::P; K], Drift<K>) {
+    /// Assigns every point to its nearest current centroid, computing only the distances its
+    /// bounds cannot rule out. The bounds must hold for the current centroids, as every
+    /// `step_elkan` leaves them.
+    fn assign(&self, bounds: &mut [Self::B; N]) {
         let pairwise = self.pairwises();
         let midpoints = self.midpoints(&pairwise);
         bounds
             .par_iter_mut()
             .enumerate()
-            .filter(|(_, b)| b.u() > midpoints[b.j()])
-            .for_each(|(i, b)| {
-                self.refresh(b, self.point(i));
-                (0..K).for_each(|j| self.rebound(b, j, &pairwise, self.point(i)));
-            });
+            .for_each(|(i, b)| b.settle(&pairwise, &midpoints, |j| self.distance(self.point(i), self.centroid(j))));
+    }
+
+    /// Executes one Elkan iteration with bound maintenance.
+    ///
+    /// Returns `(new_centroids, drift)` so the caller can report convergence telemetry without
+    /// recomputing distances.
+    fn step_elkan(&self, bounds: &mut [Self::B; N]) -> ([Self::P; K], Drift<K>) {
+        self.assign(bounds);
         let centroids = self.recompute(bounds);
         let drift = self.drift(&centroids);
         bounds.par_iter_mut().for_each(|b| b.update(&drift));
@@ -170,7 +157,7 @@ pub trait Elkan<const K: usize, const N: usize>: Sync {
     /// Pulled out of `rms()` so callers that own the bounds (e.g. an
     /// in-progress iteration that has swapped it out of the layer) can
     /// still report convergence.
-    fn rms_with(&self, bounds: &[Bounds<K>; N]) -> Energy {
+    fn rms_with(&self, bounds: &[Self::B; N]) -> Energy {
         (bounds
             .par_iter()
             .enumerate()

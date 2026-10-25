@@ -18,6 +18,30 @@ flowchart LR
 Each coarser street clusters over distributions of the *next* street's buckets — hence
 the prior edge above.
 
+## Self-cost cache
+
+`transport/sinkhorn.rs` keeps a per-thread cache of `OT_ε(μ, μ)` self-costs, keyed by histogram content
+hash + street.
+
+`OT_ε(h, h)` is a pure function of `(h, T, ground_metric)`, so the cache is
+correct only under three invariants — all true today, and violating any one
+(e.g. a runtime-tunable temperature, a mutating `Metric`) makes it serve
+stale values:
+
+1. `SinkhornHyperParams::DEFAULT` is `const`, so `T` never changes within
+   a process.
+2. Each `Metric` is constructed once (`Metric::set` only runs inside
+   `Metric::from`) and never mutated.
+3. All `Metric` instances for the same `Street` within a process yield
+   identical `raw_distance(x, y)` — they derive from the same DB row set
+   or the same deterministic clustering output.
+
+Bounded by clear-on-overflow rather than LRU: the hot-path access pattern
+(`K` centroids + `N` points, repeatedly queried) is monotonic within a
+phase, so eviction is rare. Sized for the largest per-thread working set on
+a Flop run (`N/threads ≈ 160k` points + `K × E ≈ 2.5k` centroid states);
+at ~25 bytes/entry that is ~6 MB/thread, ≈ 100 MB over ~16 threads.
+
 ## Clustering complexity analysis
 
 Computational cost model for the k-means clustering pipeline.
@@ -64,7 +88,7 @@ The dominant cost comes from **Sinkhorn EMD calculations** in the inner loop of 
 
 ```
                          SINKHORN INNER LOOP
-                         (sinkhorn.rs:minimize)
+                         (transport/sinkhorn.rs:minimize)
 
     for _ in 0..I {                          // I iterations
         for x in 0..K {                      // K abstractions
@@ -126,6 +150,15 @@ flowchart TD
   P3["PHASE 3 · centroid updates<br/>F_update = 2NS ≪ F_bounds (negligible)"]
   P1 --> P2 --> P3
 ```
+
+The bounds in phase 2 are a type parameter of `Layer` (`elkan::Prune`), chosen per street in `forge`:
+
+| Street | Bounds | Memory | Distance calls per iteration (K = 256, random turn points) |
+|---|---|---|---|
+| Flop | `Bounds<K>` (Elkan: one lower bound per centroid) | N·K·4 B ≈ 1.3 GB | ~1–5% of N·K |
+| Turn | `Hamerly<K>` (one lower bound per point) | N·16 B ≈ 220 MB | ~80–95% of N·K |
+
+Elkan on the turn would need ~14.5 GB to prune a 1-D distance that already costs only ~1 min per full pass, so the turn trades ~25 min of iteration for that memory. Both schemes land every point on the same nearest centroid.
 
 ---
 

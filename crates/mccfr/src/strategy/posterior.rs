@@ -1,15 +1,9 @@
-//! Bayesian belief over an opponent's private information given observed
-//! actions. `Posterior<P>` unifies `Range = Posterior<Observation>` (hole-level)
-//! with `Reach = Posterior<Abstraction>` (abstraction-level).
+//! Bayesian belief over an opponent's private information given observed actions.
+//! `Posterior<P>` unifies `Range = Posterior<Observation>` (hole-level) with `Reach =
+//! Posterior<Abstraction>` (abstraction-level).
 //!
-//! ```text
-//! P(private | actions) ∝ P(actions | private) × P(private)
-//!                        ↑                      ↑
-//!                        likelihood             prior (uniform)
-//! ```
-//!
-//! The likelihood P(actions | private) is the product of blueprint action
-//! probabilities along the observed history.
+//! The likelihood P(actions | private) is the product of blueprint action probabilities along
+//! the observed history.
 use crate::CfrSecret;
 use monge::Density;
 use pokerkit::Probability;
@@ -51,7 +45,7 @@ where
     /// Normalizes to sum to 1.
     pub fn normalize(mut self) -> Self {
         match self.total() {
-            0f32 => self, // unreachable! ?
+            0f32 => self,
             mass => {
                 self.0.values_mut().for_each(|p| *p /= mass);
                 self

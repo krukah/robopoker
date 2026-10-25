@@ -15,9 +15,13 @@ categories   = ["algorithms", "mathematics", "game-development"]
 name = "rps"
 path = "src/main.rs"
 
+[features]
+default = ["server"]
+server  = ["mccfr/server"]
+
 [dependencies]
 pokerkit = { workspace = true }
-mccfr    = { workspace = true }
+mccfr    = { version = "1.2", path = "../mccfr", default-features = false }
 subgame  = { workspace = true }
 monge    = { workspace = true }
 paste    = "1.0"

@@ -1,6 +1,5 @@
 use daybook::*;
 use kicker::*;
-use mccfr::Solver;
 use nlhe::*;
 use parlor::Solved;
 use std::collections::HashMap;
@@ -22,85 +21,6 @@ const DEFAULT_SOLVE_DEADLINE_MS: u64 = 1000;
 /// solvers. Flip to `true` to start memoizing identical requests.
 const CACHE_ENABLED: bool = false;
 
-fn cache() -> &'static Mutex<HashMap<(Witness, Kind), ApiSolved>> {
-    static CACHE: OnceLock<Mutex<HashMap<(Witness, Kind), ApiSolved>>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-/// Memoization wrapper for expensive solves. With `CACHE_ENABLED=false`
-/// it's a no-op pass-through — every call re-runs `compute`. When the
-/// flag flips, identical `(Witness, Kind)` keys hit the cache directly
-/// without re-running the solver.
-async fn cache_or<F, Fut>(key: (Witness, Kind), compute: F) -> ApiSolved
-where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = ApiSolved>,
-{
-    if !CACHE_ENABLED {
-        return compute().await;
-    }
-    if let Some(hit) = cache().lock().unwrap().get(&key).cloned() {
-        return hit;
-    }
-    let result = compute().await;
-    cache().lock().unwrap().insert(key, result.clone());
-    result
-}
-
-fn api_strategy_from(strategy: Strategy, recall: &Witness) -> ApiStrategy {
-    ApiStrategy {
-        history: strategy.info().subgame(),
-        present: Abstraction::from(strategy.info().bucket()),
-        choices: strategy.info().choices(),
-        field: strategy.info().field(),
-        spr: recall.head().geometry().tag(),
-        accumulated: strategy.accumulated().clone(),
-        visits: strategy.visits().clone(),
-        payoff: strategy.payoff(),
-    }
-}
-
-fn street_name(s: i16) -> &'static str {
-    match s {
-        0 => "preflop",
-        1 => "flop",
-        2 => "turn",
-        3 => "river",
-        _ => "unknown",
-    }
-}
-
-/// Runs the solver for `kind` synchronously and assembles the
-/// `ApiSolved` envelope. Pulled out so [`StrategyAPI::solve`] can run
-/// it in a blocking thread without straddling the `Nlhe` borrow
-/// across an `await`.
-fn run_solve(blueprint: &'static Flagship, recall: &Witness, kind: Kind) -> ApiSolved {
-    let info = NlheInfo::from((recall, blueprint.encoder().abstraction(&recall.seen())));
-    let deadline = Duration::from_millis(DEFAULT_SOLVE_DEADLINE_MS);
-    let solved = match kind {
-        Kind::Depth => Solved::run(blueprint.adapt_leaf(recall), info, deadline),
-        Kind::World => Solved::run(blueprint.adapt_safe(recall), info, deadline),
-        Kind::Full => Solved::run(blueprint.adapt_full(recall), info, deadline),
-        Kind::Blueprint => unreachable!("Kind::Blueprint goes through the lookup path, not solve"),
-    };
-    let policy = ApiStrategy {
-        history: info.subgame(),
-        present: Abstraction::from(info.bucket()),
-        choices: info.choices(),
-        field: info.field(),
-        spr: recall.head().geometry().tag(),
-        accumulated: solved.policy().clone(),
-        visits: solved.visits().clone(),
-        payoff: 0.0,
-    };
-    ApiSolved {
-        kind,
-        policy,
-        iterations: solved.iterations() as u32,
-        elapsed_ms: solved.elapsed().as_millis() as u32,
-    }
-}
-
 pub struct StrategyAPI {
     client: Arc<Client>,
     blueprint: Option<&'static nlhe::Flagship>,
@@ -114,16 +34,40 @@ impl StrategyAPI {
         }
     }
 
-    pub fn with_blueprint(mut self, blueprint: Option<&'static nlhe::Flagship>) -> Self {
-        self.blueprint = blueprint;
-        self
+    pub fn with_blueprint(self, blueprint: Option<&'static nlhe::Flagship>) -> Self {
+        Self { blueprint, ..self }
+    }
+
+    fn client(&self) -> &Arc<Client> {
+        &self.client
+    }
+
+    fn blueprint(&self) -> Option<&'static nlhe::Flagship> {
+        self.blueprint
     }
 
     pub async fn policy(&self, recall: Witness) -> anyhow::Result<Option<ApiStrategy>> {
         let recall = recall.validate()?;
-        Ok(nlhe::lookup(&self.client, &recall)
+        Ok(nlhe::Lookup::lookup(self.client(), &recall)
             .await
-            .map(|s| api_strategy_from(s, &recall)))
+            .map(|s| StrategyAPI::api_strategy_from(s, &recall)))
+    }
+
+    /// Blueprint policy over every private holding at the live decision.
+    /// This is intentionally an in-memory projection: it shares the hydrated
+    /// encoder/profile behind range posteriors and avoids 1,326 round trips.
+    pub fn strategies(&self, recall: Witness) -> anyhow::Result<ApiStrategyRange> {
+        let recall = recall.validate_observation()?;
+        let blueprint = self
+            .blueprint()
+            .ok_or_else(|| anyhow::anyhow!("strategy range endpoint requires in-memory blueprint"))?;
+        Ok(ApiStrategyRange {
+            entries: blueprint
+                .strategies(&recall)
+                .into_iter()
+                .map(|(obs, policy)| ApiStrategyRangeEntry { obs, policy })
+                .collect(),
+        })
     }
 
     /// Runs a depth-limited subgame solve from the recall's current
@@ -151,12 +95,12 @@ impl StrategyAPI {
     async fn solve(&self, recall: Witness, kind: Kind) -> anyhow::Result<ApiSolved> {
         let recall = recall.validate()?;
         let blueprint = self
-            .blueprint
+            .blueprint()
             .ok_or_else(|| anyhow::anyhow!("subgame solve requires in-memory blueprint"))?;
         let key = (recall.clone(), kind);
-        Ok(cache_or(key, || async move {
+        Ok(StrategyAPI::cache_or(key, || async move {
             let recall_inner = recall.clone();
-            tokio::task::spawn_blocking(move || run_solve(blueprint, &recall_inner, kind))
+            tokio::task::spawn_blocking(move || StrategyAPI::run_solve(blueprint, &recall_inner, kind))
                 .await
                 .expect("solve task panicked")
         })
@@ -165,52 +109,48 @@ impl StrategyAPI {
 
     /// Opponent's hole-card-level posterior range from hero's POV.
     pub fn range(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
-        self.posterior(recall, nlhe::Flagship::opponent_observations)
+        self.posterior(recall, nlhe::NlheTurn::opponent)
     }
 
     /// Hero's hole-card-level **signalled** range — the posterior an
     /// opponent could form over hero's hand from hero's observed action
-    /// history. Same response shape as [`Self::range`] with hero/opponent
-    /// roles swapped in the underlying reach computation.
+    /// history. Same response shape as [`Self::range`]; only the subject
+    /// seat differs.
     pub fn signalled(&self, recall: Witness) -> anyhow::Result<ApiOpponentRange> {
-        self.posterior(recall, nlhe::Flagship::signalled_observations)
+        self.posterior(recall, nlhe::NlheTurn::narrator)
     }
 
-    /// Common shape for `/strategy/range` and `/strategy/signalled`:
-    /// validate the witness, require an in-memory blueprint, and project
-    /// the `(observation, probability)` stream into the API response.
-    fn posterior<F>(&self, recall: Witness, compute: F) -> anyhow::Result<ApiOpponentRange>
+    /// Common shape for `/strategy/range` and `/strategy/signalled`: validate the witness,
+    /// require an in-memory blueprint, and project the subject's `(observation, probability)`
+    fn posterior<F>(&self, recall: Witness, subject: F) -> anyhow::Result<ApiOpponentRange>
     where
-        F: FnOnce(&'static nlhe::Flagship, &Witness) -> Vec<(deuce::Observation, pokerkit::Probability)>,
+        F: Fn(&Witness) -> nlhe::NlheTurn,
     {
         let recall = recall.validate_observation()?;
         let blueprint = self
-            .blueprint
+            .blueprint()
             .ok_or_else(|| anyhow::anyhow!("posterior endpoint requires in-memory blueprint"))?;
+        let subject = subject(&recall);
         Ok(ApiOpponentRange {
-            entries: compute(blueprint, &recall)
+            decisions: blueprint.decisions(&recall, subject),
+            entries: blueprint
+                .observations(&recall, subject)
                 .into_iter()
                 .map(|(obs, weight)| ApiRangeEntry { obs, weight })
                 .collect(),
         })
     }
 
-    /// Aggregate per-(street, edge) strategy frequency across the entire
-    /// blueprint. Expensive — full table scan with a window function.
-    /// Use sparingly; intended for diagnostics, not real-time UI.
+    /// Aggregate per-(street, edge) strategy frequency across the entire blueprint. Expensive —
+    /// full table scan with a window function. Use sparingly; intended for diagnostics, not
+    /// real-time UI.
     ///
-    /// Returns two frequency views per edge:
-    /// - `avg_freq`: arithmetic mean of per-decision strategy probability,
-    ///   one weight per decision point. Treats rare and common decisions
-    ///   equally, so the long-tail of low-visit nodes dominates.
-    /// - `weighted_freq`: visit-weighted strategy probability, equivalent
-    ///   to `Σ weight(edge) / Σ total_weight` across decisions where the
-    ///   edge was available. Approximates the actual frequency of this
-    ///   action in real games (proportional to reach probability).
+    /// one weight per decision point. Treats rare and common decisions equally, so the long-
+    /// tail of low-visit nodes dominates.
     pub async fn grid_usage(&self) -> anyhow::Result<Vec<ApiGridUsage>> {
         static SQL: OnceLock<&str> = OnceLock::<&str>::new();
         let sql = *SQL.get_or_init(|| {
-            leaked(format!(
+            daybook::Pool::leaked(format!(
                 "WITH per_decision AS ( \
                    SELECT present, edge, weight, \
                           SUM(weight) OVER (PARTITION BY past, present, choices) AS dec_total \
@@ -229,14 +169,14 @@ impl StrategyAPI {
             ))
         });
         let rows = self
-            .client
+            .client()
             .query(sql, &[])
             .await
             .map_err(|e| anyhow::anyhow!("aggregate grid usage: {e}"))?;
         Ok(rows
             .into_iter()
             .map(|r| ApiGridUsage {
-                street: street_name(r.get::<_, i16>(0)).to_string(),
+                street: StrategyAPI::street_name(r.get::<_, i16>(0)).to_string(),
                 edge: format!("{}", r.get::<_, Edge>(1)),
                 avg_freq: r.get::<_, f32>(2),
                 weighted_freq: r.get::<_, f32>(3),
@@ -244,5 +184,86 @@ impl StrategyAPI {
                 n_dominant: r.get::<_, i64>(5),
             })
             .collect())
+    }
+}
+
+impl StrategyAPI {
+    fn cache() -> &'static Mutex<HashMap<(Witness, Kind), ApiSolved>> {
+        static CACHE: OnceLock<Mutex<HashMap<(Witness, Kind), ApiSolved>>> = OnceLock::new();
+        CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+    }
+
+    /// Memoization wrapper for expensive solves. With `CACHE_ENABLED=false`
+    /// it's a no-op pass-through — every call re-runs `compute`. When the
+    /// flag flips, identical `(Witness, Kind)` keys hit the cache directly
+    /// without re-running the solver.
+    async fn cache_or<F, Fut>(key: (Witness, Kind), compute: F) -> ApiSolved
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = ApiSolved>,
+    {
+        if !CACHE_ENABLED {
+            return compute().await;
+        }
+        if let Some(hit) = StrategyAPI::cache().lock().unwrap().get(&key).cloned() {
+            return hit;
+        }
+        let result = compute().await;
+        StrategyAPI::cache().lock().unwrap().insert(key, result.clone());
+        result
+    }
+
+    fn api_strategy_from(strategy: Strategy, recall: &Witness) -> ApiStrategy {
+        ApiStrategy {
+            history: strategy.info().subgame(),
+            present: Abstraction::from(strategy.info().bucket()),
+            choices: strategy.info().choices(),
+            field: strategy.info().field(),
+            spr: recall.head().geometry().tag(),
+            accumulated: strategy.accumulated().clone(),
+            visits: strategy.visits().clone(),
+            payoff: strategy.payoff(),
+        }
+    }
+
+    fn street_name(s: i16) -> &'static str {
+        match s {
+            0 => "preflop",
+            1 => "flop",
+            2 => "turn",
+            3 => "river",
+            _ => "unknown",
+        }
+    }
+
+    /// Runs the solver for `kind` synchronously and assembles the
+    /// `ApiSolved` envelope. Pulled out so [`StrategyAPI::solve`] can run
+    /// it in a blocking thread without straddling the `Nlhe` borrow
+    /// across an `await`.
+    fn run_solve(blueprint: &'static Flagship, recall: &Witness, kind: Kind) -> ApiSolved {
+        let info = NlheInfo::from((recall, blueprint.encoder().abstraction(&recall.seen())));
+        let deadline = Duration::from_millis(DEFAULT_SOLVE_DEADLINE_MS);
+        let solved = match kind {
+            Kind::Depth => Solved::run(blueprint.adapt_leaf(recall), info, deadline),
+            Kind::World => Solved::run(blueprint.adapt_safe(recall), info, deadline),
+            Kind::Full => Solved::run(blueprint.adapt_full(recall), info, deadline),
+            Kind::Blueprint => unreachable!("Kind::Blueprint goes through the lookup path, not solve"),
+        };
+        let policy = ApiStrategy {
+            history: info.subgame(),
+            present: Abstraction::from(info.bucket()),
+            choices: info.choices(),
+            field: info.field(),
+            spr: recall.head().geometry().tag(),
+            accumulated: solved.policy().clone(),
+            visits: solved.visits().clone(),
+            payoff: 0.0,
+        };
+        ApiSolved {
+            kind,
+            policy,
+            iterations: solved.iterations() as u32,
+            elapsed_ms: solved.elapsed().as_millis() as u32,
+        }
     }
 }

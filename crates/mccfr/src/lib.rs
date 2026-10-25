@@ -15,6 +15,7 @@ pub use hyperparams::*;
 pub use metrics::*;
 pub use policy::*;
 pub use regret::*;
+pub use rustc_hash::FxHashMap;
 pub use sample::*;
 pub use solver::*;
 pub use state::*;

@@ -9,20 +9,24 @@ description  = "CLI wrapper around litmus. Loads scenarios, runs the catalog, wr
 license      = "MIT"
 
 [[bin]]
-name = "litmus"
+name = "litmus-cli"
 path = "src/main.rs"
-doc  = false
+
+[[bin]]
+name = "litmus-audit"
+path = "src/audit.rs"
 
 [dependencies]
 litmus   = { path = "../../crates/litmus" }
 portal   = { path = "../../crates/portal" }
 daybook  = { path = "../../crates/daybook" }
-pokerkit = { path = "../../crates/pokerkit" }
+pokerkit = { path = "../../crates/pokerkit", features = ["server", "cli"] }
+kicker   = { path = "../../crates/kicker" }
 
-tokio              = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio              = { version = "1", features = ["rt-multi-thread", "macros", "rt"] }
 clap               = { version = "4", features = ["derive"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 anyhow             = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [lints]
 workspace = true

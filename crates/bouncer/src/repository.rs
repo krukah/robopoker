@@ -22,9 +22,7 @@ impl AuthRepository for Arc<Client> {
     async fn exists(&self, username: &str, email: &str) -> Result<bool, PgErr> {
         static SQL: OnceLock<String> = OnceLock::<String>::new();
         let sql = SQL.get_or_init(|| format!("SELECT 1 FROM {} WHERE username = $1 OR email = $2", users()));
-        self.query_opt(sql.as_str(), &[&username, &email])
-            .await
-            .map(|opt| opt.is_some())
+        Ok(self.query_opt(sql.as_str(), &[&username, &email]).await?.is_some())
     }
 
     async fn create(&self, member: &Member, hashword: &str) -> Result<(), PgErr> {

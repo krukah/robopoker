@@ -3,22 +3,6 @@ use bouncer::Member;
 use deuce::Hole;
 use pokerkit::*;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum Visibility {
-    #[default]
-    Hidden = 0,
-    Showed = 1,
-    Mucked = 2,
-}
-impl From<i16> for Visibility {
-    fn from(v: i16) -> Self {
-        match v {
-            1 => Visibility::Showed,
-            2 => Visibility::Mucked,
-            _ => Visibility::Hidden,
-        }
-    }
-}
 impl From<Visibility> for i16 {
     fn from(v: Visibility) -> Self {
         v as i16
@@ -99,12 +83,16 @@ impl Participant {
         self.pnl
     }
 
+    fn visibility_mut(&mut self) -> &mut Visibility {
+        &mut self.visibility
+    }
+
     pub fn show(&mut self) {
-        self.visibility = Visibility::Showed;
+        *self.visibility_mut() = Visibility::Showed;
     }
 
     pub fn muck(&mut self) {
-        self.visibility = Visibility::Mucked;
+        *self.visibility_mut() = Visibility::Mucked;
     }
 }
 
@@ -134,7 +122,7 @@ mod schema {
         fn creates() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!(
+                daybook::Pool::leaked(format!(
                     "CREATE TABLE IF NOT EXISTS {} (
                     hand_id     UUID NOT NULL REFERENCES {}(id) ON DELETE CASCADE,
                     user_id     UUID REFERENCES {}(id),
@@ -155,7 +143,10 @@ mod schema {
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!("CREATE INDEX IF NOT EXISTS idx_players_user_hand ON {} (user_id, hand_id);", players()))
+                daybook::Pool::leaked(format!(
+                    "CREATE INDEX IF NOT EXISTS idx_players_user_hand ON {} (user_id, hand_id);",
+                    players()
+                ))
             })
         }
 

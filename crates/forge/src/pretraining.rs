@@ -1,10 +1,4 @@
 //! Pretraining - hierarchical clustering pipeline for poker abstractions.
-//!
-//! Manages clustering from scratch to postgres without disk I/O:
-//! 1. River: equity-based abstractions (computed from scratch)
-//! 2. Turn: k-means on river distributions (hydrates river data)
-//! 3. Flop: k-means on turn distributions (hydrates turn data)
-//! 4. Preflop: 1:1 isomorphism enumeration (computed from scratch)
 use daybook::*;
 use deuce::*;
 use kicker::*;
@@ -12,9 +6,10 @@ use lloyd::*;
 use std::sync::Arc;
 use tokio_postgres::Client;
 
-type PrefLayer = Layer<{ Street::Pref.k() }, { Street::Pref.n_isomorphisms() }>;
-type FlopLayer = Layer<{ Street::Flop.k() }, { Street::Flop.n_isomorphisms() }>;
-type TurnLayer = Layer<{ Street::Turn.k() }, { Street::Turn.n_isomorphisms() }>;
+type PrefLayer = Layer<{ Street::Pref.k() }, { Street::Pref.n_isomorphisms() }, Bounds<{ Street::Pref.k() }>>;
+type FlopLayer = Layer<{ Street::Flop.k() }, { Street::Flop.n_isomorphisms() }, Bounds<{ Street::Flop.k() }>>;
+// Elkan bounds on the turn would be N·K floats (~14.5 GB) to prune a distance that is already cheap.
+type TurnLayer = Layer<{ Street::Turn.k() }, { Street::Turn.n_isomorphisms() }, Hamerly<{ Street::Turn.k() }>>;
 
 /// Zero-sized orchestrator for the clustering pipeline.
 pub struct PreTraining;
@@ -61,17 +56,8 @@ impl PreTraining {
         pending
     }
 
-    /// Drop every clustering table so the next [`run`](Self::run) rebuilds the
-    /// abstraction from scratch.
-    ///
-    /// Needed when the evaluator / equity computation changes and the cached
-    /// clustering is stale: river equity (`deuce::Observation::equity`) is
-    /// computed from hand `Strength`, so the whole hierarchy is built on the
-    /// evaluator — the PR #316 full-house-vs-flush fix invalidated it. `run`
-    /// only clusters streets `clustered()` reports missing, so forcing a
-    /// rebuild means clearing the tables first. Names resolve through daybook's
-    /// version-suffixed helpers (never hardcoded `_v1`), and the pipeline
-    /// recreates them (CREATE IF NOT EXISTS) on the rebuild.
+    /// Drop every clustering table so the next [`run`](Self::run) rebuilds the abstraction from
+    /// scratch.
     pub async fn clear(client: &Client) {
         tracing::warn!("recluster — dropping clustering tables for a full rebuild");
         client
@@ -103,7 +89,8 @@ impl PreTraining {
         if client
             .query(&format!("SELECT 1 FROM {} LIMIT 1 ", D::name()), &[])
             .await
-            .map_or(true, |rows| rows.is_empty())
+            .as_ref()
+            .map_or(true, Vec::is_empty)
         {
             tracing::info!(table = D::name(), "deriving table");
             client.batch_execute(&D::derives()).await.expect("derives");

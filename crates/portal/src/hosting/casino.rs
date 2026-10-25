@@ -4,6 +4,7 @@ use kicker::ServerMessage;
 use parlor::VariantExt;
 use parlor::*;
 use pokerkit::ID;
+use pokerkit::Pacing;
 use pokerkit::Variant;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -36,9 +37,20 @@ impl Casino {
         }
     }
 
-    pub fn with_blueprint(mut self, blueprint: Option<&'static nlhe::Flagship>) -> Self {
-        self.blueprint = blueprint;
-        self
+    pub fn with_blueprint(self, blueprint: Option<&'static nlhe::Flagship>) -> Self {
+        Self { blueprint, ..self }
+    }
+
+    fn db(&self) -> &Arc<Client> {
+        &self.db
+    }
+
+    fn blueprint(&self) -> Option<&'static nlhe::Flagship> {
+        self.blueprint
+    }
+
+    fn rooms(&self) -> &RwLock<HashMap<ID<Room>, RoomHandle>> {
+        &self.rooms
     }
 }
 
@@ -46,23 +58,25 @@ impl Casino {
     /// Opens a new room with HTTP client vs the chosen [`Variant`].
     /// Spawns the room task (waits for start signal) and returns the room ID.
     pub async fn start(self: &Arc<Self>, variant: Variant) -> anyhow::Result<ID<Room>> {
-        if variant.requires_blueprint() && self.blueprint.is_none() {
+        if variant.requires_blueprint() && self.blueprint().is_none() {
             anyhow::bail!("variant {} needs a blueprint but this Casino was started without one", variant.label());
         }
         let id = ID::default();
-        let channels = RoomHandle::pair(id);
         let mut engine = Engine::<Seating>::default();
-        engine.set_skip(channels.skip.clone());
-        let mut room = Room::new(id, 2, self.db.clone());
-        self.db.create_room(&room).await?;
-        self.rooms.write().await.insert(id, channels.handle);
-        room.sit(&mut engine, channels.client, Lurker::default(), Some(channels.mirror));
-        let player = variant.into_player(self.blueprint);
+        // Off the engine, not off a default: when the tempo becomes a room
+        // parameter this keeps telling the truth with nothing to update.
+        let (handle, client, mirror, skip, start) = RoomChannels::pair(id, engine.timing()).into_parts();
+        engine.set_skip(skip);
+        let mut room = Room::new(id, 2, self.db().clone());
+        self.db().create_room(&room).await?;
+        self.rooms().write().await.insert(id, handle);
+        room.sit(&mut engine, client, Lurker::default(), Some(mirror));
+        let player = variant.into_player(self.blueprint());
         room.sit(&mut engine, player, variant.user(), None);
-        let handle = tokio::spawn(room.run(engine, channels.start));
+        let task = tokio::spawn(room.run(engine, start));
         let casino = self.clone();
         tokio::spawn(async move {
-            let _ = handle.await;
+            let _ = task.await;
             let _ = casino.close(id).await;
             tracing::info!(room = %id, "room cleaned up");
         });
@@ -71,27 +85,24 @@ impl Casino {
     }
     /// Closes a room and removes it from the casino.
     pub async fn close(&self, id: ID<Room>) -> anyhow::Result<()> {
-        self.rooms
+        self.rooms()
             .write()
             .await
             .remove(&id)
-            .map(|h| {
-                if let Some(b) = h.bridge {
-                    b.abort();
-                }
-            })
+            .as_ref()
+            .map(RoomHandle::abort)
             .ok_or_else(|| anyhow::anyhow!("room not found"))
     }
     /// Gets channel endpoints and start signal for WebSocket bridging.
     pub async fn channels(
         &self,
         id: ID<Room>,
-    ) -> anyhow::Result<(Tx, Rx, Arc<tokio::sync::Notify>, Option<tokio::sync::oneshot::Sender<()>>)> {
-        self.rooms
+    ) -> anyhow::Result<(Tx, Rx, Arc<tokio::sync::Notify>, Option<tokio::sync::oneshot::Sender<()>>, Pacing)> {
+        self.rooms()
             .write()
             .await
             .get_mut(&id)
-            .map(|h| (h.tx.clone(), h.rx.clone(), h.skip.clone(), h.start.take()))
+            .map(|h| (h.tx(), h.rx(), h.skip(), h.start(), h.pacing()))
             .ok_or_else(|| anyhow::anyhow!("room not found"))
     }
     /// Spawns WebSocket bridge between client and room channels.
@@ -103,9 +114,9 @@ impl Casino {
         mut streams: actix_ws::MessageStream,
     ) -> anyhow::Result<()> {
         use futures::StreamExt;
-        let (tx, rx, skip, start) = self.channels(id).await?;
+        let (tx, rx, skip, start, pacing) = self.channels(id).await?;
         session
-            .text(ServerMessage::welcome(&id.to_string(), 0).to_json())
+            .text(ServerMessage::welcome(&id.to_string(), 0, pacing).to_json())
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         start.map(|s| s.send(()));
@@ -144,24 +155,11 @@ impl Casino {
             }
             tracing::debug!(bridge = %id, "disconnected");
         });
-        // A second `bridge()` call for the same room (client reconnect: page
-        // reload, sleep/wake, network blip, LB idle timeout) must replace,
-        // not merely overwrite, the stored task handle. `rx` is shared via
-        // `Arc<Mutex<..>>`, so if the previous bridge task is left running it
-        // keeps competing with this one for messages on every reconnect,
-        // non-deterministically splitting live-game broadcasts between a
-        // stale session and the new one, and the stale task/session is never
-        // cleaned up by `close()` because its AbortHandle was already
-        // discarded here.
-        if let Some(old) = self
-            .rooms
+        self.rooms()
             .write()
             .await
             .get_mut(&id)
-            .and_then(|h| h.bridge.replace(task.abort_handle()))
-        {
-            old.abort();
-        }
+            .map(|h| h.watch(task.abort_handle()));
         Ok(())
     }
 }

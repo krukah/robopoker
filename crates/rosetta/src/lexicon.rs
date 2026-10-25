@@ -115,7 +115,7 @@ impl Lexicon for Client {
             )
         });
         self.ensure::<Gloss>().await;
-        measure(
+        daybook::Measure::measure(
             "mechinterp.inscribe",
             self.execute(
                 sql.as_str(),

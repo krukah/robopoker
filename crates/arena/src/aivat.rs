@@ -9,12 +9,8 @@ use tokio_postgres::Client;
 
 /// AIVAT variance reduction estimator.
 ///
-/// Uses blueprint strategy probabilities and expected values as control
-/// variates to reduce the variance of player performance estimates.
-/// Applies corrections at three node types:
-///   1. Hero action nodes:    correction = Σ_a [σ(a) * v(a)] - v(observed_a)
-///   2. Villain action nodes: negated hero-perspective correction (zero-sum)
-///   3. Chance nodes:         `E[baseline]` - observed baseline (turn + river only)
+/// Uses blueprint strategy probabilities and expected values as control variates to reduce the
+/// variance of player performance estimates.
 pub struct Aivat(Arc<Client>);
 
 impl Aivat {
@@ -43,12 +39,12 @@ impl Aivat {
     }
     /// Compute AIVAT delta from a batch of results and a precomputed summary.
     pub fn summarize(summary: &Summary, results: &[AivatResult]) -> AivatDelta {
-        let series: Vec<Utility> = results.iter().map(|r| r.adjusted).collect();
+        let series = results.iter().map(AivatResult::adjusted).collect::<Vec<Utility>>();
         let n = series.len() as f32;
-        let won: Utility = series.iter().sum();
-        let mean = ratio(won, n);
-        let variance = ratio(series.iter().map(|&x| (x - mean) * (x - mean)).sum(), n);
-        let stderr = ratio(variance.sqrt(), n.sqrt());
+        let won = series.iter().sum::<Utility>();
+        let mean = Numeric::ratio(won, n);
+        let variance = Numeric::ratio(series.iter().map(|&x| (x - mean) * (x - mean)).sum(), n);
+        let stderr = Numeric::ratio(variance.sqrt(), n.sqrt());
         let raw = summary.stddev() * summary.stddev();
         let adj = stderr * stderr * n;
         AivatDelta {
@@ -56,7 +52,7 @@ impl Aivat {
             won,
             stderr,
             reduction: if adj > 0.0 { raw / adj } else { 1.0 },
-            pvalue: if stderr > 0.0 { 2.0 * erf(-mean.abs() / stderr) } else { 1.0 },
+            pvalue: if stderr > 0.0 { 2.0 * Numeric::erf(-mean.abs() / stderr) } else { 1.0 },
         }
     }
     /// Compute corrections at hero actions, villain actions, and chance nodes.
@@ -81,8 +77,8 @@ impl Aivat {
             .ok_or_else(|| anyhow::anyhow!("seat {villain_seat} not found"))?;
         let hero = Turn::Choice(seat);
         let villain = Turn::Choice(villain_seat);
-        let hero_arr = plays_arrangement(hero_hole, hand.board(), plays);
-        let villain_arr = plays_arrangement(villain_hole, hand.board(), plays);
+        let hero_arr = Replay::plays_arrangement(hero_hole, hand.board(), plays);
+        let villain_arr = Replay::plays_arrangement(villain_hole, hand.board(), plays);
         let mut hero_recall = Witness::try_arrange(hero, hero_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{e}"))?;
         let mut villain_recall =
             Witness::try_arrange(villain, villain_arr, Vec::new()).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -161,7 +157,7 @@ impl Aivat {
         let board = deuce::Hand::from(game.board());
         let mask = deuce::Hand::add(deuce::Hand::add(hero_hand, villain_hand), board);
         let n = game.street().next().n_revealed();
-        let deals: Vec<deuce::Hand> = HandIterator::from((n, mask)).collect();
+        let deals = HandIterator::from((n, mask)).collect::<Vec<deuce::Hand>>();
         if deals.is_empty() {
             return Ok(None);
         }
@@ -173,11 +169,11 @@ impl Aivat {
             _ => return Ok(None),
         };
         let pocket = *recall.seen().pocket();
-        let isos: Vec<Isomorphism> = deals
+        let isos = deals
             .iter()
             .map(|d| Observation::from((pocket, deuce::Hand::add(board, *d))))
             .map(Isomorphism::from)
-            .collect();
+            .collect::<Vec<Isomorphism>>();
         let observed_iso = Isomorphism::from(Observation::from((pocket, deuce::Hand::add(board, observed))));
         let info = NlheInfo::from((recall, Abstraction::default()));
         let Some((avg, obs)) = self
@@ -188,7 +184,7 @@ impl Aivat {
         else {
             return Ok(None);
         };
-        let delta = chance_correction(avg, obs);
+        let delta = Correction::chance_correction(avg, obs);
         Ok(Some(if hero_acts_next { delta } else { -delta }))
     }
     /// Look up blueprint strategy at a decision point and compute the action correction.
@@ -211,12 +207,15 @@ impl Aivat {
         if rows.is_empty() {
             return Ok(None);
         }
-        let policy: Vec<(Probability, Utility)> = rows.iter().map(|(_, w, v)| (*w, *v)).collect();
+        let policy = rows
+            .iter()
+            .map(|(_, w, v)| (*w, *v))
+            .collect::<Vec<(Probability, Utility)>>();
         if policy.iter().map(|(w, _)| w).sum::<Probability>() <= 0.0 {
             return Ok(None);
         }
         let edge = NlheEdge::from(game.edgify(observed, recall.aggression()));
         let idx = rows.iter().position(|(e, _, _)| NlheEdge::from(*e) == edge);
-        Ok(Some(action_correction(&policy, idx)))
+        Ok(Some(Correction::action_correction(&policy, idx)))
     }
 }

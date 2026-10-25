@@ -26,19 +26,31 @@ impl Claims {
     }
 
     pub fn expired(&self) -> bool {
-        self.exp
+        self.exp()
             < std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .expect("time")
                 .as_secs() as i64
     }
 
+    pub fn sub(&self) -> uuid::Uuid {
+        self.sub
+    }
+
+    pub fn sid(&self) -> uuid::Uuid {
+        self.sid
+    }
+
+    pub fn exp(&self) -> i64 {
+        self.exp
+    }
+
     pub fn user(&self) -> ID<Member> {
-        ID::from(self.sub)
+        ID::from(self.sub())
     }
 
     pub fn session(&self) -> ID<Session> {
-        ID::from(self.sid)
+        ID::from(self.sid())
     }
 
     pub fn username(&self) -> &str {

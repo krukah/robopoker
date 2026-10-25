@@ -1,0 +1,94 @@
+//! NLHE game type: poker game state.
+use super::*;
+use deuce::*;
+use kicker::*;
+use mccfr::*;
+use pokerkit::Utility;
+
+/// NLHE game state for CFR traversal: a newtype over `kicker::Game`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NlheGame(Game);
+
+impl NlheGame {
+    /// Current betting round (street).
+    pub fn street(&self) -> Street {
+        self.0.street()
+    }
+    /// Current observation (hole cards + board).
+    pub fn sweat(&self) -> Observation {
+        self.0.sweat()
+    }
+    /// Observation from a specific player's perspective.
+    pub fn sweat_at(&self, position: usize) -> Observation {
+        self.0.sweat_at(position)
+    }
+    /// Button-anchored [`Field`] at the current decision node.
+    pub fn field(&self) -> Field {
+        self.0.field()
+    }
+}
+
+/// The solver's view: [`NlheRules`] stepped through [`NlheGrid::refine`].
+impl CfrGame for NlheGame {
+    type E = NlheEdge;
+    type T = NlheTurn;
+
+    fn root() -> Self {
+        Self(Game::root())
+    }
+
+    fn turn(&self) -> Self::T {
+        NlheTurn::from(self.0.turn())
+    }
+
+    /// Tolerates canonical replay divergence: replaying an edge history from another context
+    /// (e.g. AIVAT inference) can have snapped chip amounts reach Chance or Terminal at a
+    /// different point than the actual game did.
+    fn apply(&self, edge: Self::E) -> Self {
+        let mut game = self.0;
+        if game.turn() == Turn::Terminal {
+            return Self(game);
+        }
+        if edge.is_choice() {
+            while game.turn() == Turn::Chance {
+                game = game.force_apply(game.reveal(&mut rand::rng()));
+            }
+            if game.turn() == Turn::Terminal {
+                return Self(game);
+            }
+        }
+        if edge.is_chance() && game.turn() != Turn::Chance {
+            return Self(game);
+        }
+        let rules = NlheRules::from(game);
+        Self(Game::from(rules.apply(NlheGrid::refine(&rules, edge))))
+    }
+
+    fn depth(&self) -> usize {
+        self.0.street() as usize
+    }
+
+    fn payoff(&self, turn: Self::T) -> Utility {
+        self.0
+            .settlements()
+            .get(Turn::from(turn).position())
+            .map(|settlement| settlement.won() as Utility)
+            .expect("player index in bounds")
+    }
+}
+
+impl From<Game> for NlheGame {
+    fn from(game: Game) -> Self {
+        Self(game)
+    }
+}
+impl From<NlheGame> for Game {
+    fn from(game: NlheGame) -> Self {
+        game.0
+    }
+}
+impl AsRef<Game> for NlheGame {
+    fn as_ref(&self) -> &Game {
+        &self.0
+    }
+}

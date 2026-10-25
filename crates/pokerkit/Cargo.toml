@@ -25,5 +25,8 @@ clap    = { optional = true, workspace = true }
 tracing = { optional = true, workspace = true }
 tokio   = { optional = true, version = "1.0", features = ["signal", "rt"] }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [lints]
 workspace = true

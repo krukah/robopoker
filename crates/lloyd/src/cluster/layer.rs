@@ -1,0 +1,303 @@
+//! One k-means clustering layer, mapping hand isomorphisms to abstract
+//! buckets via Elkan-accelerated k-means.
+
+use super::*;
+use deuce::*;
+#[cfg(feature = "server")]
+use kicker::*;
+use pokerkit::*;
+#[cfg(feature = "server")]
+use std::collections::BTreeMap;
+
+/// One street's clustering layer, producing three artifacts: a [`Lookup`]
+/// (isomorphism → abstraction), a [`Future`] transition model (abstraction →
+/// next-street distribution), and a [`Metric`] over the learned abstractions.
+pub struct Layer<const K: usize, const N: usize, B> {
+    /// The betting street this layer represents
+    street: Street,
+    /// Distance metric for computing EMD between abstractions in the next street
+    metric: Box<Metric>,
+    /// Learned k-means cluster centroids, indexed by abstraction (K total)
+    kmeans: Box<[Histogram; K]>,
+    /// All poker hand histograms, indexed by isomorphism order (N total)
+    points: Box<[Histogram; N]>,
+    /// Distance bounds for each point, used to prune distance calls (not persisted). Empty until
+    /// `init_bounds`, and while a `Kmeans` holds them.
+    bounds: Box<[B]>,
+}
+
+impl<const K: usize, const N: usize, B> Layer<K, N, B> {
+    fn street(&self) -> Street {
+        self.street
+    }
+
+    /// Constructs an `Abstraction` from this layer's street and a cluster index.
+    #[cfg(feature = "server")]
+    fn abstraction(&self, i: usize) -> Abstraction {
+        Abstraction::from((self.street(), i))
+    }
+
+    fn ground(&self) -> &Metric {
+        &self.metric
+    }
+
+    fn bounds(&self) -> &[B] {
+        &self.bounds
+    }
+
+    /// Mutable handle to the bounds buffer — used by `Kmeans` to take it and give it back.
+    pub(crate) fn boundings_mut(&mut self) -> &mut Box<[B]> {
+        &mut self.bounds
+    }
+
+    /// Mutable handle to the centroids — used by `Kmeans` to
+    /// install each iteration's new centroid array.
+    pub(crate) fn centroids_mut(&mut self) -> &mut Box<[Histogram; K]> {
+        &mut self.kmeans
+    }
+}
+
+#[cfg(feature = "server")]
+impl<const K: usize, const N: usize, B> Layer<K, N, B>
+where
+    B: Prune<K>,
+{
+    /// Builds a lookup table mapping each isomorphism to its assigned cluster abstraction,
+    /// which is its nearest only once `Kmeans::settle` has run.
+    fn lookup(&self) -> Lookup {
+        match self.street() {
+            Street::Pref | Street::Rive => Lookup::grow(self.street()),
+            Street::Flop | Street::Turn => self
+                .boundings()
+                .iter()
+                .map(|b| self.abstraction(b.j()))
+                .zip(IsomorphismIterator::from(self.street()))
+                .map(|(abs, iso)| (iso, abs))
+                .collect::<BTreeMap<Isomorphism, Abstraction>>()
+                .into(),
+        }
+    }
+
+    /// Computes pairwise distances between all learned cluster centroids.
+    fn metric(&self) -> Metric {
+        tracing::info!(street = %self.street(), phase = super::telemetry::phase::METRIC, "kmeans phase begin");
+        let mut metric = BTreeMap::new();
+        for (i, x) in self.centroids().iter().enumerate() {
+            for (j, y) in self.centroids().iter().enumerate() {
+                if i > j {
+                    let ref a = self.abstraction(i);
+                    let ref b = self.abstraction(j);
+                    let index = Pair::from((a, b));
+                    let distance = self.ground().emd(x, y) + self.ground().emd(y, x);
+                    let distance = distance / 2.;
+                    metric.insert(index, distance);
+                }
+            }
+        }
+        Metric::from(metric)
+    }
+
+    /// Builds the transition future hand mapping abstractions to their centroid histograms.
+    fn future(&self) -> Future {
+        tracing::info!(street = %self.street(), phase = super::telemetry::phase::FUTURE, "kmeans phase begin");
+        self.centroids()
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(k, centroid)| (self.abstraction(k), centroid))
+            .collect::<BTreeMap<Abstraction, Histogram>>()
+            .into()
+    }
+}
+
+impl<const K: usize, const N: usize, B> Elkan<K, N> for Layer<K, N, B>
+where
+    B: Prune<K>,
+{
+    type P = Histogram;
+    type B = B;
+
+    fn t(&self) -> usize {
+        crate::KmeansHyperParams::DEFAULT.iterations(self.street())
+    }
+
+    fn points(&self) -> &[Histogram; N] {
+        &self.points
+    }
+
+    fn centroids(&self) -> &[Histogram; K] {
+        &self.kmeans
+    }
+
+    fn boundings(&self) -> &[B; N] {
+        self.bounds()
+            .try_into()
+            .expect("bounds initialized and not held by Kmeans")
+    }
+
+    fn distance(&self, h1: &Histogram, h2: &Histogram) -> Energy {
+        self.ground().emd(h1, h2)
+    }
+
+    fn init_centroids(&self) -> [Histogram; K] {
+        use rand::SeedableRng;
+        use rand::distr::Distribution;
+        use rand::distr::weighted::WeightedIndex;
+        use rand::rngs::SmallRng;
+        use rayon::iter::IntoParallelRefIterator;
+        use rayon::iter::ParallelIterator;
+        use std::hash::DefaultHasher;
+        use std::hash::Hash;
+        use std::hash::Hasher;
+        // don't do any abstraction on preflop or river
+        if matches!(self.street(), Street::Pref | Street::Rive) {
+            debug_assert_eq!(N, K);
+            return std::array::from_fn(|i| self.points()[i]);
+        }
+        // deterministic pseudo-random clustering
+        let ref mut hasher = DefaultHasher::default();
+        self.street().hash(hasher);
+        let ref mut rng = SmallRng::seed_from_u64(hasher.finish());
+        // kmeans++ initialization
+        let mut potentials = vec![1.; N];
+        let mut histograms = Vec::with_capacity(K);
+        while histograms.len() < K {
+            let i = WeightedIndex::new(potentials.iter())
+                .expect("valid weights array")
+                .sample(rng);
+            let x = self.points()[i];
+            histograms.push(x);
+            potentials[i] = 0.;
+            potentials = self
+                .points()
+                .par_iter()
+                .map(|h| self.distance(&x, h))
+                .map(|p| p * p)
+                .collect::<Vec<Energy>>()
+                .iter()
+                .zip(potentials.iter())
+                .map(|(d0, d1)| Energy::min(*d0, *d1))
+                .collect::<Vec<Energy>>();
+        }
+        histograms.try_into().expect("K")
+    }
+}
+
+#[cfg(test)]
+impl<const K: usize, const N: usize, B> Layer<K, N, B>
+where
+    B: Prune<K>,
+{
+    /// An in-memory turn layer over random hands, for driving `Kmeans` without Postgres.
+    pub(crate) fn random() -> Self {
+        Self {
+            street: Street::Turn,
+            metric: Box::new(Metric::default()),
+            kmeans: Box::new(std::array::from_fn(|_| Histogram::empty(Street::Rive))),
+            points: (0..N)
+                .map(|_| Histogram::from(Observation::from(Street::Turn)))
+                .collect::<Vec<_>>()
+                .try_into()
+                .expect("N"),
+            bounds: Box::default(),
+        }
+    }
+}
+
+impl<const K: usize, const N: usize, B> Layer<K, N, B>
+where
+    B: Prune<K>,
+{
+    /// Drive Elkan iterations as a stream of `Step<K>`. See `Kmeans`
+    /// for the fluent builder API: `.with_bound(t)`, `.with_threshold(thr)`.
+    pub fn kmeans(&mut self) -> Kmeans<'_, K, N, B> {
+        Kmeans::new(self)
+    }
+}
+
+#[cfg(feature = "server")]
+impl<const K: usize, const N: usize, B> Layer<K, N, B>
+where
+    B: Prune<K>,
+{
+    /// Full clustering run for a specific K, N, and bounds scheme.
+    pub async fn cluster(street: Street, client: &tokio_postgres::Client) -> Artifacts {
+        use super::telemetry::phase;
+        use std::time::Instant;
+        let tel = super::telemetry::ClusterTelemetry::new(street);
+        tracing::info!(%street, phase = phase::HYDRATE, "kmeans phase begin");
+        let t = Instant::now();
+        let mut layer = Self::build(street, client).await;
+        tel.phase(t, phase::HYDRATE);
+        tracing::info!(%street, phase = phase::INIT, "kmeans phase begin");
+        let t = Instant::now();
+        **layer.centroids_mut() = layer.init_centroids();
+        tel.phase(t, phase::INIT);
+        tracing::info!(%street, phase = phase::BOUND, "kmeans phase begin");
+        let t = Instant::now();
+        *layer.boundings_mut() = layer.init_bounds();
+        tel.phase(t, phase::BOUND);
+        tracing::info!(%street, phase = phase::ITERATE, "kmeans phase begin");
+        let iterate = Instant::now();
+        let total = layer.t();
+        let mut iter = layer
+            .kmeans()
+            .with_bound(total)
+            .with_threshold(crate::KmeansHyperParams::DEFAULT.drift_threshold());
+        for step in iter.by_ref() {
+            tel.iteration(step.elapsed(), step.drift());
+            tel.reassignment(step.reassignment());
+            tel.cluster_sizes(step.sizes());
+            tracing::debug!(
+                %street,
+                iter = step.index(),
+                drift_max = step.drift().max(),
+                reassignment = step.reassignment(),
+                "kmeans step",
+            );
+            step.frozen()
+                .then_some(step.index())
+                .inspect(|_| tel.early_terminated())
+                .inspect(|i| tracing::info!(%street, iter = i + 1, total, "kmeans freeze"));
+        }
+        tel.phase(iterate, phase::ITERATE);
+        tracing::info!(%street, phase = phase::LOOKUP, "kmeans phase begin");
+        let t = Instant::now();
+        iter.settle();
+        drop(iter);
+        let lookup = layer.lookup();
+        tel.phase(t, phase::LOOKUP);
+        let t = Instant::now();
+        let metric = layer.metric();
+        tel.phase(t, phase::METRIC);
+        let t = Instant::now();
+        let future = layer.future();
+        tel.phase(t, phase::FUTURE);
+        Artifacts::new(lookup, metric, future)
+    }
+
+    /// Build layer dependencies from postgres (not disk).
+    async fn build(street: Street, client: &tokio_postgres::Client) -> Self {
+        if street == Street::Rive {
+            Self {
+                street,
+                metric: Box::new(Metric::default()),
+                kmeans: Box::new(std::array::from_fn(|_| Histogram::empty(Street::Rive))),
+                bounds: Box::default(),
+                points: vec![Histogram::empty(Street::Rive); N].try_into().expect("N"),
+            }
+        } else {
+            Self {
+                street,
+                metric: Box::new(Metric::from_street(client, street.next()).await),
+                kmeans: Box::new(std::array::from_fn(|_| Histogram::empty(street.next()))),
+                bounds: Box::default(),
+                points: Lookup::from_street(client, street.next())
+                    .await
+                    .projections()
+                    .try_into()
+                    .expect("projections.len() == N"),
+            }
+        }
+    }
+}

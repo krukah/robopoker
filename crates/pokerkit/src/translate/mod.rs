@@ -1,13 +1,13 @@
 //! Generic action translation over typed lattices (folded in from the former
 //! `dragoman` crate). Game-agnostic: anchors are `f64` + caller payloads on a
-//! totally-ordered, axis-tagged scalar. The runtime `Translation` enum that
-//! consumes these primitives lives in `super::translation`.
+//! totally-ordered, axis-tagged scalar, consumed by the runtime `Translation` enum.
 mod anchor;
 mod axis;
 mod bracket;
 mod lattice;
 mod scalar;
 mod translated;
+mod translation;
 
 pub use anchor::*;
 pub use axis::*;
@@ -15,3 +15,4 @@ pub use bracket::*;
 pub use lattice::*;
 pub use scalar::*;
 pub use translated::*;
+pub use translation::*;

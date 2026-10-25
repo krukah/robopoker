@@ -1,3 +1,6 @@
+use crate::Drift;
+use crate::Prune;
+
 /// Per-point distance bounds enabling Elkan's triangle-inequality pruning:
 /// bounds to all K centroids plus the current assignment (`j` = `c(x)`,
 /// `lower` = `l(x, c)`, `error` = `u(x)`).
@@ -29,13 +32,35 @@ impl<const K: usize> Bounds<K> {
     pub fn stale(&self) -> bool {
         self.stale
     }
+
+    fn lowers(&self) -> &[f32; K] {
+        &self.lower
+    }
+
+    fn lowers_mut(&mut self) -> &mut [f32; K] {
+        &mut self.lower
+    }
+
+    fn j_mut(&mut self) -> &mut usize {
+        &mut self.j
+    }
+
+    fn error_mut(&mut self) -> &mut f32 {
+        &mut self.error
+    }
+
+    fn stale_mut(&mut self) -> &mut bool {
+        &mut self.stale
+    }
+
     /// Gets lower bound for centroid j.
     fn lower(&self, j: usize) -> f32 {
-        unsafe { *self.lower.get_unchecked(j) }
+        unsafe { *self.lowers().get_unchecked(j) }
     }
+
     /// Sets lower bound for centroid j.
     fn set_lower(&mut self, j: usize, value: f32) {
-        unsafe { *self.lower.get_unchecked_mut(j) = value }
+        unsafe { *self.lowers_mut().get_unchecked_mut(j) = value }
     }
     /// Checks if centroid j could be closer than current assignment.
     ///
@@ -53,36 +78,59 @@ impl<const K: usize> Bounds<K> {
     pub fn can_exclude(&self, midpoints: &[f32; K]) -> bool {
         unsafe { self.u() <= *midpoints.get_unchecked(self.j()) }
     }
-    /// Updates bounds after centroids move (Steps 5-6).
-    /// Lowers are decreased by movement; upper is increased.
-    pub fn update(&mut self, drift: &super::Drift<K>) {
-        let movements = drift.as_array();
-        self.lower
-            .iter_mut()
-            .zip(movements.iter())
-            .for_each(|(lower, movement)| *lower = (*lower - movement).max(0.0));
-        unsafe { self.error += movements.get_unchecked(self.j()) }
-        self.stale = true;
-    }
     /// Refreshes upper bound by computing actual distance.
     pub fn refresh(&mut self, distance: f32) {
         self.set_lower(self.j(), distance);
-        self.error = distance;
-        self.stale = false;
+        *self.error_mut() = distance;
+        *self.stale_mut() = false;
     }
     /// Records distance to centroid j, reassigning if closer.
     pub fn witness(&mut self, distance: f32, j: usize) {
         self.set_lower(j, distance);
         if distance < self.u() {
-            self.j = j;
-            self.error = distance;
+            self.assign(distance, j);
         }
     }
 
     /// Direct assignment (for naive k-means without bound tracking).
     pub fn assign(&mut self, distance: f32, j: usize) {
-        self.j = j;
-        self.error = distance;
+        *self.j_mut() = j;
+        *self.error_mut() = distance;
+    }
+}
+
+impl<const K: usize> Prune<K> for Bounds<K> {
+    fn j(&self) -> usize {
+        self.j
+    }
+
+    fn settle<F>(&mut self, pairwise: &[[f32; K]; K], midpoints: &[f32; K], distance: F)
+    where
+        F: Fn(usize) -> f32,
+    {
+        if self.can_exclude(midpoints) {
+            return;
+        }
+        if self.stale() {
+            self.refresh(distance(self.j()));
+        }
+        (0..K).for_each(|j| {
+            if self.has_shifted(pairwise, j) {
+                self.witness(distance(j), j);
+            }
+        });
+    }
+
+    /// Elkan's steps 5–6: each lower bound drops by its centroid's movement, the upper bound
+    /// grows by the assigned centroid's.
+    fn update(&mut self, drift: &Drift<K>) {
+        let movements = drift.as_array();
+        self.lowers_mut()
+            .iter_mut()
+            .zip(movements.iter())
+            .for_each(|(lower, movement)| *lower = (*lower - movement).max(0.0));
+        unsafe { *self.error_mut() += *movements.get_unchecked(self.j()) }
+        *self.stale_mut() = true;
     }
 }
 

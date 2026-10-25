@@ -52,9 +52,8 @@ impl Default for TrainingHyperParams {
             log_interval: Duration::from_secs(60),
             flush_interval: Duration::from_secs(30 * 60),
             mc_exploitability_samples: 1024,
-            // Floor for cumulative regret storage (prevents unbounded
-            // negative growth). Below `PruningHyperParams::threshold` so
-            // pruned actions can recover via exploration.
+            // Floor for cumulative regret storage (prevents unbounded negative growth). Below
+            // `PruningHyperParams::threshold` so pruned actions can recover via exploration.
             regret_min: -4e6,
         }
     }

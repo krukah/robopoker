@@ -1,7 +1,7 @@
 /// Warmstart parameters for seeding subgame-local CFR profiles from a
 /// blueprint profile.
 ///
-/// Read by [`crate::RefProf::warmstart`] when synthesizing
+/// Read by [`crate::Profile::warmstart`] when synthesizing
 /// iteration-count-agnostic prior weights.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WarmstartHyperParams {
@@ -23,10 +23,7 @@ impl WarmstartHyperParams {
 impl Default for WarmstartHyperParams {
     fn default() -> Self {
         Self {
-            // Effective number of training iterations the blueprint prior
-            // represents. Sized so subgame's ~50k iterations are
-            // comparable in effective weight to the prior, regardless of
-            // blueprint depth.
+            // Effective number of training iterations the blueprint prior represents.
             prior_strength: 1 << 14,
         }
     }

@@ -89,6 +89,7 @@ serde_json     = "1"
 const_format   = "0.2"
 uuid           = { version = "1", features = ["v7", "serde"] }
 rand           = { version = "0.9.1", features = ["small_rng"] }
+mimalloc       = { version = "0.1", default-features = false }
 tracing        = "0.1"
 rayon          = "1"
 petgraph       = "0.6"
@@ -157,6 +158,8 @@ default_trait_access               = "allow"
 unreadable_literal                 = "allow"
 large_futures                      = "allow"
 unused_async                       = "allow"
+unused_async_trait_impl            = "allow" # 1.98 sibling of unused_async
+assert_is_empty                    = "allow" # 1.99: assert_eq!(x, [] as [T; 0]) reads worse
 struct_excessive_bools             = "allow"
 missing_assert_message             = "allow"
 into_iter_without_iter             = "allow"
@@ -174,6 +177,21 @@ many_single_char_names             = "allow"
 
 [profile.dev]
 panic     = "unwind"
+opt-level = 0
+
+[profile.dev.package.deuce]
+opt-level = 3
+[profile.dev.package.monge]
+opt-level = 3
+[profile.dev.package.mccfr]
+opt-level = 3
+[profile.dev.package.subgame]
+opt-level = 3
+[profile.dev.package.leduc]
+opt-level = 3
+[profile.dev.package.kuhn]
+opt-level = 3
+[profile.dev.package.roshambo]
 opt-level = 3
 
 [profile.release]
@@ -182,3 +200,8 @@ panic         = "abort"
 opt-level     = 3
 codegen-units = 1
 strip         = "debuginfo"
+
+[profile.profiling]
+inherits = "release"
+strip    = "none"
+debug    = 2

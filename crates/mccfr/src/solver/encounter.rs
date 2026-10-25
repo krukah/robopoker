@@ -9,13 +9,29 @@ use pokerkit::*;
 /// lookup.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Encounter {
-    pub weight: Probability,
-    pub regret: Utility,
-    pub payoff: Utility,
-    pub visits: u32,
+    weight: Probability,
+    regret: Utility,
+    payoff: Utility,
+    visits: u32,
 }
 
 impl Encounter {
+    pub fn weight_mut(&mut self) -> &mut Probability {
+        &mut self.weight
+    }
+
+    pub fn regret_mut(&mut self) -> &mut Utility {
+        &mut self.regret
+    }
+
+    pub fn payoff_mut(&mut self) -> &mut Utility {
+        &mut self.payoff
+    }
+
+    pub fn visits_mut(&mut self) -> &mut u32 {
+        &mut self.visits
+    }
+
     pub fn new(weight: Probability, regret: Utility, payoff: Utility, visits: u32) -> Self {
         Self {
             weight,
@@ -59,5 +75,23 @@ where
 {
     fn from(edge: &E) -> Self {
         Self::from_tuple(edge.default_policy(), edge.default_regret())
+    }
+}
+
+impl Encounter {
+    pub fn weight(&self) -> Probability {
+        self.weight
+    }
+
+    pub fn regret(&self) -> Utility {
+        self.regret
+    }
+
+    pub fn payoff(&self) -> Utility {
+        self.payoff
+    }
+
+    pub fn visits(&self) -> u32 {
+        self.visits
     }
 }

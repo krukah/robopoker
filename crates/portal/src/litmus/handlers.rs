@@ -9,17 +9,22 @@ use actix_web::{HttpResponse, Responder, web};
 use litmus::{Litmus, Scenarios};
 use std::sync::Arc;
 
-pub async fn run(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>) -> impl Responder {
-    match api.run(&req).await {
-        Ok(outcomes) => HttpResponse::Ok().json(outcomes),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-    }
-}
+/// Namespace for the handlers routines.
+pub struct Handlers;
 
-pub async fn report(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>) -> impl Responder {
-    let api_label = format!("rbp-{} {}", pokerkit::regime(), pokerkit::version());
-    match api.report(&req, &api_label).await {
-        Ok(md) => HttpResponse::Ok().content_type("text/markdown; charset=utf-8").body(md),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+impl Handlers {
+    pub async fn run(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>) -> impl Responder {
+        match api.run(&req).await {
+            Ok(outcomes) => HttpResponse::Ok().json(outcomes),
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        }
+    }
+
+    pub async fn report(api: web::Data<Arc<Litmus<Backend>>>, req: web::Json<Scenarios>) -> impl Responder {
+        let api_label = format!("rbp-{} {}", pokerkit::Regime::current(), pokerkit::Version::current());
+        match api.report(&req, &api_label).await {
+            Ok(md) => HttpResponse::Ok().content_type("text/markdown; charset=utf-8").body(md),
+            Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        }
     }
 }

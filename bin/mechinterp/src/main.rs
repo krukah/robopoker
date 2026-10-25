@@ -66,8 +66,8 @@ impl Cli {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    let _telemetry = vitals::init();
-    let db = daybook::db().await;
+    let _telemetry = vitals::TelemetryGuard::init();
+    let db = daybook::Pool::db().await;
     for street in cli.streets() {
         let glossary = Glossary::from(db.profiles(street, cli.samples).await);
         eprintln!("{street}: {} buckets", glossary.len());

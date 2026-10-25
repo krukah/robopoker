@@ -10,18 +10,15 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::UnboundedSender;
 
-/// Network player that communicates via tokio channels.
-/// Designed to bridge WebSocket connections to the Room actor system.
+/// Network player that communicates via tokio channels. Designed to bridge WebSocket
+/// connections to the Room actor system.
 ///
-/// `tx` ships JSON ServerMessages to the WebSocket client.
-/// `rx` receives action strings from the WebSocket client.
-///
-/// Snapshot pushes from the engine flow through `tx` directly; this Player
-/// only owns `tx` so it can deliver `Rejected` responses to invalid input.
+/// `tx` ships JSON ServerMessages to the WebSocket client. `rx` receives action strings from
+/// the WebSocket client.
 pub struct Client {
     tx: UnboundedSender<String>,
     rx: Arc<Mutex<UnboundedReceiver<String>>>,
-    alive: Arc<AtomicBool>,
+    pulse: Arc<AtomicBool>,
 }
 
 impl Client {
@@ -29,27 +26,39 @@ impl Client {
         Self {
             tx,
             rx,
-            alive: Arc::new(AtomicBool::new(true)),
+            pulse: Arc::new(AtomicBool::new(true)),
         }
     }
 
+    fn tx(&self) -> &UnboundedSender<String> {
+        &self.tx
+    }
+
+    fn rx(&self) -> &Mutex<UnboundedReceiver<String>> {
+        &self.rx
+    }
+
+    fn pulse(&self) -> &AtomicBool {
+        &self.pulse
+    }
+
     fn send(&self, msg: ServerMessage) {
-        let _ = self.tx.send(msg.to_json());
+        let _ = self.tx().send(msg.to_json());
     }
 }
 
 #[async_trait::async_trait]
 impl Player for Client {
     fn alive(&self) -> bool {
-        self.alive.load(Ordering::SeqCst)
+        self.pulse().load(Ordering::SeqCst)
     }
 
     async fn decide(&mut self, recall: &Witness) -> Action {
         let legal = recall.head().legal();
         loop {
-            match self.rx.lock().await.recv().await {
+            match self.rx().lock().await.recv().await {
                 None => {
-                    self.alive.store(false, Ordering::SeqCst);
+                    self.pulse().store(false, Ordering::SeqCst);
                     return recall.head().passive();
                 }
                 Some(s) => match Action::try_from(s.as_str()) {

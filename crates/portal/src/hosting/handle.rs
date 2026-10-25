@@ -1,58 +1,90 @@
-use super::Client;
 use parlor::Room;
 use pokerkit::ID;
+use pokerkit::Pacing;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::oneshot;
 
 /// Handle to communicate with a running room.
 /// Stores channel endpoints for bridging WebSocket to Client player.
 pub struct RoomHandle {
-    pub id: ID<Room>,
-    pub tx: UnboundedSender<String>,
-    pub rx: Arc<Mutex<UnboundedReceiver<String>>>,
-    pub skip: Arc<Notify>,
-    pub start: Option<oneshot::Sender<()>>,
-    pub bridge: Option<tokio::task::AbortHandle>,
-}
-
-/// Channels for room lifecycle coordination.
-pub struct RoomChannels {
-    pub handle: RoomHandle,
-    pub client: Client,
-    pub mirror: UnboundedSender<String>,
-    pub skip: Arc<Notify>,
-    pub start: oneshot::Receiver<()>,
+    id: ID<Room>,
+    pacing: Pacing,
+    tx: UnboundedSender<String>,
+    rx: Arc<Mutex<UnboundedReceiver<String>>>,
+    skip: Arc<Notify>,
+    start: Option<oneshot::Sender<()>>,
+    bridge: Option<tokio::task::AbortHandle>,
 }
 
 impl RoomHandle {
-    /// Creates paired channels for room communication.
-    /// Returns channels for Casino (handle), Room (client, start).
-    pub fn pair(id: ID<Room>) -> RoomChannels {
-        let (tx_outgoing, rx_outgoing) = unbounded_channel::<String>();
-        let (tx_incoming, rx_incoming) = unbounded_channel::<String>();
-        let (start_tx, start_rx) = oneshot::channel();
-        let skip = Arc::new(Notify::new());
-        let mirror = tx_outgoing.clone();
-        let client = Client::new(tx_outgoing, Arc::new(Mutex::new(rx_incoming)));
-        let handle = RoomHandle {
+    pub fn new(
+        id: ID<Room>,
+        pacing: Pacing,
+        tx: UnboundedSender<String>,
+        rx: Arc<Mutex<UnboundedReceiver<String>>>,
+        skip: Arc<Notify>,
+        start: oneshot::Sender<()>,
+    ) -> Self {
+        Self {
             id,
-            tx: tx_incoming,
-            rx: Arc::new(Mutex::new(rx_outgoing)),
-            skip: skip.clone(),
-            start: Some(start_tx),
-            bridge: None,
-        };
-        RoomChannels {
-            handle,
-            client,
-            mirror,
+            pacing,
+            tx,
+            rx,
             skip,
-            start: start_rx,
+            start: Some(start),
+            bridge: None,
         }
+    }
+
+    pub fn id(&self) -> ID<Room> {
+        self.id
+    }
+
+    /// How the room it fronts is paced. Read off the engine at creation, so
+    /// a room paced at any tempo tells the truth to whoever connects.
+    pub fn pacing(&self) -> Pacing {
+        self.pacing
+    }
+
+    pub fn tx(&self) -> UnboundedSender<String> {
+        self.tx.clone()
+    }
+
+    pub fn rx(&self) -> Arc<Mutex<UnboundedReceiver<String>>> {
+        self.rx.clone()
+    }
+
+    pub fn skip(&self) -> Arc<Notify> {
+        self.skip.clone()
+    }
+
+    /// The start signal, which fires once. Taking it is the point: the
+    /// second connection to a room must not start it again.
+    pub fn start(&mut self) -> Option<oneshot::Sender<()>> {
+        self.start.take()
+    }
+
+    fn bridge(&self) -> Option<&tokio::task::AbortHandle> {
+        self.bridge.as_ref()
+    }
+
+    fn bridge_mut(&mut self) -> &mut Option<tokio::task::AbortHandle> {
+        &mut self.bridge
+    }
+
+    /// A reconnect replaces the bridge; the stale task would otherwise keep draining the shared
+    /// receiver and escape `abort`.
+    pub fn watch(&mut self, bridge: tokio::task::AbortHandle) {
+        if let Some(stale) = self.bridge_mut().replace(bridge) {
+            stale.abort();
+        }
+    }
+
+    pub fn abort(&self) {
+        self.bridge().map(tokio::task::AbortHandle::abort);
     }
 }

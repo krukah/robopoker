@@ -1,0 +1,1599 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CFR Type Families</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        />
+        <style>
+            /* layout: tabbed views of a hand-placed grid map; inspector beside it, stacked under it when narrow */
+            :root {
+                --bg: #f4f6f9;
+                --surface: #ffffff;
+                --fg: #18202e;
+                --muted: #5a6476;
+                --rule: #d8dee8;
+                --accent: #2f5bd3;
+                --code: #edf1f7;
+                --yours-f: #fde68a;
+                --yours-s: #b45309;
+                --yours-t: #3b2300;
+                --spec-f: #ddd6fe;
+                --spec-s: #6d28d9;
+                --spec-t: #22104f;
+                --store-f: #bfdbfe;
+                --store-s: #1d4ed8;
+                --store-t: #0b1b3a;
+                --policy-f: #e2e8f0;
+                --policy-s: #475569;
+                --policy-t: #0f172a;
+                --free-f: #bbf7d0;
+                --free-s: #15803d;
+                --free-t: #052e16;
+                --gen-f: #a5f3fc;
+                --gen-s: #0e7490;
+                --gen-t: #082f36;
+                --sub-f: #fbcfe8;
+                --sub-s: #be185d;
+                --sub-t: #3b0420;
+                --edge: #6b7486;
+                --font-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+                --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+                --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root:not([data-theme="light"]) {
+                    --bg: #10141c;
+                    --surface: #161b25;
+                    --fg: #e3e8f1;
+                    --muted: #98a2b5;
+                    --rule: #283041;
+                    --accent: #86a6ff;
+                    --code: #1c2330;
+                    --yours-f: #3a2a08;
+                    --yours-s: #f59e0b;
+                    --yours-t: #fde68a;
+                    --spec-f: #261a4a;
+                    --spec-s: #a78bfa;
+                    --spec-t: #ddd6fe;
+                    --store-f: #13254a;
+                    --store-s: #60a5fa;
+                    --store-t: #bfdbfe;
+                    --policy-f: #1f2633;
+                    --policy-s: #94a3b8;
+                    --policy-t: #e2e8f0;
+                    --free-f: #0d2e1c;
+                    --free-s: #4ade80;
+                    --free-t: #bbf7d0;
+                    --gen-f: #0b2e36;
+                    --gen-s: #22d3ee;
+                    --gen-t: #a5f3fc;
+                    --sub-f: #3a1028;
+                    --sub-s: #f472b6;
+                    --sub-t: #fbcfe8;
+                    --edge: #8590a5;
+                    color-scheme: dark;
+                }
+            }
+            :root[data-theme="dark"] {
+                --bg: #10141c;
+                --surface: #161b25;
+                --fg: #e3e8f1;
+                --muted: #98a2b5;
+                --rule: #283041;
+                --accent: #86a6ff;
+                --code: #1c2330;
+                --yours-f: #3a2a08;
+                --yours-s: #f59e0b;
+                --yours-t: #fde68a;
+                --spec-f: #261a4a;
+                --spec-s: #a78bfa;
+                --spec-t: #ddd6fe;
+                --store-f: #13254a;
+                --store-s: #60a5fa;
+                --store-t: #bfdbfe;
+                --policy-f: #1f2633;
+                --policy-s: #94a3b8;
+                --policy-t: #e2e8f0;
+                --free-f: #0d2e1c;
+                --free-s: #4ade80;
+                --free-t: #bbf7d0;
+                --gen-f: #0b2e36;
+                --gen-s: #22d3ee;
+                --gen-t: #a5f3fc;
+                --sub-f: #3a1028;
+                --sub-s: #f472b6;
+                --sub-t: #fbcfe8;
+                --edge: #8590a5;
+                color-scheme: dark;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                background: var(--bg);
+                color: var(--fg);
+                font-family: var(--font-body);
+                font-size: 15px;
+                line-height: 1.5;
+            }
+            .wrap {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding-inline: 16px;
+                padding-block: 28px 48px;
+                display: grid;
+                gap: 18px;
+            }
+            h1,
+            h2,
+            h3 {
+                font-family: var(--font-display);
+                margin: 0;
+                line-height: 1.2;
+                text-wrap: balance;
+            }
+            h1 {
+                font-size: 26px;
+            }
+            .lede {
+                color: var(--muted);
+                margin: 4px 0 0;
+                max-width: 70ch;
+            }
+            code,
+            .mono {
+                font-family: var(--font-mono);
+                font-size: 0.86em;
+            }
+            .bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 18px;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .tab {
+                font: 600 13px var(--font-mono);
+                padding: 7px 12px;
+                border-radius: 999px;
+                border: 1px solid var(--rule);
+                background: var(--surface);
+                color: var(--fg);
+                cursor: pointer;
+            }
+            .tab[aria-selected="true"] {
+                background: var(--fg);
+                color: var(--bg);
+                border-color: var(--fg);
+            }
+            .tab:focus-visible,
+            .node:focus-visible,
+            .chip:focus-visible,
+            .legend {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 14px;
+                font-size: 12.5px;
+                color: var(--muted);
+            }
+            .legend span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .sw {
+                width: 18px;
+                height: 12px;
+                border: 1.5px solid;
+                border-radius: 4px;
+            }
+            .sw.sq {
+                border-radius: 1px;
+            }
+            .legend svg {
+                width: 28px;
+                height: 10px;
+            }
+            html {
+                scrollbar-gutter: stable;
+            }
+            .stage {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 16px;
+                align-items: start;
+            }
+            @media (min-width: 1240px) {
+                .stage {
+                    grid-template-columns: minmax(0, 1fr) 300px;
+                }
+                aside.inspect {
+                    position: sticky;
+                    top: calc(env(safe-area-inset-top, 0px) + 12px);
+                }
+            }
+            .canvas {
+                background: var(--surface);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                overflow-x: auto;
+                min-width: 0;
+            }
+            .caption {
+                padding: 12px 16px 0;
+                margin: 0;
+                color: var(--muted);
+                font-size: 13.5px;
+            }
+            .fit {
+                position: relative;
+                margin: 0 auto;
+            }
+            .map {
+                position: absolute;
+                left: 0;
+                top: 0;
+                transform-origin: 0 0;
+                display: grid;
+                column-gap: 12px;
+                row-gap: 62px;
+                padding: 64px 36px 48px;
+                width: max-content;
+            }
+            .region {
+                position: relative;
+                z-index: 0;
+                border: 1.5px solid;
+                border-radius: 14px;
+                margin: -34px -4px -16px;
+                pointer-events: none;
+            }
+            .region.outer {
+                margin: -60px -30px -28px;
+                border-style: dashed;
+            }
+            .region > b {
+                position: absolute;
+                top: 6px;
+                left: 12px;
+                font: 700 11px var(--font-mono);
+                letter-spacing: 0.07em;
+                text-transform: uppercase;
+            }
+            .region.outer > b {
+                top: 4px;
+            }
+            .node {
+                position: relative;
+                z-index: 2;
+                justify-self: center;
+                align-self: stretch;
+                width: 100%;
+                border: 1.5px solid;
+                border-radius: 12px;
+                padding: 8px 10px 9px;
+                cursor: pointer;
+                text-align: left;
+                font: inherit;
+                color: inherit;
+                transition:
+                    opacity 0.15s,
+                    box-shadow 0.15s;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 1px;
+            }
+            .node.type {
+                border-radius: 2px;
+            }
+            .node.wide {
+                width: 100%;
+                text-align: center;
+            }
+            .node.alias {
+                border-style: dotted;
+                border-radius: 999px;
+                padding: 6px 16px;
+                align-items: center;
+                text-align: center;
+            }
+            .node.adapter {
+                clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+                padding-inline: 22px;
+                border: none;
+            }
+            .node .k {
+                font: 600 10px var(--font-mono);
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                opacity: 0.75;
+            }
+            .node .n {
+                font: 600 12.5px var(--font-mono);
+                display: block;
+            }
+            .node .s {
+                font-size: 12px;
+                display: block;
+                opacity: 0.85;
+            }
+            .node.sel {
+                box-shadow: 0 0 0 3px var(--accent);
+            }
+            .map.focus .node:not(.on),
+            .map.focus .elabel:not(.on) {
+                opacity: 0.28;
+            }
+            .map.focus path.e:not(.on) {
+                opacity: 0.12;
+            }
+            svg.edges {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 1;
+                pointer-events: none;
+                overflow: visible;
+            }
+            path.e {
+                fill: none;
+                stroke: var(--edge);
+                stroke-width: 1.5;
+                transition: opacity 0.15s;
+            }
+            path.e.blanket {
+                stroke-dasharray: 5 4;
+            }
+            path.e.holds {
+                stroke-width: 3.5;
+            }
+            path.e.param {
+                stroke-dasharray: 1.5 4;
+                stroke-linecap: round;
+                stroke-width: 2;
+            }
+            path.e.on {
+                stroke: var(--accent);
+            }
+            .elabel {
+                position: absolute;
+                z-index: 3;
+                transform: translate(-50%, -50%);
+                font: 11px var(--font-mono);
+                color: var(--muted);
+                background: var(--surface);
+                padding: 0 5px;
+                border-radius: 4px;
+                white-space: nowrap;
+                pointer-events: none;
+                transition: opacity 0.15s;
+            }
+            .elabel.on {
+                color: var(--accent);
+            }
+            .r-yours {
+                background: var(--yours-f);
+                border-color: var(--yours-s);
+                color: var(--yours-t);
+            }
+            .r-spec {
+                background: var(--spec-f);
+                border-color: var(--spec-s);
+                color: var(--spec-t);
+            }
+            .r-store {
+                background: var(--store-f);
+                border-color: var(--store-s);
+                color: var(--store-t);
+            }
+            .r-policy {
+                background: var(--policy-f);
+                border-color: var(--policy-s);
+                color: var(--policy-t);
+            }
+            .r-free {
+                background: var(--free-f);
+                border-color: var(--free-s);
+                color: var(--free-t);
+                border-style: dashed;
+            }
+            .r-gen {
+                background: var(--gen-f);
+                border-color: var(--gen-s);
+                color: var(--gen-t);
+            }
+            .r-sub {
+                background: var(--sub-f);
+                border-color: var(--sub-s);
+                color: var(--sub-t);
+            }
+            .node.adapter.r-store {
+                background: var(--store-s);
+            }
+            .node.adapter.r-store::before {
+                content: "";
+                position: absolute;
+                inset: 2px;
+                z-index: -1;
+                background: var(--store-f);
+                clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%);
+            }
+            .region.g-yours {
+                border-color: var(--yours-s);
+                background: color-mix(in srgb, var(--yours-s) 7%, transparent);
+                color: var(--yours-s);
+            }
+            .region.g-spec {
+                border-color: var(--spec-s);
+                background: color-mix(in srgb, var(--spec-s) 5%, transparent);
+                color: var(--spec-s);
+            }
+            .region.g-store {
+                border-color: var(--store-s);
+                background: color-mix(in srgb, var(--store-s) 6%, transparent);
+                color: var(--store-s);
+            }
+            .region.g-policy {
+                border-color: var(--policy-s);
+                background: color-mix(in srgb, var(--policy-s) 7%, transparent);
+                color: var(--policy-s);
+            }
+            .region.g-free {
+                border-color: var(--free-s);
+                background: color-mix(in srgb, var(--free-s) 6%, transparent);
+                color: var(--free-s);
+            }
+            .region.g-sub {
+                border-color: var(--sub-s);
+                background: color-mix(in srgb, var(--sub-s) 6%, transparent);
+                color: var(--sub-s);
+            }
+            .region.g-info {
+                border-color: var(--gen-s);
+                background: color-mix(in srgb, var(--gen-s) 7%, transparent);
+                color: var(--gen-s);
+            }
+            aside.inspect {
+                background: var(--surface);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 16px;
+                display: grid;
+                gap: 12px;
+                min-width: 0;
+            }
+            .ihead {
+                display: grid;
+                gap: 4px;
+            }
+            .ihead .sig {
+                font: 600 15px var(--font-mono);
+                overflow-wrap: anywhere;
+            }
+            .badges {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .badge {
+                font: 600 10.5px var(--font-mono);
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                padding: 2px 7px;
+                border-radius: 999px;
+                border: 1.5px solid;
+            }
+            .isec h3 {
+                font-size: 11px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin-bottom: 4px;
+            }
+            .isec ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: grid;
+                gap: 3px;
+            }
+            .isec li {
+                font: 12.5px var(--font-mono);
+                background: var(--code);
+                padding: 3px 7px;
+                border-radius: 5px;
+                overflow-wrap: anywhere;
+            }
+            .isec li.req {
+                border-left: 3px solid var(--yours-s);
+            }
+            .isec li.def {
+                border-left: 3px solid var(--free-s);
+            }
+            .isec p {
+                margin: 0;
+                font-size: 13.5px;
+            }
+            .isec .file {
+                font: 12px var(--font-mono);
+                color: var(--muted);
+                overflow-wrap: anywhere;
+            }
+            .chips {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            .chip {
+                font: 12px var(--font-mono);
+                padding: 2px 8px;
+                border-radius: 999px;
+                border: 1.5px solid;
+                cursor: pointer;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                * {
+                    transition: none !important;
+                }
+            }
+        </style>
+        <style>
+            body {
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header>
+                <h1>CFR Type Families</h1>
+                <p class="lede">
+                    Arrows point from an ingredient to the type it builds. Click a node for its associated items,
+                    methods and implementors.
+                </p>
+            </header>
+
+            <div class="bar">
+                <div class="tabs" role="tablist" id="tabs"></div>
+                <div class="legend" aria-label="Legend">
+                    <span><i class="sw r-yours"></i>you write</span>
+                    <span><i class="sw r-policy"></i>you pick</span>
+                    <span><i class="sw r-spec"></i>spec</span>
+                    <span><i class="sw r-store"></i>storage</span>
+                    <span><i class="sw r-free"></i>free</span>
+                    <span><i class="sw sq r-gen"></i>framework type</span>
+                    <span><i class="sw r-sub"></i>subgame</span>
+                    <span
+                        ><svg viewBox="0 0 28 10">
+                            <line x1="0" y1="5" x2="28" y2="5" stroke="currentColor" stroke-width="1.5" /></svg
+                        >names, implements</span
+                    >
+                    <span
+                        ><svg viewBox="0 0 28 10">
+                            <line
+                                x1="0"
+                                y1="5"
+                                x2="28"
+                                y2="5"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-dasharray="5 4"
+                            /></svg
+                        >blanket impl</span
+                    >
+                    <span
+                        ><svg viewBox="0 0 28 10">
+                            <line x1="0" y1="5" x2="28" y2="5" stroke="currentColor" stroke-width="3.5" /></svg
+                        >held as a field</span
+                    >
+                    <span
+                        ><svg viewBox="0 0 28 10">
+                            <line
+                                x1="1"
+                                y1="5"
+                                x2="28"
+                                y2="5"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-dasharray="1.5 4"
+                                stroke-linecap="round"
+                            /></svg
+                        >type parameter</span
+                    >
+                </div>
+            </div>
+
+            <div class="stage">
+                <div class="canvas">
+                    <p class="caption" id="caption"></p>
+                    <div class="fit" id="fit"><div class="map" id="map"></div></div>
+                </div>
+                <aside class="inspect" id="inspect" aria-live="polite"></aside>
+            </div>
+        </div>
+
+        <script>
+            const NODES = {
+                T: {
+                    name: "CfrTurn",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "who acts",
+                    file: "mccfr/src/state/spec/turn.rs",
+                    supers: "Copy + Eq + Hash + Debug + From‹usize›",
+                    req: ["chance() → Self", "terminal() → Self", "players() → usize"],
+                    def: ["is_chance(&self) → bool", "is_terminal(&self) → bool", "is_opponent(&self, &Self) → bool"],
+                },
+                E: {
+                    name: "CfrEdge",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "a move",
+                    file: "mccfr/src/state/spec/edge.rs",
+                    supers: "Copy + Ord + Hash + Debug + Support",
+                    def: ["default_policy(&self) → Probability", "default_regret(&self) → Utility"],
+                },
+                G: {
+                    name: "CfrGame",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "a state · names T, E",
+                    file: "mccfr/src/state/spec/game.rs",
+                    supers: "Copy + Send + Sync",
+                    assoc: ["type T: CfrTurn", "type E: CfrEdge"],
+                    req: ["root() → Self", "turn(&self) → T", "apply(&self, E) → Self", "payoff(&self, T) → Utility"],
+                    def: ["depth(&self) → usize", "is_frontier(&self) → bool", "exploitability_root() → Self"],
+                },
+                X: {
+                    name: "CfrPublic",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "public half · names G",
+                    file: "mccfr/src/state/information/public.rs",
+                    assoc: ["type G: CfrGame"],
+                    req: ["choices(&self) → impl Iterator‹Item = G::E›"],
+                },
+                Y: {
+                    name: "CfrSecret",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "secret half",
+                    file: "mccfr/src/state/information/secret.rs",
+                    supers: "Copy + Ord + Hash + Debug + Support",
+                    note: "A marker: bounds only, no methods.",
+                },
+                I: {
+                    name: "CfrInfo",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "names X, Y · the spec",
+                    file: "mccfr/src/state/information/info.rs",
+                    supers: "Copy + Ord + Hash + Debug + Send + Sync",
+                    assoc: ["type X: CfrPublic", "type Y: CfrSecret"],
+                    req: ["public(&self) → X", "secret(&self) → Y"],
+                    def: ["choices(&self) → impl Iterator‹Item = X::G::E›"],
+                    impls: ["Composite‹X, Y›, the stock pair", "each game's own info type"],
+                },
+                Play: {
+                    name: "CfrSpec",
+                    kind: "trait",
+                    role: "spec",
+                    sub: "type F: CfrInfo · the root",
+                    file: "mccfr/src/state/spec/spec.rs",
+                    assoc: ["type F: CfrInfo"],
+                    impls: ["every encoder, profile and solver, in one line", "impl‹I: CfrInfo› CfrSpec for I: an info type plays itself"],
+                    note: "Every alias is a route down from F. Pin F to fix everything, or label one edge on the route (F: CfrInfo‹X: CfrPublic‹G = …››) to fix the game and what lies below.",
+                },
+                TurnOf: {
+                    name: "TurnOf‹X›",
+                    kind: "alias",
+                    role: "spec",
+                    sub: "",
+                    file: "mccfr/src/state/spec/spec.rs",
+                    note: "type TurnOf‹X› = ‹GameOf‹X› as CfrGame›::T",
+                },
+                EdgeOf: {
+                    name: "EdgeOf‹X›",
+                    kind: "alias",
+                    role: "spec",
+                    sub: "",
+                    file: "mccfr/src/state/spec/spec.rs",
+                    note: "type EdgeOf‹X› = ‹GameOf‹X› as CfrGame›::E",
+                },
+                GameOf: {
+                    name: "GameOf‹X›",
+                    kind: "alias",
+                    role: "spec",
+                    sub: "",
+                    file: "mccfr/src/state/spec/spec.rs",
+                    note: "type GameOf‹X› = ‹‹InfoOf‹X› as CfrInfo›::X as CfrPublic›::G",
+                },
+                InfoOf: {
+                    name: "InfoOf‹X›",
+                    kind: "alias",
+                    role: "spec",
+                    sub: "",
+                    file: "mccfr/src/state/spec/spec.rs",
+                    note: "type InfoOf‹X› = ‹X as CfrSpec›::F",
+                },
+                Enc: {
+                    name: "N: Encoding",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "game states → infos",
+                    file: "mccfr/src/strategy/encoder.rs",
+                    supers: "CfrSpec",
+                    req: [
+                        "seed(&self, &GameOf‹Self›) → InfoOf‹Self›",
+                        "public‹P›(&self, &GameOf‹Self›, past: P) → PublicOf‹Self›, past nearest first", "secret(&self, &GameOf‹Self›) → SecretOf‹Self›",
+                    ],
+                    def: [
+                        "info(&self, &Tree, Leaf) → InfoOf‹Self›, defaults to recall",
+                        "recall(&self, &Tree, Leaf) → InfoOf‹Self›, encode over the upward tree walk",
+                        "replay(&self, root, path) → Vec‹Choice›",
+                        "branches(&self, &Node) → Branches",
+                    ],
+                },
+                R: {
+                    name: "R: RegretSchedule",
+                    kind: "trait",
+                    role: "policy",
+                    sub: "how regret accumulates",
+                    file: "mccfr/src/regret/schedule/regret_schedule.rs",
+                    req: ["accumulate(net, new, epoch) → Utility"],
+                    def: ["gain(net, new, epoch) → Utility", "floor() → Utility"],
+                    impls: ["LinearRegret", "DiscountedRegret", "FlooredRegret", "AsymmetricRegret", "SummedRegret"],
+                },
+                W: {
+                    name: "W: WeightSchedule",
+                    kind: "trait",
+                    role: "policy",
+                    sub: "how the average is weighted",
+                    file: "mccfr/src/policy/schedule/weight_schedule.rs",
+                    req: ["accumulate(net, new, epoch) → Probability"],
+                    def: ["learn(net, new, epoch) → Probability"],
+                    impls: ["LinearWeight", "QuadraticWeight", "ExponentialWeight", "ConstantWeight"],
+                },
+                S: {
+                    name: "S: SamplingScheme",
+                    kind: "trait",
+                    role: "policy",
+                    sub: "which branches to walk",
+                    file: "mccfr/src/sample/schedule/sampling_scheme.rs",
+                    req: ["sample‹P: Flow›(&P, &Node, Branches) → Branches"],
+                    impls: [
+                        "VanillaSampling",
+                        "ExternalSampling",
+                        "TargetedSampling",
+                        "PrunableSampling",
+                        "PluribusSampling",
+                    ],
+                },
+                Book: {
+                    name: "Book‹F›",
+                    kind: "type",
+                    role: "gen",
+                    sub: "one Encounter per info-edge",
+                    file: "mccfr/src/strategy/access/book.rs",
+                    generics: ["F: CfrInfo"],
+                    fields: [
+                        "epochs: usize",
+                        "encounters: FxHashMap‹F::I, FxHashMap‹EdgeOf‹F›, Encounter››",
+                        "metrics: Metrics",
+                    ],
+                    impls: ["CfrSpec (F = F)", "Store", "Default"],
+                },
+                Data: {
+                    name: "Store",
+                    kind: "adapter",
+                    role: "store",
+                    sub: "five accessors",
+                    file: "mccfr/src/strategy/access/book.rs",
+                    supers: "CfrSpec",
+                    assoc: ["const SHARDED: usize = 256"],
+                    req: [
+                        "encounters_ref(&self) → &FxHashMap‹I, FxHashMap‹E, Encounter››",
+                        "encounters_mut(&mut self) → &mut …",
+                        "epochs_ref(&self) → usize",
+                        "epochs_mut(&mut self) → &mut usize",
+                        "store_metrics(&self) → Option‹&Metrics›",
+                    ],
+                    def: ["absorb‹R, W›(&mut self, Batch)", "inline‹R, W›", "shard‹R, W›", "lift", "folds‹R, W›"],
+                    from: "An adapter with no behavior of its own. Its blankets give Profile, Storage and Clock.",
+                },
+                Ref: {
+                    name: "Profile",
+                    kind: "trait",
+                    role: "store",
+                    sub: "read accumulators",
+                    file: "mccfr/src/strategy/access/profile.rs",
+                    supers: "CfrSpec",
+                    req: [
+                        "t(&self) → usize",
+                        "sum_regret(&self) → Utility",
+                        "cum_weight(&self, &I, &E) → Probability",
+                        "cum_regret(&self, &I, &E) → Utility",
+                        "cum_payoff(&self, &I, &E) → Utility",
+                        "cum_visits(&self, &I, &E) → u32",
+                    ],
+                    def: [
+                        "metrics",
+                        "regret",
+                        "weight",
+                        "averaged_strategy(&self, &I)",
+                        "iterated_strategy(&self, &I)",
+                        "warmstart(&self, &I, &E) → Encounter",
+                    ],
+                    impls: [
+                        "Book‹F›, via Store",
+                        "Overlay‹V›",
+                        "DepthView · NestView · WorldView",
+                        "LazyBlueprint (nlhe)",
+                        "DeepProfile‹N› (neural)",
+                    ],
+                },
+                Mut: {
+                    name: "Storage",
+                    kind: "trait",
+                    role: "store",
+                    sub: "write accumulators",
+                    file: "mccfr/src/strategy/access/storage.rs",
+                    supers: "CfrSpec",
+                    req: [
+                        "mut_weight(&mut self, &I, &E) → &mut Probability",
+                        "mut_regret(&mut self, &I, &E) → &mut Utility",
+                        "mut_payoff(&mut self, &I, &E) → &mut Utility",
+                        "mut_visits(&mut self, &I, &E) → &mut u32",
+                    ],
+                    impls: ["Book‹F›, via Store", "Overlay‹V›", "LazyBlueprint (nlhe)"],
+                },
+                Time: {
+                    name: "Clock",
+                    kind: "trait",
+                    role: "store",
+                    sub: "walker · epoch",
+                    file: "mccfr/src/strategy/access/time.rs",
+                    supers: "Profile",
+                    req: ["increment(&mut self)"],
+                    def: [
+                        "walker(&self) → TurnOf‹Self›, t() mod players",
+                        "temperature(&self) → Entropy",
+                        "smoothing(&self) → Energy",
+                        "curiosity(&self) → Probability",
+                    ],
+                    impls: [
+                        "Book‹F›, via Store",
+                        "Overlay‹V›",
+                        "DepthView · NestView · WorldView",
+                        "LazyBlueprint (nlhe)",
+                        "DeepProfile‹N› (neural)",
+                    ],
+                },
+                Flow: {
+                    name: "Flow",
+                    kind: "trait",
+                    role: "free",
+                    sub: "regret matching · reach · EV",
+                    file: "mccfr/src/strategy/math/flow.rs",
+                    supers: "Profile + Clock",
+                    def: [
+                        "sampling_strategy",
+                        "policy_vector",
+                        "regret_vector",
+                        "dfs",
+                        "relative_reach",
+                        "cfactual_reach",
+                        "expected_value",
+                        "cfactual_value",
+                        "infoset_value",
+                        "gain",
+                        "rng",
+                        "… 10 more",
+                    ],
+                    from: "impl‹T: Profile + Clock› Flow for T {}",
+                },
+                Equilibrium: {
+                    name: "Equilibrium",
+                    kind: "trait",
+                    role: "free",
+                    sub: "average · exploitability",
+                    file: "mccfr/src/strategy/math/nash.rs",
+                    supers: "Profile",
+                    def: [
+                        "averaged_policy",
+                        "exploitability(&self, Tree) → Utility",
+                        "response_payoff",
+                        "optimal_response_payoff",
+                        "optimal_cfactual_choice",
+                        "… 6 more",
+                    ],
+                    from: "impl‹T: Profile› Equilibrium for T {}",
+                },
+                Sol: {
+                    name: "Solution",
+                    kind: "trait",
+                    role: "free",
+                    sub: "Flow + Mut",
+                    file: "mccfr/src/strategy/math/solution.rs",
+                    supers: "Flow + Storage",
+                    from: "impl‹T: Flow + Storage› Solution for T {}. The bound Solver puts on its profile.",
+                },
+                Tab: {
+                    name: "Tabular‹N, R, W, S, B›",
+                    kind: "type",
+                    role: "gen",
+                    sub: "the stock Solver · holds Book‹N::F› as its P",
+                    file: "mccfr/src/solver/tabular.rs",
+                    generics: [
+                        "N: Encoding, the game",
+                        "R: RegretSchedule",
+                        "W: WeightSchedule",
+                        "S: SamplingScheme",
+                        "const B: usize, trees per batch",
+                    ],
+                    fields: ["profile: Book‹N::F›", "encoder: N"],
+                    impls: [
+                        "CfrSpec (F = N::F)",
+                        "Encoding, forwarded to N",
+                        "Grower (P = Book‹N::F›)",
+                        "Solver",
+                        "DepthSampler‹D› when N: Frontier‹D›",
+                        "WorldRestrict‹W› when N: WorldRestrict‹W›",
+                    ],
+                },
+                Traverse: {
+                    name: "Grower",
+                    kind: "trait",
+                    role: "store",
+                    sub: "encoder + profile → trees",
+                    file: "mccfr/src/solver/traverse.rs",
+                    supers: "CfrSpec",
+                    assoc: [
+                        "type N: Encoding‹F = Self::F›",
+                        "type P: Flow‹F = Self::F›",
+                        "type S: SamplingScheme",
+                    ],
+                    req: ["encoder(&self) → &N", "profile(&self) → &P"],
+                    def: [
+                        "root(&self) → GameOf‹Self›",
+                        "tree(&self, id) → Tree‹F›",
+                        "exploitability(&self) → Utility",
+                        "mxploitability(&self, n) → Utility",
+                    ],
+                    impls: [
+                        "Tabular‹N, R, W, S, B›",
+                        "DepthSolver · WorldSolver · SubGameSolver",
+                        "DeepCfr‹N, P, S› (neural)",
+                    ],
+                },
+                Solver: {
+                    name: "Solver",
+                    kind: "trait",
+                    role: "store",
+                    sub: "batch → regret → update",
+                    file: "mccfr/src/solver/solver.rs",
+                    supers: "Grower‹P: Solution› + Send + Sync",
+                    assoc: ["type R: RegretSchedule", "type W: WeightSchedule", "const SAMPLE_EVERY: usize = 17"],
+                    req: ["batch_size() → usize", "storage(&mut self) → &mut P", "advance(&mut self)"],
+                    def: [
+                        "solve(self, trees) → Self",
+                        "step(&mut self)",
+                        "spend(&mut self, Duration)",
+                        "apply(&mut self, Batch)",
+                        "… 15 more",
+                    ],
+                    impls: ["Tabular‹N, R, W, S, B›", "DepthSolver", "WorldSolver", "SubGameSolver"],
+                },
+                Front: {
+                    name: "N: Frontier‹D›",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "leaf payoffs · default uniform",
+                    file: "subgame/src/depth/frontier/frontier.rs",
+                    supers: "Encoding",
+                    def: ["payoffs‹P: Profile‹F = F››(&self, &P, &Prefix, &G, T) → Payoffs‹D›"],
+                    note: "An empty impl gives uniform payoffs.",
+                },
+                Restrict: {
+                    name: "N: WorldRestrict‹W›",
+                    kind: "trait",
+                    role: "yours",
+                    sub: "a world → a game",
+                    file: "subgame/src/world/range/restrict.rs",
+                    supers: "Encoding",
+                    req: ["restrict(&self, T, World, &Belief‹Y, W›, &G) → G"],
+                    impls: ["&C for C: WorldRestrict", "Tabular, forwarded to N"],
+                },
+                RestrictTab: {
+                    name: "WorldRestrict‹W›",
+                    kind: "trait",
+                    role: "sub",
+                    sub: "on Tabular · forwarded to N",
+                    file: "subgame/src/world/range/restrict.rs",
+                    supers: "Encoding",
+                    req: ["restrict(&self, T, World, &Belief‹Y, W›, &G) → G"],
+                    from: "impl WorldRestrict‹W› for Tabular‹N, R, W, S, B› where N: WorldRestrict‹W›",
+                },
+                Sampler: {
+                    name: "DepthSampler‹D›",
+                    kind: "trait",
+                    role: "sub",
+                    sub: "on Tabular · when N: Frontier",
+                    file: "subgame/src/depth/frontier/sampler.rs",
+                    supers: "Encoding",
+                    assoc: ["type Blueprint: Profile‹F = Self::F›"],
+                    req: ["blueprint(&self) → &Blueprint", "payoffs(&self, &Prefix, &G, T) → Payoffs‹D›"],
+                    impls: ["Tabular when N: Frontier‹D›, with Blueprint = Book‹N::F›"],
+                },
+                DView: {
+                    name: "DepthView‹P, D›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "&P seen at depth D",
+                    file: "subgame/src/depth/solve/view.rs",
+                    generics: ["P: Profile", "const D: usize"],
+                    fields: ["inner: &'b P"],
+                    impls: ["Copy", "CfrSpec", "Profile", "Clock"],
+                },
+                NView: {
+                    name: "NestView‹P›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "&P seen in a nested game",
+                    file: "subgame/src/nest/solve/view.rs",
+                    generics: ["P: Profile"],
+                    fields: ["inner: &'b P"],
+                    impls: ["Copy", "CfrSpec", "Profile", "Clock"],
+                },
+                WView: {
+                    name: "WorldView‹P›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "&P seen per world",
+                    file: "subgame/src/world/solve/view.rs",
+                    generics: ["P: Profile"],
+                    fields: ["inner: &'b P"],
+                    impls: ["Copy", "CfrSpec", "Profile", "Clock"],
+                },
+                Overlay: {
+                    name: "Overlay‹V›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "local writes over a frozen view",
+                    file: "subgame/src/overlay.rs",
+                    generics: ["V: Profile + Copy"],
+                    fields: ["view: V", "local: HashMap‹InfoOf‹V›, HashMap‹EdgeOf‹V›, Encounter››", "t: usize"],
+                    impls: ["From‹V›", "CfrSpec", "Profile", "Storage", "Clock"],
+                    note: "DepthProfile = Overlay‹DepthView›, NestProfile = Overlay‹NestView›, WorldProfile = Overlay‹WorldView›.",
+                },
+                DSolver: {
+                    name: "DepthSolver‹N, D›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "depth-limited",
+                    file: "subgame/src/depth/solve/solver.rs",
+                    generics: ["N: DepthSampler‹D›"],
+                    fields: [
+                        "encoder: DepthEncoder‹N, D›",
+                        "profile: DepthProfile‹N::Blueprint, D›",
+                        "entry: DepthGame‹GameOf‹N›, D›",
+                    ],
+                    impls: ["CfrSpec", "Solver"],
+                },
+                GSolver: {
+                    name: "SubGameSolver‹W, L, N›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "needs both N bounds",
+                    file: "subgame/src/solver.rs",
+                    generics: ["N: WorldRestrict‹W› + DepthSampler‹L, Blueprint: Solution›"],
+                    fields: ["profile: WorldProfile‹DepthView‹N::Blueprint, L››", "belief: Belief‹Secret‹N›, W›"],
+                    impls: ["CfrSpec", "Solver"],
+                },
+                WSolver: {
+                    name: "WorldSolver‹W, P, N›",
+                    kind: "type",
+                    role: "sub",
+                    sub: "world-safe",
+                    file: "subgame/src/world/solve/solver.rs",
+                    generics: ["P: Solution", "N: WorldRestrict‹W, F = P::F›"],
+                    fields: ["profile: WorldProfile‹P›", "belief: Belief‹Secret‹N›, W›"],
+                    impls: ["CfrSpec", "Solver"],
+                },
+            };
+
+            const VIEWS = [
+                {
+                    id: "spec",
+                    title: "Info root",
+                    cols: 10,
+                    caption:
+                        "Two regions of the same shape: a root naming two leaves. The public half naming its game is the one edge between them, and every alias walks down from the info type through it.",
+                    regions: [
+                        { id: "spec", label: "CfrSpec", role: "spec", r: [1, 3], c: [1, 10], outer: true },
+                        { id: "tree", label: "tree construction", role: "yours", r: [1, 2], c: [1, 4] },
+                        { id: "info", label: "information", role: "info", r: [1, 2], c: [7, 10] },
+                    ],
+                    nodes: [
+                        ["T", 1, 1, 2],
+                        ["E", 1, 3, 2],
+                        ["G", 2, 2, 2],
+                        ["X", 1, 7, 2],
+                        ["Y", 1, 9, 2],
+                        ["I", 2, 8, 2],
+                        ["Play", 3, 5, 2],
+                        ["TurnOf", 4, 2, 2],
+                        ["EdgeOf", 4, 4, 2],
+                        ["GameOf", 4, 6, 2],
+                        ["InfoOf", 4, 8, 2],
+                    ],
+                    edges: [
+                        ["T", "G", "impl", "type T"],
+                        ["E", "G", "impl", "type E"],
+                        ["X", "I", "impl", "type X"],
+                        ["Y", "I", "impl", "type Y"],
+                        ["G", "X", "impl", "type G", { s: "r", t: "l", center: true }],
+                        ["I", "Play", "blanket", "type F"],
+                        ["GameOf", "TurnOf", "param"],
+                        ["GameOf", "EdgeOf", "param"],
+                        ["Play", "GameOf", "param"],
+                        ["Play", "InfoOf", "param"],
+                    ],
+                },
+                {
+                    id: "storage",
+                    title: "Storage & math",
+                    cols: 6,
+                    caption:
+                        "Book reaches the three storage traits through one adapter. A custom profile implements them directly. Each math trait sits under what it needs.",
+                    regions: [
+                        { id: "store", label: "storage", role: "store", r: [3, 3], c: [1, 6] },
+                        { id: "math", label: "math · free", role: "free", r: [4, 4], c: [1, 6] },
+                    ],
+                    nodes: [
+                        ["Book", 1, 2, 2],
+                        ["Overlay", 1, 4, 2],
+                        ["Data", 2, 2, 2],
+                        ["Ref", 3, 1, 2],
+                        ["Time", 3, 3, 2],
+                        ["Mut", 3, 5, 2],
+                        ["Equilibrium", 4, 1, 2],
+                        ["Flow", 4, 3, 2],
+                        ["Sol", 4, 5, 2],
+                    ],
+                    edges: [
+                        ["Book", "Data", "impl"],
+                        ["Data", "@store", "blanket", "blanket"],
+                        ["Overlay", "@store", "impl", "implements directly"],
+                        ["Ref", "Time", "impl", null, { s: "r", t: "l" }],
+                        ["Ref", "Equilibrium", "blanket"],
+                        ["Ref", "Flow", "blanket"],
+                        ["Time", "Flow", "blanket"],
+                        ["Mut", "Sol", "blanket"],
+                        ["Flow", "Sol", "blanket", null, { s: "r", t: "l" }],
+                    ],
+                },
+                {
+                    id: "solver",
+                    title: "Solver",
+                    cols: 10,
+                    caption:
+                        "Tabular takes your encoder and three schedules as parameters and holds a Book. That makes it a Grower, and with a Solution profile, a Solver.",
+                    regions: [
+                        { id: "write", label: "you write", role: "yours", r: [1, 1], c: [1, 2] },
+                        { id: "pick", label: "you pick", role: "policy", r: [1, 1], c: [3, 8] },
+                    ],
+                    nodes: [
+                        ["Enc", 1, 1, 2],
+                        ["R", 1, 3, 2],
+                        ["W", 1, 5, 2],
+                        ["S", 1, 7, 2],
+                        ["Book", 1, 9, 2],
+                        ["Tab", 2, 1, 10, true],
+                        ["Traverse", 3, 3, 2],
+                        ["Solver", 3, 7, 2],
+                    ],
+                    edges: [
+                        ["Enc", "Tab", "param", "N"],
+                        ["R", "Tab", "param", "R"],
+                        ["W", "Tab", "param", "W"],
+                        ["S", "Tab", "param", "S"],
+                        ["Book", "Tab", "holds", "profile"],
+                        ["Tab", "Traverse", "impl"],
+                        ["Tab", "Solver", "impl"],
+                        ["Traverse", "Solver", "impl", "P: Solution", { s: "r", t: "l" }],
+                    ],
+                },
+                {
+                    id: "subgame",
+                    title: "Subgame",
+                    cols: 6,
+                    caption:
+                        "Depth on the left, worlds on the right, mirrored. Each optional encoder trait lifts onto Tabular. Every subgame profile is an Overlay over a view.",
+                    regions: [{ id: "views", label: "views over the blueprint &P", role: "sub", r: [3, 3], c: [1, 6] }],
+                    nodes: [
+                        ["Front", 1, 1, 2],
+                        ["Tab", 1, 3, 2],
+                        ["Restrict", 1, 5, 2],
+                        ["Sampler", 2, 1, 2],
+                        ["RestrictTab", 2, 5, 2],
+                        ["DView", 3, 1, 2],
+                        ["NView", 3, 3, 2],
+                        ["WView", 3, 5, 2],
+                        ["Overlay", 4, 3, 2],
+                        ["DSolver", 5, 1, 2],
+                        ["GSolver", 5, 3, 2],
+                        ["WSolver", 5, 5, 2],
+                    ],
+                    edges: [
+                        ["Front", "Sampler", "impl", "N"],
+                        ["Tab", "Sampler", "impl"],
+                        ["Restrict", "RestrictTab", "impl", "N"],
+                        ["Tab", "RestrictTab", "impl"],
+                        ["Sampler", "DView", "param", "Blueprint"],
+                        ["DView", "Overlay", "param", "V"],
+                        ["NView", "Overlay", "param", "V"],
+                        ["WView", "Overlay", "param", "V"],
+                        ["Overlay", "DSolver", "holds", "DepthProfile"],
+                        ["Overlay", "GSolver", "holds", "WorldProfile"],
+                        ["Overlay", "WSolver", "holds", "WorldProfile"],
+                        ["Sampler", "DSolver", "param", "N", { s: "l", t: "l" }],
+                        ["RestrictTab", "WSolver", "param", "N", { s: "r", t: "r" }],
+                    ],
+                },
+            ];
+
+            const ROLE = {
+                yours: "you write",
+                policy: "you pick",
+                spec: "spec",
+                store: "storage",
+                free: "free",
+                gen: "framework type",
+                sub: "subgame",
+            };
+            const SVGNS = "http://www.w3.org/2000/svg";
+            const $ = (s) => document.querySelector(s);
+            const state = { view: "spec", sel: "G" };
+            try {
+                const v = localStorage.getItem("cfrmap.view");
+                if (VIEWS.some((x) => x.id === v)) state.view = v;
+            } catch (e) {}
+
+            function el(tag, cls, html) {
+                const n = document.createElement(tag);
+                if (cls) n.className = cls;
+                if (html != null) n.innerHTML = html;
+                return n;
+            }
+            function esc(s) {
+                return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            }
+            function view() {
+                return VIEWS.find((v) => v.id === state.view);
+            }
+            function inView(id) {
+                return view().nodes.some((n) => n[0] === id);
+            }
+
+            function members(ref) {
+                if (!ref.startsWith("@")) return [ref];
+                const g = view().regions.find((r) => r.id === ref.slice(1));
+                return view()
+                    .nodes.filter(
+                        ([, row, col, span]) =>
+                            row >= g.r[0] && row <= g.r[1] && col >= g.c[0] && col + (span || 1) - 1 <= g.c[1],
+                    )
+                    .map((n) => n[0]);
+            }
+
+            function pairs() {
+                return view().edges.flatMap(([a, b]) => members(a).flatMap((x) => members(b).map((y) => [x, y])));
+            }
+
+            function renderTabs() {
+                const tabs = $("#tabs");
+                tabs.innerHTML = "";
+                VIEWS.forEach((v) => {
+                    const b = el("button", "tab", esc(v.title));
+                    b.type = "button";
+                    b.setAttribute("role", "tab");
+                    b.setAttribute("aria-selected", v.id === state.view);
+                    b.onclick = () => go(v.id, v.nodes.some((n) => n[0] === state.sel) ? state.sel : v.nodes[0][0]);
+                    tabs.append(b);
+                });
+            }
+
+            function renderMap() {
+                const v = view(),
+                    map = $("#map");
+                map.innerHTML = "";
+                map.style.gridTemplateColumns = `repeat(${v.cols}, 76px)`;
+                $("#caption").textContent = v.caption;
+                v.regions.forEach((g) => {
+                    const r = el("div", `region g-${g.role}${g.outer ? " outer" : ""}`, `<b>${esc(g.label)}</b>`);
+                    r.dataset.id = "@" + g.id;
+                    r.style.gridRow = `${g.r[0]} / ${g.r[1] + 1}`;
+                    r.style.gridColumn = `${g.c[0]} / ${g.c[1] + 1}`;
+                    map.append(r);
+                });
+                v.nodes.forEach(([id, row, col, span, wide]) => {
+                    const d = NODES[id];
+                    const b = el(
+                        "button",
+                        `node ${d.kind} r-${d.role}${wide ? " wide" : ""}`,
+                        `<span class="k">${d.kind}</span><span class="n">${esc(d.name)}</span>${d.sub ? `<span class="s">${esc(d.sub)}</span>` : ""}`,
+                    );
+                    b.type = "button";
+                    b.dataset.id = id;
+                    b.style.gridRow = row;
+                    b.style.gridColumn = `${col} / span ${span || 1}`;
+                    b.onclick = () => select(id);
+                    map.append(b);
+                });
+                const svg = document.createElementNS(SVGNS, "svg");
+                svg.setAttribute("class", "edges");
+                map.append(svg);
+                drawEdges();
+            }
+
+            const heights = {};
+            function measure() {
+                const current = state.view;
+                VIEWS.forEach((v) => {
+                    state.view = v.id;
+                    renderMap();
+                    heights[v.id] = [$("#map").offsetWidth, $("#map").offsetHeight];
+                });
+                state.view = current;
+                renderMap();
+            }
+
+            function fit() {
+                const map = $("#map"),
+                    box = $("#fit"),
+                    room = box.parentElement.clientWidth;
+                const scale = (id) => Math.min(1, Math.max(0.7, room / heights[id][0]));
+                const s = scale(state.view);
+                map.style.transform = `scale(${s})`;
+                box.style.width = map.offsetWidth * s + "px";
+                const tall = Math.max(...VIEWS.map((v) => heights[v.id][1] * scale(v.id)));
+                box.style.height = tall + "px";
+            }
+
+            function side(r, s) {
+                const cx = (r.left + r.right) / 2,
+                    cy = (r.top + r.bottom) / 2;
+                return {
+                    r: [r.right, cy, 1, 0],
+                    l: [r.left, cy, -1, 0],
+                    b: [cx, r.bottom, 0, 1],
+                    t: [cx, r.top, 0, -1],
+                }[s];
+            }
+
+            function curve(sx, sy, c1x, c1y, c2x, c2y, tx, ty) {
+                return {
+                    d: `M${sx},${sy} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`,
+                    mx: (sx + 3 * c1x + 3 * c2x + tx) / 8,
+                    my: (sy + 3 * c1y + 3 * c2y + ty) / 8,
+                };
+            }
+
+            function anchors(s, t, opts, cx) {
+                if (opts && opts.center) {
+                    const [sx, sy] = side(s, opts.s),
+                        [tx, ty] = side(t, opts.t);
+                    const half = (tx - sx) / 2,
+                        shift = (8 * (cx - (sx + tx) / 2)) / 3;
+                    return curve(sx, sy, sx + half + shift / 2, sy, tx - half + shift / 2, ty, tx, ty);
+                }
+                if (opts) {
+                    const [sx, sy, sdx, sdy] = side(s, opts.s),
+                        [tx, ty, tdx, tdy] = side(t, opts.t);
+                    const k = opts.s === opts.t ? 34 : Math.max(30, Math.hypot(tx - sx, ty - sy) * 0.4);
+                    return curve(sx, sy, sx + sdx * k, sy + sdy * k, tx + tdx * k, ty + tdy * k, tx, ty);
+                }
+                const pad = 16;
+                if (t.top >= s.bottom - 4 || t.bottom <= s.top + 4) {
+                    const down = t.top >= s.bottom - 4;
+                    const lo = Math.max(s.left, t.left) + pad,
+                        hi = Math.min(s.right, t.right) - pad;
+                    let sx = (s.left + s.right) / 2,
+                        tx = (t.left + t.right) / 2;
+                    if (lo <= hi) {
+                        sx = tx = (lo + hi) / 2;
+                    } else {
+                        sx = Math.min(Math.max(tx, s.left + pad), s.right - pad);
+                        tx = Math.min(Math.max(sx, t.left + pad), t.right - pad);
+                    }
+                    const sy = down ? s.bottom : s.top,
+                        ty = down ? t.top : t.bottom,
+                        k = (ty - sy) * 0.5;
+                    return curve(sx, sy, sx, sy + k, tx, ty - k, tx, ty);
+                }
+                const right = t.left >= s.right;
+                const sx = right ? s.right : s.left,
+                    tx = right ? t.left : t.right;
+                const sy = (s.top + s.bottom) / 2,
+                    ty = (t.top + t.bottom) / 2,
+                    k = (tx - sx) * 0.5;
+                return curve(sx, sy, sx + k, sy, tx - k, ty, tx, ty);
+            }
+
+            function drawEdges() {
+                const v = view(),
+                    map = $("#map"),
+                    svg = map.querySelector("svg.edges");
+                if (!svg) return;
+                map.querySelectorAll(".elabel").forEach((n) => n.remove());
+                const box = { width: map.offsetWidth, height: map.offsetHeight };
+                const rect = (id) => {
+                    const n = map.querySelector(`[data-id="${id}"]`);
+                    return {
+                        left: n.offsetLeft,
+                        right: n.offsetLeft + n.offsetWidth,
+                        top: n.offsetTop,
+                        bottom: n.offsetTop + n.offsetHeight,
+                    };
+                };
+                svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+                svg.innerHTML = `<defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/></marker>
+    <marker id="ahon" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs>`;
+                v.edges.forEach(([a, b, kind, label, opts], i) => {
+                    const g = anchors(rect(a), rect(b), opts, box.width / 2);
+                    const p = document.createElementNS(SVGNS, "path");
+                    p.setAttribute("d", g.d);
+                    p.setAttribute("class", `e ${kind}`);
+                    p.dataset.i = i;
+                    p.setAttribute("marker-end", "url(#ah)");
+                    svg.append(p);
+                    if (label) {
+                        const l = el("span", "elabel", esc(label));
+                        l.dataset.i = i;
+                        l.style.left = g.mx + "px";
+                        l.style.top = g.my + "px";
+                        map.append(l);
+                    }
+                });
+                highlight();
+            }
+
+            function closure(id, dir) {
+                const edges = pairs(),
+                    seen = new Set(),
+                    stack = [id];
+                while (stack.length) {
+                    const x = stack.pop();
+                    edges.forEach(([a, b]) => {
+                        const [from, to] = dir === "up" ? [b, a] : [a, b];
+                        if (from === x && !seen.has(to)) {
+                            seen.add(to);
+                            stack.push(to);
+                        }
+                    });
+                }
+                return seen;
+            }
+
+            function highlight() {
+                const map = $("#map"),
+                    v = view(),
+                    id = state.sel,
+                    here = inView(id);
+                map.classList.toggle("focus", here);
+                const up = here ? closure(id, "up") : new Set(),
+                    down = here ? closure(id, "down") : new Set();
+                const on = new Set([id, ...up, ...down]);
+                const upper = (x) => x === id || up.has(x),
+                    lower = (x) => x === id || down.has(x);
+                map.querySelectorAll(".node").forEach((n) => {
+                    n.classList.toggle("on", on.has(n.dataset.id));
+                    n.classList.toggle("sel", n.dataset.id === id);
+                });
+                map.querySelectorAll("path.e").forEach((p) => {
+                    const [a, b] = v.edges[p.dataset.i];
+                    const lit =
+                        here &&
+                        members(a).some((x) =>
+                            members(b).some((y) => (upper(x) && upper(y)) || (lower(x) && lower(y))),
+                        );
+                    p.classList.toggle("on", lit);
+                    p.setAttribute("marker-end", lit ? "url(#ahon)" : "url(#ah)");
+                    const l = map.querySelector(`.elabel[data-i="${p.dataset.i}"]`);
+                    if (l) l.classList.toggle("on", lit);
+                });
+            }
+
+            function chips(ids) {
+                return `<div class="chips">${[...ids].map((x) => `<button type="button" class="chip r-${NODES[x].role}" data-go="${x}">${esc(NODES[x].name)}</button>`).join("")}</div>`;
+            }
+            function list(title, items, cls) {
+                return items && items.length
+                    ? `<div class="isec"><h3>${title}</h3><ul>${items.map((s) => `<li class="${cls || ""}">${esc(s)}</li>`).join("")}</ul></div>`
+                    : "";
+            }
+
+            function renderInspector() {
+                const id = state.sel,
+                    d = NODES[id],
+                    v = view(),
+                    here = inView(id);
+                const up = here ? closure(id, "up") : new Set(),
+                    down = here ? closure(id, "down") : new Set();
+                const elsewhere = VIEWS.filter((w) => w.id !== v.id && w.nodes.some((n) => n[0] === id));
+                $("#inspect").innerHTML = `
+    <div class="ihead">
+      <div class="badges"><span class="badge r-${d.role}">${d.kind}</span><span class="badge r-${d.role}">${ROLE[d.role]}</span></div>
+      <div class="sig">${esc(d.name)}</div>
+      <div class="isec"><span class="file">crates/${esc(d.file)}</span></div>
+    </div>
+    ${d.supers ? `<div class="isec"><h3>Supertraits</h3><p class="mono">${esc(d.supers)}</p></div>` : ""}
+    ${list("Generics", d.generics)}
+    ${list("Fields", d.fields)}
+    ${list("Associated items", d.assoc)}
+    ${list("Required: you write", d.req, "req")}
+    ${list("Provided", d.def, "def")}
+    ${d.from ? `<div class="isec"><h3>Comes from</h3><p class="mono">${esc(d.from)}</p></div>` : ""}
+    ${d.note ? `<div class="isec"><h3>Note</h3><p class="mono">${esc(d.note)}</p></div>` : ""}
+    ${list("Implementors", d.impls)}
+    ${up.size ? `<div class="isec"><h3>Built from</h3>${chips(up)}</div>` : ""}
+    ${down.size ? `<div class="isec"><h3>Builds</h3>${chips(down)}</div>` : ""}
+    ${elsewhere.length ? `<div class="isec"><h3>Also in</h3><div class="chips">${elsewhere.map((w) => `<button type="button" class="chip r-policy" data-view="${w.id}">${esc(w.title)}</button>`).join("")}</div></div>` : ""}`;
+                $("#inspect")
+                    .querySelectorAll("[data-go]")
+                    .forEach((b) => (b.onclick = () => select(b.dataset.go)));
+                $("#inspect")
+                    .querySelectorAll("[data-view]")
+                    .forEach((b) => (b.onclick = () => go(b.dataset.view, id)));
+            }
+
+            function select(id) {
+                state.sel = id;
+                highlight();
+                renderInspector();
+            }
+            function go(viewId, id) {
+                const changed = viewId !== state.view;
+                state.view = viewId;
+                state.sel = id;
+                try {
+                    localStorage.setItem("cfrmap.view", viewId);
+                } catch (e) {}
+                renderTabs();
+                if (changed) {
+                    renderMap();
+                    fit();
+                } else highlight();
+                renderInspector();
+            }
+
+            if (!inView(state.sel)) state.sel = view().nodes[0][0];
+            renderTabs();
+            measure();
+            fit();
+            renderInspector();
+            new ResizeObserver(() => fit()).observe($("#fit").parentElement);
+            if (document.fonts && document.fonts.ready)
+                document.fonts.ready.then(() => {
+                    measure();
+                    fit();
+                    highlight();
+                });
+        </script>
+    </body>
+</html>

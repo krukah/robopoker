@@ -9,7 +9,6 @@ pub struct Session {
     user: ID<Member>,
     hash: Vec<u8>,
     expires: std::time::SystemTime,
-    // can do something with this field later
     #[allow(unused)]
     revoked: bool,
 }
@@ -68,7 +67,7 @@ mod schema {
         fn creates() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!(
+                daybook::Pool::leaked(format!(
                     "CREATE TABLE IF NOT EXISTS {} (
                     id          UUID PRIMARY KEY,
                     user_id     UUID NOT NULL REFERENCES {}(id) ON DELETE CASCADE,
@@ -85,7 +84,7 @@ mod schema {
         fn indices() -> &'static str {
             static SQL: OnceLock<&str> = OnceLock::<&str>::new();
             SQL.get_or_init(|| {
-                leaked(format!(
+                daybook::Pool::leaked(format!(
                     "CREATE INDEX IF NOT EXISTS idx_sessions_user ON {} (user_id);
                  CREATE INDEX IF NOT EXISTS idx_sessions_token ON {} (token_hash);
                  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON {} (expires_at) WHERE NOT revoked;",
