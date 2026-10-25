@@ -14,6 +14,7 @@ members = [
   "crates/neural",
   "crates/nlhe",
   "crates/phh",
+  "crates/reel",
   "crates/leduc",
   "crates/kuhn",
   "crates/roshambo",
@@ -66,6 +67,7 @@ subgame  = { version = "1.2", path = "crates/subgame" }
 neural   = { version = "1.2", path = "crates/neural" }
 nlhe     = { version = "1.2", path = "crates/nlhe" }
 phh      = { version = "1.2", path = "crates/phh" }
+reel     = { path = "crates/reel" }
 leduc    = { version = "1.2", path = "crates/leduc" }
 kuhn     = { version = "1.2", path = "crates/kuhn" }
 roshambo = { version = "1.2", path = "crates/roshambo" }

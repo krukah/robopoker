@@ -5,11 +5,10 @@ use std::collections::HashMap;
 
 /// The named buckets of one street.
 ///
-/// Names come out of [`Gloss::from`] one bucket at a time, so two buckets that
-/// hold the same kind of hand at the same equity can land on the same phrase.
-/// The constructor is where that is resolved: any name claimed more than once
-/// gets its bucket id appended, which keeps the glossary a lookup table rather
-/// than a list of near-synonyms.
+/// Names come out of [`Gloss::from`] one bucket at a time, so two buckets that hold the same
+/// kind of hand at the same equity can land on the same phrase. The constructor is where that
+/// is resolved: any name claimed more than once gets its bucket id appended, which keeps the
+/// glossary a lookup table rather than a list of near-synonyms.
 pub struct Glossary(Vec<Gloss>);
 
 impl Glossary {

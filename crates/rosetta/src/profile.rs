@@ -5,13 +5,12 @@ use kicker::*;
 use pokerkit::*;
 use std::collections::BTreeMap;
 
-/// A bucket seen through the [`Feature`] vocabulary: how often each predicate
-/// held across a uniform sample of its members, alongside the scalar
-/// [`Census`] facts.
+/// A bucket seen through the [`Feature`] vocabulary: how often each predicate held across a
+/// uniform sample of its members, alongside the scalar [`Census`] facts.
 ///
-/// The sample is what keeps this cheap. A turn bucket can hold a hundred
-/// thousand isomorphisms; a hundred of them pin every frequency to within a
-/// few points, which is finer than any label needs.
+/// The sample is what keeps this cheap. A turn bucket can hold a hundred thousand isomorphisms;
+/// a hundred of them pin every frequency to within a few points, which is finer than any label
+/// needs.
 pub struct Profile {
     census: Census,
     tally: BTreeMap<Feature, usize>,
@@ -35,15 +34,19 @@ impl Profile {
         self.sampled
     }
 
+    fn tally(&self) -> &BTreeMap<Feature, usize> {
+        &self.tally
+    }
+
     pub fn exemplars(&self) -> &[Observation] {
         &self.exemplars
     }
 
     /// Fraction of sampled members that carry a feature.
     pub fn frequency(&self, feature: Feature) -> Probability {
-        match self.sampled {
+        match self.sampled() {
             0 => 0.,
-            n => self.tally.get(&feature).copied().unwrap_or_default() as Probability / n as Probability,
+            n => self.tally().get(&feature).copied().unwrap_or_default() as Probability / n as Probability,
         }
     }
 

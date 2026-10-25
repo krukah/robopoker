@@ -3,9 +3,8 @@
 Poker Hand History parsing, chip-exact replay, and the 6-max → 2-max reduction
 used to evaluate a heads-up blueprint against multiway logs.
 
-Written for the 10,000 hands published with Brown & Sandholm (2019), vendored at
-`~/Code/phh-dataset/data/pluribus`. Plan of record and the reasoning behind each
-mode: [`docs/active/phh-evaluation.md`](../../docs/active/phh-evaluation.md).
+Written for the 10,000 hands published with Brown & Sandholm (2019), as
+distributed in the public PHH dataset (`data/pluribus`).
 
 ## What the dataset actually gives you
 
@@ -55,10 +54,18 @@ flowchart TD
 `walk` is the same hands run *through* `kicker` to diff the two.
 
 Everything downstream of `Spot` talks to a strategy only through
-[`Oracle`](src/oracle.rs) — one synchronous `Witness → Policy` method. Every cell
+[`Oracle`](src/judge/oracle.rs) — one synchronous `Witness → Policy` method. Every cell
 of the `parlor` bot zoo satisfies it (`Brain::policy` / `Brain::distrib`), and so
 does an HTTP client, so the same evaluation scores any of them and this crate
 never has to depend on the blueprint or the database.
+
+| Module | Holds |
+|---|---|
+| `history/` | `.phh` → `Record` / `Step`, chip-exact `Replay` → `Outcome` / `Node`, and `Trace` (the `kicker` walk) |
+| `reduce/` | `Shape`, `Seats`, `Reduction`, `Projection`, and the `Spot`s they yield |
+| `sizing/` | Tier 1: `Calibrate` → `Calibration` of `Cell`s against the `Size` grid |
+| `judge/` | `Oracle` and its `Policy` answer; Tier 2 `Verdict` / `Agreement` |
+| `rollout/` | Tier 3: `World` runouts, `Playout`, `Wager`, `Duel`, `Ledger` |
 
 ## Tier 3: what a decision was worth
 

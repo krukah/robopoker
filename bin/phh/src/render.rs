@@ -18,16 +18,28 @@ impl Table {
     }
 
     pub fn push(&mut self, cells: Vec<String>) {
-        self.rows.push(cells);
+        self.rows_mut().push(cells);
+    }
+
+    fn widths(&self) -> &[usize] {
+        &self.widths
+    }
+
+    fn rows(&self) -> &[Vec<String>] {
+        &self.rows
+    }
+
+    fn rows_mut(&mut self) -> &mut Vec<Vec<String>> {
+        &mut self.rows
     }
 }
 
 impl std::fmt::Display for Table {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for (index, row) in self.rows.iter().enumerate() {
+        for (index, row) in self.rows().iter().enumerate() {
             let line = row
                 .iter()
-                .zip(self.widths.iter())
+                .zip(self.widths().iter())
                 .map(|(cell, width)| match width {
                     0 => cell.clone(),
                     w => format!("{cell:>w$}"),
@@ -36,28 +48,30 @@ impl std::fmt::Display for Table {
                 .join(" ");
             writeln!(f, "{}", line.trim_end())?;
             if index == 0 {
-                writeln!(f, "{}", "-".repeat(self.widths.iter().sum::<usize>() + self.widths.len() - 1))?;
+                writeln!(f, "{}", "-".repeat(self.widths().iter().sum::<usize>() + self.widths().len() - 1))?;
             }
         }
         Ok(())
     }
 }
 
-/// `1234` → `1,234`, so six-figure counts stay readable.
-pub fn commas(n: usize) -> String {
-    n.to_string()
-        .as_bytes()
-        .rchunks(3)
-        .rev()
-        .map(|chunk| String::from_utf8_lossy(chunk).to_string())
-        .collect::<Vec<_>>()
-        .join(",")
-}
+impl Table {
+    /// `1234` → `1,234`, so six-figure counts stay readable.
+    pub fn commas(n: usize) -> String {
+        n.to_string()
+            .as_bytes()
+            .rchunks(3)
+            .rev()
+            .map(|chunk| String::from_utf8_lossy(chunk).to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    }
 
-/// A share of a whole, as a percentage with one decimal.
-pub fn pct(part: usize, whole: usize) -> String {
-    match whole {
-        0 => "—".to_string(),
-        w => format!("{:.1}%", 100.0 * part as f64 / w as f64),
+    /// A share of a whole, as a percentage with one decimal.
+    pub fn pct(part: usize, whole: usize) -> String {
+        match whole {
+            0 => "—".to_string(),
+            w => format!("{:.1}%", 100.0 * part as f64 / w as f64),
+        }
     }
 }

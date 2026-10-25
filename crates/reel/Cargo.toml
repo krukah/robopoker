@@ -1,0 +1,24 @@
+[package]
+name         = "reel"
+version      = "1.0.0"
+edition      = "2024"
+rust-version = "1.90"
+authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
+description  = "Frame-function reel: one tree geometry, two orientations, many frames"
+license      = "MIT"
+repository   = "https://github.com/krukah/robopoker"
+
+[features]
+default = ["kuhn"]
+kuhn    = ["dep:kuhn"]
+
+[dependencies]
+pokerkit = { workspace = true }
+deuce    = { workspace = true }
+kicker   = { workspace = true }
+mccfr    = { path = "../mccfr", default-features = false }
+nlhe     = { workspace = true }
+kuhn     = { workspace = true, optional = true }
+
+[lints]
+workspace = true

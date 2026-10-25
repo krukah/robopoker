@@ -3084,6 +3084,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "reel"
+version = "1.0.0"
+dependencies = [
+ "deuce",
+ "kicker",
+ "kuhn",
+ "mccfr",
+ "nlhe",
+ "pokerkit",
+]
+
+[[package]]
 name = "regex"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
