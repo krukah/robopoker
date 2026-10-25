@@ -1,4 +1,4 @@
-//! Telemetry init and metric registry for rbp binaries.
+//! Telemetry init and metric registry for robopoker binaries.
 //!
 //! `let _guard = vitals::init();` installs a `tracing` subscriber, routes `log::*` through it
 //! via the `tracing-log` shim, configures the OTLP metrics exporter, and pre-registers the

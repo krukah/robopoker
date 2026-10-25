@@ -33,7 +33,7 @@ impl Scenic for KuhnGame {
         vec![Token::new(vec![Rune::new(
             format!("{:?}", self.hole_rank(seat)),
             Tint::Dark,
-            Face::Mono,
+            Face::Text,
         )])]
     }
 

@@ -218,17 +218,17 @@ impl Nlhe {
             winner.map_or_else(|| "?".into(), |w| NlheGame::badge(NlheTurn::from(Turn::Choice(w)))),
             if game.is_showdown() { "SHOWDOWN" } else { "FOLD" },
             vec![
-                Token::new(vec![Rune::new(game.pot().to_string(), Tint::Dark, Face::Mono)]),
+                Token::new(vec![Rune::new(game.pot().to_string(), Tint::Dark, Face::Data)]),
                 Token::new(vec![Rune::new(
                     net.map_or_else(|| made.map_or("?", |m| m.glyph()).to_string(), |n| format!("{n:+}")),
                     Tint::Gold,
-                    Face::Mono,
+                    Face::Data,
                 )]),
             ],
         ))
     }
 
-    /// A card face as a token: mono bold rank, serif suit inked by color.
+    /// A card face as a token: bold rank, suit pip inked by color.
     fn token(card: Card) -> Token {
         let tint = match card.suit() {
             Suit::D | Suit::H => Tint::Red,
@@ -241,8 +241,8 @@ impl Nlhe {
             Suit::S => "♠",
         };
         Token::new(vec![
-            Rune::new(card.rank().to_string(), Tint::Dark, Face::Mono),
-            Rune::new(suit, tint, Face::Serif),
+            Rune::new(card.rank().to_string(), Tint::Dark, Face::Text),
+            Rune::new(suit, tint, Face::Pip),
         ])
     }
 

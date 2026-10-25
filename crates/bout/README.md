@@ -44,8 +44,7 @@ Four things, in this order:
 
 1. **`pokerkit::Adversary`** — a variant with a `service()` token. That one
    string becomes the DB username (`bot:<service>`), the OTLP namespace
-   (`rbp.<service>.*`), the scoreboard's `opponent` column, and the
-   `records/<service>/` folder. The UUID derives from it, so it is frozen the
+   (`rbp.<service>.*`), and the scoreboard's `opponent` column. The UUID derives from it, so it is frozen the
    moment a hand is recorded against it.
 2. **`vitals`** — a `Bench::build(meter, "<service>")` line in `metrics.rs` and
    a `signed_bb_view` line in the telemetry guard. Then a match arm in

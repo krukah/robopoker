@@ -1,5 +1,6 @@
 [package]
 name         = "phh-cli"
+publish      = false
 version      = "0.1.0"
 edition      = "2024"
 rust-version = "1.90"

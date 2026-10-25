@@ -14,8 +14,5 @@ flowchart LR
   O --> BK["any OTLP-compatible backend"]
 ```
 
-Histogram bucket boundaries are configured via `histogram_view()` for values outside the
-OTLP default `[0..10000]` range.
-
-> Metric-authoring rules, the tracing-field/metric-label aliasing pattern, and per-metric
-> cost intuition are in `CLAUDE.md`.
+Histogram bucket boundaries are configured in `TelemetryGuard::histogram_views()` for values
+outside the OTLP default `[0..10000]` range.

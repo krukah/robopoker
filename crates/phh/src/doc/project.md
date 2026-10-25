@@ -16,7 +16,7 @@ heads-up the small blind **is** the button and acts last. So:
   [`Shape::HeadsUp`].
 
 What the reduction does not preserve is the pot: a folded blind leaves dead
-money our tree cannot represent (0.5bb in 2,471 Pluribus hands, 1bb in 521,
-1.5bb in 605). [`Reduction`] carries the flop pot in big blinds so the caller
+money our tree cannot represent (0.5bb in 2,464 of the 3,693 reducible hands,
+1bb in 511, 1.5bb in 595). [`Reduction`] carries the flop pot in big blinds so the caller
 can project onto the nearest reachable heads-up preflop path and absorb the
 difference there.

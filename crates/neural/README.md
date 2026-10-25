@@ -2,7 +2,7 @@
 
 Deep CFR over the game-agnostic [`mccfr`](../mccfr) framework: two function approximators replace the regret and strategy tables, and the CFR math stays the same.
 
-> Brown, N., Lerer, A., Gross, S., & Sandholm, T. (2019). **Deep Counterfactual Regret Minimization.** _NeurIPS 2019_. [arXiv:1811.00164](https://arxiv.org/abs/1811.00164)
+> Brown, N., Lerer, A., Gross, S., & Sandholm, T. (2019). **Deep Counterfactual Regret Minimization.** _ICML 2019_. [arXiv:1811.00164](https://arxiv.org/abs/1811.00164)
 
 Part of the [robopoker](https://github.com/krukah/robopoker) workspace. See the top-level README for the full crate map.
 
@@ -40,7 +40,7 @@ sequenceDiagram
 | Module           | Holds                                                                                                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `network/`       | `RegretNet` and `StrategyNet`, the approximator traits. Also `MockNet`, a tabular implementation of both.                                                           |
-| `memory/`        | `Reservoir` (Algorithm R), `Sample`, a row of (infoset, iteration `t`, per-edge target), and `Memories`, the three reservoirs every network keeps.                  |
+| `memory/`        | `Reservoir` (Algorithm R), `Sample`, a row of (infoset, iteration `t`, per-edge target), and `Memories`, the reservoirs every network keeps: one of regret rows per player, one of strategy rows.                  |
 | `profile.rs`     | `DeepProfile<N>`, which implements `mccfr::Profile` + `mccfr::Clock` over any `N: RegretNet + StrategyNet`.                                                       |
 | `memo.rs`        | `Memo`, a sharded read-through cache, and `Predictions<N>`, one per network in `DeepProfile`, so each infoset costs one forward pass per network change.            |
 | `solver.rs`      | `DeepSolver`, the training loop. Like `mccfr::Solver`, it extends `mccfr::Grower`, which builds its trees and measures exploitability.                             |
@@ -121,7 +121,7 @@ flowchart LR
 
 `CfrNet::save` writes the fitted strategy net to `strategy.safetensors` in a directory, and `CfrNet::load` reads it back into a net with empty memories. The shape comes from the embedder and `DeepHyperParams`, so load under the same settings that saved. Advantage nets refit from memory every epoch, so they are not saved.
 
-A fit builds into a fresh `VarMap`, so it starts from new weights, then runs AdamW on uniform minibatches toward the paper's `t`-weighted squared error over legal outputs. Weights divide by the memory's mean `t`, not the batch's, so repeated rows keep their weight.
+A fit builds into a fresh `VarMap`, so it starts from new weights (unless `DeepHyperParams::warm`), then runs AdamW on uniform minibatches toward the paper's `t`-weighted squared error over legal outputs. Weights divide by the memory's mean `t`, not the batch's, so repeated rows keep their weight.
 
 ```mermaid
 flowchart LR
@@ -141,14 +141,14 @@ For NLHE the outputs are the static bet-sizing grid, and `Size::raises(street, d
 
 ## Validation
 
-`cargo test -p neural` checks Deep CFR against known solutions, the same `kuhn::KuhnNash` and `roshambo::RpsNash` the tabular tests use:
+`cargo test -p robopoker-neural` checks Deep CFR against known solutions, the same `kuhn::KuhnNash` and `roshambo::RpsNash` the tabular tests use:
 
-| Test                                    | Network     | Bar                                                                                                      |
-| --------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
-| `cfr::tests::kuhn_matches_nash`         | `MockNet`   | all 12 Kuhn targets at the tabular tolerances, after 4,096 epochs                                        |
-| `cfr::tests::rps_matches_nash`          | `MockNet`   | within 0.02 of R 0.4, P 0.4, S 0.2                                                                       |
-| `candle::net::tests::rps_matches_nash`  | `CfrNet`    | within 0.05 (ignored; release)                                                                           |
-| `candle::net::tests::kuhn_matches_nash` | `CfrNet`    | all 12 targets at 3× the tabular tolerances, printing the misses at 1× (ignored; ten minutes in release) |
+| Test                                    | Network   | Bar                                                                                   |
+| --------------------------------------- | --------- | ------------------------------------------------------------------------------------- |
+| `cfr::tests::kuhn_matches_nash`         | `MockNet` | after 4,096 epochs, exploitability < 0.015 and every pure Kuhn target within 0.03     |
+| `cfr::tests::rps_matches_nash`          | `MockNet` | after 4,096 epochs, within 0.005 of R 0.4, P 0.4, S 0.2 (deterministic: gap 0.0019)   |
+| `candle::net::tests::rps_matches_nash`  | `CfrNet`  | the same bar (ignored; fails today at gap 0.0345)                                     |
+| `candle::net::tests::kuhn_matches_nash` | `CfrNet`  | the same bars (ignored; ten minutes in release; fails today on `Q` opening check 0.78) |
 
 `MockNet` is the perfect-network reference: each fit is the exact minimizer of the paper's loss over its memory, so with unbounded memory it reproduces sampled Linear CFR. Where `MockNet` passes and `CfrNet` misses, the gap is function approximation, not the Deep CFR loop. Exploitability alone is too weak a bar: near-indifferent actions cost little to get wrong, so a profile 0.02 exploitable can still miss an equilibrium frequency by 0.1.
 

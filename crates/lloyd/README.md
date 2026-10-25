@@ -64,7 +64,7 @@ Computational cost model for the k-means clustering pipeline.
     P = pruning factor          C_density = density lookup cost
 ```
 
-The dominant cost comes from **Sinkhorn EMD calculations** in the inner loop of Elkan k-means. Each EMD requires O(K²) density lookups, making `C_density` a critical optimization target.
+The dominant cost comes from **Sinkhorn EMD calculations** in the inner loop of Elkan k-means. Each EMD requires O(K²) density lookups, making `C_density` a critical optimization target. `I` and `E` are capped by `SinkhornHyperParams::DEFAULT` (128 iterations, tolerance-stopped) and `KmeansHyperParams::DEFAULT` (32 per street).
 
 ---
 
@@ -72,13 +72,13 @@ The dominant cost comes from **Sinkhorn EMD calculations** in the inner loop of 
 
 | Symbol        | Definition                                         | Typical Range |
 | ------------- | -------------------------------------------------- | ------------- |
-| **N**         | Points in layer (histograms to cluster)            | 169 – 1.7M    |
-| **K**         | Target centroids                                   | 101 – 169     |
+| **N**         | Points in layer (histograms to cluster)            | 169 – 14M     |
+| **K**         | Target centroids                                   | 169 – 256     |
 | **S**         | Support size per histogram (avg non-zero bins)     | 20 – 50       |
-| **I**         | Sinkhorn iterations to convergence                 | 10 – 20       |
-| **E**         | Elkan iterations to convergence                    | 15 – 30       |
-| **P**         | Pruning factor (fraction of N×K computed per iter) | 0.3 – 0.5     |
-| **C_density** | Cost of single density lookup                      | 1 – 7         |
+| **I**         | Sinkhorn iterations to convergence                 | ≤ 128         |
+| **E**         | Elkan iterations                                   | ≤ 32          |
+| **P**         | Pruning factor (fraction of N×K computed per iter) | 0.01 – 0.95   |
+| **C_density** | Cost of single density lookup                      | 1             |
 
 ---
 
@@ -111,33 +111,7 @@ The dominant cost comes from **Sinkhorn EMD calculations** in the inner loop of 
 
 ### Density Lookup Cost
 
-```
-                    DENSITY LOOKUP COMPARISON
-
-    ┌─────────────────────────────────────────────────────────────┐
-    │  BTreeMap<Abstraction, usize>                               │
-    │  ─────────────────────────────                              │
-    │                                                             │
-    │     density(&x) → self.0.get(&x)                            │
-    │                        │                                    │
-    │                        └── O(log K) tree traversal          │
-    │                            ≈ 7 comparisons for K=144        │
-    │                                                             │
-    │     C_density = log₂(K) ≈ 7                                 │
-    │                                                             │
-    ├─────────────────────────────────────────────────────────────┤
-    │  Bins<N> (fixed array)                                      │
-    │  ─────────────────────                                      │
-    │                                                             │
-    │     density(&x) → self.counts[x.index()]                    │
-    │                              │                              │
-    │                              └── O(1) array index           │
-    │                                  1 offset calculation       │
-    │                                                             │
-    │     C_density = 1                                           │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-```
+`Bins<N>` is a fixed, stack-allocated array: `density(&x)` is `counts[x.index()] / weight`, one offset and one divide, so `C_density = 1`.
 
 ---
 
@@ -184,12 +158,12 @@ F_iter = F_pairwise + F_bounds
 │   F_total = E × K³ × I × (4 + C_density) × (K + NP)                 │
 │                                                                     │
 │   where:                                                            │
-│     E = Elkan iterations (15-30)                                    │
-│     K = target centroids (101-169)                                  │
-│     I = Sinkhorn iterations (10-20)                                 │
-│     P = pruning factor (0.3-0.5)                                    │
-│     N = points to cluster (169-1.7M)                                │
-│     C_density = 7 (BTreeMap) or 1 (Bins<N>)                         │
+│     E = Elkan iterations (≤ 32)                                     │
+│     K = target centroids (169-256)                                  │
+│     I = Sinkhorn iterations (≤ 128)                                 │
+│     P = pruning factor (0.01-0.95)                                  │
+│     N = points to cluster (169-14M)                                 │
+│     C_density = 1 (Bins<N>)                                         │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -200,119 +174,44 @@ F_iter = F_pairwise + F_bounds
 
 ### Parameters by Street
 
-| Street  | N         | K   | EMD Method       | C_density (old) | C_density (new) |
-| ------- | --------- | --- | ---------------- | --------------- | --------------- |
-| River   | 123M      | 101 | Equity variation | N/A             | N/A             |
-| Turn    | 1,755,000 | 144 | Sinkhorn OT      | 7               | 1               |
-| Flop    | 1,286,792 | 128 | Sinkhorn OT      | 7               | 1               |
-| Preflop | 169       | 169 | Sinkhorn OT      | 7               | 1               |
+| Street  | N          | K   | Clustering        | Distance                                   |
+| ------- | ---------- | --- | ----------------- | ------------------------------------------ |
+| River   | 123,156,254 | 101 | none (equity bin) | —                                          |
+| Turn    | 13,960,050 | 256 | Elkan k-means     | `Equity::variation` over river equity bins |
+| Flop    | 1,286,792  | 256 | Elkan k-means     | Sinkhorn divergence over turn buckets      |
+| Preflop | 169        | 169 | none (identity)   | Sinkhorn divergence, metric only           |
 
-River uses `Equity::variation` (simple CDF difference) — no Sinkhorn, no optimization impact.
+`Metric::emd` dispatches on the histogram's support street: river-supported histograms (the turn's points) use `Equity::variation` (integrated CDF difference), so the flop is the only street whose k-means runs Sinkhorn. The preflop computes Sinkhorn only for its `169²/2` metric pairs.
 
-### Turn Layer (Dominant Cost)
-
-```
-                        TURN LAYER ESTIMATE
-                        N=1.7M, K=144, I=15, E=20, P=0.4
-
-    F_turn = 20 × 144³ × 15 × (4 + C_density) × (144 + 1.7M × 0.4)
-           = 20 × 2,985,984 × 15 × (4 + C_density) × 680,144
-
-    ┌─────────────────────────────────────────────────────────────┐
-    │  BTreeMap (C_density = 7):                                  │
-    │                                                             │
-    │     F_turn_old = 20 × 2.99M × 15 × 11 × 680K                │
-    │                ≈ 6.7 × 10¹⁵ FLOPs                           │
-    │                ≈ 6.7 PFLOPs                                 │
-    │                                                             │
-    ├─────────────────────────────────────────────────────────────┤
-    │  Bins<N> (C_density = 1):                                   │
-    │                                                             │
-    │     F_turn_new = 20 × 2.99M × 15 × 5 × 680K                 │
-    │                ≈ 3.0 × 10¹⁵ FLOPs                           │
-    │                ≈ 3.0 PFLOPs                                 │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-
-    Speedup: 6.7 / 3.0 ≈ 2.2×
-```
-
-### Flop Layer
+### Flop Layer (Dominant Cost)
 
 ```
                         FLOP LAYER ESTIMATE
-                        N=1.3M, K=128, I=15, E=20, P=0.4
+                        N=1.3M, K=256, I=15, E=32, P=0.03
 
-    F_flop = 20 × 128³ × 15 × (4 + C_density) × (128 + 1.3M × 0.4)
-
-    ┌─────────────────────────────────────────────────────────────┐
-    │  BTreeMap (C_density = 7):                                  │
-    │                                                             │
-    │     F_flop_old ≈ 3.2 × 10¹⁵ FLOPs                           │
-    │                                                             │
-    ├─────────────────────────────────────────────────────────────┤
-    │  Bins<N> (C_density = 1):                                   │
-    │                                                             │
-    │     F_flop_new ≈ 1.5 × 10¹⁵ FLOPs                           │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-
-    Speedup: 3.2 / 1.5 ≈ 2.1×
+    F_flop = 32 × 256³ × 15 × (4 + 1) × (256 + 1.3M × 0.03)
+           ≈ 1.6 × 10¹⁵ FLOPs
 ```
 
-### Preflop Layer (Negligible)
+### Turn and Preflop (Minor)
 
 ```
-    N=169, K=169, I=15, E=20, P=0.4
-
-    F_pref ≈ 10¹⁰ FLOPs (< 0.001% of total)
+    F_turn ≈ E × N × K × 101   ≈ 10¹³   (1-D distance, no Sinkhorn)
+    F_pref ≈ 169² × 256² × I × 5 ≈ 10¹¹
 ```
 
 ---
 
-## Optimization Impact Summary
+## Memory and Cache
 
-Histogram optimization drops the per-EMD factor `(4 + C_density)` from **11 → 5** (theoretical 2.2× speedup):
-
-| Layer       | Old FLOPs    | New FLOPs    | Speedup |
-| ----------- | ------------ | ------------ | ------- |
-| Turn        | 6.7 PFLOP    | 3.0 PFLOP    | 2.2×    |
-| Flop        | 3.2 PFLOP    | 1.5 PFLOP    | 2.1×    |
-| Preflop     | negligible   | —            | N/A     |
-| **Total**   | **9.9 PFLOP**| **4.5 PFLOP**| **2.2×**|
-
----
-
-## Additional Benefits
-
-### Memory Layout
-
-|                | `BTreeMap<Abstraction, usize>`      | `Bins<N>` (stack-allocated array) |
-| -------------- | ----------------------------------- | --------------------------------- |
-| Size           | 48 B base + ~40 B/entry             | fixed `1 + 8 + 8N` B              |
-| Heap           | scattered allocations               | zero                              |
-| Locality       | poor                                | contiguous, cache-friendly        |
-| Access         | pointer chasing                     | predictable                       |
-
-`Layer` storage `Box<[Histogram; N]>` is fully contiguous — Turn ≈ 1.7M × 1.2 KB ≈ **2.0 GB**, Flop ≈ 1.3M × 1.0 KB ≈ **1.3 GB**.
-
-### Cache Effects
-
-Density iteration (support scan):
-
-| Structure  | Behavior                                              |
-| ---------- | ----------------------------------------------------- |
-| `BTreeMap` | pointer chasing through tree nodes, ~3-5 misses/lookup |
-| `Bins<N>`  | sequential array scan, prefetcher-friendly, ~0.1 misses/lookup |
-
-Estimated cache speedup: **2-4×** on iteration-heavy code.
+`Histogram` is an enum over `Bins<N>` sized for the largest street, `1 + 8 + 8·256` B ≈ 2.1 KB. `Layer` storage `Box<[Histogram; N]>` is fully contiguous — Flop ≈ 1.3M × 2.1 KB ≈ **2.7 GB**, Turn ≈ 14M × 2.1 KB ≈ **29 GB**. Density iteration is a sequential array scan: prefetcher-friendly, no pointer chasing, no heap.
 
 ---
 
 ## Remaining Bottlenecks
 
 ```mermaid
-pie showData title Cost breakdown (post-optimization)
+pie showData title Cost breakdown (estimated)
   "Sinkhorn exp/ln" : 60
   "Density lookups" : 30
   "Elkan bookkeeping" : 8
@@ -329,12 +228,5 @@ Primary bottleneck: transcendental functions (`exp`, `ln`) in Sinkhorn; secondar
 | -------------------------- | --------------------- | -------------------------- |
 | SIMD density lookups       | Inner product EMD     | 2-4× on vectorizable loops |
 | Parallel Sinkhorn          | K² divergence calc    | ~Kx with K cores           |
-| Early Sinkhorn termination | Convergence detection | 1.2-1.5× fewer iterations  |
 | Approximate NN             | Initial bounds        | 10× on first iteration     |
 | GPU offload                | Sinkhorn batches      | 10-100× on matrix ops      |
-
----
-
-## Key Insight
-
-> The histogram optimization reduces `C_density` from O(log K) to O(1), cutting the `(4 + C_density)` factor roughly in half. This yields a **theoretical 2.2× speedup** on the compute-bound Sinkhorn inner loop, with additional gains from improved cache behavior and eliminated heap allocations.

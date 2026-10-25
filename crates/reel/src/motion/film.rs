@@ -16,31 +16,25 @@ pub const CHOSEN: Utility = 0.9;
 /// Opacity of dealt tokens in the frozen prefix.
 pub const DEALT: f64 = 0.85;
 
-/// Fill opacity of frozen (committed) decision tiles.
-pub const FROST: f64 = 0.5;
-
 /// Stroke width of the frozen spine and its rims.
 pub const SPINE: f64 = 1.5;
 
 /// Rim offset as a fraction of the live trace width.
 pub const TRIM: f64 = 0.55;
 
-/// Fill opacity of the frontier's faded option tiles.
-pub const FAINT: f64 = 0.12;
+/// Opacity of an untaken action cell — the site tree's `opacity-40`.
+pub const FAINT: f64 = 0.4;
 
-/// Glyph opacity on the frontier's faded option tiles.
-pub const DIM: f64 = 0.6;
-
-/// Corner radius of the phase background bands.
-pub const ARC: f64 = 3.0;
+/// Offset of the chosen cell's ring, leaving a sliver of ground between ring and cell.
+pub const HALO: f64 = 2.5;
 
 /// Hairline width of token-face borders.
 pub const HAIR: f64 = 0.75;
 
-/// Mono rune size, and the fraction pair for two-rune token faces.
+/// Rank rune size, and the fraction pair for two-rune token faces.
 pub const RUNE: (f64, f64, f64) = (11.0, 0.34, 0.70);
 
-/// Serif rune size.
+/// Suit pip size.
 pub const SUIT: f64 = 12.0;
 
 /// Tile glyph size for single-character and wider symbols.
@@ -67,8 +61,8 @@ pub const RISE: f64 = 0.35;
 /// The Frame Function: an assembled [`Scene`] rendered through a [`Lay`] and a [`Palette`] into
 /// a deterministic sequence of [`Frame`]s — generic up to the mccfr trait hierarchy through
 /// [`Scenic`]. Each phase runs exploration probes that grow one edge per frame and reset
-/// sharply; the chosen line closes the phase and freezes white; later phases stay hidden until
-/// reached; only the completed hand lingers.
+/// sharply; the chosen line closes the phase and freezes as the site tree draws it; later phases
+/// stay hidden until reached; only the completed hand lingers.
 pub struct Film<'scene, G, P>
 where
     G: Scenic,
@@ -175,7 +169,7 @@ where
         };
         [
             vec![
-                Mark::block(self.lay().band(i), self.paint().settle()).bend(ARC),
+                Mark::block(self.lay().band(i), self.paint().settle()).bend(0.0),
                 Mark::trace(self.lay().elbow(from, at, i, self.lay().center(i)), self.paint().fg(), SPINE),
             ],
             self.tokens(i, DEALT),
@@ -216,27 +210,30 @@ where
                 hue,
                 width,
             )],
-            self.node(i, slot, 1.0, hue, width * TRIM),
+            self.node(i, slot, hue, width * TRIM, (width * TRIM * RIM.0).max(RIM.1)),
             vec![self.tag(i)],
         ]
         .concat()
     }
 
-    /// Per-phase background bands behind the board layers of the `k` visible
-    /// phases: pocket grey for the private first phase, felt for the rest.
+    /// The striped ground under every lane, then the street material behind
+    /// the board layers of the `k` visible phases: pocket stock for the
+    /// private first phase, felt for the rest.
     fn bands(&self, k: usize) -> Vec<Mark> {
-        self.scene().stints()[..k]
-            .iter()
-            .enumerate()
-            .map(|(s, stint)| {
-                let color = if s == 0 { self.paint().pocket() } else { self.paint().felt() };
-                Mark::block(self.lay().band(stint.deal()), color).bend(ARC)
+        (0..self.scene().layers().len())
+            .flat_map(|i| {
+                std::iter::once(Mark::block(self.lay().band(i), self.paint().ground()).bend(0.0))
+                    .chain((i % 2 == 1).then(|| Mark::block(self.lay().band(i), self.paint().stripe()).bend(0.0)))
             })
+            .chain(self.scene().stints()[..k].iter().enumerate().map(|(s, stint)| {
+                let color = if s == 0 { self.paint().pocket() } else { self.paint().felt() };
+                Mark::block(self.lay().band(stint.deal()), color).bend(0.0)
+            }))
             .collect()
     }
 
-    /// Phases `0..upto` frozen white plus every board dealt so far, the
-    /// white spine threading through them.
+    /// Phases `0..upto` frozen plus every board dealt so far, the spine
+    /// threading through them.
     fn frozen(&self, upto: usize) -> Vec<Mark> {
         let stints = self.scene().stints();
         let mut marks = Vec::new();
@@ -264,14 +261,19 @@ where
         marks
     }
 
-    /// One phase's frozen contribution: its committed nodes with tags, and
-    /// the spine anchors they pin.
+    /// One phase's frozen contribution: each decision's untaken cells dimmed,
+    /// its taken cell lit and ringed, and the spine anchors they pin.
     fn freeze(&self, phase: usize) -> (Vec<Mark>, Vec<(usize, Cross)>) {
         let stint = &self.scene().stints()[phase];
         stint.moves().iter().copied().zip(stint.picks().iter().copied()).fold(
             (Vec::new(), Vec::new()),
             |(mut marks, mut spine), (i, slot)| {
-                marks.extend(self.node(i, slot, FROST, &self.paint().fg(), SPINE));
+                marks.extend(
+                    (0..self.scene().menu(i).len())
+                        .filter(|&k| k != slot.raw())
+                        .flat_map(|k| self.cell(i, Slot::new(k), FAINT)),
+                );
+                marks.extend(self.node(i, slot, &self.paint().fg(), HALO, SPINE));
                 marks.push(self.tag(i));
                 spine.push((i, self.lay().slot(i, slot)));
                 (marks, spine)
@@ -281,31 +283,33 @@ where
 
     /// The faded option tiles at one decision layer — the probe's frontier.
     fn options(&self, i: usize) -> Vec<Mark> {
-        self.scene()
-            .menu(i)
-            .iter()
-            .enumerate()
-            .flat_map(|(k, edge)| {
-                vec![
-                    Mark::block(self.lay().tile(i, Slot::new(k)), self.paint().action(G::deed(edge))).fade(FAINT),
-                    self.glyph(self.lay().tile(i, Slot::new(k)), &G::glyph(edge), self.paint().muted())
-                        .fade(DIM),
-                ]
-            })
+        (0..self.scene().menu(i).len())
+            .flat_map(|k| self.cell(i, Slot::new(k), FAINT))
             .chain(std::iter::once(self.tag(i)))
             .collect()
     }
 
-    /// One decision tile: action-colored fill, glyph, and a rim whose color
-    /// carries the regret and whose weight carries its magnitude.
-    fn node(&self, i: usize, slot: Slot, fill: f64, rim: &str, offset: f64) -> Vec<Mark> {
+    /// One action cell as the site draws it: action fill, hairline rule, and
+    /// a knockout glyph, all at one opacity.
+    fn cell(&self, i: usize, slot: Slot, fade: f64) -> Vec<Mark> {
         let edge = &self.scene().menu(i)[slot.raw()];
         let tile = self.lay().tile(i, slot);
         vec![
-            Mark::block(tile, self.paint().action(G::deed(edge))).fade(fill),
-            self.glyph(tile, &G::glyph(edge), self.paint().bg()).heft(BOLD),
-            Mark::block(Easing::grow(tile, offset), "none").rim(rim, (offset * RIM.0).max(RIM.1)),
+            Mark::block(tile, self.paint().action(G::deed(edge)))
+                .rim(self.paint().border(), HAIR)
+                .fade(fade),
+            self.glyph(tile, &G::glyph(edge), self.paint().inverse()).fade(fade),
         ]
+    }
+
+    /// A lit decision cell ringed at `offset`: the regret hue on a live
+    /// probe, the foreground on the committed line.
+    fn node(&self, i: usize, slot: Slot, rim: &str, offset: f64, width: f64) -> Vec<Mark> {
+        [
+            self.cell(i, slot, 1.0),
+            vec![Mark::block(Easing::grow(self.lay().tile(i, slot), offset), "none").rim(rim, width)],
+        ]
+        .concat()
     }
 
     /// The token faces of a major layer — board reveals or settlement tiles.
@@ -328,8 +332,8 @@ where
                         n => (r as f64 + 0.5) / n as f64,
                     };
                     let (size, heft) = match rune.face() {
-                        Face::Mono => (RUNE.0, BOLD),
-                        Face::Serif => (SUIT, 400),
+                        Face::Pip => (SUIT, 400),
+                        _ => (RUNE.0, BOLD),
                     };
                     let ink = match rune.tint() {
                         Tint::Dark => self.paint().black(),
@@ -357,6 +361,7 @@ where
         let (spot, anchor) = self.lay().actor(i);
         Mark::label(spot, self.scene().layers()[i].tag(), TAG.0, self.paint().muted())
             .anchor(anchor)
+            .face(Face::Caps)
             .heft(SEMI)
     }
 
@@ -364,7 +369,9 @@ where
     /// the verdict for a settlement — anchored per orientation.
     fn label(&self, i: usize) -> Mark {
         let (spot, anchor) = self.lay().street(i);
-        Mark::label(spot, self.scene().layers()[i].caption(), TAG.1, self.paint().muted()).anchor(anchor)
+        Mark::label(spot, self.scene().layers()[i].caption(), TAG.1, self.paint().muted())
+            .anchor(anchor)
+            .face(Face::Caps)
     }
 }
 

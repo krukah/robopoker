@@ -16,9 +16,9 @@ flowchart TD
   AUG["Augmentable::augment(off) -> Self<br/>the ONE game-specific method"]
   NG["NestGame&lt;G&gt;"] -->|"apply(Off) delegates to"| AUG
   NG -->|CfrGame| E["NestEdge = Game(E) | Off(G::Off)"]
-  NI["NestInfo = Entry | Augmented | Game"] -->|public| NP["NestPublic = Game | Entry(_, Off)"]
+  NI["NestInfo = Composite(NestPublic, secret)"] -->|public| NP["NestPublic = Game | Entry(_, Off) | Augmented"]
   NP -->|Entry.choices| SPLICE["canonical ∪ {Off(off)}"]
 ```
 
-The concrete `Nlhe` side is now just `impl Augmentable for NlheGame` (a few
-lines) plus `Nlhe::adapt_nested`. See `docs/active/off-tree-nesting.md`.
+The concrete `Nlhe` side is just `impl Augmentable for NlheGame` (a few
+lines) plus `NlheSolver::adapt_nested`.

@@ -124,8 +124,8 @@ is `self.f`, `&self.f`, `&mut self.f`, or one argument-free method on it
 to nothing. A foreign type with no method for a field is read by destructuring
 it in a pattern.
 
-Opt-in: a type's own impl may touch its fields. Ask for it by name to audit a
-diff.
+Opt-in, because house style lets a type's own impl touch its fields. Ask for it
+by name to audit a diff.
 
 Two ways out, in order:
 

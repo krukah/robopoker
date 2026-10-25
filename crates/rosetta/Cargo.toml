@@ -1,7 +1,6 @@
 [package]
-name         = "rosetta"
-publish      = false
-version      = "1.2.0"
+name         = "robopoker-rosetta"
+version      = "3.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -32,3 +31,6 @@ serde_json = "1"
 
 [lints]
 workspace = true
+
+[lib]
+name = "rosetta"

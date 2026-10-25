@@ -21,7 +21,7 @@ flowchart LR
   subgraph Config["Runtime config (OnceLock)"]
     C1["Version - V1"]
     C2["Regime - Pluribus / Slumbot"]
-    C3["Translation - Snap / Harmonic / Phargmax"]
+    C3["Translation - Snap / Harmonic / Phargmax / Exact"]
   end
   subgraph Tools["Utilities"]
     T1["hyperparams! macro"]
@@ -32,7 +32,7 @@ flowchart LR
 
 The crate defines the numeric vocabulary used across the workspace as thin
 `f32`/`i16` aliases so intent is legible at call sites: `Chips` (stacks and
-bets in big blinds), `Utility` (payoffs and regrets), `Probability` (strategy
+bets, two per big blind), `Utility` (payoffs and regrets), `Probability` (strategy
 weights), and `Energy`/`Entropy` (distances and temperatures). Training runs
 are keyed by two orthogonal axes — `Version` (clustering abstraction) and
 `Regime` (bet-sizing grid) — each a process-global `OnceLock` set once at
@@ -50,6 +50,7 @@ flowchart LR
   ph -->|Harmonic - sample| anchor["Anchor"]
   ph -->|Phargmax - p &gt;= 0.5| anchor
   scalar -->|Snap - L1 nearest| anchor
+  scalar -->|Exact - off anchor| free["Translated::Free(F)"]
   clamp --> anchor
   anchor --> payload["payload"] --> out["Translated::Snap(P)"]
 ```
@@ -62,4 +63,5 @@ a validated strictly-ascending list of anchor scalars each carrying a payload
 extreme); the `Translation` policy then picks one: `Snap` takes the L1-nearest
 anchor, while `Harmonic` and `Phargmax` apply the Ganzfried–Sandholm 2013
 pseudo-harmonic weighting (randomized vs. deterministic argmax). The chosen
-`Anchor` yields its payload as `Translated::Snap(P)`.
+`Anchor` yields its payload as `Translated::Snap(P)`. `Exact` snaps only on an
+anchor hit and otherwise hands the off-grid value back as `Translated::Free(F)`.

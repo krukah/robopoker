@@ -5,7 +5,7 @@ The bot zoo is compositional: every axis is a [`Brain`] wrapper.
 add subgame solver layers; [`Dirac<B>`] sharpens the inner distribution to
 a Dirac delta. Stack in canonical order (`Dirac<World<Depth<Blueprint>>>`)
 and wrap with [`Agent<B>`] to get a `Player`. [`Tag::zoo`] is the single
-runtime → comptime binding both slumbot and the hosting server use.
+runtime → comptime binding both `bout` (Slumbot) and the hosting server use.
 
 Four dials, but **not** a free `2^4`: three are an orthogonal cube, the
 fourth (nesting) is a *conditional* layer.
@@ -50,10 +50,8 @@ Validity (× `Dirac` for each row):
 re-solve — `adapt_nested` (safe + depth) — so the `depth`/`world` dials select
 only the *on-tree fallback* brain `Nest<B>` delegates to when the line stays
 on-grid, not the nested-solve method. A depth-less or unsafe *nested* variant
-(`adapt_nested_leaf` / `adapt_nested_safe`) isn't wired; adding one lets
-`Nest<B>` pick per dial. Deferred until the safe-vs-unsafe search question is
-settled (`docs/active/pluribus-parity.md`).
+isn't wired; adding one lets `Nest<B>` pick per dial.
 
 The *solve*-axis concepts (world/depth/nest orthogonality) are in
-[`crates/subgame/README.md`](../../../subgame/README.md); this section is the
+[`crates/subgame/README.md`](https://github.com/krukah/robopoker/blob/main/crates/subgame/README.md); this section is the
 player-side view that also folds in `Dirac` and the zoo wiring.

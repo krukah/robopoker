@@ -13,7 +13,7 @@ the choice of defaults.
                                 to our heads-up tree)
 ```
 
-The three consumers, in the order they became useful:
+The four consumers, in the order they became useful:
 
 - **conformance** — does [`Replay::replay`] reproduce every logged `finishing_stacks`?
   An independent reference implementation of multiway settlement.

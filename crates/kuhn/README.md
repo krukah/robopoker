@@ -6,9 +6,9 @@ Part of the [robopoker](https://github.com/krukah/robopoker) workspace — see t
 
 ## Nash equilibrium reference
 
-The reference the solver tests in `src/cfr/solver.rs` check against.
+`KuhnNash` (`src/cfr/nash.rs`): the reference the solver tests in `src/cfr/solver.rs` and `neural`'s Deep CFR tests check against.
 
-All tests use 2^18 iterations. 6-card Kuhn ({J,Q,K} × {♠,♥}) has 12 info
+The convergence tests use 2^18 iterations. 6-card Kuhn ({J,Q,K} × {♠,♥}) has 12 info
 sets and 30 deals; same-rank deals (J♠ vs J♥) tie at showdown, shifting the
 equilibrium away from classical 3-card Kuhn. Tolerances are calibrated
 empirically as **μ + 4σ** rounded up to 0.005, targeting <1% flake.

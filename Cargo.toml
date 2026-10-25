@@ -49,7 +49,7 @@ members = [
 exclude = ["crates/lints"]
 
 [workspace.package]
-version      = "1.2.0"
+version      = "3.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -60,32 +60,32 @@ categories   = ["game-development", "algorithms", "mathematics"]
 
 [workspace.dependencies]
 # Internal crates
-pokerkit = { version = "1.2", path = "crates/pokerkit" }
-monge    = { version = "1.2", path = "crates/monge" }
-deuce    = { version = "1.2", path = "crates/deuce" }
-mccfr    = { version = "1.2", path = "crates/mccfr" }
-kicker   = { version = "1.2", path = "crates/kicker" }
-elkan    = { version = "1.2", path = "crates/elkan" }
-lloyd    = { version = "1.2", path = "crates/lloyd" }
-rosetta  = { version = "1.2", path = "crates/rosetta" }
-subgame  = { version = "1.2", path = "crates/subgame" }
-neural   = { version = "1.2", path = "crates/neural" }
-nlhe     = { version = "1.2", path = "crates/nlhe" }
-phh      = { version = "1.2", path = "crates/phh" }
+pokerkit = { version = "3.0", path = "crates/pokerkit" }
+monge    = { version = "3.0", path = "crates/monge" }
+deuce    = { version = "3.0", path = "crates/deuce" }
+mccfr    = { version = "3.0", path = "crates/mccfr" }
+kicker   = { version = "3.0", path = "crates/kicker" }
+elkan    = { version = "3.0", path = "crates/elkan" }
+lloyd    = { version = "3.0", path = "crates/lloyd" }
+rosetta  = { package = "robopoker-rosetta", version = "3.0", path = "crates/rosetta" }
+subgame  = { version = "3.0", path = "crates/subgame" }
+neural   = { package = "robopoker-neural", version = "3.0", path = "crates/neural" }
+nlhe     = { version = "3.0", path = "crates/nlhe" }
+phh      = { version = "3.0", path = "crates/phh" }
 reel     = { path = "crates/reel" }
-leduc    = { version = "1.2", path = "crates/leduc" }
-kuhn     = { version = "1.2", path = "crates/kuhn" }
-roshambo = { version = "1.2", path = "crates/roshambo" }
-arena    = { version = "1.2", path = "crates/arena" }
+leduc    = { version = "3.0", path = "crates/leduc" }
+kuhn     = { version = "3.0", path = "crates/kuhn" }
+roshambo = { version = "3.0", path = "crates/roshambo" }
+arena    = { version = "3.0", path = "crates/arena" }
 bout     = { path = "crates/bout" }
-spar     = { version = "1.2", path = "crates/spar" }
-litmus   = { version = "1.2", path = "crates/litmus" }
-daybook  = { version = "1.2", path = "crates/daybook" }
-bouncer  = { version = "1.2", path = "crates/bouncer" }
-vitals   = { version = "1.2", path = "crates/vitals" }
-parlor   = { version = "1.2", path = "crates/parlor" }
-portal   = { version = "1.2", path = "crates/portal" }
-forge    = { version = "1.2", path = "crates/forge" }
+spar     = { version = "3.0", path = "crates/spar" }
+litmus   = { version = "3.0", path = "crates/litmus" }
+daybook  = { version = "3.0", path = "crates/daybook" }
+bouncer  = { version = "3.0", path = "crates/bouncer" }
+vitals   = { version = "3.0", path = "crates/vitals" }
+parlor   = { version = "3.0", path = "crates/parlor" }
+portal   = { version = "3.0", path = "crates/portal" }
+forge    = { version = "3.0", path = "crates/forge" }
 
 # External dependencies
 tokio          = { version = "1", features = ["full"] }

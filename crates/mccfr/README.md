@@ -86,9 +86,9 @@ Implement these, and nothing else:
 | `CfrTurn` (+ `From<usize>`)              | your turn type                                   | `chance`, `terminal`, `players`                       |
 | `CfrEdge` (+ `monge::Support`)           | your edge type                                   | none (`default_policy`, `default_regret` optional)    |
 | `CfrGame`                                | your game state                                  | `type T`, `type E`, `root`, `turn`, `apply`, `payoff` |
-| `CfrPublic`                              | the public half of an info set                   | `type G`, `choices`                                   |
+| `CfrPublic`                              | the public half of an info set                   | `type G`, `menu`                                      |
 | `CfrSecret`                              | the private half                                 | none (a marker)                                       |
-| `CfrInfo`                                | the info set, or use the stock `Composite<X, Y>` | `type X`, `type Y`, `public`, `secret`                |
+| `CfrInfo`                                | the info set, or use the stock `Composite<X, Y>` | `type X`, `type Y`, `public`, `secret`, `join`        |
 | `CfrSpec` + `Encoding`                 | your encoder                                     | `type F = YourInfo`, `public`, `secret`               |
 | `WorldRestrict<W>` (`subgame`, optional) | your encoder                                     | `restrict`                                            |
 | `Frontier<D>` (`subgame`, optional)      | your encoder                                     | none; an empty impl gives uniform frontier payoffs    |
@@ -232,25 +232,28 @@ flowchart LR
   E -- "Encoding::encode" --> I["information set<br/>InfoOf"]
 ```
 
-## Solver Configuration Constants (`lib.rs`)
+## Hyperparameters (`src/hyperparams/`)
 
-- **MCCFR Batching**: `CFR_BATCH_SIZE_*`, `CFR_TREE_COUNT_*`
-- **Sampling**: `SAMPLING_TEMPERATURE` (T), `SAMPLING_SMOOTHING` (β), `SAMPLING_CURIOSITY` (ε)
-- **Regret Matching**: `POLICY_MIN`, `REGRET_MIN`
-- **Probabilistic Pruning**: `PRUNING_THRESHOLD`, `PRUNING_EXPLORE`, `PRUNING_WARMUP`
-- **Regret Bias**: `BIAS_FOLDS`, `BIAS_RAISE`, `BIAS_OTHER` (initial warmstart weights)
+Process-global structs via `pokerkit::hyperparams!`: `get()` lazily takes `Default`, `init()` sets once.
+
+- **Batching**: the const `B` on `Tabular` (trees per batch; 128 in `Flagship`); `solve(trees)` runs `trees / B` batches
+- **`SamplingHyperParams`**: temperature T = 1.0, smoothing β = 2.0, curiosity ε = 0.05
+- **`PruningHyperParams`**: threshold −3·10⁵, explore 0.05, warmup 16,384 epochs
+- **`TrainingHyperParams`**: `regret_min` −4·10⁶, log every 60 s, flush every 30 min, 1,024 exploitability samples
+- **`WarmstartHyperParams`**: `prior_strength` 2¹⁴
+- **`BiasHyperParams`** (from `kicker`): initial regret for folds 100, raise 10, shove 0, other 50
 
 ## Training Pipeline
 
 ```bash
 # Generate abstractions and upload to PostgreSQL (resource intensive)
-cargo run --bin trainer --features database -- --cluster
+cargo run --release --bin trainer -- --cluster
 
 # Train blueprint strategies (in-memory MCCFR)
-cargo run --bin trainer --features database -- --fast
+cargo run --release --bin trainer -- --fast
 
 # Train blueprint strategies (distributed workers)
-cargo run --bin trainer --features database -- --slow
+cargo run --release --bin trainer -- --slow
 ```
 
 **Training modes:**
@@ -259,15 +262,18 @@ cargo run --bin trainer --features database -- --slow
 - `--cluster` — Generate hand abstractions via hierarchical k-means (run once, resource intensive)
 - `--fast` — Single-machine in-memory MCCFR (uses `FastSession`)
 - `--slow` — Distributed workers with PostgreSQL synchronization (uses `SlowSession`)
+- `--recluster` — Drop the clustering tables; the next `--cluster`/`--fast`/`--slow` rebuilds them
 - `--reset` — Clear blueprint/epoch tables for fresh training run
+- `--forget` — Truncate the hand-history tables
+- `--deep [DIR]` — Deep CFR on NLHE, no database; strategy net saved to `DIR` (default `nets`)
 
 **Environment variables:**
 
 - `TRAIN_DURATION` — Optional timed training (e.g., `TRAIN_DURATION=2h` or `30m` or `1d`)
-- Type `Q` + Enter during training for graceful shutdown after current batch
+- Type `Q` + Enter, or send SIGTERM, for graceful shutdown after the current batch
 
 ## Telemetry note
 
-`mccfr_infoset_size` emits one record per filtered infoset per tree per batch (`batch_size=128 × ~K_infosets`, runtime-bounded). At ~200K infosets/batch this is ~20-100 ms per batch. Batches are now sub-second, so the per-tree and per-infoset histograms record on one batch in `Solver::SAMPLE_EVERY` (17); recording every batch serialized rayon workers on the histogram locks. See `crates/vitals/README.md` for the full cost-intuition writeup.
+`mccfr_infoset_size` emits one record per filtered infoset per tree per batch (`batch_size=128 × ~K_infosets`, runtime-bounded). At ~200K infosets/batch this is ~20-100 ms per batch. Batches are now sub-second, so the per-tree and per-infoset histograms record on one batch in `Solver::SAMPLE_EVERY` (17); recording every batch serialized rayon workers on the histogram locks.
 
-Records are emitted unlabeled. The metric is a **smoke detector** — it exists to tell you a pathological tail showed up, not to tell you which dimension drives it. NLHE infoset keys already fold over street (4), abstraction bucket (~128–144), subgame action sequence, choices mask, and SPR (4); none of those are labels. Adding labels per dimension would force the label cardinality story and pull game-specific concepts (e.g. `gameplay::SPR`) into the generic mccfr emission site for marginal diagnostic value. When the tail does spike, the right next step is a DB query or ablation, not reading the histogram more carefully.
+Records are emitted unlabeled. The metric is a **smoke detector** — it exists to tell you a pathological tail showed up, not to tell you which dimension drives it. NLHE infoset keys already fold over abstraction bucket (street included), subgame action sequence, and choices mask; none of those are labels. Adding labels per dimension would force the label cardinality story and pull game-specific concepts into the generic mccfr emission site for marginal diagnostic value. When the tail does spike, the right next step is a DB query or ablation, not reading the histogram more carefully.

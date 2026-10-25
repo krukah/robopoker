@@ -43,7 +43,7 @@ sequenceDiagram
 - **`Room`** — coordinator: registers users, runs the per-hand loop, handles idle/disconnect stop conditions, flushes `Hand`/`Participant`/`Play` records via `HistoryRepository`.
 - **`Engine<Phase>`** — the game state machine; `Seating`, `Dealing`, `Showdown`, `Finished` are zero-sized phase markers enforcing legal transitions at compile time.
 - **`Actor`** — a spawned task bridging one `Player` to the engine, with restartable/interruptible decision handling and pacing.
-- **`Player`** — the async, transport-agnostic decision trait. `players::` supplies `Human` (CLI), `Fish` (random), and a compositional bot `Zoo` where `Agent<Brain>` layers `Blueprint`, `Depth`, `World`, and `Dirac` over an in-memory CFR blueprint (`nlhe::Flagship`).
+- **`Player`** — the async, transport-agnostic decision trait. `players::` supplies `Human` (CLI, `cli` feature), `Fish` (random), and a compositional bot zoo (`Tag::zoo`, `server` feature) where `Agent<Brain>` layers `Blueprint`, `Depth`, `World`, `Nest`, and `Dirac` over an in-memory CFR blueprint (`nlhe::Flagship`).
 - **`Event`** — the actor-engine protocol: `Decision(Witness)`, `Action`, `Disconnect`.
 
 Built on sibling crates `kicker` (rules/state), `nlhe`/`mccfr`/`subgame` (strategy), `deuce`/`pokerkit` (cards & types), `bouncer` (identity), and `daybook` (persistence).

@@ -1,7 +1,7 @@
 [package]
 name         = "roshambo"
 publish      = false
-version      = "1.2.0"
+version      = "3.0.0"
 edition      = "2024"
 rust-version = "1.90"
 authors      = ["Kelechi Ukah <ukahkelechi@gmail.com>"]
@@ -21,7 +21,7 @@ server  = ["mccfr/server"]
 
 [dependencies]
 pokerkit = { workspace = true }
-mccfr    = { version = "1.2", path = "../mccfr", default-features = false }
+mccfr    = { version = "3.0", path = "../mccfr", default-features = false }
 subgame  = { workspace = true }
 monge    = { workspace = true }
 paste    = "1.0"
