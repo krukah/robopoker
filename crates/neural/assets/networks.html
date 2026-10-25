@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Deep CFR Networks</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        />
+        <style>
+            /* palette and fonts match crates/mccfr/assets/type-map.html */
+            :root {
+                --bg: #f4f6f9;
+                --surface: #ffffff;
+                --fg: #18202e;
+                --muted: #5a6476;
+                --rule: #d8dee8;
+                --accent: #2f5bd3;
+                --on-accent: #ffffff;
+                --code: #edf1f7;
+                --in-f: #bfdbfe;
+                --in-s: #1d4ed8;
+                --in-t: #0b1b3a;
+                --hid-f: #e2e8f0;
+                --hid-s: #475569;
+                --hid-t: #0f172a;
+                --out-f: #ddd6fe;
+                --out-s: #6d28d9;
+                --out-t: #22104f;
+                --gate-f: #fde68a;
+                --gate-s: #b45309;
+                --gate-t: #3b2300;
+                --head-f: #bbf7d0;
+                --head-s: #15803d;
+                --head-t: #052e16;
+                --edge: #6b7486;
+                --font-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+                --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+                --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root:not([data-theme="light"]) {
+                    --bg: #10141c;
+                    --surface: #161b25;
+                    --fg: #e3e8f1;
+                    --muted: #98a2b5;
+                    --rule: #283041;
+                    --accent: #86a6ff;
+                    --on-accent: #0b1220;
+                    --code: #1c2330;
+                    --in-f: #13254a;
+                    --in-s: #60a5fa;
+                    --in-t: #bfdbfe;
+                    --hid-f: #1f2633;
+                    --hid-s: #94a3b8;
+                    --hid-t: #e2e8f0;
+                    --out-f: #261a4a;
+                    --out-s: #a78bfa;
+                    --out-t: #ddd6fe;
+                    --gate-f: #3a2a08;
+                    --gate-s: #f59e0b;
+                    --gate-t: #fde68a;
+                    --head-f: #0d2e1c;
+                    --head-s: #4ade80;
+                    --head-t: #bbf7d0;
+                    --edge: #8590a5;
+                    color-scheme: dark;
+                }
+            }
+            :root[data-theme="dark"] {
+                --bg: #10141c;
+                --surface: #161b25;
+                --fg: #e3e8f1;
+                --muted: #98a2b5;
+                --rule: #283041;
+                --accent: #86a6ff;
+                --on-accent: #0b1220;
+                --code: #1c2330;
+                --in-f: #13254a;
+                --in-s: #60a5fa;
+                --in-t: #bfdbfe;
+                --hid-f: #1f2633;
+                --hid-s: #94a3b8;
+                --hid-t: #e2e8f0;
+                --out-f: #261a4a;
+                --out-s: #a78bfa;
+                --out-t: #ddd6fe;
+                --gate-f: #3a2a08;
+                --gate-s: #f59e0b;
+                --gate-t: #fde68a;
+                --head-f: #0d2e1c;
+                --head-s: #4ade80;
+                --head-t: #bbf7d0;
+                --edge: #8590a5;
+                color-scheme: dark;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--fg);
+                font-family: var(--font-body);
+                font-size: 15px;
+                line-height: 1.5;
+            }
+            .wrap {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 28px 16px 48px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 22px;
+            }
+            h1,
+            h2 {
+                font-family: var(--font-display);
+                margin: 0;
+                line-height: 1.2;
+                text-wrap: balance;
+            }
+            h1 {
+                font-size: clamp(24px, 4vw, 32px);
+            }
+            h2 {
+                font-size: 19px;
+            }
+            .lede {
+                color: var(--muted);
+                max-width: 76ch;
+                margin: 6px 0 0;
+            }
+            code,
+            .mono {
+                font-family: var(--font-mono);
+                font-size: 0.86em;
+            }
+            code {
+                background: var(--code);
+                padding: 1px 5px;
+                border-radius: 4px;
+            }
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--rule);
+                border-radius: 12px;
+                padding: 18px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 14px;
+                min-width: 0;
+            }
+            .head {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 4px 16px;
+            }
+            .file {
+                color: var(--muted);
+                font-family: var(--font-mono);
+                font-size: 12px;
+            }
+            .note {
+                font-size: 13.5px;
+                color: var(--muted);
+                margin: 0;
+                max-width: 86ch;
+            }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px 20px;
+                align-items: end;
+            }
+            .ctl {
+                display: grid;
+                gap: 4px;
+            }
+            .cap {
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: 700;
+            }
+            .seg {
+                display: inline-flex;
+                border: 1px solid var(--rule);
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .seg button {
+                font: inherit;
+                font-size: 13px;
+                border: 0;
+                background: transparent;
+                color: var(--fg);
+                padding: 5px 11px;
+                min-height: 32px;
+                cursor: pointer;
+            }
+            .seg button + button {
+                border-left: 1px solid var(--rule);
+            }
+            .seg button[aria-pressed="true"] {
+                background: var(--accent);
+                color: var(--on-accent);
+            }
+            button:focus-visible,
+            input:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+            .range {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-height: 32px;
+            }
+            .range output {
+                font-family: var(--font-mono);
+                font-size: 13px;
+                min-width: 4ch;
+            }
+            input[type="range"] {
+                accent-color: var(--accent);
+            }
+            .facts {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 20px;
+                font-size: 13px;
+                color: var(--muted);
+            }
+            .facts b {
+                color: var(--fg);
+                font-weight: 600;
+            }
+            .scroll {
+                overflow-x: auto;
+            }
+            #net {
+                display: block;
+                width: 100%;
+                min-width: 700px;
+                height: auto;
+            }
+            #net text {
+                font-family: var(--font-mono);
+                font-size: 12px;
+                fill: var(--fg);
+            }
+            #net .ct {
+                font-family: var(--font-display);
+                font-weight: 700;
+                font-size: 13px;
+            }
+            #net .cs {
+                fill: var(--muted);
+                font-size: 11.5px;
+            }
+            #net .nv {
+                text-anchor: middle;
+                dominant-baseline: central;
+                font-size: 11.5px;
+            }
+            #net .nl {
+                fill: var(--muted);
+                dominant-baseline: central;
+            }
+            #net .nl.on {
+                fill: var(--fg);
+                font-weight: 600;
+            }
+            #net .ln {
+                stroke: var(--edge);
+                stroke-opacity: 0.16;
+                stroke-width: 1;
+            }
+            #net .ln.hot {
+                stroke: var(--in-s);
+                stroke-opacity: 0.75;
+                stroke-width: 1.4;
+            }
+            #net .ln.wire {
+                stroke-opacity: 0.7;
+                stroke-width: 1.4;
+            }
+            #net .ln.off {
+                stroke-opacity: 0.45;
+                stroke-dasharray: 3 4;
+            }
+            #net .n {
+                stroke-width: 1.5;
+            }
+            #net .n.in {
+                fill: var(--surface);
+                stroke: var(--in-s);
+            }
+            #net .n.in.on {
+                fill: var(--in-f);
+                stroke-width: 2.5;
+            }
+            #net .n.hid {
+                fill: var(--hid-f);
+                stroke: var(--hid-s);
+                stroke-width: 1.2;
+            }
+            #net .n.out {
+                fill: var(--out-f);
+                stroke: var(--out-s);
+            }
+            #net .n.head {
+                fill: var(--head-f);
+                stroke: var(--head-s);
+            }
+            #net .n.head.dim {
+                fill: var(--surface);
+                stroke: var(--rule);
+            }
+            #net .gate {
+                fill: var(--surface);
+                stroke: var(--gate-s);
+                stroke-width: 1.5;
+            }
+            #net .gate.on {
+                fill: var(--gate-f);
+            }
+            #net .dimt {
+                fill: var(--muted);
+            }
+            #net .dots {
+                font-size: 18px;
+            }
+            table {
+                border-collapse: collapse;
+                font-size: 13.5px;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 6px 10px;
+                border-bottom: 1px solid var(--rule);
+                white-space: nowrap;
+            }
+            th {
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: 700;
+            }
+            td.num {
+                font-family: var(--font-mono);
+                font-size: 13px;
+                text-align: right;
+            }
+            tr.off td {
+                color: var(--muted);
+            }
+            .result {
+                display: grid;
+                gap: 4px;
+                font-family: var(--font-mono);
+                font-size: 13px;
+                background: var(--code);
+                border-radius: 8px;
+                padding: 10px 12px;
+                overflow-x: auto;
+            }
+            .result span {
+                white-space: pre;
+            }
+            .result .why {
+                color: var(--muted);
+                font-family: var(--font-body);
+            }
+            .life {
+                display: grid;
+                grid-template-columns: minmax(140px, 1.3fr) repeat(7, minmax(92px, 1fr));
+                min-width: 840px;
+                border: 1px solid var(--rule);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .life > div {
+                padding: 8px 10px;
+                border-bottom: 1px solid var(--rule);
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                align-items: center;
+                min-height: 46px;
+            }
+            .life .lh,
+            .life .lk {
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                gap: 0;
+            }
+            .life .lh {
+                background: var(--code);
+                font-size: 13px;
+            }
+            .life .lh span,
+            .life .lk span {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            .life .lk b {
+                font-family: var(--font-mono);
+                font-size: 13px;
+            }
+            .chip {
+                font-family: var(--font-mono);
+                font-size: 11.5px;
+                padding: 1px 8px;
+                border-radius: 999px;
+                border: 1px solid;
+                white-space: nowrap;
+            }
+            .chip.mem {
+                background: var(--in-f);
+                border-color: var(--in-s);
+                color: var(--in-t);
+            }
+            .chip.net {
+                background: var(--hid-f);
+                border-color: var(--hid-s);
+                color: var(--hid-t);
+            }
+            .chip.fit {
+                background: var(--head-f);
+                border-color: var(--head-s);
+                color: var(--head-t);
+            }
+            .chip.none {
+                border-color: var(--rule);
+                border-style: dashed;
+                color: var(--muted);
+            }
+            .pipe {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                gap: 10px;
+                counter-reset: step;
+            }
+            .pipe li {
+                counter-increment: step;
+                border: 1px solid var(--rule);
+                border-radius: 10px;
+                padding: 10px 12px;
+                display: grid;
+                gap: 4px;
+                align-content: start;
+                background: var(--bg);
+            }
+            .pipe li::before {
+                content: counter(step);
+                font-family: var(--font-mono);
+                font-size: 11px;
+                color: var(--muted);
+            }
+            .pipe code {
+                justify-self: start;
+            }
+            .pipe span {
+                font-size: 13px;
+                color: var(--muted);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header>
+                <h1>Deep CFR Networks</h1>
+                <p class="lede">
+                    What <code>CfrNet</code> builds, reads, and refits. Pick an embedder, a net, and an infoset to follow
+                    one forward pass from <code>Embedder::features</code> to the <code>Over&lt;Edge, H&gt;</code> that
+                    <code>mccfr</code> reads.
+                </p>
+            </header>
+            <section class="card" aria-labelledby="pass-h">
+                <div class="head">
+                    <h2 id="pass-h">One forward pass</h2>
+                    <span class="file">crates/neural/src/candle/trainer.rs · Trainer::predict</span>
+                </div>
+                <div class="controls" id="controls"></div>
+                <div class="facts" id="facts"></div>
+                <div class="scroll"><svg id="net" role="img"></svg></div>
+                <div class="scroll"><table id="readout"></table></div>
+                <div class="result" id="result" aria-live="polite"></div>
+                <p class="note">
+                    The logits are example values to drag, not trained weights; the readout after them is exact.
+                    Before <code>advantages[p]</code> is first fit, <code>est_regret</code> is 0 at every choice and
+                    <code>matched</code> plays uniform. Before <code>strategies</code> is fit, <code>est_strategy</code> is
+                    uniform. The width and depth sliders change only this page; the nets read
+                    <code>DeepHyperParams::get()</code>.
+                </p>
+            </section>
+            <section class="card" aria-labelledby="life-h">
+                <div class="head">
+                    <h2 id="life-h">Which net answers, epoch by epoch</h2>
+                    <span class="file">crates/neural/src/solver.rs · DeepSolver::step</span>
+                </div>
+                <p class="note">
+                    Each epoch runs <code>K</code> traversals against the nets as they stand. Regret rows from the
+                    walker's infosets go to its <code>M_V,p</code>; strategy rows, <code>σᵗ</code> at the opponents'
+                    infosets, go to <code>M_Π</code>. Then only the walker's <code>advantages[p]</code> refits, from fresh
+                    weights, on its whole memory. <code>strategies</code> fits once, after the last epoch. Every row carries
+                    <code>t = epoch / players + 1</code> as its loss weight. Two players shown; both test games have two.
+                </p>
+                <div class="scroll"><div class="life" id="life"></div></div>
+            </section>
+            <section class="card" aria-labelledby="fit-h">
+                <div class="head">
+                    <h2 id="fit-h">One fit</h2>
+                    <span class="file">crates/neural/src/candle/trainer.rs · Trainer::fit</span>
+                </div>
+                <ol class="pipe" id="pipe"></ol>
+                <div class="scroll"><table id="knobs"></table></div>
+            </section>
+        </div>
+        <script>
+            const GAMES = {
+                kuhn: {
+                    label: "Kuhn",
+                    embedder: "KuhnEmbedder",
+                    features: ["J", "Q", "K", "open", "check", "bet", "check·bet"],
+                    outputs: ["Check", "Bet", "Fold", "Call"],
+                    pickers: [
+                        { key: "card", label: "Card", options: ["J", "Q", "K"] },
+                        { key: "node", label: "History", options: ["open", "check", "bet", "check·bet"] },
+                    ],
+                    hot: (s) => [s.card, 3 + s.node],
+                    legal: (s) => (s.node < 2 ? [0, 1] : [2, 3]),
+                    turn: (s) => `Player(${[0, 1, 1, 0][s.node]})`,
+                    info: (s) => `${["J", "Q", "K"][s.card]} · ${["open", "check", "bet", "check·bet"][s.node]}`,
+                },
+                rps: {
+                    label: "Rock-paper-scissors",
+                    embedder: "RpsEmbedder",
+                    features: ["P1", "P2"],
+                    outputs: ["R", "P", "S"],
+                    pickers: [{ key: "player", label: "Turn", options: ["P1", "P2"] }],
+                    hot: (s) => [s.player],
+                    legal: () => [0, 1, 2],
+                    turn: (s) => ["P1", "P2"][s.player],
+                    info: (s) => ["P1", "P2"][s.player],
+                },
+            };
+            const NETS = {
+                advantage: { label: "Advantage θ", type: "AdvantageNet<MLP>", head: "Regret", act: "raw logits" },
+                strategy: { label: "Strategy φ", type: "StrategicNet<MLP>", head: "Policy", act: "masked softmax" },
+            };
+            const WIDTHS = [4, 8, 16, 32, 64, 128, 256];
+            const KNOBS = [
+                ["traversals", "32", "DeepSolver::traversals", "external-sampling traversals K per epoch"],
+                ["capacity", "65,536", "Memories::new", "rows each reservoir keeps"],
+                ["width", "64", "MLP::build", "units per hidden layer"],
+                ["depth", "2", "MLP::build", "hidden ReLU layers"],
+                ["steps", "300", "Trainer::fit", "AdamW steps per fit"],
+                ["batch", "512", "Trainer::fit", "rows per minibatch"],
+                ["rate", "0.003", "Trainer::fit", "AdamW learning rate"],
+            ];
+            const PIPE = [
+                ["VarMap::new()", "Fresh parameters, every fit."],
+                ["A::build(vb, inputs, outputs)", "The architecture, wrapped as Fitted<A, H>."],
+                ["minibatch", "batch rows drawn uniformly, with replacement; every row when they fit in one batch."],
+                ["MiniBatch::new", "Features n×inputs · Target n×outputs · Mask n×outputs · t ÷ t̄, where t̄ is the whole memory's mean t."],
+                ["MiniBatch::loss", "Mean over rows of (t ÷ t̄) · Σₐ maskₐ · (activate(f(x))ₐ − yₐ)²."],
+                ["AdamW::backward_step", "Repeated steps times, at lr = rate, weight decay 0. Returns the net."],
+            ];
+            const state = {
+                game: "kuhn",
+                net: "advantage",
+                width: 4,
+                depth: 2,
+                pick: { kuhn: { card: 0, node: 0 }, rps: { player: 0 } },
+                logits: { kuhn: [0.9, -0.4, 1.3, 0.2], rps: [0.6, 0.6, -0.2] },
+            };
+            const $ = (id) => document.getElementById(id);
+            const esc = (s) =>
+                String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+            const fmt = (v) => (v < -0.005 ? "−" : "") + Math.abs(v).toFixed(2);
+            const game = () => GAMES[state.game];
+            const pick = () => state.pick[state.game];
+            const logits = () => state.logits[state.game];
+            const advantage = () => state.net === "advantage";
+            function mask() {
+                const legal = new Set(game().legal(pick()));
+                return game().outputs.map((_, i) => (legal.has(i) ? 1 : 0));
+            }
+            function activate(z, m) {
+                if (advantage()) return z.slice();
+                const top = Math.max(...z.filter((_, i) => m[i]));
+                const e = z.map((v, i) => (m[i] ? Math.exp(v - top) : 0));
+                const sum = e.reduce((a, b) => a + b, 0);
+                return e.map((v) => v / sum);
+            }
+            function matched(pairs) {
+                const best = Math.max(...pairs.map(([, r]) => r));
+                const ties = pairs.filter(([, r]) => r === best).length;
+                const total = pairs.reduce((a, [, r]) => a + Math.max(r, 0), 0);
+                return pairs.map(([i, r]) => [i, total > 0 ? Math.max(r, 0) / total : r === best ? 1 / ties : 0]);
+            }
+            function dims() {
+                return [game().features.length, ...Array(state.depth).fill(WIDTHS[state.width]), game().outputs.length];
+            }
+            function params() {
+                const d = dims();
+                return d.slice(1).reduce((acc, out, i) => acc + d[i] * out + out, 0);
+            }
+            function seg(label, options, active, onPick) {
+                const wrap = document.createElement("div");
+                wrap.className = "ctl";
+                wrap.innerHTML = `<span class="cap">${esc(label)}</span>`;
+                const group = document.createElement("div");
+                group.className = "seg";
+                group.setAttribute("role", "group");
+                group.setAttribute("aria-label", label);
+                options.forEach(([value, text]) => {
+                    const b = document.createElement("button");
+                    b.type = "button";
+                    b.textContent = text;
+                    b.dataset.key = `${label}:${value}`;
+                    b.setAttribute("aria-pressed", String(value === active));
+                    b.addEventListener("click", () => {
+                        onPick(value);
+                        renderAll();
+                        document.querySelector(`[data-key="${CSS.escape(b.dataset.key)}"]`)?.focus();
+                    });
+                    group.append(b);
+                });
+                wrap.append(group);
+                return wrap;
+            }
+            function slider(label, max, value, show, onInput) {
+                const wrap = document.createElement("label");
+                wrap.className = "ctl";
+                wrap.innerHTML = `<span class="cap">${esc(label)}</span><span class="range"><input type="range" min="0" max="${max}" step="1" value="${value}"><output>${show(value)}</output></span>`;
+                const input = wrap.querySelector("input");
+                input.addEventListener("input", () => {
+                    wrap.querySelector("output").textContent = show(+input.value);
+                    onInput(+input.value);
+                    renderNet();
+                    renderFacts();
+                });
+                return wrap;
+            }
+            function renderControls() {
+                const c = $("controls");
+                c.replaceChildren(
+                    seg("Embedder", Object.entries(GAMES).map(([k, g]) => [k, g.label]), state.game, (v) => (state.game = v)),
+                    seg("Net", Object.entries(NETS).map(([k, n]) => [k, n.label]), state.net, (v) => (state.net = v)),
+                    ...game().pickers.map((p) =>
+                        seg(p.label, p.options.map((o, i) => [i, o]), pick()[p.key], (v) => (pick()[p.key] = v)),
+                    ),
+                    slider("Hidden width", WIDTHS.length - 1, state.width, (i) => WIDTHS[i], (v) => (state.width = v)),
+                    slider("Hidden depth", 4, state.depth, (v) => v, (v) => (state.depth = v)),
+                );
+            }
+            function renderFacts() {
+                const g = game();
+                const d = dims();
+                const sum = d.slice(1).map((out, i) => `${d[i]}·${out}+${out}`).join(" + ");
+                $("facts").innerHTML = [
+                    ["Embedder", g.embedder],
+                    ["Infoset", g.info(pick())],
+                    ["Embedder::turn", g.turn(pick())],
+                    ["Answers", advantage() ? `advantages[${g.turn(pick())}]` : "strategies"],
+                    ["Type", NETS[state.net].type],
+                    ["Parameters", `${params().toLocaleString("en-US")} = ${sum}`],
+                ]
+                    .map(([k, v]) => `<span>${k} <b class="mono">${esc(v)}</b></span>`)
+                    .join("");
+            }
+            function renderNet() {
+                const g = game();
+                const m = mask();
+                const z = logits();
+                const y = activate(z, m);
+                const hot = new Set(g.hot(pick()));
+                const w = WIDTHS[state.width];
+                const d = state.depth;
+                const hiddenRows = w <= 8 ? w : 9;
+                const rows = Math.max(g.features.length, d ? hiddenRows : 0, g.outputs.length);
+                const S = 40;
+                const top = 70;
+                const W = 1040;
+                const H = top + rows * S + 12;
+                const xin = 140;
+                const xhead = W - 190;
+                const xgate = xhead - 110;
+                const xlog = xgate - 100;
+                const xs = [xin, ...Array.from({ length: d }, (_, i) => xin + ((xlog - xin) * (i + 1)) / (d + 1)), xlog];
+                const ys = (n) => Array.from({ length: n }, (_, i) => top + ((rows - n) * S) / 2 + S / 2 + i * S);
+                const yin = ys(g.features.length);
+                const yrows = ys(hiddenRows);
+                const yhid = yrows.filter((_, i) => w <= 8 || i !== 4);
+                const yout = ys(g.outputs.length);
+                const cols = [yin, ...Array(d).fill(yhid), yout];
+                let cold = "";
+                let warm = "";
+                cols.slice(1).forEach((next, c) =>
+                    cols[c].forEach((ya, i) =>
+                        next.forEach((yb) => {
+                            const line = `<line x1="${xs[c]}" y1="${ya}" x2="${xs[c + 1]}" y2="${yb}"`;
+                            if (c === 0 && hot.has(i)) warm += `${line} class="ln hot"/>`;
+                            else cold += `${line} class="ln"/>`;
+                        }),
+                    ),
+                );
+                const title = (x, t, sub) =>
+                    `<text class="ct" x="${x}" y="24" text-anchor="middle">${esc(t)}</text><text class="cs" x="${x}" y="42" text-anchor="middle">${esc(sub)}</text>`;
+                let s = cold + warm;
+                s += title(xin, "features(I)", `x · 1×${g.features.length}`);
+                xs.slice(1, -1).forEach((x, i) => (s += title(x, `Linear ${i + 1}`, `ReLU · ${w}`)));
+                s += title(xlog, `Linear ${d + 1}`, `z · 1×${g.outputs.length}`);
+                s += title(xgate, "mask", "legal outputs");
+                s += title(xhead, `${NETS[state.net].head}::activate`, NETS[state.net].act);
+                g.features.forEach((f, i) => {
+                    const on = hot.has(i);
+                    s += `<circle class="n in${on ? " on" : ""}" cx="${xin}" cy="${yin[i]}" r="13"/>`;
+                    s += `<text class="nv" x="${xin}" y="${yin[i]}">${on ? 1 : 0}</text>`;
+                    s += `<text class="nl${on ? " on" : ""}" x="${xin - 22}" y="${yin[i]}" text-anchor="end">${esc(f)}</text>`;
+                });
+                xs.slice(1, -1).forEach((x) => {
+                    yhid.forEach((yy) => (s += `<circle class="n hid" cx="${x}" cy="${yy}" r="8"/>`));
+                    if (w > 8) s += `<text class="nv dimt dots" x="${x}" y="${yrows[4]}">⋮</text>`;
+                });
+                g.outputs.forEach((edge, i) => {
+                    const yy = yout[i];
+                    const legal = m[i] === 1;
+                    const shown = legal ? fmt(y[i]) : advantage() ? fmt(y[i]) : "0";
+                    const tag = legal ? "" : advantage() ? " · not read" : " · illegal";
+                    s += `<line class="ln wire" x1="${xlog + 30}" y1="${yy}" x2="${xgate - 11}" y2="${yy}"/>`;
+                    s += `<line class="ln wire${legal ? "" : " off"}" x1="${xgate + 11}" y1="${yy}" x2="${xhead - 32}" y2="${yy}"/>`;
+                    s += `<rect class="n out" x="${xlog - 30}" y="${yy - 12}" width="60" height="24" rx="12"/>`;
+                    s += `<text class="nv" x="${xlog}" y="${yy}">${fmt(z[i])}</text>`;
+                    s += `<rect class="gate${legal ? " on" : ""}" x="${xgate - 11}" y="${yy - 11}" width="22" height="22" rx="4"/>`;
+                    s += `<text class="nv" x="${xgate}" y="${yy}">${m[i]}</text>`;
+                    s += `<rect class="n head${legal ? "" : " dim"}" x="${xhead - 32}" y="${yy - 12}" width="64" height="24" rx="12"/>`;
+                    s += `<text class="nv${legal ? "" : " dimt"}" x="${xhead}" y="${yy}">${shown}</text>`;
+                    s += `<text class="nl${legal ? " on" : ""}" x="${xhead + 42}" y="${yy}">${esc(edge)}${tag}</text>`;
+                });
+                const svg = $("net");
+                svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+                svg.setAttribute(
+                    "aria-label",
+                    `${g.embedder} feeds ${g.features.length} features through ${d} hidden layers of ${w} units to ${g.outputs.length} outputs, read by the ${NETS[state.net].head} head.`,
+                );
+                svg.innerHTML = s;
+            }
+            function renderTable() {
+                const g = game();
+                const m = mask();
+                const heads = ["Output", "Example logit z", "mask", advantage() ? "est_regret" : "est_strategy"];
+                if (advantage()) heads.push("matched");
+                const rows = g.outputs.map(
+                    (edge, i) => `<tr class="${m[i] ? "" : "off"}">
+                        <td>${esc(edge)}</td>
+                        <td><span class="range"><input type="range" min="-3" max="3" step="0.1" value="${logits()[i]}" data-output="${i}" aria-label="Example logit for ${esc(edge)}"><output id="z-${i}"></output></span></td>
+                        <td class="num">${m[i]}</td>
+                        <td class="num" id="e-${i}"></td>
+                        ${advantage() ? `<td class="num" id="p-${i}"></td>` : ""}
+                    </tr>`,
+                );
+                $("readout").innerHTML = `<thead><tr>${heads.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody>`;
+                $("readout")
+                    .querySelectorAll("input")
+                    .forEach((input) =>
+                        input.addEventListener("input", () => {
+                            logits()[+input.dataset.output] = +input.value;
+                            renderNet();
+                            renderValues();
+                        }),
+                    );
+            }
+            function renderValues() {
+                const g = game();
+                const m = mask();
+                const z = logits();
+                const y = activate(z, m);
+                const legal = g.legal(pick());
+                const est = legal.map((i) => [i, y[i]]);
+                const policy = advantage() ? matched(est) : [];
+                g.outputs.forEach((_, i) => {
+                    $(`z-${i}`).textContent = fmt(z[i]);
+                    $(`e-${i}`).textContent = m[i] ? fmt(y[i]) : "—";
+                    if (advantage()) $(`p-${i}`).textContent = m[i] ? fmt(policy.find(([j]) => j === i)[1]) : "—";
+                });
+                const over = (pairs) => `{ ${pairs.map(([i, v]) => `${g.outputs[i]}: ${fmt(v)}`).join(", ")} }`;
+                const lines = advantage()
+                    ? [
+                          `est_regret(I) = ${over(est)}`,
+                          `matched(I)    = ${over(policy)}`,
+                          est.some(([, r]) => r > 0)
+                              ? "matched: positive advantages, normalized."
+                              : "matched: no positive advantage, so the argmax plays, ties split evenly.",
+                      ]
+                    : [`est_strategy(I) = ${over(est)}`, "Illegal logits become −∞ before the softmax, so they get exactly zero mass."];
+                $("result").innerHTML = lines
+                    .map((l, i) => `<span class="${i === lines.length - 1 ? "why" : ""}">${esc(l)}</span>`)
+                    .join("");
+            }
+            function renderLife() {
+                const players = 2;
+                const epochs = [0, 1, 2, 3, 4, 5];
+                const chip = (cls, text, tip) => `<span class="chip ${cls}" title="${esc(tip)}">${esc(text)}</span>`;
+                const absent = chip("none", "absent", "No net yet: est_regret is 0 everywhere, so matched plays uniform.");
+                const frozen = chip("net", "frozen", "Read by every traversal this epoch; unchanged.");
+                const refit = chip("fit", "refit", "After the traversals: rebuilt from fresh weights on the whole memory.");
+                const cells = [
+                    `<div class="lh"></div>`,
+                    ...epochs.map(
+                        (e) =>
+                            `<div class="lh"><b>epoch ${e}</b><span>walker ${e % players} · t = ${Math.floor(e / players) + 1}</span></div>`,
+                    ),
+                    `<div class="lh"><b>end</b><span>after solve</span></div>`,
+                ];
+                const row = (name, sub, at, end) =>
+                    cells.push(
+                        `<div class="lk"><b>${esc(name)}</b><span>${esc(sub)}</span></div>`,
+                        ...epochs.map((e) => `<div>${at(e)}</div>`),
+                        `<div>${end}</div>`,
+                    );
+                [0, 1].forEach((p) => {
+                    row(`M_V,${p}`, "regret rows", (e) => (e % players === p ? chip("mem", "+ r̃ᵗ", "Sampled regrets at this walker's infosets.") : ""), "");
+                    row(`advantages[${p}]`, "AdvantageNet<A>", (e) => (e > p ? frozen : absent) + (e % players === p ? refit : ""), frozen);
+                });
+                row("M_Π", "strategy rows", () => chip("mem", "+ σᵗ", "matched at the infosets the walker's opponents sampled through."), "");
+                row(
+                    "strategies",
+                    "StrategicNet<A>",
+                    () => chip("none", "absent", "No net yet: est_strategy is uniform."),
+                    chip("fit", "fit once", "fit_strategy, on all of M_Π."),
+                );
+                $("life").innerHTML = cells.join("");
+            }
+            function renderFit() {
+                $("pipe").innerHTML = PIPE.map(([c, t]) => `<li><code>${esc(c)}</code><span>${esc(t)}</span></li>`).join("");
+                $("knobs").innerHTML = `<thead><tr><th>DeepHyperParams</th><th>Default</th><th>Read by</th><th>Sets</th></tr></thead><tbody>${KNOBS.map(
+                    ([k, v, r, t]) => `<tr><td class="mono">${k}</td><td class="num">${v}</td><td class="mono">${r}</td><td>${t}</td></tr>`,
+                ).join("")}</tbody>`;
+            }
+            function renderAll() {
+                renderControls();
+                renderFacts();
+                renderNet();
+                renderTable();
+                renderValues();
+            }
+            renderAll();
+            renderLife();
+            renderFit();
+        </script>
+    </body>
+</html>

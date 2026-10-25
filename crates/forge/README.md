@@ -32,6 +32,10 @@ cargo run --bin trainer --features server -- --fast
 
 # Run distributed training (includes clustering if needed)
 cargo run --bin trainer --features server -- --slow
+
+# Deep CFR on NLHE (FullInfo + NlheEmbedder); no database. Saves the strategy net to DIR
+# (default ./nets) every TrainingHyperParams flush interval and on stop
+cargo run --release --bin trainer -- --deep [DIR]
 ```
 
 ---

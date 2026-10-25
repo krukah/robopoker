@@ -162,6 +162,7 @@ graph TD
   daybook["daybook<br/><i>postgres persistence</i>"]
   lloyd["lloyd<br/><i>hand abstraction</i>"]
   nlhe["nlhe<br/><i>NLHE solver</i>"]
+  neural["neural<br/><i>Deep CFR</i>"]
 
   deuce --> pokerkit
   kicker --> pokerkit
@@ -183,10 +184,13 @@ graph TD
   nlhe --> kicker
   nlhe --> mccfr
   nlhe --> subgame
+  neural --> mccfr
+  neural --> monge
   nlhe -.->|"server feature"| daybook
+  nlhe -.->|"neural feature"| neural
   lloyd -.->|"server feature"| daybook
 
-  class pokerkit,deuce,monge,kicker,mccfr,subgame,elkan,vitals,daybook,nlhe,lloyd pub
+  class pokerkit,deuce,monge,kicker,mccfr,subgame,neural,elkan,vitals,daybook,nlhe,lloyd pub
 ```
 
 | Crate                           |     | Description                                                                                |
@@ -199,6 +203,7 @@ graph TD
 | [`kicker`](crates/kicker)       | 🟢  | Poker game engine: state, edges, settlement, witness/perfect recall                        |
 | [`mccfr`](crates/mccfr)         | 🟢  | Game-agnostic MCCFR framework with pluggable regret/policy/sampling                        |
 | [`subgame`](crates/subgame)     | 🟢  | Safe (world-partitioned) and depth-limited subgame solving                                 |
+| [`neural`](crates/neural)       | 🟢  | Deep CFR: function approximators in place of MCCFR's regret and strategy tables            |
 | [`nlhe`](crates/nlhe)           | 🟢  | No-Limit Hold'em solver and abstraction                                                    |
 | [`daybook`](crates/daybook)     | 🟢  | PostgreSQL bulk I/O via `Schema`/`Row`/`Streamable`                                        |
 | [`vitals`](crates/vitals)       | 🟢  | OpenTelemetry init and a centrally-registered metric table                                 |
@@ -221,6 +226,7 @@ graph TD
 | [`kuhn`](crates/kuhn)         | ⚪  | Kuhn poker — MCCFR framework validation                                |
 | [`leduc`](crates/leduc)       | ⚪  | Leduc Hold'em — MCCFR framework validation                             |
 | [`roshambo`](crates/roshambo) | ⚪  | Rock-Paper-Scissors — MCCFR framework validation                       |
+| [`petri`](crates/petri)       | ⚪  | Deep CFR on Kuhn and RPS, compiled to WebAssembly and drawn in a browser |
 
 </details>
 

@@ -5,12 +5,16 @@
 
 mod blueprint;
 mod cfr;
+#[cfg(feature = "neural")]
+mod full;
 mod state;
 #[cfg(feature = "server")]
 mod store;
 
 pub use blueprint::*;
 pub use cfr::*;
+#[cfg(feature = "neural")]
+pub use full::*;
 pub use state::*;
 #[cfg(feature = "server")]
 pub use store::*;

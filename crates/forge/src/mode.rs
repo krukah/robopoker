@@ -13,11 +13,13 @@ pub enum Mode {
     Slow,
     Reset,
     Forget,
+    Deep(std::path::PathBuf),
 }
 
 impl Mode {
     pub async fn run(self) {
         match self {
+            Self::Deep(dir) => DeepSession::new(dir).train(),
             Self::Fast => FastSession::new(daybook::Pool::db().await).await.train().await,
             Self::Slow => SlowSession::new(daybook::Pool::db().await).await.train().await,
             Self::Reset => Self::reset(&*daybook::Pool::db().await).await,

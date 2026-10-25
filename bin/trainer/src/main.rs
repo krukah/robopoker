@@ -1,8 +1,8 @@
 //! Training pipeline. Mode (exactly one of): --status, --fast, --slow, --cluster, --recluster,
-//! --reset, --forget.
+//! --reset, --forget, --deep `[DIR]`.
 //!
 //! --recluster drops the clustering tables, as --reset drops the blueprint; the next
-//! --fast/--slow/--cluster rebuilds them.
+//! --fast/--slow/--cluster rebuilds them. --deep trains Deep CFR on NLHE with no database.
 
 mod allocator;
 mod cli;

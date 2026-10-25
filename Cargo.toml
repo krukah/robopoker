@@ -11,11 +11,13 @@ members = [
   "crates/lloyd",
   "crates/rosetta",
   "crates/subgame",
+  "crates/neural",
   "crates/nlhe",
   "crates/phh",
   "crates/leduc",
   "crates/kuhn",
   "crates/roshambo",
+  "crates/petri",
   # Infrastructure crates
   "crates/daybook",
   "crates/bouncer",
@@ -61,6 +63,7 @@ elkan    = { version = "1.2", path = "crates/elkan" }
 lloyd    = { version = "1.2", path = "crates/lloyd" }
 rosetta  = { version = "1.2", path = "crates/rosetta" }
 subgame  = { version = "1.2", path = "crates/subgame" }
+neural   = { version = "1.2", path = "crates/neural" }
 nlhe     = { version = "1.2", path = "crates/nlhe" }
 phh      = { version = "1.2", path = "crates/phh" }
 leduc    = { version = "1.2", path = "crates/leduc" }
