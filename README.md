@@ -13,7 +13,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
     <img src="assets/reel/hero-light.gif" alt="The analysis dashboard walked through one hand" width="900"/>
   </picture>
   <br/>
-  <sub><b>Figure 1.</b> The analysis dashboard (closed-source, built on this repo's public APIs) plays one hand on the blueprint, switches both ranges to their posterior density, and rewinds.</sub>
+  <sub><b>Figure 1.</b> The analysis dashboard (closed-source, built on this repo's public APIs) plays one hand with both seats' cards face up — an open, a flop c-bet, a river shove into a fold — then switches both ranges to their posterior density and rewinds.</sub>
 </p>
 
 ## Contributions
