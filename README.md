@@ -13,7 +13,7 @@ A Rust implementation of superhuman-scale poker AI, seeking functional parity wi
     <img src="assets/reel/hero-light.gif" alt="The analysis dashboard walked through one hand" width="900"/>
   </picture>
   <br/>
-  <sub><b>Figure 1.</b> The analysis dashboard (closed-source; § <a href="#frontend">Frontend</a>), driven through one hand.</sub>
+  <sub><b>Figure 1.</b> The analysis dashboard (closed-source, built on this repo's public APIs) plays one hand on the blueprint, switches both ranges to their posterior density, and rewinds.</sub>
 </p>
 
 ## Contributions
@@ -64,15 +64,6 @@ flowchart LR
 - `monge` — distance as Earth Mover's Distance between child-street distributions; `lloyd` solves it by Sinkhorn⁵ over `monge`'s measures
 - `daybook` — persists them over `COPY IN`, `(Regime × Version)` table naming, fingerprinted against silent constant drift
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/equity-dark.gif"/>
-    <img src="assets/reel/equity-light.gif" alt="Equity distributions clustered by Earth Mover's Distance" width="620"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 2.</b> A hand's equity distribution over next-street outcomes (red, observed) against its bucket's (gold, abstraction), street by street. Hands close in EMD share a bucket.</sub>
-</p>
-
 ### 2 · MCCFR training³
 
 - `kicker` — the engine sampled through: side-pot/all-in/tie settlement, `Size::SPR`/`Size::BBs` sizing, `Witness` versus `Perfect` recall
@@ -80,29 +71,11 @@ flowchart LR
 - `nlhe` — `NlheEncoder` and the `Flagship` config: `mccfr::Tabular` with linear regret⁶ and weighting, Pluribus sampling with regret-based pruning⁹,¹¹
 - `forge` — `Fast` (in-memory) or `Slow` (a worker per core over PostgreSQL) orchestration, checkpointing to the database
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/tree-dark.gif"/>
-    <img src="assets/reel/tree-light.gif" alt="External-sampling MCCFR tree traversal" width="620"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 3.</b> External sampling walks one trajectory per iteration; the highlighted path is the branch being updated.</sub>
-</p>
-
 ### 3 · Real-time search — the blueprint as prior, the spot re-solved
 
 - `DepthEdge<E, D>` — a depth-limited¹⁰ frontier with biased continuations
 - `WorldProfile` — belief partitioned into worlds for safe¹² re-solving
 - `SubGameSolver` — composes both; off-grid bets reach the tree through `pokerkit`'s `Lattice`⁷,⁸
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/reel/triplet-dark.gif"/>
-    <img src="assets/reel/triplet-light.gif" alt="Hero range, policy, villain range" width="820"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 4.</b> Hero's range, the action distribution, villain's range — the canonical lens, asserted by <a href="crates/litmus"><code>litmus</code></a>.</sub>
-</p>
 
 ### 4 · Deep CFR¹³ — networks in place of the tables
 
@@ -111,68 +84,19 @@ flowchart LR
 - `nlhe` — the `neural` feature: `FullInfo` + `NlheEmbedder`, raw cards and `rosetta`'s predicates in, the static bet grid out; no abstraction tables, no database (`trainer --deep`)
 - `petri` — the same loop on Kuhn and RPS, compiled to WebAssembly and drawn live in a browser
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/neural/networks-dark.gif"/>
-    <img src="assets/neural/networks-light.gif" alt="One forward pass through a CfrNet advantage network" width="820"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 5.</b> One forward pass: the embedder's features, the hidden layers, the legal-action mask, and regret matching over the masked logits. From <a href="crates/neural/assets/networks.html"><code>networks.html</code></a>.</sub>
-</p>
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/neural/petri-dark.gif"/>
-    <img src="assets/neural/petri-light.gif" alt="Deep CFR training on rock-paper-scissors in the browser" width="820"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 6.</b> <a href="crates/petri"><code>petri</code></a>: 2,048 epochs of <code>CfrNet</code> on RPS, in WebAssembly. The average strategy (blue) settles on Nash; the current strategy (orange) keeps cycling around it, as CFR's iterates do.</sub>
-</p>
-
-### 5 · Instruments — names, records, opponents
-
-- `rosetta` — names every bucket from a seeded sample of its members: modal made hand, kicker, draw, and the board texture it holds *above its street's base rate*, plus the equity band k-means clustered on
-- `phh` — parses the published Pluribus hand histories, replays them chip-exact independent of `kicker`, then walks them through `kicker` to diff the two; 6-max hands that fit reduce to the heads-up tree
-- `bout` — the benchmark loop written once: one `Rival` trait per opponent, hand-history rows, a 95% interval per run; `spar` is Slumbot
-- `litmus` — the range-object invariants of Table 2, as a typed scenario catalog
-
 ## Evaluation
 
 ### In chips — live play against Slumbot
 
-`depth` = depth-limited subgame¹⁰ · `world` = safe multi-world subgame¹² · `dirac` = argmax the post-search policy · `base` = blueprint alone · `fish` = uniform random. All nine play Slumbot live, in parallel; `bin/slumbot` runs them through [`bout`](crates/bout), and `scoreboard` ranks every recorded run by bb/100.
+Nine variants, played through [`bout`](crates/bout): `depth` = depth-limited subgame¹⁰, `world` = safe multi-world subgame¹², `dirac` = argmax the post-search policy. The best three:
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/images/competition-convergence-dark.svg"/>
-    <img src="assets/images/competition-convergence-light.svg" alt="Running bb/100 by hands played, nine variants" width="880"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 7.</b> Every hand, from the hand log; runs align on their <i>last</i>. Search variants think for seconds and enter at the hollow dot.</sub>
-</p>
+| Variant       |  Hands |    bb/100 | 95% CI |
+| :------------ | -----: | --------: | -----: |
+| `world+dirac` | 86.0 K | **−13.1** | ± 14.0 |
+| `depth+dirac` | 86.2 K |     −25.3 | ± 14.3 |
+| `dirac`       |  480 K |     −28.4 |  ± 6.0 |
 
-| Variant             |  Hands |    bb/100 | 95% CI |
-| :------------------ | -----: | --------: | -----: |
-| `world+dirac`       | 86.0 K | **−13.1** | ± 14.0 |
-| `depth+dirac`       | 86.2 K |     −25.3 | ± 14.3 |
-| `dirac`             |  480 K |     −28.4 |  ± 6.0 |
-| `depth+world+dirac` | 86.7 K |     −28.4 | ± 14.3 |
-| `base`              |  480 K |     −32.4 |  ± 6.1 |
-| `world`             | 90.9 K |     −64.4 | ± 16.6 |
-| `depth`             | 91.4 K |     −77.4 | ± 17.5 |
-| `depth+world`       | 91.7 K |     −79.5 | ± 16.8 |
-| `fish`              |  480 K |    −136.5 |  ± 3.8 |
-
-<sub><b>Table 1.</b> 1.96·σ/√n over per-hand pnl. Every `dirac` variant ranks above every non-`dirac` one. Post showdown-fix; earlier numbers aren't comparable.</sub>
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/images/competition-cube-dark.svg"/>
-    <img src="assets/images/competition-cube-light.svg" alt="The eight search configurations as a cube" width="820"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 8.</b> The run as a cube; long edges are the <code>dirac</code> transition. Alone it buys <b>+4</b>, on top of search <b>~+51</b> — sampling temperature, not search, is the dominant loss.</sub>
-</p>
+<sub><b>Table 1.</b> 1.96·σ/√n over per-hand pnl. Every `dirac` variant beats every non-`dirac` one: sampling temperature, not search, is the dominant loss.</sub>
 
 ### In shape — the litmus suite
 
@@ -191,38 +115,6 @@ flowchart LR
 | **Total**                 |   34 |    6 |                                                    |
 
 <sub><b>Table 2.</b> [`litmus`](crates/litmus) answers in seconds where a winrate takes weeks. Epoch 151.7 M, 156 K infosets, sum regret 32.1. All six failures share a cause: flop k-means merges `AQo` through `A5o` into one bucket while `AK` gets its own, so CFR routes kicker strength through the jam.</sub>
-
-### In equilibrium — Deep CFR against closed forms
-
-| Network   | Kuhn, 2¹² epochs                                                     | RPS, 2¹² epochs   |
-| :-------- | :------------------------------------------------------------------- | :---------------- |
-| `MockNet` | pass — worst of 40 seeds: exploitability 0.0096, pure miss 0.013     | pass — gap 0.0019 |
-| `CfrNet`  | fail — `Q` checks first to act at 0.78, where equilibrium always checks | fail — gap 0.0345 |
-
-<sub><b>Table 3.</b> `cargo test -p robopoker-neural`, both networks held to the tabular bars: exploitability < 0.015 and every pure Kuhn target within 0.03; RPS within 0.005 of (0.4, 0.4, 0.2). `MockNet` fits each memory exactly, so it isolates the loop; the `CfrNet` gap is function approximation. The `CfrNet` tests are `#[ignore]`d — minutes in release.</sub>
-
-### Against the record — the Pluribus hand histories
-
-`phh-cli duel` plays each logged decision out twice, behind their action and behind ours, with our strategy on both seats and the same runout. δ = theirs − ours. A converged blueprint best-responds to itself, so δ ≤ 0 everywhere, and `Ledger::delta` lower-bounds our own exploitability in bb/decision.
-
-| Corpus | |
-| :--- | :--- |
-| Hands | 10,000, all six hole cards in every hand |
-| Board dealt to the river | 2,748 |
-| Odd-pot half-chip splits | 8, settled exactly |
-| Always check/call, scored by `duel` | **+0.6188** bb/decision |
-
-<sub><b>Table 4.</b> The last row is the scale: what "very exploitable" reads on this corpus.</sub>
-
-### In words — a name per bucket
-
-| Bucket | By frequency | By lift |
-| :--- | :--- | :--- |
-| `F::4e` | full house, rainbow board (95%, base 40%) | full house, **trips board** (95%, base 0.2%) |
-| `T::b8` | trips, two-tone board (84%, base 70%) | trips, **paired board** (70%, base 33%) |
-| `F::4d` | two pair, connected board (91%) | two pair, **monotone board** (98%, base 8%) |
-
-<sub><b>Table 5.</b> [`rosetta`](crates/rosetta) names all 782 buckets at `v1`. Frequency names the base rate; lift names the bucket.</sub>
 
 ## Implementation
 
@@ -347,9 +239,7 @@ graph TD
 
 Training: 16 vCPU / 120 GB. PostgreSQL 14+: 8 vCPU / 64 GB. Analysis: 1 vCPU / 4 GB.
 
-<img src="assets/images/training-dashboard.png" alt="MCCFR training dashboard" width="650"/>
-
-<sub><b>Figure 9.</b> `vitals` emits OpenTelemetry to any OTLP backend; a metric added in <code>crates/vitals/src/metrics.rs</code> is visible immediately.</sub>
+`vitals` emits OpenTelemetry to any OTLP backend; a metric added in `crates/vitals/src/metrics.rs` is visible immediately.
 
 </details>
 
@@ -367,33 +257,11 @@ cargo run --release --bin slumbot -- --variants base*1,dirac*1 --hands 4096
 cargo run --release --bin scoreboard                    # every fingerprint by bb/100, litmus alongside
 cargo run --release --bin litmus-cli -- --regime pluribus --version v1
 cargo run --release --bin phh-cli -- conform            # corpus at $PHH_DATA
-cargo run --release --bin mechinterp -- --streets all   # Table 5
+cargo run --release --bin mechinterp -- --streets all   # bucket names
 cargo run --manifest-path crates/lints/Cargo.toml -- --base origin/main
 ```
 
 </details>
-
-## Frontend
-
-Closed-source, built entirely on this repository's public APIs — `portal`'s endpoints, `lloyd`'s tables, `nlhe`'s blueprint format.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/images/frontend-play-dark.png"/>
-    <img src="assets/images/frontend-play-light.png" alt="The Play table" width="900"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 10.</b> Play: pick the opponent's <code>depth × world × dirac</code> corner of the cube, or <code>fish</code>, and sit down.</sub>
-</p>
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/images/frontend-history-dark.png"/>
-    <img src="assets/images/frontend-history-light.png" alt="History: cumulative P&L by matchup" width="900"/>
-  </picture>
-  <br/>
-  <sub><b>Figure 11.</b> History: cumulative P&amp;L for any hero × opponent matchup, with AIVAT below.</sub>
-</p>
 
 ## References
 
