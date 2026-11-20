@@ -67,10 +67,8 @@ where
     fn lookup(&self) -> Lookup {
         match self.street() {
             Street::Pref | Street::Rive => Lookup::grow(self.street()),
-            Street::Flop | Street::Turn => self
-                .boundings()
-                .iter()
-                .map(|b| self.abstraction(b.j()))
+            Street::Flop | Street::Turn => (0..N)
+                .map(|i| self.abstraction(self.neighbor(i).0))
                 .zip(IsomorphismIterator::from(self.street()))
                 .map(|(abs, iso)| (iso, abs))
                 .collect::<BTreeMap<Isomorphism, Abstraction>>()
